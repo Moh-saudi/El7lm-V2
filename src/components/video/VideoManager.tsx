@@ -1,12 +1,14 @@
 'use client';
 
 import { FileVideo, Link, Play, Trash2, Upload, X } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 
 interface Video {
   url: string;
   desc: string;
+  thumbnail?: string;
+  title?: string;
 }
 
 interface VideoManagerProps {
@@ -140,7 +142,7 @@ export default function VideoManager({
       }
 
       console.log('✅ تم رفع الفيديو بنجاح:', urlData.publicUrl);
-      
+
       setNewVideo(prev => ({ ...prev, url: urlData.publicUrl }));
       setUploadMethod('url');
       setUploadProgress(100);
@@ -148,11 +150,11 @@ export default function VideoManager({
     } catch (error) {
       console.error('❌ خطأ في رفع الفيديو:', error);
       let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       alert(`❌ خطأ في رفع الفيديو:\n\n${errorMessage}`);
     } finally {
       setIsUploading(false);
@@ -172,6 +174,94 @@ export default function VideoManager({
       if (match) return match[1];
     }
     return null;
+  };
+
+  // توليد صورة مصغرة للفيديو
+  const generateThumbnail = (url: string): string => {
+    // إذا كان YouTube، استخدم صورة YouTube المصغرة
+    const videoId = extractVideoId(url);
+    if (videoId) {
+      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    }
+
+    // إذا كان فيديو مباشر، استخدم صورة افتراضية
+    if (url.includes('supabase') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg')) {
+      return '/images/video-thumbnail-default.svg';
+    }
+
+    // صورة افتراضية
+    return '/images/video-thumbnail-default.svg';
+  };
+
+  // رفع صورة مصغرة مخصصة
+  const handleThumbnailUpload = async (file: File, videoIndex: number) => {
+    if (!file) return;
+
+    // التحقق من نوع الملف
+    if (!file.type.startsWith('image/')) {
+      alert('يرجى اختيار ملف صورة صحيح');
+      return;
+    }
+
+    // التحقق من حجم الملف (5MB الحد الأقصى)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('حجم الصورة كبير جداً! الحد الأقصى 5 ميجابايت');
+      return;
+    }
+
+    try {
+      // الحصول على معرف المستخدم
+      const { auth } = await import('@/lib/firebase/config');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('يجب تسجيل الدخول أولاً');
+      }
+
+      // إنشاء اسم فريد للملف
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `thumbnail_${timestamp}.${fileExt}`;
+      const filePath = `thumbnails/${currentUser.uid}/${fileName}`;
+
+      // رفع مباشر إلى Supabase
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // الحصول على الرابط العام
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('فشل في الحصول على رابط الصورة');
+      }
+
+      // تحديث الفيديو بالصورة المصغرة الجديدة
+      const updatedVideos = [...videos];
+      updatedVideos[videoIndex] = { ...updatedVideos[videoIndex], thumbnail: urlData.publicUrl };
+      onUpdate(updatedVideos);
+
+      console.log('✅ تم رفع الصورة المصغرة بنجاح:', urlData.publicUrl);
+
+    } catch (error) {
+      console.error('❌ خطأ في رفع الصورة المصغرة:', error);
+      alert('فشل في رفع الصورة المصغرة');
+    }
   };
 
   // التحقق من صحة URL
@@ -201,9 +291,80 @@ export default function VideoManager({
           </button>
         </div>
       ) : (
-        <div className="grid gap-6">
-          {videos.map((video, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="space-y-6">
+          {/* عرض الفيديوهات في قائمة مع الصور المصغرة */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {videos.map((video, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
+                {/* الصورة المصغرة */}
+                <div className="aspect-video relative">
+                  <img
+                    src={video.thumbnail || generateThumbnail(video.url)}
+                    alt={video.title || `فيديو ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/images/video-thumbnail-default.svg';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Play className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      onClick={() => setEditingIndex(editingIndex === index ? null : index)}
+                      className="p-1.5 bg-white bg-opacity-90 text-gray-600 hover:text-blue-600 hover:bg-opacity-100 rounded-md transition-colors"
+                      title="تعديل"
+                      aria-label="تعديل الفيديو"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteVideo(index)}
+                      className="p-1.5 bg-white bg-opacity-90 text-gray-600 hover:text-red-600 hover:bg-opacity-100 rounded-md transition-colors"
+                      title="حذف"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* معلومات الفيديو */}
+                <div className="p-4">
+                  {video.title && (
+                    <h4 className="font-semibold text-gray-900 mb-2 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>{video.title}</h4>
+                  )}
+                  {video.desc && (
+                    <p className="text-gray-600 text-sm overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>{video.desc}</p>
+                  )}
+                  <button
+                    onClick={() => {
+                      // فتح الفيديو في نافذة منبثقة أو عرض مفصل
+                      setEditingIndex(index);
+                    }}
+                    className="mt-3 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    عرض الفيديو
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* عرض مفصل للفيديو المحدد */}
+          {editingIndex !== null && (
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
               {/* شريط الأدوات */}
               <div className="flex items-center justify-between p-4 border-b bg-gray-50">
                 <div className="flex items-center gap-2">
@@ -254,6 +415,24 @@ export default function VideoManager({
                         placeholder="https://www.youtube.com/watch?v=..."
                       />
                     </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        عنوان الفيديو
+                      </label>
+                      <input
+                        type="text"
+                        value={video.title || ''}
+                        onChange={(e) => {
+                          const updatedVideos = [...videos];
+                          updatedVideos[index] = { ...updatedVideos[index], title: e.target.value };
+                          onUpdate(updatedVideos);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="عنوان الفيديو..."
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         وصف الفيديو
@@ -270,6 +449,44 @@ export default function VideoManager({
                         placeholder="وصف الفيديو..."
                       />
                     </div>
+
+                    {/* رفع صورة مصغرة مخصصة */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        صورة مصغرة مخصصة
+                      </label>
+                      <div className="flex items-center gap-4">
+                        {video.thumbnail && (
+                          <div className="w-20 h-12 rounded-md overflow-hidden border">
+                            <img 
+                              src={video.thumbnail} 
+                              alt="صورة مصغرة" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleThumbnailUpload(file, index);
+                          }}
+                          className="hidden"
+                          id={`thumbnail-${index}`}
+                        />
+                        <label
+                          htmlFor={`thumbnail-${index}`}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                        >
+                          {video.thumbnail ? 'تغيير الصورة' : 'إضافة صورة'}
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        الصورة المصغرة ستظهر في قائمة الفيديوهات
+                      </p>
+                    </div>
+
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingIndex(null)}
@@ -288,13 +505,13 @@ export default function VideoManager({
                 ) : (
                   // وضع العرض
                   <>
-                    <div className="aspect-video">
+                    <div className="aspect-video relative">
                       <ReactPlayer
                         url={video.url}
                         width="100%"
                         height="100%"
                         controls
-                        light
+                        light={video.thumbnail || generateThumbnail(video.url)}
                         playIcon={
                           <div className="flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full">
                             <Play className="w-8 h-8 text-white" />
@@ -336,6 +553,9 @@ export default function VideoManager({
                     </div>
 
                     <div className="p-4">
+                      {video.title && (
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">{video.title}</h4>
+                      )}
                       {video.desc && (
                         <p className="text-gray-700 text-sm leading-relaxed">{video.desc}</p>
                       )}
@@ -492,7 +712,7 @@ export default function VideoManager({
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-green-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                         aria-label={`تقدم الرفع ${uploadProgress}%`}
@@ -503,6 +723,20 @@ export default function VideoManager({
               </div>
             </div>
           )}
+
+          {/* عنوان الفيديو */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              عنوان الفيديو (اختياري)
+            </label>
+            <input
+              type="text"
+              value={newVideo.title || ''}
+              onChange={(e) => setNewVideo(prev => ({ ...prev, title: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="عنوان الفيديو..."
+            />
+          </div>
 
           {/* وصف الفيديو */}
           <div className="mt-4">
@@ -516,6 +750,50 @@ export default function VideoManager({
               rows={3}
               placeholder="وصف الفيديو..."
             />
+          </div>
+
+          {/* صورة مصغرة مخصصة */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              صورة مصغرة مخصصة (اختياري)
+            </label>
+            <div className="flex items-center gap-4">
+              {newVideo.thumbnail && (
+                <div className="w-20 h-12 rounded-md overflow-hidden border">
+                  <img 
+                    src={newVideo.thumbnail} 
+                    alt="صورة مصغرة" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    // رفع الصورة المصغرة للفيديو الجديد
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setNewVideo(prev => ({ ...prev, thumbnail: event.target?.result as string }));
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+                id="new-video-thumbnail"
+              />
+              <label
+                htmlFor="new-video-thumbnail"
+                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+              >
+                {newVideo.thumbnail ? 'تغيير الصورة' : 'إضافة صورة مصغرة'}
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              الصورة المصغرة ستظهر في قائمة الفيديوهات
+            </p>
           </div>
 
           {/* أزرار الإجراءات */}
