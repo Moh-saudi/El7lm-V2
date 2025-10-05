@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
 
 // إعدادات Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // التحقق من وجود bucket للفيديوهات
     console.log('🔍 التحقق من وجود bucket الفيديوهات...');
-    
+
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
     if (listError) {
       console.error('❌ خطأ في جلب قائمة buckets:', listError);
@@ -42,11 +42,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📋 Buckets المتاحة:', buckets?.map(b => b.name) || []);
-    
+
     // البحث عن bucket للفيديوهات
     const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
     const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
-    
+
     if (!videosBucket) {
       console.error('❌ لا يوجد bucket للفيديوهات');
       return NextResponse.json(
@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
     if (fileSize > MAX_FILE_SIZE) {
       const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
       const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-      
+
       return NextResponse.json(
-        { 
+        {
           error: `حجم الملف كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: ${maxSizeMB} ميجابايت`,
           fileSize,
           maxSize: MAX_FILE_SIZE
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     // إذا كان هذا آخر جزء، قم بدمج الأجزاء
     if (chunkIndex === totalChunks - 1) {
       console.log('🔄 بدء دمج الأجزاء...');
-      
+
       try {
         // جلب جميع الأجزاء
         const chunks: Blob[] = [];
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           const { data: chunkData, error: downloadError } = await supabase.storage
             .from(videosBucket.name)
             .download(partPath);
-          
+
           if (downloadError) {
             console.error(`❌ خطأ في جلب الجزء ${i + 1}:`, downloadError);
             return NextResponse.json(
@@ -152,13 +152,13 @@ export async function POST(request: NextRequest) {
               { status: 500 }
             );
           }
-          
+
           chunks.push(chunkData);
         }
 
         // دمج الأجزاء
         const mergedFile = new Blob(chunks, { type: chunk.type });
-        
+
         // رفع الملف المدمج
         const finalPath = `videos/${userId}/${timestamp}_${baseFileName}.${fileExt}`;
         const { data: finalData, error: finalError } = await supabase.storage
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ خطأ في معالجة طلب رفع الفيديو المقسم:', error);
-    
+
     return NextResponse.json(
       { error: 'حدث خطأ غير متوقع في رفع الفيديو' },
       { status: 500 }

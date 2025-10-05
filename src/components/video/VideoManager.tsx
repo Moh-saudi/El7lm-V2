@@ -144,7 +144,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       // تقسيم الملف إلى أجزاء
       const chunkSize = 4 * 1024 * 1024; // 4MB لكل جزء
       const totalChunks = Math.ceil(file.size / chunkSize);
-      
+
       console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء`);
 
       // رفع كل جزء
@@ -189,9 +189,9 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       }
 
       const result = await finalResponse.json();
-      
+
       console.log('✅ تم رفع الفيديو المقسم بنجاح:', result.url);
-      
+
       setNewVideo(prev => ({ ...prev, url: result.url }));
       setUploadMethod('url');
       setUploadProgress(100);
@@ -199,11 +199,11 @@ const VideoManager: React.FC<VideoManagerProps> = ({
     } catch (error) {
       console.error('❌ خطأ في رفع الفيديو المقسم:', error);
       let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       alert(`❌ خطأ في رفع الفيديو:\n\n${errorMessage}`);
     } finally {
       setIsUploading(false);
@@ -237,7 +237,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
         throw new Error('يجب تسجيل الدخول أولاً');
       }
 
-      console.log('🚀 بدء رفع الفيديو للمستخدم:', currentUser.uid);
+      console.log('🚀 بدء رفع الفيديو المباشر للمستخدم:', currentUser.uid);
 
       // إنشاء FormData للرفع
       const formData = new FormData();
