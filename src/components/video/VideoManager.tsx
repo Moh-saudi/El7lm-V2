@@ -1,26 +1,26 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Upload, 
-  Plus, 
-  X, 
-  Play, 
-  Edit3, 
-  Trash2, 
-  Save, 
-  X as Cancel,
-  Link,
-  FileVideo
+import { Video } from '@/types/player';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    X as Cancel,
+    Edit3,
+    FileVideo,
+    Link,
+    Play,
+    Plus,
+    Save,
+    Trash2,
+    Upload,
+    X
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import React, { useRef, useState } from 'react';
 
 const ReactPlayer = dynamic(() => import('react-player'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">جاري تحميل الفيديو...</div>
 });
-import { Video } from '@/types/player';
 
 interface VideoManagerProps {
   videos: Video[];
@@ -56,7 +56,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   // حذف فيديو
   const handleDeleteVideo = async (index: number) => {
     const videoToDelete = videos[index];
-    
+
     // التأكد من الحذف
     if (!confirm('هل تريد حذف هذا الفيديو نهائياً؟')) {
       return;
@@ -66,7 +66,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       // إذا كان الفيديو مرفوع على Supabase Storage، احذفه من هناك أيضاً
       if (videoToDelete.url && videoToDelete.url.includes('supabase.co')) {
         console.log('🗑️ حذف الفيديو من Supabase Storage:', videoToDelete.url);
-        
+
         const response = await fetch(`/api/upload/video?url=${encodeURIComponent(videoToDelete.url)}`, {
           method: 'DELETE',
         });
@@ -82,10 +82,10 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       // حذف الفيديو من القائمة
       const updatedVideos = videos.filter((_, i) => i !== index);
       onUpdate(updatedVideos);
-      
+
     } catch (error) {
       console.error('❌ خطأ في حذف الفيديو:', error);
-      
+
       // حتى لو فشل حذف الملف من Storage، احذفه من القائمة
       if (confirm('حدث خطأ أثناء حذف الملف من التخزين. هل تريد حذفه من القائمة على أي حال؟')) {
         const updatedVideos = videos.filter((_, i) => i !== index);
@@ -96,7 +96,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
 
   // تعديل فيديو
   const handleEditVideo = (index: number, updatedVideo: Video) => {
-    const updatedVideos = videos.map((video, i) => 
+    const updatedVideos = videos.map((video, i) =>
       i === index ? updatedVideo : video
     );
     onUpdate(updatedVideos);
@@ -157,39 +157,39 @@ const VideoManager: React.FC<VideoManagerProps> = ({
           console.error('❌ فشل في تحليل استجابة الخادم:', jsonError);
           errorData = { error: 'استجابة غير صحيحة من الخادم' };
         }
-        
+
         // معالجة خاصة لخطأ حجم الملف الكبير
         if (response.status === 413 || errorData.error?.includes('حجم الفيديو كبير') || errorData.error?.includes('حجم الملف كبير')) {
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
           throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
         }
-        
+
         // معالجة أخطاء أخرى
         if (response.status === 503) {
           throw new Error('خدمة التخزين غير متاحة حالياً. يرجى المحاولة لاحقاً.');
         }
-        
+
         if (response.status === 400) {
           throw new Error(errorData.error || 'بيانات الطلب غير صحيحة');
         }
-        
+
         throw new Error(errorData.error || `فشل في رفع الفيديو (${response.status})`);
       }
 
       const result = await response.json();
-      
+
       console.log('✅ تم رفع الفيديو بنجاح:', result.url);
-      
+
       setNewVideo(prev => ({ ...prev, url: result.url }));
       setUploadMethod('url');
-      
+
     } catch (error) {
       console.error('❌ خطأ في رفع الفيديو:', error);
       let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         // إذا كانت رسالة الخطأ تحتوي على نصائح، استخدم toast بدلاً من alert
         if (errorMessage.includes('💡 نصائح:')) {
           // يمكن استخدام toast library هنا إذا كان متوفراً
@@ -254,7 +254,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                       placeholder="https://..."
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       وصف الفيديو
@@ -271,7 +271,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                       placeholder="اكتب وصف للفيديو..."
                     />
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEditVideo(index, video)}
@@ -338,12 +338,12 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                       }}
                     />
                   </div>
-                  
+
                   <div className="p-4">
                     <p className="text-gray-700 text-sm mb-3">
                       {video.desc || 'لا يوجد وصف'}
                     </p>
-                    
+
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2">
                         <button
@@ -361,7 +361,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                           حذف
                         </button>
                       </div>
-                      
+
                       <span className="text-xs text-gray-500">
                         فيديو {index + 1}
                       </span>
@@ -416,8 +416,8 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                 <button
                   onClick={() => setUploadMethod('url')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                    uploadMethod === 'url' 
-                      ? 'bg-blue-600 text-white' 
+                    uploadMethod === 'url'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -427,8 +427,8 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                 <button
                   onClick={() => setUploadMethod('file')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                    uploadMethod === 'file' 
-                      ? 'bg-blue-600 text-white' 
+                    uploadMethod === 'file'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -477,7 +477,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                     </span>
                     <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
                   </button>
-                  
+
                   {isUploading && (
                     <div className="mt-4">
                       <div className="flex justify-between text-sm text-gray-600 mb-1">
@@ -595,4 +595,4 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   );
 };
 
-export default VideoManager; 
+export default VideoManager;

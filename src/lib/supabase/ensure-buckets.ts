@@ -1,16 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ متغيرات Supabase غير محددة');
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ متغيرات Supabase الأساسية غير محددة');
 }
 
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+// عميل للعمليات العامة (قراءة فقط)
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
+// عميل للعمليات الإدارية (إنشاء buckets)
+const supabaseAdmin = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
 /**
- * ضمان وجود bucket للفيديوهات
+ * التحقق من وجود bucket للفيديوهات
  */
 export const ensureVideosBucket = async (): Promise<boolean> => {
   if (!supabase) {
@@ -26,20 +31,44 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
     
     if (listError) {
       console.error('❌ خطأ في جلب قائمة buckets:', listError);
+      console.warn('💡 تأكد من إعدادات Supabase أو أن bucket موجود بالفعل');
       return false;
     }
 
-    const videosBucket = buckets?.find(bucket => bucket.name === 'videos');
+    console.log('📋 Buckets الموجودة:', buckets?.map(b => b.name) || []);
+
+    // البحث عن bucket للفيديوهات (قد يكون له أسماء مختلفة)
+    const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
+    const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
     
     if (videosBucket) {
-      console.log('✅ bucket الفيديوهات موجود بالفعل');
+      console.log(`✅ bucket الفيديوهات موجود بالفعل: ${videosBucket.name}`);
       return true;
     }
 
-    console.log('📦 إنشاء bucket الفيديوهات...');
+    // إذا لم يكن bucket موجود، نحاول إنشاءه
+    console.log('📦 محاولة إنشاء bucket الفيديوهات...');
 
-    // إنشاء bucket جديد
-    const { data, error } = await supabase.storage.createBucket('videos', {
+    // إذا لم يكن لدينا Service Role Key، نحاول إنشاء bucket بسيط
+    if (!supabaseAdmin) {
+      console.warn('⚠️ لا يوجد Service Role Key، نحاول إنشاء bucket بسيط...');
+      
+      const { data, error } = await supabase.storage.createBucket('videos', {
+        public: true
+      });
+
+      if (error) {
+        console.error('❌ خطأ في إنشاء bucket الفيديوهات:', error);
+        console.warn('💡 تأكد من وجود Service Role Key في متغيرات البيئة أو أن bucket موجود بالفعل');
+        return false;
+      }
+
+      console.log('✅ تم إنشاء bucket الفيديوهات بنجاح (بسيط)');
+      return true;
+    }
+
+    // إنشاء bucket مع إعدادات متقدمة باستخدام Service Role Key
+    const { data, error } = await supabaseAdmin.storage.createBucket('videos', {
       public: true,
       allowedMimeTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/quicktime'],
       fileSizeLimit: 100 * 1024 * 1024 // 100MB
@@ -50,7 +79,7 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
       return false;
     }
 
-    console.log('✅ تم إنشاء bucket الفيديوهات بنجاح');
+    console.log('✅ تم إنشاء bucket الفيديوهات بنجاح (متقدم)');
     return true;
 
   } catch (error) {
@@ -88,8 +117,26 @@ export const ensureImagesBucket = async (): Promise<boolean> => {
 
     console.log('📦 إنشاء bucket الصور...');
 
-    // إنشاء bucket جديد
-    const { data, error } = await supabase.storage.createBucket('images', {
+    // إذا لم يكن لدينا Service Role Key، نحاول إنشاء bucket بسيط
+    if (!supabaseAdmin) {
+      console.warn('⚠️ لا يوجد Service Role Key، نحاول إنشاء bucket بسيط...');
+      
+      const { data, error } = await supabase.storage.createBucket('images', {
+        public: true
+      });
+
+      if (error) {
+        console.error('❌ خطأ في إنشاء bucket الصور:', error);
+        console.warn('💡 تأكد من وجود Service Role Key في متغيرات البيئة');
+        return false;
+      }
+
+      console.log('✅ تم إنشاء bucket الصور بنجاح (بسيط)');
+      return true;
+    }
+
+    // إنشاء bucket مع إعدادات متقدمة باستخدام Service Role Key
+    const { data, error } = await supabaseAdmin.storage.createBucket('images', {
       public: true,
       allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
       fileSizeLimit: 10 * 1024 * 1024 // 10MB
@@ -100,7 +147,7 @@ export const ensureImagesBucket = async (): Promise<boolean> => {
       return false;
     }
 
-    console.log('✅ تم إنشاء bucket الصور بنجاح');
+    console.log('✅ تم إنشاء bucket الصور بنجاح (متقدم)');
     return true;
 
   } catch (error) {
