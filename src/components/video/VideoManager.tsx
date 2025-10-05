@@ -415,7 +415,7 @@ export default function VideoManager({
                         placeholder="https://www.youtube.com/watch?v=..."
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         عنوان الفيديو
@@ -458,9 +458,9 @@ export default function VideoManager({
                       <div className="flex items-center gap-4">
                         {video.thumbnail && (
                           <div className="w-20 h-12 rounded-md overflow-hidden border">
-                            <img 
-                              src={video.thumbnail} 
-                              alt="صورة مصغرة" 
+                            <img
+                              src={video.thumbnail}
+                              alt="صورة مصغرة"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -760,9 +760,9 @@ export default function VideoManager({
             <div className="flex items-center gap-4">
               {newVideo.thumbnail && (
                 <div className="w-20 h-12 rounded-md overflow-hidden border">
-                  <img 
-                    src={newVideo.thumbnail} 
-                    alt="صورة مصغرة" 
+                  <img
+                    src={newVideo.thumbnail}
+                    alt="صورة مصغرة"
                     className="w-full h-full object-cover"
                   />
                 </div>
