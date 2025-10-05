@@ -13,9 +13,7 @@ import {
   Search, 
   Filter, 
   RefreshCw, 
-  Clock, 
   Flag, 
-  CheckCircle, 
   Target, 
   Minimize2, 
   Maximize2,
@@ -26,14 +24,12 @@ import {
   Trophy,
   Users
 } from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, doc, getDoc, where, startAfter } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import SendMessageButton from '@/components/messaging/SendMessageButton';
-import { ensurePlayerProfileData } from '@/lib/utils/player-data-migration';
-import { supabase, STORAGE_BUCKETS } from '@/lib/supabase/config';
 
-// Simple debounce hook - محسن
+// Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = React.useState(value);
 
@@ -74,11 +70,7 @@ interface Player {
   trainerId?: string;
   agent_id?: string;
   agentId?: string;
-  convertedToAccount?: boolean;
-  firebaseUid?: string;
-  organizationInfo?: string;
   age?: number;
-  dependency?: string;
   status?: string;
   skill_level?: string;
   objectives?: string[];
@@ -91,7 +83,6 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   playersPerPage: number;
   totalPlayers: number;
-  currentPagePlayers: number;
   onPlayersPerPageChange: (playersPerPage: number) => void;
 }
 
@@ -100,8 +91,7 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages, 
   onPageChange, 
   playersPerPage, 
-  totalPlayers, 
-  currentPagePlayers,
+  totalPlayers,
   onPlayersPerPageChange 
 }) => {
   const getPageNumbers = () => {
@@ -216,11 +206,9 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   const { user } = useAuth();
   const router = useRouter();
   
-  // State management - محسن
+  // State management
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   
@@ -228,35 +216,20 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   const [currentPage, setCurrentPage] = useState(1);
   const [playersPerPage, setPlayersPerPage] = useState(12);
   
-  // Filters - محسن
+  // Filters
   const [filterPosition, setFilterPosition] = useState('all');
   const [filterNationality, setFilterNationality] = useState('all');
   const [filterCountry, setFilterCountry] = useState('all');
   const [filterAccountType, setFilterAccountType] = useState('all');
-  const [filterAge, setFilterAge] = useState('all');
-  const [filterDependency, setFilterDependency] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterSkillLevel, setFilterSkillLevel] = useState('all');
-  const [filterObjective, setFilterObjective] = useState('all');
   
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
-  // Image cache to avoid repeated Supabase calls
-  const [imageCache, setImageCache] = useState<Map<string, string | null>>(new Map());
-
-  // Memoized callbacks - محسن
+  // Memoized callbacks
   const handlePlayersPerPageChange = useCallback((newPlayersPerPage: number) => {
     setPlayersPerPage(newPlayersPerPage);
     setCurrentPage(1);
   }, []);
-
-  const setupCurrentUserInfo = useCallback(() => {
-    if (!user?.uid) return;
-    
-    // Basic user info setup without excessive logging
-  }, [user?.uid]);
 
   const getPlayerAccountType = useCallback((player: any) => {
     if (player.trainer_id || player.trainerId) return 'trainer';
@@ -266,370 +239,67 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     return 'independent';
   }, []);
 
-  // OPTIMIZED: Check Supabase images with reduced logging and faster execution
-  const checkSupabaseImage = useCallback(async (playerId: string, player?: any): Promise<string | null> => {
-    // Check cache first
-    if (imageCache.has(playerId)) {
-      return imageCache.get(playerId)!;
-    }
-
-    try {
-      const accountType = player ? getPlayerAccountType(player) : 'independent';
-      
-      // Use correct bucket names that actually exist in Supabase
-      const primaryBucket = accountType === 'trainer' ? 'playertrainer' : 
-                           accountType === 'club' ? 'playerclub' : 
-                           accountType === 'agent' ? 'playeragent' : 
-                           accountType === 'academy' ? 'playeracademy' : 'avatars';
-      
-      const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-      
-      // Try primary bucket first
-      for (const ext of extensions) {
-        const fileName = `${playerId}.${ext}`;
-        try {
-          const { data } = await supabase.storage
-            .from(primaryBucket)
-            .getPublicUrl(fileName);
-          
-          if (data?.publicUrl) {
-            // Cache the result directly without HEAD request check
-            setImageCache(prev => new Map(prev).set(playerId, data.publicUrl));
-            return data.publicUrl;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-      
-      // If not found in primary bucket, try avatars as fallback
-      if (primaryBucket !== 'avatars') {
-        for (const ext of extensions) {
-          const fileName = `${playerId}.${ext}`;
-          try {
-            const { data } = await supabase.storage
-              .from('avatars')
-              .getPublicUrl(fileName);
-            
-            if (data?.publicUrl) {
-              // Cache the result directly without HEAD request check
-              setImageCache(prev => new Map(prev).set(playerId, data.publicUrl));
-              return data.publicUrl;
-            }
-          } catch (error) {
-            continue;
-          }
-        }
-      }
-      
-      // Cache null result to avoid repeated checks
-      setImageCache(prev => new Map(prev).set(playerId, null));
-      return null;
-    } catch (error) {
-      // Cache null result
-      setImageCache(prev => new Map(prev).set(playerId, null));
-      return null;
-    }
-  }, [getPlayerAccountType, imageCache]);
-
-  // OPTIMIZED: Get player image with minimal Supabase calls and reduced logging
-  const getPlayerImage = useCallback(async (player: any): Promise<string | null> => {
-    if (!player) return null;
-
-    // Check existing image fields first (no Supabase calls needed)
-    const imageFields = [
-      player.profile_image_url,
-      player.profile_image,
-      player.avatar,
-      player.photoURL,
-      player.profilePicture,
-      player.image,
-      player.photo,
-      player.picture,
-      player.profile_picture,
-      player.profilePhoto
-    ];
-
-    for (const field of imageFields) {
-      if (field && typeof field === 'string' && field.trim()) {
-        return field;
-      }
-      if (field && typeof field === 'object' && field.url) {
-        return field.url;
-      }
-    }
-
-    // Only check Supabase if no existing image found
-    const supabaseImageUrl = await checkSupabaseImage(player.id, player);
-    return supabaseImageUrl;
-  }, [checkSupabaseImage]);
-
-  // OPTIMIZED: Load players with pagination and progressive loading
+  // Simplified load players function
   const loadPlayers = useCallback(async () => {
     if (!user?.uid) return;
     
     setIsLoading(true);
     try {
-      // Load more players initially for better user experience
-      const INITIAL_LOAD_SIZE = 200;
-      const allPlayers: Player[] = [];
-      const seenIds = new Set<string>();
-
-      // Load ALL dependent players (no limit)
-      const dependentPlayersSnapshot = await getDocs(collection(db, 'players'));
-      const dependentPlayers: Player[] = [];
+      console.log('🔄 Loading players...');
       
-      dependentPlayersSnapshot.forEach((doc) => {
+      // Load players from 'players' collection
+      const playersSnapshot = await getDocs(collection(db, 'players'));
+      const playersData: Player[] = [];
+      
+      playersSnapshot.forEach((doc) => {
         const playerData = { id: doc.id, ...doc.data() } as Player;
-        if (!playerData.isDeleted && !seenIds.has(playerData.id)) {
-          dependentPlayers.push(playerData);
-          seenIds.add(playerData.id);
+        if (!playerData.isDeleted) {
+          playersData.push(playerData);
         }
       });
 
-      // Load ALL independent players from users collection (no limit)
+      // Load independent players from 'users' collection
       const usersQuery = query(
         collection(db, 'users'),
         where('accountType', '==', 'player')
       );
       const usersSnapshot = await getDocs(usersQuery);
-      const usersIndependentPlayers: Player[] = [];
       
       usersSnapshot.forEach((doc) => {
         const userData = doc.data();
-        if (!userData.isDeleted && !seenIds.has(doc.id)) {
-          usersIndependentPlayers.push({
+        if (!userData.isDeleted) {
+          playersData.push({
             id: doc.id,
             ...userData,
             accountType: 'independent'
           } as Player);
-          seenIds.add(doc.id);
         }
       });
-      // Combine and deduplicate
-      const initialPlayers = [...dependentPlayers, ...usersIndependentPlayers];
-      
-      // Show players immediately without images for fast display
-      setPlayers(initialPlayers);
-      setIsLoading(false);
-      
-      console.log(`✅ Loaded ${initialPlayers.length} players from database`);
-      
-      // Load images progressively in batches for better performance
-      setIsLoadingImages(true);
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < initialPlayers.length; i += BATCH_SIZE) {
-        const batch = initialPlayers.slice(i, i + BATCH_SIZE);
-        
-        // Process batch in parallel
-        const batchPromises = batch.map(async (player) => {
-          const imageUrl = await getPlayerImage(player);
-          return { player, imageUrl };
-        });
-        
-        const batchResults = await Promise.all(batchPromises);
-        
-        // Update all players in batch
-        setPlayers(prev => prev.map(p => {
-          const result = batchResults.find(r => r.player.id === p.id);
-          return result ? { ...p, profile_image_url: result.imageUrl } : p;
-        }));
-        
-        // Small delay between batches
-        if (i + BATCH_SIZE < initialPlayers.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-      
-      setIsLoadingImages(false);
-      console.log(`✅ Finished loading images for ${initialPlayers.length} players`);
 
+      setPlayers(playersData);
+      console.log(`✅ Loaded ${playersData.length} players successfully`);
+      
     } catch (error) {
       console.error('❌ Error loading players:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, getPlayerImage]);
+  }, [user?.uid]);
 
-  // Function to load more players when needed
-  const loadMorePlayers = useCallback(async () => {
-    if (!user?.uid || isLoadingMore) return;
-    setIsLoadingMore(true);
-    try {
-      const LOAD_MORE_SIZE = playersPerPage * 2; // Load enough for 2 pages
-      const currentPlayerCount = players.length;
-      
-      // Load more dependent players
-      const dependentPlayersQuery = query(
-        collection(db, 'players'),
-        limit(LOAD_MORE_SIZE)
-      );
-      const dependentPlayersSnapshot = await getDocs(dependentPlayersQuery);
-      const newDependentPlayers: Player[] = [];
-      
-      dependentPlayersSnapshot.forEach((doc) => {
-        const playerData = { id: doc.id, ...doc.data() } as Player;
-        if (!playerData.isDeleted && !players.some(p => p.id === playerData.id)) {
-          newDependentPlayers.push(playerData);
-        }
-      });
-
-      // Load more independent players
-      const usersQuery = query(
-        collection(db, 'users'),
-        where('accountType', '==', 'player'),
-        limit(LOAD_MORE_SIZE)
-      );
-      const usersSnapshot = await getDocs(usersQuery);
-      const newIndependentPlayers: Player[] = [];
-      
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data();
-        if (!userData.isDeleted && !players.some(p => p.id === doc.id)) {
-          newIndependentPlayers.push({
-            id: doc.id,
-            ...userData,
-            accountType: 'independent'
-          } as Player);
-        }
-      });
-
-      const newPlayers = [...newDependentPlayers, ...newIndependentPlayers];
-      
-      if (newPlayers.length > 0) {
-        // Add new players to existing list
-        setPlayers(prev => [...prev, ...newPlayers]);
-        
-        // Load images for new players progressively
-        for (let i = 0; i < newPlayers.length; i++) {
-          const player = newPlayers[i];
-          const imageUrl = await getPlayerImage(player);
-          
-          // Update individual player
-          setPlayers(prev => prev.map(p => 
-            p.id === player.id ? { ...p, profile_image_url: imageUrl } : p
-          ));
-          
-          // Small delay between images
-          if (i < newPlayers.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
-        }
-        
-        console.log(`✅ Loaded ${newPlayers.length} more players`);
-      }
-    } catch (error) {
-      console.error('❌ Error loading more players:', error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [user?.uid, players, getPlayerImage, isLoadingMore, playersPerPage]);
-
-  // Function to load players for a specific page
-  const loadPlayersForPage = useCallback(async (page: number) => {
-    if (!user?.uid || isLoadingMore) return;
-    
-    const requiredPlayers = page * playersPerPage;
-    const currentPlayers = players.length;
-    
-    if (currentPlayers < requiredPlayers) {
-      const playersNeeded = requiredPlayers - currentPlayers;
-      const LOAD_SIZE = Math.max(playersNeeded, playersPerPage);
-      
-      setIsLoadingMore(true);
-      try {
-        // Load more dependent players
-        const dependentPlayersQuery = query(
-          collection(db, 'players'),
-          limit(LOAD_SIZE)
-        );
-        const dependentPlayersSnapshot = await getDocs(dependentPlayersQuery);
-        const newDependentPlayers: Player[] = [];
-        
-        dependentPlayersSnapshot.forEach((doc) => {
-          const playerData = { id: doc.id, ...doc.data() } as Player;
-          if (!playerData.isDeleted && !players.some(p => p.id === playerData.id)) {
-            newDependentPlayers.push(playerData);
-          }
-        });
-
-        // Load more independent players
-        const usersQuery = query(
-          collection(db, 'users'),
-          where('accountType', '==', 'player'),
-          limit(LOAD_SIZE)
-        );
-        const usersSnapshot = await getDocs(usersQuery);
-        const newIndependentPlayers: Player[] = [];
-        
-        usersSnapshot.forEach((doc) => {
-          const userData = doc.data();
-          if (!userData.isDeleted && !players.some(p => p.id === doc.id)) {
-            newIndependentPlayers.push({
-              id: doc.id,
-              ...userData,
-              accountType: 'independent'
-            } as Player);
-          }
-        });
-
-        const newPlayers = [...newDependentPlayers, ...newIndependentPlayers];
-        
-        if (newPlayers.length > 0) {
-          setPlayers(prev => [...prev, ...newPlayers]);
-          
-          // Load images for new players
-          for (const player of newPlayers) {
-            const imageUrl = await getPlayerImage(player);
-            setPlayers(prev => prev.map(p => 
-              p.id === player.id ? { ...p, profile_image_url: imageUrl } : p
-            ));
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error loading players for page:', error);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    }
-  }, [user?.uid, players, playersPerPage, getPlayerImage, isLoadingMore]);
-
-  // Load data on mount - FIXED: Only depend on user.uid to prevent infinite loops
+  // Load data on mount
   useEffect(() => {
     if (user?.uid) {
-      console.log('✅ User authenticated, starting setup and load...');
-      setupCurrentUserInfo();
       loadPlayers();
     }
-  }, [user?.uid]); // Only depend on user.uid
+  }, [user?.uid, loadPlayers]);
 
-  // Auto-load more players when scrolling to bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        if (!isLoading && !isLoadingMore && players.length > 0) {
-          loadMorePlayers();
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoading, isLoadingMore, players.length, loadMorePlayers]);
-
-  // Optimized filtering - محسن بدون console logs
+  // Optimized filtering
   const filteredPlayers = useMemo(() => {
     const hasFilters = debouncedSearchTerm || 
       filterPosition !== 'all' || 
       filterNationality !== 'all' || 
       filterCountry !== 'all' || 
-      filterAccountType !== 'all' || 
-      filterAge !== 'all' || 
-      filterDependency !== 'all' || 
-      filterStatus !== 'all' || 
-      filterSkillLevel !== 'all' || 
-      filterObjective !== 'all';
+      filterAccountType !== 'all';
     
     if (!hasFilters) {
       return players;
@@ -682,68 +352,21 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         }
       }
       
-      // Age filter
-      if (filterAge !== 'all' && player.age) {
-        const age = player.age;
-        if (filterAge === 'under-18' && age >= 18) return false;
-        if (filterAge === '18-25' && (age < 18 || age > 25)) return false;
-        if (filterAge === '26-35' && (age < 26 || age > 35)) return false;
-        if (filterAge === 'over-35' && age <= 35) return false;
-      }
-      
-      // Dependency filter
-      if (filterDependency !== 'all') {
-        const playerAccountType = getPlayerAccountType(player);
-        if (filterDependency === 'independent' && playerAccountType !== 'independent') return false;
-        if (filterDependency === 'dependent' && playerAccountType === 'independent') return false;
-      }
-      
-      // Status filter
-      if (filterStatus !== 'all' && player.status !== filterStatus) {
-        return false;
-      }
-      
-      // Skill level filter
-      if (filterSkillLevel !== 'all' && player.skill_level !== filterSkillLevel) {
-        return false;
-      }
-      
-      // Objective filter
-      if (filterObjective !== 'all' && player.objectives && !player.objectives.includes(filterObjective)) {
-        return false;
-      }
-      
       return true;
     });
   }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry, 
-      filterAccountType, filterAge, filterDependency, filterStatus, filterSkillLevel, filterObjective, getPlayerAccountType]);
+      filterAccountType, getPlayerAccountType]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, 
-      filterAccountType, filterAge, filterDependency, filterStatus, filterSkillLevel, filterObjective]);
+  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, filterAccountType]);
 
-  // Enhanced Pagination - Load players based on current page
+  // Pagination
   const totalPages = Math.ceil(filteredPlayers.length / playersPerPage);
   const startIndex = (currentPage - 1) * playersPerPage;
   const endIndex = startIndex + playersPerPage;
   const pagedPlayers = filteredPlayers.slice(startIndex, endIndex);
-
-  // Load more players when page changes
-  useEffect(() => {
-    if (currentPage > 1) {
-      // Load players for the current page if needed
-      loadPlayersForPage(currentPage);
-      
-      // Preload next page for better UX
-      if (currentPage < totalPages) {
-        setTimeout(() => {
-          loadPlayersForPage(currentPage + 1);
-        }, 1000);
-      }
-    }
-  }, [currentPage, loadPlayersForPage, totalPages]);
 
   // Memoized utility functions
   const getPositionColor = useCallback((position: string) => {
@@ -799,22 +422,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     return null;
   }, []);
 
-  const getUserDisplayName = useCallback(() => {
-    if (!user) return 'مستخدم';
-    return user.displayName || user.email?.split('@')[0] || 'مستخدم';
-  }, [user]);
-
   // Reset filters function
   const resetFilters = () => {
     setFilterPosition('all');
     setFilterNationality('all');
     setFilterCountry('all');
     setFilterAccountType('all');
-    setFilterAge('all');
-    setFilterDependency('all');
-    setFilterStatus('all');
-    setFilterSkillLevel('all');
-    setFilterObjective('all');
     setSearchTerm('');
   };
 
@@ -918,16 +531,6 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 <RefreshCw className="h-4 w-4 mr-2" />
                 تحديث
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={loadMorePlayers} 
-                size="sm"
-                disabled={isLoadingMore}
-                className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingMore ? 'animate-spin' : ''}`} />
-                {isLoadingMore ? 'جاري التحميل...' : 'تحميل المزيد'}
-              </Button>
             </div>
           </div>
 
@@ -1004,38 +607,6 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                     <SelectItem value="club">نادي</SelectItem>
                     <SelectItem value="agent">وكيل</SelectItem>
                     <SelectItem value="academy">أكاديمية</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Age Filter */}
-              <div>
-                <Label htmlFor="age-filter">العمر</Label>
-                <Select value={filterAge} onValueChange={setFilterAge}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر العمر" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الأعمار</SelectItem>
-                    <SelectItem value="under-18">أقل من 18</SelectItem>
-                    <SelectItem value="18-25">18 - 25</SelectItem>
-                    <SelectItem value="26-35">26 - 35</SelectItem>
-                    <SelectItem value="over-35">أكثر من 35</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Dependency Filter */}
-              <div>
-                <Label htmlFor="dependency-filter">التبعية</Label>
-                <Select value={filterDependency} onValueChange={setFilterDependency}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر التبعية" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الأنواع</SelectItem>
-                    <SelectItem value="independent">مستقل</SelectItem>
-                    <SelectItem value="dependent">تابع</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1165,55 +736,16 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           </div>
         )}
 
-        {/* Enhanced Pagination with Loading Info */}
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="space-y-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              playersPerPage={playersPerPage}
-              totalPlayers={filteredPlayers.length}
-              currentPagePlayers={pagedPlayers.length}
-              onPlayersPerPageChange={handlePlayersPerPageChange}
-            />
-            
-            {/* Page Loading Info */}
-            {isLoadingMore && (
-              <div className="text-center text-sm text-gray-600">
-                جاري تحميل لاعبين للصفحة {currentPage}...
-              </div>
-            )}
-            
-            {/* Players Count Info */}
-            <div className="text-center text-sm text-gray-500">
-              عرض {pagedPlayers.length} من {filteredPlayers.length} لاعب
-              <div className="text-xs text-gray-400 mt-1">
-                تم تحميل {players.length} لاعب من قاعدة البيانات
-                {isLoadingImages && <span className="text-blue-500"> (جاري تحميل الصور...)</span>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading more indicator */}
-        {isLoadingMore && (
-          <div className="flex justify-center items-center py-8">
-            <div className="flex items-center space-x-2 text-gray-600">
-              <RefreshCw className="h-5 w-5 animate-spin" />
-              <span>جاري تحميل المزيد من اللاعبين...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Loading images indicator */}
-        {isLoadingImages && (
-          <div className="flex justify-center items-center py-4">
-            <div className="flex items-center space-x-2 text-blue-600">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>جاري تحميل صور اللاعبين...</span>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            playersPerPage={playersPerPage}
+            totalPlayers={filteredPlayers.length}
+            onPlayersPerPageChange={handlePlayersPerPageChange}
+          />
         )}
       </div>
     </div>
