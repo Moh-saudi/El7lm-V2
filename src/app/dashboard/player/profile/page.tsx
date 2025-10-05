@@ -2880,8 +2880,20 @@ export default function PlayerProfile() {
         <div className="px-4 mx-auto max-w-4xl sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">الملف الشخصي</h1>
-            <p className="mt-2 text-gray-600">إدارة وتحديث بياناتك الشخصية والرياضية</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">الملف الشخصي</h1>
+                <p className="mt-2 text-gray-600">إدارة وتحديث بياناتك الشخصية والرياضية</p>
+              </div>
+              {!isEditing && (
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  className="text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  تعديل البيانات
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Progress Steps */}
@@ -2936,14 +2948,6 @@ export default function PlayerProfile() {
                 </div>
                 <div className="mt-8">
                   {renderContracts()}
-                </div>
-                <div className="flex justify-end mt-8">
-                  <Button
-                    onClick={() => setIsEditing(true)}
-                    className="text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    تعديل البيانات
-                  </Button>
                 </div>
               </>
             ) : (
