@@ -22,7 +22,7 @@ export const initializeErrorHandling = () => {
     const originalConsoleError = console.error;
     console.error = function(...args: any[]) {
       const message = args.join(' ');
-      
+
       if (
         message.includes('message port closed before a response was received') ||
         message.includes('MessagePort') ||
@@ -32,7 +32,7 @@ export const initializeErrorHandling = () => {
         // تجاهل هذه الأخطاء
         return;
       }
-      
+
       originalConsoleError.apply(console, args);
     };
 
@@ -54,10 +54,10 @@ export const initializeErrorHandling = () => {
     // معالجة أخطاء Promise rejection
     const handlePromiseRejection = (event: PromiseRejectionEvent) => {
       const error = event.reason;
-      
+
       if (error && typeof error === 'object') {
         const message = error.message || error.toString();
-        
+
         if (
           message.includes('ERR_BLOCKED_BY_CLIENT') ||
           message.includes('net::ERR_BLOCKED_BY_CLIENT') ||

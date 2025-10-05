@@ -14,7 +14,7 @@ export const suppressReactMinifiedErrors = () => {
   // معالجة console.error
   console.error = function(...args: any[]) {
     const message = args.join(' ');
-    
+
     // منع أخطاء React المضغوط
     if (
       message.includes('Minified React error #418') ||
@@ -27,7 +27,7 @@ export const suppressReactMinifiedErrors = () => {
       console.warn('🔧 React minified error suppressed:', message);
       return;
     }
-    
+
     // استدعاء الطريقة الأصلية للأخطاء الأخرى
     originalError.apply(console, args);
   };
@@ -35,7 +35,7 @@ export const suppressReactMinifiedErrors = () => {
   // معالجة console.warn
   console.warn = function(...args: any[]) {
     const message = args.join(' ');
-    
+
     // منع تحذيرات React المضغوط
     if (
       message.includes('Minified React error #418') ||
@@ -47,7 +47,7 @@ export const suppressReactMinifiedErrors = () => {
       console.info('🔧 React minified warning suppressed:', message);
       return;
     }
-    
+
     // استدعاء الطريقة الأصلية للتحذيرات الأخرى
     originalWarn.apply(console, args);
   };
@@ -55,10 +55,10 @@ export const suppressReactMinifiedErrors = () => {
   // معالجة الأخطاء غير المعالجة
   const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason;
-    
+
     if (error && typeof error === 'object') {
       const message = error.message || error.toString();
-      
+
       if (
         message.includes('Minified React error #418') ||
         message.includes('Minified React error #423') ||
@@ -75,7 +75,7 @@ export const suppressReactMinifiedErrors = () => {
   // معالجة الأخطاء العامة
   const handleError = (event: ErrorEvent) => {
     const message = event.message || '';
-    
+
     if (
       message.includes('Minified React error #418') ||
       message.includes('Minified React error #423') ||
@@ -106,16 +106,16 @@ export const suppressReactMinifiedErrors = () => {
  */
 export const initializeReactErrorSuppression = () => {
   console.log('🔧 تهيئة معالجة أخطاء React المضغوط...');
-  
+
   const cleanup = suppressReactMinifiedErrors();
-  
+
   // إضافة معالجة إضافية للكود المضغوط
   if (typeof window !== 'undefined') {
     // منع أخطاء MessagePort
     const originalConsoleError = console.error;
     console.error = function(...args: any[]) {
       const message = args.join(' ');
-      
+
       if (
         message.includes('message port closed before a response was received') ||
         message.includes('MessagePort') ||
@@ -124,11 +124,11 @@ export const initializeReactErrorSuppression = () => {
         // تجاهل هذه الأخطاء
         return;
       }
-      
+
       originalConsoleError.apply(console, args);
     };
   }
-  
+
   return cleanup;
 };
 
@@ -137,14 +137,14 @@ export const initializeReactErrorSuppression = () => {
  */
 export const setupDevelopmentErrorHandling = () => {
   if (process.env.NODE_ENV !== 'development') return;
-  
+
   console.log('🔧 تهيئة معالجة أخطاء React في وضع التطوير...');
-  
+
   // في وضع التطوير، نعرض الأخطاء ولكن مع معلومات إضافية
   const originalError = console.error;
   console.error = function(...args: any[]) {
     const message = args.join(' ');
-    
+
     if (message.includes('Minified React error #418')) {
       console.group('🚨 React Error #418 - Hydration Mismatch');
       console.error('هذا الخطأ يحدث عادة بسبب اختلاف في المحتوى بين الخادم والعميل');
@@ -155,7 +155,7 @@ export const setupDevelopmentErrorHandling = () => {
       console.groupEnd();
       return;
     }
-    
+
     if (message.includes('Minified React error #423')) {
       console.group('🚨 React Error #423 - Invalid Hook Call');
       console.error('هذا الخطأ يحدث عادة بسبب استدعاء hooks خارج مكون React');
@@ -166,7 +166,7 @@ export const setupDevelopmentErrorHandling = () => {
       console.groupEnd();
       return;
     }
-    
+
     originalError.apply(console, args);
   };
 };

@@ -276,7 +276,7 @@ export default function RootLayout({
                     // معالجة console.error
                     console.error = function(...args) {
                       const message = args.join(' ');
-                      
+
                       // منع أخطاء React المضغوط
                       if (
                         message.includes('Minified React error #418') ||
@@ -289,7 +289,7 @@ export default function RootLayout({
                         console.warn('🔧 React minified error suppressed:', message);
                         return;
                       }
-                      
+
                       // استدعاء الطريقة الأصلية للأخطاء الأخرى
                       originalError.apply(console, args);
                     };
@@ -297,7 +297,7 @@ export default function RootLayout({
                     // معالجة console.warn
                     console.warn = function(...args) {
                       const message = args.join(' ');
-                      
+
                       // منع تحذيرات React المضغوط
                       if (
                         message.includes('Minified React error #418') ||
@@ -309,7 +309,7 @@ export default function RootLayout({
                         console.info('🔧 React minified warning suppressed:', message);
                         return;
                       }
-                      
+
                       // استدعاء الطريقة الأصلية للتحذيرات الأخرى
                       originalWarn.apply(console, args);
                     };
@@ -317,10 +317,10 @@ export default function RootLayout({
                     // معالجة الأخطاء غير المعالجة
                     const handleUnhandledRejection = (event) => {
                       const error = event.reason;
-                      
+
                       if (error && typeof error === 'object') {
                         const message = error.message || error.toString();
-                        
+
                         if (
                           message.includes('Minified React error #418') ||
                           message.includes('Minified React error #423') ||
@@ -337,7 +337,7 @@ export default function RootLayout({
                     // معالجة الأخطاء العامة
                     const handleError = (event) => {
                       const message = event.message || '';
-                      
+
                       if (
                         message.includes('Minified React error #418') ||
                         message.includes('Minified React error #423') ||

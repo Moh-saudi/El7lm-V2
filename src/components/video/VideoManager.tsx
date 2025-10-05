@@ -149,15 +149,31 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // إذا فشل في تحليل JSON، استخدم رسالة افتراضية
+          console.error('❌ فشل في تحليل استجابة الخادم:', jsonError);
+          errorData = { error: 'استجابة غير صحيحة من الخادم' };
+        }
         
         // معالجة خاصة لخطأ حجم الملف الكبير
-        if (response.status === 413 || errorData.error?.includes('حجم الفيديو كبير')) {
+        if (response.status === 413 || errorData.error?.includes('حجم الفيديو كبير') || errorData.error?.includes('حجم الملف كبير')) {
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
           throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
         }
         
-        throw new Error(errorData.error || 'فشل في رفع الفيديو');
+        // معالجة أخطاء أخرى
+        if (response.status === 503) {
+          throw new Error('خدمة التخزين غير متاحة حالياً. يرجى المحاولة لاحقاً.');
+        }
+        
+        if (response.status === 400) {
+          throw new Error(errorData.error || 'بيانات الطلب غير صحيحة');
+        }
+        
+        throw new Error(errorData.error || `فشل في رفع الفيديو (${response.status})`);
       }
 
       const result = await response.json();
