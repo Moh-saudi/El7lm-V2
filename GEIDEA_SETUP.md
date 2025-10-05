@@ -1,98 +1,125 @@
-# إعداد جيديا (Geidea) للدفع الإلكتروني
+# إعداد Geidea للدفع
 
-## المشكلة الحالية
-تظهر رسالة تحذير: `⚠️ Geidea configuration incomplete - some features may not work`
+## المتطلبات
 
-## الحل
+لتشغيل نظام الدفع مع Geidea، تحتاج إلى الحصول على بيانات الاعتماد التالية من فريق دعم Geidea:
 
-### 1. الحصول على بيانات جيديا
-1. اذهب إلى [لوحة تحكم جيديا](https://merchant.geidea.net/)
-2. سجل دخولك أو أنشئ حساب جديد
-3. احصل على البيانات التالية:
-   - **Merchant Public Key** (مفتاح التاجر العام)
-   - **API Password** (كلمة مرور API)
-   - **Webhook Secret** (سرية الويبهوك)
-
-### 2. إعداد ملف .env.local
-أضف البيانات التالية إلى ملف `.env.local` في مجلد المشروع:
+### متغيرات البيئة المطلوبة
 
 ```env
 # Geidea Payment Gateway Configuration
-GEIDEA_MERCHANT_PUBLIC_KEY=your_merchant_public_key_here
-GEIDEA_API_PASSWORD=your_api_password_here
-GEIDEA_WEBHOOK_SECRET=your_webhook_secret_here
-GEIDEA_BASE_URL=https://api.merchant.geidea.net
-NEXT_PUBLIC_GEIDEA_ENVIRONMENT=production
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+GEIDEA_MERCHANT_ID=your_merchant_id_here
+GEIDEA_API_KEY=your_api_key_here
+GEIDEA_BASE_URL=https://api.geidea.net
+GEIDEA_ENVIRONMENT=sandbox
 ```
 
-### 3. استبدال القيم
-استبدل `your_*` بالقيم الحقيقية من لوحة تحكم جيديا:
+## خطوات الإعداد
 
-```env
-GEIDEA_MERCHANT_PUBLIC_KEY=3448c010-87b1-41e7-9771-cac444268cfb
-GEIDEA_API_PASSWORD=edfd5eee-fd1b-4932-9ee1-d6d9ba7599f0
-GEIDEA_WEBHOOK_SECRET=your_webhook_secret_here
-```
+### 1. الحصول على بيانات الاعتماد
 
-### 4. إعداد الويبهوك (اختياري)
-إذا كنت تريد استقبال إشعارات الدفع:
+- تواصل مع فريق دعم Geidea
+- اطلب بيانات بيئة الاختبار (Sandbox)
+- احصل على:
+  - `MERCHANT_ID`: معرف التاجر
+  - `API_KEY`: مفتاح API
+  - `BASE_URL`: رابط API (عادة `https://api.geidea.net`)
 
-1. في لوحة تحكم جيديا، أضف عنوان الويبهوك:
-   ```
-   https://your-domain.com/api/geidea/webhook
-   ```
+### 2. إعداد متغيرات البيئة
 
-2. استبدل `your-domain.com` باسم النطاق الفعلي للتطبيق
+#### في Vercel:
+1. اذهب إلى إعدادات المشروع في Vercel
+2. اختر "Environment Variables"
+3. أضف المتغيرات التالية:
+   - `GEIDEA_MERCHANT_ID`
+   - `GEIDEA_API_KEY`
+   - `GEIDEA_BASE_URL`
+   - `GEIDEA_ENVIRONMENT`
 
-### 5. اختبار الإعداد
-1. أعد تشغيل خادم التطوير:
+#### في التطوير المحلي:
+1. أنشئ ملف `.env.local` في جذر المشروع
+2. أضف المتغيرات المطلوبة
+
+### 3. اختبار التكامل
+
+بعد إعداد متغيرات البيئة:
+
+1. **اختبار إنشاء جلسة الدفع:**
    ```bash
-   npm run dev
+   curl -X POST https://your-domain.com/api/geidea/create-session \
+     -H "Content-Type: application/json" \
+     -d '{
+       "amount": 100,
+       "currency": "SAR",
+       "orderId": "test_order_123",
+       "customerEmail": "test@example.com",
+       "customerName": "Test Customer"
+     }'
    ```
 
-2. اذهب إلى صفحة الدفع
-3. جرب عملية دفع تجريبية
-4. تأكد من عدم ظهور رسالة التحذير
+2. **التحقق من الاستجابة:**
+   - يجب أن تحصل على `sessionId` و `paymentUrl`
+   - يجب أن تكون الاستجابة تحتوي على `success: true`
 
-## ملاحظات مهمة
+### 4. معالجة الأخطاء الشائعة
 
-### للتطوير المحلي
-- استخدم `http://localhost:3000` كـ `NEXT_PUBLIC_BASE_URL`
-- يمكن استخدام webhook.site للتطوير المحلي
+#### خطأ "Geidea configuration missing"
+- تأكد من إعداد جميع متغيرات البيئة المطلوبة
+- تحقق من أن المتغيرات لا تحتوي على مسافات إضافية
 
-### للإنتاج
-- استخدم `https://your-domain.com` كـ `NEXT_PUBLIC_BASE_URL`
-- تأكد من أن النطاق يدعم HTTPS
-- أضف النطاق إلى قائمة النطاقات المسموحة في لوحة تحكم جيديا
+#### خطأ "Geidea API connection failed"
+- تحقق من اتصال الإنترنت
+- تأكد من صحة `GEIDEA_BASE_URL`
+- تواصل مع دعم Geidea إذا استمر الخطأ
 
-### الأخطاء الشائعة
-1. **مفاتيح غير صحيحة**: تأكد من نسخ المفاتيح بشكل صحيح
-2. **نطاق غير مسموح**: أضف نطاقك إلى قائمة النطاقات المسموحة
-3. **HTTPS مطلوب**: في الإنتاج، يجب استخدام HTTPS
+#### خطأ "Geidea API error"
+- تحقق من صحة `GEIDEA_API_KEY`
+- تأكد من أن `GEIDEA_MERCHANT_ID` صحيح
+- راجع سجلات API للحصول على تفاصيل الخطأ
 
-## التحقق من الإعداد
+## API Endpoints
 
-### فحص التكوين
-يمكنك فحص إعدادات جيديا عبر:
+### إنشاء جلسة الدفع
+```
+POST /api/geidea/create-session
+```
+
+**المعاملات المطلوبة:**
+- `amount`: المبلغ (رقم)
+- `currency`: العملة (مثل "SAR", "USD")
+- `orderId`: معرف الطلب (نص فريد)
+- `customerEmail`: بريد العميل الإلكتروني
+
+**المعاملات الاختيارية:**
+- `customerName`: اسم العميل
+
+### معالجة Callback
+```
+POST /api/geidea/callback
+```
+
+### معالجة Webhook
+```
+POST /api/geidea/webhook
+```
+
+### الحصول على الإعدادات
 ```
 GET /api/geidea/config
 ```
 
-### اختبار إنشاء جلسة
-```
-POST /api/geidea/create-session
-{
-  "amount": 100,
-  "currency": "EGP",
-  "orderId": "TEST_ORDER_123",
-  "customerEmail": "test@example.com"
-}
-```
-
 ## الدعم
-إذا واجهت مشاكل:
-1. تحقق من صحة المفاتيح
-2. تأكد من إعداد النطاق في لوحة تحكم جيديا
-3. راجع سجلات الأخطاء في وحدة تحكم المتصفح
-4. اتصل بدعم جيديا إذا لزم الأمر 
+
+إذا واجهت أي مشاكل:
+
+1. راجع سجلات التطبيق
+2. تحقق من متغيرات البيئة
+3. تواصل مع دعم Geidea
+4. راجع وثائق Geidea الرسمية
+
+## ملاحظات مهمة
+
+- استخدم `GEIDEA_ENVIRONMENT=sandbox` للاختبار
+- استخدم `GEIDEA_ENVIRONMENT=production` للإنتاج
+- تأكد من أن جميع URLs صحيحة ومتاحة
+- احتفظ بمفاتيح API آمنة ولا تشاركها
