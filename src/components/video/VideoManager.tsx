@@ -107,18 +107,120 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    // التحقق من حجم الملف أولاً (4.5MB للرفع المباشر)
-    const maxSize = 4.5 * 1024 * 1024; // 4.5MB (حد Vercel)
+    // التحقق من حجم الملف أولاً (100MB الحد الأقصى)
+    const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      alert(`❌ حجم الفيديو كبير جداً للرفع المباشر!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nحد الرفع المباشر: 4.5 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`);
+      alert(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
       return;
     }
 
-    // التحقق من صحة الملف
-    const { validateVideoFile } = await import('@/lib/supabase/video-storage');
-    const validation = validateVideoFile(file, { allowedTypes });
-    const validationResult = validation as { isValid: boolean; errors: string[] };
+    // تحديد طريقة الرفع بناءً على حجم الملف
+    const vercelLimit = 4.5 * 1024 * 1024; // 4.5MB
+    if (file.size > vercelLimit) {
+      // استخدام الرفع المقسم للفيديوهات الكبيرة
+      await handleChunkedUpload(file);
+    } else {
+      // استخدام الرفع العادي للفيديوهات الصغيرة
+      await handleDirectUpload(file);
+    }
+  };
+
+  // رفع مقسم للفيديوهات الكبيرة
+  const handleChunkedUpload = async (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // الحصول على معرف المستخدم من Firebase Auth
+      const { auth } = await import('@/lib/firebase/config');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('يجب تسجيل الدخول أولاً');
+      }
+
+      console.log('🚀 بدء رفع الفيديو المقسم للمستخدم:', currentUser.uid);
+
+      // تقسيم الملف إلى أجزاء
+      const chunkSize = 4 * 1024 * 1024; // 4MB لكل جزء
+      const totalChunks = Math.ceil(file.size / chunkSize);
+      
+      console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء`);
+
+      // رفع كل جزء
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('chunkIndex', i.toString());
+        formData.append('totalChunks', totalChunks.toString());
+        formData.append('fileName', file.name);
+        formData.append('userId', currentUser.uid);
+        formData.append('fileSize', file.size.toString());
+
+        console.log(`📤 رفع الجزء ${i + 1}/${totalChunks}`);
+
+        const response = await fetch('/api/upload/video/chunked', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `فشل في رفع الجزء ${i + 1}`);
+        }
+
+        // تحديث التقدم
+        const progress = ((i + 1) / totalChunks) * 100;
+        setUploadProgress(progress);
+      }
+
+      // الحصول على النتيجة النهائية
+      const finalResponse = await fetch('/api/upload/video/chunked', {
+        method: 'POST',
+        body: new FormData(), // إرسال طلب فارغ للحصول على النتيجة النهائية
+      });
+
+      if (!finalResponse.ok) {
+        throw new Error('فشل في الحصول على النتيجة النهائية');
+      }
+
+      const result = await finalResponse.json();
+      
+      console.log('✅ تم رفع الفيديو المقسم بنجاح:', result.url);
+      
+      setNewVideo(prev => ({ ...prev, url: result.url }));
+      setUploadMethod('url');
+      setUploadProgress(100);
+
+    } catch (error) {
+      console.error('❌ خطأ في رفع الفيديو المقسم:', error);
+      let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      alert(`❌ خطأ في رفع الفيديو:\n\n${errorMessage}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // رفع مباشر للفيديوهات الصغيرة
+  const handleDirectUpload = async (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // التحقق من صحة الملف
+      const { validateVideoFile } = await import('@/lib/supabase/video-storage');
+      const validation = validateVideoFile(file, { allowedTypes });
+      const validationResult = validation as { isValid: boolean; errors: string[] };
     if (!validationResult.isValid) {
       alert(validationResult.errors.join('\n'));
       return;
@@ -458,12 +560,12 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                 </div>
               ) : (
                 <div>
-                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <div className="flex items-start gap-2">
-                      <div className="text-yellow-600 mt-0.5">⚠️</div>
-                      <div className="text-sm text-yellow-800">
-                        <p className="font-medium mb-1">حد الرفع المباشر: 4.5 ميجابايت</p>
-                        <p>للفيديوهات الأكبر، ننصح باستخدام رابط YouTube أو Vimeo بدلاً من الرفع المباشر.</p>
+                      <div className="text-blue-600 mt-0.5">ℹ️</div>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">حد الرفع: 100 ميجابايت</p>
+                        <p>الفيديوهات الكبيرة (أكبر من 4.5MB) سيتم رفعها تلقائياً على أجزاء.</p>
                       </div>
                     </div>
                   </div>
@@ -491,7 +593,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                     <span className="font-medium">
                       {isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
                     </span>
-                    <span className="text-sm">MP4, WebM, OGG (حد أقصى 4.5MB للرفع المباشر)</span>
+                    <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
                   </button>
 
                   {isUploading && (
