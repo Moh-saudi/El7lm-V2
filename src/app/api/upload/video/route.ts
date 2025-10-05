@@ -30,36 +30,46 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من وجود bucket للفيديوهات
-    const bucketExists = await ensureVideosBucket();
-    if (!bucketExists) {
-      console.error('❌ فشل في التحقق من وجود bucket الفيديوهات');
-      console.warn('💡 محاولة استخدام bucket بديل أو إنشاء bucket بسيط...');
+    console.log('🔍 التحقق من وجود bucket الفيديوهات...');
+    
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    if (listError) {
+      console.error('❌ خطأ في جلب قائمة buckets:', listError);
+      return NextResponse.json(
+        { error: 'فشل في الاتصال بخدمة التخزين' },
+        { status: 503 }
+      );
+    }
+
+    console.log('📋 Buckets المتاحة:', buckets?.map(b => b.name) || []);
+    
+    // البحث عن bucket للفيديوهات
+    const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
+    const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
+    
+    if (!videosBucket) {
+      console.error('❌ لا يوجد bucket للفيديوهات');
+      return NextResponse.json(
+        { error: 'لا يوجد bucket مناسب للفيديوهات' },
+        { status: 503 }
+      );
+    }
+
+    console.log(`✅ تم العثور على bucket الفيديوهات: ${videosBucket.name}`);
+    
+    // اختبار بسيط للوصول إلى bucket
+    try {
+      const { data: testList, error: testError } = await supabase.storage
+        .from(videosBucket.name)
+        .list('', { limit: 1 });
       
-      // محاولة استخدام bucket موجود بالفعل
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      if (!listError && buckets) {
-        const availableBuckets = buckets.map(b => b.name);
-        console.log('📋 Buckets المتاحة:', availableBuckets);
-        
-        // البحث عن أي bucket يمكن استخدامه للفيديوهات
-        const fallbackBuckets = ['videos', 'player-videos', 'club-videos', 'academy-videos', 'avatars', 'profile-images'];
-        const usableBucket = fallbackBuckets.find(bucket => availableBuckets.includes(bucket));
-        
-        if (usableBucket) {
-          console.log(`✅ سيتم استخدام bucket بديل: ${usableBucket}`);
-          // سنستخدم هذا bucket في عملية الرفع
-        } else {
-          return NextResponse.json(
-            { error: 'لا يوجد bucket مناسب للفيديوهات' },
-            { status: 503 }
-          );
-        }
+      if (testError) {
+        console.warn('⚠️ تحذير: لا يمكن الوصول إلى bucket:', testError.message);
       } else {
-        return NextResponse.json(
-          { error: 'فشل في إعداد التخزين' },
-          { status: 503 }
-        );
+        console.log('✅ تم التحقق من إمكانية الوصول إلى bucket بنجاح');
       }
+    } catch (testErr) {
+      console.warn('⚠️ تحذير في اختبار الوصول إلى bucket:', testErr);
     }
 
     // الحصول على البيانات من الطلب
@@ -128,22 +138,8 @@ export async function POST(request: NextRequest) {
       fileType: file.type
     });
 
-    // تحديد bucket للرفع
-    let bucketName = 'videos';
-    
-    // إذا فشل التحقق من bucket، نستخدم bucket بديل
-    if (!bucketExists) {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (buckets) {
-        const fallbackBuckets = ['videos', 'player-videos', 'club-videos', 'academy-videos', 'avatars', 'profile-images'];
-        const usableBucket = fallbackBuckets.find(bucket => buckets.some(b => b.name === bucket));
-        if (usableBucket) {
-          bucketName = usableBucket;
-          console.log(`🔄 استخدام bucket بديل: ${bucketName}`);
-        }
-      }
-    }
-
+    // استخدام bucket الفيديوهات الموجود
+    const bucketName = videosBucket.name;
     console.log(`📤 رفع الفيديو إلى bucket: ${bucketName}`);
 
     // رفع الملف إلى Supabase Storage

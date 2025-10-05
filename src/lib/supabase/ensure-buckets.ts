@@ -28,7 +28,7 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
 
     // التحقق من وجود bucket
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
+
     if (listError) {
       console.error('❌ خطأ في جلب قائمة buckets:', listError);
       console.warn('💡 تأكد من إعدادات Supabase أو أن bucket موجود بالفعل');
@@ -43,6 +43,11 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
     
     if (videosBucket) {
       console.log(`✅ bucket الفيديوهات موجود بالفعل: ${videosBucket.name}`);
+      console.log(`📊 تفاصيل bucket:`, {
+        name: videosBucket.name,
+        public: videosBucket.public,
+        created_at: videosBucket.created_at
+      });
       return true;
     }
 
@@ -52,7 +57,7 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
     // إذا لم يكن لدينا Service Role Key، نحاول إنشاء bucket بسيط
     if (!supabaseAdmin) {
       console.warn('⚠️ لا يوجد Service Role Key، نحاول إنشاء bucket بسيط...');
-      
+
       const { data, error } = await supabase.storage.createBucket('videos', {
         public: true
       });
@@ -102,14 +107,14 @@ export const ensureImagesBucket = async (): Promise<boolean> => {
 
     // التحقق من وجود bucket
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
+
     if (listError) {
       console.error('❌ خطأ في جلب قائمة buckets:', listError);
       return false;
     }
 
     const imagesBucket = buckets?.find(bucket => bucket.name === 'images');
-    
+
     if (imagesBucket) {
       console.log('✅ bucket الصور موجود بالفعل');
       return true;
@@ -120,7 +125,7 @@ export const ensureImagesBucket = async (): Promise<boolean> => {
     // إذا لم يكن لدينا Service Role Key، نحاول إنشاء bucket بسيط
     if (!supabaseAdmin) {
       console.warn('⚠️ لا يوجد Service Role Key، نحاول إنشاء bucket بسيط...');
-      
+
       const { data, error } = await supabase.storage.createBucket('images', {
         public: true
       });
