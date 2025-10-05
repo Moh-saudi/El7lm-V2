@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 
 interface HydrationFixProps {
   children: ReactNode;
@@ -12,10 +12,10 @@ interface HydrationFixProps {
  * مكون لإصلاح مشاكل Hydration في Next.js
  * يضمن أن المحتوى يتم عرضه فقط على العميل لتجنب اختلافات SSR/CSR
  */
-export default function HydrationFix({ 
-  children, 
+export default function HydrationFix({
+  children,
   fallback = null,
-  suppressHydrationWarning = true 
+  suppressHydrationWarning = true
 }: HydrationFixProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasHydrationError, setHasHydrationError] = useState(false);
@@ -127,9 +127,9 @@ export const useHydrationStatus = () => {
 /**
  * مكون لعرض محتوى فقط على العميل
  */
-export const ClientOnly: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({ 
-  children, 
-  fallback = null 
+export const ClientOnly: React.FC<{ children: ReactNode; fallback?: ReactNode }> = ({
+  children,
+  fallback = null
 }) => {
   const isClient = useIsClient();
 

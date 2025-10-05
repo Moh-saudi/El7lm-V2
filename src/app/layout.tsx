@@ -3,8 +3,8 @@ import ClarityUserTracker from '@/components/analytics/ClarityUserTracker';
 import GoogleTagManager from '@/components/analytics/GoogleTagManager';
 import GTMDataLayer from '@/components/analytics/GTMDataLayer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import ReactErrorBoundary from '@/components/security/ReactErrorBoundary';
 import HydrationFix from '@/components/security/HydrationFix';
+import ReactErrorBoundary from '@/components/security/ReactErrorBoundary';
 // import PageRefreshDetector from '@/components/PageRefreshDetector';
 import { cairo, inter } from '@/lib/fonts';
 import '@mantine/core/styles.css';
@@ -17,6 +17,10 @@ import { Providers } from './providers';
 import '@/lib/utils/initialize-location-fix';
 // إصلاح مشاكل الاتصال بـ Firebase
 import '@/lib/firebase/connection-fix';
+// معالجة أخطاء React المضغوط
+import '@/lib/utils/react-error-suppressor';
+// تهيئة معالجة الأخطاء الشاملة
+import '@/lib/utils/initialize-error-handling';
 // Lightweight polyfill for SSR: ensure globalThis.self exists
 try {
   const g: any = globalThis as any;
@@ -107,6 +111,14 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="144x144" href="/apple-touch-icon-144x144.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
+        <link rel="apple-touch-icon" sizes="114x114" href="/apple-touch-icon-114x114.png" />
+        <link rel="apple-touch-icon" sizes="76x76" href="/apple-touch-icon-76x76.png" />
+        <link rel="apple-touch-icon" sizes="72x72" href="/apple-touch-icon-72x72.png" />
+        <link rel="apple-touch-icon" sizes="60x60" href="/apple-touch-icon-60x60.png" />
+        <link rel="apple-touch-icon" sizes="57x57" href="/apple-touch-icon-57x57.png" />
 
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://firestore.googleapis.com" />
@@ -217,39 +229,135 @@ export default function RootLayout({
                   if (typeof window !== 'undefined') {
                     // تهيئة مراقب الاتصال
                     let isOnline = navigator.onLine;
-                    
+
                     const handleOnline = () => {
                       console.log('🌐 تم استعادة الاتصال بالإنترنت');
                       isOnline = true;
                     };
-                    
+
                     const handleOffline = () => {
                       console.log('📴 فقدان الاتصال بالإنترنت');
                       isOnline = false;
                     };
-                    
+
                     window.addEventListener('online', handleOnline);
                     window.addEventListener('offline', handleOffline);
-                    
+
                     // معالجة أخطاء Firebase غير المعالجة
                     const handleUnhandledRejection = (event) => {
                       const error = event.reason;
-                      
+
                       if (error && typeof error === 'object' && error.code) {
                         // خطأ Firebase
                         console.warn('🚨 خطأ Firebase غير معالج:', error.message);
-                        
+
                         // منع الخطأ من الظهور في الكونسول إذا كان بسبب AdBlocker
                         if (error.message.includes('ERR_BLOCKED_BY_CLIENT')) {
                           event.preventDefault();
                         }
                       }
                     };
-                    
+
                     window.addEventListener('unhandledrejection', handleUnhandledRejection);
                   }
                 } catch (error) {
                   console.warn('خطأ في تهيئة إصلاحات الاتصال:', error);
+                }
+              })();
+
+              // معالجة أخطاء React المضغوط
+              (function() {
+                try {
+                  if (typeof window !== 'undefined') {
+                    // حفظ الطرق الأصلية
+                    const originalError = console.error;
+                    const originalWarn = console.warn;
+
+                    // معالجة console.error
+                    console.error = function(...args) {
+                      const message = args.join(' ');
+                      
+                      // منع أخطاء React المضغوط
+                      if (
+                        message.includes('Minified React error #418') ||
+                        message.includes('Minified React error #423') ||
+                        message.includes('visit https://react.dev/errors/418') ||
+                        message.includes('visit https://react.dev/errors/423') ||
+                        message.includes('use the non-minified dev environment')
+                      ) {
+                        // تسجيل كتحذير بدلاً من خطأ
+                        console.warn('🔧 React minified error suppressed:', message);
+                        return;
+                      }
+                      
+                      // استدعاء الطريقة الأصلية للأخطاء الأخرى
+                      originalError.apply(console, args);
+                    };
+
+                    // معالجة console.warn
+                    console.warn = function(...args) {
+                      const message = args.join(' ');
+                      
+                      // منع تحذيرات React المضغوط
+                      if (
+                        message.includes('Minified React error #418') ||
+                        message.includes('Minified React error #423') ||
+                        message.includes('visit https://react.dev/errors/418') ||
+                        message.includes('visit https://react.dev/errors/423')
+                      ) {
+                        // تسجيل كمعلومات بدلاً من تحذير
+                        console.info('🔧 React minified warning suppressed:', message);
+                        return;
+                      }
+                      
+                      // استدعاء الطريقة الأصلية للتحذيرات الأخرى
+                      originalWarn.apply(console, args);
+                    };
+
+                    // معالجة الأخطاء غير المعالجة
+                    const handleUnhandledRejection = (event) => {
+                      const error = event.reason;
+                      
+                      if (error && typeof error === 'object') {
+                        const message = error.message || error.toString();
+                        
+                        if (
+                          message.includes('Minified React error #418') ||
+                          message.includes('Minified React error #423') ||
+                          message.includes('visit https://react.dev/errors/418') ||
+                          message.includes('visit https://react.dev/errors/423')
+                        ) {
+                          console.warn('🔧 React minified promise rejection suppressed:', message);
+                          event.preventDefault();
+                          return false;
+                        }
+                      }
+                    };
+
+                    // معالجة الأخطاء العامة
+                    const handleError = (event) => {
+                      const message = event.message || '';
+                      
+                      if (
+                        message.includes('Minified React error #418') ||
+                        message.includes('Minified React error #423') ||
+                        message.includes('visit https://react.dev/errors/418') ||
+                        message.includes('visit https://react.dev/errors/423')
+                      ) {
+                        console.warn('🔧 React minified error event suppressed:', message);
+                        event.preventDefault();
+                        return false;
+                      }
+                    };
+
+                    // إضافة مستمعي الأحداث
+                    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+                    window.addEventListener('error', handleError);
+
+                    console.log('🔧 تم تهيئة معالجة أخطاء React المضغوط');
+                  }
+                } catch (error) {
+                  console.warn('خطأ في تهيئة معالجة أخطاء React:', error);
                 }
               })();
             `,

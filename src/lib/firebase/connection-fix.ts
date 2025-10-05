@@ -106,7 +106,7 @@ export const setupConnectionMonitor = () => {
   const handleOnline = () => {
     console.log('🌐 تم استعادة الاتصال بالإنترنت');
     isOnline = true;
-    
+
     // فحص الاتصال بـ Firebase
     checkFirebaseConnection().then(connected => {
       if (connected) {
@@ -154,15 +154,15 @@ export const setupFirebaseErrorHandler = () => {
   // معالجة أخطاء Firebase غير المعالجة
   const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason;
-    
+
     if (error && typeof error === 'object' && error.code) {
       // خطأ Firebase
       const message = handleFirebaseError(error);
       console.error('🚨 خطأ Firebase غير معالج:', message);
-      
+
       // يمكن إضافة إشعار للمستخدم هنا
       // toast.error(message);
-      
+
       // منع الخطأ من الظهور في الكونسول
       event.preventDefault();
     }
@@ -180,7 +180,7 @@ export const setupFirebaseErrorHandler = () => {
  */
 export const initializeConnectionFixes = () => {
   console.log('🔧 تهيئة إصلاحات الاتصال بـ Firebase...');
-  
+
   const cleanupConnectionMonitor = setupConnectionMonitor();
   const cleanupErrorHandler = setupFirebaseErrorHandler();
 

@@ -28,12 +28,12 @@ export class ReactErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error
     console.error('🚨 React Error Boundary caught an error:', error, errorInfo);
-    
+
     // Update state with error info
-    this.state = { 
-      hasError: true, 
-      error, 
-      errorInfo 
+    this.state = {
+      hasError: true,
+      error,
+      errorInfo
     };
 
     // Call custom error handler if provided
@@ -97,11 +97,11 @@ export class ReactErrorBoundary extends Component<Props, State> {
                 />
               </svg>
             </div>
-            
+
             <h2 className="text-lg font-semibold text-gray-900 text-center mb-2">
               حدث خطأ غير متوقع
             </h2>
-            
+
             <p className="text-gray-600 text-center mb-6">
               نعتذر عن هذا الخطأ. يرجى المحاولة مرة أخرى أو إعادة تحميل الصفحة.
             </p>
@@ -113,7 +113,7 @@ export class ReactErrorBoundary extends Component<Props, State> {
               >
                 المحاولة مرة أخرى
               </button>
-              
+
               <button
                 onClick={() => window.location.reload()}
                 className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors"
@@ -151,7 +151,7 @@ export class ReactErrorBoundary extends Component<Props, State> {
 export const useErrorHandler = () => {
   const handleError = React.useCallback((error: Error, errorInfo?: any) => {
     console.error('🚨 Error caught by useErrorHandler:', error, errorInfo);
-    
+
     // You can add custom error handling logic here
     // For example, sending to an error reporting service
   }, []);
@@ -171,7 +171,7 @@ export const withErrorBoundary = <P extends object>(
   );
 
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 };
 
