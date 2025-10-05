@@ -40,7 +40,7 @@ export const ensureVideosBucket = async (): Promise<boolean> => {
     // البحث عن bucket للفيديوهات (قد يكون له أسماء مختلفة)
     const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
     const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
-    
+
     if (videosBucket) {
       console.log(`✅ bucket الفيديوهات موجود بالفعل: ${videosBucket.name}`);
       console.log(`📊 تفاصيل bucket:`, {

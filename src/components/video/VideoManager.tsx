@@ -160,8 +160,14 @@ const VideoManager: React.FC<VideoManagerProps> = ({
 
         // معالجة خاصة لخطأ حجم الملف الكبير
         if (response.status === 413 || errorData.error?.includes('حجم الفيديو كبير') || errorData.error?.includes('حجم الملف كبير')) {
+          // إذا كانت رسالة الخطأ تحتوي على تفاصيل، استخدمها
+          if (errorData.error && errorData.error.includes('حجم الفيديو كبير جداً للرفع المباشر')) {
+            throw new Error(errorData.error);
+          }
+          
+          // رسالة افتراضية
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
+          throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 4.5 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`);
         }
 
         // معالجة أخطاء أخرى
@@ -452,6 +458,16 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                 </div>
               ) : (
                 <div>
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <div className="text-yellow-600 mt-0.5">⚠️</div>
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-medium mb-1">حد الرفع المباشر: 4.5 ميجابايت</p>
+                        <p>للفيديوهات الأكبر، ننصح باستخدام رابط YouTube أو Vimeo بدلاً من الرفع المباشر.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     ملف الفيديو
                   </label>
@@ -475,7 +491,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                     <span className="font-medium">
                       {isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
                     </span>
-                    <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
+                    <span className="text-sm">MP4, WebM, OGG (حد أقصى 4.5MB للرفع المباشر)</span>
                   </button>
 
                   {isUploading && (

@@ -1,4 +1,3 @@
-import { ensureVideosBucket } from '@/lib/supabase/ensure-buckets';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -13,7 +12,8 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // إعدادات الرفع
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (تقليل الحد لـ Vercel)
+const VERCEL_LIMIT = 4.5 * 1024 * 1024; // 4.5MB (حد Vercel)
 const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/quicktime'];
 
 export async function POST(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // التحقق من وجود bucket للفيديوهات
     console.log('🔍 التحقق من وجود bucket الفيديوهات...');
-    
+
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
     if (listError) {
       console.error('❌ خطأ في جلب قائمة buckets:', listError);
@@ -42,11 +42,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📋 Buckets المتاحة:', buckets?.map(b => b.name) || []);
-    
+
     // البحث عن bucket للفيديوهات
     const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
     const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
-    
+
     if (!videosBucket) {
       console.error('❌ لا يوجد bucket للفيديوهات');
       return NextResponse.json(
@@ -56,13 +56,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`✅ تم العثور على bucket الفيديوهات: ${videosBucket.name}`);
-    
+
     // اختبار بسيط للوصول إلى bucket
     try {
       const { data: testList, error: testError } = await supabase.storage
         .from(videosBucket.name)
         .list('', { limit: 1 });
-      
+
       if (testError) {
         console.warn('⚠️ تحذير: لا يمكن الوصول إلى bucket:', testError.message);
       } else {
@@ -108,18 +108,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // التحقق من حجم الملف
+    // التحقق من حد Vercel أولاً
+    if (file.size > VERCEL_LIMIT) {
+      const vercelLimitMB = (VERCEL_LIMIT / (1024 * 1024)).toFixed(1);
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      
+      console.warn(`⚠️ حجم الملف يتجاوز حد Vercel: ${fileSizeMB}MB (الحد الأقصى: ${vercelLimitMB}MB)`);
+      
+      return NextResponse.json(
+        { 
+          error: `حجم الفيديو كبير جداً للرفع المباشر!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nحد الرفع المباشر: ${vercelLimitMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`,
+          fileSize: file.size,
+          maxSize: VERCEL_LIMIT,
+          reason: 'vercel_limit'
+        },
+        { status: 413 }
+      );
+    }
+
+    // التحقق من الحد العام
     if (file.size > MAX_FILE_SIZE) {
       const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-
+      
       console.warn(`⚠️ حجم الملف كبير جداً: ${fileSizeMB}MB (الحد الأقصى: ${maxSizeMB}MB)`);
-
+      
       return NextResponse.json(
-        {
+        { 
           error: `حجم الملف كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: ${maxSizeMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`,
           fileSize: file.size,
-          maxSize: MAX_FILE_SIZE
+          maxSize: MAX_FILE_SIZE,
+          reason: 'general_limit'
         },
         { status: 413 }
       );
