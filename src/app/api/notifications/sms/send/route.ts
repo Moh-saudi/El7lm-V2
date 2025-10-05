@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ خطأ في إرسال SMS:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'حدث خطأ في إرسال SMS',
         details: error instanceof Error ? error.message : 'خطأ غير معروف'

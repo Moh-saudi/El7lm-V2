@@ -235,6 +235,20 @@
       ]
     },
     {
+      "collectionGroup": "bulkPayments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "organization_referrals",
       "queryScope": "COLLECTION",
       "fields": [

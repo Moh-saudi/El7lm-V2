@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 // أنواع الإشعارات المدعومة
 type NotificationType = 'profile_view' | 'video_view' | 'search_result' | 'connection_request' | 'message_sent';
@@ -21,7 +21,7 @@ interface NotificationData {
 export async function POST(request: NextRequest) {
   try {
     const body: NotificationData = await request.json();
-    
+
     console.log('📨 استلام طلب إشعار تفاعلي:', body);
 
     // التحقق من البيانات المطلوبة
@@ -137,11 +137,11 @@ export async function GET(request: NextRequest) {
 
     // بناء الاستعلام
     let q = query(collection(db, 'interaction_notifications'));
-    
+
     if (type) {
       q = query(q, where('type', '==', type));
     }
-    
+
     if (isRead !== null) {
       q = query(q, where('isRead', '==', isRead === 'true'));
     }
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
 // دالة للحصول على الرسالة الافتراضية
 function getDefaultMessage(type: NotificationType, viewerName?: string): string {
   const name = viewerName || 'مستخدم';
-  
+
   switch (type) {
     case 'profile_view':
       return `شاهد ${name} ملفك الشخصي على منصة الحلم!`;
@@ -213,7 +213,7 @@ async function sendSMSNotification(profileOwnerId: string, message: string) {
     const userRef = collection(db, 'users');
     const userQuery = query(userRef, where('uid', '==', profileOwnerId));
     const userSnapshot = await getDocs(userQuery);
-    
+
     if (userSnapshot.empty) {
       console.warn('⚠️ لم يتم العثور على المستخدم:', profileOwnerId);
       return;

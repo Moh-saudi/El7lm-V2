@@ -3,6 +3,8 @@ import ClarityUserTracker from '@/components/analytics/ClarityUserTracker';
 import GoogleTagManager from '@/components/analytics/GoogleTagManager';
 import GTMDataLayer from '@/components/analytics/GTMDataLayer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import ReactErrorBoundary from '@/components/security/ReactErrorBoundary';
+import HydrationFix from '@/components/security/HydrationFix';
 // import PageRefreshDetector from '@/components/PageRefreshDetector';
 import { cairo, inter } from '@/lib/fonts';
 import '@mantine/core/styles.css';
@@ -13,6 +15,8 @@ import './globals.css';
 import { Providers } from './providers';
 // إصلاح مشكلة location
 import '@/lib/utils/initialize-location-fix';
+// إصلاح مشاكل الاتصال بـ Firebase
+import '@/lib/firebase/connection-fix';
 // Lightweight polyfill for SSR: ensure globalThis.self exists
 try {
   const g: any = globalThis as any;
@@ -102,6 +106,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://firestore.googleapis.com" />
@@ -204,18 +209,65 @@ export default function RootLayout({
                   refreshCount = 0;
                 }, 10000);
               })();
+
+              // تهيئة إصلاحات الاتصال بـ Firebase
+              (function() {
+                try {
+                  // استيراد وتهيئة إصلاحات الاتصال
+                  if (typeof window !== 'undefined') {
+                    // تهيئة مراقب الاتصال
+                    let isOnline = navigator.onLine;
+                    
+                    const handleOnline = () => {
+                      console.log('🌐 تم استعادة الاتصال بالإنترنت');
+                      isOnline = true;
+                    };
+                    
+                    const handleOffline = () => {
+                      console.log('📴 فقدان الاتصال بالإنترنت');
+                      isOnline = false;
+                    };
+                    
+                    window.addEventListener('online', handleOnline);
+                    window.addEventListener('offline', handleOffline);
+                    
+                    // معالجة أخطاء Firebase غير المعالجة
+                    const handleUnhandledRejection = (event) => {
+                      const error = event.reason;
+                      
+                      if (error && typeof error === 'object' && error.code) {
+                        // خطأ Firebase
+                        console.warn('🚨 خطأ Firebase غير معالج:', error.message);
+                        
+                        // منع الخطأ من الظهور في الكونسول إذا كان بسبب AdBlocker
+                        if (error.message.includes('ERR_BLOCKED_BY_CLIENT')) {
+                          event.preventDefault();
+                        }
+                      }
+                    };
+                    
+                    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+                  }
+                } catch (error) {
+                  console.warn('خطأ في تهيئة إصلاحات الاتصال:', error);
+                }
+              })();
             `,
           }}
         />
         <Providers>
-          <ErrorBoundary>
-            <ClarityProvider projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || ''}>
-              <ClarityUserTracker />
-              <GTMDataLayer />
-              {/* <PageRefreshDetector /> */}
-              {children}
-            </ClarityProvider>
-          </ErrorBoundary>
+          <ReactErrorBoundary>
+            <HydrationFix>
+              <ErrorBoundary>
+                <ClarityProvider projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || ''}>
+                  <ClarityUserTracker />
+                  <GTMDataLayer />
+                  {/* <PageRefreshDetector /> */}
+                  {children}
+                </ClarityProvider>
+              </ErrorBoundary>
+            </HydrationFix>
+          </ReactErrorBoundary>
           <Toaster
               position="top-center"
               toastOptions={{
