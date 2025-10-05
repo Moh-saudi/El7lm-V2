@@ -38,19 +38,36 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newVideo, setNewVideo] = useState<Video>({ url: '', desc: '' });
-  const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('url');
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'url' | 'youtube'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // إضافة فيديو جديد
   const handleAddVideo = () => {
-    if (newVideo.url.trim()) {
-      const updatedVideos = [...videos, { ...newVideo }];
-      onUpdate(updatedVideos);
-      setNewVideo({ url: '', desc: '' });
-      setIsAddingVideo(false);
+    if (!newVideo.url.trim()) {
+      alert('يرجى إدخال رابط الفيديو');
+      return;
     }
+
+    let finalUrl = newVideo.url.trim();
+
+    // إذا كان YouTube، قم بتحويله إلى embed
+    if (uploadMethod === 'youtube') {
+      const videoId = extractVideoId(finalUrl);
+      if (videoId) {
+        finalUrl = `https://www.youtube.com/embed/${videoId}`;
+        console.log('✅ تم تحويل رابط YouTube إلى embed:', finalUrl);
+      } else {
+        alert('رابط YouTube غير صحيح');
+        return;
+      }
+    }
+
+    const updatedVideos = [...videos, { ...newVideo, url: finalUrl }];
+    onUpdate(updatedVideos);
+    setNewVideo({ url: '', desc: '' });
+    setIsAddingVideo(false);
   };
 
   // حذف فيديو
@@ -103,36 +120,128 @@ const VideoManager: React.FC<VideoManagerProps> = ({
     setEditingIndex(null);
   };
 
-  // رفع ملف فيديو
+  // رفع ملف فيديو بسيط
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    // التحقق من حجم الملف أولاً (100MB الحد الأقصى)
+    // التحقق من حجم الملف (100MB الحد الأقصى)
     const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      alert(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
+      alert(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت`);
       return;
     }
 
-    // تحديد طريقة الرفع بناءً على حجم الملف
-    const vercelLimit = 4.5 * 1024 * 1024; // 4.5MB
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    
-    console.log(`📊 حجم الفيديو: ${fileSizeMB}MB، حد Vercel: 4.5MB`);
-    
-    if (file.size > vercelLimit) {
-      console.log('🔄 استخدام الرفع المقسم للفيديو الكبير');
-      // استخدام الرفع المقسم للفيديوهات الكبيرة
-      await handleChunkedUpload(file);
-    } else {
-      console.log('⚡ استخدام الرفع المباشر للفيديو الصغير');
-      // استخدام الرفع العادي للفيديوهات الصغيرة
-      await handleDirectUpload(file);
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // الحصول على معرف المستخدم
+      const { auth } = await import('@/lib/firebase/config');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('يجب تسجيل الدخول أولاً');
+      }
+
+      console.log('🚀 بدء رفع الفيديو البسيط للمستخدم:', currentUser.uid);
+
+      // إنشاء اسم فريد للملف
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      const baseFileName = file.name.split('.').slice(0, -1).join('.').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${timestamp}_${baseFileName}.${fileExt}`;
+      const filePath = `videos/${currentUser.uid}/${fileName}`;
+
+      // رفع مباشر إلى Supabase
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      console.log('📤 رفع الفيديو مباشرة إلى Supabase...');
+
+      const { data, error } = await supabase.storage
+        .from('videos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // الحصول على الرابط العام
+      const { data: urlData } = supabase.storage
+        .from('videos')
+        .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('فشل في الحصول على رابط الفيديو');
+      }
+
+      console.log('✅ تم رفع الفيديو بنجاح:', urlData.publicUrl);
+      
+      setNewVideo(prev => ({ ...prev, url: urlData.publicUrl }));
+      setUploadMethod('url');
+      setUploadProgress(100);
+
+    } catch (error) {
+      console.error('❌ خطأ في رفع الفيديو:', error);
+      let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      alert(`❌ خطأ في رفع الفيديو:\n\n${errorMessage}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
-  // رفع مقسم للفيديوهات الكبيرة
+  // معالجة روابط YouTube/Vimeo
+  const handleYouTubeUrl = (url: string) => {
+    if (!url) return;
+
+    try {
+      // استخراج معرف الفيديو من YouTube
+      const videoId = extractVideoId(url);
+      if (!videoId) {
+        throw new Error('رابط YouTube غير صحيح');
+      }
+
+      // إنشاء رابط embed
+      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      
+      console.log('✅ تم إضافة فيديو YouTube:', embedUrl);
+      
+      setNewVideo(prev => ({ ...prev, url: embedUrl }));
+      setUploadMethod('url');
+
+    } catch (error) {
+      console.error('❌ خطأ في رابط YouTube:', error);
+      alert('رابط YouTube غير صحيح');
+    }
+  };
+
+  // استخراج معرف الفيديو من رابط YouTube
+  const extractVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  // دالة محذوفة - تم استبدالها بالحل البسيط
   const handleChunkedUpload = async (file: File) => {
     setIsUploading(true);
     setUploadProgress(0);
@@ -151,7 +260,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       // تقسيم الملف إلى أجزاء
       const chunkSize = 4 * 1024 * 1024; // 4MB لكل جزء
       const totalChunks = Math.ceil(file.size / chunkSize);
-      
+
       console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء (حجم كل جزء: ${(chunkSize / (1024 * 1024)).toFixed(1)}MB)`);
 
       // رفع كل جزء
@@ -527,23 +636,34 @@ const VideoManager: React.FC<VideoManagerProps> = ({
               </div>
 
               {/* اختيار طريقة الإضافة */}
-              <div className="flex gap-4 mb-4">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setUploadMethod('youtube')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
+                    uploadMethod === 'youtube'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="text-red-600">📺</span>
+                  YouTube
+                </button>
                 <button
                   onClick={() => setUploadMethod('url')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
                     uploadMethod === 'url'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   <Link className="w-4 h-4" />
-                  رابط فيديو
+                  رابط
                 </button>
                 <button
                   onClick={() => setUploadMethod('file')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
                     uploadMethod === 'file'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -552,7 +672,25 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                 </button>
               </div>
 
-              {uploadMethod === 'url' ? (
+              {uploadMethod === 'youtube' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    رابط YouTube
+                  </label>
+                  <input
+                    type="url"
+                    value={newVideo.url}
+                    onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800">
+                      💡 <strong>الأسهل والأسرع!</strong> لا حدود حجم، جودة ممتازة، مجاني تماماً
+                    </p>
+                  </div>
+                </div>
+              ) : uploadMethod === 'url' ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     رابط الفيديو
@@ -562,17 +700,17 @@ const VideoManager: React.FC<VideoManagerProps> = ({
                     value={newVideo.url}
                     onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://www.youtube.com/watch?v=..."
+                    placeholder="https://example.com/video.mp4"
                   />
                 </div>
               ) : (
                 <div>
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
                     <div className="flex items-start gap-2">
-                      <div className="text-blue-600 mt-0.5">ℹ️</div>
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">حد الرفع: 100 ميجابايت</p>
-                        <p>الفيديوهات الكبيرة (أكبر من 4.5MB) سيتم رفعها تلقائياً على أجزاء.</p>
+                      <div className="text-green-600 mt-0.5">✅</div>
+                      <div className="text-sm text-green-800">
+                        <p className="font-medium mb-1">رفع مباشر إلى Supabase</p>
+                        <p>حد الرفع: 100 ميجابايت - رفع سريع ومباشر بدون تعقيدات</p>
                       </div>
                     </div>
                   </div>
