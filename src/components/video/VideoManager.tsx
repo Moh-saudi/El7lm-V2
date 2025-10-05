@@ -107,11 +107,11 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    // التحقق من حجم الملف أولاً (100MB)
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    // التحقق من حجم الملف أولاً (4.5MB للرفع المباشر)
+    const maxSize = 4.5 * 1024 * 1024; // 4.5MB (حد Vercel)
     if (file.size > maxSize) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      alert(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`);
+      alert(`❌ حجم الفيديو كبير جداً للرفع المباشر!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nحد الرفع المباشر: 4.5 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`);
       return;
     }
 
@@ -164,7 +164,7 @@ const VideoManager: React.FC<VideoManagerProps> = ({
           if (errorData.error && errorData.error.includes('حجم الفيديو كبير جداً للرفع المباشر')) {
             throw new Error(errorData.error);
           }
-          
+
           // رسالة افتراضية
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
           throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 4.5 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`);

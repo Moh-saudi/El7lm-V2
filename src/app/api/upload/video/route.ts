@@ -112,11 +112,11 @@ export async function POST(request: NextRequest) {
     if (file.size > VERCEL_LIMIT) {
       const vercelLimitMB = (VERCEL_LIMIT / (1024 * 1024)).toFixed(1);
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      
+
       console.warn(`⚠️ حجم الملف يتجاوز حد Vercel: ${fileSizeMB}MB (الحد الأقصى: ${vercelLimitMB}MB)`);
-      
+
       return NextResponse.json(
-        { 
+        {
           error: `حجم الفيديو كبير جداً للرفع المباشر!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nحد الرفع المباشر: ${vercelLimitMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`,
           fileSize: file.size,
           maxSize: VERCEL_LIMIT,
@@ -130,11 +130,11 @@ export async function POST(request: NextRequest) {
     if (file.size > MAX_FILE_SIZE) {
       const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      
+
       console.warn(`⚠️ حجم الملف كبير جداً: ${fileSizeMB}MB (الحد الأقصى: ${maxSizeMB}MB)`);
-      
+
       return NextResponse.json(
-        { 
+        {
           error: `حجم الملف كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: ${maxSizeMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`,
           fileSize: file.size,
           maxSize: MAX_FILE_SIZE,
