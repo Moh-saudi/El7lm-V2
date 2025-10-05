@@ -117,10 +117,16 @@ const VideoManager: React.FC<VideoManagerProps> = ({
 
     // تحديد طريقة الرفع بناءً على حجم الملف
     const vercelLimit = 4.5 * 1024 * 1024; // 4.5MB
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    
+    console.log(`📊 حجم الفيديو: ${fileSizeMB}MB، حد Vercel: 4.5MB`);
+    
     if (file.size > vercelLimit) {
+      console.log('🔄 استخدام الرفع المقسم للفيديو الكبير');
       // استخدام الرفع المقسم للفيديوهات الكبيرة
       await handleChunkedUpload(file);
     } else {
+      console.log('⚡ استخدام الرفع المباشر للفيديو الصغير');
       // استخدام الرفع العادي للفيديوهات الصغيرة
       await handleDirectUpload(file);
     }
@@ -140,12 +146,13 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       }
 
       console.log('🚀 بدء رفع الفيديو المقسم للمستخدم:', currentUser.uid);
+      console.log(`📁 تفاصيل الملف: ${file.name}, الحجم: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
 
       // تقسيم الملف إلى أجزاء
       const chunkSize = 4 * 1024 * 1024; // 4MB لكل جزء
       const totalChunks = Math.ceil(file.size / chunkSize);
-
-      console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء`);
+      
+      console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء (حجم كل جزء: ${(chunkSize / (1024 * 1024)).toFixed(1)}MB)`);
 
       // رفع كل جزء
       for (let i = 0; i < totalChunks; i++) {
