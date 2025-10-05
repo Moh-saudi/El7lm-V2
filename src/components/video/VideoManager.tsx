@@ -1,44 +1,29 @@
 'use client';
 
-import { Video } from '@/types/player';
-import { AnimatePresence, motion } from 'framer-motion';
-import {
-    X as Cancel,
-    Edit3,
-    FileVideo,
-    Link,
-    Play,
-    Plus,
-    Save,
-    Trash2,
-    Upload,
-    X
-} from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { FileVideo, Link, Play, Trash2, Upload, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
+import ReactPlayer from 'react-player';
 
-const ReactPlayer = dynamic(() => import('react-player'), {
-  ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">جاري تحميل الفيديو...</div>
-});
+interface Video {
+  url: string;
+  desc: string;
+}
 
 interface VideoManagerProps {
   videos: Video[];
   onUpdate: (videos: Video[]) => void;
-  maxVideos?: number;
   allowedTypes?: string[];
 }
 
-const VideoManager: React.FC<VideoManagerProps> = ({
-  videos = [],
+export default function VideoManager({
+  videos,
   onUpdate,
-  maxVideos = 10,
   allowedTypes = ['video/mp4', 'video/webm', 'video/ogg']
-}) => {
+}) {
   const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newVideo, setNewVideo] = useState<Video>({ url: '', desc: '' });
-  const [uploadMethod, setUploadMethod] = useState<'file' | 'url' | 'youtube'>('url');
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'url' | 'youtube'>('youtube');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,50 +59,23 @@ const VideoManager: React.FC<VideoManagerProps> = ({
   const handleDeleteVideo = async (index: number) => {
     const videoToDelete = videos[index];
 
-    // التأكد من الحذف
-    if (!confirm('هل تريد حذف هذا الفيديو نهائياً؟')) {
-      return;
-    }
-
-    try {
-      // إذا كان الفيديو مرفوع على Supabase Storage، احذفه من هناك أيضاً
-      if (videoToDelete.url && videoToDelete.url.includes('supabase.co')) {
-        console.log('🗑️ حذف الفيديو من Supabase Storage:', videoToDelete.url);
-
+    // إذا كان الفيديو من Supabase، احذفه من التخزين
+    if (videoToDelete.url.includes('supabase')) {
+      try {
         const response = await fetch(`/api/upload/video?url=${encodeURIComponent(videoToDelete.url)}`, {
           method: 'DELETE',
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('❌ خطأ في حذف الفيديو من Storage:', errorData.error);
-        } else {
-          console.log('✅ تم حذف الفيديو من Supabase Storage');
+          console.warn('فشل في حذف الفيديو من التخزين، سيتم حذفه من القائمة فقط');
         }
-      }
-
-      // حذف الفيديو من القائمة
-      const updatedVideos = videos.filter((_, i) => i !== index);
-      onUpdate(updatedVideos);
-
-    } catch (error) {
-      console.error('❌ خطأ في حذف الفيديو:', error);
-
-      // حتى لو فشل حذف الملف من Storage، احذفه من القائمة
-      if (confirm('حدث خطأ أثناء حذف الملف من التخزين. هل تريد حذفه من القائمة على أي حال؟')) {
-        const updatedVideos = videos.filter((_, i) => i !== index);
-        onUpdate(updatedVideos);
+      } catch (error) {
+        console.warn('خطأ في حذف الفيديو من التخزين:', error);
       }
     }
-  };
 
-  // تعديل فيديو
-  const handleEditVideo = (index: number, updatedVideo: Video) => {
-    const updatedVideos = videos.map((video, i) =>
-      i === index ? updatedVideo : video
-    );
+    const updatedVideos = videos.filter((_, i) => i !== index);
     onUpdate(updatedVideos);
-    setEditingIndex(null);
   };
 
   // رفع ملف فيديو بسيط
@@ -202,31 +160,6 @@ const VideoManager: React.FC<VideoManagerProps> = ({
     }
   };
 
-  // معالجة روابط YouTube/Vimeo
-  const handleYouTubeUrl = (url: string) => {
-    if (!url) return;
-
-    try {
-      // استخراج معرف الفيديو من YouTube
-      const videoId = extractVideoId(url);
-      if (!videoId) {
-        throw new Error('رابط YouTube غير صحيح');
-      }
-
-      // إنشاء رابط embed
-      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
-      
-      console.log('✅ تم إضافة فيديو YouTube:', embedUrl);
-      
-      setNewVideo(prev => ({ ...prev, url: embedUrl }));
-      setUploadMethod('url');
-
-    } catch (error) {
-      console.error('❌ خطأ في رابط YouTube:', error);
-      alert('رابط YouTube غير صحيح');
-    }
-  };
-
   // استخراج معرف الفيديو من رابط YouTube
   const extractVideoId = (url: string): string | null => {
     const patterns = [
@@ -239,195 +172,6 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       if (match) return match[1];
     }
     return null;
-  };
-
-  // دالة محذوفة - تم استبدالها بالحل البسيط
-  const handleChunkedUpload = async (file: File) => {
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // الحصول على معرف المستخدم من Firebase Auth
-      const { auth } = await import('@/lib/firebase/config');
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('يجب تسجيل الدخول أولاً');
-      }
-
-      console.log('🚀 بدء رفع الفيديو المقسم للمستخدم:', currentUser.uid);
-      console.log(`📁 تفاصيل الملف: ${file.name}, الحجم: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
-
-      // تقسيم الملف إلى أجزاء
-      const chunkSize = 4 * 1024 * 1024; // 4MB لكل جزء
-      const totalChunks = Math.ceil(file.size / chunkSize);
-
-      console.log(`📊 تقسيم الملف إلى ${totalChunks} أجزاء (حجم كل جزء: ${(chunkSize / (1024 * 1024)).toFixed(1)}MB)`);
-
-      // رفع كل جزء
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const chunk = file.slice(start, end);
-
-        const formData = new FormData();
-        formData.append('chunk', chunk);
-        formData.append('chunkIndex', i.toString());
-        formData.append('totalChunks', totalChunks.toString());
-        formData.append('fileName', file.name);
-        formData.append('userId', currentUser.uid);
-        formData.append('fileSize', file.size.toString());
-
-        console.log(`📤 رفع الجزء ${i + 1}/${totalChunks}`);
-
-        const response = await fetch('/api/upload/video/chunked', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `فشل في رفع الجزء ${i + 1}`);
-        }
-
-        // تحديث التقدم
-        const progress = ((i + 1) / totalChunks) * 100;
-        setUploadProgress(progress);
-      }
-
-      // الحصول على النتيجة النهائية
-      const finalResponse = await fetch('/api/upload/video/chunked', {
-        method: 'POST',
-        body: new FormData(), // إرسال طلب فارغ للحصول على النتيجة النهائية
-      });
-
-      if (!finalResponse.ok) {
-        throw new Error('فشل في الحصول على النتيجة النهائية');
-      }
-
-      const result = await finalResponse.json();
-
-      console.log('✅ تم رفع الفيديو المقسم بنجاح:', result.url);
-
-      setNewVideo(prev => ({ ...prev, url: result.url }));
-      setUploadMethod('url');
-      setUploadProgress(100);
-
-    } catch (error) {
-      console.error('❌ خطأ في رفع الفيديو المقسم:', error);
-      let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      alert(`❌ خطأ في رفع الفيديو:\n\n${errorMessage}`);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  // رفع مباشر للفيديوهات الصغيرة
-  const handleDirectUpload = async (file: File) => {
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // التحقق من صحة الملف
-      const { validateVideoFile } = await import('@/lib/supabase/video-storage');
-      const validation = validateVideoFile(file, { allowedTypes });
-      const validationResult = validation as { isValid: boolean; errors: string[] };
-    if (!validationResult.isValid) {
-      alert(validationResult.errors.join('\n'));
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // الحصول على معرف المستخدم من Firebase Auth
-      const { auth } = await import('@/lib/firebase/config');
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('يجب تسجيل الدخول أولاً');
-      }
-
-      console.log('🚀 بدء رفع الفيديو المباشر للمستخدم:', currentUser.uid);
-
-      // إنشاء FormData للرفع
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', currentUser.uid);
-
-      // رفع الفيديو عبر API route
-      const response = await fetch('/api/upload/video', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (jsonError) {
-          // إذا فشل في تحليل JSON، استخدم رسالة افتراضية
-          console.error('❌ فشل في تحليل استجابة الخادم:', jsonError);
-          errorData = { error: 'استجابة غير صحيحة من الخادم' };
-        }
-
-        // معالجة خاصة لخطأ حجم الملف الكبير
-        if (response.status === 413 || errorData.error?.includes('حجم الفيديو كبير') || errorData.error?.includes('حجم الملف كبير')) {
-          // إذا كانت رسالة الخطأ تحتوي على تفاصيل، استخدمها
-          if (errorData.error && errorData.error.includes('حجم الفيديو كبير جداً للرفع المباشر')) {
-            throw new Error(errorData.error);
-          }
-
-          // رسالة افتراضية
-          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          throw new Error(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 4.5 ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`);
-        }
-
-        // معالجة أخطاء أخرى
-        if (response.status === 503) {
-          throw new Error('خدمة التخزين غير متاحة حالياً. يرجى المحاولة لاحقاً.');
-        }
-
-        if (response.status === 400) {
-          throw new Error(errorData.error || 'بيانات الطلب غير صحيحة');
-        }
-
-        throw new Error(errorData.error || `فشل في رفع الفيديو (${response.status})`);
-      }
-
-      const result = await response.json();
-
-      console.log('✅ تم رفع الفيديو بنجاح:', result.url);
-
-      setNewVideo(prev => ({ ...prev, url: result.url }));
-      setUploadMethod('url');
-
-    } catch (error) {
-      console.error('❌ خطأ في رفع الفيديو:', error);
-      let errorMessage = 'فشل في رفع الفيديو. يرجى المحاولة مرة أخرى.';
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-
-        // إذا كانت رسالة الخطأ تحتوي على نصائح، استخدم toast بدلاً من alert
-        if (errorMessage.includes('💡 نصائح:')) {
-          // يمكن استخدام toast library هنا إذا كان متوفراً
-          alert(errorMessage);
-        } else {
-          alert(errorMessage);
-        }
-      } else {
-        alert(errorMessage);
-      }
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
   };
 
   // التحقق من صحة URL
@@ -446,416 +190,355 @@ const VideoManager: React.FC<VideoManagerProps> = ({
       {videos.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <FileVideo className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-600 mb-2">لا توجد فيديوهات</h3>
-          <p className="text-gray-500 mb-4">ابدأ بإضافة فيديو جديد لعرض مهاراتك</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد فيديوهات</h3>
+          <p className="text-gray-500 mb-4">ابدأ بإضافة فيديو جديد لعرضه هنا</p>
+          <button
+            onClick={() => setIsAddingVideo(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            إضافة فيديو
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid gap-6">
           {videos.map((video, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative bg-white rounded-lg shadow-md overflow-hidden"
-            >
-              {editingIndex === index ? (
-                // وضع التعديل
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رابط الفيديو
-                    </label>
-                    <input
-                      type="url"
-                      value={video.url}
-                      onChange={(e) => {
-                        const updatedVideos = [...videos];
-                        updatedVideos[index] = { ...video, url: e.target.value };
-                        onUpdate(updatedVideos);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      وصف الفيديو
-                    </label>
-                    <textarea
-                      value={video.desc}
-                      onChange={(e) => {
-                        const updatedVideos = [...videos];
-                        updatedVideos[index] = { ...video, desc: e.target.value };
-                        onUpdate(updatedVideos);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="اكتب وصف للفيديو..."
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditVideo(index, video)}
-                      className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors shadow-md hover:shadow-lg"
-                    >
-                      <Save className="w-4 h-4" />
-                      حفظ
-                    </button>
-                    <button
-                      onClick={() => setEditingIndex(null)}
-                      className="flex items-center gap-2 px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors shadow-md hover:shadow-lg"
-                    >
-                      <Cancel className="w-4 h-4" />
-                      إلغاء
-                    </button>
-                  </div>
+            <div key={index} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              {/* شريط الأدوات */}
+              <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <FileVideo className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    فيديو {index + 1}
+                  </span>
                 </div>
-              ) : (
-                // وضع العرض
-                <>
-                  <div className="aspect-video">
-                    <ReactPlayer
-                      url={video.url}
-                      width="100%"
-                      height="100%"
-                      controls
-                      light
-                      playIcon={
-                        <div className="flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full">
-                          <Play className="w-8 h-8 text-white" />
-                        </div>
-                      }
-                      config={{
-                        youtube: {
-                          embedOptions: {
-                            host: 'https://www.youtube.com'
-                          },
-                          playerVars: {
-                            origin: typeof window !== 'undefined' ? window.location.origin : '',
-                            rel: 0,
-                            modestbranding: 1,
-                            showinfo: 0,
-                            enablejsapi: 1,
-                            iv_load_policy: 3,
-                            cc_load_policy: 0,
-                            fs: 1,
-                            disablekb: 0,
-                            autoplay: 0,
-                            mute: 0,
-                            loop: 0,
-                            controls: 1,
-                            playsinline: 1,
-                            color: 'white',
-                            hl: 'ar',
-                            cc_lang_pref: 'ar',
-                            end: 0,
-                            start: 0,
-                            vq: 'hd720',
-                            wmode: 'transparent',
-                            allowfullscreen: true,
-                            allowscriptaccess: 'always'
-                          }
-                        }
-                      }}
-                    />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEditingIndex(editingIndex === index ? null : index)}
+                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                    title="تعديل"
+                    aria-label="تعديل الفيديو"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteVideo(index)}
+                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    title="حذف"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
 
-                  <div className="p-4">
-                    <p className="text-gray-700 text-sm mb-3">
-                      {video.desc || 'لا يوجد وصف'}
-                    </p>
-
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingIndex(index)}
-                          className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                          تعديل
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVideo(index)}
-                          className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors shadow-md hover:shadow-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          حذف
-                        </button>
-                      </div>
-
-                      <span className="text-xs text-gray-500">
-                        فيديو {index + 1}
-                      </span>
+              {/* محتوى الفيديو */}
+              <div className="p-4">
+                {editingIndex === index ? (
+                  // وضع التعديل
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رابط الفيديو
+                      </label>
+                      <input
+                        type="url"
+                        value={video.url}
+                        onChange={(e) => {
+                          const updatedVideos = [...videos];
+                          updatedVideos[index] = { ...updatedVideos[index], url: e.target.value };
+                          onUpdate(updatedVideos);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        وصف الفيديو
+                      </label>
+                      <textarea
+                        value={video.desc}
+                        onChange={(e) => {
+                          const updatedVideos = [...videos];
+                          updatedVideos[index] = { ...updatedVideos[index], desc: e.target.value };
+                          onUpdate(updatedVideos);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={3}
+                        placeholder="وصف الفيديو..."
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingIndex(null)}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        حفظ
+                      </button>
+                      <button
+                        onClick={() => setEditingIndex(null)}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        إلغاء
+                      </button>
                     </div>
                   </div>
-                </>
-              )}
-            </motion.div>
+                ) : (
+                  // وضع العرض
+                  <>
+                    <div className="aspect-video">
+                      <ReactPlayer
+                        url={video.url}
+                        width="100%"
+                        height="100%"
+                        controls
+                        light
+                        playIcon={
+                          <div className="flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full">
+                            <Play className="w-8 h-8 text-white" />
+                          </div>
+                        }
+                        config={{
+                          youtube: {
+                            embedOptions: {
+                              host: 'https://www.youtube.com'
+                            },
+                            playerVars: {
+                              origin: typeof window !== 'undefined' ? window.location.origin : '',
+                              rel: 0,
+                              modestbranding: 1,
+                              showinfo: 0,
+                              enablejsapi: 1,
+                              iv_load_policy: 3,
+                              cc_load_policy: 0,
+                              fs: 1,
+                              disablekb: 0,
+                              autoplay: 0,
+                              mute: 0,
+                              loop: 0,
+                              controls: 1,
+                              playsinline: 1,
+                              color: 'white',
+                              hl: 'ar',
+                              cc_lang_pref: 'ar',
+                              end: 0,
+                              start: 0,
+                              vq: 'hd720',
+                              wmode: 'transparent',
+                              allowfullscreen: true,
+                              allowscriptaccess: 'always'
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="p-4">
+                      {video.desc && (
+                        <p className="text-gray-700 text-sm leading-relaxed">{video.desc}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}
 
       {/* زر إضافة فيديو جديد */}
-      {videos.length < maxVideos && !isAddingVideo && (
-        <button
-          onClick={() => setIsAddingVideo(true)}
-          className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center gap-2 text-gray-600 hover:text-blue-600"
-        >
-          <Plus className="w-8 h-8" />
-          <span className="font-medium">إضافة فيديو جديد</span>
-          <span className="text-sm">({videos.length}/{maxVideos})</span>
-        </button>
+      {!isAddingVideo && (
+        <div className="text-center">
+          <button
+            onClick={() => setIsAddingVideo(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Upload className="w-5 h-5" />
+            إضافة فيديو جديد
+          </button>
+        </div>
       )}
 
       {/* نموذج إضافة فيديو جديد */}
-      <AnimatePresence>
-        {isAddingVideo && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
-          >
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800">إضافة فيديو جديد</h3>
-                <button
-                  onClick={() => {
-                    setIsAddingVideo(false);
-                    setNewVideo({ url: '', desc: '' });
-                    setUploadMethod('url');
-                  }}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                  title="إغلاق"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {isAddingVideo && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">إضافة فيديو جديد</h3>
+            <button
+              onClick={() => {
+                setIsAddingVideo(false);
+                setNewVideo({ url: '', desc: '' });
+              }}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title="إغلاق"
+              aria-label="إغلاق نموذج إضافة الفيديو"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-              {/* اختيار طريقة الإضافة */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setUploadMethod('youtube')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                    uploadMethod === 'youtube'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <span className="text-red-600">📺</span>
-                  YouTube
-                </button>
-                <button
-                  onClick={() => setUploadMethod('url')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                    uploadMethod === 'url'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Link className="w-4 h-4" />
-                  رابط
-                </button>
-                <button
-                  onClick={() => setUploadMethod('file')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
-                    uploadMethod === 'file'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Upload className="w-4 h-4" />
-                  رفع ملف
-                </button>
-              </div>
+          {/* اختيار طريقة الإضافة */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setUploadMethod('youtube')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
+                uploadMethod === 'youtube'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span className="text-red-600">📺</span>
+              YouTube
+            </button>
+            <button
+              onClick={() => setUploadMethod('url')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
+                uploadMethod === 'url'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Link className="w-4 h-4" />
+              رابط
+            </button>
+            <button
+              onClick={() => setUploadMethod('file')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm ${
+                uploadMethod === 'file'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              رفع ملف
+            </button>
+          </div>
 
-              {uploadMethod === 'youtube' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رابط YouTube
-                  </label>
-                  <input
-                    type="url"
-                    value={newVideo.url}
-                    onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-800">
-                      💡 <strong>الأسهل والأسرع!</strong> لا حدود حجم، جودة ممتازة، مجاني تماماً
-                    </p>
-                  </div>
-                </div>
-              ) : uploadMethod === 'url' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رابط الفيديو
-                  </label>
-                  <input
-                    type="url"
-                    value={newVideo.url}
-                    onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/video.mp4"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                    <div className="flex items-start gap-2">
-                      <div className="text-green-600 mt-0.5">✅</div>
-                      <div className="text-sm text-green-800">
-                        <p className="font-medium mb-1">رفع مباشر إلى Supabase</p>
-                        <p>حد الرفع: 100 ميجابايت - رفع سريع ومباشر بدون تعقيدات</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ملف الفيديو
-                  </label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
-                    }}
-                    className="hidden"
-                    title="اختر ملف فيديو"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center gap-2 text-gray-600 hover:text-blue-600 disabled:opacity-50"
-                  >
-                    <FileVideo className="w-8 h-8" />
-                    <span className="font-medium">
-                      {isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
-                    </span>
-                    <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
-                  </button>
-
-                  {isUploading && (
-                    <div className="mt-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>جاري الرفع...</span>
-                        <span>{uploadProgress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  وصف الفيديو
-                </label>
-                <textarea
-                  value={newVideo.desc}
-                  onChange={(e) => setNewVideo(prev => ({ ...prev, desc: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="اكتب وصف مختصر للفيديو (اختياري)..."
-                />
-              </div>
-
-              {/* معاينة الفيديو */}
-              {newVideo.url && isValidUrl(newVideo.url) && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    معاينة
-                  </label>
-                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    <ReactPlayer
-                      url={newVideo.url}
-                      width="100%"
-                      height="100%"
-                      controls
-                      light
-                      config={{
-                        youtube: {
-                          embedOptions: {
-                            host: 'https://www.youtube.com'
-                          },
-                          playerVars: {
-                            origin: typeof window !== 'undefined' ? window.location.origin : '',
-                            rel: 0,
-                            modestbranding: 1,
-                            showinfo: 0,
-                            enablejsapi: 1,
-                            iv_load_policy: 3,
-                            cc_load_policy: 0,
-                            fs: 1,
-                            disablekb: 0,
-                            autoplay: 0,
-                            mute: 0,
-                            loop: 0,
-                            controls: 1,
-                            playsinline: 1,
-                            color: 'white',
-                            hl: 'ar',
-                            cc_lang_pref: 'ar',
-                            end: 0,
-                            start: 0,
-                            vq: 'hd720',
-                            wmode: 'transparent',
-                            allowfullscreen: true,
-                            allowscriptaccess: 'always'
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleAddVideo}
-                  disabled={!newVideo.url || isUploading}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg font-semibold"
-                >
-                  <Plus className="w-4 h-4" />
-                  إضافة الفيديو
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAddingVideo(false);
-                    setNewVideo({ url: '', desc: '' });
-                    setUploadMethod('url');
-                  }}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors shadow-md hover:shadow-lg"
-                >
-                  إلغاء
-                </button>
+          {uploadMethod === 'youtube' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                رابط YouTube
+              </label>
+              <input
+                type="url"
+                value={newVideo.url}
+                onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-800">
+                  💡 <strong>الأسهل والأسرع!</strong> لا حدود حجم، جودة ممتازة، مجاني تماماً
+                </p>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ) : uploadMethod === 'url' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                رابط الفيديو
+              </label>
+              <input
+                type="url"
+                value={newVideo.url}
+                onChange={(e) => setNewVideo(prev => ({ ...prev, url: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="https://example.com/video.mp4"
+              />
+            </div>
+          ) : (
+            <div>
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <div className="text-green-600 mt-0.5">✅</div>
+                  <div className="text-sm text-green-800">
+                    <p className="font-medium mb-1">رفع مباشر إلى Supabase</p>
+                    <p>حد الرفع: 100 ميجابايت - رفع سريع ومباشر بدون تعقيدات</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ملف الفيديو
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file);
+                  }}
+                  className="hidden"
+                  title="اختر ملف فيديو"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors flex flex-col items-center gap-2 text-gray-600 hover:text-green-600 disabled:opacity-50"
+                >
+                  <FileVideo className="w-8 h-8" />
+                  <span className="font-medium">
+                    {isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
+                  </span>
+                  <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
+                </button>
 
-      {/* رسالة عند الوصول للحد الأقصى */}
-      {videos.length >= maxVideos && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-800 text-sm">
-            وصلت للحد الأقصى من الفيديوهات ({maxVideos}). يمكنك حذف فيديو موجود لإضافة فيديو جديد.
-          </p>
+                {isUploading && (
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>جاري الرفع...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                        aria-label={`تقدم الرفع ${uploadProgress}%`}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* وصف الفيديو */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              وصف الفيديو (اختياري)
+            </label>
+            <textarea
+              value={newVideo.desc}
+              onChange={(e) => setNewVideo(prev => ({ ...prev, desc: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="وصف الفيديو..."
+            />
+          </div>
+
+          {/* أزرار الإجراءات */}
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={handleAddVideo}
+              disabled={!newVideo.url.trim() || isUploading}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              إضافة الفيديو
+            </button>
+            <button
+              onClick={() => {
+                setIsAddingVideo(false);
+                setNewVideo({ url: '', desc: '' });
+              }}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              إلغاء
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
-};
-
-export default VideoManager;
+}

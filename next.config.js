@@ -87,9 +87,8 @@ const nextConfig = {
         removeConsole: false, // Keep console for debugging
     },
     // إعدادات الخادم الخارجية
-    serverExternalPackages: ['firebase-admin'],
-
     experimental: {
+        serverComponentsExternalPackages: ['firebase-admin'],
         serverActions: {
             bodySizeLimit: '100mb',
         },
