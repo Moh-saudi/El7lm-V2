@@ -1,0 +1,103 @@
+# متغيرات البيئة المطلوبة لـ Vercel
+
+## كيفية إضافة المتغيرات:
+
+1. اذهب إلى: https://vercel.com/dashboard
+2. اختر مشروع `el7lm-backup`
+3. اضغط على **Settings** > **Environment Variables**
+4. أضف كل متغير من القائمة أدناه
+
+## المتغيرات المطلوبة:
+
+### Firebase Configuration (Frontend)
+```
+NEXT_PUBLIC_FIREBASE_API_KEY = AIzaSyDCQQxUbeQQrlty5HnF65-7TK0TB2zB7R4
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = hagzzgo-87884.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID = hagzzgo-87884
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = hagzzgo-87884.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 865241332465
+NEXT_PUBLIC_FIREBASE_APP_ID = 1:865241332465:web:158ed5fb2f0a80eecf0750
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID = G-RQ3ENTG6KJ
+FIREBASE_DATABASE_URL = https://hagzzgo-87884.firebaseio.com
+```
+
+### Firebase Admin SDK (Server-side)
+```
+FIREBASE_PROJECT_ID = hagzzgo-87884
+FIREBASE_PRIVATE_KEY = -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCu8WxE2MZidrcy\nAlAQTxkC9GGoTCHgGQvI8UCdszKCGhLeJhZnQ1SnD3hduzCIHSyiyeG6HypE/b7+\nInI3t8Emd/973LX4rUfGoo4EJt0dsaUwIdfaqighOulPXn5ns6WJuq/M2Wr9uwL9\nRqmK6vzgptU2FcBBOYu5ksjWvosWh/1vzEXE385q0AVw6E/Fff1pf5pXc0S+D5EI\nDDaL5XyKOC13MEbwgPfvTIf9eg1gVrIvNHVbLXmvPqxFIvpxD5vHKVYDu2WbqwHT\nF45F+VIxZCrK+VCijHu6pHDSkA14vDhIJFj2OIWTakgXRobR5SjtAepXC7bpJV4t\nDXDaYZttAgMBAAECggEAIjFXLUSmT7/u0fQwRGPFWnW78apBs7yJeGKo87m+3T1t\n4yQUHGZFUSq9pqpL08rJ+t5VA20MdLQYxLCkXN4KPzPUiFfM7Fgn73u9oLOc460h\nQX1X5Gn+EnKif8wTDj9HU1pc+n+jQQjwjmLlh9yihOEuypWpQEZYWDLHlOtkoYgr\nlous7nJKg6DUT4E2Rho/PBp1zr699IDShHvDFs+uTY+JaCeSPfNm59dYNVbK00tE\nUDC/b38PBx7p/Su5g1MujMGzHfkLG8o6uKIW6e8yomnnZW8WLgI5+74j1JwtosnX\n8WU1oDEDEJS0UGUP4elmoHYHlW18gmPJydwSjH/WEQKBgQDcUeedrTsU5M4oBWx9\n0seGnki+ED8R+GXe+fxKyXwmUrIwX9gYkXBYfK2EE+xmrHJxLQ9FR3fdixf1X0VG\nwiGAQXlbQpTi1YwXO13ak0Fe2HnRqV7zs7X/W4ZRD40nVNflZN/PE/cVrqKwN5+3\n4DXQ1PPGA2sruYZoCLxXXcJU/QKBgQDLRkTMLw/knnKf6aHOnT01vSK08UUfQZ4k\nuderjen8jUZOKKW7bxhwqBzMY4Zxbzlx+pWiTz8a5qltg6XRj4yD+lutjox9ki0y\nIjvtSTj52GwpxMuewiwHd3ZtxTg0noDyKvpU8a09Ms2KguVnEI6U/2o4LuRrwE94\nai3YzA/jMQKBgDVpZc1EAd6+2Xu6VOLsBpMMLHZnWeLxZUD5OcCnuAFSawBvO+Q4\n3hOVpjsu2VDK3bOySNFy0gxTfCtwPUs6JQUC2njVW2LigmPfcJFcwaxMrru1Y9+Q\n4b5WYemk64NtfimOmvOI043eGHLACWh6YpGODssiaQjgoUT3WTGU+VfBAoGARyY6\nUGmsm23mWxiwnRwmX5fq/QByHEWgb+Rom9CZdN+SGytZDykMmeoN4nB3j17J8Z4v\nH9ezE9xms0FgGeCv40YPLsl1XUJ79U9MQHrfqXvaKCiMyO3X8WkcF8HvMWPFaH4o\njvDknUYZ8YBtgUynS3m3GSE4rIpsho5Lq9WJPhECgYEA1V2vQifvYGd7UkHU+8vp\nzWfUgJeUbj8CNw4LxmAuvLNlSYWroEm8OYzDl7U/mzjV4uU8JMsJg0Jl4MdOfzUf\n8ImEDxdWabDoAyAheSkJHVccSoO5xA2lWOn4+g1cMP6L5rQmNVfPZS24P+RtdT5R\nI65vtRW3KejtqPiWsPKeIQY=\n-----END PRIVATE KEY-----\n
+FIREBASE_CLIENT_EMAIL = firebase-adminsdk-fbsvc@hagzzgo-87884.iam.gserviceaccount.com
+```
+
+### Google Tag Manager & Analytics
+```
+NEXT_PUBLIC_GTM_ID = GTM-WR4X2BD8
+```
+
+### Microsoft Clarity
+```
+NEXT_PUBLIC_CLARITY_PROJECT_ID = t69agqt6n4
+NEXT_PUBLIC_CLARITY_API_KEY = eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ4M0FCMDhFNUYwRDMxNjdEOTRFMTQ3M0FEQTk2RTcyRDkwRUYwRkYiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiJlY2NiMjI3YS1iMDc0LTQ5ZWMtOGE2Ni05YjQ2YmJhNjRiYTciLCJzdWIiOiIyOTYyODkzNDYwNjE5NDg4Iiwic2NvcGUiOiJEYXRhLkV4cG9ydCIsIm5iZiI6MTc1NzIwMzU4MywiZXhwIjo0OTEwODAzNTgxLCJpYXQiOjE3NTcyMDM1ODEsImlzcyI6ImNsYXJpdHkiLCJhdWQiOiJjbGFyaXR5LmRhdGEtZXhwb3J0ZXIifQ.jfib5a3HWv-ZJ1HenrOcQLh0tb9qGBUBnLzcmkU9pr2H91SIlst1hFMKEGWJcnFaEzomNKlQQhWQzenIONNU2SeFIdXXleFkZpv0dpQTePsgFW61tZCzDZ9pbKEb5WZqZ-WaRARF_-3KrXjUCWdxnd-ByswoDSLYxAoWH-iGQx2azOW7-jZsiQWhM7nujHeRk9rUEszjermVaFUutj1PmwQqow8YJxDg9EfEZhaK7Jg48o60ejp1_tx3UKaxqLWteeRN9Yp2A-fNq8JAERl10xVqRPg7i0kI7KmbSLf9gmCJfA94BZtnX23JTNHcrpoTbS3Xx7X_PUvUqF8msbhBkQ
+```
+
+### Supabase
+```
+NEXT_PUBLIC_SUPABASE_URL = https://ekyerljzfokqimbabzxm.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVreWVybGp6Zm9rcWltYmFienhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NTcyODMsImV4cCI6MjA2MjIzMzI4M30.Xd6Cg8QUISHyCG-qbgo9HtWUZz6tvqAqG6KKXzuetBY
+```
+
+### BeOn API
+```
+BEON_V3_TOKEN = Yt3A3RwMQHx49trsz1EMgSKP8qOD0CSVJXdJxy6IqNNtcYblsYWtfVAtaJpv
+BEON_V3_BASE_URL = https://v3.api.beon.chat
+BEON_SENDER_NAME = El7lm
+```
+
+### Geidea Payment Gateway
+```
+GEIDEA_MERCHANT_PUBLIC_KEY = 3448c010-87b1-41e7-9771-cac444268cfb
+GEIDEA_API_PASSWORD = edfd5eee-fd1b-4932-9ee1-d6d9ba7599f0
+GEIDEA_WEBHOOK_SECRET = geidea_webhook_secret_production_2024
+GEIDEA_BASE_URL = https://api.merchant.geidea.net
+NEXT_PUBLIC_GEIDEA_ENVIRONMENT = production
+```
+
+### WhatsApp & SMS
+```
+WHATSAPP_API_KEY = vSCuMzZwLjDxzR882YphwEgW
+WHATSAPP_SENDER_ID = El7hm
+```
+
+### YouTube API
+```
+YOUTUBE_API_KEY = AIzaSyBjQm650zteVfeMBGWtMRPIqTP6YKnUivc
+```
+
+### Localization
+```
+NEXT_PUBLIC_DEFAULT_LOCALE = ar
+NEXT_PUBLIC_SUPPORTED_LOCALES = ar,en
+```
+
+### Other Settings
+```
+NEXT_PUBLIC_BASE_URL = https://el7lm-backup-git-main-mohamedsaudis-projects.vercel.app
+NEXT_PUBLIC_SHOW_OFFLINE_BANNER = false
+ENABLE_SMS_SIMULATION = false
+ENABLE_WHATSAPP_SIMULATION = false
+PORT = 3001
+```
+
+## ملاحظات مهمة:
+
+1. **للمتغيرات التي تبدأ بـ `NEXT_PUBLIC_`**: اختر **Production**, **Preview**, و **Development**
+2. **للمتغيرات Server-side**: اختر **Production** و **Preview** فقط
+3. **بعد إضافة جميع المتغيرات**: اضغط **Save** ثم **Redeploy** للمشروع
+
+## النتيجة المتوقعة:
+
+- ✅ ستختفي جميع التحذيرات (Firebase, GTM, Clarity)
+- ✅ ستعمل جميع الميزات بشكل كامل
+- ✅ ستحصل على analytics حقيقي
+- ✅ سيعمل Firebase Auth بشكل صحيح
+- ✅ ستعمل المدفوعات عبر Geidea
+- ✅ ستعمل الإشعارات عبر BeOn

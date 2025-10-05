@@ -1,0 +1,26 @@
+{
+  "totalSent": 5,
+  "successful": 5,
+  "failed": 0,
+  "pending": 0,
+  "todaySent": 5,
+  "thisWeekSent": 5,
+  "thisMonthSent": 5,
+  "lastReset": "2025-09-10T08:53:50.381Z",
+  "dailyStats": {
+    "2025-09-10": 5
+  },
+  "hourlyStats": {
+    "11": 1,
+    "17": 4
+  },
+  "errorStats": {},
+  "topPhones": {
+    "+201017799580": 1
+  },
+  "messageTypes": {
+    "sms": 5,
+    "whatsapp": 0,
+    "unified": 0
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "baseUrl": "https://v3.api.beon.chat",
+  "token": "Yt3A3RwMQHx49trsz1EMgSKP8qOD0CSVJXdJxy6IqNNtcYblsYWtfVAtaJpv",
+  "sender": "El7lm",
+  "language": "ar",
+  "maxRetries": 3,
+  "timeout": 30000,
+  "rateLimit": 100,
+  "emergencyMode": false,
+  "backupProvider": "none",
+  "autoRetry": true,
+  "logLevel": "info",
+  "lastUpdated": "2025-09-10T08:53:50.328Z",
+  "updatedBy": "admin"
+}

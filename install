@@ -1,0 +1,5 @@
+[33m22952e7c6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Merge remote README with local project documentation
+[33mb26db1a84[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Initial commit
+[33m86e64cdc7[m تنظيف الملفات الكبيرة وإضافة .gitignore
+[33m763759a66[m  تنظيف شامل للملفات - تقليل من 401 إلى 28 ملف منظم
+[33md3023f1e5[m  إضافة صفحة اختبار Bulk SMS مصححة - إنشاء صفحة /test-beon-bulk-sms-fixed مع التعديل المطلوب - تغيير phoneNumber إلى phoneNumbers (جمع) - استخدام endpoint /api/v3/messages/sms/bulk - حل مشكلة 400 Bad Request - إضافة شرح التعديل المطلوب
