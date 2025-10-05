@@ -17,15 +17,15 @@ interface VideoManagerProps {
   allowedTypes?: string[];
 }
 
-export default function VideoManager({
+const VideoManager: React.FC<VideoManagerProps> = ({
   videos,
   onUpdate,
   allowedTypes = ['video/mp4', 'video/webm', 'video/ogg']
-}) {
+}) => {
   const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newVideo, setNewVideo] = useState<Video>({ url: '', desc: '' });
-  const [uploadMethod, setUploadMethod] = useState<'file' | 'url' | 'youtube'>('youtube');
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'url' | 'youtube'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,32 +61,63 @@ export default function VideoManager({
   const handleDeleteVideo = async (index: number) => {
     const videoToDelete = videos[index];
 
-    // إذا كان الفيديو من Supabase، احذفه من التخزين
-    if (videoToDelete.url.includes('supabase')) {
-      try {
-        const response = await fetch(`/api/upload/video?url=${encodeURIComponent(videoToDelete.url)}`, {
-          method: 'DELETE',
-        });
+    if (window.confirm('هل أنت متأكد أنك تريد حذف هذا الفيديو؟')) {
+      // إذا كان الفيديو مرفوعاً إلى Supabase، حاول حذفه من هناك
+      if (videoToDelete.url.includes('supabase')) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+          const supabase = createClient(supabaseUrl, supabaseKey);
 
-        if (!response.ok) {
-          console.warn('فشل في حذف الفيديو من التخزين، سيتم حذفه من القائمة فقط');
+          const urlParts = videoToDelete.url.split('/');
+          const bucketName = urlParts[urlParts.length - 2];
+          const filePath = urlParts.slice(urlParts.indexOf(bucketName) + 1).join('/');
+
+          if (bucketName && filePath) {
+            const { error } = await supabase.storage.from(bucketName).remove([filePath]);
+            if (error) {
+              console.error('❌ فشل في حذف الفيديو من Supabase:', error);
+            } else {
+              console.log('✅ تم حذف الفيديو من Supabase');
+            }
+          }
+        } catch (error) {
+          console.error('❌ خطأ أثناء محاولة حذف الفيديو من Supabase:', error);
         }
-      } catch (error) {
-        console.warn('خطأ في حذف الفيديو من التخزين:', error);
       }
-    }
 
-    const updatedVideos = videos.filter((_, i) => i !== index);
-    onUpdate(updatedVideos);
+      const updatedVideos = videos.filter((_, i) => i !== index);
+      onUpdate(updatedVideos);
+    }
+  };
+
+  // تعديل فيديو
+  const handleEditVideo = (index: number) => {
+    setEditingIndex(index);
+    setNewVideo(videos[index]);
+    setIsAddingVideo(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingIndex !== null && newVideo.url.trim()) {
+      const updatedVideos = [...videos];
+      updatedVideos[editingIndex] = newVideo;
+      onUpdate(updatedVideos);
+      setEditingIndex(null);
+      setNewVideo({ url: '', desc: '' });
+      setIsAddingVideo(false);
+    }
   };
 
   // رفع ملف فيديو بسيط
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
     // التحقق من حجم الملف (100MB الحد الأقصى)
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    if (file.size > maxSize) {
+    if (file.size > MAX_FILE_SIZE) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
       alert(`❌ حجم الفيديو كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: 100 ميجابايت`);
       return;
@@ -284,9 +315,9 @@ export default function VideoManager({
           <p className="text-gray-500 mb-4">ابدأ بإضافة فيديو جديد لعرضه هنا</p>
           <button
             onClick={() => setIsAddingVideo(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mx-auto"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-5 h-5" />
             إضافة فيديو
           </button>
         </div>
@@ -370,26 +401,16 @@ export default function VideoManager({
                 <div className="flex items-center gap-2">
                   <FileVideo className="w-5 h-5 text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">
-                    فيديو {index + 1}
+                    {editingIndex !== null ? 'تعديل الفيديو' : 'عرض الفيديو'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                   <button
-                    onClick={() => setEditingIndex(editingIndex === index ? null : index)}
-                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                    title="تعديل"
-                    aria-label="تعديل الفيديو"
+                    onClick={() => setEditingIndex(null)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                    title="إغلاق"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteVideo(index)}
-                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                    title="حذف"
-                  >
-                    <Trash2 className="w-4 h-4" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -415,7 +436,7 @@ export default function VideoManager({
                         placeholder="https://www.youtube.com/watch?v=..."
                       />
                     </div>
-
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         عنوان الفيديو
@@ -458,9 +479,9 @@ export default function VideoManager({
                       <div className="flex items-center gap-4">
                         {video.thumbnail && (
                           <div className="w-20 h-12 rounded-md overflow-hidden border">
-                            <img
-                              src={video.thumbnail}
-                              alt="صورة مصغرة"
+                            <img 
+                              src={video.thumbnail} 
+                              alt="صورة مصغرة" 
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -564,20 +585,22 @@ export default function VideoManager({
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* زر إضافة فيديو جديد */}
-      {!isAddingVideo && (
-        <div className="text-center">
-          <button
-            onClick={() => setIsAddingVideo(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Upload className="w-5 h-5" />
-            إضافة فيديو جديد
-          </button>
+          {/* زر إضافة فيديو جديد */}
+          <div className="text-center mt-8">
+            <button
+              onClick={() => {
+                setIsAddingVideo(true);
+                setNewVideo({ url: '', desc: '' });
+                setUploadMethod('youtube');
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mx-auto"
+            >
+              <Upload className="w-5 h-5" />
+              إضافة فيديو جديد
+            </button>
+          </div>
         </div>
       )}
 
@@ -697,30 +720,30 @@ export default function VideoManager({
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors flex flex-col items-center gap-2 text-gray-600 hover:text-green-600 disabled:opacity-50"
+                  aria-label={isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
                 >
-                  <FileVideo className="w-8 h-8" />
+                  <Upload className="w-8 h-8" />
                   <span className="font-medium">
                     {isUploading ? 'جاري الرفع...' : 'اختر ملف فيديو'}
                   </span>
                   <span className="text-sm">MP4, WebM, OGG (حد أقصى 100MB)</span>
                 </button>
-
-                {isUploading && (
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>جاري الرفع...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                        aria-label={`تقدم الرفع ${uploadProgress}%`}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
+              {isUploading && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>جاري الرفع...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                      aria-label={`تقدم الرفع ${uploadProgress}%`}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -760,9 +783,9 @@ export default function VideoManager({
             <div className="flex items-center gap-4">
               {newVideo.thumbnail && (
                 <div className="w-20 h-12 rounded-md overflow-hidden border">
-                  <img
-                    src={newVideo.thumbnail}
-                    alt="صورة مصغرة"
+                  <img 
+                    src={newVideo.thumbnail} 
+                    alt="صورة مصغرة" 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -799,24 +822,26 @@ export default function VideoManager({
           {/* أزرار الإجراءات */}
           <div className="flex gap-3 mt-6">
             <button
-              onClick={handleAddVideo}
-              disabled={!newVideo.url.trim() || isUploading}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              إضافة الفيديو
-            </button>
-            <button
               onClick={() => {
                 setIsAddingVideo(false);
                 setNewVideo({ url: '', desc: '' });
               }}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
             >
               إلغاء
+            </button>
+            <button
+              onClick={editingIndex !== null ? handleSaveEdit : handleAddVideo}
+              disabled={isUploading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {editingIndex !== null ? 'حفظ التعديلات' : 'إضافة الفيديو'}
             </button>
           </div>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default VideoManager;
