@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,30 +25,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // إعدادات Geidea الحقيقية
+    // إعدادات Geidea حسب الوثائق الرسمية
     const geideaConfig = {
-      merchantId: process.env.GEIDEA_MERCHANT_ID,
-      apiKey: process.env.GEIDEA_API_KEY,
-      baseUrl: process.env.GEIDEA_BASE_URL || 'https://api.geidea.net',
-      environment: process.env.GEIDEA_ENVIRONMENT || 'sandbox'
+      merchantPublicKey: process.env.GEIDEA_MERCHANT_PUBLIC_KEY,
+      apiPassword: process.env.GEIDEA_API_PASSWORD,
+      baseUrl: process.env.GEIDEA_BASE_URL || 'https://api.merchant.geidea.net',
+      environment: process.env.GEIDEA_ENVIRONMENT || 'production'
     };
 
     // التحقق من وجود الإعدادات المطلوبة
-    if (!geideaConfig.merchantId || !geideaConfig.apiKey) {
+    if (!geideaConfig.merchantPublicKey || !geideaConfig.apiPassword) {
       console.error('❌ [Geidea API] Missing required configuration:', {
-        hasMerchantId: !!geideaConfig.merchantId,
-        hasApiKey: !!geideaConfig.apiKey
+        hasMerchantPublicKey: !!geideaConfig.merchantPublicKey,
+        hasApiPassword: !!geideaConfig.apiPassword
       });
       
       return NextResponse.json(
         { 
           error: 'Geidea configuration missing',
-          details: 'GEIDEA_MERCHANT_ID and GEIDEA_API_KEY environment variables are required. Please contact Geidea support to get your credentials.',
+          details: 'GEIDEA_MERCHANT_PUBLIC_KEY and GEIDEA_API_PASSWORD environment variables are required.',
           instructions: [
-            '1. Contact Geidea support to get your merchant credentials',
-            '2. Set GEIDEA_MERCHANT_ID environment variable',
-            '3. Set GEIDEA_API_KEY environment variable',
-            '4. Optionally set GEIDEA_BASE_URL and GEIDEA_ENVIRONMENT'
+            '1. Set GEIDEA_MERCHANT_PUBLIC_KEY environment variable (your merchant public key)',
+            '2. Set GEIDEA_API_PASSWORD environment variable (your API password)',
+            '3. Optionally set GEIDEA_BASE_URL and GEIDEA_ENVIRONMENT'
           ]
         },
         { status: 500 }
@@ -55,41 +55,43 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔧 [Geidea API] Configuration loaded:', {
-      hasMerchantId: !!geideaConfig.merchantId,
-      hasApiKey: !!geideaConfig.apiKey,
+      hasMerchantPublicKey: !!geideaConfig.merchantPublicKey,
+      hasApiPassword: !!geideaConfig.apiPassword,
       environment: geideaConfig.environment,
       baseUrl: geideaConfig.baseUrl
     });
 
-    // إنشاء payload للدفع حسب وثائق Geidea
+    // إنشاء timestamp للتوقيع
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    
+    // إنشاء signature حسب وثائق Geidea
+    const signature = generateSignature(
+      geideaConfig.merchantPublicKey,
+      amount,
+      currency,
+      orderId,
+      geideaConfig.apiPassword,
+      timestamp
+    );
+
+    // إنشاء payload للدفع حسب وثائق Geidea HPP Checkout v2
     const paymentPayload = {
-      merchantId: geideaConfig.merchantId,
       amount: amount,
       currency: currency,
-      orderId: orderId,
-      customerEmail: customerEmail,
-      customerName: customerName || 'Customer',
+      merchantReferenceId: orderId,
+      timestamp: timestamp,
+      signature: signature,
       callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/api/geidea/callback`,
-      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/player/payment-success`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/player/payment-cancelled`,
-      merchantReference: orderId,
       language: 'ar',
-      country: 'SA',
-      // إعدادات إضافية لـ Geidea
-      paymentMethod: 'ALL',
-      showCustomerInfo: true,
-      showBillingInfo: true,
-      showShippingInfo: false
+      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/player/payment-success`
     };
 
-    // تحديد API endpoint الصحيح حسب بيئة Geidea
-    const apiEndpoint = geideaConfig.environment === 'production' 
-      ? `${geideaConfig.baseUrl}/api/payment/init`
-      : `${geideaConfig.baseUrl}/api/payment/init`; // نفس endpoint للاختبار والإنتاج
+    // تحديد API endpoint الصحيح حسب وثائق Geidea
+    const apiEndpoint = `${geideaConfig.baseUrl}/payment-intent/api/v2/direct/session`;
 
     console.log('📤 [Geidea API] Sending request to Geidea:', {
       url: apiEndpoint,
-      merchantId: geideaConfig.merchantId,
+      merchantPublicKey: geideaConfig.merchantPublicKey,
       orderId: orderId,
       amount: amount,
       currency: currency,
@@ -97,15 +99,15 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      // إرسال الطلب إلى Geidea مع headers صحيحة
+      // إرسال الطلب إلى Geidea مع Basic Authentication حسب الوثائق
+      const authString = Buffer.from(`${geideaConfig.merchantPublicKey}:${geideaConfig.apiPassword}`).toString('base64');
+      
       const geideaResponse = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${geideaConfig.apiKey}`,
-          'Accept': 'application/json',
-          'User-Agent': 'El7lm-Payment-Integration/1.0',
-          'X-Merchant-ID': geideaConfig.merchantId
+          'Authorization': `Basic ${authString}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify(paymentPayload)
       });
@@ -131,30 +133,45 @@ export async function POST(request: NextRequest) {
       }
 
       const geideaData = await geideaResponse.json();
-
+      
       console.log('✅ [Geidea API] Payment session created successfully:', {
         orderId: orderId,
-        sessionId: geideaData.sessionId || geideaData.id,
-        status: geideaData.status
+        sessionId: geideaData.session?.id,
+        responseCode: geideaData.responseCode,
+        responseMessage: geideaData.responseMessage
       });
+
+      // التحقق من نجاح الاستجابة
+      if (geideaData.responseCode !== "000" || geideaData.detailedResponseCode !== "000") {
+        console.error('❌ [Geidea API] Error in response:', geideaData);
+        return NextResponse.json(
+          { 
+            error: 'Geidea API error',
+            details: geideaData.detailedResponseMessage || geideaData.responseMessage,
+            responseCode: geideaData.responseCode,
+            detailedResponseCode: geideaData.detailedResponseCode
+          },
+          { status: 400 }
+        );
+      }
 
       // إرجاع البيانات المطلوبة للعميل
       return NextResponse.json({
         success: true,
-        sessionId: geideaData.sessionId || geideaData.id,
-        paymentUrl: geideaData.paymentUrl || geideaData.url,
+        sessionId: geideaData.session?.id,
         orderId: orderId,
         amount: amount,
         currency: currency,
-        status: geideaData.status || 'created',
-        geideaData: geideaData
+        status: 'created',
+        responseCode: geideaData.responseCode,
+        responseMessage: geideaData.responseMessage
       });
 
     } catch (fetchError) {
       console.error('❌ [Geidea API] Fetch error:', fetchError);
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Geidea API connection failed',
           details: fetchError instanceof Error ? fetchError.message : 'Unknown fetch error',
           troubleshooting: [
@@ -178,6 +195,27 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// دالة إنشاء التوقيع حسب وثائق Geidea
+function generateSignature(
+  merchantPublicKey: string,
+  amount: number,
+  currency: string,
+  merchantReferenceId: string,
+  apiPassword: string,
+  timestamp: string
+): string {
+  // تنسيق المبلغ بمنزلتين عشريتين
+  const amountStr = amount.toFixed(2);
+  
+  // إنشاء البيانات للتوقيع
+  const data = `${merchantPublicKey}${amountStr}${currency}${merchantReferenceId}${timestamp}`;
+  
+  // إنشاء التوقيع باستخدام HMAC-SHA256
+  const hash = crypto.createHmac('sha256', apiPassword).update(data).digest('base64');
+  
+  return hash;
 }
 
 // دعم OPTIONS للـ CORS
