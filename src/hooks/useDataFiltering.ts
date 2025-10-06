@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 interface FilterOption {
   key: string;
@@ -21,26 +21,26 @@ interface UseDataFilteringOptions<T> {
 interface UseDataFilteringReturn<T> {
   // Filtered and sorted data
   filteredData: T[];
-  
+
   // Filter state
   filters: FilterOption[];
   searchTerm: string;
   sortOption: SortOption | null;
-  
+
   // Filter controls
   addFilter: (filter: FilterOption) => void;
   removeFilter: (key: string) => void;
   updateFilter: (key: string, value: any) => void;
   clearFilters: () => void;
-  
+
   // Search controls
   setSearchTerm: (term: string) => void;
   clearSearch: () => void;
-  
+
   // Sort controls
   setSort: (sort: SortOption) => void;
   clearSort: () => void;
-  
+
   // Computed values
   hasActiveFilters: boolean;
   hasSearchTerm: boolean;
@@ -65,7 +65,7 @@ export const useDataFiltering = <T extends Record<string, any>>(
 
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
+
   // Debounce search term
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -162,9 +162,9 @@ export const useDataFiltering = <T extends Record<string, any>>(
       result.sort((a, b) => {
         const aValue = a[sortOption.key];
         const bValue = b[sortOption.key];
-        
+
         if (aValue === bValue) return 0;
-        
+
         const comparison = aValue < bValue ? -1 : 1;
         return sortOption.direction === 'asc' ? comparison : -comparison;
       });
@@ -182,26 +182,26 @@ export const useDataFiltering = <T extends Record<string, any>>(
   return {
     // Filtered and sorted data
     filteredData,
-    
+
     // Filter state
     filters,
     searchTerm,
     sortOption,
-    
+
     // Filter controls
     addFilter,
     removeFilter,
     updateFilter,
     clearFilters,
-    
+
     // Search controls
     setSearchTerm,
     clearSearch,
-    
+
     // Sort controls
     setSort,
     clearSort,
-    
+
     // Computed values
     hasActiveFilters,
     hasSearchTerm,

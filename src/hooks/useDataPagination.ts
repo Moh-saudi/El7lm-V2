@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 interface UseDataPaginationOptions {
   initialPage?: number;
@@ -11,23 +11,23 @@ interface UseDataPaginationReturn<T> {
   paginatedData: T[];
   totalItems: number;
   totalPages: number;
-  
+
   // Pagination state
   currentPage: number;
   itemsPerPage: number;
-  
+
   // Pagination controls
   goToPage: (page: number) => void;
   nextPage: () => void;
   previousPage: () => void;
   setItemsPerPage: (itemsPerPage: number) => void;
-  
+
   // Computed values
   startIndex: number;
   endIndex: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
-  
+
   // Utility functions
   resetPagination: () => void;
 }
@@ -50,7 +50,7 @@ export const useDataPagination = <T>(
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  
+
   const hasNextPage = currentPage < totalPages;
   const hasPreviousPage = currentPage > 1;
 
@@ -93,23 +93,23 @@ export const useDataPagination = <T>(
     paginatedData,
     totalItems,
     totalPages,
-    
+
     // Pagination state
     currentPage,
     itemsPerPage,
-    
+
     // Pagination controls
     goToPage,
     nextPage,
     previousPage,
     setItemsPerPage: handleSetItemsPerPage,
-    
+
     // Computed values
     startIndex,
     endIndex,
     hasNextPage,
     hasPreviousPage,
-    
+
     // Utility functions
     resetPagination
   };

@@ -1,6 +1,9 @@
 'use client';
 
+import EnhancedPagination from '@/components/admin/EnhancedPagination';
+import ErrorDisplay from '@/components/admin/ErrorDisplay';
 import LoadingSpinner from '@/components/admin/LoadingSpinner';
+import MobileTable from '@/components/admin/MobileTable';
 import TableLoadingSkeleton from '@/components/admin/TableLoadingSkeleton';
 import UserDetailsModal from '@/components/admin/UserDetailsModal';
 import {
@@ -39,6 +42,9 @@ import {
     TabsList,
     TabsTrigger
 } from '@/components/ui/tabs';
+import { useDataFiltering } from '@/hooks/useDataFiltering';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { COUNTRIES_DATA } from '@/lib/cities-data';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
@@ -76,13 +82,9 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
-import ErrorDisplay from '@/components/admin/ErrorDisplay';
-import MobileTable from '@/components/admin/MobileTable';
-import VirtualTable from '@/components/admin/VirtualTable';
-import EnhancedPagination from '@/components/admin/EnhancedPagination';
-import { useDataPagination } from '@/hooks/useDataPagination';
-import { useDataFiltering } from '@/hooks/useDataFiltering';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import ConnectionStatus from '@/components/admin/ConnectionStatus';
+import RealtimeNotifications from '@/components/admin/RealtimeNotifications';
 
 // Types
 interface UserBase {
@@ -162,7 +164,15 @@ export default function UsersManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+    timestamp: Date;
+    read: boolean;
+  }>>([]);
+
   // Performance hooks
   const {
     filteredData: filteredUsers,
@@ -188,6 +198,58 @@ export default function UsersManagement() {
     initialItemsPerPage: 25,
     itemsPerPageOptions: [10, 25, 50, 100]
   });
+
+  // Real-time updates
+  const {
+    isConnected,
+    lastUpdate,
+    error: connectionError,
+    reconnect
+  } = useRealtimeUpdates(
+    query(collection(db, 'users')),
+    {
+      enabled: true,
+      onUpdate: (data) => {
+        // Update users data in real-time
+        setUsers(prevUsers => {
+          const updatedUsers = [...prevUsers];
+          data.forEach(newUser => {
+            const existingIndex = updatedUsers.findIndex(u => u.id === newUser.id);
+            if (existingIndex >= 0) {
+              updatedUsers[existingIndex] = newUser;
+            } else {
+              updatedUsers.push(newUser);
+            }
+          });
+          return updatedUsers;
+        });
+
+        // Add notification for new users
+        if (data.length > 0) {
+          const newNotification = {
+            id: `user_update_${Date.now()}`,
+            type: 'info' as const,
+            title: 'تحديث المستخدمين',
+            message: `تم تحديث ${data.length} مستخدم`,
+            timestamp: new Date(),
+            read: false
+          };
+          setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
+        }
+      },
+      onError: (error) => {
+        const errorNotification = {
+          id: `connection_error_${Date.now()}`,
+          type: 'error' as const,
+          title: 'خطأ في الاتصال',
+          message: 'فقدان الاتصال مع قاعدة البيانات',
+          timestamp: new Date(),
+          read: false
+        };
+        setNotifications(prev => [errorNotification, ...prev.slice(0, 9)]);
+      }
+    }
+  );
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [parentFilter, setParentFilter] = useState<string>('all');
@@ -195,6 +257,23 @@ export default function UsersManagement() {
     countryId: string;
     cityId: string;
   }>({ countryId: '', cityId: '' });
+
+  // Notification handlers
+  const handleMarkNotificationAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(notification => 
+        notification.id === id 
+          ? { ...notification, read: true }
+          : notification
+      )
+    );
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications(prev => 
+      prev.map(notification => ({ ...notification, read: true }))
+    );
+  };
   const [availableRegions, setAvailableRegions] = useState<{
     countries: typeof COUNTRIES_DATA;
     userRegions: { countryId: string; cityId: string; }[];
@@ -1329,7 +1408,21 @@ export default function UsersManagement() {
             <h1 className="text-2xl font-bold text-gray-900">إدارة المستخدمين</h1>
             <p className="text-gray-600">إدارة جميع أنواع الحسابات في النظام</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
+            <ConnectionStatus
+              isConnected={isConnected}
+              lastUpdate={lastUpdate}
+              error={connectionError}
+              onReconnect={reconnect}
+              showLastUpdate={true}
+            />
+            <RealtimeNotifications
+              notifications={notifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onClearAll={handleClearAllNotifications}
+              maxNotifications={5}
+            />
+            <div className="flex gap-2">
               <Button variant="outline" onClick={loadUsers}>
               <RefreshCcw className="w-4 h-4 ml-2" />
               تحديث
