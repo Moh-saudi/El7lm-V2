@@ -1,6 +1,8 @@
 'use client';
 
 import UserDetailsModal from '@/components/admin/UserDetailsModal';
+import LoadingSpinner from '@/components/admin/LoadingSpinner';
+import TableLoadingSkeleton from '@/components/admin/TableLoadingSkeleton';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -148,6 +150,7 @@ export default function UsersManagement() {
   // States
   const [users, setUsers] = useState<(Player | Entity)[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
@@ -573,6 +576,7 @@ export default function UsersManagement() {
       toast.error('حدث خطأ أثناء تحميل المستخدمين.');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -1162,6 +1166,16 @@ export default function UsersManagement() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (initialLoading) {
+    return (
+      <LoadingSpinner 
+        fullScreen 
+        text="جاري تحميل بيانات المستخدمين..." 
+        size="lg" 
+      />
     );
   }
 
@@ -1775,8 +1789,11 @@ export default function UsersManagement() {
 
         {/* Users Table */}
         <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0 overflow-x-auto">
-          <Table>
-            <TableHeader>
+          {loading ? (
+            <TableLoadingSkeleton rows={10} columns={7} />
+          ) : (
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
                   <input
@@ -1966,10 +1983,11 @@ export default function UsersManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          )}
 
-          {filteredUsers.length === 0 && (
+          {!loading && filteredUsers.length === 0 && (
             <div className="text-center py-12">
               <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد نتائج</h3>

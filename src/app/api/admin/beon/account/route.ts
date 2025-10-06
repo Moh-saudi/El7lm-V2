@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BEON_CONFIG_DOC_ID = 'beon_config';
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const config = configDoc.data();
-    
+
     if (!config.apiKey || !config.senderId) {
       return NextResponse.json(
         {

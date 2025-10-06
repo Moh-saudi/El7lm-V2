@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { collection, getDocs } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Get ads collection
     const adsRef = collection(db, 'ads');
     const snapshot = await getDocs(adsRef);
-    
+
     const totalAds = snapshot.size;
     let activeAds = 0;
     let totalViews = 0;
@@ -18,15 +18,15 @@ export async function GET(request: NextRequest) {
     // Process each ad to get detailed stats
     snapshot.forEach((doc) => {
       const ad = doc.data();
-      
+
       if (ad.isActive) {
         activeAds++;
       }
-      
+
       if (ad.views) {
         totalViews += ad.views;
       }
-      
+
       if (ad.clicks) {
         totalClicks += ad.clicks;
       }

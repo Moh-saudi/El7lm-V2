@@ -20,6 +20,8 @@ import {
     Users
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import LoadingSpinner from '@/components/admin/LoadingSpinner';
+import CardLoadingSkeleton from '@/components/admin/CardLoadingSkeleton';
 
 // أنواع البيانات
 interface FinancialMetrics {
@@ -110,6 +112,7 @@ export default function FinancialReports() {
 
   // حالات التحكم
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
@@ -258,6 +261,7 @@ export default function FinancialReports() {
       console.error('خطأ في تحميل البيانات المالية:', error);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -535,6 +539,16 @@ export default function FinancialReports() {
     );
   }
 
+  if (initialLoading) {
+    return (
+      <LoadingSpinner 
+        fullScreen 
+        text="جاري تحميل التقارير المالية..." 
+        size="lg" 
+      />
+    );
+  }
+
   return (
     <div className="container mx-auto p-8">
           {/* Header */}
@@ -570,7 +584,11 @@ export default function FinancialReports() {
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {loading ? (
+              <CardLoadingSkeleton count={4} />
+            ) : (
+              <>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">إجمالي الإيرادات</p>
@@ -621,6 +639,8 @@ export default function FinancialReports() {
                 </div>
               </div>
             </div>
+              </>
+            )}
           </div>
 
           {/* Currency Performance */}

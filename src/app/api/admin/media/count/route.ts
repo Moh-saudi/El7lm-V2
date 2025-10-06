@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { collection, getDocs } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Get videos collection
     const videosRef = collection(db, 'videos');
     const videosSnapshot = await getDocs(videosRef);
-    
+
     const totalVideos = videosSnapshot.size;
     let pendingVideos = 0;
     let approvedVideos = 0;
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Process each video to get status counts
     videosSnapshot.forEach((doc) => {
       const video = doc.data();
-      
+
       switch (video.status) {
         case 'pending':
           pendingVideos++;
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
       imagesSnapshot.forEach((doc) => {
         const image = doc.data();
-        
+
         switch (image.status) {
           case 'pending':
             pendingImages++;

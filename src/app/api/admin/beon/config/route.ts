@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BEON_CONFIG_DOC_ID = 'beon_config';
 

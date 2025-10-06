@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Edit, Eye, FileText, Plus, Save, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ContentItem {
   id: string;
@@ -51,13 +51,13 @@ export default function AdminContentPage() {
 
   const handleSave = async () => {
     if (!selectedItem) return;
-    
+
     setLoading(true);
     try {
       const isNew = !selectedItem.id || selectedItem.id.startsWith('temp_');
       const url = '/api/admin/content';
       const method = isNew ? 'POST' : 'PUT';
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -72,7 +72,7 @@ export default function AdminContentPage() {
         if (isNew) {
           setContentItems(prev => [result.data, ...prev]);
         } else {
-          setContentItems(prev => 
+          setContentItems(prev =>
             prev.map(item => item.id === selectedItem.id ? result.data : item)
           );
         }

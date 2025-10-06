@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,15 +47,15 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < longEmails.length; i += batchSize) {
       const batch = longEmails.slice(i, i + batchSize);
-      
+
       for (const userDoc of batch) {
         try {
           const userData = userDoc.data();
           const oldEmail = userData.email;
-          
+
           // Generate new shorter email
           const newEmail = `user_${userDoc.id}@el7lm.com`;
-          
+
           // Update user document
           await updateDoc(doc(db, 'users', userDoc.id), {
             email: newEmail,
@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
 
           results.successful++;
           console.log(`✅ [Admin API] Migrated email for user ${userDoc.id}: ${oldEmail} -> ${newEmail}`);
-          
+
         } catch (error) {
           results.failed++;
           const errorMsg = `Failed to migrate user ${userDoc.id}: ${error instanceof Error ? error.message : 'Unknown error'}`;
           results.errors.push(errorMsg);
           console.error(`❌ [Admin API] ${errorMsg}`);
         }
-        
+
         results.totalProcessed++;
       }
 
