@@ -199,25 +199,25 @@ export default function AdminDashboardPage() {
   const quickStats = [
     {
       title: "إجمالي المستخدمين",
-      value: userStats?.totalUsers.toString() || "0",
+      value: userStats?.totalUsers?.toString() || "0",
       icon: Users,
       color: "text-blue-600"
     },
     {
       title: "الإعلانات النشطة",
-      value: adStats?.activeAds.toString() || "0",
+      value: adStats?.activeAds?.toString() || "0",
       icon: Megaphone,
       color: "text-orange-600"
     },
     {
       title: "الفيديوهات",
-      value: mediaStats?.totalVideos.toString() || "0",
+      value: mediaStats?.totalVideos?.toString() || "0",
       icon: Video,
       color: "text-green-600"
     },
     {
       title: "التقارير",
-      value: messageStats?.totalSent.toString() || "0",
+      value: messageStats?.totalSent?.toString() || "0",
       icon: BarChart3,
       color: "text-purple-600"
     }
