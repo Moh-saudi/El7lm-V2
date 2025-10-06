@@ -8,7 +8,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import {
     Activity,
     Clock,
@@ -69,18 +69,18 @@ export default function UsersManagement() {
       try {
         setLoading(true);
         console.log('🔄 بدء تحميل بيانات المستخدمين...');
-        
+
         const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
         const allUsers: User[] = [];
 
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-            
+
             // جلب البيانات بدون ترتيب أولاً لتجنب مشاكل الفهرس
             const snapshot = await getDocs(collection(db, collectionName));
             console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
-            
+
             snapshot.forEach(doc => {
               const data = doc.data();
               const userData: User = {
@@ -135,7 +135,7 @@ export default function UsersManagement() {
 
         console.log(`📊 إجمالي المستخدمين المحملين: ${allUsers.length}`);
         setUsers(allUsers);
-        
+
         if (allUsers.length === 0) {
           toast.warning('لم يتم العثور على أي مستخدمين. تحقق من إعدادات قاعدة البيانات.');
         } else {
@@ -729,9 +729,9 @@ export default function UsersManagement() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-gray-700">
-                    عرض {startIndex + 1} إلى {Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length)} من {filteredAndSortedUsers.length} نتيجة
+                <div className="flex items-center justify-between mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                  <div className="text-sm font-medium text-blue-800 bg-white px-3 py-2 rounded-md shadow-sm border border-blue-200">
+                    عرض <span className="font-bold text-blue-900">{startIndex + 1}</span> إلى <span className="font-bold text-blue-900">{Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length)}</span> من <span className="font-bold text-blue-900">{filteredAndSortedUsers.length}</span> نتيجة
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -739,6 +739,7 @@ export default function UsersManagement() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
+                      className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                       السابق
                     </Button>
@@ -750,6 +751,10 @@ export default function UsersManagement() {
                           variant={currentPage === page ? "default" : "outline"}
                           size="sm"
                           onClick={() => setCurrentPage(page)}
+                          className={currentPage === page 
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg" 
+                            : "bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800 shadow-sm"
+                          }
                         >
                           {page}
                         </Button>
@@ -760,6 +765,7 @@ export default function UsersManagement() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
+                      className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                       التالي
                     </Button>
