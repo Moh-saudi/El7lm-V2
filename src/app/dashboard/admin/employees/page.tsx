@@ -1,71 +1,65 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, setDoc, where, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { Employee, EmployeeRole, RolePermissions, EmployeeLocation } from '@/types/employees';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-  Users,
-  UserPlus,
-  Search,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Building2,
-  Briefcase,
-  Mail,
-  Phone,
-  MapPin,
-  AlertCircle,
-  X,
-  Key,
-  Copy,
-  Check,
-  Loader2,
-  MessageSquare
-} from 'lucide-react';
-import { 
-  createUserWithEmailAndPassword, 
-  sendPasswordResetEmail,
-  getAuth 
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
-import { toast } from 'sonner';
-import { useAuth } from '@/lib/firebase/auth-provider';
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import AdminHeader from '@/components/layout/AdminHeader';
-import AdminFooter from '@/components/layout/AdminFooter';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { auth, db } from '@/lib/firebase/config';
+import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
+import {
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail
+} from 'firebase/auth';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import {
+    AlertCircle,
+    Briefcase,
+    Building2,
+    Check,
+    CheckCircle,
+    Copy,
+    Edit,
+    Key,
+    Loader2,
+    Mail,
+    MessageSquare,
+    Phone,
+    Search,
+    Trash2,
+    UserPlus,
+    Users,
+    X
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 // الصلاحيات الافتراضية لكل دور وظيفي
 const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
@@ -317,7 +311,7 @@ const COUNTRIES_DATA = [
 
 export default function EmployeesManagement() {
   const { user, userData } = useAuth();
-  
+
   // التحقق من صلاحيات المستخدم
   const isSystemAdmin = userData?.role === 'admin';
   const isSupervisor = userData?.role === 'supervisor';
@@ -327,8 +321,8 @@ export default function EmployeesManagement() {
     if (isSystemAdmin) return true; // مدير النظام يمكنه تعديل أي موظف
     if (isSupervisor) {
       // المشرف يمكنه تعديل الموظفين في نفس المناطق فقط
-      return employee.locations?.some(loc => 
-        userData?.permissions?.allowedLocations?.some(allowed => 
+      return employee.locations?.some(loc =>
+        userData?.permissions?.allowedLocations?.some(allowed =>
           allowed.countryId === loc.countryId && allowed.cityId === loc.cityId
         )
       );
@@ -367,7 +361,7 @@ export default function EmployeesManagement() {
           <Edit className="w-4 h-4" />
         </Button>
       )}
-      
+
       {canDeleteEmployee(employee) && (
         <Button
           variant="ghost"
@@ -501,8 +495,8 @@ export default function EmployeesManagement() {
         <Select
           value={newEmployee.role || ''}
           onValueChange={(value: EmployeeRole) => {
-            setNewEmployee(prev => ({ 
-              ...prev, 
+            setNewEmployee(prev => ({
+              ...prev,
               role: value,
               permissions: DEFAULT_PERMISSIONS[value]
             }));
@@ -600,7 +594,7 @@ export default function EmployeesManagement() {
       setLoading(true);
       const employeesRef = collection(db, 'employees');
       const employeesSnap = await getDocs(employeesRef);
-      
+
       const employeesList: Employee[] = [];
       employeesSnap.forEach(doc => {
         employeesList.push({ id: doc.id, ...doc.data() } as Employee);
@@ -637,8 +631,8 @@ export default function EmployeesManagement() {
     const employeeName = employee.name || '';
     const employeeEmail = employee.email || '';
     const employeeDepartment = employee.department || '';
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employeeEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employeeDepartment.toLowerCase().includes(searchTerm.toLowerCase());
@@ -651,7 +645,7 @@ export default function EmployeesManagement() {
   // تحديث مكون اختيار المناطق
   const LocationSelector = () => {
     const selectedCountryData = countries.find(c => c.id === selectedCountry);
-    
+
     return (
       <div className="space-y-4">
         <div className="grid gap-2">
@@ -727,7 +721,7 @@ export default function EmployeesManagement() {
               {selectedCities.map(cityId => {
                 const city = selectedCountryData?.cities.find(c => c.id === cityId);
                 if (!city) return null;
-                
+
                 return (
                   <Badge key={cityId} variant="secondary" className="flex items-center gap-1">
                     {city.name}
@@ -754,19 +748,19 @@ export default function EmployeesManagement() {
     const length = 12;
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let password = "";
-    
+
     // التأكد من وجود حرف كبير على الأقل
     password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
-    
+
     // التأكد من وجود حرف صغير على الأقل
     password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)];
-    
+
     // التأكد من وجود رقم على الأقل
     password += "0123456789"[Math.floor(Math.random() * 10)];
-    
+
     // التأكد من وجود رمز خاص على الأقل
     password += "!@#$%^&*"[Math.floor(Math.random() * 8)];
-    
+
     // إكمال باقي الأحرف عشوائياً
     for (let i = 4; i < length; i++) {
       password += charset[Math.floor(Math.random() * charset.length)];
@@ -828,7 +822,7 @@ export default function EmployeesManagement() {
         where('email', '==', newEmployee.email)
       );
       const emailQuerySnapshot = await getDocs(emailQuery);
-      
+
       if (!editingEmployee && !emailQuerySnapshot.empty) {
         toast.error('البريد الإلكتروني مستخدم بالفعل');
         return;
@@ -840,7 +834,7 @@ export default function EmployeesManagement() {
         try {
           // Generate strong password
           const tempPassword = generateStrongPassword();
-          
+
           // Prepare employee data first
           const employeeData: Partial<Employee> = {
             name: newEmployee.name,
@@ -873,7 +867,7 @@ export default function EmployeesManagement() {
               newEmployee.email,
               tempPassword
             );
-            
+
             authUserId = userCredential.user.uid;
 
             // Update document with auth ID
@@ -895,7 +889,7 @@ export default function EmployeesManagement() {
 
           } catch (authError: any) {
             console.error('Firebase Auth Error:', authError);
-            
+
             // If auth creation fails, delete the employee document
             await deleteDoc(employeeRef);
 
@@ -906,7 +900,7 @@ export default function EmployeesManagement() {
                 where('email', '==', newEmployee.email)
               );
               const existingUserSnapshot = await getDocs(existingUserQuery);
-              
+
               if (existingUserSnapshot.empty) {
                 // Email exists in Auth but not in employees collection
                 toast.error('البريد الإلكتروني مسجل في النظام ولكن غير مرتبط بموظف. يرجى استخدام بريد إلكتروني آخر.');
@@ -972,10 +966,10 @@ export default function EmployeesManagement() {
       });
       setSelectedCountry('');
       setSelectedCities([]);
-      
+
       // Refresh employee list
       loadEmployees();
-      
+
     } catch (error) {
       console.error('Error in handleSaveEmployee:', error);
       toast.error('حدث خطأ غير متوقع');
@@ -1051,7 +1045,7 @@ export default function EmployeesManagement() {
           {/* Send Options */}
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">خيارات إرسال بيانات الدخول</h4>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button
                 variant="outline"
@@ -1110,11 +1104,11 @@ export default function EmployeesManagement() {
 - هذه البيانات سرية، يرجى عدم مشاركتها
 - في حال وجود أي مشكلة، يرجى التواصل مع الدعم الفني
                 `.trim();
-                
+
                 navigator.clipboard.writeText(credentials);
                 setCredentialsCopied(true);
                 toast.success('تم نسخ البيانات إلى الحافظة');
-                
+
                 setTimeout(() => setCredentialsCopied(false), 2000);
               }}
             >
@@ -1179,7 +1173,7 @@ export default function EmployeesManagement() {
           // Note: Deleting Firebase Auth users requires Admin SDK
           // We'll need to implement this through a secure backend function
           toast.info('سيتم تعطيل حساب المصادقة للموظف');
-          
+
           // تحديث حالة الموظف إلى غير نشط
           await updateDoc(doc(db, 'employees', employeeId), {
             isActive: false,
@@ -1194,7 +1188,7 @@ export default function EmployeesManagement() {
       // حذف بيانات الموظف من Firestore
       await deleteDoc(doc(db, 'employees', employeeId));
       toast.success('تم حذف الموظف بنجاح');
-      
+
       loadEmployees();
     } catch (error) {
       console.error('Error deleting employee:', error);
@@ -1256,25 +1250,21 @@ export default function EmployeesManagement() {
 
   return (
     <AccountTypeProtection allowedTypes={['admin']}>
-      <div className="flex flex-col bg-gray-50">
-        <AdminHeader />
-        
-        <main className="flex-1 container mx-auto px-6 py-8">
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">إدارة موظفي الشركة</h1>
             <p className="text-gray-600">إدارة الموظفين وصلاحياتهم في النظام</p>
           </div>
-          {(isSystemAdmin || isSupervisor) && (
-            <Button 
-              onClick={() => setShowAddDialog(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <UserPlus className="w-4 h-4 ml-2" />
-              إضافة موظف
-            </Button>
-          )}
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <UserPlus className="w-4 h-4 ml-2" />
+            إضافة موظف
+          </Button>
         </div>
 
         {/* Stats */}
@@ -1485,7 +1475,7 @@ export default function EmployeesManagement() {
                 أدخل بيانات الموظف وحدد صلاحياته في النظام
               </DialogDescription>
             </DialogHeader>
-            
+
             <EmployeeForm />
 
             <DialogFooter className="gap-2">
@@ -1522,10 +1512,8 @@ export default function EmployeesManagement() {
 
         {/* Credentials Dialog */}
         <CredentialsDialog />
-        </main>
-
-        <AdminFooter />
+        </div>
       </div>
     </AccountTypeProtection>
   );
-} 
+}
