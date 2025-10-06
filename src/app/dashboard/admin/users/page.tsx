@@ -114,10 +114,10 @@ export default function AdminUsersPage() {
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-
+            
             const snapshot = await getDocs(collection(db, collectionName));
             console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
-
+            
             snapshot.forEach(doc => {
               const data = doc.data();
               const userData: User = {
@@ -140,6 +140,33 @@ export default function AdminUsersPage() {
             });
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
+            // محاولة بديلة لجلب البيانات
+            try {
+              const snapshot = await getDocs(collection(db, collectionName));
+              console.log(`🔄 محاولة بديلة: تم جلب ${snapshot.size} مستند من ${collectionName}`);
+              snapshot.forEach(doc => {
+                const data = doc.data();
+                const userData: User = {
+                  id: doc.id,
+                  name: data.name || data.full_name || data.displayName || 'غير محدد',
+                  email: data.email || '',
+                  phone: data.phone || '',
+                  accountType: data.accountType || collectionName.replace(/s$/, '') as any,
+                  isActive: data.isActive !== false,
+                  createdAt: data.createdAt?.toDate() || null,
+                  lastLogin: data.lastLogin?.toDate() || null,
+                  city: data.city || '',
+                  country: data.country || '',
+                  parentAccountId: data.parentAccountId || '',
+                  parentAccountType: data.parentAccountType || '',
+                  isDeleted: data.isDeleted || false,
+                  verificationStatus: data.verificationStatus || 'pending'
+                };
+                allUsers.push(userData);
+              });
+            } catch (retryError) {
+              console.error(`❌ فشل في المحاولة البديلة لـ ${collectionName}:`, retryError);
+            }
           }
         }
 
@@ -595,11 +622,20 @@ export default function AdminUsersPage() {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleBulkAction('activate')}>
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleBulkAction('activate')}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
                       <UserCheck className="h-4 w-4 mr-1" />
                       تفعيل
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleBulkAction('deactivate')}>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleBulkAction('deactivate')}
+                      className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
+                    >
                       <UserX className="h-4 w-4 mr-1" />
                       تعطيل
                     </Button>
@@ -705,13 +741,25 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                            >
                               <KeyRound className="h-4 w-4" />
                             </Button>
                           </div>
