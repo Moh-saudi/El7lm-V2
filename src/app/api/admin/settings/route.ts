@@ -8,12 +8,8 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching admin settings...');
 
-    // Skip Firebase calls during build time or when Firebase is not properly configured
-    if (process.env.NODE_ENV === 'production' &&
-        (!process.env.FIREBASE_PROJECT_ID ||
-         process.env.FIREBASE_PROJECT_ID === 'build_project' ||
-         process.env.FIREBASE_PROJECT_ID === 'fallback_project' ||
-         process.env.NEXT_PHASE === 'phase-production-build')) {
+    // Skip Firebase calls during build time only
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
       console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
       return NextResponse.json({
         success: true,

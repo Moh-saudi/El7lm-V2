@@ -9,7 +9,6 @@ const nextConfig = {
         BEON_OTP_TOKEN: process.env.BEON_OTP_TOKEN,
         BEON_SENDER_NAME: process.env.BEON_SENDER_NAME,
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
-        DISABLE_FIREBASE_DURING_BUILD: 'true',
     },
     // تحسين التعامل مع الأخطاء
     output: 'standalone',

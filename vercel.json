@@ -31,8 +31,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "DISABLE_FIREBASE_DURING_BUILD": "true"
-  }
+  ]
 }

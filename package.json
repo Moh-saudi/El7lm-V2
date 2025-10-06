@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' DISABLE_FIREBASE_DURING_BUILD=true next build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate || echo 'Prisma generate failed, continuing...'",
-    "vercel-build": "NODE_OPTIONS='--max-old-space-size=8192 --max-semi-space-size=128' DISABLE_FIREBASE_DURING_BUILD=true next build"
+    "vercel-build": "NODE_OPTIONS='--max-old-space-size=8192 --max-semi-space-size=128' next build"
   },
   "dependencies": {
     "@mantine/core": "^7.5.0",
