@@ -18,12 +18,12 @@ const CardLoadingSkeleton: React.FC<CardLoadingSkeletonProps> = ({
           {showImage && (
             <div className="w-full h-48 bg-gray-200 rounded-lg mb-4" />
           )}
-          
+
           <div className="space-y-3">
             <div className="h-6 bg-gray-200 rounded w-3/4" />
             <div className="h-4 bg-gray-200 rounded w-full" />
             <div className="h-4 bg-gray-200 rounded w-2/3" />
-            
+
             {showActions && (
               <div className="flex gap-2 pt-4">
                 <div className="h-8 bg-gray-200 rounded w-20" />

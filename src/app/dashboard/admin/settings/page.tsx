@@ -8,8 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Save, RefreshCw, Shield, Database, Mail, Bell } from 'lucide-react';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import ErrorDisplay from '@/components/admin/ErrorDisplay';
 
 export default function AdminSettingsPage() {
+  const { handleError, handleSuccess } = useErrorHandler();
   const [settings, setSettings] = useState({
     siteName: 'El7lm - منصة كرة القدم',
     siteDescription: 'منصة شاملة لإدارة كرة القدم والرياضة',
@@ -23,6 +26,7 @@ export default function AdminSettingsPage() {
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load settings on component mount
   useEffect(() => {
@@ -34,10 +38,14 @@ export default function AdminSettingsPage() {
         if (result.success) {
           setSettings(prev => ({ ...prev, ...result.data }));
         } else {
-          console.error('Failed to load settings:', result.error);
+          throw new Error(result.error || 'فشل في تحميل الإعدادات');
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        const errorResult = handleError(error, {
+          context: 'تحميل الإعدادات',
+          showToast: false
+        });
+        setError(errorResult.message);
       } finally {
         setInitialLoading(false);
       }
@@ -61,13 +69,14 @@ export default function AdminSettingsPage() {
 
       if (result.success) {
         console.log('Settings saved:', result.data);
-        alert('تم حفظ الإعدادات بنجاح');
+        handleSuccess('تم حفظ الإعدادات بنجاح', 'حفظ الإعدادات');
       } else {
         throw new Error(result.error || 'فشل في حفظ الإعدادات');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      alert(`حدث خطأ أثناء حفظ الإعدادات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+      handleError(error, {
+        context: 'حفظ الإعدادات'
+      });
     } finally {
       setLoading(false);
     }
@@ -102,6 +111,18 @@ export default function AdminSettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
       <div className="max-w-4xl mx-auto">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6">
+            <ErrorDisplay
+              error={error}
+              title="خطأ في تحميل الإعدادات"
+              onRetry={() => window.location.reload()}
+              onDismiss={() => setError(null)}
+              variant="destructive"
+            />
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
             <Settings className="w-8 h-8 text-blue-600" />

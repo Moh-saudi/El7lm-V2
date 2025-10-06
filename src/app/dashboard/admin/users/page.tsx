@@ -1,8 +1,8 @@
 'use client';
 
-import UserDetailsModal from '@/components/admin/UserDetailsModal';
 import LoadingSpinner from '@/components/admin/LoadingSpinner';
 import TableLoadingSkeleton from '@/components/admin/TableLoadingSkeleton';
+import UserDetailsModal from '@/components/admin/UserDetailsModal';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -76,6 +76,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import ErrorDisplay from '@/components/admin/ErrorDisplay';
 
 // Types
 interface UserBase {
@@ -136,6 +138,7 @@ interface Entity extends UserBase {
 export default function UsersManagement() {
   const router = useRouter();
   const { user, userData } = useAuth();
+  const { handleError, handleSuccess, handleAsyncError } = useErrorHandler();
   const VISITOR_DETAILS_STORAGE_KEY = 'admin_users_showVisitorDetails';
 
   // Add detailed logging
@@ -151,6 +154,7 @@ export default function UsersManagement() {
   const [users, setUsers] = useState<(Player | Entity)[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
@@ -371,6 +375,7 @@ export default function UsersManagement() {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const collectionsToFetch = [
         'users',
@@ -572,8 +577,11 @@ export default function UsersManagement() {
       updateStats(combinedUsers);
 
     } catch (error) {
-      console.error('Error loading users:', error);
-      toast.error('حدث خطأ أثناء تحميل المستخدمين.');
+      const errorResult = handleError(error, {
+        context: 'تحميل المستخدمين',
+        showToast: false
+      });
+      setError(errorResult.message);
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -775,7 +783,7 @@ export default function UsersManagement() {
         }
       }
 
-      toast.success(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم بنجاح`);
+        handleSuccess(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم بنجاح`, 'تحديث حالة المستخدم');
       // Update UI instantly instead of full reload
       setUsers(prevUsers =>
         prevUsers.map(u =>
@@ -796,10 +804,11 @@ export default function UsersManagement() {
 
       await sendPasswordResetEmail(auth, userEmail);
 
-      toast.success(`تم إرسال رابط إعادة تعيين كلمة المرور إلى ${userName}`);
+        handleSuccess(`تم إرسال رابط إعادة تعيين كلمة المرور إلى ${userName}`, 'إرسال رابط إعادة تعيين كلمة المرور');
     } catch (error) {
-      console.error('Error sending password reset:', error);
-      toast.error('حدث خطأ أثناء إرسال رابط إعادة تعيين كلمة المرور');
+      handleError(error, {
+        context: 'إرسال رابط إعادة تعيين كلمة المرور'
+      });
     }
   };
 
@@ -1171,10 +1180,10 @@ export default function UsersManagement() {
 
   if (initialLoading) {
     return (
-      <LoadingSpinner 
-        fullScreen 
-        text="جاري تحميل بيانات المستخدمين..." 
-        size="lg" 
+      <LoadingSpinner
+        fullScreen
+        text="جاري تحميل بيانات المستخدمين..."
+        size="lg"
       />
     );
   }
@@ -1183,6 +1192,18 @@ export default function UsersManagement() {
     <div className="flex flex-col bg-gray-50">
 
       <main className="flex-1 container mx-auto px-6 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6">
+            <ErrorDisplay
+              error={error}
+              title="خطأ في تحميل البيانات"
+              onRetry={() => loadUsers()}
+              onDismiss={() => setError(null)}
+              variant="destructive"
+            />
+          </div>
+        )}
         {/* Analytics Overview */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
           {/* Users and Visitors KPIs */}

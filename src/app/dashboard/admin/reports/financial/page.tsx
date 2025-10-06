@@ -1,5 +1,7 @@
 'use client';
 
+import CardLoadingSkeleton from '@/components/admin/CardLoadingSkeleton';
+import LoadingSpinner from '@/components/admin/LoadingSpinner';
 import { convertToEGPSync, CURRENCY_RATES, forceUpdateRates } from '@/lib/currency-converter';
 import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
@@ -20,8 +22,6 @@ import {
     Users
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import LoadingSpinner from '@/components/admin/LoadingSpinner';
-import CardLoadingSkeleton from '@/components/admin/CardLoadingSkeleton';
 
 // أنواع البيانات
 interface FinancialMetrics {
@@ -541,10 +541,10 @@ export default function FinancialReports() {
 
   if (initialLoading) {
     return (
-      <LoadingSpinner 
-        fullScreen 
-        text="جاري تحميل التقارير المالية..." 
-        size="lg" 
+      <LoadingSpinner
+        fullScreen
+        text="جاري تحميل التقارير المالية..."
+        size="lg"
       />
     );
   }

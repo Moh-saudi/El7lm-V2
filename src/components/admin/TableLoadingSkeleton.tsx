@@ -23,7 +23,7 @@ const TableLoadingSkeleton: React.FC<TableLoadingSkeletonProps> = ({
           ))}
         </div>
       )}
-      
+
       <div className="divide-y">
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-4 gap-4 p-4">
