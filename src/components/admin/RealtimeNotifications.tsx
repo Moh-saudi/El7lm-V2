@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, AlertCircle, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { AlertCircle, Bell, CheckCircle, Info, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface Notification {
   id: string;
@@ -74,9 +74,9 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
 
     if (seconds < 60) return 'الآن';
     if (minutes < 60) return `منذ ${minutes} دقيقة`;
-    return timestamp.toLocaleTimeString('ar-EG', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return timestamp.toLocaleTimeString('ar-EG', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -95,8 +95,8 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <Badge 
-            variant="destructive" 
+          <Badge
+            variant="destructive"
             className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
           >
             {unreadCount > 9 ? '9+' : unreadCount}

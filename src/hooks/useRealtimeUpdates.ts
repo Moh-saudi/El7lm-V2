@@ -1,6 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { onSnapshot, Unsubscribe } from 'firebase/firestore';
-import { Query, DocumentData } from 'firebase/firestore';
+import { DocumentData, onSnapshot, Query, Unsubscribe } from 'firebase/firestore';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface UseRealtimeUpdatesOptions {
   enabled?: boolean;
@@ -60,12 +59,12 @@ export const useRealtimeUpdates = (
         (snapshot) => {
           isConnectedRef.current = true;
           errorRef.current = null;
-          
+
           const data = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           }));
-          
+
           handleUpdate(data);
         },
         (error) => {
@@ -83,7 +82,7 @@ export const useRealtimeUpdates = (
       unsubscribeRef.current = null;
     }
     isConnectedRef.current = false;
-    
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;

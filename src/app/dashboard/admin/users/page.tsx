@@ -1,9 +1,11 @@
 'use client';
 
+import ConnectionStatus from '@/components/admin/ConnectionStatus';
 import EnhancedPagination from '@/components/admin/EnhancedPagination';
 import ErrorDisplay from '@/components/admin/ErrorDisplay';
 import LoadingSpinner from '@/components/admin/LoadingSpinner';
 import MobileTable from '@/components/admin/MobileTable';
+import RealtimeNotifications from '@/components/admin/RealtimeNotifications';
 import TableLoadingSkeleton from '@/components/admin/TableLoadingSkeleton';
 import UserDetailsModal from '@/components/admin/UserDetailsModal';
 import {
@@ -45,6 +47,7 @@ import {
 import { useDataFiltering } from '@/hooks/useDataFiltering';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { COUNTRIES_DATA } from '@/lib/cities-data';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
@@ -82,9 +85,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
-import ConnectionStatus from '@/components/admin/ConnectionStatus';
-import RealtimeNotifications from '@/components/admin/RealtimeNotifications';
 
 // Types
 interface UserBase {
@@ -260,9 +260,9 @@ export default function UsersManagement() {
 
   // Notification handlers
   const handleMarkNotificationAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id 
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === id
           ? { ...notification, read: true }
           : notification
       )
@@ -270,7 +270,7 @@ export default function UsersManagement() {
   };
 
   const handleClearAllNotifications = () => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notification => ({ ...notification, read: true }))
     );
   };
