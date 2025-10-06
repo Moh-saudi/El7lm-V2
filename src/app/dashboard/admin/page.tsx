@@ -1,28 +1,25 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Video, 
-  Settings, 
-  FolderOpen, 
-  BarChart3,
-  Plus,
-  Users,
-  BookOpen,
-  Megaphone,
-  Shield,
-  Database,
-  Bell,
-  FileText,
-  Trophy,
-  Calendar,
-  ArrowRight
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import {
+    ArrowRight,
+    BarChart3,
+    BookOpen,
+    Calendar,
+    FileText,
+    Megaphone,
+    Plus,
+    Settings,
+    Shield,
+    Trophy,
+    Users,
+    Video
 } from 'lucide-react';
 import Link from 'next/link';
-import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import { useEffect, useState } from 'react';
 
 interface MessageStats {
   totalSent: number;
@@ -235,7 +232,7 @@ export default function AdminDashboardPage() {
     <AccountTypeProtection allowedTypes={['admin']}>
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
-          
+
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
@@ -314,7 +311,7 @@ export default function AdminDashboardPage() {
                       <p className="text-gray-600">سجل في البطولات كمدير أو كفرد</p>
                     </div>
                   </div>
-                  <Link 
+                  <Link
                     href="/tournaments/unified-registration"
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-300 hover:scale-105 shadow-lg"
                   >
@@ -323,7 +320,7 @@ export default function AdminDashboardPage() {
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
                     <Users className="h-5 w-5 text-blue-600" />
@@ -401,4 +398,4 @@ export default function AdminDashboardPage() {
       </div>
     </AccountTypeProtection>
   );
-} 
+}
