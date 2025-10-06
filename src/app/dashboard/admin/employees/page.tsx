@@ -63,6 +63,7 @@ import {
 import { auth } from '@/lib/firebase/config';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import AdminHeader from '@/components/layout/AdminHeader';
 import AdminFooter from '@/components/layout/AdminFooter';
 
@@ -732,6 +733,7 @@ export default function EmployeesManagement() {
                     {city.name}
                     <button
                       type="button"
+                      title={`إزالة ${city.name}`}
                       onClick={() => setSelectedCities(prev => prev.filter(id => id !== cityId))}
                       className="ml-1 hover:text-red-500"
                     >
@@ -1253,10 +1255,11 @@ export default function EmployeesManagement() {
   }
 
   return (
-    <div className="flex flex-col bg-gray-50">
-      <AdminHeader />
-      
-      <main className="flex-1 container mx-auto px-6 py-8">
+    <AccountTypeProtection allowedTypes={['admin']}>
+      <div className="flex flex-col bg-gray-50">
+        <AdminHeader />
+        
+        <main className="flex-1 container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -1519,9 +1522,10 @@ export default function EmployeesManagement() {
 
         {/* Credentials Dialog */}
         <CredentialsDialog />
-      </main>
+        </main>
 
-      <AdminFooter />
-    </div>
+        <AdminFooter />
+      </div>
+    </AccountTypeProtection>
   );
 } 
