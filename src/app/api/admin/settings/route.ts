@@ -8,6 +8,20 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching admin settings...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          siteName: 'El7lm',
+          siteDescription: 'Football Platform',
+          maintenanceMode: false,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     const settingsRef = doc(db, 'admin_settings', SETTINGS_DOC_ID);
     const settingsDoc = await getDoc(settingsRef);
 

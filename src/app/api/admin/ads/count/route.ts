@@ -6,6 +6,23 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching ads counts...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalAds: 0,
+          activeAds: 0,
+          inactiveAds: 0,
+          totalViews: 0,
+          totalClicks: 0,
+          clickThroughRate: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     // Get ads collection
     const adsRef = collection(db, 'ads');
     const snapshot = await getDocs(adsRef);

@@ -1,10 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching content items...');
+
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: []
+      });
+    }
 
     const contentRef = collection(db, 'content');
     const q = query(contentRef, orderBy('createdAt', 'desc'));

@@ -6,6 +6,26 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching media counts...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalVideos: 0,
+          totalImages: 0,
+          pendingVideos: 0,
+          pendingImages: 0,
+          approvedVideos: 0,
+          approvedImages: 0,
+          rejectedVideos: 0,
+          rejectedImages: 0,
+          totalMedia: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     // Get videos collection
     const videosRef = collection(db, 'videos');
     const videosSnapshot = await getDocs(videosRef);

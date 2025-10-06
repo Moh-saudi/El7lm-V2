@@ -8,6 +8,20 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching BeOn configuration...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          apiKey: '',
+          senderId: '',
+          baseUrl: '',
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     const configRef = doc(db, 'admin_config', BEON_CONFIG_DOC_ID);
     const configDoc = await getDoc(configRef);
 

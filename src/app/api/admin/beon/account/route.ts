@@ -8,6 +8,22 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching BeOn account info...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          balance: 0,
+          dailyLimit: 0,
+          monthlyLimit: 0,
+          dailyUsage: 0,
+          monthlyUsage: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     // Get BeOn configuration
     const configRef = doc(db, 'admin_config', BEON_CONFIG_DOC_ID);
     const configDoc = await getDoc(configRef);

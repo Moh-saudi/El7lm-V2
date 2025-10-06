@@ -6,6 +6,28 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching user counts...');
 
+    // Skip Firebase calls during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalUsers: 0,
+          activeUsers: 0,
+          inactiveUsers: 0,
+          breakdown: {
+            users: 0,
+            players: 0,
+            clubs: 0,
+            academies: 0,
+            agents: 0,
+            trainers: 0
+          },
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+
     // Get counts from all user collections
     const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
     const counts: Record<string, number> = {};
