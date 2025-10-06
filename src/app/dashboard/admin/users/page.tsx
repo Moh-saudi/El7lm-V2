@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import {
     Activity,
@@ -17,38 +16,34 @@ import {
     FileSpreadsheet,
     Filter,
     KeyRound,
-    MapPin,
-    MoreHorizontal,
-    Phone,
     RefreshCcw,
     Search,
     Shield,
     UserCheck,
-    UserPlus,
-    Users,
-    UserX
+    UserX,
+    Users
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  accountType: 'player' | 'academy' | 'agent' | 'trainer' | 'club';
+  phone: string;
+  accountType: 'user' | 'player' | 'club' | 'academy' | 'agent' | 'trainer';
   isActive: boolean;
   createdAt: Date | null;
-  lastLogin?: Date | null;
-  city?: string;
-  country?: string;
-  parentAccountId?: string;
-  parentAccountType?: string;
-  isDeleted?: boolean;
-  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  lastLogin: Date | null;
+  city: string;
+  country: string;
+  parentAccountId: string;
+  parentAccountType: string;
+  isDeleted: boolean;
+  verificationStatus: 'verified' | 'pending' | 'rejected';
 }
 
-export default function UsersManagement() {
+export default function AdminUsersPage() {
   const { user, userData } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +63,9 @@ export default function UsersManagement() {
   // Load daily statistics
   const loadDailyStats = async () => {
     try {
-      // محاولة جلب الإحصائيات اليومية من مجموعة analytics أو visits
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // جلب إحصائيات اليوم من مجموعة analytics
       const analyticsRef = collection(db, 'analytics');
       const todayQuery = query(
         analyticsRef,
@@ -88,7 +81,6 @@ export default function UsersManagement() {
         totalVisits += data.visits || data.pageViews || 0;
       });
 
-      // إذا لم نجد بيانات في analytics، نحاول جلب من visits
       if (totalVisits === 0) {
         const visitsRef = collection(db, 'visits');
         const visitsSnapshot = await getDocs(visitsRef);
@@ -105,7 +97,6 @@ export default function UsersManagement() {
       console.log(`📈 الزيارات اليومية: ${totalVisits}`);
     } catch (error) {
       console.error('خطأ في تحميل الإحصائيات اليومية:', error);
-      // قيمة افتراضية في حالة الخطأ
       setDailyVisits(Math.floor(Math.random() * 100) + 50);
     }
   };
@@ -124,7 +115,6 @@ export default function UsersManagement() {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
 
-            // جلب البيانات بدون ترتيب أولاً لتجنب مشاكل الفهرس
             const snapshot = await getDocs(collection(db, collectionName));
             console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
 
@@ -150,40 +140,12 @@ export default function UsersManagement() {
             });
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
-            // محاولة جلب البيانات بطريقة بديلة
-            try {
-              const snapshot = await getDocs(collection(db, collectionName));
-              console.log(`🔄 محاولة بديلة: تم جلب ${snapshot.size} مستند من ${collectionName}`);
-              snapshot.forEach(doc => {
-                const data = doc.data();
-                const userData: User = {
-                  id: doc.id,
-                  name: data.name || data.full_name || data.displayName || 'غير محدد',
-                  email: data.email || '',
-                  phone: data.phone || '',
-                  accountType: data.accountType || collectionName.replace(/s$/, '') as any,
-                  isActive: data.isActive !== false,
-                  createdAt: data.createdAt?.toDate() || null,
-                  lastLogin: data.lastLogin?.toDate() || null,
-                  city: data.city || '',
-                  country: data.country || '',
-                  parentAccountId: data.parentAccountId || '',
-                  parentAccountType: data.parentAccountType || '',
-                  isDeleted: data.isDeleted || false,
-                  verificationStatus: data.verificationStatus || 'pending'
-                };
-                allUsers.push(userData);
-              });
-            } catch (retryError) {
-              console.error(`❌ فشل في المحاولة البديلة لـ ${collectionName}:`, retryError);
-            }
           }
         }
 
         console.log(`📊 إجمالي المستخدمين المحملين: ${allUsers.length}`);
         setUsers(allUsers);
 
-        // تحميل الإحصائيات اليومية
         await loadDailyStats();
 
         if (allUsers.length === 0) {
@@ -205,111 +167,177 @@ export default function UsersManagement() {
   }, [user, userData]);
 
   // Filter and sort users
-  const filteredAndSortedUsers = useMemo(() => {
-    let filtered = users.filter(user => {
-      // Show deleted filter
-      if (!showDeleted && user.isDeleted) return false;
-      if (showDeleted && !user.isDeleted) return false;
+  const filteredAndSortedUsers = users.filter(user => {
+    if (!showDeleted && user.isDeleted) return false;
 
-      // Search filter
-      const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (user.phone && user.phone.includes(searchTerm));
+    const matchesSearch = searchTerm === '' ||
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.phone.includes(searchTerm);
 
-      // Type filter
-      const matchesType = filterType === 'all' || user.accountType === filterType;
+    const matchesType = filterType === 'all' || user.accountType === filterType;
+    const matchesStatus = filterStatus === 'all' ||
+                         (filterStatus === 'active' && user.isActive) ||
+                         (filterStatus === 'inactive' && !user.isActive);
+    const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
 
-      // Status filter
-      const matchesStatus = filterStatus === 'all' ||
-                           (filterStatus === 'active' && user.isActive) ||
-                           (filterStatus === 'inactive' && !user.isActive);
+    const matchesDate = (() => {
+      if (dateFilter === 'all') return true;
+      if (!user.createdAt) return false;
 
-      // Verification filter
-      const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
+      const userDate = user.createdAt;
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const thisWeek = new Date(today);
+      thisWeek.setDate(thisWeek.getDate() - 7);
+      const thisMonth = new Date(today);
+      thisMonth.setMonth(thisMonth.getMonth() - 1);
 
-      // Date filter
-      const matchesDate = (() => {
-        if (dateFilter === 'all') return true;
-        if (!user.createdAt) return false;
-
-        const userDate = user.createdAt;
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const thisWeek = new Date(today);
-        thisWeek.setDate(thisWeek.getDate() - 7);
-        const thisMonth = new Date(today);
-        thisMonth.setMonth(thisMonth.getMonth() - 1);
-
-        switch (dateFilter) {
-          case 'today':
-            return userDate.toDateString() === today.toDateString();
-          case 'yesterday':
-            return userDate.toDateString() === yesterday.toDateString();
-          case 'thisWeek':
-            return userDate >= thisWeek;
-          case 'thisMonth':
-            return userDate >= thisMonth;
-          case 'lastMonth':
-            const lastMonth = new Date(today);
-            lastMonth.setMonth(lastMonth.getMonth() - 2);
-            return userDate >= lastMonth && userDate < thisMonth;
-          default:
-            return true;
-        }
-      })();
-
-      return matchesSearch && matchesType && matchesStatus && matchesVerification && matchesDate;
-    });
-
-    // Sort
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortBy as keyof User];
-      let bValue: any = b[sortBy as keyof User];
-
-      if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
-        aValue = aValue?.getTime() || 0;
-        bValue = bValue?.getTime() || 0;
+      switch (dateFilter) {
+        case 'today':
+          return userDate.toDateString() === today.toDateString();
+        case 'yesterday':
+          return userDate.toDateString() === yesterday.toDateString();
+        case 'thisWeek':
+          return userDate >= thisWeek;
+        case 'thisMonth':
+          return userDate >= thisMonth;
+        case 'lastMonth':
+          const lastMonth = new Date(today);
+          lastMonth.setMonth(lastMonth.getMonth() - 2);
+          return userDate >= lastMonth && userDate < thisMonth;
+        default:
+          return true;
       }
+    })();
 
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+    return matchesSearch && matchesType && matchesStatus && matchesVerification && matchesDate;
+  }).sort((a, b) => {
+    let aValue: any = a[sortBy as keyof User];
+    let bValue: any = b[sortBy as keyof User];
 
-    return filtered;
-  }, [users, searchTerm, filterType, filterStatus, filterVerification, showDeleted, sortBy, sortOrder]);
+    if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
+      aValue = aValue?.getTime() || 0;
+      bValue = bValue?.getTime() || 0;
+    } else if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedUsers = filteredAndSortedUsers.slice(startIndex, startIndex + itemsPerPage);
 
-  // Export to Excel
+  // Stats
+  const stats = {
+    total: users.length,
+    active: users.filter(u => u.isActive && !u.isDeleted).length,
+    inactive: users.filter(u => !u.isActive && !u.isDeleted).length,
+    deleted: users.filter(u => u.isDeleted).length,
+    byType: {
+      player: users.filter(u => u.accountType === 'player' && !u.isDeleted).length,
+      academy: users.filter(u => u.accountType === 'academy' && !u.isDeleted).length,
+      agent: users.filter(u => u.accountType === 'agent' && !u.isDeleted).length,
+      trainer: users.filter(u => u.accountType === 'trainer' && !u.isDeleted).length,
+      club: users.filter(u => u.accountType === 'club' && !u.isDeleted).length,
+    }
+  };
+
+  // Helper functions
+  const getAccountTypeLabel = (type: string) => {
+    const labels: { [key: string]: string } = {
+      player: 'لاعب',
+      academy: 'أكاديمية',
+      agent: 'وكيل',
+      trainer: 'مدرب',
+      club: 'نادي',
+      user: 'مستخدم'
+    };
+    return labels[type] || type;
+  };
+
+  const getAccountTypeColor = (type: string) => {
+    const colors: { [key: string]: string } = {
+      player: 'bg-blue-100 text-blue-800',
+      academy: 'bg-green-100 text-green-800',
+      agent: 'bg-purple-100 text-purple-800',
+      trainer: 'bg-orange-100 text-orange-800',
+      club: 'bg-red-100 text-red-800',
+      user: 'bg-gray-100 text-gray-800'
+    };
+    return colors[type] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getVerificationLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      verified: 'موثق',
+      pending: 'في الانتظار',
+      rejected: 'مرفوض'
+    };
+    return labels[status] || status;
+  };
+
+  const getVerificationColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      verified: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      rejected: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleBulkAction = async (action: 'activate' | 'deactivate') => {
+    try {
+      const promises = selectedUsers.map(userId => {
+        const user = users.find(u => u.id === userId);
+        if (!user) return Promise.resolve();
+
+        const userRef = doc(db, user.accountType === 'user' ? 'users' : `${user.accountType}s`, userId);
+        return updateDoc(userRef, {
+          isActive: action === 'activate'
+        });
+      });
+
+      await Promise.all(promises);
+
+      setUsers(users.map(user =>
+        selectedUsers.includes(user.id)
+          ? { ...user, isActive: action === 'activate' }
+          : user
+      ));
+
+      setSelectedUsers([]);
+      toast.success(`تم ${action === 'activate' ? 'تفعيل' : 'تعطيل'} ${selectedUsers.length} مستخدم بنجاح`);
+    } catch (error) {
+      console.error('خطأ في العملية المجمعة:', error);
+      toast.error('حدث خطأ في العملية المجمعة');
+    }
+  };
+
   const exportToExcel = () => {
-    const headers = [
-      'الاسم', 'البريد الإلكتروني', 'الهاتف', 'نوع الحساب', 'الحالة',
-      'حالة التحقق', 'المدينة', 'البلد', 'تاريخ الإنشاء', 'آخر دخول'
-    ];
-
-    const data = filteredAndSortedUsers.map(user => [
-      user.name,
-      user.email,
-      user.phone || '',
-      getAccountTypeLabel(user.accountType),
-      user.isActive ? 'نشط' : 'معطل',
-      getVerificationLabel(user.verificationStatus),
-      user.city || '',
-      user.country || '',
-      user.createdAt ? user.createdAt.toLocaleDateString('ar-SA') : '',
-      user.lastLogin ? user.lastLogin.toLocaleDateString('ar-SA') : ''
-    ]);
-
-    const csvContent = [headers, ...data]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
+    const headers = ['الاسم', 'البريد الإلكتروني', 'الهاتف', 'نوع الحساب', 'الحالة', 'حالة التحقق', 'المدينة', 'تاريخ التسجيل'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredAndSortedUsers.map(user => [
+        user.name,
+        user.email,
+        user.phone,
+        getAccountTypeLabel(user.accountType),
+        user.isActive ? 'نشط' : 'معطل',
+        getVerificationLabel(user.verificationStatus),
+        user.city,
+        user.createdAt?.toLocaleDateString('ar-SA') || ''
+      ].join(','))
+    ].join('\n');
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -320,124 +348,7 @@ export default function UsersManagement() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast.success('تم تصدير البيانات بنجاح');
   };
-
-  // Bulk actions
-  const handleBulkAction = async (action: string) => {
-    if (selectedUsers.length === 0) {
-      toast.error('يرجى اختيار مستخدمين أولاً');
-      return;
-    }
-
-    try {
-      switch (action) {
-        case 'activate':
-          for (const userId of selectedUsers) {
-            const userDoc = users.find(u => u.id === userId);
-            if (userDoc) {
-              const collectionName = userDoc.accountType === 'player' ? 'players' :
-                                   userDoc.accountType === 'club' ? 'clubs' :
-                                   userDoc.accountType === 'academy' ? 'academies' :
-                                   userDoc.accountType === 'agent' ? 'agents' : 'trainers';
-              await updateDoc(doc(db, collectionName, userId), { isActive: true });
-            }
-          }
-          toast.success(`تم تفعيل ${selectedUsers.length} مستخدم`);
-          break;
-        case 'deactivate':
-          for (const userId of selectedUsers) {
-            const userDoc = users.find(u => u.id === userId);
-            if (userDoc) {
-              const collectionName = userDoc.accountType === 'player' ? 'players' :
-                                   userDoc.accountType === 'club' ? 'clubs' :
-                                   userDoc.accountType === 'academy' ? 'academies' :
-                                   userDoc.accountType === 'agent' ? 'agents' : 'trainers';
-              await updateDoc(doc(db, collectionName, userId), { isActive: false });
-            }
-          }
-          toast.success(`تم تعطيل ${selectedUsers.length} مستخدم`);
-          break;
-        case 'resetPassword':
-          for (const userId of selectedUsers) {
-            const userDoc = users.find(u => u.id === userId);
-            if (userDoc && userDoc.email) {
-              await sendPasswordResetEmail(userDoc.email);
-            }
-          }
-          toast.success(`تم إرسال رابط إعادة تعيين كلمة المرور لـ ${selectedUsers.length} مستخدم`);
-          break;
-      }
-      setSelectedUsers([]);
-      // Reload data
-      window.location.reload();
-    } catch (error) {
-      console.error('Error in bulk action:', error);
-      toast.error('حدث خطأ في تنفيذ العملية');
-    }
-  };
-
-  // Helper functions
-  const getAccountTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      player: 'لاعب',
-      academy: 'أكاديمية',
-      agent: 'وكيل',
-      trainer: 'مدرب',
-      club: 'نادي'
-    };
-    return labels[type] || type;
-  };
-
-  const getAccountTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      player: 'bg-blue-100 text-blue-800',
-      academy: 'bg-green-100 text-green-800',
-      agent: 'bg-purple-100 text-purple-800',
-      trainer: 'bg-orange-100 text-orange-800',
-      club: 'bg-red-100 text-red-800'
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getVerificationLabel = (status?: string) => {
-    const labels: Record<string, string> = {
-      verified: 'موثق',
-      pending: 'في الانتظار',
-      rejected: 'مرفوض'
-    };
-    return labels[status || 'pending'] || 'غير محدد';
-  };
-
-  const getVerificationColor = (status?: string) => {
-    const colors: Record<string, string> = {
-      verified: 'bg-green-100 text-green-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-    return colors[status || 'pending'] || 'bg-gray-100 text-gray-800';
-  };
-
-  // Statistics
-  const stats = useMemo(() => {
-    const total = users.length;
-    const active = users.filter(u => u.isActive).length;
-    const inactive = users.filter(u => !u.isActive).length;
-    const verified = users.filter(u => u.verificationStatus === 'verified').length;
-    const pending = users.filter(u => u.verificationStatus === 'pending').length;
-    const deleted = users.filter(u => u.isDeleted).length;
-
-    const byType = {
-      player: users.filter(u => u.accountType === 'player').length,
-      academy: users.filter(u => u.accountType === 'academy').length,
-      agent: users.filter(u => u.accountType === 'agent').length,
-      trainer: users.filter(u => u.accountType === 'trainer').length,
-      club: users.filter(u => u.accountType === 'club').length
-    };
-
-    return { total, active, inactive, verified, pending, deleted, byType };
-  }, [users]);
 
   if (loading) {
     return (
@@ -458,34 +369,25 @@ export default function UsersManagement() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">إدارة المستخدمين</h1>
-                  <p className="text-gray-600 mt-1">إدارة جميع حسابات المستخدمين في النظام</p>
-                </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">إدارة المستخدمين</h1>
+                <p className="text-gray-600 mt-2">إدارة جميع حسابات المستخدمين في النظام</p>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700">
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  تصدير Excel
-                </Button>
+              <div className="flex gap-3">
                 <Button variant="outline" onClick={() => window.location.reload()}>
                   <RefreshCcw className="h-4 w-4 mr-2" />
                   تحديث البيانات
                 </Button>
-                <Button variant="outline">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  إضافة مستخدم
+                <Button onClick={exportToExcel}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  تصدير إلى Excel
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -498,32 +400,6 @@ export default function UsersManagement() {
                     </p>
                   </div>
                   <Users className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">المستخدمين النشطين</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-                    <p className="text-xs text-gray-500">{((stats.active / stats.total) * 100).toFixed(1)}% من الإجمالي</p>
-                  </div>
-                  <UserCheck className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">الحسابات الموثقة</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.verified}</p>
-                    <p className="text-xs text-gray-500">{stats.pending} في الانتظار</p>
-                  </div>
-                  <Shield className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -600,6 +476,7 @@ export default function UsersManagement() {
                   <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
+                    title="اختر نوع الحساب"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="all">جميع الأنواع</option>
@@ -616,6 +493,7 @@ export default function UsersManagement() {
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
+                    title="اختر الحالة"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="all">جميع الحالات</option>
@@ -629,6 +507,7 @@ export default function UsersManagement() {
                   <select
                     value={filterVerification}
                     onChange={(e) => setFilterVerification(e.target.value)}
+                    title="اختر حالة التحقق"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="all">جميع الحالات</option>
@@ -643,6 +522,7 @@ export default function UsersManagement() {
                   <select
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
+                    title="اختر تاريخ التسجيل"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="all">جميع التواريخ</option>
@@ -663,6 +543,7 @@ export default function UsersManagement() {
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
+                      title="اختر ترتيب حسب"
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="createdAt">تاريخ التسجيل</option>
@@ -679,6 +560,7 @@ export default function UsersManagement() {
                     <select
                       value={sortOrder}
                       onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                      title="اختر اتجاه الترتيب"
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="desc">تنازلي (الأحدث أولاً)</option>
@@ -697,6 +579,7 @@ export default function UsersManagement() {
                       <span className="text-sm text-gray-700">عرض المحذوفين</span>
                     </label>
                   </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -720,13 +603,6 @@ export default function UsersManagement() {
                       <UserX className="h-4 w-4 mr-1" />
                       تعطيل
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleBulkAction('resetPassword')}>
-                      <KeyRound className="h-4 w-4 mr-1" />
-                      إعادة تعيين كلمة المرور
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setSelectedUsers([])}>
-                      إلغاء الاختيار
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -736,25 +612,12 @@ export default function UsersManagement() {
           {/* Users Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>قائمة المستخدمين ({filteredAndSortedUsers.length})</CardTitle>
-                <div className="flex gap-2">
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="p-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    <option value={10}>10 لكل صفحة</option>
-                    <option value={25}>25 لكل صفحة</option>
-                    <option value={50}>50 لكل صفحة</option>
-                    <option value={100}>100 لكل صفحة</option>
-                  </select>
-                  <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                    تحديث
-                  </Button>
-                </div>
-              </div>
+              <CardTitle className="flex items-center justify-between">
+                <span>قائمة المستخدمين</span>
+                <span className="text-sm font-normal text-gray-500">
+                  {filteredAndSortedUsers.length} من {users.length} مستخدم
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -764,6 +627,7 @@ export default function UsersManagement() {
                       <th className="text-right p-4">
                         <input
                           type="checkbox"
+                          title="اختيار جميع المستخدمين"
                           checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
                           onChange={(e) => {
                             if (e.target.checked) {
@@ -775,21 +639,24 @@ export default function UsersManagement() {
                           className="rounded"
                         />
                       </th>
-                      <th className="text-right p-4 font-medium text-gray-900">الاسم</th>
-                      <th className="text-right p-4 font-medium text-gray-900">البريد الإلكتروني</th>
-                      <th className="text-right p-4 font-medium text-gray-900">نوع الحساب</th>
-                      <th className="text-right p-4 font-medium text-gray-900">الحالة</th>
-                      <th className="text-right p-4 font-medium text-gray-900">التحقق</th>
-                      <th className="text-right p-4 font-medium text-gray-900">تاريخ الإنشاء</th>
-                      <th className="text-right p-4 font-medium text-gray-900">الإجراءات</th>
+                      <th className="text-right p-4">الاسم</th>
+                      <th className="text-right p-4">البريد الإلكتروني</th>
+                      <th className="text-right p-4">الهاتف</th>
+                      <th className="text-right p-4">نوع الحساب</th>
+                      <th className="text-right p-4">الحالة</th>
+                      <th className="text-right p-4">حالة التحقق</th>
+                      <th className="text-right p-4">المدينة</th>
+                      <th className="text-right p-4">تاريخ التسجيل</th>
+                      <th className="text-right p-4">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedUsers.map((user) => (
-                      <tr key={user.id} className={`border-b hover:bg-gray-50 ${user.isDeleted ? 'opacity-50' : ''}`}>
+                      <tr key={user.id} className="border-b hover:bg-gray-50">
                         <td className="p-4">
                           <input
                             type="checkbox"
+                            title={`اختيار ${user.name}`}
                             checked={selectedUsers.includes(user.id)}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -801,32 +668,19 @@ export default function UsersManagement() {
                             className="rounded"
                           />
                         </td>
-                        <td className="p-4">
-                          <div className="font-medium text-gray-900">{user.name}</div>
-                          {user.phone && (
-                            <div className="text-sm text-gray-500 flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {user.phone}
-                            </div>
-                          )}
-                          {user.city && (
-                            <div className="text-sm text-gray-500 flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {user.city}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4 text-gray-600">{user.email}</td>
+                        <td className="p-4 font-medium">{user.name}</td>
+                        <td className="p-4">{user.email}</td>
+                        <td className="p-4">{user.phone}</td>
                         <td className="p-4">
                           <Badge className={getAccountTypeColor(user.accountType)}>
                             {getAccountTypeLabel(user.accountType)}
                           </Badge>
                         </td>
                         <td className="p-4">
-                          <Badge 
+                          <Badge
                             variant={user.isActive ? "default" : "destructive"}
-                            className={user.isActive 
-                              ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold" 
+                            className={user.isActive
+                              ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold"
                               : "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold"
                             }
                           >
@@ -838,30 +692,27 @@ export default function UsersManagement() {
                             {getVerificationLabel(user.verificationStatus)}
                           </Badge>
                         </td>
-                        <td className="p-4 text-gray-600">
-                          <div className="text-sm">
-                            {user.createdAt ? user.createdAt.toLocaleDateString('ar-SA') : 'غير محدد'}
-                          </div>
-                          {user.lastLogin && (
-                            <div className="text-xs text-gray-400 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              آخر دخول: {user.lastLogin.toLocaleDateString('ar-SA')}
+                        <td className="p-4">{user.city}</td>
+                        <td className="p-4">
+                          {user.createdAt ? (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4 text-gray-400" />
+                              {user.createdAt.toLocaleDateString('ar-SA')}
                             </div>
+                          ) : (
+                            'غير محدد'
                           )}
                         </td>
                         <td className="p-4">
-                          <div className="flex gap-1">
-                            <Button variant="outline" size="sm" title="عرض التفاصيل">
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" title="تعديل">
+                            <Button size="sm" variant="outline">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" title="إعادة تعيين كلمة المرور">
+                            <Button size="sm" variant="outline">
                               <KeyRound className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" title="المزيد">
-                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </div>
                         </td>
@@ -869,14 +720,14 @@ export default function UsersManagement() {
                     ))}
                   </tbody>
                 </table>
-
-                {filteredAndSortedUsers.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>لا توجد نتائج مطابقة للبحث</p>
-                  </div>
-                )}
               </div>
+
+              {paginatedUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>لا توجد نتائج مطابقة للبحث</p>
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
