@@ -79,6 +79,10 @@ import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import ErrorDisplay from '@/components/admin/ErrorDisplay';
 import MobileTable from '@/components/admin/MobileTable';
+import VirtualTable from '@/components/admin/VirtualTable';
+import EnhancedPagination from '@/components/admin/EnhancedPagination';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { useDataFiltering } from '@/hooks/useDataFiltering';
 
 // Types
 interface UserBase {
@@ -158,6 +162,32 @@ export default function UsersManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  // Performance hooks
+  const {
+    filteredData: filteredUsers,
+    setSearchTerm: setFilterSearchTerm,
+    addFilter,
+    removeFilter,
+    clearFilters,
+    hasActiveFilters
+  } = useDataFiltering(users, {
+    searchFields: ['name', 'email', 'accountType'],
+    debounceMs: 300
+  });
+
+  const {
+    paginatedData: paginatedUsers,
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    goToPage,
+    setItemsPerPage
+  } = useDataPagination(filteredUsers, {
+    initialItemsPerPage: 25,
+    itemsPerPageOptions: [10, 25, 50, 100]
+  });
   const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [parentFilter, setParentFilter] = useState<string>('all');
@@ -187,11 +217,10 @@ export default function UsersManagement() {
     return { id: '', displayName: name };
   };
 
-  // Debounce search term for smoother filtering
+  // Update search term in filtering hook
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm), 250);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
+    setFilterSearchTerm(searchTerm);
+  }, [searchTerm, setFilterSearchTerm]);
 
   // Stats
   const [stats, setStats] = useState({
@@ -2096,40 +2125,20 @@ export default function UsersManagement() {
           )}
         </div>
 
-        {/* Pagination Controls */}
+        {/* Enhanced Pagination Controls */}
         {filteredUsers.length > 0 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-600">
-              عرض {(currentPage - 1) * pageSize + 1}
-              ـ{Math.min(currentPage * pageSize, totalItems)} من {totalItems}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm text-gray-600">حجم الصفحة</Label>
-              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                <SelectTrigger className="w-[90px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                  الأولى
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                  السابقة
-                </Button>
-                <span className="text-sm text-gray-700">صفحة {currentPage} من {totalPages}</span>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                  التالية
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
-                  الأخيرة
-                </Button>
-              </div>
-            </div>
+          <div className="mt-6">
+            <EnhancedPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={goToPage}
+              onItemsPerPageChange={setItemsPerPage}
+              itemsPerPageOptions={[10, 25, 50, 100]}
+              showItemsPerPage={true}
+              showTotalItems={true}
+            />
           </div>
         )}
       </main>

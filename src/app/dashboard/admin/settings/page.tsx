@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import ErrorDisplay from '@/components/admin/ErrorDisplay';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Save, RefreshCw, Shield, Database, Mail, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import ErrorDisplay from '@/components/admin/ErrorDisplay';
+import { Bell, Database, RefreshCw, Save, Settings, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function AdminSettingsPage() {
   const { handleError, handleSuccess } = useErrorHandler();

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Menu, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ChevronDown, Menu, X } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface MobileNavigationProps {
   items: Array<{
@@ -52,7 +52,7 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
       {/* Mobile Menu Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={closeMenu}>
-          <div 
+          <div
             className="fixed right-0 top-0 h-full w-80 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
@@ -82,14 +82,14 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({
                             {item.icon}
                             <span>{item.label}</span>
                           </div>
-                          <ChevronDown 
+                          <ChevronDown
                             className={cn(
                               'h-4 w-4 transition-transform',
                               expandedItems.has(item.label) && 'rotate-180'
                             )}
                           />
                         </Button>
-                        
+
                         {expandedItems.has(item.label) && (
                           <div className="ml-4 mt-2 space-y-1">
                             {item.children.map((child, childIndex) => (

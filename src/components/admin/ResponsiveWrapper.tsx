@@ -1,5 +1,5 @@
-import React from 'react';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface ResponsiveWrapperProps {
   children: React.ReactNode;
@@ -18,16 +18,16 @@ const ResponsiveWrapper: React.FC<ResponsiveWrapperProps> = ({
 }) => {
   const getResponsiveClasses = () => {
     const classes = [];
-    
+
     if (mobile) classes.push('block');
     else classes.push('hidden');
-    
+
     if (tablet) classes.push('md:block');
     else classes.push('md:hidden');
-    
+
     if (desktop) classes.push('lg:block');
     else classes.push('lg:hidden');
-    
+
     return classes.join(' ');
   };
 

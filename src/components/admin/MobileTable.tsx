@@ -1,8 +1,6 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface MobileTableProps {
   data: Array<Record<string, any>>;
@@ -45,7 +43,7 @@ const MobileTable: React.FC<MobileTableProps> = ({
             {columns.map((column) => {
               const value = row[column.key];
               const renderedValue = column.render ? column.render(value, row) : value;
-              
+
               return (
                 <div key={column.key} className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">
@@ -57,7 +55,7 @@ const MobileTable: React.FC<MobileTableProps> = ({
                 </div>
               );
             })}
-            
+
             {actions && (
               <div className="pt-3 border-t">
                 <div className="flex gap-2 justify-end">
