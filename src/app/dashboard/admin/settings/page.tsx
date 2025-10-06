@@ -109,7 +109,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6" dir="rtl">
       <div className="max-w-4xl mx-auto">
         {/* Error Display */}
         {error && (
@@ -146,7 +146,7 @@ export default function AdminSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="siteName">اسم الموقع</Label>
                   <Input

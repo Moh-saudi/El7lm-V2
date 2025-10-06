@@ -1,7 +1,7 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -79,7 +79,7 @@ class ErrorBoundary extends Component<Props, State> {
               <p className="text-gray-600">
                 نعتذر، حدث خطأ أثناء تحميل هذه الصفحة. يرجى المحاولة مرة أخرى.
               </p>
-              
+
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <details className="text-left">
                   <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
@@ -97,8 +97,8 @@ class ErrorBoundary extends Component<Props, State> {
                   <RefreshCw className="w-4 h-4" />
                   إعادة المحاولة
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => window.location.reload()}
                 >
                   إعادة تحميل الصفحة

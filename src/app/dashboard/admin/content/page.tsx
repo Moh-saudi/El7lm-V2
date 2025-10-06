@@ -146,7 +146,7 @@ export default function AdminContentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6" dir="rtl">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
@@ -158,7 +158,7 @@ export default function AdminContentPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Content List */}
           <div className="lg:col-span-1">
             <Card>

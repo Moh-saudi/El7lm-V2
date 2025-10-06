@@ -550,7 +550,7 @@ export default function FinancialReports() {
   }
 
   return (
-    <div className="container mx-auto p-8">
+    <div className="container mx-auto p-4 md:p-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
@@ -583,7 +583,7 @@ export default function FinancialReports() {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
             {loading ? (
               <CardLoadingSkeleton count={4} />
             ) : (

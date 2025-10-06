@@ -1,5 +1,4 @@
-import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ErrorToastProps {
@@ -61,7 +60,7 @@ export const useErrorHandler = () => {
   const handleError = (error: unknown, context?: string) => {
     const errorMessage = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
     const title = context ? `خطأ في ${context}` : 'خطأ';
-    
+
     showErrorToast({
       error: errorMessage,
       title,

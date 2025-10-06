@@ -1,5 +1,5 @@
+import { showErrorToast, showInfoToast, showSuccessToast, showWarningToast } from '@/components/admin/ErrorToast';
 import { useCallback } from 'react';
-import { showErrorToast, showSuccessToast, showWarningToast, showInfoToast } from '@/components/admin/ErrorToast';
 
 interface ErrorHandlerOptions {
   context?: string;
@@ -10,7 +10,7 @@ interface ErrorHandlerOptions {
 
 export const useErrorHandler = () => {
   const handleError = useCallback((
-    error: unknown, 
+    error: unknown,
     options: ErrorHandlerOptions = {}
   ) => {
     const {

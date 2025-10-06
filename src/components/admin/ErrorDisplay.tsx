@@ -1,7 +1,7 @@
-import React from 'react';
-import { AlertTriangle, RefreshCw, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, RefreshCw, X } from 'lucide-react';
+import React from 'react';
 
 interface ErrorDisplayProps {
   error: string | Error;
@@ -65,7 +65,7 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
       </AlertTitle>
       <AlertDescription className="mt-2">
         <p className="mb-3">{errorMessage}</p>
-        
+
         {showDetails && errorStack && (
           <details className="mt-2">
             <summary className="cursor-pointer text-sm opacity-75 hover:opacity-100">

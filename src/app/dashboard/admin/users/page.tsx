@@ -78,6 +78,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import ErrorDisplay from '@/components/admin/ErrorDisplay';
+import MobileTable from '@/components/admin/MobileTable';
 
 // Types
 interface UserBase {
@@ -1191,7 +1192,7 @@ export default function UsersManagement() {
   return (
     <div className="flex flex-col bg-gray-50">
 
-      <main className="flex-1 container mx-auto px-6 py-8">
+      <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-8">
         {/* Error Display */}
         {error && (
           <div className="mb-6">
@@ -1205,7 +1206,7 @@ export default function UsersManagement() {
           </div>
         )}
         {/* Analytics Overview */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-6">
           {/* Users and Visitors KPIs */}
           <Card className="xl:col-span-1">
             <CardHeader>
@@ -1429,7 +1430,7 @@ export default function UsersManagement() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6">
           <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-4">
             <TabsList>
               <TabsTrigger value="all">كل الحسابات</TabsTrigger>
@@ -1813,7 +1814,10 @@ export default function UsersManagement() {
           {loading ? (
             <TableLoadingSkeleton rows={10} columns={7} />
           ) : (
-            <Table>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden lg:block">
+                <Table>
               <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
@@ -2004,8 +2008,83 @@ export default function UsersManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-              </TableBody>
-            </Table>
+                </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Table */}
+              <div className="lg:hidden p-4">
+                <MobileTable
+                  data={paginatedUsers}
+                  columns={[
+                    {
+                      key: 'name',
+                      label: 'الاسم',
+                      render: (value, row) => (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <span className="font-medium">{value || 'غير محدد'}</span>
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'email',
+                      label: 'البريد الإلكتروني',
+                      render: (value) => (
+                        <span className="text-sm text-gray-600">{value || 'غير محدد'}</span>
+                      )
+                    },
+                    {
+                      key: 'accountType',
+                      label: 'نوع الحساب',
+                      render: (value) => (
+                        <Badge variant="secondary">
+                          {getAccountTypeText(value)}
+                        </Badge>
+                      )
+                    },
+                    {
+                      key: 'isActive',
+                      label: 'الحالة',
+                      render: (value) => (
+                        <Badge variant={value ? 'default' : 'destructive'}>
+                          {value ? 'نشط' : 'غير نشط'}
+                        </Badge>
+                      )
+                    },
+                    {
+                      key: 'createdAt',
+                      label: 'تاريخ التسجيل',
+                      render: (value) => (
+                        <span className="text-sm text-gray-600">
+                          {value ? new Date(value).toLocaleDateString('ar-EG') : 'غير محدد'}
+                        </span>
+                      )
+                    }
+                  ]}
+                  actions={(row) => (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedUser(row)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleUserStatus(row.id, row.name || 'المستخدم')}
+                      >
+                        {row.isActive ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                      </Button>
+                    </>
+                  )}
+                />
+              </div>
+            </>
           )}
 
           {!loading && filteredUsers.length === 0 && (
