@@ -9,6 +9,7 @@ const nextConfig = {
         BEON_OTP_TOKEN: process.env.BEON_OTP_TOKEN,
         BEON_SENDER_NAME: process.env.BEON_SENDER_NAME,
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
+        DISABLE_FIREBASE_DURING_BUILD: 'true',
     },
     // تحسين التعامل مع الأخطاء
     output: 'standalone',
@@ -23,8 +24,8 @@ const nextConfig = {
     //     maxInactiveAge: 25 * 1000,
     //     pagesBufferLength: 2,
     // },
-    // Memory optimization for build
-    staticPageGenerationTimeout: 10,
+    // Memory optimization for build - زيادة timeout لتجنب مشاكل البناء
+    staticPageGenerationTimeout: 30,
     // Reduce memory usage during build
     generateBuildId: async () => {
         return 'build-' + Date.now();
@@ -86,8 +87,7 @@ const nextConfig = {
     compiler: {
         removeConsole: false, // Keep console for debugging
     },
-    // إعدادات الخادم الخارجية
-    serverExternalPackages: ['firebase-admin'],
+    // إعدادات الخادم الخارجية - تم إزالة serverExternalPackages لأنه غير مدعوم في Next.js 14
     experimental: {
         serverActions: {
             bodySizeLimit: '100mb',

@@ -91,3 +91,10 @@ __mocks__/
 build.sh
 deploy.sh
 deploy.bat
+
+# Additional files to ignore during build
+*.report.md
+ACCOUNT_*.md
+ADMIN_*.md
+account-*.md
+ADS_*.md

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 const SETTINGS_DOC_ID = 'admin_settings';
 
@@ -8,8 +8,12 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching admin settings...');
 
-    // Skip Firebase calls during build time
-    if (process.env.NODE_ENV === 'production' && (!process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID === 'build_project')) {
+    // Skip Firebase calls during build time or when Firebase is not properly configured
+    if (process.env.NODE_ENV === 'production' &&
+        (!process.env.FIREBASE_PROJECT_ID ||
+         process.env.FIREBASE_PROJECT_ID === 'build_project' ||
+         process.env.FIREBASE_PROJECT_ID === 'fallback_project' ||
+         process.env.NEXT_PHASE === 'phase-production-build')) {
       console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
       return NextResponse.json({
         success: true,
@@ -23,7 +27,14 @@ export async function GET(request: NextRequest) {
     }
 
     const settingsRef = doc(db, 'admin_settings', SETTINGS_DOC_ID);
-    const settingsDoc = await getDoc(settingsRef);
+
+    // Add timeout for settings query
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Settings query timeout')), 5000);
+    });
+
+    const queryPromise = getDoc(settingsRef);
+    const settingsDoc = await Promise.race([queryPromise, timeoutPromise]);
 
     let settings = {
       siteName: 'El7lm - منصة كرة القدم',

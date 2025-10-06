@@ -1,13 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Fetching user counts...');
 
-    // Skip Firebase calls during build time
-    if (process.env.NODE_ENV === 'production' && (!process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID === 'build_project')) {
+    // Skip Firebase calls during build time or when Firebase is not properly configured
+    if (process.env.NODE_ENV === 'production' &&
+        (!process.env.FIREBASE_PROJECT_ID ||
+         process.env.FIREBASE_PROJECT_ID === 'build_project' ||
+         process.env.FIREBASE_PROJECT_ID === 'fallback_project' ||
+         process.env.NEXT_PHASE === 'phase-production-build')) {
       console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
       return NextResponse.json({
         success: true,
@@ -28,15 +32,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get counts from all user collections
+    // Get counts from all user collections with timeout
     const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
     const counts: Record<string, number> = {};
     let totalUsers = 0;
 
     for (const collectionName of collections) {
       try {
+        // Add timeout for each collection query
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Query timeout')), 5000); // 5 second timeout
+        });
+
         const collectionRef = collection(db, collectionName);
-        const snapshot = await getDocs(collectionRef);
+        const queryPromise = getDocs(collectionRef);
+
+        const snapshot = await Promise.race([queryPromise, timeoutPromise]);
         const count = snapshot.size;
         counts[collectionName] = count;
         totalUsers += count;
@@ -47,11 +58,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get active users count
+    // Get active users count with timeout
     let activeUsers = 0;
     try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Active users query timeout')), 5000);
+      });
+
       const activeQuery = query(collection(db, 'users'), where('isActive', '==', true));
-      const activeSnapshot = await getDocs(activeQuery);
+      const queryPromise = getDocs(activeQuery);
+
+      const activeSnapshot = await Promise.race([queryPromise, timeoutPromise]);
       activeUsers = activeSnapshot.size;
     } catch (error) {
       console.error('❌ [Admin API] Error counting active users:', error);

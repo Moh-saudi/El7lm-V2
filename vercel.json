@@ -1,7 +1,16 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
   "functions": {
     "src/app/api/upload/video/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/admin/users/count/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/admin/settings/route.ts": {
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -22,5 +31,8 @@
         }
       ]
     }
-  ]
+  ],
+  "env": {
+    "DISABLE_FIREBASE_DURING_BUILD": "true"
+  }
 }

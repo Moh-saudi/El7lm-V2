@@ -90,7 +90,9 @@ let storage: FirebaseStorage;
 if (!getApps().length) {
   try {
     // Skip Firebase initialization during build to prevent memory issues
-    if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.DISABLE_FIREBASE_DURING_BUILD === 'true') {
+    if (process.env.NEXT_PHASE === 'phase-production-build' ||
+        process.env.DISABLE_FIREBASE_DURING_BUILD === 'true' ||
+        process.env.VERCEL === '1') {
       console.log('🚫 Skipping Firebase initialization during build phase');
       // Create minimal fallback config for build
       const buildConfig = {
