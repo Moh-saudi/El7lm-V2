@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     console.log('📊 [Admin API] Fetching BeOn configuration...');
 
     // Skip Firebase calls during build time
-    if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_PROJECT_ID) {
+    if (process.env.NODE_ENV === 'production' && (!process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID === 'build_project')) {
       console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
       return NextResponse.json({
         success: true,
