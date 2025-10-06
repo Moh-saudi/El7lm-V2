@@ -8,7 +8,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { collection, doc, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import {
     Activity,
     Clock,
@@ -71,23 +71,23 @@ export default function UsersManagement() {
       // محاولة جلب الإحصائيات اليومية من مجموعة analytics أو visits
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // جلب إحصائيات اليوم من مجموعة analytics
       const analyticsRef = collection(db, 'analytics');
       const todayQuery = query(
-        analyticsRef, 
+        analyticsRef,
         where('date', '>=', today),
         where('date', '<', new Date(today.getTime() + 24 * 60 * 60 * 1000))
       );
-      
+
       const analyticsSnapshot = await getDocs(todayQuery);
       let totalVisits = 0;
-      
+
       analyticsSnapshot.forEach(doc => {
         const data = doc.data();
         totalVisits += data.visits || data.pageViews || 0;
       });
-      
+
       // إذا لم نجد بيانات في analytics، نحاول جلب من visits
       if (totalVisits === 0) {
         const visitsRef = collection(db, 'visits');
@@ -100,7 +100,7 @@ export default function UsersManagement() {
           }
         });
       }
-      
+
       setDailyVisits(totalVisits);
       console.log(`📈 الزيارات اليومية: ${totalVisits}`);
     } catch (error) {
@@ -182,10 +182,10 @@ export default function UsersManagement() {
 
         console.log(`📊 إجمالي المستخدمين المحملين: ${allUsers.length}`);
         setUsers(allUsers);
-        
+
         // تحميل الإحصائيات اليومية
         await loadDailyStats();
-        
+
         if (allUsers.length === 0) {
           toast.warning('لم يتم العثور على أي مستخدمين. تحقق من إعدادات قاعدة البيانات.');
         } else {
@@ -226,12 +226,12 @@ export default function UsersManagement() {
 
       // Verification filter
       const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
-      
+
       // Date filter
       const matchesDate = (() => {
         if (dateFilter === 'all') return true;
         if (!user.createdAt) return false;
-        
+
         const userDate = user.createdAt;
         const today = new Date();
         const yesterday = new Date(today);
@@ -240,7 +240,7 @@ export default function UsersManagement() {
         thisWeek.setDate(thisWeek.getDate() - 7);
         const thisMonth = new Date(today);
         thisMonth.setMonth(thisMonth.getMonth() - 1);
-        
+
         switch (dateFilter) {
           case 'today':
             return userDate.toDateString() === today.toDateString();
@@ -823,7 +823,13 @@ export default function UsersManagement() {
                           </Badge>
                         </td>
                         <td className="p-4">
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
+                          <Badge 
+                            variant={user.isActive ? "default" : "destructive"}
+                            className={user.isActive 
+                              ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold" 
+                              : "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold"
+                            }
+                          >
                             {user.isActive ? "نشط" : "معطل"}
                           </Badge>
                         </td>
