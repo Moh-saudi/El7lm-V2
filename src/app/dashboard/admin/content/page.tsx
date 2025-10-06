@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Edit, Eye, FileText, Plus, Save, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ContentItem {
   id: string;
@@ -20,43 +20,71 @@ interface ContentItem {
 }
 
 export default function AdminContentPage() {
-  const [contentItems, setContentItems] = useState<ContentItem[]>([
-    {
-      id: '1',
-      title: 'مرحباً بكم في منصة الحلم',
-      content: 'منصة شاملة لإدارة كرة القدم والرياضة',
-      type: 'page',
-      status: 'published',
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-01'
-    },
-    {
-      id: '2',
-      title: 'إعلان مهم',
-      content: 'نود إعلامكم بتحديث جديد في المنصة',
-      type: 'announcement',
-      status: 'published',
-      createdAt: '2024-01-02',
-      updatedAt: '2024-01-02'
-    }
-  ]);
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
 
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Load content items on component mount
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const response = await fetch('/api/admin/content');
+        const result = await response.json();
+
+        if (result.success) {
+          setContentItems(result.data.items);
+        } else {
+          console.error('Failed to load content:', result.error);
+        }
+      } catch (error) {
+        console.error('Error loading content:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadContent();
+  }, []);
 
   const handleSave = async () => {
+    if (!selectedItem) return;
+    
     setLoading(true);
     try {
-      // Mock save operation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Content saved:', selectedItem);
-      alert('تم حفظ المحتوى بنجاح');
-      setIsEditing(false);
-      setSelectedItem(null);
+      const isNew = !selectedItem.id || selectedItem.id.startsWith('temp_');
+      const url = '/api/admin/content';
+      const method = isNew ? 'POST' : 'PUT';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectedItem),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        if (isNew) {
+          setContentItems(prev => [result.data, ...prev]);
+        } else {
+          setContentItems(prev => 
+            prev.map(item => item.id === selectedItem.id ? result.data : item)
+          );
+        }
+        alert('تم حفظ المحتوى بنجاح');
+        setIsEditing(false);
+        setSelectedItem(null);
+      } else {
+        throw new Error(result.error || 'فشل في حفظ المحتوى');
+      }
     } catch (error) {
       console.error('Error saving content:', error);
-      alert('حدث خطأ أثناء حفظ المحتوى');
+      alert(`حدث خطأ أثناء حفظ المحتوى: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);
     }
@@ -64,10 +92,26 @@ export default function AdminContentPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا المحتوى؟')) {
-      setContentItems(prev => prev.filter(item => item.id !== id));
-      if (selectedItem?.id === id) {
-        setSelectedItem(null);
-        setIsEditing(false);
+      try {
+        const response = await fetch(`/api/admin/content?id=${id}`, {
+          method: 'DELETE',
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setContentItems(prev => prev.filter(item => item.id !== id));
+          if (selectedItem?.id === id) {
+            setSelectedItem(null);
+            setIsEditing(false);
+          }
+          alert('تم حذف المحتوى بنجاح');
+        } else {
+          throw new Error(result.error || 'فشل في حذف المحتوى');
+        }
+      } catch (error) {
+        console.error('Error deleting content:', error);
+        alert(`حدث خطأ أثناء حذف المحتوى: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
       }
     }
   };
@@ -79,16 +123,27 @@ export default function AdminContentPage() {
 
   const handleNew = () => {
     setSelectedItem({
-      id: Date.now().toString(),
+      id: `temp_${Date.now()}`,
       title: '',
       content: '',
       type: 'page',
       status: 'draft',
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0]
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
     setIsEditing(true);
   };
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري تحميل المحتوى...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">

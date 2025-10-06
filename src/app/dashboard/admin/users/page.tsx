@@ -1,80 +1,79 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, collectionGroup, query, getDocs, doc, updateDoc, getDoc, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import '@/styles/admin-dashboard.css';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import UserDetailsModal from '@/components/admin/UserDetailsModal';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-  Users,
-  Search,
-  Filter,
-  UserCheck,
-  Building2,
-  Briefcase,
-  Shield,
-  User,
-  UserPlus,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  RefreshCcw,
-  Download,
-  KeyRound,
-  Trash2,
-  Eye,
-  Mail,
-  BarChart3,
-  ArrowUpDown,
-  ChevronUp,
-  ChevronDown,
-  Globe,
-  MapPin,
-  Clock
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/lib/firebase/auth-provider';
-import { COUNTRIES_DATA } from '@/lib/cities-data';
-import UserDetailsModal from '@/components/admin/UserDetailsModal';
-import { useRouter } from 'next/navigation';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { sanitizeForFirestore as deepSanitize, isEmptyObject } from '@/lib/firebase/sanitize';
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+    Tabs,
+    TabsList,
+    TabsTrigger
+} from '@/components/ui/tabs';
+import { COUNTRIES_DATA } from '@/lib/cities-data';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { db } from '@/lib/firebase/config';
+import { sanitizeForFirestore as deepSanitize, isEmptyObject } from '@/lib/firebase/sanitize';
+import '@/styles/admin-dashboard.css';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { collection, collectionGroup, doc, getDoc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import {
+    AlertCircle,
+    ArrowUpDown,
+    BarChart3,
+    Briefcase,
+    Building2,
+    CheckCircle,
+    ChevronDown,
+    ChevronUp,
+    Clock,
+    Download,
+    Eye,
+    Filter,
+    Globe,
+    KeyRound,
+    Mail,
+    MapPin,
+    RefreshCcw,
+    Search,
+    Shield,
+    Trash2,
+    User,
+    UserCheck,
+    UserPlus,
+    Users,
+    XCircle
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // Types
 interface UserBase {
@@ -136,7 +135,7 @@ export default function UsersManagement() {
   const router = useRouter();
   const { user, userData } = useAuth();
   const VISITOR_DETAILS_STORAGE_KEY = 'admin_users_showVisitorDetails';
-  
+
   // Add detailed logging
   console.log('👥 Users Management Page - Component loaded:', {
     hasUser: !!user,
@@ -145,7 +144,7 @@ export default function UsersManagement() {
     accountType: userData?.accountType,
     timestamp: new Date().toISOString()
   });
-  
+
   // States
   const [users, setUsers] = useState<(Player | Entity)[]>([]);
   const [loading, setLoading] = useState(true);
@@ -356,13 +355,13 @@ export default function UsersManagement() {
 
   // Load users
   useEffect(() => {
-    console.log('🔄 useEffect triggered - reloading users:', { 
-      startDate, 
-      endDate, 
-      accountTypeFilter, 
-      statusFilter, 
-      sortBy, 
-      sortOrder 
+    console.log('🔄 useEffect triggered - reloading users:', {
+      startDate,
+      endDate,
+      accountTypeFilter,
+      statusFilter,
+      sortBy,
+      sortOrder
     });
     loadUsers();
   }, [startDate, endDate, accountTypeFilter, statusFilter, sortBy, sortOrder]); // Re-fetch when any filter changes
@@ -451,7 +450,7 @@ export default function UsersManagement() {
             // ... other common fields
             ...parentInfo,
           };
-          
+
           let userEntry: Player | Entity;
 
           // Determine account type reliably
@@ -482,7 +481,7 @@ export default function UsersManagement() {
               // ... other entity-specific fields
             };
           }
-          
+
           // If a user exists in multiple collections, 'users' collection takes precedence
           if (!allUsersMap.has(id) || collectionName === 'users') {
              allUsersMap.set(id, userEntry);
@@ -542,7 +541,7 @@ export default function UsersManagement() {
         }
         return u;
       });
-      
+
       // Final global sort (ensures cross-collection ordering)
       combinedUsers.sort((a: any, b: any) => {
         const aVal = a[sortBy];
@@ -635,7 +634,7 @@ export default function UsersManagement() {
         (parentFilter === 'independent' && !user.parentAccountId) ||
         (parentFilter === 'affiliated' && user.parentAccountId);
 
-      const matchesRegion = 
+      const matchesRegion =
         (!regionFilter.countryId || regionFilter.countryId === 'all' || user.location?.countryId === regionFilter.countryId) &&
         (!regionFilter.cityId || regionFilter.cityId === 'all' || user.location?.cityId === regionFilter.cityId);
 
@@ -645,12 +644,12 @@ export default function UsersManagement() {
       // فلتر التاريخ الجديد - Date Range
       const matchesDate = (() => {
         if (!startDate && !endDate) return true; // لا يوجد فلتر تاريخ
-        
+
         const userCreatedAt = user.createdAt;
         if (!userCreatedAt) return false;
-        
+
         const userDate = userCreatedAt instanceof Date ? userCreatedAt : new Date(userCreatedAt);
-        
+
         // Normalize bounds to full day range
         const startBound = startDate ? new Date(startDate) : null;
         if (startBound) {
@@ -660,7 +659,7 @@ export default function UsersManagement() {
         if (endBound) {
           endBound.setHours(23, 59, 59, 999);
         }
-        
+
         // Debug: مراقبة التواريخ للمستخدم المحدد
         if (user.email === 'user_20_20123456789_1756900824759_x2xgid@el7lm.com') {
           console.log('🔍 Debug user date filtering:', {
@@ -673,7 +672,7 @@ export default function UsersManagement() {
             userDateType: typeof userCreatedAt
           });
         }
-        
+
         if (startBound && endBound) {
           // نطاق تاريخ كامل
           const result = userDate >= startBound && userDate <= endBound;
@@ -696,7 +695,7 @@ export default function UsersManagement() {
           }
           return result;
         }
-        
+
         return true;
       })();
 
@@ -771,11 +770,11 @@ export default function UsersManagement() {
           }
         }
       }
-      
+
       toast.success(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم بنجاح`);
       // Update UI instantly instead of full reload
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
           u.id === userId ? { ...u, isActive: !currentStatus } : u
         )
       );
@@ -790,9 +789,9 @@ export default function UsersManagement() {
     try {
       // Import Firebase Auth functions
       const { auth } = await import('@/lib/firebase/config');
-      
+
       await sendPasswordResetEmail(auth, userEmail);
-      
+
       toast.success(`تم إرسال رابط إعادة تعيين كلمة المرور إلى ${userName}`);
     } catch (error) {
       console.error('Error sending password reset:', error);
@@ -881,7 +880,7 @@ export default function UsersManagement() {
           }
         }
       });
-      
+
       await Promise.all(promises);
       toast.success(`تم تفعيل ${selectedUsers.length} مستخدم بنجاح`);
       setSelectedUsers([]);
@@ -921,7 +920,7 @@ export default function UsersManagement() {
           }
         }
       });
-      
+
       await Promise.all(promises);
       toast.success(`تم إلغاء تفعيل ${selectedUsers.length} مستخدم بنجاح`);
       setSelectedUsers([]);
@@ -990,15 +989,15 @@ export default function UsersManagement() {
   const hasRegionAccess = (userLocation?: { countryId: string; cityId: string }) => {
     if (!userLocation) return true; // If no location specified, allow access
     if (userData?.role === 'admin') return true; // Admin has access to all regions
-    
+
     // For sales employees, check if they have access to this region
     if (userData?.role === 'sales') {
       return userData.permissions?.allowedRegions?.some(
-        region => region.countryId === userLocation.countryId && 
+        region => region.countryId === userLocation.countryId &&
                  region.cityId === userLocation.cityId
       );
     }
-    
+
     return true; // Other roles have full access for now
   };
 
@@ -1007,17 +1006,17 @@ export default function UsersManagement() {
     // Add safety checks to prevent undefined errors
     const countries = availableRegions?.countries || [];
     const selectedCountry = countries.find(c => c.id === regionFilter.countryId);
-    
+
     return (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>الدولة</Label>
-          <Select 
-            value={regionFilter.countryId || 'all'} 
-            onValueChange={(value) => setRegionFilter(prev => ({ 
-              ...prev, 
-              countryId: value === 'all' ? '' : value, 
-              cityId: '' 
+          <Select
+            value={regionFilter.countryId || 'all'}
+            onValueChange={(value) => setRegionFilter(prev => ({
+              ...prev,
+              countryId: value === 'all' ? '' : value,
+              cityId: ''
             }))}
           >
             <SelectTrigger>
@@ -1039,11 +1038,11 @@ export default function UsersManagement() {
 
         <div>
           <Label>المدينة</Label>
-          <Select 
+          <Select
             value={regionFilter.cityId || 'all'}
-            onValueChange={(value) => setRegionFilter(prev => ({ 
-              ...prev, 
-              cityId: value === 'all' ? '' : value 
+            onValueChange={(value) => setRegionFilter(prev => ({
+              ...prev,
+              cityId: value === 'all' ? '' : value
             }))}
             disabled={!regionFilter.countryId}
           >
@@ -1083,11 +1082,11 @@ export default function UsersManagement() {
       'الهاتف': user.phone || '',
       'نوع الحساب': getAccountTypeText(user.accountType),
       'الحالة': user.isActive ? 'نشط' : 'غير نشط',
-      'تاريخ التسجيل': (user.createdAt && user.createdAt instanceof Date) 
-        ? user.createdAt.toLocaleDateString('ar-EG') 
+      'تاريخ التسجيل': (user.createdAt && user.createdAt instanceof Date)
+        ? user.createdAt.toLocaleDateString('ar-EG')
         : 'غير محدد',
-      'آخر دخول': (user.lastLogin && user.lastLogin instanceof Date) 
-        ? user.lastLogin.toLocaleDateString('ar-EG') 
+      'آخر دخول': (user.lastLogin && user.lastLogin instanceof Date)
+        ? user.lastLogin.toLocaleDateString('ar-EG')
         : 'لم يسجل دخول',
       'الدولة': user.location?.countryName || '',
       'المدينة': user.location?.cityName || '',
@@ -1134,17 +1133,17 @@ export default function UsersManagement() {
       try {
           const user = users.find(u => u.id === userId);
           if (!user) return;
-  
+
           const restorePayload = {
               isDeleted: false,
               deletedAt: null,
               deletedBy: null,
               isActive: true // Re-activate account upon restoration
           };
-  
+
           const sourceCollection = (user as any).sourceCollection || (user.accountType ? `${user.accountType}s` : 'users');
           await updateDoc(doc(db, sourceCollection, userId), restorePayload);
-  
+
           toast.success(`تم استعادة حساب ${userName} بنجاح.`);
           loadUsers();
       } catch (error) {
@@ -1168,7 +1167,7 @@ export default function UsersManagement() {
 
   return (
     <div className="flex flex-col bg-gray-50">
-      
+
       <main className="flex-1 container mx-auto px-6 py-8">
         {/* Analytics Overview */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
@@ -1216,11 +1215,11 @@ export default function UsersManagement() {
                       {new Date(day.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
                     </div>
                     <div className="flex-1 bg-gray-200 rounded-full h-5 relative">
-                      <div 
-                        className="chart-bar chart-bar-blue" 
-                        style={{ 
-                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyRegs.map(r => r.count)))) * 100)}%` 
-                        }} 
+                      <div
+                        className="chart-bar chart-bar-blue"
+                        style={{
+                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyRegs.map(r => r.count)))) * 100)}%`
+                        }}
                       />
                       <span className="absolute inset-0 flex items-center justify-center text-[11px] text-white font-medium">{day.count}</span>
                     </div>
@@ -1244,11 +1243,11 @@ export default function UsersManagement() {
                       {new Date(day.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
                     </div>
                     <div className="flex-1 bg-gray-200 rounded-full h-5 relative">
-                      <div 
-                        className="chart-bar chart-bar-emerald" 
-                        style={{ 
-                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyVisitors.map(r => r.count)))) * 100)}%` 
-                        }} 
+                      <div
+                        className="chart-bar chart-bar-emerald"
+                        style={{
+                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyVisitors.map(r => r.count)))) * 100)}%`
+                        }}
                       />
                       <span className="absolute inset-0 flex items-center justify-center text-[11px] text-white font-medium">{day.count}</span>
                     </div>
@@ -1274,8 +1273,8 @@ export default function UsersManagement() {
               <Download className="w-4 h-4 ml-2" />
               تصدير النتائج
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 console.log('📧 Email Migration Button Clicked:', {
                   userEmail: user?.email,
@@ -1290,8 +1289,8 @@ export default function UsersManagement() {
               <Mail className="w-4 h-4 ml-2" />
               تحديث الإيميلات
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.push('/dashboard/admin/test-access')}
               className="text-purple-600 border-purple-600 hover:bg-purple-50 hover:text-purple-700"
             >
@@ -2017,7 +2016,7 @@ export default function UsersManagement() {
         )}
       </main>
 
-      
+
       {/* User Details Modal */}
       <UserDetailsModal
         userId={selectedUserId}
@@ -2047,4 +2046,4 @@ export default function UsersManagement() {
       </AlertDialog>
     </div>
   );
-} 
+}

@@ -1,30 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { convertToEGPSync, CURRENCY_RATES, forceUpdateRates } from '@/lib/currency-converter';
 import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 import '@/styles/admin-dashboard.css';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  PieChart, 
-  BarChart3,
-  Globe,
-  Coins,
-  ArrowUpDown,
-  Calendar,
-  Download,
-  RefreshCw,
-  Target,
-  Users,
-  CreditCard,
-  Percent,
-  AlertTriangle,
-  CheckCircle,
-  Activity
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import {
+    Activity,
+    ArrowUpDown,
+    CheckCircle,
+    Coins,
+    DollarSign,
+    Download,
+    Globe,
+    Percent,
+    RefreshCw,
+    Target,
+    TrendingUp,
+    Users
 } from 'lucide-react';
-import { convertToEGPSync, CURRENCY_RATES, forceUpdateRates } from '@/lib/currency-converter';
+import { useEffect, useRef, useState } from 'react';
 
 // أنواع البيانات
 interface FinancialMetrics {
@@ -95,7 +90,7 @@ interface PaymentDetail {
   status: string;
   paymentDate: Date;
   estimatedEndDate?: Date | null;
-  players?: Array<{ id: string; name: string; }>; 
+  players?: Array<{ id: string; name: string; }>;
 }
 
 export default function FinancialReports() {
@@ -112,7 +107,7 @@ export default function FinancialReports() {
   const [conversionAnalytics, setConversionAnalytics] = useState<ConversionAnalytics[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
-  
+
   // حالات التحكم
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -277,7 +272,7 @@ export default function FinancialReports() {
       const amount = payment.total_amount || 0;
       const currency = payment.currency || 'EGP';
       const conversion = convertToEGPSync(amount, currency);
-      
+
       totalRevenueEGP += conversion.convertedAmount;
       if (currency !== 'EGP') {
         conversionVolume += conversion.convertedAmount;
@@ -289,7 +284,7 @@ export default function FinancialReports() {
     const averageTransactionEGP = totalTransactions > 0 ? totalRevenueEGP / totalTransactions : 0;
     const topCurrency = Array.from(currencyCount.entries())
       .sort(([,a], [,b]) => b - a)[0]?.[0] || 'EGP';
-    
+
     const currencyDiversity = currencyCount.size;
     const conversionAccuracy = 99.8; // نسبة دقة التحويل (افتراضية)
     const monthlyGrowth = 15.6; // نمو شهري (افتراضي)
@@ -316,7 +311,7 @@ export default function FinancialReports() {
       const currency = payment.currency || 'EGP';
       const amount = payment.total_amount || 0;
       const conversion = convertToEGPSync(amount, currency);
-      
+
       if (!currencyMap.has(currency)) {
         const currencyInfo = CURRENCY_RATES[currency] || { name: currency, symbol: currency, rateToEGP: 1 };
         currencyMap.set(currency, {
@@ -423,7 +418,7 @@ export default function FinancialReports() {
     payments.forEach(payment => {
       const fromCurrency = payment.currency || 'EGP';
       const amount = payment.total_amount || 0;
-      
+
       if (fromCurrency !== 'EGP') {
         const conversion = convertToEGPSync(amount, fromCurrency);
         const volume = currencyVolumes.get(fromCurrency) || 0;
@@ -470,7 +465,7 @@ export default function FinancialReports() {
       dateData.totalEGP += conversion.convertedAmount;
       dateData.transactionCount += 1;
       dateData.currencies.add(currency);
-      
+
       const currVolume = dateData.currencyVolumes.get(currency) || 0;
       dateData.currencyVolumes.set(currency, currVolume + conversion.convertedAmount);
     });
@@ -478,7 +473,7 @@ export default function FinancialReports() {
     const timeSeries = Array.from(dateMap.values()).map(data => {
       const topCurrency = Array.from(data.currencyVolumes.entries())
         .sort(([,a], [,b]) => b - a)[0]?.[0] || 'EGP';
-      
+
       return {
         date: data.date,
         totalEGP: data.totalEGP,
@@ -656,17 +651,17 @@ export default function FinancialReports() {
                         <p className="text-xs text-gray-500">{currency.countries.length} دولة • {currency.userCount} مستخدم</p>
                       </div>
                     </div>
-                    
+
                     <div className="text-center">
                       <p className="text-sm text-gray-600">حصة السوق</p>
                       <p className="text-lg font-bold text-blue-600">{currency.marketShare.toFixed(1)}%</p>
                     </div>
-                    
+
                     <div className="text-center">
                       <p className="text-sm text-gray-600">المعاملات</p>
                       <p className="text-lg font-bold text-green-600">{currency.transactionCount}</p>
                     </div>
-                    
+
                     <div className="text-right">
                       <p className="text-sm text-gray-600">الإجمالي</p>
                       <p className="text-lg font-bold text-gray-900">
@@ -676,7 +671,7 @@ export default function FinancialReports() {
                         {currency.totalAmount.toLocaleString()} {currency.symbol}
                       </p>
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
                       {currency.trend === 'up' ? (
                         <TrendingUp className="w-4 h-4 text-green-600" />
@@ -720,7 +715,7 @@ export default function FinancialReports() {
                         1:{conversion.averageRate.toFixed(2)}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">المحول:</span>
@@ -783,8 +778,8 @@ export default function FinancialReports() {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <div className="w-12 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="progress-bar progress-bar-blue" 
+                            <div
+                              className="progress-bar progress-bar-blue"
                               style={{ width: `${Math.min(geo.marketShare, 100)}%` }}
                             ></div>
                           </div>
@@ -945,4 +940,4 @@ export default function FinancialReports() {
           </div>
     </div>
   );
-} 
+}

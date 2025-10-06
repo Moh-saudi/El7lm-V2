@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,17 +22,52 @@ export default function AdminSettingsPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/settings');
+        const result = await response.json();
+
+        if (result.success) {
+          setSettings(prev => ({ ...prev, ...result.data }));
+        } else {
+          console.error('Failed to load settings:', result.error);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Mock save operation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Settings saved:', settings);
-      alert('تم حفظ الإعدادات بنجاح');
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Settings saved:', result.data);
+        alert('تم حفظ الإعدادات بنجاح');
+      } else {
+        throw new Error(result.error || 'فشل في حفظ الإعدادات');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('حدث خطأ أثناء حفظ الإعدادات');
+      alert(`حدث خطأ أثناء حفظ الإعدادات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);
     }
@@ -52,6 +87,17 @@ export default function AdminSettingsPage() {
       });
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center" dir="rtl">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري تحميل الإعدادات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
