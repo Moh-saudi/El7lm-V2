@@ -99,6 +99,17 @@ export async function POST(request: NextRequest) {
     if (!finalOrderId || finalOrderId.length === 0) {
       finalOrderId = `ORDER_${Date.now()}`;
     }
+    
+    // التأكد من أن المعرف لا يحتوي على رموز خاصة
+    finalOrderId = finalOrderId.replace(/[^a-zA-Z0-9_-]/g, '');
+    
+    // التأكد من أن المعرف لا يبدأ أو ينتهي بشرطة مرة أخرى
+    finalOrderId = finalOrderId.replace(/^[-_]+|[-_]+$/g, '');
+    
+    // إذا أصبح المعرف فارغاً مرة أخرى، إنشاء معرف نهائي
+    if (!finalOrderId || finalOrderId.length === 0) {
+      finalOrderId = `ORDER_${Date.now()}`;
+    }
 
     // إنشاء signature حسب وثائق Geidea
     const signature = generateSignature(
