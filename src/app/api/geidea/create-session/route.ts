@@ -65,23 +65,35 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     // تنظيف وتنسيق merchantReferenceId حسب متطلبات Geidea
-    const cleanOrderId = orderId.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 50);
+    // إزالة جميع الرموز الخاصة والمسافات، والاحتفاظ بالأحرف والأرقام والشرطات فقط
+    const cleanOrderId = orderId
+      .replace(/[^a-zA-Z0-9_-]/g, '') // إزالة جميع الرموز غير المسموحة
+      .replace(/_{2,}/g, '_') // استبدال الشرطات المتعددة بشرطة واحدة
+      .substring(0, 50); // حد الطول
     
+    // التأكد من أن المعرف لا يبدأ أو ينتهي بشرطة
+    let finalOrderId = cleanOrderId.replace(/^[-_]+|[-_]+$/g, '');
+    
+    // إذا كان المعرف فارغاً، إنشاء معرف بديل
+    if (!finalOrderId || finalOrderId.length === 0) {
+      finalOrderId = `ORDER_${Date.now()}`;
+    }
+
     // إنشاء signature حسب وثائق Geidea
     const signature = generateSignature(
       geideaConfig.merchantPublicKey,
       amount,
       currency,
-      cleanOrderId,
+      finalOrderId,
       geideaConfig.apiPassword,
       timestamp
     );
-    
+
     // إنشاء payload للدفع حسب وثائق Geidea HPP Checkout v2
     const paymentPayload = {
       amount: amount,
       currency: currency,
-      merchantReferenceId: cleanOrderId,
+      merchantReferenceId: finalOrderId,
       timestamp: timestamp,
       signature: signature,
       callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/api/geidea/callback`,
@@ -97,6 +109,7 @@ export async function POST(request: NextRequest) {
       merchantPublicKey: geideaConfig.merchantPublicKey,
       originalOrderId: orderId,
       cleanOrderId: cleanOrderId,
+      finalOrderId: finalOrderId,
       amount: amount,
       currency: currency,
       environment: geideaConfig.environment,
@@ -155,9 +168,9 @@ export async function POST(request: NextRequest) {
           detailedResponseMessage: geideaData.detailedResponseMessage,
           fullResponse: geideaData
         });
-        
+
         return NextResponse.json(
-          { 
+          {
             error: 'Geidea API error',
             details: geideaData.detailedResponseMessage || geideaData.responseMessage,
             responseCode: geideaData.responseCode,
@@ -234,34 +247,34 @@ function generateSignature(
 // دالة نصائح الاستكشاف للأخطاء
 function getTroubleshootingTips(responseCode: string, detailedResponseCode: string): string[] {
   const tips: string[] = [];
-  
+
   if (responseCode === "110") {
     tips.push("خطأ في معاملات الطلب");
-    
+
     if (detailedResponseCode === "031") {
       tips.push("merchantReferenceId غير صحيح - يجب أن يحتوي على أحرف وأرقام وشرطات فقط");
       tips.push("تأكد من أن merchantReferenceId لا يحتوي على مسافات أو رموز خاصة");
       tips.push("يجب أن يكون طول merchantReferenceId أقل من 50 حرف");
     }
   }
-  
+
   if (responseCode === "100") {
     tips.push("خطأ في المصادقة");
     tips.push("تحقق من صحة GEIDEA_MERCHANT_PUBLIC_KEY");
     tips.push("تحقق من صحة GEIDEA_API_PASSWORD");
   }
-  
+
   if (responseCode === "200") {
     tips.push("خطأ في التوقيع");
     tips.push("تحقق من صحة التوقيع (signature)");
     tips.push("تأكد من استخدام نفس البيانات في إنشاء التوقيع");
   }
-  
+
   if (tips.length === 0) {
     tips.push("راجع وثائق Geidea للحصول على تفاصيل أكثر");
     tips.push("تواصل مع دعم Geidea إذا استمر الخطأ");
   }
-  
+
   return tips;
 }
 
