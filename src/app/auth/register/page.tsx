@@ -1,35 +1,31 @@
 'use client';
 
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/lib/firebase/auth-provider';
 // تم حذف الترجمة
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
 import {
-  AlertTriangle,
-  Check,
-  CheckCircle,
-  Eye,
-  EyeOff,
-  Home,
-  Loader2,
-  Lock,
-  Phone,
-  Mail,
-  Shield,
-  Star,
-  User,
-  UserCheck,
-  Users,
-  X
+    AlertTriangle,
+    CheckCircle,
+    Eye,
+    EyeOff,
+    Home,
+    Loader2,
+    Lock,
+    Mail,
+    Shield,
+    Star,
+    User,
+    UserCheck,
+    Users
 } from 'lucide-react';
-import UnifiedOTPVerification from '@/components/shared/UnifiedOTPVerification';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 // Define user role types
 type UserRole = 'player' | 'club' | 'academy' | 'agent' | 'trainer' | 'admin';
@@ -127,7 +123,7 @@ export default function RegisterPage() {
     }, 3500);
     return () => clearInterval(id);
   }, []);
-  
+
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -215,7 +211,7 @@ export default function RegisterPage() {
   // عدل handleInputChange ليستخدم التحقق
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked, type } = e.target;
-    
+
     // إذا كان الحقل هو رقم الهاتف، نتأكد من أنه يحتوي فقط على أرقام
     if (name === 'phone') {
       const numbersOnly = value.replace(/[^0-9]/g, '');
@@ -301,7 +297,7 @@ export default function RegisterPage() {
   const handleCountryChange = (countryName: string) => {
     const country = countries.find(c => c.name === countryName);
     setSelectedCountry(country);
-    
+
     setFormData(prev => ({
       ...prev,
       country: countryName,
@@ -373,21 +369,21 @@ export default function RegisterPage() {
 
     console.log('🚀 Starting registration process (OTP disabled)...');
     setLoading(true);
-    
+
     try {
       // تخطي إرسال OTP وإنشاء الحساب مباشرة
       const formattedPhone = normalizePhone(formData.countryCode, formData.phone);
-      
+
       console.log('⏭️ OTP verification disabled, creating account directly...');
-      
+
       // توليد بريد إلكتروني مؤقت قصير لـ Firebase
       const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
       const firebaseEmail = generateTypedFirebaseEmail(
-        formData.phone, 
-        formData.countryCode, 
+        formData.phone,
+        formData.countryCode,
         formData.accountType
       );
-      
+
       const registrationData = {
         full_name: formData.name,
         phone: formattedPhone,
@@ -396,11 +392,11 @@ export default function RegisterPage() {
         currency: formData.currency,
         currencySymbol: formData.currencySymbol
       };
-      
+
       // إنشاء الحساب مباشرة
       const userData = await registerUser(
         firebaseEmail,
-        formData.password, 
+        formData.password,
         formData.accountType as UserRole,
         {
           ...registrationData,
@@ -409,7 +405,7 @@ export default function RegisterPage() {
           firebaseEmail: firebaseEmail
         }
       );
-      
+
       console.log('✅ Account created successfully (OTP disabled):', userData);
 
       // معالجة كود الانضمام إذا تم إدخاله وكان الحساب لاعب
@@ -426,13 +422,13 @@ export default function RegisterPage() {
           console.warn('⚠️ Join request failed:', joinErr);
         }
       }
-      
+
       setLoading(false);
-      
+
       // إعادة التوجيه إلى لوحة التحكم
       const dashboardRoute = getDashboardRoute(formData.accountType);
       router.push(dashboardRoute);
-      
+
     } catch (error: unknown) {
       console.error('❌ Registration failed:', error);
       if (error instanceof Error) {
@@ -457,25 +453,25 @@ export default function RegisterPage() {
   const handleSkipOTP = async () => {
     console.log('⏭️ Skipping OTP verification for new customers');
     setLoading(true);
-    
+
     try {
       // استرجاع بيانات التسجيل المعلقة
       const pendingDataStr = localStorage.getItem('pendingRegistration');
       if (!pendingDataStr) {
         throw new Error('بيانات التسجيل غير موجودة');
       }
-      
+
       const pendingData = JSON.parse(pendingDataStr);
-      
+
       console.log('✅ Skipping OTP, creating account directly...');
-      
+
       // توليد بريد إلكتروني مؤقت آمن لـ Firebase
       const cleanPhone = (pendingData.phone || '').replace(/[^0-9]/g, '');
       const cleanCountryCode = (pendingData.countryCode || '').replace(/[^0-9]/g, '');
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       const firebaseEmail = `user_${cleanCountryCode}_${cleanPhone}_${timestamp}_${randomSuffix}@el7lm.com`;
-      
+
       const registrationData = {
         full_name: pendingData.name,
         phone: pendingData.phone,
@@ -484,11 +480,11 @@ export default function RegisterPage() {
         currency: pendingData.currency,
         currencySymbol: pendingData.currencySymbol
       };
-      
+
       // إنشاء الحساب
       const userData = await registerUser(
         firebaseEmail,
-        pendingData.password, 
+        pendingData.password,
         pendingData.accountType as UserRole,
         {
           ...registrationData,
@@ -497,21 +493,21 @@ export default function RegisterPage() {
           firebaseEmail: firebaseEmail
         }
       );
-      
+
       console.log('✅ Account created successfully (OTP skipped):', userData);
-      
+
       // تنظيف البيانات المعلقة
       localStorage.removeItem('pendingRegistration');
       localStorage.removeItem('pendingPhoneVerification');
-      
+
       // إغلاق نافذة التحقق
       setShowPhoneVerification(false);
       setPendingPhone(null);
-      
+
       // إعادة التوجيه إلى لوحة التحكم
       const dashboardRoute = getDashboardRoute(pendingData.accountType);
       router.push(dashboardRoute);
-      
+
     } catch (error: unknown) {
       console.error('❌ Account creation failed:', error);
       if (error instanceof Error) {
@@ -526,30 +522,30 @@ export default function RegisterPage() {
   const handleOTPVerification = async (otp: string) => {
     console.log('🔐 Verifying OTP:', otp);
     setLoading(true);
-    
+
     try {
       // استرجاع بيانات التسجيل المعلقة
       const pendingDataStr = localStorage.getItem('pendingRegistration');
       if (!pendingDataStr) {
         throw new Error('بيانات التسجيل غير موجودة');
       }
-      
+
       const pendingData = JSON.parse(pendingDataStr);
-      
+
       // التحقق من صحة OTP
       if (otp !== pendingData.otp) {
         throw new Error('رمز التحقق غير صحيح');
       }
-      
+
       console.log('✅ OTP verified, creating account...');
-      
+
       // توليد بريد إلكتروني مؤقت آمن لـ Firebase
       const cleanPhone = (pendingData.phone || '').replace(/[^0-9]/g, '');
       const cleanCountryCode = (pendingData.countryCode || '').replace(/[^0-9]/g, '');
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       const firebaseEmail = `user_${cleanCountryCode}_${cleanPhone}_${timestamp}_${randomSuffix}@el7lm.com`;
-      
+
       const registrationData = {
         full_name: pendingData.name,
         phone: pendingData.phone,
@@ -558,11 +554,11 @@ export default function RegisterPage() {
         currency: pendingData.currency,
         currencySymbol: pendingData.currencySymbol
       };
-      
+
       // إنشاء الحساب
       const userData = await registerUser(
         firebaseEmail,
-        pendingData.password, 
+        pendingData.password,
         pendingData.accountType as UserRole,
         {
           ...registrationData,
@@ -571,21 +567,21 @@ export default function RegisterPage() {
           firebaseEmail: firebaseEmail
         }
       );
-      
+
       console.log('✅ Account created successfully:', userData);
-      
+
       // تنظيف البيانات المعلقة
       localStorage.removeItem('pendingRegistration');
       localStorage.removeItem('pendingPhoneVerification');
       setShowPhoneVerification(false);
       setPendingPhone(null);
-      
+
       setMessage('✅ تم إنشاء الحساب بنجاح! سيتم تحويلك للوحة التحكم.');
       setTimeout(() => {
         const dashboardRoute = getDashboardRoute(pendingData.accountType);
         router.replace(dashboardRoute);
       }, 1000);
-      
+
     } catch (error: unknown) {
       console.error('❌ OTP verification failed:', error);
       if (error instanceof Error) {

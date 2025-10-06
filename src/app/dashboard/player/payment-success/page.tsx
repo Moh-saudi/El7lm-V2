@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle, ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ArrowLeft, CheckCircle, Home } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -93,7 +93,7 @@ export default function PaymentSuccessPage() {
             <Home className="h-4 w-4 mr-2" />
             العودة للوحة التحكم
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={() => router.back()}

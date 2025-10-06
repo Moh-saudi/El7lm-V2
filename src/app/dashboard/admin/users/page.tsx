@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, collectionGroup, query, getDocs, doc, updateDoc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import '@/styles/admin-dashboard.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1215,7 +1216,12 @@ export default function UsersManagement() {
                       {new Date(day.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
                     </div>
                     <div className="flex-1 bg-gray-200 rounded-full h-5 relative">
-                      <div className="bg-blue-500 h-5 rounded-full" style={{ width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyRegs.map(r => r.count)))) * 100)}%`, minWidth: '12px' }} />
+                      <div 
+                        className="chart-bar chart-bar-blue" 
+                        style={{ 
+                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyRegs.map(r => r.count)))) * 100)}%` 
+                        }} 
+                      />
                       <span className="absolute inset-0 flex items-center justify-center text-[11px] text-white font-medium">{day.count}</span>
                     </div>
                   </div>
@@ -1238,7 +1244,12 @@ export default function UsersManagement() {
                       {new Date(day.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
                     </div>
                     <div className="flex-1 bg-gray-200 rounded-full h-5 relative">
-                      <div className="bg-emerald-500 h-5 rounded-full" style={{ width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyVisitors.map(r => r.count)))) * 100)}%`, minWidth: '12px' }} />
+                      <div 
+                        className="chart-bar chart-bar-emerald" 
+                        style={{ 
+                          width: `${Math.min(100, (day.count / Math.max(1, Math.max(...last7DailyVisitors.map(r => r.count)))) * 100)}%` 
+                        }} 
+                      />
                       <span className="absolute inset-0 flex items-center justify-center text-[11px] text-white font-medium">{day.count}</span>
                     </div>
                   </div>

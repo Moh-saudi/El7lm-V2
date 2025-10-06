@@ -1,19 +1,17 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
+import { getCitiesByCountry, getCountryFromCity, searchCities, SUPPORTED_COUNTRIES } from '@/lib/cities-data';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { auth, db } from "@/lib/firebase/config";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Check, Plus, Trash, X, ArrowLeft, ArrowRight } from 'lucide-react';
+import { db } from "@/lib/firebase/config";
+import { AccountType, uploadPlayerAdditionalImage, uploadPlayerDocument, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
+import { User } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useState, useCallback } from 'react';
-import { uploadPlayerProfileImage, uploadPlayerAdditionalImage, uploadPlayerDocument, deletePlayerDocument, AccountType } from '@/lib/firebase/upload-media';
-import { supabase, getSupabaseClient } from '@/lib/supabase/config';
-import { User } from 'firebase/auth';
-import { CITIES_BY_COUNTRY, getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES, searchCities } from '@/lib/cities-data';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import dynamic from 'next/dynamic';
 
 // Types
 interface ExtendedUser extends User {
@@ -197,7 +195,7 @@ const defaultPlayerFields: PlayerFormData = {
 // Reference data
 const POSITIONS = [
   'حارس مرمى',
-  'مدافع أيمن', 
+  'مدافع أيمن',
   'مدافع أيسر',
   'قلب دفاع',
   'وسط دفاعي',
@@ -209,7 +207,7 @@ const POSITIONS = [
 ];
 
 const NATIONALITIES = [
-  "سعودي", "مصري", "أردني", "سوري", "مغربي", "جزائري", "تونسي", "ليبي", 
+  "سعودي", "مصري", "أردني", "سوري", "مغربي", "جزائري", "تونسي", "ليبي",
   "فلسطيني", "يمني", "سوداني", "إماراتي", "قطري", "بحريني", "كويتي", "عماني",
   "لبناني", "عراقي"
 ];
@@ -266,7 +264,7 @@ const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
 const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
   const errors: FormErrors = {};
   if (!data.full_name) errors.full_name = 'الاسم الكامل مطلوب';
-  
+
   // تحقق من تاريخ الميلاد
   if (!data.birth_date) {
     errors.birth_date = 'تاريخ الميلاد مطلوب';
@@ -275,20 +273,20 @@ const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     if (age < 3) {
       errors.birth_date = 'يجب أن يكون العمر 3 سنوات على الأقل';
     }
-    
+
     if (age > 50) {
       errors.birth_date = 'يجب أن يكون العمر أقل من 50 سنة';
     }
   }
-  
+
   if (!data.nationality) errors.nationality = 'الجنسية مطلوبة';
   if (!data.country) errors.country = 'الدولة مطلوبة';
   if (!data.city) errors.city = 'المدينة مطلوبة';
@@ -308,7 +306,7 @@ const validateSports = (data: PlayerFormData): FormErrors => {
 export default function PlayerProfile() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  
+
   // State
   const [playerData, setPlayerData] = useState<PlayerFormData | null>(null);
   const [formData, setFormData] = useState<PlayerFormData>(defaultPlayerFields);
@@ -332,12 +330,12 @@ export default function PlayerProfile() {
   // Fetch player data
   const fetchPlayerData = useCallback(async () => {
     if (!user || loading) return;
-    
+
     setIsLoading(true);
     try {
       const docRef = doc(db, 'players', user.uid);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         const data = docSnap.data();
         const processedData = {
@@ -383,7 +381,7 @@ export default function PlayerProfile() {
   useEffect(() => {
     const fetchSubscription = async () => {
       if (!user) return;
-      
+
       try {
         const subDoc = await getDoc(doc(db, 'subscriptions', user.uid));
         if (subDoc.exists()) {
@@ -427,7 +425,7 @@ export default function PlayerProfile() {
   // Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setEditFormData(prev => ({
@@ -449,7 +447,7 @@ export default function PlayerProfile() {
       country: country,
       city: '' // مسح المدينة عند تغيير الدولة
     }));
-    
+
     // تحديث المدن المتاحة
     if (country) {
       const cities = getCitiesByCountry(country);
@@ -465,7 +463,7 @@ export default function PlayerProfile() {
       ...prev,
       city: city
     }));
-    
+
     // تحديد الدولة تلقائياً بناءً على المدينة
     if (city) {
       const detectedCountry = getCountryFromCity(city);
@@ -475,15 +473,15 @@ export default function PlayerProfile() {
           country: detectedCountry,
           city: city
         }));
-        
+
         // تحديث المدن المتاحة للدولة الجديدة
         const cities = getCitiesByCountry(detectedCountry);
         setAvailableCities(cities);
-        
+
         console.log(`🔧 تم تحديد الدولة تلقائياً: "${city}" -> "${detectedCountry}"`);
       }
     }
-    
+
     setShowCityDropdown(false);
   };
 
@@ -494,9 +492,9 @@ export default function PlayerProfile() {
       ...prev,
       city: query
     }));
-    
+
     if (query.length > 0) {
-      const searchResults = editFormData.country 
+      const searchResults = editFormData.country
         ? searchCities(query, editFormData.country)
         : searchCities(query);
       setAvailableCities(searchResults);
@@ -521,7 +519,7 @@ export default function PlayerProfile() {
       academy_id: (playerData as any)?.academy_id,
       academyId: (playerData as any)?.academyId
     });
-    
+
     if ((playerData as any)?.trainer_id || (playerData as any)?.trainerId) {
       console.log('✅ تم تحديد النوع: مدرب');
       return 'trainer';
@@ -538,7 +536,7 @@ export default function PlayerProfile() {
       console.log('✅ تم تحديد النوع: أكاديمية');
       return 'academy';
     }
-    
+
     console.log('✅ تم تحديد النوع: لاعب مستقل');
     return 'independent'; // اللاعبين المستقلين
   };
@@ -551,26 +549,26 @@ export default function PlayerProfile() {
     try {
       const accountType = getAccountType();
       const result = await uploadPlayerProfileImage(file, user.uid, accountType);
-      
+
       if (result?.url) {
         // Update local state immediately
         setPlayerData(prev => prev ? {
           ...prev,
           profile_image_url: result.url
         } : null);
-        
+
         setFormData(prev => ({
           ...prev,
           profile_image: { url: result.url },
           profile_image_url: result.url
         }));
-        
+
         setEditFormData(prev => ({
           ...prev,
           profile_image: { url: result.url },
           profile_image_url: result.url
         }));
-        
+
         // Update in database
         if (user.uid) {
           await updateDoc(doc(db, 'players', user.uid), {
@@ -578,10 +576,10 @@ export default function PlayerProfile() {
             updated_at: serverTimestamp()
           });
         }
-        
+
         // Trigger header update for player dashboard
         window.dispatchEvent(new CustomEvent('playerProfileImageUpdated'));
-        
+
         toast.success('✅ تم رفع الصورة الشخصية بنجاح');
       }
     } catch (error) {
@@ -598,7 +596,7 @@ export default function PlayerProfile() {
     if (currentStep === STEPS.PERSONAL) errors = validatePersonalInfo(editFormData);
     if (currentStep === STEPS.SPORTS) errors = validateSports(editFormData);
     // Other steps don't require mandatory validation for now
-    
+
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -607,7 +605,7 @@ export default function PlayerProfile() {
       const docRef = doc(db, 'players', user.uid);
       await setDoc(docRef, editFormData, { merge: true });
     }
-    
+
     setCurrentStep(currentStep + 1);
   };
 
@@ -617,15 +615,15 @@ export default function PlayerProfile() {
 
   const handleSave = async () => {
     if (!user) return;
-    
+
     try {
       const docRef = doc(db, 'players', user.uid);
       await setDoc(docRef, editFormData, { merge: true });
-      
+
       // إرسال إشعار للمديرين عن الفيديوهات الجديدة
       const originalVideos = formData.videos || [];
       const newVideos = editFormData.videos || [];
-      
+
       // تحقق من الفيديوهات الجديدة
       const addedVideos = newVideos.filter((newVideo, index) => {
         const originalVideo = originalVideos[index];
@@ -651,21 +649,21 @@ export default function PlayerProfile() {
               })
             });
           }
-          
+
           console.log(`✅ تم إرسال إشعارات لـ ${addedVideos.length} فيديو جديد`);
         } catch (notificationError) {
           console.error('❌ خطأ في إرسال إشعارات الفيديو:', notificationError);
           // لا نوقف العملية إذا فشل الإشعار
         }
       }
-      
+
       setPlayerData(editFormData);
       setFormData(editFormData);
       setIsEditing(false);
-      
+
       // إظهار رسالة النجاح مع التحقق من الاشتراك
       setShowRegistrationSuccess(true);
-      
+
       setSuccessMessage('تم حفظ البيانات بنجاح');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -713,7 +711,7 @@ export default function PlayerProfile() {
   const renderPersonalInfo = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">البيانات الشخصية</h2>
-      
+
       {/* Profile Image */}
       <div>
         <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -778,7 +776,7 @@ export default function PlayerProfile() {
             <span className="text-xs text-red-500">{formErrors.full_name}</span>
           )}
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700">
             تاريخ الميلاد <span className="text-red-500">*</span>
@@ -866,7 +864,7 @@ export default function PlayerProfile() {
                 className="p-2 mt-1 w-full text-gray-900 bg-white rounded-md border focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 disabled={!editFormData.country}
               />
-              
+
               {showCityDropdown && availableCities.length > 0 && (
                 <div className="overflow-y-auto absolute right-0 left-0 top-full z-10 mt-1 max-h-60 bg-white rounded-md border border-gray-300 shadow-lg">
                   {availableCities.map((city, index) => (
@@ -881,7 +879,7 @@ export default function PlayerProfile() {
                   ))}
                 </div>
               )}
-              
+
               {editFormData.country && availableCities.length === 0 && citySearchQuery && (
                 <div className="absolute right-0 left-0 top-full z-10 p-3 mt-1 text-center text-gray-500 bg-white rounded-md border border-gray-300 shadow-lg">
                   لا توجد مدن تطابق البحث "{citySearchQuery}"
@@ -896,13 +894,13 @@ export default function PlayerProfile() {
           {formErrors.city && (
             <span className="text-xs text-red-500">{formErrors.city}</span>
           )}
-          
+
           {isEditing && editFormData.country && (
             <p className="mt-1 text-xs text-blue-600">
               💡 يمكنك كتابة اسم المدينة للبحث، أو النقر في الحقل لرؤية كل مدن {editFormData.country}
             </p>
           )}
-          
+
           {isEditing && !editFormData.country && (
             <p className="mt-1 text-xs text-amber-600">
               ⚠️ يرجى اختيار الدولة أولاً لتتمكن من اختيار المدينة
@@ -967,7 +965,7 @@ export default function PlayerProfile() {
   const renderEducation = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">المعلومات التعليمية</h2>
-      
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700">المستوى التعليمي</label>
@@ -1164,7 +1162,7 @@ export default function PlayerProfile() {
   const renderMedical = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">السجل الطبي</h2>
-      
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700">فصيلة الدم</label>
@@ -1405,7 +1403,7 @@ export default function PlayerProfile() {
   const renderSportsInfo = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">المعلومات الرياضية</h2>
-      
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -1721,7 +1719,7 @@ export default function PlayerProfile() {
     return (
       <div className="space-y-6">
         <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">المهارات والقدرات</h2>
-        
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* المهارات الفنية */}
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -1840,11 +1838,11 @@ export default function PlayerProfile() {
     return (
       <div className="space-y-6">
         <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">الأهداف والطموحات</h2>
-        
+
         <div className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-200">
           <h3 className="mb-4 text-lg font-semibold text-blue-800">أهدافك الرياضية</h3>
           <p className="mb-4 text-sm text-gray-600">اختر الأهداف التي تسعى لتحقيقها في مسيرتك الكروية (يمكن اختيار أكثر من هدف)</p>
-          
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {objectiveOptions.map((objective) => (
               <label key={objective} className="flex items-center p-2 bg-white rounded-lg border cursor-pointer hover:bg-blue-50">
@@ -1886,11 +1884,11 @@ export default function PlayerProfile() {
                 {(() => {
                   const selectedObjectives = objectiveOptions.filter(obj => formData.objectives?.[obj]);
                   const totalSelected = selectedObjectives.length;
-                  
+
                   if (totalSelected === 0) {
                     return <p>لم تحدد أي أهداف بعد. قم بتعديل ملفك لإضافة أهدافك.</p>;
                   }
-                  
+
                   return (
                     <div>
                       <p className="mb-2">
@@ -1919,7 +1917,7 @@ export default function PlayerProfile() {
     const files = e.target.files;
     console.log('📸 Starting image upload process...');
     console.log('Files selected:', files?.length || 0);
-    
+
     // تحقق شامل من المستخدم
     console.log('🔍 User debugging:');
     console.log('- user object:', user);
@@ -1927,23 +1925,23 @@ export default function PlayerProfile() {
     console.log('- user.uid:', user?.uid);
     console.log('- typeof user.uid:', typeof(user?.uid));
     console.log('- loading state:', loading);
-    
+
     // انتظار أن ينتهي التحميل أولاً
     if (loading) {
       console.log('⏳ Still loading user data, please wait...');
       setError('جاري تحميل بيانات المستخدم، يرجى الانتظار...');
       return;
     }
-    
+
     if (!files || !user || !user.uid) {
-      console.log('❌ Validation failed:', { 
-        files: !!files, 
-        user: !!user, 
+      console.log('❌ Validation failed:', {
+        files: !!files,
+        user: !!user,
         uid: !!user?.uid,
         userType: typeof(user),
         uidType: typeof(user?.uid)
       });
-      
+
       if (!user) {
         setError('خطأ: لم يتم العثور على بيانات المستخدم. يرجى تسجيل الدخول مرة أخرى.');
         setTimeout(() => {
@@ -1962,16 +1960,16 @@ export default function PlayerProfile() {
     console.log('Files to upload:', Array.from(files).map(f => ({ name: f.name, size: f.size, type: f.type })));
 
     const newImages: Array<{ url: string }> = [];
-    
+
     for (let i = 0; i < files.length; i++) {
       console.log(`📤 Uploading file ${i + 1}/${files.length}:`, files[i].name);
       console.log(`🔑 Using user ID: "${user.uid}" (length: ${user.uid.length})`);
-      
+
       try {
         const accountType = getAccountType();
         const result = await uploadPlayerAdditionalImage(files[i], user.uid, accountType);
         console.log('✅ Upload result:', result);
-        
+
         if (result && result.url) {
           newImages.push({ url: result.url });
           console.log('✅ Image added to list:', result.url);
@@ -2071,12 +2069,12 @@ export default function PlayerProfile() {
   const renderMedia = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">الصور والفيديوهات</h2>
-      
+
       {/* الصور الإضافية */}
       <div className="p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-lg border border-green-200">
         <h3 className="mb-4 text-lg font-semibold text-green-800">الصور الإضافية</h3>
         <p className="mb-4 text-sm text-gray-600">أضف صور تظهر مهاراتك أو لحظات مميزة من مسيرتك الرياضية</p>
-        
+
         {isEditing && (
           <div className="mb-4">
             <input
@@ -2117,7 +2115,7 @@ export default function PlayerProfile() {
               </div>
             </div>
           ))}
-          
+
           {(!editFormData.additional_images?.length && !formData.additional_images?.length) && (
             <div className="col-span-full p-8 text-center text-gray-500 bg-gray-100 rounded-lg border-2 border-dashed">
               <span>لا توجد صور إضافية</span>
@@ -2131,7 +2129,7 @@ export default function PlayerProfile() {
       <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
         <h3 className="mb-4 text-lg font-semibold text-purple-800">مقاطع الفيديو</h3>
         <p className="mb-4 text-sm text-gray-600">أضف روابط فيديوهات من يوتيوب أو منصات أخرى تظهر مهاراتك</p>
-        
+
         <div className="space-y-4">
           {(editFormData.videos || formData.videos || []).map((video, index) => (
             <div key={index} className="p-4 bg-white rounded-lg border">
@@ -2227,7 +2225,7 @@ export default function PlayerProfile() {
        <div className="p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200">
          <h3 className="mb-4 text-lg font-semibold text-orange-800">المستندات الرسمية</h3>
          <p className="mb-4 text-sm text-gray-600">أرفق صور من مستنداتك الرسمية (جواز السفر، الشهادات، إلخ)</p>
-         
+
          <div className="space-y-4">
            {(editFormData.documents || formData.documents || []).map((document, index) => (
              <div key={index} className="p-4 bg-white rounded-lg border">
@@ -2405,7 +2403,7 @@ export default function PlayerProfile() {
   const renderContracts = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">العقود والاتصالات</h2>
-      
+
       {/* تاريخ العقود */}
       <div>
         <label className="block text-sm font-medium text-gray-700">تاريخ العقود</label>
@@ -2805,7 +2803,7 @@ export default function PlayerProfile() {
   return (
     <div className="min-h-screen bg-gray-50">
       {successMessage && <SuccessMessage message={successMessage} />}
-      
+
       {/* Registration Success Modal */}
       {showRegistrationSuccess && (
         <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
@@ -2821,7 +2819,7 @@ export default function PlayerProfile() {
                 تم حفظ معلوماتك وهي الآن قيد المراجعة من قبل فريقنا المختص
               </p>
             </div>
-            
+
             {!subscription || subscription.status !== 'active' ? (
               <div className="p-4 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
                 <div className="flex justify-center items-center mb-3">
@@ -2854,7 +2852,7 @@ export default function PlayerProfile() {
                 </p>
               </div>
             )}
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowRegistrationSuccess(false)}
@@ -2875,7 +2873,7 @@ export default function PlayerProfile() {
           </div>
         </div>
       )}
-      
+
       <div className="py-8 min-h-screen bg-gray-50" dir="rtl">
         <div className="px-4 mx-auto max-w-4xl sm:px-6 lg:px-8">
           {/* Header */}
@@ -2909,8 +2907,8 @@ export default function PlayerProfile() {
                   >
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        parseInt(step) <= currentStep 
-                          ? 'bg-blue-600 text-white' 
+                        parseInt(step) <= currentStep
+                          ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-500'
                       }`}
                     >
@@ -2960,7 +2958,7 @@ export default function PlayerProfile() {
                 {currentStep === STEPS.OBJECTIVES && renderObjectives()}
                 {currentStep === STEPS.MEDIA && renderMedia()}
                 {currentStep === STEPS.CONTRACTS && renderContracts()}
-                
+
                 {/* Navigation Buttons */}
                <div className="flex justify-between mt-8">
                  <div className="flex gap-4">
@@ -2975,7 +2973,7 @@ export default function PlayerProfile() {
                      </Button>
                    )}
                  </div>
-                 
+
                  <div className="flex gap-4">
                    <Button
                      onClick={handleCancel}
@@ -2984,7 +2982,7 @@ export default function PlayerProfile() {
                    >
                      إلغاء
                    </Button>
-                   
+
                    {currentStep < Object.keys(STEP_TITLES).length - 1 ? (
                      <Button
                        onClick={handleNext}

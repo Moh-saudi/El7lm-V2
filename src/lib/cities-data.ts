@@ -3,13 +3,13 @@ export const CITIES_BY_COUNTRY: Record<string, string[]> = {
   // المملكة العربية السعودية
   'السعودية': [
     "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
-    "تبوك", "بريدة", "خميس مشيط", "الهفوف", "حفر الباطن", "الطائف", "نجران", 
+    "تبوك", "بريدة", "خميس مشيط", "الهفوف", "حفر الباطن", "الطائف", "نجران",
     "جازان", "ينبع", "القطيف", "عرعر", "سكاكا", "أبها", "القصيم", "حائل",
     "الجبيل", "رابغ", "الباحة", "عنيزة", "الرس", "الزلفي", "وادي الدواسر",
     "الافلاج", "القريات", "طريف", "رفحاء", "الخرج", "المجمعة", "شقراء"
   ],
-  
-  // جمهورية مصر العربية  
+
+  // جمهورية مصر العربية
   'مصر': [
     "القاهرة", "الجيزة", "الإسكندرية", "بورسعيد", "السويس", "الإسماعيلية",
     "الأقصر", "أسوان", "أسيوط", "سوهاج", "قنا", "الفيوم", "بني سويف",
@@ -310,7 +310,7 @@ export const COUNTRIES_DATA = [
 // دالة للحصول على الدولة من المدينة
 export function getCountryFromCity(city: string): string | null {
   if (!city) return null;
-  
+
   for (const [country, cities] of Object.entries(CITIES_BY_COUNTRY)) {
     if (cities.includes(city.trim())) {
       return country;
@@ -330,20 +330,20 @@ export const SUPPORTED_COUNTRIES = Object.keys(CITIES_BY_COUNTRY).sort();
 // دالة البحث في المدن
 export function searchCities(query: string, country?: string): string[] {
   const normalizedQuery = query.toLowerCase().trim();
-  
+
   if (country && CITIES_BY_COUNTRY[country]) {
-    return CITIES_BY_COUNTRY[country].filter(city => 
+    return CITIES_BY_COUNTRY[country].filter(city =>
       city.toLowerCase().includes(normalizedQuery)
     );
   }
-  
+
   // البحث في كل المدن
   const allCities: string[] = [];
   Object.values(CITIES_BY_COUNTRY).forEach(cities => {
     allCities.push(...cities);
   });
-  
-  return allCities.filter(city => 
+
+  return allCities.filter(city =>
     city.toLowerCase().includes(normalizedQuery)
   ).slice(0, 10); // أقصى 10 نتائج
-} 
+}

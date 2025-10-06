@@ -39,9 +39,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [Geidea Config] Error getting configuration:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to get configuration',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

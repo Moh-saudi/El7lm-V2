@@ -225,6 +225,8 @@ export default function AdminContentPage() {
                     <Label htmlFor="type">النوع</Label>
                     <select
                       id="type"
+                      name="content-type"
+                      aria-label="نوع المحتوى"
                       value={selectedItem.type}
                       onChange={(e) => setSelectedItem(prev => prev ? { ...prev, type: e.target.value as any } : null)}
                       disabled={!isEditing}
@@ -240,6 +242,8 @@ export default function AdminContentPage() {
                     <Label htmlFor="status">الحالة</Label>
                     <select
                       id="status"
+                      name="content-status"
+                      aria-label="حالة المحتوى"
                       value={selectedItem.status}
                       onChange={(e) => setSelectedItem(prev => prev ? { ...prev, status: e.target.value as any } : null)}
                       disabled={!isEditing}

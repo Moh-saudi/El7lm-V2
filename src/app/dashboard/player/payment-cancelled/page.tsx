@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { XCircle, ArrowLeft, Home, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ArrowLeft, Home, RefreshCw, XCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function PaymentCancelledPage() {
   const router = useRouter();
@@ -93,7 +93,7 @@ export default function PaymentCancelledPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             المحاولة مرة أخرى
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={() => router.push('/dashboard/player')}
@@ -102,7 +102,7 @@ export default function PaymentCancelledPage() {
             <Home className="h-4 w-4 mr-2" />
             العودة للوحة التحكم
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={() => router.back()}

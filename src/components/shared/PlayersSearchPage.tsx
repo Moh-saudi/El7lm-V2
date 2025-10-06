@@ -1,33 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import SendMessageButton from '@/components/messaging/SendMessageButton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  Flag, 
-  Target, 
-  Minimize2, 
-  Maximize2,
-  Eye,
-  User,
-  MapPin,
-  Sword,
-  Trophy,
-  Users
-} from 'lucide-react';
-import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import SendMessageButton from '@/components/messaging/SendMessageButton';
+import { db } from '@/lib/firebase/config';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import {
+    Eye,
+    Filter,
+    Flag,
+    MapPin,
+    Maximize2,
+    Minimize2,
+    RefreshCw,
+    Search,
+    Sword,
+    Trophy,
+    User,
+    Users
+} from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -86,18 +85,18 @@ interface PaginationProps {
   onPlayersPerPageChange: (playersPerPage: number) => void;
 }
 
-const Pagination: React.FC<PaginationProps> = ({ 
-  currentPage, 
-  totalPages, 
-  onPageChange, 
-  playersPerPage, 
+const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+  playersPerPage,
   totalPlayers,
-  onPlayersPerPageChange 
+  onPlayersPerPageChange
 }) => {
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -105,18 +104,18 @@ const Pagination: React.FC<PaginationProps> = ({
     } else {
       const startPage = Math.max(1, currentPage - 2);
       const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
+
       if (startPage > 1) {
         pages.push(1);
         if (startPage > 2) {
           pages.push('...');
         }
       }
-      
+
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
-      
+
       if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
           pages.push('...');
@@ -124,7 +123,7 @@ const Pagination: React.FC<PaginationProps> = ({
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -145,13 +144,13 @@ const Pagination: React.FC<PaginationProps> = ({
         </Select>
         <span>لاعب في الصفحة</span>
       </div>
-      
+
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <span>
           عرض {((currentPage - 1) * playersPerPage) + 1} إلى {Math.min(currentPage * playersPerPage, totalPlayers)} من {totalPlayers} لاعب
         </span>
       </div>
-      
+
       <div className="flex items-center gap-1">
         <Button
           variant="outline"
@@ -162,7 +161,7 @@ const Pagination: React.FC<PaginationProps> = ({
         >
           السابق
         </Button>
-        
+
         {getPageNumbers().map((page, index) => (
           <React.Fragment key={index}>
             {page === '...' ? (
@@ -173,8 +172,8 @@ const Pagination: React.FC<PaginationProps> = ({
                 size="sm"
                 onClick={() => onPageChange(page as number)}
                 className={`min-w-[40px] ${
-                  currentPage === page 
-                    ? "bg-green-600 hover:bg-green-700 text-white" 
+                  currentPage === page
+                    ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
                 }`}
               >
@@ -183,7 +182,7 @@ const Pagination: React.FC<PaginationProps> = ({
             )}
           </React.Fragment>
         ))}
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -205,23 +204,23 @@ interface PlayersSearchPageProps {
 export default function PlayersSearchPage({ accountType }: PlayersSearchPageProps) {
   const { user } = useAuth();
   const router = useRouter();
-  
+
   // State management
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [playersPerPage, setPlayersPerPage] = useState(12);
-  
+
   // Filters
   const [filterPosition, setFilterPosition] = useState('all');
   const [filterNationality, setFilterNationality] = useState('all');
   const [filterCountry, setFilterCountry] = useState('all');
   const [filterAccountType, setFilterAccountType] = useState('all');
-  
+
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
@@ -242,15 +241,15 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   // Simplified load players function
   const loadPlayers = useCallback(async () => {
     if (!user?.uid) return;
-    
+
     setIsLoading(true);
     try {
       console.log('🔄 Loading players...');
-      
+
       // Load players from 'players' collection
       const playersSnapshot = await getDocs(collection(db, 'players'));
       const playersData: Player[] = [];
-      
+
       playersSnapshot.forEach((doc) => {
         const playerData = { id: doc.id, ...doc.data() } as Player;
         if (!playerData.isDeleted) {
@@ -264,7 +263,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         where('accountType', '==', 'player')
       );
       const usersSnapshot = await getDocs(usersQuery);
-      
+
       usersSnapshot.forEach((doc) => {
         const userData = doc.data();
         if (!userData.isDeleted) {
@@ -278,7 +277,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
       setPlayers(playersData);
       console.log(`✅ Loaded ${playersData.length} players successfully`);
-      
+
     } catch (error) {
       console.error('❌ Error loading players:', error);
     } finally {
@@ -295,16 +294,16 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
   // Optimized filtering
   const filteredPlayers = useMemo(() => {
-    const hasFilters = debouncedSearchTerm || 
-      filterPosition !== 'all' || 
-      filterNationality !== 'all' || 
-      filterCountry !== 'all' || 
+    const hasFilters = debouncedSearchTerm ||
+      filterPosition !== 'all' ||
+      filterNationality !== 'all' ||
+      filterCountry !== 'all' ||
       filterAccountType !== 'all';
-    
+
     if (!hasFilters) {
       return players;
     }
-    
+
     return players.filter(player => {
       // Search filter
       if (debouncedSearchTerm) {
@@ -321,29 +320,29 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           player.country,
           player.city
         ].filter(Boolean).join(' ').toLowerCase();
-        
+
         if (!searchFields.includes(searchTerm)) {
           return false;
         }
       }
-      
+
       // Position filter
-      if (filterPosition !== 'all' && 
-          player.primary_position !== filterPosition && 
+      if (filterPosition !== 'all' &&
+          player.primary_position !== filterPosition &&
           player.position !== filterPosition) {
         return false;
       }
-      
+
       // Nationality filter
       if (filterNationality !== 'all' && player.nationality !== filterNationality) {
         return false;
       }
-      
+
       // Country filter
       if (filterCountry !== 'all' && player.country !== filterCountry) {
         return false;
       }
-      
+
       // Account type filter
       if (filterAccountType !== 'all') {
         const playerAccountType = getPlayerAccountType(player);
@@ -351,10 +350,10 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           return false;
         }
       }
-      
+
       return true;
     });
-  }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry, 
+  }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry,
       filterAccountType, getPlayerAccountType]);
 
   // Reset page when filters change
@@ -512,19 +511,19 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
               الفلاتر
               {isFiltersExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
-            
+
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                onClick={resetFilters} 
+              <Button
+                variant="outline"
+                onClick={resetFilters}
                 size="sm"
                 className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
               >
                 إعادة تعيين
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => loadPlayers()} 
+              <Button
+                variant="outline"
+                onClick={() => loadPlayers()}
                 size="sm"
                 className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
               >
@@ -638,7 +637,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
             {pagedPlayers.map((player) => {
               const playerAccountType = getPlayerAccountType(player);
               const imageUrl = getValidImageUrl(player.profile_image_url);
-              
+
               return (
                 <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="relative">
@@ -660,19 +659,19 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <User className="h-16 w-16 text-gray-400" />
                       </div>
                     )}
-                    
+
                     <div className="absolute top-2 right-2">
                       <Badge className={getOrganizationBadgeStyle(playerAccountType)}>
                         {getOrganizationLabel(playerAccountType)}
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <h3 className="font-semibold text-lg mb-2 line-clamp-1">
                       {player.full_name || player.name || 'لاعب غير محدد'}
                     </h3>
-                    
+
                     <div className="space-y-2 text-sm text-gray-600">
                       {(player.primary_position || player.position) && (
                         <div className="flex items-center gap-2">
@@ -682,21 +681,21 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                           </Badge>
                         </div>
                       )}
-                      
+
                       {player.nationality && (
                         <div className="flex items-center gap-2">
                           <Flag className="h-4 w-4" />
                           <span>{player.nationality}</span>
                         </div>
                       )}
-                      
+
                       {player.country && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
                           <span>{player.country}</span>
                         </div>
                       )}
-                      
+
                       {player.current_club && (
                         <div className="flex items-center gap-2">
                           <Trophy className="h-4 w-4" />
@@ -704,7 +703,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="mt-4 flex gap-2">
                       <Button
                         variant="outline"
@@ -715,7 +714,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <Eye className="h-4 w-4 mr-2" />
                         عرض الملف
                       </Button>
-                      
+
                       <SendMessageButton
                         user={user}
                         userData={user}

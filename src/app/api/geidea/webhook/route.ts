@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     console.log('🔔 [Geidea Webhook] Received webhook:', body);
 
     // التحقق من صحة البيانات
@@ -57,27 +57,27 @@ export async function POST(request: NextRequest) {
         // await activateService(orderId);
         // await sendPaymentSuccessNotification(orderId);
         break;
-        
+
       case 'failed':
       case 'declined':
         console.log('❌ [Geidea Webhook] Payment failed:', orderId);
         // TODO: إرسال إشعار فشل الدفع
         // await sendPaymentFailureNotification(orderId);
         break;
-        
+
       case 'cancelled':
         console.log('⚠️ [Geidea Webhook] Payment cancelled:', orderId);
         // TODO: إرسال إشعار إلغاء الدفع
         // await sendPaymentCancellationNotification(orderId);
         break;
-        
+
       case 'refunded':
         console.log('🔄 [Geidea Webhook] Payment refunded:', orderId);
         // TODO: إلغاء تفعيل الخدمة
         // await deactivateService(orderId);
         // await sendRefundNotification(orderId);
         break;
-        
+
       default:
         console.log('ℹ️ [Geidea Webhook] Unknown status:', status, orderId);
     }
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [Geidea Webhook] Error processing webhook:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Webhook processing failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

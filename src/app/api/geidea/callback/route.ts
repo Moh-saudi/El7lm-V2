@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     console.log('🔄 [Geidea Callback] Received payment callback:', body);
 
     // التحقق من صحة البيانات
@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
     // إرسال إشعار للمستخدم إذا كان الدفع ناجحاً
     if (status === 'success' || status === 'completed') {
       console.log('✅ [Geidea Callback] Payment successful:', orderId);
-      
+
       // TODO: إرسال إشعار للمستخدم
       // await sendPaymentSuccessNotification(orderId);
     } else if (status === 'failed' || status === 'cancelled') {
       console.log('❌ [Geidea Callback] Payment failed:', orderId);
-      
+
       // TODO: إرسال إشعار فشل الدفع
       // await sendPaymentFailureNotification(orderId);
     }
@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [Geidea Callback] Error processing callback:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Callback processing failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
-    
+
     if (!orderId) {
       return NextResponse.json(
         { error: 'Order ID is required' },
@@ -96,9 +96,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [Geidea Callback] Error checking payment status:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to check payment status',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

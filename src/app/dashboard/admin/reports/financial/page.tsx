@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
+import '@/styles/admin-dashboard.css';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -783,7 +784,7 @@ export default function FinancialReports() {
                         <div className="flex items-center gap-2">
                           <div className="w-12 bg-gray-200 rounded-full h-2">
                             <div 
-                              className="bg-blue-600 h-2 rounded-full" 
+                              className="progress-bar progress-bar-blue" 
                               style={{ width: `${Math.min(geo.marketShare, 100)}%` }}
                             ></div>
                           </div>

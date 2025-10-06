@@ -1,0 +1,48 @@
+/* Admin Dashboard Custom Styles */
+
+/* Progress Bar Styles */
+.progress-bar {
+  transition: width 0.3s ease-in-out;
+}
+
+.progress-bar-blue {
+  background-color: #2563eb;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.progress-bar-emerald {
+  background-color: #10b981;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+/* Chart Bar Styles */
+.chart-bar {
+  transition: all 0.3s ease-in-out;
+  min-width: 12px;
+}
+
+.chart-bar-blue {
+  background-color: #3b82f6;
+  height: 1.25rem;
+  border-radius: 9999px;
+}
+
+.chart-bar-emerald {
+  background-color: #10b981;
+  height: 1.25rem;
+  border-radius: 9999px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chart-bar {
+    min-width: 8px;
+  }
+  
+  .progress-bar-blue,
+  .progress-bar-emerald {
+    height: 0.375rem;
+  }
+}
