@@ -1,45 +1,34 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCcw,
-  Eye,
-  Shield,
-  UserCheck,
-  UserX,
-  FileSpreadsheet,
-  Mail,
-  KeyRound,
-  Trash2,
-  Edit,
-  Plus,
-  BarChart3,
-  Calendar,
-  MapPin,
-  Phone,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  MoreHorizontal,
-  Settings,
-  UserPlus,
-  Activity,
-  TrendingUp
-} from 'lucide-react';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, where, updateDoc, doc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import {
+    Activity,
+    Clock,
+    Edit,
+    Eye,
+    FileSpreadsheet,
+    Filter,
+    KeyRound,
+    MapPin,
+    MoreHorizontal,
+    Phone,
+    RefreshCcw,
+    Search,
+    Shield,
+    UserCheck,
+    UserPlus,
+    Users,
+    UserX
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 interface User {
@@ -79,40 +68,81 @@ export default function UsersManagement() {
     const loadUsers = async () => {
       try {
         setLoading(true);
+        console.log('🔄 بدء تحميل بيانات المستخدمين...');
+        
         const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
         const allUsers: User[] = [];
 
         for (const collectionName of collections) {
           try {
-            const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
+            console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
+            
+            // جلب البيانات بدون ترتيب أولاً لتجنب مشاكل الفهرس
+            const snapshot = await getDocs(collection(db, collectionName));
+            console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
+            
             snapshot.forEach(doc => {
               const data = doc.data();
-              allUsers.push({
+              const userData: User = {
                 id: doc.id,
-                name: data.name || data.full_name || 'غير محدد',
+                name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
                 email: data.email || '',
-                phone: data.phone || '',
+                phone: data.phone || data.phoneNumber || '',
                 accountType: data.accountType || collectionName.replace(/s$/, '') as any,
                 isActive: data.isActive !== false,
-                createdAt: data.createdAt?.toDate() || null,
-                lastLogin: data.lastLogin?.toDate() || null,
-                city: data.city || '',
-                country: data.country || '',
-                parentAccountId: data.parentAccountId || '',
-                parentAccountType: data.parentAccountType || '',
-                isDeleted: data.isDeleted || false,
-                verificationStatus: data.verificationStatus || 'pending'
-              });
+                createdAt: data.createdAt?.toDate() || data.created_at?.toDate() || null,
+                lastLogin: data.lastLogin?.toDate() || data.last_login?.toDate() || null,
+                city: data.city || data.location?.city || '',
+                country: data.country || data.location?.country || '',
+                parentAccountId: data.parentAccountId || data.parent_account_id || '',
+                parentAccountType: data.parentAccountType || data.parent_account_type || '',
+                isDeleted: data.isDeleted || data.deleted || false,
+                verificationStatus: data.verificationStatus || data.verification_status || 'pending'
+              };
+              allUsers.push(userData);
             });
           } catch (error) {
-            console.error(`Error loading ${collectionName}:`, error);
+            console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
+            // محاولة جلب البيانات بطريقة بديلة
+            try {
+              const snapshot = await getDocs(collection(db, collectionName));
+              console.log(`🔄 محاولة بديلة: تم جلب ${snapshot.size} مستند من ${collectionName}`);
+              snapshot.forEach(doc => {
+                const data = doc.data();
+                const userData: User = {
+                  id: doc.id,
+                  name: data.name || data.full_name || data.displayName || 'غير محدد',
+                  email: data.email || '',
+                  phone: data.phone || '',
+                  accountType: data.accountType || collectionName.replace(/s$/, '') as any,
+                  isActive: data.isActive !== false,
+                  createdAt: data.createdAt?.toDate() || null,
+                  lastLogin: data.lastLogin?.toDate() || null,
+                  city: data.city || '',
+                  country: data.country || '',
+                  parentAccountId: data.parentAccountId || '',
+                  parentAccountType: data.parentAccountType || '',
+                  isDeleted: data.isDeleted || false,
+                  verificationStatus: data.verificationStatus || 'pending'
+                };
+                allUsers.push(userData);
+              });
+            } catch (retryError) {
+              console.error(`❌ فشل في المحاولة البديلة لـ ${collectionName}:`, retryError);
+            }
           }
         }
 
+        console.log(`📊 إجمالي المستخدمين المحملين: ${allUsers.length}`);
         setUsers(allUsers);
+        
+        if (allUsers.length === 0) {
+          toast.warning('لم يتم العثور على أي مستخدمين. تحقق من إعدادات قاعدة البيانات.');
+        } else {
+          toast.success(`تم تحميل ${allUsers.length} مستخدم بنجاح`);
+        }
       } catch (error) {
-        console.error('Error loading users:', error);
+        console.error('❌ خطأ عام في تحميل المستخدمين:', error);
         toast.error('حدث خطأ في تحميل بيانات المستخدمين');
       } finally {
         setLoading(false);
@@ -135,18 +165,18 @@ export default function UsersManagement() {
       const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (user.phone && user.phone.includes(searchTerm));
-      
+
       // Type filter
       const matchesType = filterType === 'all' || user.accountType === filterType;
-      
+
       // Status filter
-      const matchesStatus = filterStatus === 'all' || 
+      const matchesStatus = filterStatus === 'all' ||
                            (filterStatus === 'active' && user.isActive) ||
                            (filterStatus === 'inactive' && !user.isActive);
-      
+
       // Verification filter
       const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
-      
+
       return matchesSearch && matchesType && matchesStatus && matchesVerification;
     });
 
@@ -154,12 +184,12 @@ export default function UsersManagement() {
     filtered.sort((a, b) => {
       let aValue: any = a[sortBy as keyof User];
       let bValue: any = b[sortBy as keyof User];
-      
+
       if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
         aValue = aValue?.getTime() || 0;
         bValue = bValue?.getTime() || 0;
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
@@ -178,10 +208,10 @@ export default function UsersManagement() {
   // Export to Excel
   const exportToExcel = () => {
     const headers = [
-      'الاسم', 'البريد الإلكتروني', 'الهاتف', 'نوع الحساب', 'الحالة', 
+      'الاسم', 'البريد الإلكتروني', 'الهاتف', 'نوع الحساب', 'الحالة',
       'حالة التحقق', 'المدينة', 'البلد', 'تاريخ الإنشاء', 'آخر دخول'
     ];
-    
+
     const data = filteredAndSortedUsers.map(user => [
       user.name,
       user.email,
@@ -208,7 +238,7 @@ export default function UsersManagement() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success('تم تصدير البيانات بنجاح');
   };
 
@@ -225,7 +255,7 @@ export default function UsersManagement() {
           for (const userId of selectedUsers) {
             const userDoc = users.find(u => u.id === userId);
             if (userDoc) {
-              const collectionName = userDoc.accountType === 'player' ? 'players' : 
+              const collectionName = userDoc.accountType === 'player' ? 'players' :
                                    userDoc.accountType === 'club' ? 'clubs' :
                                    userDoc.accountType === 'academy' ? 'academies' :
                                    userDoc.accountType === 'agent' ? 'agents' : 'trainers';
@@ -238,7 +268,7 @@ export default function UsersManagement() {
           for (const userId of selectedUsers) {
             const userDoc = users.find(u => u.id === userId);
             if (userDoc) {
-              const collectionName = userDoc.accountType === 'player' ? 'players' : 
+              const collectionName = userDoc.accountType === 'player' ? 'players' :
                                    userDoc.accountType === 'club' ? 'clubs' :
                                    userDoc.accountType === 'academy' ? 'academies' :
                                    userDoc.accountType === 'agent' ? 'agents' : 'trainers';
@@ -315,7 +345,7 @@ export default function UsersManagement() {
     const verified = users.filter(u => u.verificationStatus === 'verified').length;
     const pending = users.filter(u => u.verificationStatus === 'pending').length;
     const deleted = users.filter(u => u.isDeleted).length;
-    
+
     const byType = {
       player: users.filter(u => u.accountType === 'player').length,
       academy: users.filter(u => u.accountType === 'academy').length,
@@ -342,7 +372,7 @@ export default function UsersManagement() {
     <AccountTypeProtection allowedTypes={['admin']}>
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
-          
+
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
@@ -360,6 +390,10 @@ export default function UsersManagement() {
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   تصدير Excel
                 </Button>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  تحديث البيانات
+                </Button>
                 <Button variant="outline">
                   <UserPlus className="h-4 w-4 mr-2" />
                   إضافة مستخدم
@@ -369,20 +403,23 @@ export default function UsersManagement() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">إجمالي المستخدمين</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                    <p className="text-xs text-gray-500">+{stats.active} نشط</p>
+                    <p className="text-xs text-gray-500">
+                      {stats.active} نشط • {stats.inactive} معطل
+                      {stats.deleted > 0 && ` • ${stats.deleted} محذوف`}
+                    </p>
                   </div>
                   <Users className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -395,7 +432,7 @@ export default function UsersManagement() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -408,7 +445,7 @@ export default function UsersManagement() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -418,6 +455,21 @@ export default function UsersManagement() {
                     <p className="text-xs text-gray-500">أكبر فئة</p>
                   </div>
                   <Activity className="h-8 w-8 text-purple-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">الأكاديميات</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.byType.academy}</p>
+                    <p className="text-xs text-gray-500">
+                      {stats.byType.agent} وكيل • {stats.byType.trainer} مدرب • {stats.byType.club} نادي
+                    </p>
+                  </div>
+                  <Shield className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
@@ -445,7 +497,7 @@ export default function UsersManagement() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
                   <select
@@ -461,7 +513,7 @@ export default function UsersManagement() {
                     <option value="club">نادي</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
                   <select
@@ -666,7 +718,7 @@ export default function UsersManagement() {
                     ))}
                   </tbody>
                 </table>
-                
+
                 {filteredAndSortedUsers.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
