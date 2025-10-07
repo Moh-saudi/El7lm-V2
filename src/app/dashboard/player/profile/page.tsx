@@ -324,6 +324,27 @@ export default function PlayerProfile() {
     const editButton = document.querySelector('button:contains("تعديل البيانات")');
     console.log('[isEditing] Edit button in DOM:', !!editButton);
   }, [isEditing, playerData, editFormData]);
+
+  // معالجة أخطاء React
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('[Error Handler] Caught error:', event.error);
+      setError('حدث خطأ في التطبيق. يرجى إعادة تحميل الصفحة.');
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('[Error Handler] Unhandled promise rejection:', event.reason);
+      setError('حدث خطأ في التطبيق. يرجى إعادة تحميل الصفحة.');
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -2812,10 +2833,29 @@ export default function PlayerProfile() {
 
   // Main render
   console.log('[Render] Main render - loading:', loading, 'isLoading:', isLoading, 'isEditing:', isEditing, 'playerData:', !!playerData);
-
+  
   if (loading || isLoading) {
     console.log('[Render] Loading state - showing loading spinner');
     return <LoadingSpinner />;
+  }
+
+  // معالجة الأخطاء
+  if (error) {
+    console.log('[Render] Error state - showing error message');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">❌ خطأ</div>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            إعادة تحميل الصفحة
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -2917,13 +2957,26 @@ export default function PlayerProfile() {
               {!isEditing && (
                 <Button
                   onClick={(e) => {
-                    console.log('[Edit Button] Clicked, current playerData:', playerData);
-                    console.log('[Edit Button] Current editFormData:', editFormData);
-                    console.log('[Edit Button] About to set isEditing to true');
-                    console.log('[Edit Button] Event:', e);
-                    console.log('[Edit Button] Event target:', e.target);
-                    setIsEditing(true);
-                    console.log('[Edit Button] isEditing should now be true');
+                    try {
+                      console.log('[Edit Button] Clicked, current playerData:', playerData);
+                      console.log('[Edit Button] Current editFormData:', editFormData);
+                      console.log('[Edit Button] About to set isEditing to true');
+                      console.log('[Edit Button] Event:', e);
+                      console.log('[Edit Button] Event target:', e.target);
+                      
+                      // التأكد من أن البيانات موجودة
+                      if (!playerData) {
+                        console.error('[Edit Button] No player data available');
+                        setError('لا توجد بيانات للاعب. يرجى إعادة تحميل الصفحة.');
+                        return;
+                      }
+                      
+                      setIsEditing(true);
+                      console.log('[Edit Button] isEditing should now be true');
+                    } catch (error) {
+                      console.error('[Edit Button] Error:', error);
+                      setError('حدث خطأ عند فتح نموذج التعديل. يرجى إعادة تحميل الصفحة.');
+                    }
                   }}
                   className="text-white bg-blue-600 hover:bg-blue-700 relative z-50 cursor-pointer"
                   style={{ zIndex: 9999, pointerEvents: 'auto' }}
