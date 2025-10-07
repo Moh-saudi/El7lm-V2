@@ -134,6 +134,23 @@ export const getBasicCountriesData = (): SimpleCountry[] => [
       { id: 'eg_04', name: 'بورسعيد', nameEn: 'Port Said', isCapital: false, isActive: true },
       { id: 'eg_05', name: 'السويس', nameEn: 'Suez', isCapital: false, isActive: true }
     ]
+  },
+  {
+    id: 'pt',
+    name: 'البرتغال',
+    nameEn: 'Portugal',
+    code: 'PT',
+    flag: '🇵🇹',
+    currency: 'EUR',
+    dialCode: '+351',
+    isActive: true,
+    cities: [
+      { id: 'pt_01', name: 'لشبونة', nameEn: 'Lisbon', isCapital: true, isActive: true },
+      { id: 'pt_02', name: 'بورتو', nameEn: 'Porto', isCapital: false, isActive: true },
+      { id: 'pt_03', name: 'براغا', nameEn: 'Braga', isCapital: false, isActive: true },
+      { id: 'pt_04', name: 'كويمبرا', nameEn: 'Coimbra', isCapital: false, isActive: true },
+      { id: 'pt_05', name: 'فارو', nameEn: 'Faro', isCapital: false, isActive: true }
+    ]
   }
 ];
 
@@ -153,15 +170,24 @@ export const getCountryFromCity = (cityId: string): string | null => {
   return null;
 };
 
+export const getCountryByName = (countryName: string): SimpleCountry | null => {
+  const countries = getBasicCountriesData();
+  return countries.find(country => 
+    country.name === countryName || 
+    country.nameEn === countryName ||
+    country.id === countryName
+  ) || null;
+};
+
 export const searchCities = (query: string): SimpleCity[] => {
   const countries = getBasicCountriesData();
   const allCities: SimpleCity[] = [];
-  
+
   countries.forEach(country => {
     allCities.push(...country.cities);
   });
-  
-  return allCities.filter(city => 
+
+  return allCities.filter(city =>
     city.name.toLowerCase().includes(query.toLowerCase()) ||
     city.nameEn.toLowerCase().includes(query.toLowerCase())
   );

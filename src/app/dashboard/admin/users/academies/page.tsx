@@ -1,70 +1,68 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, updateDoc, where, orderBy, deleteDoc, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import AdminFooter from '@/components/layout/AdminFooter';
+import AdminHeader from '@/components/layout/AdminHeader';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-  Users,
-  Search,
-  Filter,
-  GraduationCap,
-  Star,
-  MapPin,
-  Building2,
-  Clock,
-  Download,
-  RefreshCcw,
-  UserPlus,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Mail,
-  Phone
-} from 'lucide-react';
-import { toast } from 'sonner';
-import AdminHeader from '@/components/layout/AdminHeader';
-import AdminFooter from '@/components/layout/AdminFooter';
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { CITIES_BY_COUNTRY, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { getBasicCountriesData, SimpleCountry, CITIES_BY_COUNTRY, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
+import { db } from '@/lib/firebase/config';
+import { getIndexCreationUrls } from '@/lib/firebase/indexes';
+import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { REQUIRED_INDEXES, getIndexCreationUrls } from '@/lib/firebase/indexes';
+    Building2,
+    CheckCircle,
+    Clock,
+    Download,
+    Filter,
+    GraduationCap,
+    Mail,
+    MapPin,
+    Phone,
+    RefreshCcw,
+    Search,
+    Star,
+    UserPlus,
+    Users
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Academy {
   id: string;
@@ -109,7 +107,7 @@ interface Academy {
 
 export default function AcademiesManagement() {
   const { user, userData } = useAuth();
-  
+
   // States
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,9 +144,9 @@ export default function AcademiesManagement() {
   const loadAcademies = async () => {
     try {
       setLoading(true);
-      
+
       let academiesData: Academy[] = [];
-      
+
       try {
         // Try using the compound query first
         const academiesQuery = query(
@@ -165,7 +163,7 @@ export default function AcademiesManagement() {
           toast.error(
             <div className="flex flex-col gap-2">
               <p>يجب إنشاء فهرس في Firestore للوصول إلى البيانات بشكل أفضل</p>
-              <a 
+              <a
                 href={urls.users}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -179,7 +177,7 @@ export default function AcademiesManagement() {
               position: 'top-center'
             }
           );
-          
+
           // Fallback to simple query
           const simpleQuery = query(
             collection(db, 'users'),
@@ -187,7 +185,7 @@ export default function AcademiesManagement() {
           );
           const simpleSnapshot = await getDocs(simpleQuery);
           academiesData = await processAcademiesData(simpleSnapshot.docs);
-          
+
           // Sort in memory
           academiesData.sort((a, b) => {
             const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(0);
@@ -215,7 +213,7 @@ export default function AcademiesManagement() {
     return Promise.all(
       docs.map(async (doc) => {
         const basicData = doc.data();
-        
+
         // Get players count from both collections
         const [usersSnapshot1, usersSnapshot2, playersSnapshot1, playersSnapshot2] = await Promise.all([
           // Check users collection
@@ -257,7 +255,7 @@ export default function AcademiesManagement() {
         );
         const ratingsSnapshot = await getDocs(ratingsQuery);
         const ratings = ratingsSnapshot.docs.map(doc => doc.data().rating);
-        const averageRating = ratings.length 
+        const averageRating = ratings.length
           ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
           : 0;
 
@@ -281,7 +279,7 @@ export default function AcademiesManagement() {
             toast.error(
               <div className="flex flex-col gap-2">
                 <p>يجب إنشاء فهرس في Firestore للوصول إلى مستندات التحقق بشكل أفضل</p>
-                <a 
+                <a
                   href="https://console.firebase.google.com/v1/r/project/hagzzgo-87884/firestore/indexes?create_composite=Cltwcm9qZWN0cy9oYWd6emdvLTg3ODg0L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy92ZXJpZmljYXRpb25Eb2N1bWVudHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaDgoKdXBsb2FkZWRBdBACGgwKCF9fbmFtZV9fEAI"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -331,7 +329,7 @@ export default function AcademiesManagement() {
           }))
           .filter(sub => ['active', 'trial'].includes(sub.status))
           .sort((a, b) => b.createdAt - a.createdAt);
-        
+
         const subscription = subscriptions[0];
 
         // Format dates - handle both Timestamp and Date objects
@@ -363,7 +361,7 @@ export default function AcademiesManagement() {
   const updateStats = (academiesData: Academy[]) => {
     const totalPlayers = academiesData.reduce((sum, academy) => sum + (academy.playersCount || 0), 0);
     const totalRating = academiesData.reduce((sum, academy) => sum + (academy.rating || 0), 0);
-    
+
     setStats({
       total: academiesData.length,
       active: academiesData.filter(a => a.isActive).length,
@@ -379,30 +377,30 @@ export default function AcademiesManagement() {
     const academyName = academy.name || '';
     const academyEmail = academy.email || '';
     const academyPhone = academy.phone || '';
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       academyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       academyEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       academyPhone.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesVerification = verificationFilter === 'all' || 
+    const matchesVerification = verificationFilter === 'all' ||
       academy.verificationStatus === verificationFilter;
-    
-    const matchesStatus = statusFilter === 'all' || 
+
+    const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && academy.isActive) ||
       (statusFilter === 'inactive' && !academy.isActive);
 
     const matchesSubscription = subscriptionFilter === 'all' ||
       academy.subscription?.status === subscriptionFilter;
 
-    const matchesRegion = 
+    const matchesRegion =
       (!regionFilter.countryId || academy.location?.countryId === regionFilter.countryId) &&
       (!regionFilter.cityId || academy.location?.cityId === regionFilter.cityId);
 
-    return matchesSearch && 
-           matchesVerification && 
-           matchesStatus && 
-           matchesSubscription && 
+    return matchesSearch &&
+           matchesVerification &&
+           matchesStatus &&
+           matchesSubscription &&
            matchesRegion;
   });
 
@@ -413,16 +411,16 @@ export default function AcademiesManagement() {
         isActive: !currentStatus,
         updatedAt: new Date()
       });
-      
+
       // Update local state immediately
-      setAcademies(prevAcademies => 
-        prevAcademies.map(academy => 
-          academy.id === academyId 
+      setAcademies(prevAcademies =>
+        prevAcademies.map(academy =>
+          academy.id === academyId
             ? { ...academy, isActive: !currentStatus }
             : academy
         )
       );
-      
+
       toast.success('تم تحديث حالة الأكاديمية بنجاح');
     } catch (error) {
       console.error('Error updating academy status:', error);
@@ -448,17 +446,17 @@ export default function AcademiesManagement() {
   const RegionFilter = () => {
     const selectedCountry = regionFilter.countryId;
     const cities = selectedCountry ? CITIES_BY_COUNTRY[selectedCountry] : [];
-    
+
     return (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>الدولة</Label>
-          <Select 
-            value={regionFilter.countryId || "all"} 
-            onValueChange={(value) => setRegionFilter(prev => ({ 
-              ...prev, 
-              countryId: value === "all" ? "" : value, 
-              cityId: "" 
+          <Select
+            value={regionFilter.countryId || "all"}
+            onValueChange={(value) => setRegionFilter(prev => ({
+              ...prev,
+              countryId: value === "all" ? "" : value,
+              cityId: ""
             }))}
           >
             <SelectTrigger>
@@ -477,11 +475,11 @@ export default function AcademiesManagement() {
 
         <div>
           <Label>المدينة</Label>
-          <Select 
+          <Select
             value={regionFilter.cityId || "all"}
-            onValueChange={(value) => setRegionFilter(prev => ({ 
-              ...prev, 
-              cityId: value === "all" ? "" : value 
+            onValueChange={(value) => setRegionFilter(prev => ({
+              ...prev,
+              cityId: value === "all" ? "" : value
             }))}
             disabled={!selectedCountry}
           >
@@ -509,12 +507,12 @@ export default function AcademiesManagement() {
     try {
       // Delete from Firestore
       await deleteDoc(doc(db, 'users', selectedAcademy.id));
-      
+
       // Update local state
-      setAcademies(prevAcademies => 
+      setAcademies(prevAcademies =>
         prevAcademies.filter(academy => academy.id !== selectedAcademy.id)
       );
-      
+
       toast.success('تم حذف الأكاديمية بنجاح');
       setShowDeleteDialog(false);
       setSelectedAcademy(null);
@@ -598,8 +596,8 @@ export default function AcademiesManagement() {
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-gray-500" />
                     <span>
-                      {selectedAcademy.location ? 
-                        `${selectedAcademy.location.cityName}، ${selectedAcademy.location.countryName}` 
+                      {selectedAcademy.location ?
+                        `${selectedAcademy.location.cityName}، ${selectedAcademy.location.countryName}`
                         : 'غير محدد'}
                     </span>
                   </div>
@@ -746,7 +744,7 @@ export default function AcademiesManagement() {
   return (
     <div className="flex flex-col bg-gray-50">
       <AdminHeader />
-      
+
       <main className="flex-1 container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -984,7 +982,7 @@ export default function AcademiesManagement() {
                         aria-label="تفعيل/تعطيل الأكاديمية"
                       />
                       {academy.subscription && (
-                        <Badge 
+                        <Badge
                           variant={
                             academy.subscription.status === 'active' ? 'success' :
                             academy.subscription.status === 'trial' ? 'warning' :
@@ -1044,11 +1042,11 @@ export default function AcademiesManagement() {
       </main>
 
       <AdminFooter />
-      
+
       {/* Add Dialogs */}
       <ProfileDialog />
       <DeleteDialog />
       <SuspendDialog />
     </div>
   );
-} 
+}

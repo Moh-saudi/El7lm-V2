@@ -2,18 +2,17 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { auth, db } from "@/lib/firebase/config";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
-  import { Check, Plus, Trash, X, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
-  
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useEffect, useState, useCallback } from 'react';
-import { uploadPlayerProfileImage, uploadPlayerAdditionalImage, uploadPlayerDocument, deletePlayerDocument, AccountType } from '@/lib/firebase/upload-media';
-import { supabase, getSupabaseClient } from '@/lib/supabase/config';
-import { User } from 'firebase/auth';
-import { getBasicCountriesData, SimpleCountry, getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES, searchCities } from '@/data/countries-simple';
-import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
+import { db } from "@/lib/firebase/config";
+import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
+
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
+import { getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
+import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
+import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
+import { User } from 'firebase/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // Types
@@ -213,7 +212,7 @@ const defaultPlayerFields: PlayerFormData = {
 // Reference data
 const POSITIONS = [
   'حارس مرمى',
-  'مدافع أيمن', 
+  'مدافع أيمن',
   'مدافع أيسر',
   'قلب دفاع',
   'وسط دفاعي',
@@ -225,7 +224,7 @@ const POSITIONS = [
 ];
 
 const NATIONALITIES = [
-  "سعودي", "مصري", "أردني", "سوري", "مغربي", "جزائري", "تونسي", "ليبي", 
+  "سعودي", "مصري", "أردني", "سوري", "مغربي", "جزائري", "تونسي", "ليبي",
   "فلسطيني", "يمني", "سوداني", "إماراتي", "قطري", "بحريني", "كويتي", "عماني",
   "لبناني", "عراقي"
 ];
@@ -290,7 +289,7 @@ const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
 const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
   const errors: FormErrors = {};
   if (!data.full_name) errors.full_name = 'الاسم الكامل مطلوب';
-  
+
   if (!data.birth_date) {
     errors.birth_date = 'تاريخ الميلاد مطلوب';
   } else {
@@ -298,20 +297,20 @@ const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     if (age < 3) {
       errors.birth_date = 'يجب أن يكون العمر 3 سنوات على الأقل';
     }
-    
+
     if (age > 50) {
       errors.birth_date = 'يجب أن يكون العمر أقل من 50 سنة';
     }
   }
-  
+
   if (!data.nationality) errors.nationality = 'الجنسية مطلوبة';
   if (!data.country) errors.country = 'الدولة مطلوبة';
   if (!data.city) errors.city = 'المدينة مطلوبة';
@@ -351,15 +350,15 @@ export default function SharedPlayerForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
-  
+
   // استخدم البراميترز من props إذا وُجدت، وإلا من URL
   const mode = modeProp || (searchParams.get('edit') ? 'edit' : searchParams.get('mode')) || 'add';
   const accountType = accountTypeProp || searchParams.get('accountType') || 'club';
   const playerId = playerIdProp || searchParams.get('edit') || searchParams.get('playerId');
-  
+
   // لوج تشخيصي في بداية الكومبوننت
   console.log('[SharedPlayerForm] mode:', mode, 'playerId:', playerId, 'accountType:', accountType);
-  
+
   // State
   const [playerData, setPlayerData] = useState<PlayerFormData | null>(null);
   const [formData, setFormData] = useState({
@@ -373,7 +372,7 @@ export default function SharedPlayerForm({
     email: '',
     whatsapp: '',
     brief: '',
-    
+
     // المعلومات التعليمية
     education_level: '',
     graduation_year: '',
@@ -381,14 +380,14 @@ export default function SharedPlayerForm({
     english_level: '',
     arabic_level: '',
     spanish_level: '',
-    
+
     // السجل الطبي
     blood_type: '',
     chronic_conditions: false,
     chronic_details: '',
     allergies: '',
     medical_notes: '',
-    
+
     // المعلومات الرياضية
     primary_position: '',
     secondary_position: '',
@@ -397,21 +396,21 @@ export default function SharedPlayerForm({
     height: '',
     weight: '',
     sports_notes: '',
-    
+
     // المهارات
     technical_skills: {},
     physical_skills: {},
     social_skills: {},
-    
+
     // الأهداف
     objectives: {},
-    
+
     // الوسائط
     profile_image: null,
     additional_images: [],
     videos: [],
     uploaded_videos: [],
-    
+
     // العقود والاتصالات
     currently_contracted: '',
     current_club: '',
@@ -426,7 +425,7 @@ export default function SharedPlayerForm({
     has_passport: '',
     ref_source: '',
     address: '',
-    
+
     // تحديثات جديدة
     training_courses: [],
     surgeries: [],
@@ -450,7 +449,7 @@ export default function SharedPlayerForm({
   const [createLoginAccount, setCreateLoginAccount] = useState(true); // تفعيل إنشاء الحساب افتراضياً
   const [loginAccountPassword, setLoginAccountPassword] = useState<string>('');
   const [showLoginCredentials, setShowLoginCredentials] = useState(false);
-  
+
   // كلمة المرور الثابتة الموحدة
   const UNIFIED_PASSWORD = '123456789';
 
@@ -466,14 +465,14 @@ export default function SharedPlayerForm({
     setUploadingProfileImage(true);
     try {
       const result = await uploadPlayerProfileImage(file, user.uid, getAccountType());
-      
+
       if (result?.url) {
         setFormData(prev => ({
           ...prev,
           profile_image: { url: result.url },
           profile_image_url: result.url
         }));
-        
+
         console.log('✅ تم رفع الصورة الشخصية بنجاح');
       }
     } catch (error) {
@@ -535,7 +534,7 @@ export default function SharedPlayerForm({
       // جلب بيانات المستخدم الحالي من قاعدة البيانات
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
-      
+
       let userData = null;
       if (userDocSnap.exists()) {
         userData = userDocSnap.data();
@@ -547,7 +546,7 @@ export default function SharedPlayerForm({
         ...defaultPlayerFields,
         // البيانات الأساسية من Firebase Auth
         email: user.email || '',
-        
+
         // البيانات من مجموعة users إذا وُجدت
         ...(userData && {
           country: userData.country || '',
@@ -569,7 +568,7 @@ export default function SharedPlayerForm({
       };
 
       console.log('[loadUserDefaultData] ✅ البيانات الافتراضية المحضرة:', defaultData);
-      
+
       setFormData(defaultData);
       setPlayerData(null);
       setError(null);
@@ -587,7 +586,7 @@ export default function SharedPlayerForm({
   const getAccountTypeTitle = (type: string) => {
     const titles = {
       club: 'النادي',
-      academy: 'الأكاديمية', 
+      academy: 'الأكاديمية',
       trainer: 'المدرب',
       agent: 'الوكيل'
     };
@@ -639,7 +638,7 @@ export default function SharedPlayerForm({
   // Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({
@@ -660,7 +659,7 @@ export default function SharedPlayerForm({
       country: country,
       city: '' // مسح المدينة عند تغيير الدولة
     }));
-    
+
     // تحديث المدن المتاحة
     if (country) {
       const cities = getCitiesByCountry(country);
@@ -668,7 +667,7 @@ export default function SharedPlayerForm({
     } else {
       setAvailableCities([]);
     }
-    
+
     // إعادة تعيين قيم البحث
     setCitySearchQuery('');
     setShowCityDropdown(false);
@@ -679,7 +678,7 @@ export default function SharedPlayerForm({
       ...prev,
       city: city
     }));
-    
+
     // تحديد الدولة تلقائياً بناءً على المدينة (فقط إذا لم تكن محددة)
     if (city && !formData.country) {
       const detectedCountry = getCountryFromCity(city);
@@ -689,15 +688,15 @@ export default function SharedPlayerForm({
           country: detectedCountry,
           city: city
         }));
-        
+
         // تحديث المدن المتاحة للدولة الجديدة
         const cities = getCitiesByCountry(detectedCountry);
         setAvailableCities(cities);
-        
+
         console.log(`🔧 تم تحديد الدولة تلقائياً: "${city}" -> "${detectedCountry}"`);
       }
     }
-    
+
     setShowCityDropdown(false);
   };
 
@@ -706,8 +705,8 @@ export default function SharedPlayerForm({
       setFilteredCities([]);
       return;
     }
-    
-    const filtered = availableCities.filter(city => 
+
+    const filtered = availableCities.filter(city =>
       city.toLowerCase().includes(query.toLowerCase())
     );
     setFilteredCities(filtered.slice(0, 10));
@@ -716,15 +715,15 @@ export default function SharedPlayerForm({
   const validateForm = () => {
     // Validate all steps
     let allErrors: FormErrors = {};
-    
+
     // Validate personal info
     const personalErrors = validatePersonalInfo(formData);
     allErrors = { ...allErrors, ...personalErrors };
-    
+
     // Validate sports info
     const sportsErrors = validateSports(formData);
     allErrors = { ...allErrors, ...sportsErrors };
-    
+
     setFormErrors(allErrors);
     return Object.keys(allErrors).length === 0;
   };
@@ -732,18 +731,18 @@ export default function SharedPlayerForm({
   const handleNext = async () => {
     // Validate current step
     let errors: FormErrors = {};
-    
+
     if (currentStep === STEPS.PERSONAL) {
       errors = validatePersonalInfo(formData);
     } else if (currentStep === STEPS.SPORTS) {
       errors = validateSports(formData);
     }
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-    
+
     setFormErrors({});
     setCurrentStep(prev => Math.min(prev + 1, Object.keys(STEP_TITLES).length - 1));
   };
@@ -814,7 +813,7 @@ export default function SharedPlayerForm({
         if (createLoginAccount && mode === 'add' && updateData.email) {
           try {
             console.log('[player-form] إنشاء حساب تسجيل دخول للاعب:', updateData.full_name);
-            
+
             // إنشاء حساب بكلمة المرور الثابتة
             const result = await createPlayerLoginAccount(
               docRef.id,
@@ -836,17 +835,17 @@ export default function SharedPlayerForm({
 
             if (result.success) {
               setLoginAccountPassword(UNIFIED_PASSWORD);
-              
+
               // تجهيز بيانات عرض الاعتماد
               setCreatedAccountInfo({
                 email: updateData.email,
                 password: UNIFIED_PASSWORD,
                 success: true
               });
-              
+
               // عرض مكون بيانات الاعتماد
               setShowLoginCredentials(true);
-              
+
               setSuccessMessage('تمت إضافة اللاعب وإنشاء حساب الدخول بنجاح!');
               console.log('[player-form] تم إنشاء حساب تسجيل الدخول بنجاح');
             } else {
@@ -945,9 +944,9 @@ export default function SharedPlayerForm({
           </div>
         </div>
       )}
-      
+
       {successMessage && <SuccessMessage message={successMessage} />}
-      
+
       <div className="min-h-screen bg-gray-50 py-8" dir="rtl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -961,12 +960,12 @@ export default function SharedPlayerForm({
                 العودة
               </button>
             </div>
-            
+
             <h1 className="text-3xl font-bold text-gray-900">
               {mode === 'add' ? 'إضافة لاعب جديد' : 'تعديل بيانات اللاعب'}
             </h1>
             <p className="mt-2 text-gray-600">
-              {mode === 'add' 
+              {mode === 'add'
                 ? `إضافة لاعب جديد من خلال ${ACCOUNT_TYPE_LABELS[accountType]}`
                 : 'تعديل وتحديث بيانات اللاعب'
               }
@@ -985,8 +984,8 @@ export default function SharedPlayerForm({
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      parseInt(step) <= currentStep 
-                        ? 'bg-blue-600 text-white' 
+                      parseInt(step) <= currentStep
+                        ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-500'
                     }`}
                   >
@@ -1004,11 +1003,11 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.PERSONAL && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">البيانات الشخصية</h3>
-                
+
                 {/* الصورة الشخصية */}
                 <div className="bg-gray-50 p-6 rounded-lg mb-6">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">الصورة الشخصية</h4>
-                  
+
                   <div className="flex items-center space-x-6 space-x-reverse">
                     <div className="flex-shrink-0">
                       {formData.profile_image && typeof formData.profile_image === 'object' && formData.profile_image.url ? (
@@ -1059,7 +1058,7 @@ export default function SharedPlayerForm({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* الاسم الكامل */}
                   <div>
@@ -1166,7 +1165,7 @@ export default function SharedPlayerForm({
                       placeholder={formData.country ? "ابحث عن المدينة أو اختر من القائمة" : "اختر الدولة أولاً"}
                       disabled={!formData.country}
                     />
-                    
+
                     {showCityDropdown && availableCities.length > 0 && (
                       <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg">
                         {availableCities.map((city, index) => (
@@ -1181,23 +1180,23 @@ export default function SharedPlayerForm({
                         ))}
                       </div>
                     )}
-                    
+
                     {formData.country && availableCities.length === 0 && citySearchQuery && (
                       <div className="absolute left-0 right-0 top-full z-10 mt-1 p-3 text-center text-gray-500 bg-white border border-gray-300 rounded-md shadow-lg">
                         لا توجد مدن تطابق البحث "{citySearchQuery}"
                       </div>
                     )}
-                    
+
                     {formErrors.city && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
                     )}
-                    
+
                     {formData.country && (
                       <p className="mt-1 text-xs text-blue-600">
                         💡 يمكنك كتابة اسم المدينة للبحث، أو النقر في الحقل لرؤية كل مدن {formData.country}
                       </p>
                     )}
-                    
+
                     {!formData.country && (
                       <p className="mt-1 text-xs text-amber-600">
                         ⚠️ يرجى اختيار الدولة أولاً لتتمكن من اختيار المدينة
@@ -1293,7 +1292,7 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.SPORTS && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">المعلومات الرياضية</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* المركز الأساسي */}
                   <div>
@@ -1394,7 +1393,7 @@ export default function SharedPlayerForm({
                       placeholder="رقم القميص الحالي"
                     />
                   </div>
-                  
+
                   {/* الرقم المفضل */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1416,7 +1415,7 @@ export default function SharedPlayerForm({
                 {/* الأندية */}
                 <div className="bg-green-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-green-800 mb-4">تاريخ الأندية</h4>
-                  
+
                   {formData.club_history?.map((club, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
                       <div className="flex-1">
@@ -1469,7 +1468,7 @@ export default function SharedPlayerForm({
                       </button>
                     </div>
                   ))}
-                  
+
                   <button
                     onClick={() => {
                       const newClubs = [...(formData.club_history || []), { name: '', from: '', to: '' }];
@@ -1503,7 +1502,7 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.EDUCATION && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">المعلومات التعليمية</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* المستوى التعليمي */}
                   <div>
@@ -1624,7 +1623,7 @@ export default function SharedPlayerForm({
                 {/* الدورات التدريبية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">الدورات التدريبية</h4>
-                  
+
                   {formData.training_courses?.map((course, index) => (
                     <div key={index} className="flex items-center gap-4 mb-3">
                       <input
@@ -1649,7 +1648,7 @@ export default function SharedPlayerForm({
                       </button>
                     </div>
                   ))}
-                  
+
                   <button
                     onClick={() => {
                       const newCourses = [...(formData.training_courses || []), ''];
@@ -1668,7 +1667,7 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.MEDICAL && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">السجل الطبي</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* فصيلة الدم */}
                   <div>
@@ -1789,7 +1788,7 @@ export default function SharedPlayerForm({
                 {/* العمليات الجراحية */}
                 <div className="bg-red-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-red-800 mb-4">العمليات الجراحية</h4>
-                  
+
                   {formData.surgeries?.map((surgery, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
                       <div className="flex-1">
@@ -1828,7 +1827,7 @@ export default function SharedPlayerForm({
                       </button>
                     </div>
                   ))}
-                  
+
                   <button
                     onClick={() => {
                       const newSurgeries = [...(formData.surgeries || []), { type: '', date: '' }];
@@ -1847,11 +1846,11 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.MEDIA && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">الصور والفيديوهات</h3>
-                
+
                 {/* الصورة الشخصية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">الصورة الشخصية</h4>
-                  
+
                   <div className="flex items-center space-x-6 space-x-reverse">
                     {/* عرض الصورة الحالية */}
                     <div className="flex-shrink-0">
@@ -1926,7 +1925,7 @@ export default function SharedPlayerForm({
                 {/* صور إضافية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">صور إضافية</h4>
-                  
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     {formData.additional_images.map((image, index) => (
                       <div key={index} className="relative">
@@ -1952,7 +1951,7 @@ export default function SharedPlayerForm({
                         </button>
                       </div>
                     ))}
-                    
+
                     {/* زر إضافة صورة */}
                     <div className="border-2 border-dashed border-gray-300 rounded-lg h-24 flex items-center justify-center cursor-pointer hover:border-gray-400">
                       <input
@@ -1962,7 +1961,7 @@ export default function SharedPlayerForm({
                         onChange={async (e) => {
                           const files = Array.from(e.target.files || []);
                           setUploadingImages(true);
-                          
+
                           for (const file of files) {
                             const reader = new FileReader();
                             reader.onload = (event) => {
@@ -1985,7 +1984,7 @@ export default function SharedPlayerForm({
                       </label>
                     </div>
                   </div>
-                  
+
                   {uploadingImages && (
                     <p className="text-sm text-blue-600">جاري رفع الصور...</p>
                   )}
@@ -1994,7 +1993,7 @@ export default function SharedPlayerForm({
                 {/* فيديوهات المهارات - روابط */}
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-blue-800 mb-4">روابط فيديوهات المهارات</h4>
-                  
+
                   {formData.videos.map((video, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
                       <div className="flex-1">
@@ -2036,7 +2035,7 @@ export default function SharedPlayerForm({
                       </button>
                     </div>
                   ))}
-                  
+
                   <button
                     onClick={() => {
                       setFormData(prev => ({
@@ -2054,7 +2053,7 @@ export default function SharedPlayerForm({
                 {/* رفع ملفات الفيديو */}
                 <div className="bg-purple-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-purple-800 mb-4">رفع ملفات الفيديو</h4>
-                  
+
                   <div className="space-y-4">
                     {/* عرض الفيديوهات المرفوعة */}
                     {formData.uploaded_videos?.map((video, index) => (
@@ -2074,7 +2073,7 @@ export default function SharedPlayerForm({
                         </button>
                       </div>
                     ))}
-                    
+
                     {/* زر رفع فيديو */}
                     <div className="border-2 border-dashed border-purple-300 rounded-lg p-6 text-center">
                       <input
@@ -2091,7 +2090,7 @@ export default function SharedPlayerForm({
                                 size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
                                 url: URL.createObjectURL(file)
                               };
-                              
+
                               setFormData(prev => ({
                                 ...prev,
                                 uploaded_videos: [...(prev.uploaded_videos || []), videoData]
@@ -2115,7 +2114,7 @@ export default function SharedPlayerForm({
                         </p>
                       </label>
                     </div>
-                    
+
                     {uploadingImages && (
                       <p className="text-sm text-purple-600">جاري رفع الفيديو...</p>
                     )}
@@ -2129,7 +2128,7 @@ export default function SharedPlayerForm({
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">المهارات والقدرات</h3>
                 <p className="text-sm text-gray-600 mb-6">قيم المهارات من 1 (ضعيف) إلى 10 (ممتاز)</p>
-                
+
                 {/* المهارات التقنية */}
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-blue-800 mb-4">المهارات التقنية</h4>
@@ -2223,11 +2222,11 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.OBJECTIVES && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">الأهداف والطموحات</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     'اللعب في الدوري المحلي',
-                    'اللعب في الدوري الأوروبي', 
+                    'اللعب في الدوري الأوروبي',
                     'اللعب في المنتخب الوطني',
                     'المعايشات الدولية',
                     'المعايشات المحلية',
@@ -2288,11 +2287,11 @@ export default function SharedPlayerForm({
             {currentStep === STEPS.CONTRACTS && (
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">العقود والاتصالات</h3>
-                
+
                 {/* الوضع التعاقدي الحالي */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">الوضع التعاقدي الحالي</h4>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2346,7 +2345,7 @@ export default function SharedPlayerForm({
                 {/* معلومات الاتصال الرسمية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">معلومات الاتصال الرسمية</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2437,7 +2436,7 @@ export default function SharedPlayerForm({
                 {/* معلومات إضافية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h4 className="text-md font-semibold text-gray-800 mb-4">معلومات إضافية</h4>
-                  
+
                   <div className="space-y-4">
                     {/* الحصول على جواز سفر */}
                     <div>
@@ -2499,13 +2498,13 @@ export default function SharedPlayerForm({
             )}
 
             {/* باقي الخطوات غير المطورة */}
-            {currentStep !== STEPS.PERSONAL && 
-             currentStep !== STEPS.EDUCATION && 
-             currentStep !== STEPS.MEDICAL && 
-             currentStep !== STEPS.SPORTS && 
-             currentStep !== STEPS.SKILLS && 
-             currentStep !== STEPS.OBJECTIVES && 
-             currentStep !== STEPS.MEDIA && 
+            {currentStep !== STEPS.PERSONAL &&
+             currentStep !== STEPS.EDUCATION &&
+             currentStep !== STEPS.MEDICAL &&
+             currentStep !== STEPS.SPORTS &&
+             currentStep !== STEPS.SKILLS &&
+             currentStep !== STEPS.OBJECTIVES &&
+             currentStep !== STEPS.MEDIA &&
              currentStep !== STEPS.CONTRACTS && (
               <div className="text-center py-8">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -2516,7 +2515,7 @@ export default function SharedPlayerForm({
                 </p>
               </div>
             )}
-            
+
             {/* خيار إنشاء حساب تسجيل دخول - يظهر فقط في وضع الإضافة */}
             {mode === 'add' && (
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -2558,7 +2557,7 @@ export default function SharedPlayerForm({
                 )}
               </div>
             )}
-            
+
             {/* Navigation Buttons */}
             <div className="mt-8 flex justify-between">
               <div className="flex gap-4">
@@ -2573,7 +2572,7 @@ export default function SharedPlayerForm({
                   </Button>
                 )}
               </div>
-              
+
               <div className="flex gap-4">
                 <Button
                   onClick={handleCancel}
@@ -2582,7 +2581,7 @@ export default function SharedPlayerForm({
                 >
                   إلغاء
                 </Button>
-                
+
                 {currentStep < Object.keys(STEP_TITLES).length - 1 ? (
                   <Button
                     onClick={handleNext}
@@ -2606,4 +2605,4 @@ export default function SharedPlayerForm({
       </div>
     </>
   );
-} 
+}

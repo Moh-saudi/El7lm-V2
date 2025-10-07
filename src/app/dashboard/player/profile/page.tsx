@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { getBasicCountriesData, SimpleCountry, getCitiesByCountry, getCountryFromCity, searchCities, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
+import { getCitiesByCountry, getCountryFromCity, searchCities, SUPPORTED_COUNTRIES, getCountryByName } from '@/data/countries-simple';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from "@/lib/firebase/config";
 import { AccountType, uploadPlayerAdditionalImage, uploadPlayerDocument, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
@@ -345,9 +345,21 @@ export default function PlayerProfile() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         console.log('[fetchPlayerData] Found existing player data:', data);
+        
+        // معالجة الدولة - تحويل اسم الدولة إلى ID إذا لزم الأمر
+        let processedCountry = data.country;
+        if (data.country && typeof data.country === 'string') {
+          const countryObj = getCountryByName(data.country);
+          if (countryObj) {
+            processedCountry = countryObj.id;
+            console.log('[fetchPlayerData] Converted country name to ID:', data.country, '->', countryObj.id);
+          }
+        }
+        
         const processedData = {
           ...defaultPlayerFields,
-          ...data
+          ...data,
+          country: processedCountry
         };
         setPlayerData(processedData);
         setFormData(processedData);
