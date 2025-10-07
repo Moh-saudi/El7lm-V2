@@ -319,6 +319,10 @@ export default function PlayerProfile() {
     console.log('[isEditing] State changed to:', isEditing);
     console.log('[isEditing] Current playerData:', playerData);
     console.log('[isEditing] Current editFormData:', editFormData);
+    
+    // Check if edit button exists in DOM
+    const editButton = document.querySelector('button:contains("تعديل البيانات")');
+    console.log('[isEditing] Edit button in DOM:', !!editButton);
   }, [isEditing, playerData, editFormData]);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [error, setError] = useState<string | null>(null);
@@ -2808,7 +2812,7 @@ export default function PlayerProfile() {
 
   // Main render
   console.log('[Render] Main render - loading:', loading, 'isLoading:', isLoading, 'isEditing:', isEditing, 'playerData:', !!playerData);
-  
+
   if (loading || isLoading) {
     console.log('[Render] Loading state - showing loading spinner');
     return <LoadingSpinner />;
@@ -2912,14 +2916,17 @@ export default function PlayerProfile() {
               </div>
               {!isEditing && (
                 <Button
-                  onClick={() => {
+                  onClick={(e) => {
                     console.log('[Edit Button] Clicked, current playerData:', playerData);
                     console.log('[Edit Button] Current editFormData:', editFormData);
                     console.log('[Edit Button] About to set isEditing to true');
+                    console.log('[Edit Button] Event:', e);
+                    console.log('[Edit Button] Event target:', e.target);
                     setIsEditing(true);
                     console.log('[Edit Button] isEditing should now be true');
                   }}
-                  className="text-white bg-blue-600 hover:bg-blue-700"
+                  className="text-white bg-blue-600 hover:bg-blue-700 relative z-50 cursor-pointer"
+                  style={{ zIndex: 9999, pointerEvents: 'auto' }}
                 >
                   تعديل البيانات
                 </Button>
