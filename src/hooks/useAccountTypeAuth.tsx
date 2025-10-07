@@ -27,12 +27,20 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
 
       if (userData) {
         const userAccountType = (userData as any).accountType;
+        console.log('🔍 AccountTypeProtection - User Data:', {
+          userAccountType,
+          allowedTypes,
+          isAllowed: userAccountType && allowedTypes.includes(userAccountType)
+        });
         
         if (userAccountType && allowedTypes.includes(userAccountType)) {
+          console.log('✅ AccountTypeProtection - Access granted');
           setIsAuthorized(true);
         } else {
+          console.log('❌ AccountTypeProtection - Access denied, redirecting...');
           // نوع الحساب غير مسموح أو غير محدد - توجيه للوحة المناسبة
           const correctRoute = getDashboardRoute(userAccountType || 'player');
+          console.log('🔄 Redirecting to:', correctRoute);
           router.push(correctRoute);
         }
       }
@@ -43,6 +51,8 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
 
   const getDashboardRoute = (accountType: string) => {
     switch (accountType) {
+      case 'admin':
+        return '/dashboard/admin';
       case 'player':
         return '/dashboard/player';
       case 'club':
