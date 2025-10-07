@@ -7,7 +7,7 @@ import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
-import { getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
+import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
 import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
 import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
 import { User } from 'firebase/auth';

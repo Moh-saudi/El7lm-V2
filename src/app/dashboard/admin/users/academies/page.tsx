@@ -40,7 +40,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { CITIES_BY_COUNTRY, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
+import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { getIndexCreationUrls } from '@/lib/firebase/indexes';

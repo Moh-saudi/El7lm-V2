@@ -31,7 +31,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { getBasicCountriesData, SimpleCountry } from '@/data/countries-simple';
+import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { auth, db } from '@/lib/firebase/config';
 import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
@@ -611,7 +611,7 @@ export default function EmployeesManagement() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [countries, setCountries] = useState<SimpleCountry[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
@@ -667,9 +667,8 @@ export default function EmployeesManagement() {
   const loadCountries = async () => {
     try {
       setLoadingLocations(true);
-      // استخدام البيانات البسيطة
-      const countriesData = getBasicCountriesData();
-      setCountries(countriesData);
+      // استخدام البيانات البسيطة من صفحة التسجيل
+      setCountries(SUPPORTED_COUNTRIES);
     } catch (error) {
       console.error('Error loading countries:', error);
       toast.error('حدث خطأ في تحميل بيانات المناطق');
