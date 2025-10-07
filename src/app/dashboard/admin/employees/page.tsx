@@ -681,7 +681,7 @@ export default function EmployeesManagement() {
                   <SelectValue placeholder="اختر المشرف" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">بدون مشرف</SelectItem>
+                  <SelectItem value="none">بدون مشرف</SelectItem>
                   {employees.filter(emp => emp.role === 'supervisor' || emp.role === 'admin').map(emp => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.name} - {emp.role === 'admin' ? 'مدير نظام' : 'مشرف'}
@@ -1014,7 +1014,7 @@ export default function EmployeesManagement() {
   const handleSaveEmployee = async () => {
     try {
       console.log('🔄 بدء عملية حفظ الموظف...', { newEmployee, selectedCountry, selectedCities });
-      
+
       // Validate form
       if (!validateForm()) {
         console.log('❌ فشل في التحقق من صحة النموذج');
@@ -1083,7 +1083,7 @@ export default function EmployeesManagement() {
       if (!editingEmployee) {
         try {
           console.log('🔄 بدء إنشاء موظف جديد...');
-          
+
           // Generate strong password
           const tempPassword = generateStrongPassword();
           console.log('🔑 تم إنشاء كلمة مرور مؤقتة');
@@ -1236,7 +1236,7 @@ export default function EmployeesManagement() {
 
     } catch (error: any) {
       console.error('Error in handleSaveEmployee:', error);
-      
+
       // معالجة أخطاء محددة
       if (error?.code === 'permission-denied') {
         toast.error('ليس لديك صلاحية لإضافة موظفين');
