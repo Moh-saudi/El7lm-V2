@@ -452,7 +452,12 @@ export default function EmployeesManagement() {
               value={newEmployee.name || ''}
               onChange={(e) => {
                 const value = e.target.value;
-                setNewEmployee(prev => ({ ...prev, name: value }));
+                console.log('🔄 Updating name:', value);
+                setNewEmployee(prev => {
+                  const updated = { ...prev, name: value };
+                  console.log('📝 New employee state:', updated);
+                  return updated;
+                });
                 if (formErrors.name) {
                   setFormErrors(prev => ({ ...prev, name: '' }));
                 }
@@ -473,7 +478,12 @@ export default function EmployeesManagement() {
               value={newEmployee.email || ''}
               onChange={(e) => {
                 const value = e.target.value;
-                setNewEmployee(prev => ({ ...prev, email: value }));
+                console.log('🔄 Updating email:', value);
+                setNewEmployee(prev => {
+                  const updated = { ...prev, email: value };
+                  console.log('📝 New employee state:', updated);
+                  return updated;
+                });
                 if (formErrors.email) {
                   setFormErrors(prev => ({ ...prev, email: '' }));
                 }
@@ -494,7 +504,12 @@ export default function EmployeesManagement() {
               value={newEmployee.phone || ''}
               onChange={(e) => {
                 const value = e.target.value;
-                setNewEmployee(prev => ({ ...prev, phone: value }));
+                console.log('🔄 Updating phone:', value);
+                setNewEmployee(prev => {
+                  const updated = { ...prev, phone: value };
+                  console.log('📝 New employee state:', updated);
+                  return updated;
+                });
                 if (formErrors.phone) {
                   setFormErrors(prev => ({ ...prev, phone: '' }));
                 }
