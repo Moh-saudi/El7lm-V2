@@ -152,7 +152,7 @@ export const CITIES_BY_COUNTRY: Record<string, string[]> = {
   ]
 };
 
-export const COUNTRIES_DATA = [
+export const getCountriesData = () => [
   {
     id: 'sa',
     name: 'المملكة العربية السعودية',
@@ -306,6 +306,9 @@ export const COUNTRIES_DATA = [
     ]
   }
 ];
+
+// للتوافق مع الكود الموجود
+export const COUNTRIES_DATA = getCountriesData();
 
 // دالة للحصول على الدولة من المدينة
 export function getCountryFromCity(city: string): string | null {
