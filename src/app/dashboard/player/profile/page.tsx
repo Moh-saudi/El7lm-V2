@@ -313,6 +313,11 @@ export default function PlayerProfile() {
   const [editFormData, setEditFormData] = useState<PlayerFormData>(defaultPlayerFields);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Debug: Log isEditing state changes
+  useEffect(() => {
+    console.log('[isEditing] State changed to:', isEditing);
+  }, [isEditing]);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -331,6 +336,7 @@ export default function PlayerProfile() {
   const fetchPlayerData = useCallback(async () => {
     if (!user || loading) return;
 
+    console.log('[fetchPlayerData] Starting to fetch player data for user:', user.uid);
     setIsLoading(true);
     try {
       const docRef = doc(db, 'players', user.uid);
@@ -338,6 +344,7 @@ export default function PlayerProfile() {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log('[fetchPlayerData] Found existing player data:', data);
         const processedData = {
           ...defaultPlayerFields,
           ...data
@@ -346,7 +353,9 @@ export default function PlayerProfile() {
         setFormData(processedData);
         setEditFormData(processedData);
         setError(null);
+        console.log('[fetchPlayerData] ✅ Data loaded successfully');
       } else {
+        console.log('[fetchPlayerData] No existing data, creating default document');
         // Create default document
         const extendedUser = user as ExtendedUser;
         const defaultData = {
@@ -361,6 +370,7 @@ export default function PlayerProfile() {
         setFormData(defaultData);
         setEditFormData(defaultData);
         setError(null);
+        console.log('[fetchPlayerData] ✅ Default data created and loaded');
       }
     } catch (err) {
       setError("حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقًا.");
@@ -2885,7 +2895,11 @@ export default function PlayerProfile() {
               </div>
               {!isEditing && (
                 <Button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    console.log('[Edit Button] Clicked, current playerData:', playerData);
+                    console.log('[Edit Button] Current editFormData:', editFormData);
+                    setIsEditing(true);
+                  }}
                   className="text-white bg-blue-600 hover:bg-blue-700"
                 >
                   تعديل البيانات
