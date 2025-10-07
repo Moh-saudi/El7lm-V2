@@ -46,7 +46,7 @@ import { toast } from 'sonner';
 import AdminHeader from '@/components/layout/AdminHeader';
 import AdminFooter from '@/components/layout/AdminFooter';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { CITIES_BY_COUNTRY, SUPPORTED_COUNTRIES } from '@/lib/cities-data';
+import { getBasicCountriesData, SimpleCountry, CITIES_BY_COUNTRY, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
 import {
   AlertDialog,
   AlertDialogAction,

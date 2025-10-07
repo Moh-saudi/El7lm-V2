@@ -11,7 +11,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { uploadPlayerProfileImage, uploadPlayerAdditionalImage, uploadPlayerDocument, deletePlayerDocument, AccountType } from '@/lib/firebase/upload-media';
 import { supabase, getSupabaseClient } from '@/lib/supabase/config';
 import { User } from 'firebase/auth';
-import { getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES, searchCities } from '@/lib/cities-data';
+import { getBasicCountriesData, SimpleCountry, getCitiesByCountry, getCountryFromCity, SUPPORTED_COUNTRIES, searchCities } from '@/data/countries-simple';
 import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
 import { toast } from 'sonner';

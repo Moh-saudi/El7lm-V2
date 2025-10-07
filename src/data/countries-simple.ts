@@ -136,3 +136,46 @@ export const getBasicCountriesData = (): SimpleCountry[] => [
     ]
   }
 ];
+
+// دوال مساعدة للتوافق مع الكود الموجود
+export const getCitiesByCountry = (countryId: string): SimpleCity[] => {
+  const country = getBasicCountriesData().find(c => c.id === countryId);
+  return country ? country.cities : [];
+};
+
+export const getCountryFromCity = (cityId: string): string | null => {
+  const countries = getBasicCountriesData();
+  for (const country of countries) {
+    if (country.cities.some(city => city.id === cityId)) {
+      return country.id;
+    }
+  }
+  return null;
+};
+
+export const searchCities = (query: string): SimpleCity[] => {
+  const countries = getBasicCountriesData();
+  const allCities: SimpleCity[] = [];
+  
+  countries.forEach(country => {
+    allCities.push(...country.cities);
+  });
+  
+  return allCities.filter(city => 
+    city.name.toLowerCase().includes(query.toLowerCase()) ||
+    city.nameEn.toLowerCase().includes(query.toLowerCase())
+  );
+};
+
+export const SUPPORTED_COUNTRIES = getBasicCountriesData().map(country => ({
+  id: country.id,
+  name: country.name,
+  nameEn: country.nameEn,
+  code: country.code,
+  flag: country.flag
+}));
+
+export const CITIES_BY_COUNTRY = getBasicCountriesData().reduce((acc, country) => {
+  acc[country.id] = country.cities;
+  return acc;
+}, {} as Record<string, SimpleCity[]>);

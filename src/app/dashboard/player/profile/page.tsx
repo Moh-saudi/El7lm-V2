@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { getCitiesByCountry, getCountryFromCity, searchCities, SUPPORTED_COUNTRIES } from '@/lib/cities-data';
+import { getBasicCountriesData, SimpleCountry, getCitiesByCountry, getCountryFromCity, searchCities, SUPPORTED_COUNTRIES } from '@/data/countries-simple';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from "@/lib/firebase/config";
 import { AccountType, uploadPlayerAdditionalImage, uploadPlayerDocument, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
