@@ -31,6 +31,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import { getBasicCountriesData, SimpleCountry } from '@/data/countries-simple';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { auth, db } from '@/lib/firebase/config';
 import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
@@ -60,7 +61,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { COUNTRIES_DATA, Country } from '@/lib/cities-data';
 
 // الصلاحيات الافتراضية لكل دور وظيفي
 const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
@@ -611,7 +611,7 @@ export default function EmployeesManagement() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [countries, setCountries] = useState<Country[]>([]);
+  const [countries, setCountries] = useState<SimpleCountry[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
@@ -667,8 +667,9 @@ export default function EmployeesManagement() {
   const loadCountries = async () => {
     try {
       setLoadingLocations(true);
-      // استخدام البيانات الموجودة من ملف cities-data
-      setCountries(COUNTRIES_DATA);
+      // استخدام البيانات البسيطة
+      const countriesData = getBasicCountriesData();
+      setCountries(countriesData);
     } catch (error) {
       console.error('Error loading countries:', error);
       toast.error('حدث خطأ في تحميل بيانات المناطق');

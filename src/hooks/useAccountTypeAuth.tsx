@@ -32,7 +32,7 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
           allowedTypes,
           isAllowed: userAccountType && allowedTypes.includes(userAccountType)
         });
-        
+
         if (userAccountType && allowedTypes.includes(userAccountType)) {
           console.log('✅ AccountTypeProtection - Access granted');
           setIsAuthorized(true);
@@ -44,7 +44,7 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
           router.push(correctRoute);
         }
       }
-      
+
       setIsCheckingAuth(false);
     }
   }, [user, loading, userData, allowedTypes, redirectTo, router]);
@@ -80,11 +80,11 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
 };
 
 // مكون الحماية العامة
-export const AccountTypeProtection = ({ 
-  children, 
-  allowedTypes, 
+export const AccountTypeProtection = ({
+  children,
+  allowedTypes,
   redirectTo = '/',
-  loadingComponent 
+  loadingComponent
 }: {
   children: React.ReactNode;
   allowedTypes: string[];
@@ -109,4 +109,4 @@ export const AccountTypeProtection = ({
   }
 
   return <>{children}</>;
-}; 
+};
