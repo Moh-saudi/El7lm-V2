@@ -439,7 +439,7 @@ export default function EmployeesManagement() {
             <p className="text-sm text-gray-600">البيانات الأساسية للموظف</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
@@ -528,7 +528,7 @@ export default function EmployeesManagement() {
             <p className="text-sm text-gray-600">الوظيفة والصلاحيات في المنصة</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
@@ -661,7 +661,7 @@ export default function EmployeesManagement() {
             <p className="text-sm text-gray-600">الصلاحيات والمناطق الجغرافية</p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -730,7 +730,7 @@ export default function EmployeesManagement() {
             <p className="text-sm text-gray-600">ملاحظات ومعلومات إضافية</p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
@@ -1709,7 +1709,7 @@ export default function EmployeesManagement() {
                 {editingEmployee ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}
               </DialogTitle>
               <DialogDescription className="text-gray-600">
-                {editingEmployee 
+                {editingEmployee
                   ? 'قم بتحديث بيانات الموظف وصلاحياته في النظام'
                   : 'أدخل بيانات الموظف الجديد وحدد صلاحياته في منصة الحلم'
                 }
