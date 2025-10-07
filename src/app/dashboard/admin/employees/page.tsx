@@ -421,6 +421,11 @@ export default function EmployeesManagement() {
       isValid = false;
     }
 
+    if (!newEmployee.department?.trim()) {
+      errors.department = 'يرجى اختيار القسم';
+      isValid = false;
+    }
+
     setFormErrors(errors);
     return isValid;
   };
@@ -1008,8 +1013,11 @@ export default function EmployeesManagement() {
   // تحديث دالة حفظ الموظف
   const handleSaveEmployee = async () => {
     try {
+      console.log('🔄 بدء عملية حفظ الموظف...', { newEmployee, selectedCountry, selectedCities });
+      
       // Validate form
       if (!validateForm()) {
+        console.log('❌ فشل في التحقق من صحة النموذج');
         return;
       }
 
@@ -1041,6 +1049,11 @@ export default function EmployeesManagement() {
         return;
       }
 
+      if (!newEmployee.department?.trim()) {
+        toast.error('يرجى اختيار القسم');
+        return;
+      }
+
       if (!selectedCountry) {
         toast.error('يرجى اختيار الدولة');
         return;
@@ -1050,6 +1063,8 @@ export default function EmployeesManagement() {
         toast.error('يرجى اختيار مدينة واحدة على الأقل');
         return;
       }
+
+      console.log('✅ تم التحقق من صحة البيانات بنجاح');
 
       // Check if email already exists in employees collection
       const emailQuery = query(
@@ -1067,8 +1082,11 @@ export default function EmployeesManagement() {
 
       if (!editingEmployee) {
         try {
+          console.log('🔄 بدء إنشاء موظف جديد...');
+          
           // Generate strong password
           const tempPassword = generateStrongPassword();
+          console.log('🔑 تم إنشاء كلمة مرور مؤقتة');
 
           // Prepare employee data first
           const employeeData: Partial<Employee> = {
@@ -1091,12 +1109,17 @@ export default function EmployeesManagement() {
             })
           };
 
+          console.log('📋 بيانات الموظف المحضرة:', employeeData);
+
           // Create Firestore document first
           const employeeRef = doc(collection(db, 'employees'));
+          console.log('📄 إنشاء مستند Firestore...');
           await setDoc(employeeRef, employeeData);
+          console.log('✅ تم إنشاء مستند Firestore بنجاح');
 
           // Try to create auth account
           try {
+            console.log('🔐 إنشاء حساب Firebase Auth...');
             const userCredential = await createUserWithEmailAndPassword(
               auth,
               newEmployee.email,
@@ -1104,14 +1127,19 @@ export default function EmployeesManagement() {
             );
 
             authUserId = userCredential.user.uid;
+            console.log('✅ تم إنشاء حساب Firebase Auth بنجاح:', authUserId);
 
             // Update document with auth ID
+            console.log('🔄 تحديث مستند الموظف بـ Auth ID...');
             await updateDoc(employeeRef, {
               authUserId: authUserId
             });
+            console.log('✅ تم تحديث مستند الموظف بنجاح');
 
             // Send password reset email
+            console.log('📧 إرسال بريد إعادة تعيين كلمة المرور...');
             await sendPasswordResetEmail(auth, newEmployee.email);
+            console.log('✅ تم إرسال بريد إعادة تعيين كلمة المرور');
 
             // Save credentials for display
             setNewUserCredentials({
@@ -1121,6 +1149,7 @@ export default function EmployeesManagement() {
 
             setShowCredentialsDialog(true);
             toast.success('تم إنشاء الحساب بنجاح');
+            console.log('🎉 تم إنشاء الموظف بنجاح!');
 
           } catch (authError: any) {
             console.error('Firebase Auth Error:', authError);
@@ -1205,9 +1234,21 @@ export default function EmployeesManagement() {
       // Refresh employee list
       loadEmployees();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in handleSaveEmployee:', error);
-      toast.error('حدث خطأ غير متوقع');
+      
+      // معالجة أخطاء محددة
+      if (error?.code === 'permission-denied') {
+        toast.error('ليس لديك صلاحية لإضافة موظفين');
+      } else if (error?.code === 'unavailable') {
+        toast.error('الخدمة غير متاحة حالياً. يرجى المحاولة لاحقاً');
+      } else if (error?.message?.includes('network')) {
+        toast.error('خطأ في الاتصال. تحقق من اتصال الإنترنت');
+      } else if (error?.message?.includes('quota')) {
+        toast.error('تم تجاوز الحد المسموح. يرجى المحاولة لاحقاً');
+      } else {
+        toast.error(`حدث خطأ غير متوقع: ${error?.message || 'خطأ غير معروف'}`);
+      }
     }
   };
 
