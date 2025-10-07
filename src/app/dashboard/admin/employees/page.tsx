@@ -427,124 +427,359 @@ export default function EmployeesManagement() {
 
   // تحديث نموذج إضافة/تعديل الموظف
   const EmployeeForm = () => (
-    <div className="grid gap-4 py-4">
-      <div className="grid gap-2">
-        <Label>الاسم الكامل</Label>
-        <Input
-          value={newEmployee.name || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            setNewEmployee(prev => ({ ...prev, name: value }));
-            if (formErrors.name) {
-              setFormErrors(prev => ({ ...prev, name: '' }));
-            }
-          }}
-          placeholder="أدخل الاسم الكامل"
-          className={`w-full ${formErrors.name ? 'border-red-500' : ''}`}
-          dir="rtl"
-        />
-        {formErrors.name && (
-          <p className="text-sm text-red-500">{formErrors.name}</p>
-        )}
+    <div className="space-y-6 py-4">
+      {/* معلومات شخصية */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <Users className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">المعلومات الشخصية</h3>
+            <p className="text-sm text-gray-600">البيانات الأساسية للموظف</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
+            <Input
+              value={newEmployee.name || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewEmployee(prev => ({ ...prev, name: value }));
+                if (formErrors.name) {
+                  setFormErrors(prev => ({ ...prev, name: '' }));
+                }
+              }}
+              placeholder="أدخل الاسم الكامل"
+              className={`w-full ${formErrors.name ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+              dir="rtl"
+            />
+            {formErrors.name && (
+              <p className="text-sm text-red-500">{formErrors.name}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">البريد الإلكتروني *</Label>
+            <Input
+              type="email"
+              value={newEmployee.email || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewEmployee(prev => ({ ...prev, email: value }));
+                if (formErrors.email) {
+                  setFormErrors(prev => ({ ...prev, email: '' }));
+                }
+              }}
+              placeholder="example@el7lm.com"
+              className={`w-full ${formErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+              dir="ltr"
+            />
+            {formErrors.email && (
+              <p className="text-sm text-red-500">{formErrors.email}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">رقم الهاتف *</Label>
+            <Input
+              type="tel"
+              value={newEmployee.phone || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewEmployee(prev => ({ ...prev, phone: value }));
+                if (formErrors.phone) {
+                  setFormErrors(prev => ({ ...prev, phone: '' }));
+                }
+              }}
+              placeholder="05xxxxxxxx"
+              className={`w-full text-left ${formErrors.phone ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+              dir="ltr"
+            />
+            {formErrors.phone && (
+              <p className="text-sm text-red-500">{formErrors.phone}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">تاريخ الميلاد</Label>
+            <Input
+              type="date"
+              value={newEmployee.birthDate || ''}
+              onChange={(e) => {
+                setNewEmployee(prev => ({ ...prev, birthDate: e.target.value }));
+              }}
+              className="w-full border-gray-300 focus:border-blue-500"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-2">
-        <Label>البريد الإلكتروني</Label>
-        <Input
-          type="email"
-          value={newEmployee.email || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            setNewEmployee(prev => ({ ...prev, email: value }));
-            if (formErrors.email) {
-              setFormErrors(prev => ({ ...prev, email: '' }));
-            }
-          }}
-          placeholder="example@domain.com"
-          className={`w-full ${formErrors.email ? 'border-red-500' : ''}`}
-          dir="ltr"
-        />
-        {formErrors.email && (
-          <p className="text-sm text-red-500">{formErrors.email}</p>
-        )}
+      {/* معلومات العمل */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+            <Briefcase className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">معلومات العمل</h3>
+            <p className="text-sm text-gray-600">الوظيفة والصلاحيات في المنصة</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
+            <Select
+              value={newEmployee.role || ''}
+              onValueChange={(value: EmployeeRole) => {
+                setNewEmployee(prev => ({
+                  ...prev,
+                  role: value,
+                  permissions: DEFAULT_PERMISSIONS[value]
+                }));
+                if (formErrors.role) {
+                  setFormErrors(prev => ({ ...prev, role: '' }));
+                }
+              }}
+            >
+              <SelectTrigger className={`w-full ${formErrors.role ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
+                <SelectValue placeholder="اختر الوظيفة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="support">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>دعم فني</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="finance">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>مالية</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sales">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span>مبيعات</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="content">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span>محتوى</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="supervisor">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span>مشرف</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="admin">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span>مدير نظام</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {formErrors.role && (
+              <p className="text-sm text-red-500">{formErrors.role}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">القسم *</Label>
+            <Select
+              value={newEmployee.department || ''}
+              onValueChange={(value) => {
+                setNewEmployee(prev => ({ ...prev, department: value }));
+                if (formErrors.department) {
+                  setFormErrors(prev => ({ ...prev, department: '' }));
+                }
+              }}
+            >
+              <SelectTrigger className={`w-full ${formErrors.department ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
+                <SelectValue placeholder="اختر القسم" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="التقنية">التقنية</SelectItem>
+                <SelectItem value="المالية">المالية</SelectItem>
+                <SelectItem value="المبيعات">المبيعات</SelectItem>
+                <SelectItem value="المحتوى">المحتوى</SelectItem>
+                <SelectItem value="الدعم الفني">الدعم الفني</SelectItem>
+                <SelectItem value="الإدارة">الإدارة</SelectItem>
+                <SelectItem value="التسويق">التسويق</SelectItem>
+                <SelectItem value="الموارد البشرية">الموارد البشرية</SelectItem>
+              </SelectContent>
+            </Select>
+            {formErrors.department && (
+              <p className="text-sm text-red-500">{formErrors.department}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">تاريخ التعيين</Label>
+            <Input
+              type="date"
+              value={newEmployee.hireDate || ''}
+              onChange={(e) => {
+                setNewEmployee(prev => ({ ...prev, hireDate: e.target.value }));
+              }}
+              className="w-full border-gray-300 focus:border-green-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">الراتب الشهري</Label>
+            <Input
+              type="number"
+              value={newEmployee.salary || ''}
+              onChange={(e) => {
+                setNewEmployee(prev => ({ ...prev, salary: e.target.value }));
+              }}
+              placeholder="0.00"
+              className="w-full border-gray-300 focus:border-green-500"
+              dir="ltr"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-2">
-        <Label>رقم الهاتف</Label>
-        <Input
-          type="tel"
-          value={newEmployee.phone || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            setNewEmployee(prev => ({ ...prev, phone: value }));
-            if (formErrors.phone) {
-              setFormErrors(prev => ({ ...prev, phone: '' }));
-            }
-          }}
-          placeholder="05xxxxxxxx"
-          className={`w-full text-left ${formErrors.phone ? 'border-red-500' : ''}`}
-          dir="ltr"
-        />
-        {formErrors.phone && (
-          <p className="text-sm text-red-500">{formErrors.phone}</p>
-        )}
+      {/* معلومات المنصة */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">إعدادات المنصة</h3>
+            <p className="text-sm text-gray-600">الصلاحيات والمناطق الجغرافية</p>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">المشرف المباشر</Label>
+              <Select
+                value={newEmployee.supervisor || ''}
+                onValueChange={(value) => {
+                  setNewEmployee(prev => ({ ...prev, supervisor: value }));
+                }}
+              >
+                <SelectTrigger className="w-full border-gray-300 focus:border-purple-500">
+                  <SelectValue placeholder="اختر المشرف" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">بدون مشرف</SelectItem>
+                  {employees.filter(emp => emp.role === 'supervisor' || emp.role === 'admin').map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.name} - {emp.role === 'admin' ? 'مدير نظام' : 'مشرف'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">ساعات العمل</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="time"
+                  value={newEmployee.workStartTime || '09:00'}
+                  onChange={(e) => {
+                    setNewEmployee(prev => ({ ...prev, workStartTime: e.target.value }));
+                  }}
+                  className="flex-1 border-gray-300 focus:border-purple-500"
+                />
+                <span className="flex items-center text-gray-500">إلى</span>
+                <Input
+                  type="time"
+                  value={newEmployee.workEndTime || '17:00'}
+                  onChange={(e) => {
+                    setNewEmployee(prev => ({ ...prev, workEndTime: e.target.value }));
+                  }}
+                  className="flex-1 border-gray-300 focus:border-purple-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">المناطق الجغرافية *</Label>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <LocationSelector />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-2">
-        <Label>الوظيفة</Label>
-        <Select
-          value={newEmployee.role || ''}
-          onValueChange={(value: EmployeeRole) => {
-            setNewEmployee(prev => ({
-              ...prev,
-              role: value,
-              permissions: DEFAULT_PERMISSIONS[value]
-            }));
-            if (formErrors.role) {
-              setFormErrors(prev => ({ ...prev, role: '' }));
-            }
-          }}
-        >
-          <SelectTrigger className={`w-full ${formErrors.role ? 'border-red-500' : ''}`}>
-            <SelectValue placeholder="اختر الوظيفة" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="support">دعم فني</SelectItem>
-            <SelectItem value="finance">مالية</SelectItem>
-            <SelectItem value="sales">مبيعات</SelectItem>
-            <SelectItem value="content">محتوى</SelectItem>
-            <SelectItem value="supervisor">مشرف</SelectItem>
-            <SelectItem value="admin">مدير نظام</SelectItem>
-          </SelectContent>
-        </Select>
-        {formErrors.role && (
-          <p className="text-sm text-red-500">{formErrors.role}</p>
-        )}
-      </div>
+      {/* معلومات إضافية */}
+      <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-5 h-5 text-gray-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">معلومات إضافية</h3>
+            <p className="text-sm text-gray-600">ملاحظات ومعلومات إضافية</p>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
+            <textarea
+              value={newEmployee.notes || ''}
+              onChange={(e) => {
+                setNewEmployee(prev => ({ ...prev, notes: e.target.value }));
+              }}
+              placeholder="أي ملاحظات إضافية حول الموظف..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-1 focus:ring-gray-500 resize-none"
+              rows={3}
+              dir="rtl"
+            />
+          </div>
 
-      <div className="grid gap-2">
-        <Label>القسم</Label>
-        <Input
-          value={newEmployee.department || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            setNewEmployee(prev => ({ ...prev, department: value }));
-            if (formErrors.department) {
-              setFormErrors(prev => ({ ...prev, department: '' }));
-            }
-          }}
-          placeholder="اسم القسم"
-          className={`w-full ${formErrors.department ? 'border-red-500' : ''}`}
-          dir="rtl"
-        />
-        {formErrors.department && (
-          <p className="text-sm text-red-500">{formErrors.department}</p>
-        )}
-      </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                title="تفعيل الحساب فوراً"
+                checked={newEmployee.isActive !== false}
+                onChange={(e) => {
+                  setNewEmployee(prev => ({ ...prev, isActive: e.target.checked }));
+                }}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+                تفعيل الحساب فوراً
+              </Label>
+            </div>
 
-      <div className="border-t pt-4 mt-4">
-        <h4 className="font-medium mb-4">المناطق الجغرافية</h4>
-        <LocationSelector />
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="sendWelcomeEmail"
+                title="إرسال بريد ترحيبي"
+                checked={newEmployee.sendWelcomeEmail !== false}
+                onChange={(e) => {
+                  setNewEmployee(prev => ({ ...prev, sendWelcomeEmail: e.target.checked }));
+                }}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="sendWelcomeEmail" className="text-sm font-medium text-gray-700">
+                إرسال بريد ترحيبي
+              </Label>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1468,19 +1703,22 @@ export default function EmployeesManagement() {
 
         {/* Add/Edit Employee Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-900">
                 {editingEmployee ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}
               </DialogTitle>
-              <DialogDescription>
-                أدخل بيانات الموظف وحدد صلاحياته في النظام
+              <DialogDescription className="text-gray-600">
+                {editingEmployee 
+                  ? 'قم بتحديث بيانات الموظف وصلاحياته في النظام'
+                  : 'أدخل بيانات الموظف الجديد وحدد صلاحياته في منصة الحلم'
+                }
               </DialogDescription>
             </DialogHeader>
 
             <EmployeeForm />
 
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
               <Button
                 type="button"
                 variant="outline"
@@ -1493,20 +1731,39 @@ export default function EmployeesManagement() {
                     phone: '',
                     role: 'support',
                     isActive: true,
-                    department: ''
+                    department: '',
+                    sendWelcomeEmail: true
                   });
                   setSelectedCountry('');
                   setSelectedCities([]);
+                  setFormErrors({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    role: '',
+                    department: ''
+                  });
                 }}
+                className="px-6"
               >
                 إلغاء
               </Button>
               <Button
                 type="submit"
                 onClick={handleSaveEmployee}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8"
               >
-                {editingEmployee ? 'تحديث' : 'إضافة'}
+                {editingEmployee ? (
+                  <>
+                    <Edit className="w-4 h-4 ml-2" />
+                    تحديث الموظف
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 ml-2" />
+                    إضافة الموظف
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
