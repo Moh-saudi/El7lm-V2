@@ -58,7 +58,7 @@ import {
     Users,
     X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 // الصلاحيات الافتراضية لكل دور وظيفي
@@ -430,8 +430,31 @@ export default function EmployeesManagement() {
     return isValid;
   };
 
+  // تحسين handlers باستخدام useCallback
+  const handleInputChange = useCallback((field: keyof Employee, value: string) => {
+    setNewEmployee(prev => ({ ...prev, [field]: value }));
+    
+    // مسح خطأ الحقل عند التعديل
+    if (formErrors[field as keyof typeof formErrors]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [formErrors]);
+
+  const handleSelectChange = useCallback((field: keyof Employee, value: string) => {
+    setNewEmployee(prev => ({ ...prev, [field]: value }));
+    
+    // مسح خطأ الحقل عند التعديل
+    if (formErrors[field as keyof typeof formErrors]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [formErrors]);
+
+  const handleCheckboxChange = useCallback((field: keyof Employee, checked: boolean) => {
+    setNewEmployee(prev => ({ ...prev, [field]: checked }));
+  }, []);
+
   // تحديث نموذج إضافة/تعديل الموظف
-  const EmployeeForm = () => (
+  const EmployeeForm = useMemo(() => (
     <div className="space-y-6 py-4">
       {/* معلومات شخصية */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
@@ -450,12 +473,7 @@ export default function EmployeesManagement() {
             <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
             <Input
               value={newEmployee.name || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, name: e.target.value }));
-                if (formErrors.name) {
-                  setFormErrors(prev => ({ ...prev, name: '' }));
-                }
-              }}
+              onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="أدخل الاسم الكامل"
               className={`w-full ${formErrors.name ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="rtl"
@@ -470,12 +488,7 @@ export default function EmployeesManagement() {
             <Input
               type="email"
               value={newEmployee.email || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, email: e.target.value }));
-                if (formErrors.email) {
-                  setFormErrors(prev => ({ ...prev, email: '' }));
-                }
-              }}
+              onChange={(e) => handleInputChange('email', e.target.value)}
               placeholder="example@el7lm.com"
               className={`w-full ${formErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="ltr"
@@ -490,12 +503,7 @@ export default function EmployeesManagement() {
             <Input
               type="tel"
               value={newEmployee.phone || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, phone: e.target.value }));
-                if (formErrors.phone) {
-                  setFormErrors(prev => ({ ...prev, phone: '' }));
-                }
-              }}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
               placeholder="05xxxxxxxx"
               className={`w-full text-left ${formErrors.phone ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="ltr"
@@ -510,9 +518,7 @@ export default function EmployeesManagement() {
             <Input
               type="date"
               value={newEmployee.birthDate || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, birthDate: e.target.value }));
-              }}
+              onChange={(e) => handleInputChange('birthDate', e.target.value)}
               className="w-full border-gray-300 focus:border-blue-500"
             />
           </div>
@@ -598,12 +604,7 @@ export default function EmployeesManagement() {
             <Label className="text-sm font-medium text-gray-700">القسم *</Label>
             <Select
               value={newEmployee.department || ''}
-              onValueChange={(value) => {
-                setNewEmployee(prev => ({ ...prev, department: value }));
-                if (formErrors.department) {
-                  setFormErrors(prev => ({ ...prev, department: '' }));
-                }
-              }}
+              onValueChange={(value) => handleSelectChange('department', value)}
             >
               <SelectTrigger className={`w-full ${formErrors.department ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
                 <SelectValue placeholder="اختر القسم" />
@@ -629,9 +630,7 @@ export default function EmployeesManagement() {
             <Input
               type="date"
               value={newEmployee.hireDate || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, hireDate: e.target.value }));
-              }}
+              onChange={(e) => handleInputChange('hireDate', e.target.value)}
               className="w-full border-gray-300 focus:border-green-500"
             />
           </div>
@@ -641,9 +640,7 @@ export default function EmployeesManagement() {
             <Input
               type="number"
               value={newEmployee.salary || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, salary: e.target.value }));
-              }}
+              onChange={(e) => handleInputChange('salary', e.target.value)}
               placeholder="0.00"
               className="w-full border-gray-300 focus:border-green-500"
               dir="ltr"
@@ -755,9 +752,7 @@ export default function EmployeesManagement() {
                 id="isActive"
                 title="تفعيل الحساب فوراً"
                 checked={newEmployee.isActive !== false}
-                onChange={(e) => {
-                  setNewEmployee(prev => ({ ...prev, isActive: e.target.checked }));
-                }}
+                onChange={(e) => handleCheckboxChange('isActive', e.target.checked)}
                 className="rounded border-gray-300"
               />
               <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
@@ -771,9 +766,7 @@ export default function EmployeesManagement() {
                 id="sendWelcomeEmail"
                 title="إرسال بريد ترحيبي"
                 checked={newEmployee.sendWelcomeEmail !== false}
-                onChange={(e) => {
-                  setNewEmployee(prev => ({ ...prev, sendWelcomeEmail: e.target.checked }));
-                }}
+                onChange={(e) => handleCheckboxChange('sendWelcomeEmail', e.target.checked)}
                 className="rounded border-gray-300"
               />
               <Label htmlFor="sendWelcomeEmail" className="text-sm font-medium text-gray-700">
@@ -784,7 +777,7 @@ export default function EmployeesManagement() {
         </div>
       </div>
     </div>
-  );
+  ), [newEmployee, formErrors, handleInputChange, handleSelectChange, handleCheckboxChange, employees, countries, selectedCountry, selectedCities]);
 
   // State
   const [employees, setEmployees] = useState<Employee[]>([]);
