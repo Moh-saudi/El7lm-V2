@@ -153,8 +153,8 @@ interface City {
   isActive: boolean;
 }
 
-// قائمة الدول والمدن المحدثة
-const COUNTRIES_DATA = [
+// دالة لإنشاء بيانات الدول
+const getCountriesData = (): Country[] => [
   {
     id: 'sa',
     name: 'المملكة العربية السعودية',
@@ -433,7 +433,7 @@ export default function EmployeesManagement() {
   // تحسين handlers باستخدام useCallback
   const handleInputChange = useCallback((field: keyof Employee, value: string) => {
     setNewEmployee(prev => ({ ...prev, [field]: value }));
-    
+
     // مسح خطأ الحقل عند التعديل
     if (formErrors[field as keyof typeof formErrors]) {
       setFormErrors(prev => ({ ...prev, [field]: '' }));
@@ -442,7 +442,7 @@ export default function EmployeesManagement() {
 
   const handleSelectChange = useCallback((field: keyof Employee, value: string) => {
     setNewEmployee(prev => ({ ...prev, [field]: value }));
-    
+
     // مسح خطأ الحقل عند التعديل
     if (formErrors[field as keyof typeof formErrors]) {
       setFormErrors(prev => ({ ...prev, [field]: '' }));
@@ -843,7 +843,7 @@ export default function EmployeesManagement() {
     try {
       setLoadingLocations(true);
       // استخدام البيانات المحدثة مباشرة
-      setCountries(COUNTRIES_DATA);
+      setCountries(getCountriesData());
     } catch (error) {
       console.error('Error loading countries:', error);
       toast.error('حدث خطأ في تحميل بيانات المناطق');
