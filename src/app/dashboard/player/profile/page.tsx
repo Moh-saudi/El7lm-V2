@@ -317,7 +317,9 @@ export default function PlayerProfile() {
   // Debug: Log isEditing state changes
   useEffect(() => {
     console.log('[isEditing] State changed to:', isEditing);
-  }, [isEditing]);
+    console.log('[isEditing] Current playerData:', playerData);
+    console.log('[isEditing] Current editFormData:', editFormData);
+  }, [isEditing, playerData, editFormData]);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -2805,7 +2807,10 @@ export default function PlayerProfile() {
   );
 
   // Main render
+  console.log('[Render] Main render - loading:', loading, 'isLoading:', isLoading, 'isEditing:', isEditing, 'playerData:', !!playerData);
+  
   if (loading || isLoading) {
+    console.log('[Render] Loading state - showing loading spinner');
     return <LoadingSpinner />;
   }
 
@@ -2910,7 +2915,9 @@ export default function PlayerProfile() {
                   onClick={() => {
                     console.log('[Edit Button] Clicked, current playerData:', playerData);
                     console.log('[Edit Button] Current editFormData:', editFormData);
+                    console.log('[Edit Button] About to set isEditing to true');
                     setIsEditing(true);
+                    console.log('[Edit Button] isEditing should now be true');
                   }}
                   className="text-white bg-blue-600 hover:bg-blue-700"
                 >
