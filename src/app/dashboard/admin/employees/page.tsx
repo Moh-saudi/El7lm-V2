@@ -451,13 +451,7 @@ export default function EmployeesManagement() {
             <Input
               value={newEmployee.name || ''}
               onChange={(e) => {
-                const value = e.target.value;
-                console.log('🔄 Updating name:', value);
-                setNewEmployee(prev => {
-                  const updated = { ...prev, name: value };
-                  console.log('📝 New employee state:', updated);
-                  return updated;
-                });
+                setNewEmployee(prev => ({ ...prev, name: e.target.value }));
                 if (formErrors.name) {
                   setFormErrors(prev => ({ ...prev, name: '' }));
                 }
@@ -477,13 +471,7 @@ export default function EmployeesManagement() {
               type="email"
               value={newEmployee.email || ''}
               onChange={(e) => {
-                const value = e.target.value;
-                console.log('🔄 Updating email:', value);
-                setNewEmployee(prev => {
-                  const updated = { ...prev, email: value };
-                  console.log('📝 New employee state:', updated);
-                  return updated;
-                });
+                setNewEmployee(prev => ({ ...prev, email: e.target.value }));
                 if (formErrors.email) {
                   setFormErrors(prev => ({ ...prev, email: '' }));
                 }
@@ -503,13 +491,7 @@ export default function EmployeesManagement() {
               type="tel"
               value={newEmployee.phone || ''}
               onChange={(e) => {
-                const value = e.target.value;
-                console.log('🔄 Updating phone:', value);
-                setNewEmployee(prev => {
-                  const updated = { ...prev, phone: value };
-                  console.log('📝 New employee state:', updated);
-                  return updated;
-                });
+                setNewEmployee(prev => ({ ...prev, phone: e.target.value }));
                 if (formErrors.phone) {
                   setFormErrors(prev => ({ ...prev, phone: '' }));
                 }
