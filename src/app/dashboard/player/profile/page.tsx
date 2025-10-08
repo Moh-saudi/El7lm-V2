@@ -319,10 +319,11 @@ export default function PlayerProfile() {
     console.log('[isEditing] State changed to:', isEditing);
     console.log('[isEditing] Current playerData:', playerData);
     console.log('[isEditing] Current editFormData:', editFormData);
-    
+
     // Check if edit button exists in DOM
-    const editButton = document.querySelector('button:contains("تعديل البيانات")');
-    console.log('[isEditing] Edit button in DOM:', !!editButton);
+    const editButton = document.querySelector('button');
+    const hasEditButton = editButton && editButton.textContent?.includes('تعديل البيانات');
+    console.log('[isEditing] Edit button in DOM:', !!hasEditButton);
   }, [isEditing, playerData, editFormData]);
 
   // معالجة أخطاء React
@@ -2833,7 +2834,7 @@ export default function PlayerProfile() {
 
   // Main render
   console.log('[Render] Main render - loading:', loading, 'isLoading:', isLoading, 'isEditing:', isEditing, 'playerData:', !!playerData);
-  
+
   if (loading || isLoading) {
     console.log('[Render] Loading state - showing loading spinner');
     return <LoadingSpinner />;
@@ -2847,8 +2848,8 @@ export default function PlayerProfile() {
         <div className="text-center">
           <div className="text-red-600 text-xl mb-4">❌ خطأ</div>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             إعادة تحميل الصفحة
@@ -2963,14 +2964,14 @@ export default function PlayerProfile() {
                       console.log('[Edit Button] About to set isEditing to true');
                       console.log('[Edit Button] Event:', e);
                       console.log('[Edit Button] Event target:', e.target);
-                      
+
                       // التأكد من أن البيانات موجودة
                       if (!playerData) {
                         console.error('[Edit Button] No player data available');
                         setError('لا توجد بيانات للاعب. يرجى إعادة تحميل الصفحة.');
                         return;
                       }
-                      
+
                       setIsEditing(true);
                       console.log('[Edit Button] isEditing should now be true');
                     } catch (error) {
