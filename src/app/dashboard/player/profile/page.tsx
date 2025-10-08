@@ -2910,7 +2910,7 @@ export default function PlayerProfile() {
                   <button
                     onClick={() => {
                       setShowRegistrationSuccess(false);
-                      window.open('/dashboard/shared/bulk-payment', '_blank');
+                      router.push('/dashboard/shared/bulk-payment');
                     }}
                     className="flex-1 px-4 py-2 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg transition-all hover:from-blue-700 hover:to-purple-700"
                   >
