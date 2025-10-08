@@ -921,6 +921,11 @@ export default function PlayerProfile() {
                     <button
                       key={index}
                       type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCityChange(city);
+                      }}
                       onClick={() => handleCityChange(city)}
                       className="px-3 py-2 w-full text-right text-gray-900 border-b border-gray-100 hover:bg-blue-50 hover:text-blue-900 last:border-b-0"
                     >
