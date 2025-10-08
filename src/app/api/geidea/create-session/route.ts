@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
       url: apiEndpoint,
       merchantPublicKey: geideaConfig.merchantPublicKey,
       originalOrderId: orderId,
-      cleanOrderId: cleanOrderId,
       finalOrderId: finalOrderId,
       amount: amount,
       currency: currency,
