@@ -154,10 +154,10 @@ export default function GeideaPaymentModal({
     // إغلاق المودال
     onRequestClose();
     
-    // توجيه المستخدم لصفحة حالة الاشتراك
+    // توجيه المستخدم لصفحة الدفع الجماعي في نفس التبويب
     setTimeout(() => {
-      window.location.href = '/dashboard/player/subscription-status';
-    }, 1000);
+      window.location.href = '/dashboard/shared/bulk-payment?status=success';
+    }, 800);
     
     onPaymentSuccess(response);
   };

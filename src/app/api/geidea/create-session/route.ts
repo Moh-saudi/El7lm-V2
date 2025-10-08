@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       signature: signature,
       callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/api/geidea/callback`,
       language: 'ar',
-      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/player/payment-success`,
+      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/shared/bulk-payment?status=success`,
       customer: {
         email: customerEmail,
         firstName: customerName.split(' ')[0] || 'Customer',
