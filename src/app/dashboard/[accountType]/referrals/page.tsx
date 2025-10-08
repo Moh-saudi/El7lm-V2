@@ -311,9 +311,9 @@ export default function SharedReferralsPage() {
     }
   };
 
-  const shareOrgLinkWhatsApp = (_inviteLink: string, _orgName?: string) => {
+  const shareOrgLinkWhatsApp = (referralCode: string, orgName?: string) => {
     try {
-      const message = `انضم الي فريق كابتن *محمود ساديو* علي منصة الحلم\nواكتب\n *TRN3OGRMA* \nفي حقل كود الانضمام  من خلال الرابط التالي بعد كتابة اسمك ورقم هاتفك \nhttps://www.el7lm.com/auth/register`;
+      const message = `انضم الي فريق ${orgName ? `*${orgName}*` : '*المنظمة*'} علي منصة الحلم\nواكتب\n *${referralCode}* \nفي حقل كود الانضمام  من خلال الرابط التالي بعد كتابة اسمك ورقم هاتفك \nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
@@ -495,7 +495,7 @@ export default function SharedReferralsPage() {
                     <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => shareOrgLinkWhatsApp(referral.inviteLink, referral.organizationName)}
+                      onClick={() => shareOrgLinkWhatsApp(referral.referralCode, referral.organizationName)}
                     >
                       مشاركة واتساب
                     </Button>
