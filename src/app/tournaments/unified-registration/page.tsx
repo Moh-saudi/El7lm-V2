@@ -1,54 +1,52 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import GeideaPaymentModal from '@/components/GeideaPaymentModal';
+import ResponsiveLayoutWrapper from '@/components/layout/ResponsiveLayout';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { 
-  Trophy,
-  Calendar,
-  MapPin,
-  Users,
-  DollarSign,
-  User,
-  Building,
-  CreditCard,
-  CheckCircle,
-  ArrowLeft,
-  Search,
-  Filter,
-  Plus,
-  Smartphone,
-  Receipt,
-  Clock,
-  AlertTriangle,
-  FileText,
-  Printer,
-  Edit,
-  ArrowRight
-} from 'lucide-react';
-import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { toast } from 'sonner';
-import { Tournament, TournamentRegistration, ClubPlayer } from '@/types/tournament';
-import { Player } from '@/types/player';
-import ResponsiveLayoutWrapper from '@/components/layout/ResponsiveLayout';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import GeideaPaymentModal from '@/components/GeideaPaymentModal';
+import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
+import { Player } from '@/types/player';
+import { Tournament } from '@/types/tournament';
+import { addDoc, collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import {
+    AlertTriangle,
+    ArrowLeft,
+    ArrowRight,
+    Building,
+    Calendar,
+    CheckCircle,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Edit,
+    FileText,
+    MapPin,
+    Plus,
+    Printer,
+    Search,
+    Smartphone,
+    Trophy,
+    User,
+    Users
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 // قائمة المراكز المتاحة
 const POSITIONS = [
   'حارس مرمى',
   'مدافع أيمن',
-  'مدافع أيسر', 
+  'مدافع أيسر',
   'مدافع وسط',
   'وسط دفاعي',
   'وسط أيمن',
@@ -63,17 +61,17 @@ const POSITIONS = [
 // دالة لحساب العمر من تاريخ الميلاد
 const calculateAge = (birthDate: string | Date | null): number | null => {
   if (!birthDate) return null;
-  
+
   try {
     const birth = new Date(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
       age--;
     }
-    
+
     return age >= 0 ? age : null;
   } catch (error) {
     console.error('Error calculating age:', error);
@@ -84,7 +82,7 @@ const calculateAge = (birthDate: string | Date | null): number | null => {
 // دالة لتنسيق تاريخ الميلاد للعرض
 const formatBirthDate = (birthDate: string | Date | null): string => {
   if (!birthDate) return 'غير محدد';
-  
+
   try {
     const date = new Date(birthDate);
     return date.toLocaleDateString('en-US', {
@@ -101,18 +99,18 @@ const formatBirthDate = (birthDate: string | Date | null): string => {
 // دالة لتنظيف رابط الصورة
 const getSafeAvatarUrl = (avatar: any): string | undefined => {
   if (!avatar) return undefined;
-  
+
   if (typeof avatar === 'string') {
     return avatar.trim() || undefined;
   }
-  
+
   if (typeof avatar === 'object' && avatar !== null) {
     // إذا كان object يحتوي على url
     if ('url' in avatar && typeof avatar.url === 'string') {
       return avatar.url.trim() || undefined;
     }
   }
-  
+
   return undefined;
 };
 
@@ -137,7 +135,7 @@ interface RegistrationData {
 export default function UnifiedTournamentRegistrationPage() {
   const router = useRouter();
   const { user, userData, loading: authLoading } = useAuth();
-  
+
   // Core states
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -146,13 +144,16 @@ export default function UnifiedTournamentRegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registeredPlayers, setRegisteredPlayers] = useState<Player[]>([]);
+  const [historyPaid, setHistoryPaid] = useState<any[]>([]);
+  const [historyPending, setHistoryPending] = useState<any[]>([]);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [currentTab, setCurrentTab] = useState('players');
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicatePlayers, setDuplicatePlayers] = useState<Player[]>([]);
-  
+  const paidPlayerIds = useMemo(() => new Set((historyPaid || []).flatMap((reg: any) => (reg.players || [])).map((p: any) => p.id)), [historyPaid]);
+
   // Selection states
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
@@ -162,12 +163,12 @@ export default function UnifiedTournamentRegistrationPage() {
     paymentMethod: 'later',
     notes: ''
   });
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('available');
-  
+
   // Payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showMobileWalletModal, setShowMobileWalletModal] = useState(false);
@@ -184,7 +185,7 @@ export default function UnifiedTournamentRegistrationPage() {
   // Fetch user profile and players
   const fetchUserData = useCallback(async () => {
     if (!user?.uid || !userData) return;
-    
+
     try {
       // Use userData from auth context
       const profileData: UserProfile = {
@@ -196,7 +197,7 @@ export default function UnifiedTournamentRegistrationPage() {
         avatar: userData.avatar || ''
       };
       setUserProfile(profileData);
-      
+
       // Fetch players based on user type - using same logic as /dashboard/club/players and /dashboard/academy/players
       if (profileData.type === 'club') {
         console.log('🏢 جاري جلب لاعبي النادي:', user.uid);
@@ -204,13 +205,13 @@ export default function UnifiedTournamentRegistrationPage() {
           collection(db, 'players'),
           where('club_id', '==', user.uid)
         );
-        
+
         const snapshot = await getDocs(baseQuery);
-        
+
         const playersData = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter((p: any) => !p.isDeleted) as Player[];
-        
+
         console.log('✅ تم جلب لاعبي النادي:', playersData.length, 'لاعب');
         setAvailablePlayers(playersData);
       } else if (profileData.type === 'academy') {
@@ -219,13 +220,13 @@ export default function UnifiedTournamentRegistrationPage() {
           collection(db, 'players'),
           where('academy_id', '==', user.uid)
         );
-        
+
         const snapshot = await getDocs(baseQuery);
-        
+
         const playersData = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter((p: any) => !p.isDeleted) as Player[];
-        
+
         console.log('✅ تم جلب لاعبي الأكاديمية:', playersData.length, 'لاعب');
         setAvailablePlayers(playersData);
       } else if (profileData.type === 'trainer') {
@@ -234,13 +235,13 @@ export default function UnifiedTournamentRegistrationPage() {
           collection(db, 'players'),
           where('trainer_id', '==', user.uid)
         );
-        
+
         const snapshot = await getDocs(baseQuery);
-        
+
         const playersData = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter((p: any) => !p.isDeleted) as Player[];
-        
+
         console.log('✅ تم جلب لاعبي المدرب:', playersData.length, 'لاعب');
         setAvailablePlayers(playersData);
       } else if (profileData.type === 'agent') {
@@ -249,13 +250,13 @@ export default function UnifiedTournamentRegistrationPage() {
           collection(db, 'players'),
           where('agent_id', '==', user.uid)
         );
-        
+
         const snapshot = await getDocs(baseQuery);
-        
+
         const playersData = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter((p: any) => !p.isDeleted) as Player[];
-        
+
         console.log('✅ تم جلب لاعبي الوكيل:', playersData.length, 'لاعب');
         setAvailablePlayers(playersData);
       } else if (profileData.type === 'marketer' || profileData.type === 'parent') {
@@ -325,6 +326,42 @@ export default function UnifiedTournamentRegistrationPage() {
     }
   }, [user, userData]);
 
+  // Fetch registrations history (paid/pending) for selected tournament
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        if (!user?.uid || !selectedTournament) {
+          setHistoryPaid([]);
+          setHistoryPending([]);
+          return;
+        }
+
+        const registrationsRef = collection(db, 'tournamentRegistrations');
+        const q = query(
+          registrationsRef,
+          where('tournamentId', '==', selectedTournament.id),
+          where('createdBy', '==', user.uid)
+        );
+
+        const snapshot = await getDocs(q);
+        const all: any[] = [];
+        snapshot.forEach((doc) => all.push({ id: doc.id, ...doc.data() }));
+
+        const paid = all.filter(r => r.paymentStatus === 'paid');
+        const pending = all.filter(r => r.paymentStatus !== 'paid');
+
+        setHistoryPaid(paid);
+        setHistoryPending(pending);
+      } catch (err) {
+        console.error('Failed to fetch registrations history:', err);
+        setHistoryPaid([]);
+        setHistoryPending([]);
+      }
+    };
+
+    fetchHistory();
+  }, [user, selectedTournament]);
+
   // Fetch available tournaments
   const fetchTournaments = useCallback(async () => {
     try {
@@ -333,20 +370,20 @@ export default function UnifiedTournamentRegistrationPage() {
         where('isActive', '==', true),
         orderBy('startDate', 'asc')
       );
-      
+
       const querySnapshot = await getDocs(tournamentsQuery);
       const tournamentsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Tournament[];
-      
+
       // Filter tournaments that are still accepting registrations
       const availableTournaments = tournamentsData.filter(tournament => {
         const registrationDeadline = new Date(tournament.registrationDeadline);
         const now = new Date();
         return registrationDeadline > now && tournament.currentParticipants < tournament.maxParticipants;
       });
-      
+
       setTournaments(availableTournaments);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -373,7 +410,12 @@ export default function UnifiedTournamentRegistrationPage() {
   // Calculate total payment amount
   const calculateTotalAmount = () => {
     if (!selectedTournament || !selectedTournament.isPaid) return 0;
-    return selectedTournament.entryFee * selectedPlayers.length;
+    // استثناء اللاعبين المدفوع لهم مسبقاً من الحساب
+    const paidIds = new Set(
+      (historyPaid || []).flatMap((reg: any) => (reg.players || [])).map((p: any) => p.id)
+    );
+    const payableCount = selectedPlayers.filter(p => !paidIds.has(p.id)).length;
+    return selectedTournament.entryFee * payableCount;
   };
 
   // Print registered players table
@@ -537,7 +579,7 @@ export default function UnifiedTournamentRegistrationPage() {
             </thead>
             <tbody>
               ${selectedPlayers.map((player, index) => {
-                const birthDateFormatted = player.birth_date ? 
+                const birthDateFormatted = player.birth_date ?
                   new Date(player.birth_date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
@@ -598,17 +640,26 @@ export default function UnifiedTournamentRegistrationPage() {
   // Handle player selection
   const togglePlayerSelection = useCallback(async (player: Player) => {
     const isSelected = selectedPlayers.find(p => p.id === player.id);
-    
+
     if (isSelected) {
       // Remove player from selection
       setSelectedPlayers(prev => prev.filter(p => p.id !== player.id));
     } else {
+      // منع اختيار لاعب مدفوع مسبقاً
+      const paidIds = new Set(
+        (historyPaid || []).flatMap((reg: any) => (reg.players || [])).map((p: any) => p.id)
+      );
+      if (paidIds.has(player.id)) {
+        toast.error('هذا اللاعب مدفوع مسبقًا لهذه البطولة');
+        return;
+      }
+
       // Check if player is already registered in this tournament
       if (selectedTournament) {
         setCheckingDuplicates(true);
         try {
           const duplicatePlayerIds = await checkForDuplicatePlayers(selectedTournament.id, [player.id]);
-          
+
           if (duplicatePlayerIds.length > 0) {
             setDuplicatePlayers([player]);
             setShowDuplicateWarning(true);
@@ -622,7 +673,7 @@ export default function UnifiedTournamentRegistrationPage() {
           setCheckingDuplicates(false);
         }
       }
-      
+
       // Add player to selection
       setSelectedPlayers(prev => [...prev, player]);
     }
@@ -638,9 +689,9 @@ export default function UnifiedTournamentRegistrationPage() {
   const updateRegisteredPlayer = (updatedPlayer: Player) => {
     console.log('🔄 Updating player:', updatedPlayer);
     console.log('📅 Birth date value:', updatedPlayer.birth_date);
-    
-    setSelectedPlayers(prev => 
-      prev.map(player => 
+
+    setSelectedPlayers(prev =>
+      prev.map(player =>
         player.id === updatedPlayer.id ? updatedPlayer : player
       )
     );
@@ -658,10 +709,10 @@ export default function UnifiedTournamentRegistrationPage() {
         where('tournamentId', '==', tournamentId),
         where('status', 'in', ['pending', 'approved', 'confirmed'])
       );
-      
+
       const querySnapshot = await getDocs(q);
       const existingRegistrations: any[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.players && Array.isArray(data.players)) {
@@ -670,7 +721,7 @@ export default function UnifiedTournamentRegistrationPage() {
       });
 
       // Check for duplicates
-      const duplicatePlayers = playerIds.filter(playerId => 
+      const duplicatePlayers = playerIds.filter(playerId =>
         existingRegistrations.some(reg => reg.id === playerId)
       );
 
@@ -699,7 +750,7 @@ export default function UnifiedTournamentRegistrationPage() {
       toast.error('يرجى اختيار طريقة الدفع');
       return false;
     }
-    
+
     if (registrationData.paymentMethod === 'mobile_wallet') {
       if (!mobileWalletProvider) {
         toast.error('يرجى اختيار مزود المحفظة الرقمية');
@@ -710,7 +761,7 @@ export default function UnifiedTournamentRegistrationPage() {
         return false;
       }
     }
-    
+
     return true;
   };
 
@@ -746,14 +797,14 @@ export default function UnifiedTournamentRegistrationPage() {
   // Payment handlers
   const handlePaymentMethodChange = (method: 'mobile_wallet' | 'card' | 'later') => {
     setRegistrationData(prev => ({ ...prev, paymentMethod: method }));
-    
+
     // التحقق من أن المبلغ أكبر من 0 قبل فتح نافذة الدفع
     const totalAmount = calculateTotalAmount();
     if (totalAmount <= 0) {
       toast.error('لا يمكن الدفع - المبلغ الإجمالي يجب أن يكون أكبر من 0');
       return;
     }
-    
+
     // Open appropriate modal based on payment method
     if (method === 'mobile_wallet') {
       setShowMobileWalletModal(true);
@@ -766,12 +817,12 @@ export default function UnifiedTournamentRegistrationPage() {
     console.log('Payment successful:', paymentData);
     toast.success('تم الدفع بنجاح!');
     setShowPaymentModal(false);
-    
+
     // Update registration data with payment info
     setRegistrationData(prev => ({
       ...prev,
-      paymentMethod: 'mobile_wallet',
-      notes: `تم الدفع بنجاح - ${paymentData.orderId || 'N/A'}`
+      paymentMethod: 'card',
+      notes: `تم الدفع بنجاح - ${paymentData.orderId || paymentData.merchantReferenceId || 'N/A'}`
     }));
   };
 
@@ -795,7 +846,7 @@ export default function UnifiedTournamentRegistrationPage() {
       const fileExtension = file.name.split('.').pop();
       const timestamp = Date.now();
       const safeFileName = `mobile_wallet_receipt_${receiptNumber}_${timestamp}.${fileExtension}`;
-      
+
       // المسار: wallet/userId/safeFileName
       const filePath = `${user.uid}/${safeFileName}`;
       console.log(`📁 رفع إيصال المحفظة الإلكترونية إلى: bucket "wallet" -> ${filePath}`);
@@ -837,7 +888,7 @@ export default function UnifiedTournamentRegistrationPage() {
 
       setMobileWalletUploadSuccess(true);
       toast.success('تم رفع إيصال المحفظة الإلكترونية بنجاح! سيتم التاكيد بعد 24 ساعة');
-      
+
       return {
         filePath,
         publicUrl: urlData?.publicUrl,
@@ -868,12 +919,12 @@ export default function UnifiedTournamentRegistrationPage() {
 
     // Simulate mobile wallet payment
     toast.success(`تم إرسال طلب الدفع إلى ${mobileWalletProvider} - رقم ${mobileWalletNumber}`);
-    
+
     setRegistrationData(prev => ({
       ...prev,
       notes: `دفع بالمحفظة الإلكترونية - ${mobileWalletProvider} - رقم: ${mobileWalletNumber} - ${paymentNotes}`
     }));
-    
+
     setShowMobileWalletModal(false);
     setMobileWalletNumber('');
     setMobileWalletProvider('');
@@ -893,13 +944,13 @@ export default function UnifiedTournamentRegistrationPage() {
 
     try {
       await uploadMobileWalletReceiptToSupabase(mobileWalletReceipt, mobileWalletReceiptNumber);
-      
+
       // تحديث بيانات التسجيل
       setRegistrationData(prev => ({
         ...prev,
         notes: `دفع بالمحفظة الإلكترونية - ${mobileWalletProvider} - رقم: ${mobileWalletNumber} - إيصال رقم: ${mobileWalletReceiptNumber} - ${paymentNotes}`
       }));
-      
+
     } catch (error) {
       console.error('خطأ في رفع إيصال المحفظة الإلكترونية:', error);
     }
@@ -920,12 +971,12 @@ export default function UnifiedTournamentRegistrationPage() {
     }
 
     setGeneratingInvoice(true);
-    
+
     try {
       const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
       const currentDate = new Date().toLocaleDateString('ar-EG');
       const totalAmount = calculateTotalAmount();
-      
+
       const invoiceContent = `
         <!DOCTYPE html>
         <html dir="rtl">
@@ -970,9 +1021,9 @@ export default function UnifiedTournamentRegistrationPage() {
                   <div>هاتف: 97472053188 قطر - 201017799580 مصر</div>
                 </div>
               </div>
-              
+
               <div class="invoice-title">فاتورة تسجيل البطولة <span style="font-size:1.3em;">🏆</span></div>
-              
+
               <div style="margin: 16px 0 24px 0; color:#555;">
                 <b>رقم الفاتورة:</b> ${invoiceNumber} &nbsp; | &nbsp;
                 <b>تاريخ الإصدار:</b> ${currentDate} &nbsp; | &nbsp;
@@ -992,7 +1043,7 @@ export default function UnifiedTournamentRegistrationPage() {
               <div class="section-title">👥 اللاعبين المسجلين</div>
               <div class="player-list">
                 ${selectedPlayers.map((player, index) => {
-                  const birthDateFormatted = player.birth_date ? 
+                  const birthDateFormatted = player.birth_date ?
                     new Date(player.birth_date).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -1062,22 +1113,22 @@ export default function UnifiedTournamentRegistrationPage() {
       // إنشاء blob من HTML
       const blob = new Blob([invoiceContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
-      
+
       // إنشاء رابط التحميل
       const link = document.createElement('a');
       link.href = url;
       link.download = `فاتورة-تسجيل-${selectedTournament.name}-${new Date().toISOString().split('T')[0]}.html`;
-      
+
       // إضافة الرابط للصفحة وتنفيذ التحميل
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // تنظيف URL
       URL.revokeObjectURL(url);
-      
+
       toast.success('تم إنشاء الفاتورة بنجاح!');
-      
+
     } catch (error) {
       console.error('خطأ في إنشاء الفاتورة:', error);
       toast.error('فشل في إنشاء الفاتورة');
@@ -1133,7 +1184,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   العودة
                 </Button>
               </div>
-              
+
               <div className="text-center flex-1">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <Trophy className="h-8 w-8 text-gradient-to-r from-purple-600 to-blue-600" />
@@ -1141,7 +1192,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 </div>
                 <p className="text-gray-600">سجل في أي بطولة متاحة باستخدام لاعبيك المسجلين</p>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 {userProfile && (
                   <div className="flex items-center gap-3">
@@ -1181,7 +1232,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   اختر البطولة التي تريد التسجيل فيها
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 {/* Search and Filter */}
                 <div className="space-y-3">
@@ -1194,7 +1245,7 @@ export default function UnifiedTournamentRegistrationPage() {
                       className="pr-10"
                     />
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <Button
                       variant={statusFilter === 'available' ? 'default' : 'outline'}
@@ -1224,20 +1275,20 @@ export default function UnifiedTournamentRegistrationPage() {
                     </div>
                   ) : (
                     tournaments
-                      .filter(tournament => 
+                      .filter(tournament =>
                         tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         tournament.location.toLowerCase().includes(searchTerm.toLowerCase())
                       )
                       .map((tournament) => {
                         const isSelected = selectedTournament?.id === tournament.id;
                         const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
-                        
+
                         return (
-                          <Card 
-                            key={tournament.id} 
+                          <Card
+                            key={tournament.id}
                             className={`cursor-pointer transition-all duration-200 ${
-                              isSelected 
-                                ? 'ring-2 ring-yellow-500 bg-yellow-50' 
+                              isSelected
+                                ? 'ring-2 ring-yellow-500 bg-yellow-50'
                                 : 'hover:shadow-md hover:bg-gray-50'
                             }`}
                             onClick={() => {
@@ -1250,8 +1301,8 @@ export default function UnifiedTournamentRegistrationPage() {
                                 <div className="flex items-center gap-3">
                                   {tournament.logo ? (
                                     <div className="flex-shrink-0">
-                                      <img 
-                                        src={tournament.logo} 
+                                      <img
+                                        src={tournament.logo}
                                         alt={`${tournament.name} logo`}
                                         className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg object-cover border border-gray-200 shadow-sm"
                                         onError={(e) => {
@@ -1271,18 +1322,18 @@ export default function UnifiedTournamentRegistrationPage() {
                                     </div>
                                   </div>
                                 </div>
-                                
+
                                 <div className="space-y-2 text-sm text-gray-600">
                                   <div className="flex items-center gap-2">
                                     <MapPin className="h-3 w-3" />
                                     <span className="truncate">{tournament.location}</span>
                                   </div>
-                                  
+
                                   <div className="flex items-center gap-2">
                                     <Calendar className="h-3 w-3" />
                                     <span>{new Date(tournament.startDate).toLocaleDateString('ar-EG')}</span>
                                   </div>
-                                  
+
                                   <div className="flex items-center gap-2">
                                     <Users className="h-3 w-3" />
                                     <span>{tournament.currentParticipants}/{tournament.maxParticipants}</span>
@@ -1290,7 +1341,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                       {spotsLeft} متبقي
                                     </Badge>
                                   </div>
-                                  
+
                                   {tournament.isPaid && (
                                     <div className="flex items-center gap-2">
                                       <DollarSign className="h-3 w-3" />
@@ -1298,7 +1349,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     </div>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex gap-1">
                                   <Badge className="bg-green-100 text-green-800 text-xs">متاحة</Badge>
                                   {tournament.categories.map(category => (
@@ -1330,7 +1381,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   <CardDescription>
                     اختر اللاعبين من قائمتك واملأ البيانات المطلوبة
                   </CardDescription>
-                  
+
                   {/* Navigation Instructions */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -1342,12 +1393,12 @@ export default function UnifiedTournamentRegistrationPage() {
                     </p>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="p-4 sm:p-6 lg:p-8">
                   <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 h-auto p-1">
-                      <TabsTrigger 
-                        value="players" 
+                      <TabsTrigger
+                        value="players"
                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
                       >
                         <Users className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1359,8 +1410,8 @@ export default function UnifiedTournamentRegistrationPage() {
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
                       </TabsTrigger>
-                      <TabsTrigger 
-                        value="payment" 
+                      <TabsTrigger
+                        value="payment"
                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
                       >
                         <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1369,8 +1420,8 @@ export default function UnifiedTournamentRegistrationPage() {
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
                       </TabsTrigger>
-                      <TabsTrigger 
-                        value="review" 
+                      <TabsTrigger
+                        value="review"
                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
                       >
                         <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1383,19 +1434,59 @@ export default function UnifiedTournamentRegistrationPage() {
                         )}
                       </TabsTrigger>
                     </TabsList>
-                    
+
                     {/* Players Selection Tab */}
                     <TabsContent value="players" className="space-y-6">
+                      {selectedTournament && (historyPaid.length > 0 || historyPending.length > 0) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Card className="border border-green-200">
+                            <CardHeader>
+                              <CardTitle className="text-sm sm:text-base text-green-800">اللاعبون المدفوع لهم</CardTitle>
+                              <CardDescription className="text-xs">سجلات مكتملة الدفع لهذه البطولة</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {historyPaid.length === 0 ? (
+                                <p className="text-xs text-gray-500">لا توجد سجلات</p>
+                              ) : (
+                                historyPaid.slice(0, 5).map((reg: any) => (
+                                  <div key={reg.id} className="flex items-center justify-between text-xs">
+                                    <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
+                                    <span className="text-gray-500">{reg?.paymentAmount || 0} ج.م</span>
+                                  </div>
+                                ))
+                              )}
+                            </CardContent>
+                          </Card>
+                          <Card className="border border-amber-200">
+                            <CardHeader>
+                              <CardTitle className="text-sm sm:text-base text-amber-800">اللاعبون المعلّقون</CardTitle>
+                              <CardDescription className="text-xs">سجلات لم تُستكمل عملية الدفع</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {historyPending.length === 0 ? (
+                                <p className="text-xs text-gray-500">لا توجد سجلات</p>
+                              ) : (
+                                historyPending.slice(0, 5).map((reg: any) => (
+                                  <div key={reg.id} className="flex items-center justify-between text-xs">
+                                    <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
+                                    <span className="text-gray-500">{reg?.paymentAmount || 0} ج.م</span>
+                                  </div>
+                                ))
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )}
                       <div className="space-y-4">
                         <h3 className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">اختر اللاعبين للتسجيل</h3>
-                        
+
                         {checkingDuplicates && (
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                             <span className="text-blue-700 text-sm">جاري فحص التكرار...</span>
                           </div>
                         )}
-                        
+
                         {availablePlayers.length === 0 ? (
                           <Card className="border-dashed border-2 border-gray-300">
                             <CardContent className="p-8 text-center">
@@ -1404,7 +1495,7 @@ export default function UnifiedTournamentRegistrationPage() {
                               <p className="text-gray-500 mb-4">
                                 يجب أن تقوم بإضافة لاعبين أولاً قبل التسجيل في البطولات
                               </p>
-                              <Button 
+                              <Button
                                 onClick={() => router.push('/dashboard/players')}
                                 className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                               >
@@ -1417,33 +1508,34 @@ export default function UnifiedTournamentRegistrationPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             {availablePlayers.map((player) => {
                               const isSelected = selectedPlayers.find(p => p.id === player.id);
-                              
+                              const isPaid = paidPlayerIds.has(player.id);
+
                               return (
-                                <Card 
+                                <Card
                                   key={player.id}
                                   className={`cursor-pointer transition-all duration-200 ${
-                                    isSelected 
-                                      ? 'ring-2 ring-blue-500 bg-blue-50' 
-                                      : 'hover:shadow-md hover:bg-gray-50'
-                                  } ${checkingDuplicates ? 'opacity-50 pointer-events-none' : ''}`}
-                                  onClick={() => togglePlayerSelection(player)}
+                                    isSelected
+                                      ? 'ring-2 ring-blue-500 bg-blue-50'
+                                      : isPaid ? 'opacity-60' : 'hover:shadow-md hover:bg-gray-50'
+                                  } ${checkingDuplicates ? 'opacity-50 pointer-events-none' : ''} ${isPaid ? 'pointer-events-none' : ''}`}
+                                  onClick={() => !isPaid && togglePlayerSelection(player)}
                                 >
                                   <CardContent className="p-4">
                                     <div className="flex items-center gap-3">
-                                      <Checkbox 
+                                      <Checkbox
                                         checked={!!isSelected}
                                         onChange={() => {}}
-                                        disabled={checkingDuplicates}
+                                        disabled={checkingDuplicates || isPaid}
                                         className="pointer-events-none"
                                       />
-                                      
+
                                       <Avatar className="h-10 w-10">
                                         <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} />
                                         <AvatarFallback className="bg-blue-100 text-blue-800">
                                           {(player.full_name || player.name || 'ل').charAt(0)}
                                         </AvatarFallback>
                                       </Avatar>
-                                      
+
                                       <div className="flex-1">
                                         <h4 className="font-medium text-gray-900">{player.full_name || player.name}</h4>
                                         <div className="text-sm text-gray-500 space-y-1">
@@ -1451,8 +1543,10 @@ export default function UnifiedTournamentRegistrationPage() {
                                           <p>المركز: {player.primary_position || player.position || 'غير محدد'}</p>
                                         </div>
                                       </div>
-                                      
-                                      {isSelected && (
+
+                                      {isPaid ? (
+                                        <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200">مدفوع</Badge>
+                                      ) : isSelected && (
                                         <CheckCircle className="h-5 w-5 text-blue-600" />
                                       )}
                                     </div>
@@ -1462,7 +1556,7 @@ export default function UnifiedTournamentRegistrationPage() {
                             })}
                           </div>
                         )}
-                        
+
                         {selectedPlayers.length > 0 && (
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                             <div className="flex items-center justify-between">
@@ -1483,7 +1577,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Navigation Buttons */}
                       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                         <div></div>
@@ -1496,12 +1590,12 @@ export default function UnifiedTournamentRegistrationPage() {
                         </Button>
                       </div>
                     </TabsContent>
-                    
+
                     {/* Payment Tab */}
                     <TabsContent value="payment" className="space-y-6">
                       <div className="space-y-6">
                         <h3 className="text-xl font-semibold bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent">خيارات الدفع</h3>
-                        
+
                         {selectedTournament.isPaid ? (
                           <div className="space-y-6">
                             {/* Payment Summary */}
@@ -1516,7 +1610,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     <p className="text-lg font-bold text-yellow-800">{selectedTournament.entryFee} ج.م</p>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3">
                                   <div className="p-3 bg-gradient-to-r from-cyan-100 to-blue-100 rounded-full">
                                     <Users className="h-6 w-6 text-cyan-600" />
@@ -1526,7 +1620,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     <p className="text-lg font-bold text-cyan-800">{selectedPlayers.length}</p>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3">
                                   <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-full">
                                     <CreditCard className="h-6 w-6 text-emerald-600" />
@@ -1536,7 +1630,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     <p className="text-xl font-bold text-emerald-800">{calculateTotalAmount()} ج.م</p>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3">
                                   <div className="p-3 bg-gradient-to-r from-violet-100 to-purple-100 rounded-full">
                                     <CreditCard className="h-6 w-6 text-violet-600" />
@@ -1552,13 +1646,13 @@ export default function UnifiedTournamentRegistrationPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Payment Methods */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                              <Card 
+                              <Card
                                 className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'later' 
-                                    ? 'border-indigo-500 bg-indigo-50 shadow-lg' 
+                                  registrationData.paymentMethod === 'later'
+                                    ? 'border-indigo-500 bg-indigo-50 shadow-lg'
                                     : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
                                 } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('later')}
@@ -1571,11 +1665,11 @@ export default function UnifiedTournamentRegistrationPage() {
                                   <p className="text-sm text-gray-600">سجل الآن وادفع لاحقاً</p>
                                 </CardContent>
                               </Card>
-                              
-                              <Card 
+
+                              <Card
                                 className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'mobile_wallet' 
-                                    ? 'border-emerald-500 bg-emerald-50 shadow-lg' 
+                                  registrationData.paymentMethod === 'mobile_wallet'
+                                    ? 'border-emerald-500 bg-emerald-50 shadow-lg'
                                     : 'border-gray-200 hover:border-emerald-300 hover:shadow-md'
                                 } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('mobile_wallet')}
@@ -1588,11 +1682,11 @@ export default function UnifiedTournamentRegistrationPage() {
                                   <p className="text-sm text-gray-600">فودافون كاش، أورنج، اتصالات</p>
                                 </CardContent>
                               </Card>
-                              
-                              <Card 
+
+                              <Card
                                 className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'card' 
-                                    ? 'border-violet-500 bg-violet-50 shadow-lg' 
+                                  registrationData.paymentMethod === 'card'
+                                    ? 'border-violet-500 bg-violet-50 shadow-lg'
                                     : 'border-gray-200 hover:border-violet-300 hover:shadow-md'
                                 } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('card')}
@@ -1615,7 +1709,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Navigation Buttons */}
                       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                         <Button
@@ -1635,12 +1729,12 @@ export default function UnifiedTournamentRegistrationPage() {
                         </Button>
                       </div>
                     </TabsContent>
-                    
+
                     {/* Review Tab */}
                     <TabsContent value="review" className="space-y-6">
                       <div className="space-y-6">
                         <h3 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">مراجعة التسجيل</h3>
-                        
+
                         {/* Tournament Info */}
                         <Card>
                           <CardHeader>
@@ -1654,8 +1748,8 @@ export default function UnifiedTournamentRegistrationPage() {
                             <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
                               {selectedTournament.logo ? (
                                 <div className="flex-shrink-0">
-                                  <img 
-                                    src={selectedTournament.logo} 
+                                  <img
+                                    src={selectedTournament.logo}
                                     alt={`${selectedTournament.name} logo`}
                                     className="w-16 h-16 lg:w-20 lg:h-20 rounded-lg object-cover border-2 border-yellow-300 shadow-md"
                                     onError={(e) => {
@@ -1677,7 +1771,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                 </p>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                               <div>
                                 <Label className="text-sm font-medium text-gray-600">اسم البطولة</Label>
@@ -1775,7 +1869,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-gray-600">طريقة الدفع:</span>
-                                  <Badge 
+                                  <Badge
                                     className={`${
                                       registrationData.paymentMethod === 'later' ? 'bg-blue-100 text-blue-800' :
                                       registrationData.paymentMethod === 'mobile_wallet' ? 'bg-green-100 text-green-800' :
@@ -1824,7 +1918,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     {calculateTotalAmount()} ج.م
                                   </span>
                                 </div>
-                                
+
                                 {calculateTotalAmount() <= 0 && (
                                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                                     <div className="flex items-center gap-2 text-red-800">
@@ -1836,7 +1930,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     </p>
                                   </div>
                                 )}
-                                
+
                                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                   <span className="text-gray-600">طريقة الدفع:</span>
                                   <span className="font-medium">
@@ -1845,7 +1939,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                      registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' : 'غير محدد'}
                                   </span>
                                 </div>
-                                
+
                                 {registrationData.paymentMethod === 'card' && (
                                   <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
                                     <p className="text-violet-800 text-sm">
@@ -1853,7 +1947,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     </p>
                                   </div>
                                 )}
-                                
+
                                 {registrationData.paymentMethod === 'mobile_wallet' && (
                                   <div className="space-y-2">
                                     {mobileWalletProvider && (
@@ -1942,7 +2036,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           >
                             إلغاء التسجيل
                           </Button>
-                          
+
                           <Button
                             className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                             disabled={submitting || selectedPlayers.length === 0 || calculateTotalAmount() <= 0}
@@ -1964,12 +2058,12 @@ export default function UnifiedTournamentRegistrationPage() {
                                 // Check for duplicate players
                                 const playerIds = selectedPlayers.map(player => player.id);
                                 const duplicatePlayerIds = await checkForDuplicatePlayers(selectedTournament.id, playerIds);
-                                
+
                                 if (duplicatePlayerIds.length > 0) {
-                                  const duplicatePlayers = selectedPlayers.filter(player => 
+                                  const duplicatePlayers = selectedPlayers.filter(player =>
                                     duplicatePlayerIds.includes(player.id)
                                   );
-                                  
+
                                   setDuplicatePlayers(duplicatePlayers);
                                   setShowDuplicateWarning(true);
                                   setSubmitting(false);
@@ -2015,7 +2109,7 @@ export default function UnifiedTournamentRegistrationPage() {
 
                                 // Save to tournamentRegistrations collection
                                 const registrationsRef = collection(db, 'tournamentRegistrations');
-                                await addDoc(registrationsRef, registrationData);
+                                await addDoc(registrationsRef, registrationToSave);
 
                                 // Also save individual player registrations for backward compatibility
                                 for (const player of selectedPlayers) {
@@ -2052,13 +2146,13 @@ export default function UnifiedTournamentRegistrationPage() {
                                   const individualRegistrationsRef = collection(db, 'tournament_registrations');
                                   await addDoc(individualRegistrationsRef, individualRegistration);
                                 }
-                                
+
                                 toast.success('تم التسجيل بنجاح في البطولة!');
-                                
+
                                 // Set registered players and show success state
                                 setRegisteredPlayers([...selectedPlayers]);
                                 setRegistrationSuccess(true);
-                                
+
                               } catch (error) {
                                 console.error('Registration error:', error);
                                 toast.error('فشل في التسجيل، يرجى المحاولة مرة أخرى');
@@ -2081,7 +2175,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* Navigation Buttons */}
                       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                         <Button
@@ -2133,7 +2227,7 @@ export default function UnifiedTournamentRegistrationPage() {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl border border-emerald-200">
           <h3 className="text-lg font-semibold mb-4 text-emerald-700">الدفع بالمحفظة الإلكترونية</h3>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="walletProvider">مزود المحفظة الإلكترونية *</Label>
@@ -2152,7 +2246,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 <option value="instapay">انستا باي</option>
               </select>
             </div>
-            
+
             <div>
               <Label htmlFor="walletNumber">رقم المحفظة الإلكترونية *</Label>
               <Input
@@ -2165,7 +2259,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="walletNotes">ملاحظات إضافية</Label>
               <Input
@@ -2180,7 +2274,7 @@ export default function UnifiedTournamentRegistrationPage() {
             {/* رفع إيصال المحفظة الإلكترونية */}
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-md font-medium text-emerald-700 mb-3">رفع إيصال الدفع</h4>
-              
+
               {!mobileWalletUploadSuccess ? (
                 <div className="space-y-3">
                   <div>
@@ -2194,7 +2288,7 @@ export default function UnifiedTournamentRegistrationPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="walletReceiptFile">ملف الإيصال *</Label>
                     <Input
@@ -2220,7 +2314,7 @@ export default function UnifiedTournamentRegistrationPage() {
                         <span>{mobileWalletUploadProgress}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className={`bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all duration-300 ${
                             mobileWalletUploadProgress === 0 ? 'w-0' :
                             mobileWalletUploadProgress <= 25 ? 'w-1/4' :
@@ -2258,7 +2352,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 سيتم إرسال طلب الدفع إلى {mobileWalletProvider} على رقم {mobileWalletNumber}
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               {!mobileWalletUploadSuccess ? (
                 <>
@@ -2431,7 +2525,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Summary */}
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -2469,7 +2563,7 @@ export default function UnifiedTournamentRegistrationPage() {
               قم بتعديل بيانات اللاعب: {editingPlayer.full_name || editingPlayer.name}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
@@ -2485,7 +2579,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="editPosition">المركز</Label>
                 <Input
@@ -2506,7 +2600,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   ))}
                 </datalist>
               </div>
-              
+
               <div>
                 <Label htmlFor="editBirthDate">تاريخ الميلاد</Label>
                 <Input
@@ -2520,7 +2614,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="editPhone">رقم الهاتف</Label>
                 <Input
@@ -2533,7 +2627,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="mt-1"
                 />
               </div>
-              
+
               <div className="md:col-span-2">
                 <Label htmlFor="editEmail">البريد الإلكتروني</Label>
                 <Input
@@ -2548,7 +2642,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -2587,7 +2681,7 @@ export default function UnifiedTournamentRegistrationPage() {
               اللاعبين التاليين مسجلين بالفعل في هذه البطولة
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {/* Duplicate Players List */}
             <div className="space-y-3">
@@ -2621,7 +2715,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 <div>
                   <h4 className="font-semibold text-yellow-800 mb-1">تنبيه مهم</h4>
                   <p className="text-sm text-yellow-700">
-                    لا يمكن تسجيل لاعبين مسجلين مسبقاً في نفس البطولة. 
+                    لا يمكن تسجيل لاعبين مسجلين مسبقاً في نفس البطولة.
                     يرجى إزالة هؤلاء اللاعبين من القائمة أو اختيار بطولة أخرى.
                   </p>
                 </div>

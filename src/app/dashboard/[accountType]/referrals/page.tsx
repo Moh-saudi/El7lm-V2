@@ -11,13 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { OrganizationReferral, PlayerJoinRequest } from '@/types/organization-referral';
-import { 
-  UserPlus, 
-  Copy, 
-  Share2, 
-  Trophy, 
-  DollarSign, 
-  Users, 
+import {
+  UserPlus,
+  Copy,
+  Share2,
+  Trophy,
+  DollarSign,
+  Users,
   TrendingUp,
   Award,
   Star,
@@ -122,7 +122,7 @@ export default function SharedReferralsPage() {
   const { user, userData } = useAuth();
   const params = useParams();
   const accountType = params.accountType as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [playerRewards, setPlayerRewards] = useState<PlayerRewards | null>(null);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
@@ -148,7 +148,7 @@ export default function SharedReferralsPage() {
   const loadPlayerData = async () => {
     try {
       setLoading(true);
-      
+
       // إنشاء أو جلب نظام مكافآت اللاعب
       const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
       setPlayerRewards(rewards);
@@ -322,10 +322,10 @@ export default function SharedReferralsPage() {
 
   const getNextBadge = () => {
     if (!playerRewards) return null;
-    
+
     const currentCount = playerRewards.referralCount;
     const earnedBadgeIds = playerRewards.badges.map(b => b.id);
-    
+
     for (const badge of BADGES.REFERRAL_BADGES) {
       if (currentCount < badge.requirement && !earnedBadgeIds.includes(badge.id)) {
         return badge;
@@ -475,7 +475,7 @@ export default function SharedReferralsPage() {
                     <span>تم الإنشاء: {formatDateSafe(referral.createdAt)}</span>
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <Button 
+                    <Button
                       size="sm"
                       variant="outline"
                       className="border-purple-300 text-purple-700 hover:bg-purple-50"
@@ -483,7 +483,7 @@ export default function SharedReferralsPage() {
                     >
                       نسخ الكود
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       variant="outline"
                       className="border-purple-300 text-purple-700 hover:bg-purple-50"
@@ -491,7 +491,7 @@ export default function SharedReferralsPage() {
                     >
                       نسخ الرابط
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white"
                       onClick={() => shareOrgLinkWhatsApp(referral.inviteLink, referral.organizationName)}
@@ -563,7 +563,7 @@ export default function SharedReferralsPage() {
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               <Button onClick={copyReferralLink} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <Copy className="w-4 h-4 mr-2" />
@@ -627,7 +627,7 @@ export default function SharedReferralsPage() {
                   </div>
                 </div>
               ))}
-              
+
               {nextBadge && (
                 <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl bg-gray-300">
@@ -734,7 +734,7 @@ function getAccountTypeLabel(accountType: string): string {
     academy: 'أكاديمية',
     trainer: 'مدرب'
   };
-  
+
   return labels[accountType as keyof typeof labels] || 'مستخدم';
 }
 

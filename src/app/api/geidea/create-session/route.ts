@@ -1,6 +1,11 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Ensure this route is always dynamic and runs on Node.js runtime to avoid stale deployments
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,12 +19,12 @@ export async function POST(request: NextRequest) {
       customerName
     });
 
-    // التحقق من البيانات المطلوبة
-    if (!amount || !currency || !orderId || !customerEmail) {
+    // التحقق من البيانات المطلوبة (لا نلزم orderId القادم من العميل؛ سنُولِّده داخليًا)
+    if (!amount || !currency || !customerEmail) {
       return NextResponse.json(
         {
           error: 'Missing required fields',
-          details: 'amount, currency, orderId, and customerEmail are required'
+          details: 'amount, currency, and customerEmail are required'
         },
         { status: 400 }
       );
@@ -61,8 +66,9 @@ export async function POST(request: NextRequest) {
       baseUrl: geideaConfig.baseUrl
     });
 
-    // إنشاء timestamp للتوقيع حسب الوثيقة الرسمية (Y/m/d H:i:s)
+    // تطبيع العملة وإنشاء timestamp للتوقيع حسب الوثيقة الرسمية (Y/m/d H:i:s)
     const now = new Date();
+    const currencyCode = String(currency || 'EGP').toUpperCase();
     const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
     // إنشاء معرف طلب آمن ومتوافق مع متطلبات Geidea (أحرف وأرقام فقط، يبدأ بحروف)
@@ -73,7 +79,7 @@ export async function POST(request: NextRequest) {
     const signature = generateSignature(
       geideaConfig.merchantPublicKey,
       amount,
-      currency,
+      currencyCode,
       finalOrderId,
       geideaConfig.apiPassword,
       timestamp
@@ -82,7 +88,7 @@ export async function POST(request: NextRequest) {
     // إنشاء payload للدفع حسب وثائق Geidea HPP Checkout v2
     const paymentPayload = {
       amount: amount,
-      currency: currency,
+      currency: currencyCode,
       merchantReferenceId: finalOrderId,
       timestamp: timestamp,
       signature: signature,
@@ -105,7 +111,7 @@ export async function POST(request: NextRequest) {
       originalOrderId: orderId,
       finalOrderId: finalOrderId,
       amount: amount,
-      currency: currency,
+      currency: currencyCode,
       environment: geideaConfig.environment,
       payload: paymentPayload
     });
@@ -147,7 +153,7 @@ export async function POST(request: NextRequest) {
       const geideaData = await geideaResponse.json();
 
       console.log('✅ [Geidea API] Payment session created successfully:', {
-        orderId: orderId,
+        orderId: finalOrderId,
         sessionId: geideaData.session?.id,
         responseCode: geideaData.responseCode,
         responseMessage: geideaData.responseMessage
@@ -179,12 +185,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         sessionId: geideaData.session?.id,
-        orderId: orderId,
+        orderId: finalOrderId,
+        merchantReferenceId: finalOrderId,
         amount: amount,
-        currency: currency,
+        currency: currencyCode,
         status: 'created',
         responseCode: geideaData.responseCode,
-        responseMessage: geideaData.responseMessage
+        responseMessage: geideaData.responseMessage,
+        redirectUrl: geideaData.session?.redirectUrl,
+        fullResponse: geideaData
       });
 
     } catch (fetchError) {
