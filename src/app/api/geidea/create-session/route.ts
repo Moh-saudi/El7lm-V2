@@ -65,52 +65,9 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-    // تنظيف وتنسيق merchantReferenceId حسب متطلبات Geidea
-    // إزالة جميع الرموز الخاصة والمسافات، والاحتفاظ بالأحرف والأرقام والشرطات فقط
-    let cleanOrderId = orderId
-      .replace(/[^a-zA-Z0-9_-]/g, '') // إزالة جميع الرموز غير المسموحة
-      .replace(/_{2,}/g, '_') // استبدال الشرطات المتعددة بشرطة واحدة
-      .substring(0, 50); // حد الطول
-
-    // التأكد من أن المعرف لا يبدأ أو ينتهي بشرطة
-    let finalOrderId = cleanOrderId.replace(/^[-_]+|[-_]+$/g, '');
-
-    // إذا كان المعرف فارغاً أو يبدأ بـ BULK، إنشاء معرف بديل
-    if (!finalOrderId || finalOrderId.length === 0 || finalOrderId.startsWith('BULK')) {
-      finalOrderId = `ORDER_${Date.now()}`;
-    }
-
-    // التأكد من أن المعرف لا يبدأ برقم
-    if (/^[0-9]/.test(finalOrderId)) {
-      finalOrderId = `ORDER_${finalOrderId}`;
-    }
-
-    // التأكد من أن المعرف يحتوي على أحرف على الأقل
-    if (!/[a-zA-Z]/.test(finalOrderId)) {
-      finalOrderId = `ORDER_${Date.now()}`;
-    }
-
-    // التأكد من أن المعرف لا يحتوي على مسافات
-    finalOrderId = finalOrderId.replace(/\s+/g, '');
-
-    // التأكد من أن المعرف لا يبدأ أو ينتهي بشرطة مرة أخرى
-    finalOrderId = finalOrderId.replace(/^[-_]+|[-_]+$/g, '');
-
-    // إذا أصبح المعرف فارغاً مرة أخرى، إنشاء معرف نهائي
-    if (!finalOrderId || finalOrderId.length === 0) {
-      finalOrderId = `ORDER_${Date.now()}`;
-    }
-
-    // التأكد من أن المعرف لا يحتوي على رموز خاصة
-    finalOrderId = finalOrderId.replace(/[^a-zA-Z0-9_-]/g, '');
-
-    // التأكد من أن المعرف لا يبدأ أو ينتهي بشرطة مرة أخرى
-    finalOrderId = finalOrderId.replace(/^[-_]+|[-_]+$/g, '');
-
-    // إذا أصبح المعرف فارغاً مرة أخرى، إنشاء معرف نهائي
-    if (!finalOrderId || finalOrderId.length === 0) {
-      finalOrderId = `ORDER_${Date.now()}`;
-    }
+    // إنشاء معرف طلب آمن ومتوافق مع متطلبات Geidea (أحرف وأرقام فقط، يبدأ بحروف)
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const finalOrderId = `EL7LM${Date.now()}${rand}`.slice(0, 30); // أقصى 30 حرفًا
 
     // إنشاء signature حسب وثائق Geidea
     const signature = generateSignature(
