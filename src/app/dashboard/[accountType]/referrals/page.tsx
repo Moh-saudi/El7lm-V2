@@ -313,7 +313,8 @@ export default function SharedReferralsPage() {
 
   const shareOrgLinkWhatsApp = (referralCode: string, orgName?: string) => {
     try {
-      const message = `انضم الي فريق ${orgName ? `*${orgName}*` : '*المنظمة*'} علي منصة الحلم\nواكتب\n *${referralCode}* \nفي حقل كود الانضمام  من خلال الرابط التالي بعد كتابة اسمك ورقم هاتفك \nhttps://www.el7lm.com/auth/register`;
+      const displayOrg = orgName ? `*${orgName}*` : '*المنظمة*';
+      const message = `⚽ انضم لفريق ${displayOrg} على منصة الحلم\n✅ تقييم مهاراتك وفرص ظهور أوسع\n✅ مجتمع كرة قدم نشط ودعم متخصص\nادخل كود الانضمام: *${referralCode}*\nوسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
