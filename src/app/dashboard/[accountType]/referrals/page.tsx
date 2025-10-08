@@ -313,8 +313,9 @@ export default function SharedReferralsPage() {
 
   const shareOrgLinkWhatsApp = (referralCode: string, orgName?: string) => {
     try {
-      const displayOrg = orgName ? `*${orgName}*` : '*المنظمة*';
-      const message = `⚽ انضم لفريق ${displayOrg} على منصة الحلم\n✅ تقييم مهاراتك وفرص ظهور أوسع\n✅ مجتمع كرة قدم نشط ودعم متخصص\nادخل كود الانضمام: *${referralCode}*\nوسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
+      const resolvedOrgName = (orgName && orgName.trim()) || ((userData as any)?.full_name && String((userData as any)?.full_name).trim()) || 'المنظمة';
+      const displayOrg = `*${resolvedOrgName}*`;
+      const message = `⚽ انضم لفريق ${displayOrg} على منصة الحلم\n🎯 هدفنا: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\n- ادخل كود الانضمام: *${referralCode}*\n- سجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
