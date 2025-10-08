@@ -311,9 +311,10 @@ export default function SharedReferralsPage() {
     }
   };
 
-  const shareOrgLinkWhatsApp = (inviteLink: string, orgName?: string) => {
+  const shareOrgLinkWhatsApp = (_inviteLink: string, _orgName?: string) => {
     try {
-      const text = encodeURIComponent(`انضم إلى ${orgName || 'المنظمة'} عبر هذا الرابط: ${inviteLink}`);
+      const message = `انضم الي فريق كابتن *محمود ساديو* علي منصة الحلم\nواكتب\n *TRN3OGRMA* \nفي حقل كود الانضمام  من خلال الرابط التالي بعد كتابة اسمك ورقم هاتفك \nhttps://www.el7lm.com/auth/register`;
+      const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
       toast.error('تعذر فتح واتساب');
