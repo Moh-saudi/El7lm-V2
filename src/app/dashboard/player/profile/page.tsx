@@ -758,9 +758,7 @@ export default function PlayerProfile() {
   };
 
   // Render personal info section
-  const renderPersonalInfo = () => {
-    console.log('[renderPersonalInfo] Rendering personal info form');
-    return (
+  const renderPersonalInfo = () => (
     <div className="space-y-6">
       <h2 className="pr-4 text-2xl font-semibold border-r-4 border-blue-500">البيانات الشخصية</h2>
 
@@ -878,7 +876,7 @@ export default function PlayerProfile() {
             >
               <option value="">اختر الدولة</option>
               {COUNTRIES.map(country => (
-                <option key={country} value={country}>{country}</option>
+                <option key={country.id} value={country.name}>{country.name}</option>
               ))}
             </select>
           ) : (
@@ -2993,7 +2991,6 @@ export default function PlayerProfile() {
           {/* Progress Steps */}
           {isEditing && (
             <div className="mb-8">
-              {console.log('[Render] Rendering edit form - isEditing is true')}
               <div className="flex justify-between items-center">
                 {Object.entries(STEP_TITLES).map(([step, title]) => (
                   <div
@@ -3047,7 +3044,6 @@ export default function PlayerProfile() {
               </>
             ) : (
               <>
-                {console.log('[Render] Edit mode - currentStep:', currentStep, 'STEPS.PERSONAL:', STEPS.PERSONAL)}
                 {currentStep === STEPS.PERSONAL && renderPersonalInfo()}
                 {currentStep === STEPS.EDUCATION && renderEducation()}
                 {currentStep === STEPS.MEDICAL && renderMedical()}
