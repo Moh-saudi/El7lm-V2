@@ -64,16 +64,55 @@ export const SUPPORTED_COUNTRIES = COUNTRIES_FROM_REGISTER.map(country => ({
 }));
 
 // دوال فارغة للتوافق (بدون مدن معقدة)
-export const getCitiesByCountry = (countryId: string): any[] => {
-  return []; // لا نحتاج مدن معقدة
+// خريطة مدن مبسطة لكل دولة (أشهر المدن)
+export const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  'السعودية': ['الرياض', 'جدة', 'مكة', 'المدينة', 'الدمام', 'الخبر'],
+  'الإمارات': ['أبوظبي', 'دبي', 'الشارقة', 'العين', 'عجمان'],
+  'الكويت': ['مدينة الكويت', 'حولي', 'الأحمدي', 'الفروانية', 'الجهراء'],
+  'قطر': ['الدوحة', 'الوكرة', 'الخور', 'الريان'],
+  'البحرين': ['المنامة', 'المحرق', 'الرفاع', 'مدينة عيسى'],
+  'عمان': ['مسقط', 'صلالة', 'صحار', 'نزوى'],
+  'مصر': ['القاهرة', 'الجيزة', 'الإسكندرية', 'بورسعيد', 'السويس'],
+  'الأردن': ['عمان', 'إربد', 'الزرقاء', 'العقبة'],
+  'لبنان': ['بيروت', 'طرابلس', 'صيدا', 'صور'],
+  'العراق': ['بغداد', 'البصرة', 'أربيل', 'النجف'],
+  'سوريا': ['دمشق', 'حلب', 'حمص', 'اللاذقية'],
+  'المغرب': ['الرباط', 'الدار البيضاء', 'طنجة', 'مراكش'],
+  'الجزائر': ['الجزائر', 'وهران', 'قسنطينة', 'عنابة'],
+  'تونس': ['تونس', 'صفاقس', 'سوسة', 'بنزرت'],
+  'ليبيا': ['طرابلس', 'بنغازي', 'سبها', 'مصراتة'],
+  'السودان': ['الخرطوم', 'أم درمان', 'بحري', 'كسلا'],
+  'إسبانيا': ['مدريد', 'برشلونة', 'فالنسيا', 'إشبيلية'],
+  'فرنسا': ['باريس', 'مارسيليا', 'ليون', 'ليل'],
+  'إنجلترا': ['لندن', 'مانشستر', 'ليفربول', 'برمنغهام'],
+  'البرتغال': ['لشبونة', 'بورتو', 'براغا', 'فارو'],
+  'إيطاليا': ['روما', 'ميلانو', 'نابولي', 'تورينو'],
+  'اليونان': ['أثينا', 'ثيسالونيكي', 'باتراس', 'لاريسا'],
+  'قبرص': ['نيقوسيا', 'ليماسول', 'لارنكا', 'باڤوس'],
+  'تركيا': ['إسطنبول', 'أنقرة', 'إزمير', 'بورصة'],
+  'تايلاند': ['بانكوك', 'بوتايا', 'فوكيت', 'تشيانغ ماي'],
+  'اليمن': ['صنعاء', 'عدن', 'تعز', 'الحديدة']
 };
 
-export const getCountryFromCity = (cityId: string): string | null => {
-  return null; // لا نحتاج مدن معقدة
+export const getCitiesByCountry = (countryName: string): string[] => {
+  return CITIES_BY_COUNTRY[countryName] || [];
 };
 
-export const searchCities = (query: string): any[] => {
-  return []; // لا نحتاج مدن معقدة
+export const getCountryFromCity = (cityName: string): string | null => {
+  for (const [country, cities] of Object.entries(CITIES_BY_COUNTRY)) {
+    if (cities.includes(cityName)) return country;
+  }
+  return null;
 };
 
-export const CITIES_BY_COUNTRY = {}; // فارغ
+export const searchCities = (query: string, countryName?: string): string[] => {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  if (countryName) {
+    return (CITIES_BY_COUNTRY[countryName] || []).filter(c => c.toLowerCase().includes(q));
+  }
+  // البحث في جميع الدول في حال لم يتم تحديد دولة
+  const all: string[] = [];
+  Object.values(CITIES_BY_COUNTRY).forEach(cities => all.push(...cities));
+  return all.filter(c => c.toLowerCase().includes(q));
+};

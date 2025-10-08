@@ -849,8 +849,8 @@ export default function PlayerProfile() {
               className="p-2 mt-1 w-full text-gray-900 bg-white rounded-md border"
             >
               <option value="">اختر الجنسية</option>
-              {NATIONALITIES.map(nat => (
-                <option key={nat} value={nat}>{nat}</option>
+              {COUNTRIES.map(country => (
+                <option key={country.id} value={country.name}>{country.name}</option>
               ))}
             </select>
           ) : (
