@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
     const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://beon.chat/api/send/message/otp';
     const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
 
-    console.log('🔧 [send-otp] BeOn config:', { 
-      url: beonUrl, 
+    console.log('🔧 [send-otp] BeOn config:', {
+      url: beonUrl,
       tokenSet: !!beonToken,
-      tokenLength: beonToken?.length 
+      tokenLength: beonToken?.length
     });
 
     const beonResponse = await fetch(beonUrl, {

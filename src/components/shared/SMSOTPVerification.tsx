@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Phone, X, CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Phone, RefreshCw, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SMSOTPVerificationProps {
   phoneNumber: string;
@@ -42,7 +42,7 @@ export default function SMSOTPVerification({
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const [maxAttempts] = useState(3);
-  
+
   // حماية قوية ضد الإرسال المتكرر
   const sentRef = useRef(false);
   const isInitializedRef = useRef(false);
@@ -53,7 +53,7 @@ export default function SMSOTPVerification({
   // دالة إرسال OTP محسنة مع حماية قوية
   const sendOTP = useCallback(async (isResend = false) => {
     console.log('📞 [SMSOTP] sendOTP called for:', phoneNumber, 'isResend:', isResend, 'isSending:', isSendingRef.current);
-    
+
     // حماية قوية ضد التكرار
     if (isSendingRef.current) {
       console.log('🛑 [SMSOTP] OTP sending blocked - already sending');
@@ -76,10 +76,10 @@ export default function SMSOTPVerification({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // إنشاء AbortController جديد
     abortControllerRef.current = new AbortController();
-    
+
     // تعيين الحماية
     isSendingRef.current = true;
     if (!isResend) {
@@ -94,7 +94,7 @@ export default function SMSOTPVerification({
     try {
       // تنسيق رقم الهاتف للاستخدام في API
       const normalizedPhone = normalizePhone(phoneNumber);
-      
+
       // التحقق من صحة رقم الهاتف
       if (!validatePhoneNumber(normalizedPhone)) {
         setError('رقم الهاتف غير صحيح. يرجى التأكد من إدخال رقم صحيح مع رمز الدولة');
@@ -116,7 +116,7 @@ export default function SMSOTPVerification({
       }
 
       console.log('📤 Sending real OTP via BeOn v3 for:', normalizedPhone);
-      
+
       // إرسال OTP حقيقي عبر BeOn v3
       const otpResponse = await fetch('/api/sms/send-otp', {
         method: 'POST',
@@ -131,7 +131,7 @@ export default function SMSOTPVerification({
       });
 
       const otpData = await otpResponse.json();
-      
+
       if (!otpResponse.ok || !otpData.success) {
         throw new Error(otpData.error || 'فشل في إرسال رمز التحقق');
       }
@@ -151,7 +151,7 @@ export default function SMSOTPVerification({
       if (!isResend) sentRef.current = false;
       isSendingRef.current = false;
     }
-    
+
     setLoading(false);
     isSendingRef.current = false;
     console.log('📞 SMSOTP: sendOTP completed for:', phoneNumber);
@@ -159,24 +159,24 @@ export default function SMSOTPVerification({
 
   // إرسال OTP عند فتح المكون (مرة واحدة فقط)
   useEffect(() => {
-    console.log('🔍 SMSOTP: useEffect triggered:', { 
-      isOpen, 
-      initialized: isInitializedRef.current, 
+    console.log('🔍 SMSOTP: useEffect triggered:', {
+      isOpen,
+      initialized: isInitializedRef.current,
       sent: sentRef.current,
       phoneNumber,
       lastPhone: lastPhoneNumberRef.current
     });
-    
+
     if (isOpen && !isInitializedRef.current) {
       isInitializedRef.current = true;
       console.log('🚀 SMSOTP: Initial OTP send triggered for:', phoneNumber);
-      
+
       // التحقق من أن رقم الهاتف لم يتغير
       if (lastPhoneNumberRef.current === phoneNumber && sentRef.current) {
         console.log('🛑 SMSOTP: OTP already sent for this phone number, skipping...');
         return;
       }
-      
+
       // إرسال OTP الأولي
       sendOTP(false);
     }
@@ -185,7 +185,7 @@ export default function SMSOTPVerification({
   // عداد الوقت المتبقي
   useEffect(() => {
     if (timeRemaining <= 0) return;
-    
+
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
@@ -208,13 +208,13 @@ export default function SMSOTPVerification({
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      
+
       // إعادة تعيين جميع المتغيرات
       sentRef.current = false;
       isInitializedRef.current = false;
       isSendingRef.current = false;
       lastPhoneNumberRef.current = '';
-      
+
       setOtp(['', '', '', '', '', '']);
       setLoading(false);
       setResendLoading(false);
@@ -244,11 +244,11 @@ export default function SMSOTPVerification({
   const handleOtpChange = (index: number, value: string) => {
     console.log('⌨️ [SMSOTP] handleOtpChange:', { index, value });
     if (value.length > 1) return; // منع إدخال أكثر من رقم واحد
-    
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    
+
     // الانتقال للحقل التالي تلقائياً
     if (value && index < 5) { // تغيير الشرط من 5 إلى 3
       const nextInput = document.getElementById(`sms-otp-${index + 1}`) as HTMLInputElement;
@@ -256,7 +256,7 @@ export default function SMSOTPVerification({
         nextInput.focus();
       }
     }
-    
+
     // التحقق التلقائي عند إكمال الرمز
     if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) { // تغيير الشرط من 6 إلى 4
       verifyOTP(newOtp.join(''));
@@ -275,13 +275,13 @@ export default function SMSOTPVerification({
   const verifyOTP = async (otpCode: string) => {
     console.log('🔑 [SMSOTP] verifyOTP called with:', otpCode);
     if (loading) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     // تنسيق رقم الهاتف للاستخدام في API
     const normalizedPhone = normalizePhone(phoneNumber);
-    
+
     try {
       // التحقق من عدد المحاولات
       if (attempts >= maxAttempts) {
@@ -289,7 +289,7 @@ export default function SMSOTPVerification({
         setLoading(false);
         return;
       }
-      
+
       // التحقق من انتهاء صلاحية الرمز
       if (timeRemaining <= 0) {
         setError('انتهت صلاحية الرمز. أرسل رمزاً جديداً.');
@@ -298,10 +298,10 @@ export default function SMSOTPVerification({
         setLoading(false);
         return;
       }
-      
+
       // التحقق من صحة الرمز باستخدام API
       console.log('🔍 Verifying OTP with BeOn v3:', { input: otpCode, phone: normalizedPhone });
-      
+
       const verifyResponse = await fetch('/api/sms/verify-otp', {
         method: 'POST',
         headers: {
@@ -315,7 +315,7 @@ export default function SMSOTPVerification({
 
       const verifyResult = await verifyResponse.json();
       console.log('🔑 [SMSOTP] verifyOTP response:', verifyResult);
-      
+
       if (!verifyResponse.ok || !verifyResult.success) {
         console.error('❌ OTP verification failed:', verifyResult.error);
         setError(verifyResult.error || 'رمز التحقق غير صحيح.');
@@ -328,30 +328,30 @@ export default function SMSOTPVerification({
         setLoading(false);
         return;
       }
-      
+
       console.log('✅ OTP verification passed successfully');
-      
+
       // تحقق ناجح
       setMessage('تم التحقق من رقم الهاتف بنجاح!');
-      
+
       setTimeout(() => {
         onVerificationSuccess(phoneNumber);
         resetComponent();
         onClose(); // إغلاق النافذة بعد النجاح
       }, 1000);
-      
+
     } catch (error: any) {
       console.error('خطأ في التحقق:', error);
       setError('حدث خطأ في التحقق من الرمز');
       onVerificationFailed('حدث خطأ في التحقق من الرمز');
     }
-    
+
     setLoading(false);
   };
 
   const handleResendOTP = async () => {
     console.log('🔄 [SMSOTP] handleResendOTP called');
-    
+
     // منع التكرار إذا كان الإرسال جارياً
     if (loading || resendLoading || isSendingRef.current) {
       console.log('🛑 Resend already in progress, skipping...');
@@ -360,11 +360,11 @@ export default function SMSOTPVerification({
 
     setResendLoading(true);
     setError('');
-    
+
     // إعادة تعيين الحماية للسماح بالإرسال مرة أخرى
     setOtp(['', '', '', '', '', '']);
     setAttempts(0);
-    
+
     console.log('🔄 Starting manual resend...');
     await sendOTP(true); // إرسال كإعادة إرسال
     setResendLoading(false);
@@ -392,7 +392,7 @@ export default function SMSOTPVerification({
   const normalizePhone = (phone: string): string => {
     // إزالة جميع الأحرف غير الرقمية
     let cleaned = phone.replace(/\D/g, '');
-    
+
     // إذا كان الرقم يبدأ بـ 966 (رمز السعودية) أو 20 (رمز مصر)
     if (cleaned.startsWith('966')) {
       return `+${cleaned}`;
@@ -411,7 +411,7 @@ export default function SMSOTPVerification({
       // رقم مع رمز دولة
       return `+${cleaned}`;
     }
-    
+
     return phone; // إرجاع الرقم كما هو إذا لم يتطابق مع أي نمط
   };
 
@@ -419,17 +419,17 @@ export default function SMSOTPVerification({
   const validatePhoneNumber = (phone: string): boolean => {
     // إزالة جميع الأحرف غير الرقمية
     const cleaned = phone.replace(/\D/g, '');
-    
+
     // التحقق من أن الرقم يحتوي على 10-15 رقم
     if (cleaned.length < 10 || cleaned.length > 15) {
       return false;
     }
-    
+
     // التحقق من أن الرقم يبدأ برمز دولة صحيح
     if (phone.startsWith('+')) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -527,7 +527,7 @@ export default function SMSOTPVerification({
               {expiredText}
             </div>
           )}
-          
+
           {attempts > 0 && (
             <div className="text-base text-orange-600">
               {attemptsLeftText}: {maxAttempts - attempts}
@@ -577,4 +577,4 @@ export default function SMSOTPVerification({
       </div>
     </div>
   );
-} 
+}

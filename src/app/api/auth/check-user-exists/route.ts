@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
 
     // التحقق من رقم الهاتف في المجموعات المختلفة
     if (phone) {
-      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
+      const collections = ['users', 'players', 'player', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
 
       for (const collectionName of collections) {
         try {
+          console.log(`🔎 Checking ${collectionName} for phone: ${phone}`);
           const q = query(
             collection(db, collectionName),
             where('phone', '==', phone)
@@ -32,21 +33,24 @@ export async function POST(request: NextRequest) {
 
           if (!snapshot.empty) {
             phoneExists = true;
-            console.log(`✅ Phone found in ${collectionName}`);
+            console.log(`✅ Phone found in ${collectionName}:`, snapshot.docs[0].data());
             break;
+          } else {
+            console.log(`❌ Not found in ${collectionName}`);
           }
-        } catch (error) {
-          console.log(`⚠️ Error checking ${collectionName}:`, error);
+        } catch (error: any) {
+          console.log(`⚠️ Error checking ${collectionName}:`, error.message);
         }
       }
     }
 
     // التحقق من البريد الإلكتروني
     if (email && !phoneExists) {
-      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
+      const collections = ['users', 'players', 'player', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
 
       for (const collectionName of collections) {
         try {
+          console.log(`🔎 Checking ${collectionName} for email: ${email}`);
           const q = query(
             collection(db, collectionName),
             where('email', '==', email)
@@ -58,8 +62,8 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Email found in ${collectionName}`);
             break;
           }
-        } catch (error) {
-          console.log(`⚠️ Error checking ${collectionName}:`, error);
+        } catch (error: any) {
+          console.log(`⚠️ Error checking ${collectionName}:`, error.message);
         }
       }
     }
@@ -75,10 +79,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [check-user-exists] Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
