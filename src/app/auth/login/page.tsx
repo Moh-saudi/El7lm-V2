@@ -52,7 +52,7 @@ export default function LoginPage() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
-  // قائمة الدول مع أكوادها وأطوال أرقام الهاتف
+  // قائمة الدول مع أكوادها وأطوال أرقام الهاتف (موحّدة مع صفحة التسجيل)
   const countries = [
     { name: 'السعودية', code: '+966', phoneLength: 9, phonePattern: '[0-9]{9}' },
     { name: 'الإمارات', code: '+971', phoneLength: 9, phonePattern: '[0-9]{9}' },
@@ -69,6 +69,20 @@ export default function LoginPage() {
     { name: 'الجزائر', code: '+213', phoneLength: 9, phonePattern: '[0-9]{9}' },
     { name: 'تونس', code: '+216', phoneLength: 8, phonePattern: '[0-9]{8}' },
     { name: 'ليبيا', code: '+218', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'السودان', code: '+249', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'السنغال', code: '+221', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'ساحل العاج', code: '+225', phoneLength: 10, phonePattern: '[0-9]{10}' },
+    { name: 'جيبوتي', code: '+253', phoneLength: 8, phonePattern: '[0-9]{8}' },
+    { name: 'إسبانيا', code: '+34', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'فرنسا', code: '+33', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'إنجلترا', code: '+44', phoneLength: 10, phonePattern: '[0-9]{10}' },
+    { name: 'البرتغال', code: '+351', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'إيطاليا', code: '+39', phoneLength: 10, phonePattern: '[0-9]{10}' },
+    { name: 'اليونان', code: '+30', phoneLength: 10, phonePattern: '[0-9]{10}' },
+    { name: 'قبرص', code: '+357', phoneLength: 8, phonePattern: '[0-9]{8}' },
+    { name: 'تركيا', code: '+90', phoneLength: 10, phonePattern: '[0-9]{10}' },
+    { name: 'تايلاند', code: '+66', phoneLength: 9, phonePattern: '[0-9]{9}' },
+    { name: 'اليمن', code: '+967', phoneLength: 9, phonePattern: '[0-9]{9}' },
   ];
 
   const [selectedCountry, setSelectedCountry] = useState(countries[0]); // Default to Saudi Arabia
