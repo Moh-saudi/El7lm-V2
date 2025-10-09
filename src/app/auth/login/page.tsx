@@ -1,6 +1,8 @@
 'use client';
 
+import EmailVerification from '@/components/auth/EmailVerification';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { getContactInfo, getInvalidAccountMessage } from '@/lib/support-contact';
 import { secureConsole } from '@/lib/utils/secure-console';
 import {
     AlertTriangle,
@@ -10,18 +12,13 @@ import {
     KeyRound,
     Loader2,
     Lock,
+    Mail,
     Phone,
-    Shield,
-    User,
-    Mail
+    Shield
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import EmailVerification from '@/components/auth/EmailVerification';
-import { EmailService } from '@/lib/emailjs/service';
-import { getInvalidAccountMessage, getContactInfo } from '@/lib/support-contact';
+import { useEffect, useState } from 'react';
 // تم حذف الترجمة
-import SMSOTPVerification from '@/components/shared/SMSOTPVerification';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -34,7 +31,7 @@ export default function LoginPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   // إذا كان المستخدم مسجل دخوله مسبقاً، نخفي النموذج
   const shouldShowForm = !authLoading && !user;
   const [formData, setFormData] = useState({
@@ -108,7 +105,7 @@ export default function LoginPage() {
     const rememberMe = localStorage.getItem('rememberMe');
     const savedEmail = localStorage.getItem('userEmail');
     const savedPhone = localStorage.getItem('userPhone');
-    
+
     if (rememberMe === 'true') {
       if (savedPhone) {
         setFormData(prev => ({
@@ -132,7 +129,7 @@ export default function LoginPage() {
 
   const handleInputChange = (e: { target: { name: string; value: string; type: string; checked: boolean; }; }) => {
     const { name, value, type, checked } = e.target;
-    
+
     // إذا كان الحقل هو رقم الهاتف، نتأكد من أنه يحتوي فقط على أرقام
     if (name === 'phone') {
       const numbersOnly = value.replace(/[^0-9]/g, '');
@@ -142,7 +139,7 @@ export default function LoginPage() {
       }));
       return;
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -191,7 +188,7 @@ export default function LoginPage() {
   const findFirebaseEmailByPhone = async (phone: string): Promise<string | null> => {
     try {
       console.log('🔍 Searching for Firebase email with phone:', phone);
-      
+
       // استخدام API route للبحث عن المستخدم
       const response = await fetch('/api/auth/find-user-by-phone', {
         method: 'POST',
@@ -202,14 +199,14 @@ export default function LoginPage() {
       });
 
       const result = await response.json();
-      
+
       if (result.success && result.user) {
         console.log('✅ Found user with phone:', result.user);
-        
+
         // إرجاع البريد الإلكتروني المستخدم في Firebase
         return result.user.email;
       }
-      
+
       console.log('❌ No user found with phone:', phone);
       return null;
     } catch (error) {
@@ -222,11 +219,11 @@ export default function LoginPage() {
   function normalizePhone(countryCode: string, phone: string) {
     let local = phone.replace(/^0+/, '');
     local = local.replace(/\D/g, '');
-    
+
     // إضافة + إذا لم يكن موجوداً في كود الدولة
     const cleanCountryCode = countryCode.replace(/\D/g, '');
     const formattedPhone = `+${cleanCountryCode}${local}`;
-    
+
     console.log('🔍 normalizePhone:', { countryCode, phone, cleanCountryCode, local, formattedPhone });
     return formattedPhone;
   }
@@ -239,7 +236,7 @@ export default function LoginPage() {
 
     try {
       let loginEmail: string;
-      
+
       if (loginMethod === 'email') {
         // التحقق من البريد الإلكتروني
         if (!formData.email.trim()) {
@@ -255,7 +252,7 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        
+
         loginEmail = formData.email.trim();
       } else {
         // التحقق من رقم الهاتف
@@ -279,7 +276,7 @@ export default function LoginPage() {
         // دمج كود الدولة مع الرقم
         const fullPhone = normalizePhone(selectedCountry.code, formData.phone);
         console.log('🔍 Searching for user with phone:', fullPhone);
-        
+
         const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
         if (!firebaseEmail) {
           const phoneNotFoundError = `رقم الهاتف غير مسجل في النظام. يرجى إنشاء حساب جديد أو التحقق من صحة الرقم.`;
@@ -293,13 +290,13 @@ export default function LoginPage() {
 
       secureConsole.log('🔐 محاولة تسجيل الدخول...');
       toast.loading('جاري التحقق من البيانات...', { id: 'login' });
-      
+
       // محاولة تسجيل الدخول مباشرة
       const result = await login(loginEmail, formData.password);
-      
+
       secureConsole.log('✅ تم تسجيل الدخول بنجاح');
       toast.success('تم تسجيل الدخول بنجاح!', { id: 'login' });
-      
+
       // التحقق من وجود accountType
       if (!result.userData.accountType) {
         handleInvalidAccount(result.userData.accountType);
@@ -312,7 +309,7 @@ export default function LoginPage() {
         handleInvalidAccount(result.userData.accountType);
         return;
       }
-      
+
       // حفظ معلومات Remember Me إذا كان مطلوباً
       if (formData.rememberMe) {
         localStorage.setItem('rememberMe', 'true');
@@ -323,23 +320,23 @@ export default function LoginPage() {
         }
         localStorage.setItem('accountType', result.userData.accountType);
       }
-      
+
       toast.success('تم تسجيل الدخول بنجاح! جاري تحويلك...', { duration: 2000 });
-      
+
       // توجيه مباشر للوحة التحكم المناسبة
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      
+
       setTimeout(() => {
         router.replace(dashboardRoute);
       }, 1000);
-      
+
     } catch (err: any) {
       secureConsole.error('فشل تسجيل الدخول:', err);
       console.log('Error code:', err.code); // للتأكد من نوع الخطأ
-      
+
       // التحقق من نوع الخطأ
       if (err.code === 'auth/user-not-found') {
-        const noAccountError = loginMethod === 'email' 
+        const noAccountError = loginMethod === 'email'
           ? `البريد الإلكتروني غير مسجل في النظام
 
 الحلول المقترحة:
@@ -352,7 +349,7 @@ export default function LoginPage() {
 • تحقق من صحة رقم الهاتف المدخل
 • قم بإنشاء حساب جديد إذا لم يكن لديك حساب
 • تواصل مع الدعم الفني إذا كنت متأكداً من صحة الرقم`;
-        
+
         toast.error(noAccountError, { id: 'login', duration: 6000 });
         setError(noAccountError);
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
@@ -363,7 +360,7 @@ export default function LoginPage() {
 • تأكد من حالة الأحرف (كبيرة/صغيرة)
 • استخدم "نسيت كلمة المرور" لإعادة تعيينها
 • تأكد من عدم تفعيل Caps Lock`;
-        
+
         console.log('Setting error:', wrongPasswordError); // للتأكد من تعيين الخطأ
         toast.error(wrongPasswordError, { id: 'login', duration: 6000 });
         setError(wrongPasswordError);
@@ -374,7 +371,7 @@ export default function LoginPage() {
 • انتظر قليلاً قبل المحاولة مرة أخرى
 • استخدم "نسيت كلمة المرور" لإعادة تعيينها
 • تواصل مع الدعم الفني إذا استمرت المشكلة`;
-        
+
         toast.error(tooManyRequestsError, { id: 'login', duration: 6000 });
         setError(tooManyRequestsError);
       } else if (err.code === 'auth/network-request-failed') {
@@ -384,7 +381,7 @@ export default function LoginPage() {
 • تحقق من اتصالك بالإنترنت
 • حاول إعادة تحميل الصفحة
 • تأكد من استقرار الاتصال`;
-        
+
         toast.error(networkError, { id: 'login', duration: 5000 });
         setError(networkError);
       } else if (err.code === 'auth/invalid-email') {
@@ -394,7 +391,7 @@ export default function LoginPage() {
 • تحقق من صحة البريد الإلكتروني المدخل
 • تأكد من وجود @ و . في البريد
 • مثال: user@example.com`;
-        
+
         toast.error(invalidEmailError, { id: 'login', duration: 5000 });
         setError(invalidEmailError);
       } else {
@@ -403,8 +400,8 @@ export default function LoginPage() {
         toast.error(genericError, { id: 'login', duration: 5000 });
         setError(genericError);
       }
-      
-      setMessage(''); 
+
+      setMessage('');
       setLoading(false);
     }
   };
@@ -488,14 +485,14 @@ export default function LoginPage() {
               <h1 className="mb-1 text-xl font-bold">مشكلة تقنية</h1>
               <p className="text-xs text-red-100">حسابك يحتاج إلى إصلاح</p>
             </div>
-            
+
             <div className="p-6 text-center space-y-4">
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                   <AlertTriangle className="w-8 h-8 text-red-600" />
                 </div>
               </div>
-              
+
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-3">
                   {userData.name || userData.displayName || 'مستخدم'}
@@ -514,7 +511,7 @@ export default function LoginPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <button
                   onClick={() => logout()}
@@ -541,7 +538,7 @@ export default function LoginPage() {
     }
 
     const dashboardRoute = getDashboardRoute(userData.accountType);
-    
+
     return (
       <div
         className="flex items-center justify-center min-h-screen p-2 bg-gradient-to-br from-blue-600 to-purple-700"
@@ -555,14 +552,14 @@ export default function LoginPage() {
             <h1 className="mb-1 text-xl font-bold">مرحباً بك!</h1>
             <p className="text-xs text-green-100">أنت مسجل دخولك بالفعل</p>
           </div>
-          
+
           <div className="p-6 text-center space-y-4">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <Shield className="w-8 h-8 text-green-600" />
               </div>
             </div>
-            
+
             <div>
               <h2 className="text-lg font-bold text-gray-800 mb-1">
                 {userData.name || userData.displayName || 'مستخدم'}
@@ -579,7 +576,7 @@ export default function LoginPage() {
                 {!userData.accountType && 'غير محدد'}
               </p>
             </div>
-            
+
             <div className="space-y-3">
               <button
                 onClick={() => router.push(dashboardRoute)}
@@ -587,7 +584,7 @@ export default function LoginPage() {
               >
                 الذهاب إلى لوحة التحكم
               </button>
-              
+
               <button
                 onClick={() => {
                   // تسجيل خروج والبقاء في صفحة الدخول
@@ -624,7 +621,7 @@ export default function LoginPage() {
           </div>
                           <h1 className="mb-1 text-xl font-bold">تسجيل الدخول</h1>
                 <p className="text-xs text-blue-100">مرحباً بك مرة أخرى في منصة El7lm</p>
-          
+
           {/* Language Switcher */}
           <div className="flex justify-center mt-2">
             {/* تم إلغاء مبدل اللغة مؤقتاً */}
@@ -725,7 +722,7 @@ export default function LoginPage() {
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Phone Input */}
                 <div>
                   <label className="block mb-1 text-xs text-gray-700">
@@ -753,9 +750,9 @@ export default function LoginPage() {
                       <Phone className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 right-2 top-1/2" />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                    مثال: {selectedCountry.name === 'مصر' ? '1234567890' : 
-                             selectedCountry.name === 'قطر' ? '12345678' : 
-                             selectedCountry.name === 'السعودية' ? '123456789' : 
+                    مثال: {selectedCountry.name === 'مصر' ? '1234567890' :
+                             selectedCountry.name === 'قطر' ? '12345678' :
+                             selectedCountry.name === 'السعودية' ? '123456789' :
                              '123456789'}
                     </p>
                   </div>
@@ -881,7 +878,7 @@ export default function LoginPage() {
           />
         )}
         </div>
-      
+
       {/* Toast Notifications */}
       <Toaster
         position="top-center"

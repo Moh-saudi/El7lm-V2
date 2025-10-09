@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase/config';
-import { signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
-import { Shield, Phone, CheckCircle, AlertTriangle, Loader2, ArrowLeft, Check, X } from 'lucide-react';
 import UnifiedOTPVerification from '@/components/shared/UnifiedOTPVerification';
-import Link from 'next/link';
+import { AlertTriangle, Check, CheckCircle, Loader2, Phone, Shield, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 // قائمة الدول مع أكوادها (موحّدة مع صفحات التسجيل والدخول)
 const countries = [
@@ -84,7 +81,7 @@ export default function ForgotPasswordPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     // إذا كان الحقل هو رقم الهاتف، نتأكد من أنه يحتوي فقط على أرقام
     if (name === 'phone') {
       const numbersOnly = value.replace(/[^0-9]/g, '');
@@ -92,7 +89,7 @@ export default function ForgotPasswordPage() {
         ...prev,
         [name]: numbersOnly
       }));
-      
+
       // التحقق من تكرار رقم الهاتف أثناء الكتابة
       handlePhoneValidation(numbersOnly);
       return;
@@ -136,10 +133,10 @@ export default function ForgotPasswordPage() {
     phoneCheckTimeoutRef.current = setTimeout(async () => {
       // منع الاستدعاءات المتكررة
       if (phoneCheckRef.current || phoneCheckLoading) return;
-      
+
       phoneCheckRef.current = true;
       setPhoneCheckLoading(true);
-      
+
       try {
         const checkRes = await fetch('/api/auth/check-user-exists', {
           method: 'POST',
@@ -165,13 +162,13 @@ export default function ForgotPasswordPage() {
   const handleCountryChange = (countryName: string) => {
     const country = countries.find(c => c.name === countryName);
     setSelectedCountry(country);
-    
+
     // مسح رسالة الخطأ ورقم الهاتف عند تغيير الدولة
     setPhoneExistsError('');
     if (phoneCheckTimeoutRef.current) {
       clearTimeout(phoneCheckTimeoutRef.current);
     }
-    
+
     setFormData(prev => ({
       ...prev,
       country: countryName,
@@ -244,7 +241,7 @@ export default function ForgotPasswordPage() {
       const fullPhoneNumber = `${formData.countryCode}${formData.phone}`;
       console.log('🔍 handlePhoneSubmit - fullPhoneNumber:', fullPhoneNumber);
       console.log('🔍 handlePhoneSubmit - formData:', formData);
-      
+
       // تحقق من القيم المطلوبة
       if (!formData.country || !formData.countryCode || !formData.phone) {
         console.error('❌ handlePhoneSubmit - missing required fields:', { country: formData.country, countryCode: formData.countryCode, phone: formData.phone });
@@ -262,14 +259,14 @@ export default function ForgotPasswordPage() {
       console.log('✅ handlePhoneSubmit - setting pendingPhone to:', fullPhoneNumber);
       console.log('✅ handlePhoneSubmit - fullPhoneNumber type:', typeof fullPhoneNumber);
       console.log('✅ handlePhoneSubmit - fullPhoneNumber length:', fullPhoneNumber?.length);
-      
+
       if (!fullPhoneNumber || fullPhoneNumber.trim() === '') {
         console.error('❌ handlePhoneSubmit - fullPhoneNumber is empty or null');
         setError('حدث خطأ في تجهيز رقم الهاتف. يرجى المحاولة مرة أخرى.');
         setLoading(false);
         return;
       }
-      
+
       setPendingPhone(fullPhoneNumber);
       setShowPhoneVerification(true);
       localStorage.setItem('pendingPasswordReset', fullPhoneNumber);
@@ -285,14 +282,14 @@ export default function ForgotPasswordPage() {
     console.log('✅ Phone verification success, setting pendingPhone to:', verifiedPhone);
     console.log('✅ handlePhoneVerificationSuccess - verifiedPhone type:', typeof verifiedPhone);
     console.log('✅ handlePhoneVerificationSuccess - verifiedPhone length:', verifiedPhone?.length);
-    
+
     // التحقق من أن verifiedPhone صحيح
     if (!verifiedPhone || verifiedPhone.trim() === '') {
       console.error('❌ handlePhoneVerificationSuccess - verifiedPhone is empty or null');
       setError('حدث خطأ في التحقق من رقم الهاتف. يرجى المحاولة مرة أخرى.');
       return;
     }
-    
+
     // أغلق نافذة التحقق فوراً بعد النجاح
     setShowPhoneVerification(false);
     setPendingPhone(verifiedPhone); // حفظ الرقم المحقق
@@ -305,14 +302,14 @@ export default function ForgotPasswordPage() {
 
   const handlePhoneVerificationFailed = (error: string) => {
     console.log('❌ Phone verification failed:', error);
-    
+
     // إذا كان الخطأ يتعلق بـ WhatsApp، نعرض رسالة خاصة
     if (error.includes('WhatsApp') || error.includes('whatsapp')) {
       setError(`فشل في إرسال رمز التحقق عبر WhatsApp: ${error}. يرجى التأكد من إعدادات WhatsApp أو التواصل مع الدعم الفني.`);
     } else {
       setError(error);
     }
-    
+
     console.log('🔒 handlePhoneVerificationFailed - setting pendingPhone to null');
     setShowPhoneVerification(false);
     setPendingPhone(null);
@@ -349,7 +346,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       console.log('🔐 Updating password for phone:', pendingPhone);
-      
+
       // استدعاء API لتحديث كلمة المرور
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -363,11 +360,11 @@ export default function ForgotPasswordPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         console.log('✅ Password updated successfully');
         setMessage('تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.');
-        
+
         setTimeout(() => {
           router.push('/auth/login');
         }, 3000);
@@ -375,7 +372,7 @@ export default function ForgotPasswordPage() {
         console.error('❌ Password update failed:', data.error);
         setError(data.error || 'حدث خطأ أثناء تحديث كلمة المرور.');
       }
-      
+
     } catch (error: unknown) {
       console.error('❌ Password update failed:', error);
       if (error instanceof Error) {
@@ -425,9 +422,9 @@ export default function ForgotPasswordPage() {
                   <p className="text-xs text-blue-700 mt-2">
                     💡 ملاحظة: سيتم إرسال رمز التحقق عبر WhatsApp فقط (SMS غير متاح خارج مصر).
                     <br />
-                    <a 
-                      href="/whatsapp-setup" 
-                      target="_blank" 
+                    <a
+                      href="/whatsapp-setup"
+                      target="_blank"
                       className="text-blue-600 hover:underline"
                     >
                       إعدادات WhatsApp
@@ -483,9 +480,9 @@ export default function ForgotPasswordPage() {
                     value={formData.phone}
                     onChange={handleInputChange}
                     className={`w-full py-3 pl-12 pr-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      phoneExistsError 
-                        ? 'border-red-300 focus:ring-red-500' 
-                        : phoneCheckLoading 
+                      phoneExistsError
+                        ? 'border-red-300 focus:ring-red-500'
+                        : phoneCheckLoading
                           ? 'border-blue-300 focus:ring-blue-500'
                           : 'border-gray-300 focus:ring-blue-500'
                     }`}
@@ -679,4 +676,4 @@ export default function ForgotPasswordPage() {
       />
     </>
   );
-} 
+}

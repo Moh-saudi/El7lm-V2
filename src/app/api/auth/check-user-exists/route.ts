@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/firebase/config';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,25 +13,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔍 [SERVER-SIDE] Checking user existence:', { email, phone });
+    console.log('🔍 [check-user-exists] Checking:', { email, phone });
 
-    // For now, return a safe response since we don't have Firebase Admin SDK configured
-    // In a real implementation, you would use Firebase Admin SDK to check the database
+    let phoneExists = false;
+    let emailExists = false;
 
-    // Mock response - user doesn't exist (allowing registration)
+    // التحقق من رقم الهاتف في المجموعات المختلفة
+    if (phone) {
+      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
+      
+      for (const collectionName of collections) {
+        try {
+          const q = query(
+            collection(db, collectionName),
+            where('phone', '==', phone)
+          );
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            phoneExists = true;
+            console.log(`✅ Phone found in ${collectionName}`);
+            break;
+          }
+        } catch (error) {
+          console.log(`⚠️ Error checking ${collectionName}:`, error);
+        }
+      }
+    }
+
+    // التحقق من البريد الإلكتروني
+    if (email && !phoneExists) {
+      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
+      
+      for (const collectionName of collections) {
+        try {
+          const q = query(
+            collection(db, collectionName),
+            where('email', '==', email)
+          );
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            emailExists = true;
+            console.log(`✅ Email found in ${collectionName}`);
+            break;
+          }
+        } catch (error) {
+          console.log(`⚠️ Error checking ${collectionName}:`, error);
+        }
+      }
+    }
+
     const response = {
-      exists: false,
-      phoneExists: false,
-      emailExists: false,
-      message: 'User check completed - allowing registration'
+      exists: phoneExists || emailExists,
+      phoneExists,
+      emailExists,
+      message: phoneExists ? 'Phone number exists' : emailExists ? 'Email exists' : 'User not found'
     };
 
-    console.log('📊 User check results:', response);
+    console.log('📊 [check-user-exists] Results:', response);
 
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Error checking user existence:', error);
+    console.error('❌ [check-user-exists] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
