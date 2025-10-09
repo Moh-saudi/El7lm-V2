@@ -315,7 +315,7 @@ export default function SharedReferralsPage() {
     try {
       const resolvedOrgName = (orgName && orgName.trim()) || ((userData as any)?.full_name && String((userData as any)?.full_name).trim()) || 'المنظمة';
       const displayOrg = `*${resolvedOrgName}*`;
-      const message = `⚽ انضم لفريق ${displayOrg} على منصة الحلم\n🎯 هدفنا: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\n- ادخل كود الانضمام: *${referralCode}*\n- سجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
+      const message = `انضم إلى فريق ${displayOrg} على منصة الحلم\nالهدف: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\nاكتب كود الانضمام: *${referralCode}*\nسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
