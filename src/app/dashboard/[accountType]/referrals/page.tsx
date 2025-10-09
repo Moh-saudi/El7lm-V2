@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
+import { getOrganizationDetails } from '@/utils/player-organization';
 import { OrganizationReferral, PlayerJoinRequest } from '@/types/organization-referral';
 import {
   UserPlus,
@@ -311,11 +312,40 @@ export default function SharedReferralsPage() {
     }
   };
 
-  const shareOrgLinkWhatsApp = (referralCode: string, orgName?: string) => {
+  const shareOrgLinkWhatsApp = async (ref: OrganizationReferral) => {
     try {
-      const resolvedOrgName = (orgName && orgName.trim()) || ((userData as any)?.full_name && String((userData as any)?.full_name).trim()) || 'المنظمة';
+      // استنتاج اسم المنظمة ديناميكيًا
+      let resolvedOrgName = (ref.organizationName || '').toString().trim();
+
+      if (!resolvedOrgName) {
+        try {
+          const orgDetails = await getOrganizationDetails(ref.organizationId, ref.organizationType);
+          if (orgDetails && typeof orgDetails === 'object') {
+            const possibleFields = [
+              'name', 'full_name', 'club_name', 'academy_name', 'trainer_name', 'agent_name', 'marketer_name',
+              'organization_name', 'business_name', 'company_name', 'title', 'display_name', 'brand_name',
+              'academyName', 'clubName', 'trainerName', 'agentName', 'marketerName'
+            ];
+            for (const field of possibleFields) {
+              const val = (orgDetails as any)[field];
+              if (typeof val === 'string' && val.trim()) {
+                resolvedOrgName = val.trim();
+                break;
+              }
+            }
+            if (!resolvedOrgName && ((orgDetails as any).first_name || (orgDetails as any).last_name)) {
+              resolvedOrgName = `${(orgDetails as any).first_name || ''} ${(orgDetails as any).last_name || ''}`.trim();
+            }
+          }
+        } catch {}
+      }
+
+      if (!resolvedOrgName) {
+        resolvedOrgName = ((userData as any)?.full_name && String((userData as any)?.full_name).trim()) || 'المنظمة';
+      }
+
       const displayOrg = `*${resolvedOrgName}*`;
-      const message = `انضم إلى فريق ${displayOrg} على منصة الحلم\nالهدف: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\nاكتب كود الانضمام: *${referralCode}*\nسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
+      const message = `انضم إلى فريق ${displayOrg} على منصة الحلم\nالهدف: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\nاكتب كود الانضمام: *${ref.referralCode}*\nسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
@@ -497,7 +527,7 @@ export default function SharedReferralsPage() {
                     <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => shareOrgLinkWhatsApp(referral.referralCode, referral.organizationName)}
+                      onClick={() => { shareOrgLinkWhatsApp(referral); }}
                     >
                       مشاركة واتساب
                     </Button>
