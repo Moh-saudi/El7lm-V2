@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { BEON_V3_CONFIG, createBeOnHeaders } from '@/lib/beon/config';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           sender: BEON_V3_CONFIG.DEFAULTS.SENDER_NAME,
           lang: BEON_V3_CONFIG.DEFAULTS.LANGUAGE
         };
-        
+
         const smsResponse = await fetch(smsUrl, {
           method: 'POST',
           headers: createBeOnHeaders(),

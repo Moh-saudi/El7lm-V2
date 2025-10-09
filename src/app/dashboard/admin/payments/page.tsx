@@ -72,9 +72,9 @@ export default function AdminPaymentsPage() {
   const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminNotificationsEnabled');
-      return saved ? JSON.parse(saved) : true;
+      return saved ? JSON.parse(saved) : false; // ✅ تم تعطيل الإرسال التلقائي - يجب التفعيل يدوياً
     }
-    return true;
+    return false; // ✅ معطل افتراضياً
   });
 
   // نماذج الرسائل الجاهزة

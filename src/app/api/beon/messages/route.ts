@@ -3,15 +3,20 @@ import { BeOnSMSService } from '@/lib/beon/sms-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumbers, message, type = 'sms' } = await request.json();
+    let { phoneNumbers, singlePhone, message, type = 'sms' } = await request.json();
 
-    console.log('📨 [API /beon/messages] اختبار إرسال رسائل موحدة:', { phoneNumbers, type, messageLength: message?.length });
+    console.log('📨 [API /beon/messages] اختبار إرسال رسائل موحدة:', { phoneNumbers, singlePhone, type, messageLength: message?.length });
+
+    // دعم singlePhone (للرسائل الفردية)
+    if (singlePhone && !phoneNumbers) {
+      phoneNumbers = [singlePhone];
+    }
 
     // التحقق من البيانات
     if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'يجب توفير مصفوفة أرقام هواتف'
+        error: 'يجب توفير رقم هاتف أو مصفوفة أرقام'
       }, { status: 400 });
     }
 
