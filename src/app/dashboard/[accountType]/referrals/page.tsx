@@ -328,62 +328,62 @@ export default function SharedReferralsPage() {
 
   const shareOrgLinkWhatsApp = async (ref: OrganizationReferral) => {
     try {
-      // استنتاج اسم المنظمة ديناميكيًا
-      let resolvedOrgName = (ref.organizationName || '').toString().trim();
+      // جلب اسم المنظمة بترتيب الأولوية: userData -> Firestore -> ref.organizationName -> fallback
+      let resolvedOrgName = '';
 
-      // تجاهل الاسم العام الافتراضي ليتم استبداله بمصدر أدق
-      const isGenericName = ['المنظمة', 'الجهة', 'المؤسسة'].includes(resolvedOrgName);
-      if (!resolvedOrgName || isGenericName) {
-        resolvedOrgName = '';
-      }
-
-      // 1) جرّب من userData لكون الحساب يمثل الجهة
-      if (!resolvedOrgName && userData) {
-        const possibleUserFields = [
-          'club_name', 'academy_name', 'trainer_name', 'agent_name',
-          'full_name', 'name', 'organization_name', 'display_name'
-        ];
-        for (const f of possibleUserFields) {
+      // 1) أولًا: جرّب من userData
+      if (userData) {
+        const fields = ['club_name', 'academy_name', 'trainer_name', 'agent_name', 'organization_name', 'full_name', 'name', 'display_name'];
+        for (const f of fields) {
           const v = (userData as any)[f];
-          if (typeof v === 'string' && v.trim()) {
+          if (typeof v === 'string' && v.trim() && !['المنظمة', 'الجهة'].includes(v.trim())) {
             resolvedOrgName = v.trim();
+            console.log('✅ اسم من userData:', resolvedOrgName);
             break;
           }
         }
       }
 
+      // 2) إذا لم ينجح، جرّب Firestore
       if (!resolvedOrgName) {
         try {
           const orgDetails = await getOrganizationDetails(ref.organizationId, ref.organizationType);
           if (orgDetails && typeof orgDetails === 'object') {
-            const possibleFields = [
-              'name', 'full_name', 'club_name', 'academy_name', 'trainer_name', 'agent_name', 'marketer_name',
-              'organization_name', 'business_name', 'company_name', 'title', 'display_name', 'brand_name',
-              'academyName', 'clubName', 'trainerName', 'agentName', 'marketerName'
-            ];
-            for (const field of possibleFields) {
+            const fields = ['name', 'full_name', 'club_name', 'academy_name', 'trainer_name', 'agent_name', 'organization_name', 'display_name'];
+            for (const field of fields) {
               const val = (orgDetails as any)[field];
-              if (typeof val === 'string' && val.trim()) {
+              if (typeof val === 'string' && val.trim() && !['المنظمة', 'الجهة'].includes(val.trim())) {
                 resolvedOrgName = val.trim();
+                console.log('✅ اسم من Firestore:', resolvedOrgName);
                 break;
               }
             }
-            if (!resolvedOrgName && ((orgDetails as any).first_name || (orgDetails as any).last_name)) {
-              resolvedOrgName = `${(orgDetails as any).first_name || ''} ${(orgDetails as any).last_name || ''}`.trim();
-            }
           }
-        } catch {}
+        } catch (e) {
+          console.error('❌ فشل جلب من Firestore:', e);
+        }
       }
 
+      // 3) fallback للاسم المخزن في الإحالة إن كان مفيدًا
+      if (!resolvedOrgName) {
+        const stored = (ref.organizationName || '').toString().trim();
+        if (stored && !['المنظمة', 'الجهة'].includes(stored)) {
+          resolvedOrgName = stored;
+          console.log('✅ اسم من ref:', resolvedOrgName);
+        }
+      }
+
+      // 4) fallback نهائي
       if (!resolvedOrgName) {
         resolvedOrgName = 'المنظمة';
+        console.warn('⚠️ استخدام fallback: المنظمة');
       }
 
-      const displayOrg = `*${resolvedOrgName}*`;
-      const message = `انضم إلى فريق ${displayOrg} على منصة الحلم\nالهدف: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\nاكتب كود الانضمام: *${ref.referralCode}*\nسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
+      const message = `انضم إلى فريق *${resolvedOrgName}* على منصة الحلم\nالهدف: تسويق وبيع اللاعبين للأندية المحلية والدولية بالتعاون مع شركة ميسك القطرية\nاكتب كود الانضمام: *${ref.referralCode}*\nسجّل بياناتك هنا:\nhttps://www.el7lm.com/auth/register`;
       const text = encodeURIComponent(message);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     } catch (e) {
+      console.error('❌ خطأ في مشاركة واتساب:', e);
       toast.error('تعذر فتح واتساب');
     }
   };
