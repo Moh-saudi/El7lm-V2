@@ -8,7 +8,7 @@ import { Shield, Phone, CheckCircle, AlertTriangle, Loader2, ArrowLeft, Check, X
 import UnifiedOTPVerification from '@/components/shared/UnifiedOTPVerification';
 import Link from 'next/link';
 
-// قائمة الدول مع أكوادها
+// قائمة الدول مع أكوادها (موحّدة مع صفحات التسجيل والدخول)
 const countries = [
   { name: 'السعودية', code: '+966', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'الإمارات', code: '+971', phoneLength: 9, phonePattern: '[0-9]{9}' },
@@ -25,6 +25,20 @@ const countries = [
   { name: 'الجزائر', code: '+213', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'تونس', code: '+216', phoneLength: 8, phonePattern: '[0-9]{8}' },
   { name: 'ليبيا', code: '+218', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'السودان', code: '+249', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'السنغال', code: '+221', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'ساحل العاج', code: '+225', phoneLength: 10, phonePattern: '[0-9]{10}' },
+  { name: 'جيبوتي', code: '+253', phoneLength: 8, phonePattern: '[0-9]{8}' },
+  { name: 'إسبانيا', code: '+34', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'فرنسا', code: '+33', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'إنجلترا', code: '+44', phoneLength: 10, phonePattern: '[0-9]{10}' },
+  { name: 'البرتغال', code: '+351', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'إيطاليا', code: '+39', phoneLength: 10, phonePattern: '[0-9]{10}' },
+  { name: 'اليونان', code: '+30', phoneLength: 10, phonePattern: '[0-9]{10}' },
+  { name: 'قبرص', code: '+357', phoneLength: 8, phonePattern: '[0-9]{8}' },
+  { name: 'تركيا', code: '+90', phoneLength: 10, phonePattern: '[0-9]{10}' },
+  { name: 'تايلاند', code: '+66', phoneLength: 9, phonePattern: '[0-9]{9}' },
+  { name: 'اليمن', code: '+967', phoneLength: 9, phonePattern: '[0-9]{9}' },
 ];
 
 export default function ForgotPasswordPage() {
@@ -238,25 +252,11 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         return;
       }
-      console.log('🔍 Sending to smart-otp:', {
+      console.log('📱 إرسال OTP عبر BeOn v3:', {
         phone: fullPhoneNumber,
         name: 'مستخدم',
-        country: formData.country,
-        countryCode: formData.countryCode
+        country: formData.country
       });
-      // أرسل طلب إلى API إرسال OTP باستخدام BeOn V3
-      const otpResponse = await fetch('/api/beon/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          singlePhone: fullPhoneNumber,
-          message: `رمز التحقق الخاص بك هو: ${otp}`
-        })
-      });
-      const otpData = await otpResponse.json();
-      if (!otpResponse.ok || !otpData.success) {
-        throw new Error(otpData.error || 'فشل في إرسال رمز التحقق');
-      }
 
       // إذا نجح، افتح نافذة التحقق
       console.log('✅ handlePhoneSubmit - setting pendingPhone to:', fullPhoneNumber);
@@ -461,6 +461,8 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => handleCountryChange(e.target.value)}
                   className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  title="اختيار الدولة"
+                  aria-label="الدولة"
                 >
                   <option value="">اختر الدولة</option>
                   {countries.map((country) => (
