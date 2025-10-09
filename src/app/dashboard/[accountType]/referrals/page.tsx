@@ -196,10 +196,24 @@ export default function SharedReferralsPage() {
   // Organization: create new referral
   const createNewReferralCode = async () => {
     try {
+      // اختيار اسم المنظمة الأفضل من userData بدل القيمة العامة
+      let bestOrgName = 'المنظمة';
+      if (userData) {
+        const fields = [
+          'club_name', 'academy_name', 'trainer_name', 'agent_name',
+          'organization_name', 'business_name', 'company_name', 'brand_name',
+          'full_name', 'name', 'display_name'
+        ];
+        for (const f of fields) {
+          const v = (userData as any)[f];
+          if (typeof v === 'string' && v.trim()) { bestOrgName = v.trim(); break; }
+        }
+      }
+
       await organizationReferralService.createOrganizationReferral(
         user!.uid,
         (userData as any)?.accountType,
-        (userData as any)?.full_name || 'المنظمة'
+        bestOrgName
       );
       toast.success('تم إنشاء كود إحالة جديد');
       loadOrganizationReferrals();
@@ -316,6 +330,12 @@ export default function SharedReferralsPage() {
     try {
       // استنتاج اسم المنظمة ديناميكيًا
       let resolvedOrgName = (ref.organizationName || '').toString().trim();
+
+      // تجاهل الاسم العام الافتراضي ليتم استبداله بمصدر أدق
+      const isGenericName = ['المنظمة', 'الجهة', 'المؤسسة'].includes(resolvedOrgName);
+      if (!resolvedOrgName || isGenericName) {
+        resolvedOrgName = '';
+      }
 
       // 1) جرّب من userData لكون الحساب يمثل الجهة
       if (!resolvedOrgName && userData) {
