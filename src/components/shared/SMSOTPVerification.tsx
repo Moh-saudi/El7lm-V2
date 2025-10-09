@@ -115,13 +115,29 @@ export default function SMSOTPVerification({
         return;
       }
 
-      console.log('📤 Using admin backup OTP code for:', normalizedPhone);
+      console.log('📤 Sending real OTP via BeOn v3 for:', normalizedPhone);
       
-      // استخدام الكود الاحتياطي بدلاً من الإرسال الحقيقي
-      const adminBackupOTP = '123456';
+      // إرسال OTP حقيقي عبر BeOn v3
+      const otpResponse = await fetch('/api/sms/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhone,
+          name: name || 'El7lm',
+          otpLength: 4,
+          lang: 'ar'
+        }),
+        signal: abortControllerRef.current?.signal
+      });
+
+      const otpData = await otpResponse.json();
       
-      console.log('✅ SMSOTP: Admin backup OTP used for:', normalizedPhone);
-      setMessage('تم إنشاء رمز التحقق (كود احتياطي للإدارة: 123456)');
+      if (!otpResponse.ok || !otpData.success) {
+        throw new Error(otpData.error || 'فشل في إرسال رمز التحقق');
+      }
+
+      console.log('✅ SMSOTP: OTP sent successfully via BeOn v3');
+      setMessage(`تم إرسال رمز التحقق إلى ${normalizedPhone}`);
       setTimeRemaining(otpExpirySeconds);
     } catch (error: any) {
       // تجاهل أخطاء الإلغاء
@@ -284,16 +300,16 @@ export default function SMSOTPVerification({
       }
       
       // التحقق من صحة الرمز باستخدام API
-      console.log('🔍 Verifying OTP with server:', { input: otpCode, phone: normalizedPhone });
+      console.log('🔍 Verifying OTP with BeOn v3:', { input: otpCode, phone: normalizedPhone });
       
-      const verifyResponse = await fetch('/api/notifications/sms/verify-otp', {
+      const verifyResponse = await fetch('/api/sms/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           phoneNumber: normalizedPhone,
-          otpCode: otpCode
+          otp: otpCode
         })
       });
 

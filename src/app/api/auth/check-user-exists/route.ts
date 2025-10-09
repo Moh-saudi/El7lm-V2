@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // التحقق من رقم الهاتف في المجموعات المختلفة
     if (phone) {
       const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
-      
+
       for (const collectionName of collections) {
         try {
           const q = query(
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
             where('phone', '==', phone)
           );
           const snapshot = await getDocs(q);
-          
+
           if (!snapshot.empty) {
             phoneExists = true;
             console.log(`✅ Phone found in ${collectionName}`);
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     // التحقق من البريد الإلكتروني
     if (email && !phoneExists) {
       const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
-      
+
       for (const collectionName of collections) {
         try {
           const q = query(
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
             where('email', '==', email)
           );
           const snapshot = await getDocs(q);
-          
+
           if (!snapshot.empty) {
             emailExists = true;
             console.log(`✅ Email found in ${collectionName}`);
