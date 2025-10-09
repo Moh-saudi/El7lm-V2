@@ -317,6 +317,21 @@ export default function SharedReferralsPage() {
       // استنتاج اسم المنظمة ديناميكيًا
       let resolvedOrgName = (ref.organizationName || '').toString().trim();
 
+      // 1) جرّب من userData لكون الحساب يمثل الجهة
+      if (!resolvedOrgName && userData) {
+        const possibleUserFields = [
+          'club_name', 'academy_name', 'trainer_name', 'agent_name',
+          'full_name', 'name', 'organization_name', 'display_name'
+        ];
+        for (const f of possibleUserFields) {
+          const v = (userData as any)[f];
+          if (typeof v === 'string' && v.trim()) {
+            resolvedOrgName = v.trim();
+            break;
+          }
+        }
+      }
+
       if (!resolvedOrgName) {
         try {
           const orgDetails = await getOrganizationDetails(ref.organizationId, ref.organizationType);
@@ -341,7 +356,7 @@ export default function SharedReferralsPage() {
       }
 
       if (!resolvedOrgName) {
-        resolvedOrgName = ((userData as any)?.full_name && String((userData as any)?.full_name).trim()) || 'المنظمة';
+        resolvedOrgName = 'المنظمة';
       }
 
       const displayOrg = `*${resolvedOrgName}*`;
