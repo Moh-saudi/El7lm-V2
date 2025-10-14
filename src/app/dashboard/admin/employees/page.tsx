@@ -280,7 +280,8 @@ export default function EmployeesManagement() {
   }, [formErrors]);
 
   // تحديث نموذج إضافة/تعديل الموظف كمكوّن دالة بسيط
-  function EmployeeForm() {
+  // نموذج مبسط لتفادي أي تعقيد وإعادة تهيئة أثناء الكتابة
+  function SimpleEmployeeForm() {
     return (
     <div className="space-y-6 py-4">
       {/* معلومات شخصية */}
@@ -560,15 +561,11 @@ export default function EmployeesManagement() {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
-            <textarea
+            <Input
               value={newEmployee.notes || ''}
-              onChange={(e) => {
-                setNewEmployee(prev => ({ ...prev, notes: e.target.value }));
-              }}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               placeholder="أي ملاحظات إضافية حول الموظف..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-1 focus:ring-gray-500 resize-none"
-              rows={3}
-              dir="rtl"
+              className="w-full"
             />
           </div>
 
@@ -1564,7 +1561,7 @@ export default function EmployeesManagement() {
 
         {/* Add/Edit Employee Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogContent key={editingEmployee?.id || 'new'} className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-gray-900">
                 {editingEmployee ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}
@@ -1577,7 +1574,7 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <EmployeeForm />
+            <SimpleEmployeeForm />
 
             <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
               <Button
