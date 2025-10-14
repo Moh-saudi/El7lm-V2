@@ -32,7 +32,18 @@ async function sendBeonOtp(phoneNumber: string, name: string, otpLength: number,
     }),
   });
 
-  const beonData = await beonResponse.json();
+  const responseText = await beonResponse.text();
+  let beonData;
+  try {
+    beonData = JSON.parse(responseText);
+  } catch (e) {
+    console.error('❌ [send-otp] Failed to parse BeOn response as JSON. Response text:', responseText);
+    return { 
+      success: false, 
+      error: 'Invalid response from OTP service.' 
+    };
+  }
+  
   console.log('📨 [send-otp] استجابة BeOn:', beonData);
 
   if (beonResponse.ok && beonData.success) {
