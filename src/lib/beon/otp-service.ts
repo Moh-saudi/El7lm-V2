@@ -2,50 +2,42 @@
  * BeOn V3 OTP Service
  * خدمة إرسال رموز التحقق لمرة واحدة عبر BeOn V3
  */
-import { BEON_V3_CONFIG, createBeOnHeaders, BeOnResponse } from './config';
+import { BEON_V3_CONFIG, BeOnResponse, createBeOnHeaders } from './config';
 
-// Interface for the OTP request body, which might differ from bulk SMS
 interface OTPRequest {
   phoneNumbers: string[];
   sender?: string;
   lang?: string;
   otp_length?: number;
-  type?: 'sms' | 'whatsapp'; // To specify the channel
 }
 
 export class BeOnOTPService {
   private baseUrl: string;
   private token: string;
+  private otpSendEndpoint: string;
 
   constructor() {
     this.baseUrl = BEON_V3_CONFIG.BASE_URL;
     this.token = BEON_V3_CONFIG.TOKEN;
+    this.otpSendEndpoint = BEON_V3_CONFIG.ENDPOINTS.OTP_SEND;
   }
 
   /**
-   * Sends an OTP, automatically selecting the channel (SMS/WhatsApp) based on the phone number.
+   * Sends an OTP via the dedicated BeOn V3 OTP endpoint.
    * @param phoneNumber The full phone number including country code (e.g., +201234567890)
    * @param otpLength The desired length of the OTP code.
    * @returns A BeOnResponse indicating success or failure.
    */
   async sendOTP(phoneNumber: string, otpLength: number = 6): Promise<BeOnResponse> {
-    const isEgypt = phoneNumber.startsWith('+20');
-    const channel = isEgypt ? 'sms' : 'whatsapp';
-    
-    // Note: The admin panel and config suggest V3 sends WhatsApp as SMS.
-    // We will still pass the 'whatsapp' type in case their API handles it differently for OTPs.
-    // The endpoint itself might be the same.
-    const endpoint = '/api/v3/send/otp'; // Dedicated OTP endpoint seems more appropriate
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}${this.otpSendEndpoint}`;
 
-    console.log(`📱 Sending OTP via ${channel} to ${phoneNumber}`);
+    console.log(`📱 Sending OTP to ${phoneNumber} via endpoint: ${url}`);
 
     const requestBody: OTPRequest = {
-      phoneNumbers: [phoneNumber.replace(/^\+/, '')],
+      phoneNumbers: [phoneNumber.replace(/^\+/, '')], // API expects number without '+'
       sender: BEON_V3_CONFIG.DEFAULTS.SENDER_NAME,
       lang: BEON_V3_CONFIG.DEFAULTS.LANGUAGE,
       otp_length: otpLength,
-      type: channel,
     };
 
     try {
@@ -57,7 +49,7 @@ export class BeOnOTPService {
 
       const responseText = await response.text();
       let responseData;
-      
+
       try {
         responseData = JSON.parse(responseText);
       } catch (e) {
@@ -66,14 +58,14 @@ export class BeOnOTPService {
       }
 
       if (response.ok && (responseData.success || responseData.status === 'success')) {
-        console.log(`✅ [BeOnOTPService] OTP sent successfully via ${channel}.`);
+        console.log(`✅ [BeOnOTPService] OTP sent successfully. Reference: ${responseData.reference}`);
         return {
           success: true,
           message: 'OTP sent successfully.',
-          data: responseData,
+          data: responseData, // Forward the full response data
         };
       } else {
-        console.error(`❌ [BeOnOTPService] Failed to send OTP via ${channel}. Response:`, responseData);
+        console.error(`❌ [BeOnOTPService] Failed to send OTP. Response:`, responseData);
         return {
           success: false,
           error: responseData.error || responseData.message || 'Failed to send OTP.',

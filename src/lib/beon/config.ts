@@ -12,6 +12,10 @@ export const BEON_V3_CONFIG = {
   
   // Endpoints
   ENDPOINTS: {
+    // OTP Endpoint - The correct, dedicated endpoint for sending OTPs
+    OTP_SEND: '/api/v3/send/otp',
+    OTP_VERIFY: '/api/v3/verify/otp',
+
     // SMS Endpoints
     SMS_BULK: '/api/v3/messages/sms/bulk',
     SMS_TEMPLATE: '/api/v3/send/message/sms/template',
