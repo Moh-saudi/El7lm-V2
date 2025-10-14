@@ -278,6 +278,14 @@ export default function EmployeesManagement() {
     setNewEmployee(prev => ({ ...prev, [field]: checked }));
   }, []);
 
+  // تحديث حقول الإدخال النصية بشكل موحّد
+  const handleInputChange = useCallback((field: keyof Employee, value: string) => {
+    setNewEmployee(prev => ({ ...prev, [field]: value }));
+    if (formErrors[field as keyof typeof formErrors]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [formErrors]);
+
   // تحديث نموذج إضافة/تعديل الموظف
   const EmployeeForm = useMemo(() => (
     <div className="space-y-6 py-4">
