@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const cleanPhone = phoneNumber.replace(/^\+/, '');
 
     // التحقق من OTP عبر BeOn v3
-    const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://beon.chat/api/send/message/otp';
+    const beonUrl = process.env.BEON_OTP_VERIFY_URL || 'https://beon.chat/api/verify/message/otp';
     const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
 
     if (!beonToken) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const beonResponse = await fetch(`${beonUrl}/verify`, {
+    const beonResponse = await fetch(beonUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
