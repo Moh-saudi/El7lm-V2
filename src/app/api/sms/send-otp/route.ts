@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 async function sendBeonOtp(phoneNumber: string, name: string, otpLength: number, lang: string) {
   const cleanPhone = phoneNumber.replace(/^\+/, '');
-  const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://beon.chat/api/send/message/otp';
+  const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://v3.api.beon.chat/send/otp';
   const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
 
   if (!beonToken) {
