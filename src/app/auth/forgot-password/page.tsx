@@ -262,6 +262,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="********"
                   required
+                  autoComplete="new-password"
                 />
               </div>
               <div className="space-y-2">
@@ -273,6 +274,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="********"
                   required
+                  autoComplete="new-password"
                 />
               </div>
                <div className="text-xs text-gray-500 flex items-center pt-2">
