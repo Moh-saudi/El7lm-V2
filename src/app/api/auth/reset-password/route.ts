@@ -1,4 +1,4 @@
-import { adminAuth } from '@/lib/firebase/admin-config';
+import { adminAuth } from '@/lib/firebase/admin';
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -77,6 +77,10 @@ export async function POST(request: NextRequest) {
 
     if (!uid) {
       return NextResponse.json({ success: false, error: 'User not found for the provided phone number' }, { status: 404 });
+    }
+
+    if (!adminAuth) {
+      throw new Error('Firebase Admin Auth is not available.');
     }
 
     // 2. تحديث كلمة المرور في Firebase Authentication
