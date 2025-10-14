@@ -50,137 +50,22 @@ export default function SMSOTPVerification({
   const lastPhoneNumberRef = useRef<string>('');
   const isSendingRef = useRef(false);
 
-  // دالة إرسال OTP محسنة مع حماية قوية
-  const sendOTP = useCallback(async (isResend = false) => {
-    console.log('📞 [SMSOTP] sendOTP called for:', phoneNumber, 'isResend:', isResend, 'isSending:', isSendingRef.current);
-
-    // حماية قوية ضد التكرار
-    if (isSendingRef.current) {
-      console.log('🛑 [SMSOTP] OTP sending blocked - already sending');
-      return;
-    }
-
-    // إذا كان الإرسال الأولي تم بالفعل وليس إعادة إرسال
-    if (!isResend && sentRef.current) {
-      console.log('🛑 [SMSOTP] Initial OTP already sent');
-      return;
-    }
-
-    // التحقق من تغيير رقم الهاتف
-    if (lastPhoneNumberRef.current === phoneNumber && sentRef.current && !isResend) {
-      console.log('🛑 [SMSOTP] OTP already sent for this phone number');
-      return;
-    }
-
-    // إلغاء أي طلب سابق
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // إنشاء AbortController جديد
-    abortControllerRef.current = new AbortController();
-
-    // تعيين الحماية
-    isSendingRef.current = true;
-    if (!isResend) {
-      sentRef.current = true;
-      lastPhoneNumberRef.current = phoneNumber;
-    }
-
-    setLoading(true);
-    setError('');
-    setMessage('');
-
-    try {
-      // تنسيق رقم الهاتف للاستخدام في API
-      const normalizedPhone = normalizePhone(phoneNumber);
-
-      // التحقق من صحة رقم الهاتف
-      if (!validatePhoneNumber(normalizedPhone)) {
-        setError('رقم الهاتف غير صحيح. يرجى التأكد من إدخال رقم صحيح مع رمز الدولة');
-        onVerificationFailed('رقم الهاتف غير صحيح');
-        setLoading(false);
-        if (!isResend) sentRef.current = false;
-        isSendingRef.current = false;
-        return;
-      }
-
-      // فحص إضافي: التحقق من أن الرقم ليس فارغاً أو قصيراً جداً
-      if (!normalizedPhone || normalizedPhone.length < 10) {
-        setError('رقم الهاتف قصير جداً. يرجى التأكد من إدخال رقم صحيح مع رمز الدولة');
-        onVerificationFailed('رقم الهاتف قصير جداً');
-        setLoading(false);
-        if (!isResend) sentRef.current = false;
-        isSendingRef.current = false;
-        return;
-      }
-
-      console.log('📤 Sending real OTP via BeOn v3 for:', normalizedPhone);
-
-      // إرسال OTP حقيقي عبر BeOn v3
-      const otpResponse = await fetch('/api/sms/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: normalizedPhone,
-          name: name || 'El7lm',
-          otpLength: 4,
-          lang: 'ar'
-        }),
-        signal: abortControllerRef.current?.signal
-      });
-
-      const otpData = await otpResponse.json();
-
-      if (!otpResponse.ok || !otpData.success) {
-        throw new Error(otpData.error || 'فشل في إرسال رمز التحقق');
-      }
-
-      console.log('✅ SMSOTP: OTP sent successfully via BeOn v3');
-      setMessage(`تم إرسال رمز التحقق إلى ${normalizedPhone}`);
-      setTimeRemaining(otpExpirySeconds);
-    } catch (error: any) {
-      // تجاهل أخطاء الإلغاء
-      if (error.name === 'AbortError') {
-        console.log('🛑 SMSOTP: Request was aborted');
-        return;
-      }
-      console.error('❌ SMSOTP: Error sending OTP:', error);
-      setError('حدث خطأ في إرسال رمز التحقق');
-      onVerificationFailed('حدث خطأ في إرسال رمز التحقق');
-      if (!isResend) sentRef.current = false;
-      isSendingRef.current = false;
-    }
-
-    setLoading(false);
-    isSendingRef.current = false;
-    console.log('📞 SMSOTP: sendOTP completed for:', phoneNumber);
-  }, [phoneNumber, name, otpExpirySeconds, onVerificationFailed]);
-
   // إرسال OTP عند فتح المكون (مرة واحدة فقط)
   useEffect(() => {
     console.log('🔍 SMSOTP: useEffect triggered:', {
       isOpen,
       initialized: isInitializedRef.current,
-      sent: sentRef.current,
       phoneNumber,
       lastPhone: lastPhoneNumberRef.current
     });
 
     if (isOpen && !isInitializedRef.current) {
       isInitializedRef.current = true;
-      console.log('🚀 SMSOTP: Initial OTP send triggered for:', phoneNumber);
-
-      // التحقق من أن رقم الهاتف لم يتغير
-      if (lastPhoneNumberRef.current === phoneNumber && sentRef.current) {
-        console.log('🛑 SMSOTP: OTP already sent for this phone number, skipping...');
-        return;
-      }
-
-      // إرسال OTP الأولي
-      sendOTP(false);
+      lastPhoneNumberRef.current = phoneNumber;
+      setTimeRemaining(otpExpirySeconds); // بدء المؤقت مباشرة
+      setMessage(`تم إرسال رمز التحقق إلى ${normalizePhone(phoneNumber)}`);
     }
-  }, [isOpen, sendOTP]);
+  }, [isOpen, phoneNumber, otpExpirySeconds]);
 
   // عداد الوقت المتبقي
   useEffect(() => {
@@ -203,16 +88,7 @@ export default function SMSOTPVerification({
   useEffect(() => {
     if (!isOpen) {
       console.log('🔒 Component closing - resetting...');
-      // إلغاء أي طلب قيد التنفيذ
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-
-      // إعادة تعيين جميع المتغيرات
-      sentRef.current = false;
       isInitializedRef.current = false;
-      isSendingRef.current = false;
       lastPhoneNumberRef.current = '';
 
       setOtp(['', '', '', '', '', '']);
@@ -234,11 +110,8 @@ export default function SMSOTPVerification({
     setMessage('');
     setTimeRemaining(0);
     setAttempts(0);
-    sentRef.current = false;
     isInitializedRef.current = false;
     lastPhoneNumberRef.current = '';
-    isSendingRef.current = false;
-    if (abortControllerRef.current) abortControllerRef.current.abort();
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -361,13 +234,27 @@ export default function SMSOTPVerification({
     setResendLoading(true);
     setError('');
 
-    // إعادة تعيين الحماية للسماح بالإرسال مرة أخرى
+    // إعادة تعيين الحالة
     setOtp(['', '', '', '', '', '']);
     setAttempts(0);
 
-    console.log('🔄 Starting manual resend...');
-    await sendOTP(true); // إرسال كإعادة إرسال
-    setResendLoading(false);
+    // استدعاء الواجهة الخلفية لإعادة الإرسال
+    fetch('/api/sms/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber, name, lang: language }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setMessage('تم إعادة إرسال الرمز بنجاح');
+          setTimeRemaining(otpExpirySeconds);
+        } else {
+          setError(data.error || 'فشل إعادة إرسال الرمز');
+        }
+      })
+      .catch(() => setError('حدث خطأ في الشبكة'))
+      .finally(() => setResendLoading(false));
   };
 
   const formatTime = (seconds: number): string => {

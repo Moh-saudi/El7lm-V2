@@ -267,6 +267,30 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      const otpResponse = await fetch('/api/sms/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: fullPhoneNumber,
+          name: 'مستخدم', // يمكن استبداله باسم المستخدم إذا كان متاحاً
+          lang: 'ar'
+        })
+      });
+
+      const otpData = await otpResponse.json();
+
+      if (!otpResponse.ok || !otpData.success) {
+        let errorMessage = otpData.error || 'فشل في إرسال رمز التحقق';
+        if (otpData.method === 'backup') {
+          errorMessage = 'خدمة الرسائل غير متاحة حاليًا. تم إنشاء رمز احتياطي لك، يرجى التواصل مع الدعم الفني للحصول عليه.';
+          setMessage(errorMessage); // عرض كرسالة إعلامية وليست خطأ
+        } else {
+          setError(errorMessage);
+        }
+        setLoading(false);
+        return;
+      }
+
       setPendingPhone(fullPhoneNumber);
       setShowPhoneVerification(true);
       localStorage.setItem('pendingPasswordReset', fullPhoneNumber);

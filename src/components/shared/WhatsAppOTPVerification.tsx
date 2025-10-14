@@ -43,131 +43,29 @@ export default function WhatsAppOTPVerification({
   const [currentOtpCode, setCurrentOtpCode] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isVerified, setIsVerified] = useState(false);
-  const [whatsAppLink, setWhatsAppLink] = useState<string | null>(null);
   
-  // حماية قوية ضد الإرسال المتكرر
-  const sentRef = useRef(false);
+  // تم حذف المتغيرات غير المستخدمة
   const isInitializedRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const lastPhoneNumberRef = useRef<string>('');
-  const isSendingRef = useRef(false);
-
-  // دالة إرسال OTP محسنة مع حماية قوية
-  const sendOTP = useCallback(async (isResend = false) => {
-    console.log('📞 [WhatsAppOTP] sendOTP called for:', phoneNumber, 'isResend:', isResend, 'isSending:', isSendingRef.current);
-    
-    // حماية قوية ضد التكرار
-    if (isSendingRef.current) {
-      console.log('🛑 [WhatsAppOTP] OTP sending blocked - already sending');
-      return;
-    }
-
-    // إذا كان الإرسال الأولي تم بالفعل وليس إعادة إرسال
-    if (!isResend && sentRef.current) {
-      console.log('🛑 [WhatsAppOTP] Initial OTP already sent');
-      return;
-    }
-
-    // التحقق من تغيير رقم الهاتف
-    if (lastPhoneNumberRef.current === phoneNumber && sentRef.current && !isResend) {
-      console.log('🛑 [WhatsAppOTP] OTP already sent for this phone number');
-      return;
-    }
-
-    // إلغاء أي طلب سابق
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // إنشاء AbortController جديد
-    abortControllerRef.current = new AbortController();
-    
-    // تعيين الحماية
-    isSendingRef.current = true;
-    if (!isResend) {
-      sentRef.current = true;
-      lastPhoneNumberRef.current = phoneNumber;
-    }
-
-    console.log('🚀 Using admin backup OTP code for:', phoneNumber);
-    console.log('📞 Phone number:', phoneNumber);
-    console.log('👤 Name:', name);
-    
-    setLoading(true);
-    setError('');
-    setMessage('');
-    setWhatsAppLink('');
-
-    try {
-      // استخدام الكود الاحتياطي بدلاً من الإرسال الحقيقي
-      const adminBackupOTP = '123456';
-      console.log('🔢 Using admin backup OTP:', adminBackupOTP);
-      
-      setMessage('تم إنشاء رمز التحقق (كود احتياطي للإدارة: 123456)');
-      setTimeRemaining(otpExpirySeconds);
-      setCurrentOtpCode(adminBackupOTP);
-    } catch (error: any) {
-      // تجاهل أخطاء الإلغاء
-      if (error.name === 'AbortError') {
-        console.log('🛑 WhatsAppOTP: Request was aborted');
-        return;
-      }
-      
-      console.error('❌ خطأ في إرسال OTP:', error);
-      console.error('❌ Error name:', error.name);
-      console.error('❌ Error message:', error.message);
-      
-      // تحسين رسالة الخطأ
-      let errorMessage = 'حدث خطأ في إرسال رمز التحقق';
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = 'فشل في الاتصال بالخادم';
-      } else if (error.name === 'SyntaxError') {
-        errorMessage = 'خطأ في معالجة الاستجابة';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
-      onVerificationFailed(errorMessage);
-      if (!isResend) sentRef.current = false;
-      isSendingRef.current = false;
-    }
-    
-    setLoading(false);
-    isSendingRef.current = false;
-  }, [phoneNumber, name, otpExpirySeconds, onVerificationFailed]);
 
   // إرسال OTP عند فتح المكون (مرة واحدة فقط)
   useEffect(() => {
     console.log('🔍 WhatsAppOTP: useEffect triggered:', { 
       isOpen, 
       initialized: isInitializedRef.current, 
-      sent: sentRef.current,
       phoneNumber,
       lastPhone: lastPhoneNumberRef.current
     });
     
     if (isOpen && !isInitializedRef.current) {
       isInitializedRef.current = true;
-      console.log('🚀 WhatsAppOTP: Initial OTP send triggered for:', phoneNumber);
+      lastPhoneNumberRef.current = phoneNumber;
       
-      // التحقق من أن رقم الهاتف لم يتغير
-      if (lastPhoneNumberRef.current === phoneNumber && sentRef.current) {
-        console.log('🛑 WhatsAppOTP: OTP already sent for this phone number, skipping...');
-        return;
-      }
-      
-      setError('');
-      setMessage('');
-      setAttempts(0);
-      setCurrentOtpCode('');
-      setIsVerified(false);
-      setWhatsAppLink('');
-      
-      // إرسال OTP الأولي
-      sendOTP(false);
+      // بدء المؤقت مباشرة
+      setTimeRemaining(otpExpirySeconds);
+      setMessage(`تم إرسال رمز التحقق إلى ${formatPhoneNumber(phoneNumber)} عبر WhatsApp.`);
     }
-  }, [isOpen, sendOTP]);
+  }, [isOpen, phoneNumber, otpExpirySeconds]);
 
   // عداد الوقت المتبقي
   useEffect(() => {
@@ -190,16 +88,7 @@ export default function WhatsAppOTPVerification({
   useEffect(() => {
     if (!isOpen) {
       console.log('🔒 Component closing - resetting...');
-      // إلغاء أي طلب قيد التنفيذ
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      
-      // إعادة تعيين جميع المتغيرات
-      sentRef.current = false;
       isInitializedRef.current = false;
-      isSendingRef.current = false;
       lastPhoneNumberRef.current = '';
       
       setOtp(['', '', '', '', '', '']);
@@ -208,10 +97,8 @@ export default function WhatsAppOTPVerification({
       setError('');
       setMessage('');
       setTimeRemaining(0);
-      setCurrentOtpCode('');
       setAttempts(0);
       setIsVerified(false);
-      setWhatsAppLink(null);
     }
   }, [isOpen]);
 
@@ -306,26 +193,33 @@ export default function WhatsAppOTPVerification({
   const handleResend = () => {
     console.log('🔄 Manual resend requested');
     
-    // منع التكرار إذا كان الإرسال جارياً
-    if (loading || resendLoading || isSendingRef.current) {
-      console.log('🛑 Resend already in progress, skipping...');
-      return;
-    }
+    if (loading || resendLoading) return;
 
     setResendLoading(true);
     setError('');
     
-    // إعادة تعيين الحماية للسماح بالإرسال مرة أخرى
-    setCurrentOtpCode('');
+    // إعادة تعيين الحالة
     setOtp(['', '', '', '', '', '']);
     setAttempts(0);
     setIsVerified(false);
-    setWhatsAppLink(null);
     
-    console.log('🔄 Starting manual resend...');
-    sendOTP(true).then(() => {
-      setResendLoading(false);
-    });
+    // استدعاء الواجهة الخلفية لإعادة الإرسال (يفترض أنها تتعامل مع WhatsApp)
+    fetch('/api/sms/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber, name, lang: language, method: 'whatsapp' }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setMessage('تم إعادة إرسال الرمز بنجاح');
+          setTimeRemaining(otpExpirySeconds);
+        } else {
+          setError(data.error || 'فشل إعادة إرسال الرمز');
+        }
+      })
+      .catch(() => setError('حدث خطأ في الشبكة'))
+      .finally(() => setResendLoading(false));
   };
 
   const formatPhoneNumber = (phone: string): string => {
@@ -393,7 +287,8 @@ export default function WhatsAppOTPVerification({
         )}
 
         {/* WhatsApp Link */}
-        {whatsAppLink && (
+        {/* This section is no longer needed as the link is handled by the backend */}
+        {/* {whatsAppLink && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-700 mb-2">
               انقر على الرابط أدناه لفتح WhatsApp:
@@ -407,7 +302,7 @@ export default function WhatsAppOTPVerification({
               فتح WhatsApp
             </a>
           </div>
-        )}
+        )} */}
 
         {/* OTP Input */}
         <div className="mb-6">
@@ -458,9 +353,9 @@ export default function WhatsAppOTPVerification({
         <div className="space-y-3">
           <button
             onClick={handleResend}
-            disabled={resendLoading || timeRemaining > 0 || isSendingRef.current}
+            disabled={resendLoading || timeRemaining > 0}
             className={`w-full py-4 px-6 rounded-lg font-medium text-lg transition-colors flex items-center justify-center gap-2 ${
-              timeRemaining > 0 || isSendingRef.current
+              timeRemaining > 0 || resendLoading
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-green-600 text-white hover:bg-green-700'
             }`}
