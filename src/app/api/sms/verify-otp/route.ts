@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
     const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://beon.chat/api/send/message/otp';
     const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
 
+    if (!beonToken) {
+      console.error('❌ [verify-otp] BEON_OTP_TOKEN is not set in environment variables');
+      return NextResponse.json(
+        { success: false, error: 'خدمة التحقق غير مهيأة بشكل صحيح' },
+        { status: 500 }
+      );
+    }
+
     const beonResponse = await fetch(`${beonUrl}/verify`, {
       method: 'POST',
       headers: {
