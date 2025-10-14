@@ -12,8 +12,6 @@ import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import {
     Activity,
     AlertCircle,
-    BarChart3,
-    CalendarDays,
     CheckCircle2,
     ChevronDown,
     ChevronUp,
@@ -30,13 +28,13 @@ import {
     RefreshCcw,
     Search,
     Shield,
+    Trash2,
     TrendingUp,
     UserCheck,
     UserCog,
     Users,
     UserX,
-    XCircle,
-    Trash2
+    XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -279,7 +277,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Load users data
+  // Load users data - with pagination support for 1000+ users
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -288,16 +286,22 @@ export default function AdminUsersPage() {
 
         const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
         const allUsers: User[] = [];
+        let totalProcessed = 0;
 
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
+            
+            // جلب جميع المستندات بدون حد (استخدام getDocs بدون limit)
             const collectionRef = collection(db, collectionName);
             const snapshot = await getDocs(collectionRef);
-            
-            console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
 
-            snapshot.docs.forEach((userDoc) => {
+            console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
+            
+            let collectionCount = 0;
+
+            // معالجة كل مستند
+            snapshot.forEach((userDoc) => {
               try {
                 const data = userDoc.data();
                 const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
@@ -322,18 +326,37 @@ export default function AdminUsersPage() {
                   profileCompletion: profileCompletion,
                   profileCompleted: profileCompletion >= 80
                 };
-                
+
                 allUsers.push(userData);
+                collectionCount++;
+                totalProcessed++;
+                
+                // عرض تقدم كل 100 مستند
+                if (totalProcessed % 100 === 0) {
+                  console.log(`⏳ تمت معالجة ${totalProcessed} مستخدم...`);
+                }
               } catch (docError) {
                 console.error(`خطأ في معالجة المستند ${userDoc.id}:`, docError);
               }
             });
+            
+            console.log(`✔️ ${collectionName}: تمت معالجة ${collectionCount} مستخدم`);
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
+            // الاستمرار في تحميل المجموعات الأخرى حتى لو فشلت إحداها
           }
         }
 
-        console.log(`📊 إجمالي المستخدمين المحملين: ${allUsers.length}`);
+        console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
+        console.log(`📈 التوزيع: 
+          - Players: ${allUsers.filter(u => u.accountType === 'player').length}
+          - Academies: ${allUsers.filter(u => u.accountType === 'academy').length}
+          - Clubs: ${allUsers.filter(u => u.accountType === 'club').length}
+          - Agents: ${allUsers.filter(u => u.accountType === 'agent').length}
+          - Trainers: ${allUsers.filter(u => u.accountType === 'trainer').length}
+          - Users: ${allUsers.filter(u => u.accountType === 'user').length}
+        `);
+        
         setUsers(allUsers);
 
         await loadVisitStats();
@@ -341,7 +364,7 @@ export default function AdminUsersPage() {
         if (allUsers.length === 0) {
           toast.warning('لم يتم العثور على أي مستخدمين. تحقق من إعدادات قاعدة البيانات.');
         } else {
-          toast.success(`تم تحميل ${allUsers.length} مستخدم بنجاح`);
+          toast.success(`✅ تم تحميل ${allUsers.length.toLocaleString()} مستخدم بنجاح من جميع المجموعات`);
         }
       } catch (error) {
         console.error('❌ خطأ عام في تحميل المستخدمين:', error);
@@ -624,9 +647,22 @@ export default function AdminUsersPage() {
     return (
       <AccountTypeProtection allowedTypes={['admin']}>
         <div className="p-8 text-center text-gray-500">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg">جاري تحميل بيانات المستخدمين...</p>
-          <p className="text-sm mt-2">قد يستغرق هذا بضع ثوانٍ...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
+          <p className="text-2xl font-bold text-gray-800">جاري تحميل بيانات المستخدمين...</p>
+          <p className="text-lg mt-3 text-gray-600">نقوم بجلب جميع المستخدمين من 6 مجموعات</p>
+          <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+            <p className="text-sm text-blue-800">
+              ⏳ قد يستغرق هذا دقيقة لتحميل أكثر من 1000 مستخدم...
+            </p>
+            <p className="text-xs text-blue-600 mt-2">
+              يرجى الانتظار وعدم إغلاق الصفحة
+            </p>
+          </div>
+          <div className="mt-8 flex justify-center gap-2">
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
         </div>
       </AccountTypeProtection>
     );
@@ -1192,7 +1228,7 @@ export default function AdminUsersPage() {
                 </TabsContent>
               </Tabs>
             </CardHeader>
-            
+
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
