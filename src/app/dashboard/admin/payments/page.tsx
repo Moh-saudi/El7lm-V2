@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, where, limit, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import toast from 'react-hot-toast';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -57,17 +57,17 @@ export default function AdminPaymentsPage() {
   });
   const [messageHistory, setMessageHistory] = useState<{[key: string]: any[]}>({});
   const [showMessageHistory, setShowMessageHistory] = useState(false);
-  
+
   // حذف المدفوعات
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingPayment, setDeletingPayment] = useState(null);
-  
+
   // تتبع المدفوعات السابقة للإشعارات
   const [previousPaymentIds, setPreviousPaymentIds] = useState(new Set());
-  
+
   // تتبع الإشعارات المرسلة لتجنب التكرار
   const [sentNotifications, setSentNotifications] = useState(new Set());
-  
+
   // إدارة إرسال الإشعارات للمدير
   const [adminNotificationsEnabled, setAdminNotificationsEnabled] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -106,7 +106,7 @@ export default function AdminPaymentsPage() {
     // فلتر البحث
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(payment => 
+      filtered = filtered.filter(payment =>
         payment.playerName.toLowerCase().includes(searchTerm) ||
         payment.playerPhone.toLowerCase().includes(searchTerm) ||
         payment.paymentMethod.toLowerCase().includes(searchTerm) ||
@@ -130,7 +130,7 @@ export default function AdminPaymentsPage() {
 
     // فلتر طريقة الدفع
     if (filters.paymentMethod !== 'all') {
-      filtered = filtered.filter(payment => 
+      filtered = filtered.filter(payment =>
         payment.paymentMethod.toLowerCase().includes(filters.paymentMethod.toLowerCase())
       );
     }
@@ -153,7 +153,7 @@ export default function AdminPaymentsPage() {
     // الترتيب
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       if (filters.sortBy === 'amount') {
         aValue = a.amount || 0;
         bValue = b.amount || 0;
@@ -207,8 +207,8 @@ export default function AdminPaymentsPage() {
 
   // تحديد/إلغاء تحديد صف
   const toggleRowSelection = (paymentId) => {
-    setSelectedRows(prev => 
-      prev.includes(paymentId) 
+    setSelectedRows(prev =>
+      prev.includes(paymentId)
         ? prev.filter(id => id !== paymentId)
         : [...prev, paymentId]
     );
@@ -256,8 +256,8 @@ export default function AdminPaymentsPage() {
       await sendNotificationToCustomer(updatingPayment, newStatus);
 
       // تحديث البيانات المحلية
-      setPayments(prev => prev.map(p => 
-        p.id === updatingPayment.id 
+      setPayments(prev => prev.map(p =>
+        p.id === updatingPayment.id
           ? { ...p, status: newStatus, updatedAt: new Date() }
           : p
       ));
@@ -294,10 +294,10 @@ export default function AdminPaymentsPage() {
     try {
       const userId = payment.playerId || payment.userId;
       if (!userId || userId === 'unknown') {
-        console.error('لا يوجد معرف مستخدم للتفعيل:', { 
-          paymentId: payment.id, 
-          playerId: payment.playerId, 
-          userId: payment.userId 
+        console.error('لا يوجد معرف مستخدم للتفعيل:', {
+          paymentId: payment.id,
+          playerId: payment.playerId,
+          userId: payment.userId
         });
         return;
       }
@@ -371,14 +371,14 @@ export default function AdminPaymentsPage() {
     // اختصار اسم العميل
     const customerName = payment.playerName || payment.playerId || 'غير محدد';
     const shortName = customerName.length > 8 ? customerName.substring(0, 6) + '..' : customerName;
-    
+
     // اختصار المبلغ
     const amount = payment.amount || 0;
     const currency = payment.currency || 'EGP';
-    
+
     // إنشاء رسالة قصيرة جداً
     const message = `💰 مدفوعة جديدة!\n👤 ${shortName}\n💵 ${amount} ${currency}`;
-    
+
     return {
       message: message,
       length: message.length
@@ -404,7 +404,7 @@ export default function AdminPaymentsPage() {
     const now = new Date();
     const timeDiff = now.getTime() - paymentTime.getTime();
     const tenMinutes = 10 * 60 * 1000; // 10 دقائق بالميلي ثانية
-    
+
     if (timeDiff > tenMinutes) {
       console.log(`تجاهل إشعار لمدفوعة قديمة: ${payment.id} - تم إنشاؤها منذ ${Math.round(timeDiff / (60 * 1000))} دقيقة`);
       return;
@@ -412,12 +412,12 @@ export default function AdminPaymentsPage() {
 
     try {
       const adminPhone = '01017799580';
-      
+
       // إنشاء رسالة SMS قصيرة
       const smsData = createShortSMSMessage(payment);
-      
+
       console.log(`رسالة SMS: ${smsData.message} (${smsData.length} حرف)`);
-      
+
       // التحقق من طول الرسالة
       if (smsData.length > 65) {
         console.warn(`⚠️ الرسالة طويلة جداً: ${smsData.length} حرف`);
@@ -427,9 +427,9 @@ export default function AdminPaymentsPage() {
         const amount = payment.amount || 0;
         const currency = payment.currency || 'EGP';
         const shortMessage = `💰 مدفوعة جديدة!\n👤 ${shortName}\n💵 ${amount} ${currency}`;
-        
+
         console.log(`رسالة مختصرة: ${shortMessage} (${shortMessage.length} حرف)`);
-        
+
         await fetch('/api/beon/sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -514,9 +514,9 @@ export default function AdminPaymentsPage() {
                 🌐 www.el7lm.com
               </div>
             </div>
-            
+
             <div class="invoice-title">فاتورة دفع <span style="font-size:1.3em;">🧾</span></div>
-            
+
             <div style="display: flex; justify-content: space-between; margin-bottom: 24px; font-size: 1.1rem;">
               <b>رقم الفاتورة:</b> ${payment.id} &nbsp; | &nbsp;
               <b>تاريخ الإصدار:</b> ${new Date().toLocaleDateString('ar-EG')} &nbsp; | &nbsp;
@@ -561,17 +561,17 @@ export default function AdminPaymentsPage() {
     // إنشاء blob من HTML
     const blob = new Blob([invoiceContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    
+
     // إنشاء رابط التحميل
     const link = document.createElement('a');
     link.href = url;
     link.download = `فاتورة-دفع-${payment.playerName}-${new Date().toISOString().split('T')[0]}.html`;
-    
+
     // إضافة الرابط للصفحة وتنفيذ التحميل
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // تنظيف URL
     URL.revokeObjectURL(url);
   };
@@ -584,7 +584,7 @@ export default function AdminPaymentsPage() {
     }
 
     let message = '';
-    
+
     if (payment.status === 'completed' || payment.status === 'accepted' || payment.status === 'success') {
       message = `✅ تم تأكيد دفعتك بنجاح!\n\n💰 المبلغ: ${payment.amount?.toLocaleString()} ${payment.currency}\n📅 التاريخ: ${new Date(payment.createdAt).toLocaleDateString('ar-EG')}\n\nشكراً لثقتك في El7lm Platform! 🎉`;
     } else if (payment.status === 'pending') {
@@ -594,9 +594,9 @@ export default function AdminPaymentsPage() {
     } else {
       message = `📋 تحديث على دفعتك\n\n💰 المبلغ: ${payment.amount?.toLocaleString()} ${payment.currency}\n📅 التاريخ: ${new Date(payment.createdAt).toLocaleDateString('ar-EG')}\n🔄 الحالة: ${payment.status}\n\nمن El7lm Platform`;
     }
-    
+
     const result = openWhatsAppShare(payment.playerPhone, message);
-    
+
     if (result.success) {
       toast.success('تم فتح WhatsApp بنجاح!');
     } else {
@@ -607,7 +607,7 @@ export default function AdminPaymentsPage() {
   // اختبار WhatsApp Share
   const testWhatsAppShareFeature = () => {
     const result = testWhatsAppShare('اختبار إشعارات المدفوعات من El7lm Platform');
-    
+
     if (result.success) {
       toast.success('تم فتح WhatsApp للاختبار!');
     } else {
@@ -624,7 +624,7 @@ export default function AdminPaymentsPage() {
       }
 
       let notificationMessage = '';
-      
+
       if (status === 'completed' || status === 'accepted' || status === 'success') {
         notificationMessage = messageTemplates.subscriptionActivated(payment);
       } else if (status === 'pending') {
@@ -680,7 +680,7 @@ export default function AdminPaymentsPage() {
         orderBy('createdAt', 'desc'),
         limit(10)
       );
-      
+
       const snapshot = await getDocs(q);
       const messages = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -700,7 +700,7 @@ export default function AdminPaymentsPage() {
     try {
       setSelectedPayment(payment);
       setShowMessageHistory(true);
-      
+
       // جلب تاريخ الرسائل
       const messages = await fetchMessageHistory(payment.id, payment.playerPhone);
       setMessageHistory(prev => ({
@@ -728,14 +728,14 @@ export default function AdminPaymentsPage() {
   const calculateMessageStats = () => {
     let totalMessages = 0;
     let customersWithMessages = 0;
-    
+
     Object.values(messageHistory).forEach(messages => {
       if (messages && messages.length > 0) {
         totalMessages += messages.length;
         customersWithMessages++;
       }
     });
-    
+
     return { totalMessages, customersWithMessages };
   };
 
@@ -748,7 +748,7 @@ export default function AdminPaymentsPage() {
         notificationsRef,
         where('type', 'in', ['sms', 'whatsapp', 'payment_notification'])
       );
-      
+
       const snapshot = await getDocs(q);
       const allMessages = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -757,7 +757,7 @@ export default function AdminPaymentsPage() {
       }));
 
       // ترتيب البيانات يدوياً لتجنب مشاكل Firebase Indexing
-      const sortedMessages = allMessages.sort((a, b) => 
+      const sortedMessages = allMessages.sort((a, b) =>
         b.createdAt.getTime() - a.createdAt.getTime()
       );
 
@@ -774,7 +774,7 @@ export default function AdminPaymentsPage() {
 
       setMessageHistory(messagesByPhone);
       console.log('تم تحميل جميع الرسائل:', sortedMessages.length);
-      
+
       return messagesByPhone;
     } catch (error) {
       console.error('خطأ في تحميل الرسائل:', error);
@@ -785,35 +785,35 @@ export default function AdminPaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      
+
       const collectionNames = [
-        'payments', 'payment', 'transactions', 'orders', 
-        'wallet', 'instapay', 'fawry', 'vodafone_cash', 
-        'orange_money', 'etisalat_wallet', 'paymob', 
+        'payments', 'payment', 'transactions', 'orders',
+        'wallet', 'instapay', 'fawry', 'vodafone_cash',
+        'orange_money', 'etisalat_wallet', 'paymob',
         'paypal_transactions', 'stripe_payments',
         'bulkPayments', 'bulk_payments', 'payment_action_logs', 'payment_results'
       ];
-      
+
       let allPayments = [];
-      
+
       for (const collectionName of collectionNames) {
         try {
           const collectionRef = collection(db, collectionName);
           const q = query(collectionRef, orderBy('createdAt', 'desc'));
           const querySnapshot = await getDocs(q);
-          
+
           for (const doc of querySnapshot.docs) {
             const data = doc.data();
-            
+
             console.log(`Collection: ${collectionName}, Data:`, data);
-            
+
             // البحث عن معرف اللاعب
             let playerId = null;
             const playerIdFields = [
               'playerId', 'userId', 'customerId', 'user_id', 'player_id', 'customer_id',
               'player', 'user', 'customer', 'accountId', 'account_id'
             ];
-            
+
             for (const field of playerIdFields) {
               if (data[field] && data[field].toString().trim() !== '') {
                 playerId = data[field].toString().trim();
@@ -821,14 +821,14 @@ export default function AdminPaymentsPage() {
                 break;
               }
             }
-            
+
             // البحث عن بيانات اللاعب - التصحيح الصحيح!
             let playerName = 'غير محدد';
             let playerPhone = 'غير محدد';
-            
+
             // استخدام نفس منطق صفحة إدارة المستخدمين
             playerName = data.name || data.full_name || 'غير محدد';
-            
+
             // إذا كان الاسم يحتوي على إيميل، نحاول البحث في حقول أخرى
             if (playerName.includes('@') || playerName === 'غير محدد') {
               const directNameFields = [
@@ -840,11 +840,11 @@ export default function AdminPaymentsPage() {
                 'realName', 'actualName', 'nickName', 'preferredName',
                 'billingName', 'shippingName', 'contactName', 'primaryName'
               ];
-              
+
               for (const field of directNameFields) {
                 if (data[field] && data[field].toString().trim() !== '') {
                   const foundName = data[field].toString().trim();
-                  
+
                   // التحقق من أن القيمة ليست إيميل
                   if (!foundName.includes('@')) {
                     playerName = foundName;
@@ -856,28 +856,28 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // إذا لم نجد الاسم، نبحث في جميع الحقول للعثور على اسم حقيقي
             if (playerName === 'غير محدد') {
               // البحث في جميع الحقول للعثور على اسم حقيقي
               for (const [key, value] of Object.entries(data)) {
                 if (value && typeof value === 'string' && value.trim() !== '') {
                   const lowerKey = key.toLowerCase();
-                  
+
                   // البحث في الحقول التي قد تحتوي على أسماء
-                  if (lowerKey.includes('name') || lowerKey.includes('user') || 
+                  if (lowerKey.includes('name') || lowerKey.includes('user') ||
                       lowerKey.includes('customer') || lowerKey.includes('player') ||
                       lowerKey.includes('client') || lowerKey.includes('account')) {
-                    
+
                     const foundValue = value.toString().trim();
-                    
+
                     // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي
-                    if (!foundValue.includes('@') && 
-                        foundValue.length > 2 && 
+                    if (!foundValue.includes('@') &&
+                        foundValue.length > 2 &&
                         foundValue.length < 50 &&
                         /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
                         !/^\d+$/.test(foundValue)) {
-                      
+
                       playerName = foundValue;
                       console.log(`Found real name in field: ${key} = ${playerName}`);
                       break;
@@ -886,18 +886,18 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // إذا لم نجد الاسم، نبحث في الإيميل ونستخرج الاسم منه (كحل أخير فقط)
             if (playerName === 'غير محدد' && data.email) {
               const email = data.email.toString().trim();
               console.log(`Found email: ${email}`);
-              
+
               // استخراج الاسم من الإيميل (قبل علامة @) - فقط إذا كان يبدو كاسم حقيقي
               if (email.includes('@')) {
                 const nameFromEmail = email.split('@')[0];
                 // تنظيف الاسم من الأرقام والرموز
                 const cleanName = nameFromEmail.replace(/[0-9_\-\.]/g, ' ').trim();
-                
+
                 // التحقق من أن الاسم يبدو كاسم حقيقي (يحتوي على أحرف وليس أرقام فقط)
                 if (cleanName && cleanName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(cleanName)) {
                   playerName = cleanName;
@@ -908,10 +908,10 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // البحث عن رقم الهاتف - التصحيح الصحيح للحقول!
             const directPhoneFields = [
-              'phone', 'whatsapp', 'mobile', 'telephone', 'contact', 
+              'phone', 'whatsapp', 'mobile', 'telephone', 'contact',
               'phoneNumber', 'mobileNumber', 'contactNumber',
               'customer_phone', 'user_phone', 'phone_number', 'mobile_number',
               'customerMobile', 'userMobile', 'customerTel', 'userTel',
@@ -935,7 +935,7 @@ export default function AdminPaymentsPage() {
               'customerPhoneNo', 'userPhoneNo', 'recipientPhoneNo',
               'buyerPhoneNo', 'clientPhoneNo', 'accountPhoneNo', 'holderPhoneNo'
             ];
-            
+
             for (const field of directPhoneFields) {
               if (data[field] && data[field].toString().trim() !== '') {
                 playerPhone = data[field].toString().trim();
@@ -943,7 +943,7 @@ export default function AdminPaymentsPage() {
                 break;
               }
             }
-            
+
             // البحث في حقول أخرى محتملة للهاتف
             if (playerPhone === 'غير محدد') {
               const additionalPhoneFields = [
@@ -952,7 +952,7 @@ export default function AdminPaymentsPage() {
                 'user_phone', 'recipient_phone', 'buyer_phone', 'client_phone',
                 'account_phone', 'holder_phone'
               ];
-              
+
               for (const field of additionalPhoneFields) {
                 if (data[field] && data[field].toString().trim() !== '') {
                   playerPhone = data[field].toString().trim();
@@ -961,7 +961,7 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // إذا لم نجد رقم الهاتف، نبحث في الإيميل ونستخرج الرقم منه
             if (playerPhone === 'غير محدد' && data.email) {
               const email = data.email.toString().trim();
@@ -972,7 +972,7 @@ export default function AdminPaymentsPage() {
                 console.log(`Extracted phone from email: ${playerPhone}`);
               }
             }
-            
+
             // البحث في حقول أخرى محتملة للهاتف
             if (playerPhone === 'غير محدد') {
               const additionalPhoneFields = [
@@ -993,7 +993,7 @@ export default function AdminPaymentsPage() {
                 'customerPhoneNo', 'userPhoneNo', 'recipientPhoneNo',
                 'buyerPhoneNo', 'clientPhoneNo', 'accountPhoneNo', 'holderPhoneNo'
               ];
-              
+
               for (const field of additionalPhoneFields) {
                 if (data[field] && data[field].toString().trim() !== '') {
                   playerPhone = data[field].toString().trim();
@@ -1002,14 +1002,14 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // البحث في جميع الحقول المحتملة للهاتف
             if (playerPhone === 'غير محدد') {
               // البحث في جميع الحقول التي تحتوي على كلمة "phone" أو "mobile" أو "contact"
               for (const [key, value] of Object.entries(data)) {
                 if (value && typeof value === 'string' && value.trim() !== '') {
                   const lowerKey = key.toLowerCase();
-                  if (lowerKey.includes('phone') || lowerKey.includes('mobile') || 
+                  if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
                       lowerKey.includes('contact') || lowerKey.includes('tel') ||
                       lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                     // التحقق من أن القيمة تحتوي على أرقام
@@ -1022,7 +1022,7 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // البحث في جميع الحقول المحتملة للهاتف - بحث شامل
             if (playerPhone === 'غير محدد') {
               // البحث في جميع الحقول التي تحتوي على أرقام
@@ -1055,37 +1055,37 @@ export default function AdminPaymentsPage() {
                 }
               }
             }
-            
+
             // إذا لم نجد البيانات مباشرة، نبحث في جدول players
             if (playerId && (playerName === 'غير محدد' || playerPhone === 'غير محدد')) {
               try {
                 console.log(`Searching for player with ID: ${playerId}`);
-                const playerDoc = await getDocs(query(collection(db, 'players'), 
+                const playerDoc = await getDocs(query(collection(db, 'players'),
                   where('uid', '==', playerId)
                 ));
-                
+
                 if (!playerDoc.empty) {
                   const playerData = playerDoc.docs[0].data();
                   console.log('Player data found:', playerData);
-                  
+
                   // استخدام نفس منطق صفحة إدارة المستخدمين
                   if (playerName === 'غير محدد') {
                     playerName = playerData.name || playerData.full_name || 'غير محدد';
                     console.log(`Found name in player data: ${playerName}`);
                   }
-                  
+
                   // استخدام نفس منطق صفحة إدارة المستخدمين للهاتف
                   if (playerPhone === 'غير محدد') {
                     playerPhone = playerData.phone || playerData.phoneNumber || playerData.whatsapp || 'غير محدد';
                     console.log(`Found phone in player data: ${playerPhone}`);
                   }
-                  
+
                   // البحث في جميع الحقول المحتملة للهاتف في جدول players
                   if (playerPhone === 'غير محدد') {
                     for (const [key, value] of Object.entries(playerData)) {
                       if (value && typeof value === 'string' && value.trim() !== '') {
                         const lowerKey = key.toLowerCase();
-                        if (lowerKey.includes('phone') || lowerKey.includes('mobile') || 
+                        if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
                             lowerKey.includes('contact') || lowerKey.includes('tel') ||
                             lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                           // التحقق من أن القيمة تحتوي على أرقام
@@ -1115,39 +1115,39 @@ export default function AdminPaymentsPage() {
                       }
                     }
                   }
-                  
+
                   console.log(`Final result from players - Name: ${playerName}, Phone: ${playerPhone}`);
                 } else {
                   console.log(`No player found with ID: ${playerId}`);
-                  
+
                   // محاولة البحث في جدول users إذا لم يتم العثور في players
                   try {
-                    const userDoc = await getDocs(query(collection(db, 'users'), 
+                    const userDoc = await getDocs(query(collection(db, 'users'),
                       where('uid', '==', playerId)
                     ));
-                    
+
                     if (!userDoc.empty) {
                       const userData = userDoc.docs[0].data();
                       console.log('User data found:', userData);
-                      
+
                       // استخدام نفس منطق صفحة إدارة المستخدمين
                       if (playerName === 'غير محدد') {
                         playerName = userData.name || userData.full_name || 'غير محدد';
                         console.log(`Found name in user data: ${playerName}`);
                       }
-                      
+
                       // استخدام نفس منطق صفحة إدارة المستخدمين للهاتف
                       if (playerPhone === 'غير محدد') {
                         playerPhone = userData.phone || userData.phoneNumber || userData.whatsapp || 'غير محدد';
                         console.log(`Found phone in user data: ${playerPhone}`);
                       }
-                      
+
                       // البحث في جميع الحقول المحتملة للهاتف في جدول users
                       if (playerPhone === 'غير محدد') {
                         for (const [key, value] of Object.entries(userData)) {
                           if (value && typeof value === 'string' && value.trim() !== '') {
                             const lowerKey = key.toLowerCase();
-                            if (lowerKey.includes('phone') || lowerKey.includes('mobile') || 
+                            if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
                                 lowerKey.includes('contact') || lowerKey.includes('tel') ||
                                 lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                               // التحقق من أن القيمة تحتوي على أرقام
@@ -1177,7 +1177,7 @@ export default function AdminPaymentsPage() {
                           }
                         }
                       }
-                      
+
                       console.log(`Final result from users - Name: ${playerName}, Phone: ${playerPhone}`);
                     }
                   } catch (userError) {
@@ -1190,11 +1190,11 @@ export default function AdminPaymentsPage() {
             } else if (!playerId) {
               console.log('No playerId found in payment data');
             }
-            
+
             console.log(`Final payment data - Name: ${playerName}, Phone: ${playerPhone}, Collection: ${collectionName}`);
-            
-            allPayments.push({ 
-              id: doc.id, 
+
+            allPayments.push({
+              id: doc.id,
               collection: collectionName,
               playerName: playerName,
               playerPhone: playerPhone,
@@ -1220,7 +1220,7 @@ export default function AdminPaymentsPage() {
 
       // حساب إحصائيات الرسائل
       const messageStats = calculateMessageStats();
-      
+
       setStats({
         total: allPayments.length,
         completed,
@@ -1230,14 +1230,14 @@ export default function AdminPaymentsPage() {
         messagesSent: messageStats.totalMessages,
         customersWithMessages: messageStats.customersWithMessages
       });
-      
+
       console.log('إحصائيات الرسائل:', messageStats);
       console.log('messageHistory:', messageHistory);
 
       // اكتشاف المدفوعات الجديدة
       const currentPaymentIds = new Set(allPayments.map(p => p.id));
       const newPayments = allPayments.filter(payment => !previousPaymentIds.has(payment.id));
-      
+
       // إرسال إشعارات للمدفوعات الجديدة فقط
       if (newPayments.length > 0) {
         console.log(`إرسال إشعارات لـ ${newPayments.length} مدفوعة جديدة`);
@@ -1247,7 +1247,7 @@ export default function AdminPaymentsPage() {
           const now = new Date();
           const timeDiff = now.getTime() - paymentTime.getTime();
           const fiveMinutes = 5 * 60 * 1000; // 5 دقائق بالميلي ثانية
-          
+
           if (timeDiff <= fiveMinutes) {
             console.log(`إرسال إشعار لمدفوعة جديدة: ${newPayment.id} - ${newPayment.playerName}`);
             await sendAdminNotification(newPayment);
@@ -1258,18 +1258,18 @@ export default function AdminPaymentsPage() {
       } else {
         console.log('لا توجد مدفوعات جديدة لإرسال إشعارات');
       }
-      
+
       // تحديث قائمة المدفوعات السابقة
       setPreviousPaymentIds(currentPaymentIds);
-      
+
       setPayments(allPayments);
       console.log(`تم جلب ${allPayments.length} دفعة`);
       console.log(`تم اكتشاف ${newPayments.length} مدفوعة جديدة`);
       console.log('مثال على البيانات المجلوبة:', allPayments.slice(0, 3));
-      
+
       // تحميل الرسائل بعد تحميل المدفوعات
       await fetchAllMessages();
-      
+
       toast.success(`تم جلب ${allPayments.length} دفعة بنجاح`);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -1301,7 +1301,7 @@ export default function AdminPaymentsPage() {
       toast.error('يرجى كتابة رسالة');
       return;
     }
-    
+
     if (!selectedPayment.playerPhone || selectedPayment.playerPhone === 'غير محدد') {
       toast.error('رقم الهاتف غير متوفر للإرسال');
       return;
@@ -1316,20 +1316,20 @@ export default function AdminPaymentsPage() {
           message: messageText
         })
       });
-      
+
       toast.success('تم إرسال SMS بنجاح');
-      
+
       // إغلاق الموديول وتنظيف النص بعد الإرسال الناجح
       setShowMessageDialog(false);
       setMessageText('');
-      
+
       // تحديث تاريخ الرسائل
       const messages = await fetchMessageHistory(selectedPayment.id, selectedPayment.playerPhone);
       setMessageHistory(prev => ({
         ...prev,
         [selectedPayment.id]: messages
       }));
-      
+
       // تحديث الإحصائيات
       const messageStats = calculateMessageStats();
       setStats(prev => ({
@@ -1337,7 +1337,7 @@ export default function AdminPaymentsPage() {
         messagesSent: messageStats.totalMessages,
         customersWithMessages: messageStats.customersWithMessages
       }));
-      
+
     } catch (error) {
       console.error('خطأ في إرسال SMS:', error);
       toast.error('فشل في إرسال SMS');
@@ -1350,7 +1350,7 @@ export default function AdminPaymentsPage() {
       toast.error('يرجى كتابة رسالة');
       return;
     }
-    
+
     if (!selectedPayment.playerPhone || selectedPayment.playerPhone === 'غير محدد') {
       toast.error('رقم الهاتف غير متوفر للإرسال');
       return;
@@ -1367,11 +1367,11 @@ export default function AdminPaymentsPage() {
         })
       });
       toast.success('تم إرسال الرسالة بنجاح (كـ SMS - BeOn V3 لا يدعم WhatsApp فعلياً)');
-      
+
       // إغلاق الموديول وتنظيف النص بعد فتح WhatsApp
       setShowMessageDialog(false);
       setMessageText('');
-      
+
       // تحديث الإحصائيات (لأن WhatsApp يُفتح في نافذة جديدة)
       const messageStats = calculateMessageStats();
       setStats(prev => ({
@@ -1379,7 +1379,7 @@ export default function AdminPaymentsPage() {
         messagesSent: messageStats.totalMessages,
         customersWithMessages: messageStats.customersWithMessages
       }));
-      
+
     } catch (error) {
       console.error('خطأ في فتح WhatsApp:', error);
       toast.error('فشل في فتح WhatsApp');
@@ -1517,7 +1517,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">إجمالي المدفوعات</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">✅</div>
@@ -1525,7 +1525,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">مكتملة</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">⏳</div>
@@ -1533,7 +1533,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">قيد الانتظار</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">❌</div>
@@ -1541,7 +1541,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">ملغية</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">💰</div>
@@ -1549,7 +1549,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">إجمالي المبالغ</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">💬</div>
@@ -1557,7 +1557,7 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">الرسائل المرسلة</p>
             </div>
           </div>
-          
+
           <div className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="text-center">
               <div className="text-2xl mb-2">👥</div>
@@ -1565,10 +1565,10 @@ export default function AdminPaymentsPage() {
               <p className="text-xs opacity-90">عملاء تم التواصل معهم</p>
             </div>
           </div>
-          
+
           <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${
-            adminNotificationsEnabled 
-              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+            adminNotificationsEnabled
+              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
               : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
           }`}>
             <div className="text-center">
@@ -1590,8 +1590,8 @@ export default function AdminPaymentsPage() {
               <button
                 onClick={() => setViewMode('cards')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'cards' 
-                    ? 'bg-blue-500 text-white' 
+                  viewMode === 'cards'
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
@@ -1600,8 +1600,8 @@ export default function AdminPaymentsPage() {
               <button
                 onClick={() => setViewMode('table')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'table' 
-                    ? 'bg-blue-500 text-white' 
+                  viewMode === 'table'
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
@@ -1614,8 +1614,8 @@ export default function AdminPaymentsPage() {
                   toast.success(newState ? 'تم تفعيل إشعارات المدير' : 'تم إيقاف إشعارات المدير');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  adminNotificationsEnabled 
-                    ? 'bg-green-500 text-white hover:bg-green-600' 
+                  adminNotificationsEnabled
+                    ? 'bg-green-500 text-white hover:bg-green-600'
                     : 'bg-red-500 text-white hover:bg-red-600'
                 }`}
                 title={adminNotificationsEnabled ? 'إيقاف إشعارات المدير' : 'تشغيل إشعارات المدير'}
@@ -1736,7 +1736,7 @@ export default function AdminPaymentsPage() {
                 عرض {filteredPayments.length} من {payments.length} دفعة
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">عناصر في الصفحة:</label>
               <select
@@ -1791,7 +1791,7 @@ export default function AdminPaymentsPage() {
                     {payment.status}
                   </span>
                 </div>
-                
+
                 {/* تفاصيل الدفعة */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
@@ -1802,7 +1802,7 @@ export default function AdminPaymentsPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                     <div className="text-center">
                       <p className="text-sm text-blue-600 font-medium mb-1">طريقة الدفع</p>
@@ -1820,7 +1820,7 @@ export default function AdminPaymentsPage() {
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-600 font-medium">📅 التاريخ:</span>
                     <span className="font-medium text-sm text-gray-700">
-                      {payment.createdAt?.toDate ? 
+                      {payment.createdAt?.toDate ?
                         payment.createdAt.toDate().toLocaleDateString('en-GB') :
                         new Date(payment.createdAt).toLocaleDateString('en-GB')
                       }
@@ -1830,32 +1830,32 @@ export default function AdminPaymentsPage() {
 
                 {/* أزرار الإجراءات */}
                 <div className="grid grid-cols-2 gap-2">
-                  <button 
+                  <button
                     onClick={() => handleDetails(payment)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <span>👁️</span>
                     التفاصيل
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleReceipt(payment)}
                     className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <span>📄</span>
                     الإيصال
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleMessage(payment)}
                     className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <span>💬</span>
                     رسالة
                   </button>
-                  <button 
+                  <button
                     onClick={() => showMessageHistoryDialog(payment)}
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                      hasMessages(payment.id) 
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white' 
+                      hasMessages(payment.id)
+                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                     disabled={!hasMessages(payment.id)}
@@ -1863,21 +1863,21 @@ export default function AdminPaymentsPage() {
                     <span>📋</span>
                     تاريخ الرسائل
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleStatusUpdate(payment)}
                     className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <span>⚙️</span>
                     تحديث الحالة
                   </button>
-                  <button 
+                  <button
                     onClick={() => generateInvoice(payment)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <span>📄</span>
                     فاتورة PDF
                   </button>
-                  <button 
+                  <button
                     onClick={() => sendPaymentViaWhatsApp(payment)}
                     className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                     title="إرسال عبر WhatsApp"
@@ -1885,7 +1885,7 @@ export default function AdminPaymentsPage() {
                     <span>📱</span>
                     WhatsApp
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDeletePayment(payment)}
                     className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
                   >
@@ -1925,8 +1925,8 @@ export default function AdminPaymentsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {getCurrentPageData().map((payment) => (
-                      <tr 
-                        key={payment.id} 
+                      <tr
+                        key={payment.id}
                         className={`hover:bg-gray-50 cursor-pointer transition-colors ${
                           selectedRows.includes(payment.id) ? 'bg-blue-50' : ''
                         }`}
@@ -1978,7 +1978,7 @@ export default function AdminPaymentsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {payment.createdAt?.toDate ? 
+                          {payment.createdAt?.toDate ?
                             payment.createdAt.toDate().toLocaleDateString('ar-EG') :
                             new Date(payment.createdAt).toLocaleDateString('ar-EG')
                           }
@@ -1988,7 +1988,7 @@ export default function AdminPaymentsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDetails(payment);
@@ -1998,7 +1998,7 @@ export default function AdminPaymentsPage() {
                             >
                               👁️
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReceipt(payment);
@@ -2008,7 +2008,7 @@ export default function AdminPaymentsPage() {
                             >
                               📄
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 generateInvoice(payment);
@@ -2018,7 +2018,7 @@ export default function AdminPaymentsPage() {
                             >
                               🧾
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleMessage(payment);
@@ -2028,14 +2028,14 @@ export default function AdminPaymentsPage() {
                             >
                               💬
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 showMessageHistoryDialog(payment);
                               }}
                               className={`p-1 rounded ${
-                                hasMessages(payment.id) 
-                                  ? 'text-indigo-600 hover:bg-indigo-100' 
+                                hasMessages(payment.id)
+                                  ? 'text-indigo-600 hover:bg-indigo-100'
                                   : 'text-gray-400 cursor-not-allowed'
                               }`}
                               title="تاريخ الرسائل"
@@ -2043,7 +2043,7 @@ export default function AdminPaymentsPage() {
                             >
                               📋
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleStatusUpdate(payment);
@@ -2053,7 +2053,7 @@ export default function AdminPaymentsPage() {
                             >
                               ⚙️
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeletePayment(payment);
@@ -2105,7 +2105,7 @@ export default function AdminPaymentsPage() {
                     const phoneNumbers = selectedPayments
                       .filter(p => p.playerPhone && p.playerPhone !== 'غير محدد')
                       .map(p => p.playerPhone);
-                    
+
                     if (phoneNumbers.length > 0) {
                       // هنا يمكن إضافة منطق إرسال رسالة جماعية
                       toast.success(`تم إرسال رسالة إلى ${phoneNumbers.length} عميل`);
@@ -2131,16 +2131,16 @@ export default function AdminPaymentsPage() {
                       التاريخ: p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString('ar-EG') : new Date(p.createdAt).toLocaleDateString('ar-EG'),
                       المصدر: p.collection
                     }));
-                    
-                    const csv = Object.keys(csvData[0]).join(',') + '\n' + 
+
+                    const csv = Object.keys(csvData[0]).join(',') + '\n' +
                                csvData.map(row => Object.values(row).join(',')).join('\n');
-                    
+
                     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
                     link.download = `payments_${new Date().toISOString().split('T')[0]}.csv`;
                     link.click();
-                    
+
                     toast.success('تم تصدير البيانات بنجاح');
                   }}
                   className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
@@ -2160,7 +2160,7 @@ export default function AdminPaymentsPage() {
                 عرض {((currentPage - 1) * itemsPerPage) + 1} إلى {Math.min(currentPage * itemsPerPage, filteredPayments.length)} من {filteredPayments.length} دفعة
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(1)}
@@ -2176,12 +2176,12 @@ export default function AdminPaymentsPage() {
               >
                 ⏪ السابقة
               </button>
-              
+
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
                   if (pageNum > totalPages) return null;
-                  
+
                   return (
                     <button
                       key={pageNum}
@@ -2197,7 +2197,7 @@ export default function AdminPaymentsPage() {
                   );
                 })}
               </div>
-              
+
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
@@ -2222,7 +2222,7 @@ export default function AdminPaymentsPage() {
             <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">تفاصيل الدفعة</h2>
-                <button 
+                <button
                   onClick={() => setShowDetailsDialog(false)}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
                 >
@@ -2269,7 +2269,7 @@ export default function AdminPaymentsPage() {
                 <div>
                   <label className="font-medium text-gray-700">التاريخ:</label>
                   <p className="text-gray-900">
-                    {selectedPayment.createdAt?.toDate ? 
+                    {selectedPayment.createdAt?.toDate ?
                       selectedPayment.createdAt.toDate().toLocaleString('ar-EG') :
                       new Date(selectedPayment.createdAt).toLocaleString('ar-EG')
                     }
@@ -2286,14 +2286,14 @@ export default function AdminPaymentsPage() {
             <div className="bg-white rounded-xl p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800">📄 معاينة الإيصال</h2>
-                <button 
+                <button
                   onClick={() => setShowReceiptDialog(false)}
                   className="text-gray-500 hover:text-gray-700 text-xl p-1 hover:bg-gray-100 rounded"
                 >
                   ×
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* معلومات الدفعة */}
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -2315,7 +2315,7 @@ export default function AdminPaymentsPage() {
                     <div>
                       <span className="text-gray-600 font-medium">التاريخ:</span>
                       <p className="text-gray-700">
-                        {selectedPayment.createdAt?.toDate ? 
+                        {selectedPayment.createdAt?.toDate ?
                           selectedPayment.createdAt.toDate().toLocaleDateString('en-GB') :
                           new Date(selectedPayment.createdAt).toLocaleDateString('en-GB')
                         }
@@ -2330,8 +2330,8 @@ export default function AdminPaymentsPage() {
                   <div className="border rounded-lg p-3 bg-gray-50">
                     {(selectedPayment.receiptImage || selectedPayment.receiptUrl) ? (
                       <div className="text-center">
-                        <img 
-                          src={selectedPayment.receiptImage || selectedPayment.receiptUrl} 
+                        <img
+                          src={selectedPayment.receiptImage || selectedPayment.receiptUrl}
                           alt="صورة الإيصال"
                           className="max-w-full h-auto max-h-96 rounded-lg shadow-md mx-auto"
                         />
@@ -2399,7 +2399,7 @@ export default function AdminPaymentsPage() {
             <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-800">⚙️ تحديث حالة المدفوعة</h2>
-                <button 
+                <button
                   onClick={() => setShowStatusUpdateDialog(false)}
                   className="text-gray-500 hover:text-gray-700 text-xl p-1 hover:bg-gray-100 rounded"
                 >
@@ -2533,7 +2533,7 @@ export default function AdminPaymentsPage() {
             <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">إرسال رسالة للعميل</h2>
-                <button 
+                <button
                   onClick={() => setShowMessageDialog(false)}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
                 >
@@ -2551,48 +2551,48 @@ export default function AdminPaymentsPage() {
                     <p className="text-gray-900">{selectedPayment.playerPhone}</p>
                   </div>
                 </div>
-                
+
                 {/* نماذج الرسائل الجاهزة */}
                 <div>
                   <label className="font-medium text-gray-700 mb-2 block">نماذج الرسائل الجاهزة:</label>
                   <div className="grid grid-cols-2 gap-2 mb-4">
-                    <button 
+                    <button
                       onClick={() => selectTemplate('paymentSuccess')}
                       className="text-right p-2 text-sm bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
                     >
                       ✅ نجح الدفع
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('paymentPending')}
                       className="text-right p-2 text-sm bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors"
                     >
                       ⏳ قيد المعالجة
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('paymentFailed')}
                       className="text-right p-2 text-sm bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
                     >
                       ❌ فشل الدفع
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('welcome')}
                       className="text-right p-2 text-sm bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
                     >
                       👋 رسالة ترحيب
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('reminder')}
                       className="text-right p-2 text-sm bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
                     >
                       🔔 تذكير
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('support')}
                       className="text-right p-2 text-sm bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
                     >
                       🆘 مساعدة
                     </button>
-                    <button 
+                    <button
                       onClick={() => selectTemplate('subscriptionActivated')}
                       className="text-right p-2 text-sm bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
                     >
@@ -2600,7 +2600,7 @@ export default function AdminPaymentsPage() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="font-medium text-gray-700 mb-2 block">نص الرسالة:</label>
                   <textarea
@@ -2614,9 +2614,9 @@ export default function AdminPaymentsPage() {
                     عدد الأحرف: {messageText.length}/160
                   </p>
                 </div>
-                
+
                 <div className="flex justify-end gap-2">
-                  <button 
+                  <button
                     onClick={() => setShowMessageDialog(false)}
                     className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
@@ -2624,13 +2624,13 @@ export default function AdminPaymentsPage() {
                   </button>
                   {selectedPayment.playerPhone && selectedPayment.playerPhone !== 'غير محدد' ? (
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={sendSMS}
                         className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
                       >
                         📱 إرسال SMS
                       </button>
-                      <button 
+                      <button
                         onClick={sendWhatsApp}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
                       >
@@ -2654,7 +2654,7 @@ export default function AdminPaymentsPage() {
             <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-800">📋 تاريخ الرسائل المرسلة</h2>
-                <button 
+                <button
                   onClick={() => setShowMessageHistory(false)}
                   className="text-gray-500 hover:text-gray-700 text-xl p-1 hover:bg-gray-100 rounded"
                 >
@@ -2698,14 +2698,14 @@ export default function AdminPaymentsPage() {
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                message.type === 'sms' 
+                                message.type === 'sms'
                                   ? 'bg-blue-100 text-blue-800'
                                   : message.type === 'whatsapp'
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-purple-100 text-purple-800'
                               }`}>
-                                {message.type === 'sms' ? '📱 SMS' : 
-                                 message.type === 'whatsapp' ? '💬 WhatsApp' : 
+                                {message.type === 'sms' ? '📱 SMS' :
+                                 message.type === 'whatsapp' ? '💬 WhatsApp' :
                                  '📧 إشعار'}
                               </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -2725,11 +2725,11 @@ export default function AdminPaymentsPage() {
                               {message.createdAt?.toLocaleDateString('ar-EG')} - {message.createdAt?.toLocaleTimeString('ar-EG')}
                             </span>
                           </div>
-                          
+
                           <div className="bg-white border border-gray-100 rounded-lg p-3">
                             <p className="text-gray-800 whitespace-pre-wrap">{message.message || message.content || 'لا يوجد محتوى'}</p>
                           </div>
-                          
+
                           {message.error && (
                             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
                               <strong>خطأ:</strong> {message.error}

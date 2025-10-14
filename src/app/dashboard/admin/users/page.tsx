@@ -101,6 +101,8 @@ export default function AdminUsersPage() {
 
   // دالة لحساب نسبة اكتمال الملف الشخصي
   const calculateProfileCompletion = (data: any, accountType: string): number => {
+    if (!data) return 0;
+    
     try {
       const basicFields = ['name', 'full_name', 'email', 'phone', 'country', 'city'];
       let requiredFields: string[] = [...basicFields];
@@ -108,20 +110,27 @@ export default function AdminUsersPage() {
       switch (accountType) {
         case 'player':
           requiredFields = [
-            ...basicFields,
+            'full_name', 'name',
             'birth_date',
             'nationality',
+            'email',
+            'phone',
+            'country',
+            'city',
             'primary_position',
             'preferred_foot',
             'height',
             'weight',
-            'profile_image_url'
+            'profile_image_url', 'profile_image'
           ];
           break;
         case 'academy':
           requiredFields = [
-            ...basicFields,
             'academy_name',
+            'email',
+            'phone',
+            'country',
+            'city',
             'description',
             'address',
             'logo'
@@ -129,8 +138,11 @@ export default function AdminUsersPage() {
           break;
         case 'club':
           requiredFields = [
-            ...basicFields,
             'club_name',
+            'email',
+            'phone',
+            'country',
+            'city',
             'description',
             'address',
             'logo'
@@ -138,16 +150,22 @@ export default function AdminUsersPage() {
           break;
         case 'agent':
           requiredFields = [
-            ...basicFields,
             'agent_name',
+            'email',
+            'phone',
+            'country',
+            'city',
             'description',
             'profile_image'
           ];
           break;
         case 'trainer':
           requiredFields = [
-            ...basicFields,
             'trainer_name',
+            'email',
+            'phone',
+            'country',
+            'city',
             'specialization',
             'profile_image'
           ];
@@ -158,25 +176,28 @@ export default function AdminUsersPage() {
       let completedWeight = 0;
 
       requiredFields.forEach(field => {
-        const value = data[field] || data[field.replace('_', '')];
-        if (value && value !== '' && value !== null && value !== undefined) {
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            if (Object.keys(value).length > 0) {
+        try {
+          const value = data[field] || data[field.replace('_', '')] || data[field.replace(/_/g, '')];
+          if (value && value !== '' && value !== null && value !== undefined) {
+            if (typeof value === 'object' && !Array.isArray(value)) {
+              if (Object.keys(value).length > 0) {
+                completedWeight += fieldWeight;
+              }
+            } else if (Array.isArray(value)) {
+              if (value.length > 0) {
+                completedWeight += fieldWeight;
+              }
+            } else {
               completedWeight += fieldWeight;
             }
-          } else if (Array.isArray(value)) {
-            if (value.length > 0) {
-              completedWeight += fieldWeight;
-            }
-          } else {
-            completedWeight += fieldWeight;
           }
+        } catch (fieldError) {
+          // تجاهل الأخطاء في الحقول الفردية
         }
       });
 
       return Math.round(completedWeight);
     } catch (error) {
-      console.error('خطأ في حساب نسبة اكتمال الملف:', error);
       return 0;
     }
   };
@@ -291,13 +312,13 @@ export default function AdminUsersPage() {
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-            
+
             // جلب جميع المستندات بدون حد (استخدام getDocs بدون limit)
             const collectionRef = collection(db, collectionName);
             const snapshot = await getDocs(collectionRef);
 
             console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
-            
+
             let collectionCount = 0;
 
             // معالجة كل مستند
@@ -305,6 +326,39 @@ export default function AdminUsersPage() {
               try {
                 const data = userDoc.data();
                 const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
+
+                // دالة مساعدة لتحويل التواريخ بشكل آمن
+                const safeToDate = (dateValue: any): Date | null => {
+                  if (!dateValue) return null;
+                  
+                  try {
+                    // إذا كان Firestore Timestamp
+                    if (dateValue && typeof dateValue.toDate === 'function') {
+                      return dateValue.toDate();
+                    }
+                    // إذا كان Date object
+                    if (dateValue instanceof Date) {
+                      return dateValue;
+                    }
+                    // إذا كان string
+                    if (typeof dateValue === 'string') {
+                      const date = new Date(dateValue);
+                      return isNaN(date.getTime()) ? null : date;
+                    }
+                    // إذا كان number (timestamp)
+                    if (typeof dateValue === 'number') {
+                      return new Date(dateValue);
+                    }
+                    // إذا كان object به seconds (Firestore Timestamp format)
+                    if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+                      return new Date(dateValue.seconds * 1000);
+                    }
+                  } catch (e) {
+                    return null;
+                  }
+                  
+                  return null;
+                };
 
                 const profileCompletion = calculateProfileCompletion(data, accountType);
 
@@ -315,8 +369,8 @@ export default function AdminUsersPage() {
                   phone: data.phone || data.phoneNumber || '',
                   accountType: accountType,
                   isActive: data.isActive !== false,
-                  createdAt: data.createdAt?.toDate() || data.created_at?.toDate() || null,
-                  lastLogin: data.lastLogin?.toDate() || data.last_login?.toDate() || null,
+                  createdAt: safeToDate(data.createdAt || data.created_at),
+                  lastLogin: safeToDate(data.lastLogin || data.last_login),
                   city: data.city || data.location?.city || '',
                   country: data.country || data.location?.country || '',
                   parentAccountId: data.parentAccountId || data.parent_account_id || '',
@@ -330,16 +384,44 @@ export default function AdminUsersPage() {
                 allUsers.push(userData);
                 collectionCount++;
                 totalProcessed++;
-                
+
                 // عرض تقدم كل 100 مستند
                 if (totalProcessed % 100 === 0) {
                   console.log(`⏳ تمت معالجة ${totalProcessed} مستخدم...`);
                 }
               } catch (docError) {
-                console.error(`خطأ في معالجة المستند ${userDoc.id}:`, docError);
+                console.error(`❌ خطأ في معالجة المستند ${userDoc.id}:`, docError);
+                // حتى مع الخطأ، نحاول إضافة المستخدم بدون التاريخ
+                try {
+                  const data = userDoc.data();
+                  const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
+                  
+                  allUsers.push({
+                    id: userDoc.id,
+                    name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
+                    email: data.email || '',
+                    phone: data.phone || data.phoneNumber || '',
+                    accountType: accountType,
+                    isActive: data.isActive !== false,
+                    createdAt: null,
+                    lastLogin: null,
+                    city: data.city || data.location?.city || '',
+                    country: data.country || data.location?.country || '',
+                    parentAccountId: data.parentAccountId || data.parent_account_id || '',
+                    parentAccountType: data.parentAccountType || data.parent_account_type || '',
+                    isDeleted: data.isDeleted || data.deleted || false,
+                    verificationStatus: data.verificationStatus || data.verification_status || 'pending',
+                    profileCompletion: 0,
+                    profileCompleted: false
+                  });
+                  collectionCount++;
+                  totalProcessed++;
+                } catch (fallbackError) {
+                  console.error(`❌ فشل في إضافة المستخدم ${userDoc.id} حتى بدون تواريخ`);
+                }
               }
             });
-            
+
             console.log(`✔️ ${collectionName}: تمت معالجة ${collectionCount} مستخدم`);
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
@@ -348,7 +430,7 @@ export default function AdminUsersPage() {
         }
 
         console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
-        console.log(`📈 التوزيع: 
+        console.log(`📈 التوزيع:
           - Players: ${allUsers.filter(u => u.accountType === 'player').length}
           - Academies: ${allUsers.filter(u => u.accountType === 'academy').length}
           - Clubs: ${allUsers.filter(u => u.accountType === 'club').length}
@@ -356,7 +438,7 @@ export default function AdminUsersPage() {
           - Trainers: ${allUsers.filter(u => u.accountType === 'trainer').length}
           - Users: ${allUsers.filter(u => u.accountType === 'user').length}
         `);
-        
+
         setUsers(allUsers);
 
         await loadVisitStats();
