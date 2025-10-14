@@ -10,6 +10,7 @@ type LookupResult = {
 };
 
 const COLLECTIONS_TO_SEARCH = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
+const PHONE_FIELDS = ['phone', 'phoneNumber', 'phone_number', 'mobile', 'mobileNumber', 'mobile_number'];
 
 const normalizePhone = (raw: string): { candidates: string[] } => {
   const digits = (raw || '').toString().replace(/\D/g, '');
@@ -42,19 +43,31 @@ async function findByPhone(phoneRaw: string): Promise<LookupResult> {
   for (const coll of COLLECTIONS_TO_SEARCH) {
     try {
       // Search exact matches first
-      const q1 = query(collection(db, coll), where('phone', 'in', candidates.slice(0, 10)));
-      const snap1 = await getDocs(q1);
-      if (!snap1.empty) {
-        const doc = snap1.docs[0];
-        const data: any = doc.data();
-        const email = data.email || data.userEmail || '';
-        if (email) return { found: true, email, id: doc.id, accountType: coll.replace(/s$/, '') };
+      // Try 'in' for each known phone field
+      for (const pf of PHONE_FIELDS) {
+        try {
+          const qIn = query(collection(db, coll), where(pf as any, 'in', candidates.slice(0, 10)));
+          const snapIn = await getDocs(qIn);
+          if (!snapIn.empty) {
+            const doc = snapIn.docs[0];
+            const data: any = doc.data();
+            const email = data.email || data.userEmail || '';
+            if (email) return { found: true, email, id: doc.id, accountType: coll.replace(/s$/, '') };
+          }
+        } catch {
+          // ignore and fallback to equality loops below
+        }
       }
     } catch {
       // Some backends may not support 'in' on phone if index missing → fallback to equality loops
+      // no-op, continue to equality below
+    }
+
+    // Equality fallback across all known phone fields and candidates (index-free)
+    for (const pf of PHONE_FIELDS) {
       for (const cand of candidates) {
         try {
-          const qEq = query(collection(db, coll), where('phone', '==', cand));
+          const qEq = query(collection(db, coll), where(pf as any, '==', cand));
           const snapEq = await getDocs(qEq);
           if (!snapEq.empty) {
             const doc = snapEq.docs[0];
@@ -63,7 +76,7 @@ async function findByPhone(phoneRaw: string): Promise<LookupResult> {
             if (email) return { found: true, email, id: doc.id, accountType: coll.replace(/s$/, '') };
           }
         } catch {
-          // ignore
+          // ignore and continue
         }
       }
     }
