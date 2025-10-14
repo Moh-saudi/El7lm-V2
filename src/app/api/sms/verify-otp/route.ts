@@ -1,45 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BEON_V3_CONFIG, createBeOnHeaders } from '@/lib/beon/config';
 
 export async function POST(request: NextRequest) {
   try {
     const { phoneNumber, otp, reference } = await request.json();
 
-    console.log('🔑 [verify-otp] التحقق من OTP:', { phoneNumber, otp, reference });
-
-    // التحقق من البيانات المطلوبة
     if (!phoneNumber || !otp) {
-      return NextResponse.json(
-        { success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان' }, { status: 400 });
     }
 
-    // تنسيق رقم الهاتف (إزالة + إذا وجد)
-    const cleanPhone = phoneNumber.replace(/^\+/, '');
-
-    // التحقق من OTP عبر BeOn v3
-    const beonUrl = process.env.BEON_OTP_VERIFY_URL || 'https://v3.api.beon.chat/verify/otp';
-    const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
+    const beonUrl = `${BEON_V3_CONFIG.BASE_URL}/api/v3/verify/otp`; // Correct V3 endpoint
+    const beonToken = BEON_V3_CONFIG.TOKEN;
 
     if (!beonToken) {
-      console.error('❌ [verify-otp] BEON_OTP_TOKEN is not set in environment variables');
-      return NextResponse.json(
-        { success: false, error: 'خدمة التحقق غير مهيأة بشكل صحيح' },
-        { status: 500 }
-      );
+      console.error('❌ [verify-otp] BEON_V3_TOKEN is not set');
+      return NextResponse.json({ success: false, error: 'خدمة التحقق غير مهيأة' }, { status: 500 });
     }
+
+    const requestBody = {
+      phoneNumber: phoneNumber.replace(/^\+/, ''),
+      otp: otp,
+      reference: reference, // reference is often needed for verification
+    };
 
     const beonResponse = await fetch(beonUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'beon-token': beonToken || ''
-      },
-      body: JSON.stringify({
-        phoneNumber: cleanPhone,
-        otp: otp,
-        reference: reference
-      })
+      headers: createBeOnHeaders(beonToken),
+      body: JSON.stringify(requestBody),
     });
 
     const responseText = await beonResponse.text();
@@ -47,22 +34,12 @@ export async function POST(request: NextRequest) {
     try {
       beonData = JSON.parse(responseText);
     } catch (e) {
-      console.error('❌ [verify-otp] Failed to parse BeOn response as JSON. Response text:', responseText);
-      return NextResponse.json({
-        success: false,
-        verified: false,
-        error: 'Invalid response from verification service.'
-      }, { status: 502 }); // Bad Gateway, since we got a bad response from an upstream server
+      console.error('❌ [verify-otp] Failed to parse BeOn response. Status:', beonResponse.status, 'Response:', responseText);
+      return NextResponse.json({ success: false, error: 'Invalid response from verification service.' }, { status: 502 });
     }
 
-    console.log('📨 [verify-otp] استجابة BeOn:', beonData);
-
-    if (beonResponse.ok && beonData.success) {
-      return NextResponse.json({
-        success: true,
-        message: 'تم التحقق من الرمز بنجاح',
-        verified: true
-      });
+    if (beonResponse.ok && (beonData.success || beonData.status === 'success')) {
+      return NextResponse.json({ success: true, message: 'تم التحقق بنجاح', verified: true });
     } else {
       return NextResponse.json({
         success: false,
@@ -72,12 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('❌ [verify-otp] خطأ:', error);
-    return NextResponse.json({
-      success: false,
-      verified: false,
-      error: error.message || 'حدث خطأ في التحقق من الرمز'
-    }, { status: 500 });
+    console.error('❌ [verify-otp] Fatal error:', error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فادح في التحقق' }, { status: 500 });
   }
 }
 

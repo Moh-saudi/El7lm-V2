@@ -1,63 +1,56 @@
 import { db } from '@/lib/firebase/config';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
+import { BEON_V3_CONFIG, createBeOnHeaders } from '@/lib/beon/config';
 
 async function sendBeonOtp(phoneNumber: string, name: string, otpLength: number, lang: string) {
-  const cleanPhone = phoneNumber.replace(/^\+/, '');
-  const beonUrl = process.env.BEON_OTP_BASE_URL || 'https://v3.api.beon.chat/send/otp';
-  const beonToken = process.env.BEON_OTP_TOKEN || process.env.BEON_V3_TOKEN;
+  const beonUrl = `${BEON_V3_CONFIG.BASE_URL}/api/v3/send/otp`; // Endpoint corrected based on new findings
+  const beonToken = BEON_V3_CONFIG.TOKEN;
 
   if (!beonToken) {
-    console.error('❌ [send-otp] BEON_OTP_TOKEN is not set.');
+    console.error('❌ [send-otp] BEON_V3_TOKEN is not set.');
     return { success: false, error: 'BeOn token not configured' };
   }
 
-  console.log('🔧 [send-otp] BeOn config:', {
-    url: beonUrl,
-    tokenSet: !!beonToken,
-  });
-
-  const beonResponse = await fetch(beonUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'beon-token': beonToken,
-    },
-    body: JSON.stringify({
-      phoneNumber: cleanPhone,
-      name: name || 'El7lm',
-      type: 'sms',
-      otp_length: otpLength,
-      lang: lang,
-    }),
-  });
-
-  const responseText = await beonResponse.text();
-  let beonData;
-  try {
-    beonData = JSON.parse(responseText);
-  } catch (e) {
-    console.error('❌ [send-otp] Failed to parse BeOn response as JSON. Response text:', responseText);
-    return { 
-      success: false, 
-      error: 'Invalid response from OTP service.' 
-    };
-  }
-  
-  console.log('📨 [send-otp] استجابة BeOn:', beonData);
-
-  if (beonResponse.ok && beonData.success) {
-    return {
-      success: true,
-      reference: beonData.reference || beonData.data?.reference
-    };
-  }
-
-  console.error('❌ [send-otp] فشل BeOn:', beonData);
-  return {
-    success: false,
-    error: beonData.error || beonData.message || 'فشل في إرسال رمز التحقق'
+  const requestBody = {
+    phoneNumbers: [phoneNumber.replace(/^\+/, '')], // V3 expects an array
+    sender: BEON_V3_CONFIG.DEFAULTS.SENDER_NAME,
+    lang: lang,
+    otp_length: otpLength,
   };
+
+  try {
+    const beonResponse = await fetch(beonUrl, {
+      method: 'POST',
+      headers: createBeOnHeaders(beonToken),
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseText = await beonResponse.text();
+    let beonData;
+    try {
+      beonData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('❌ [send-otp] Failed to parse BeOn response. Status:', beonResponse.status, 'Response:', responseText);
+      return { success: false, error: 'Invalid response from OTP service.' };
+    }
+
+    if (beonResponse.ok && (beonData.success || beonData.status === 'success')) {
+      return {
+        success: true,
+        reference: beonData.reference || beonData.data?.reference
+      };
+    } else {
+      console.error('❌ [send-otp] BeOn failure:', beonData);
+      return {
+        success: false,
+        error: beonData.error || beonData.message || 'فشل في إرسال رمز التحقق'
+      };
+    }
+  } catch (error) {
+      console.error('❌ [send-otp] Fetch error:', error);
+      return { success: false, error: 'Failed to connect to OTP service.' };
+  }
 }
 
 function generateBackupOtp(length: number): string {
