@@ -198,16 +198,19 @@ export default function LoginPage() {
         body: JSON.stringify({ phone })
       });
 
-      const result = await response.json();
-
-      if (result.success && result.user) {
-        console.log('✅ Found user with phone:', result.user);
-
-        // إرجاع البريد الإلكتروني المستخدم في Firebase
-        return result.user.email;
+      if (!response.ok) {
+        console.log('❌ lookup failed with status:', response.status);
+        return null;
       }
 
-      console.log('❌ No user found with phone:', phone);
+      const result = await response.json();
+
+      if (result && result.found && result.email) {
+        console.log('✅ Found user with phone:', { email: result.email, id: result.id, accountType: result.accountType });
+        return result.email as string;
+      }
+
+      console.log('❌ No user found with phone (API returned not found):', phone);
       return null;
     } catch (error) {
       console.error('Error searching for Firebase email:', error);
@@ -353,13 +356,9 @@ export default function LoginPage() {
         toast.error(noAccountError, { id: 'login', duration: 6000 });
         setError(noAccountError);
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        const wrongPasswordError = `كلمة المرور غير صحيحة
-
-الحلول المقترحة:
-• تحقق من صحة كلمة المرور المدخلة
-• تأكد من حالة الأحرف (كبيرة/صغيرة)
-• استخدم "نسيت كلمة المرور" لإعادة تعيينها
-• تأكد من عدم تفعيل Caps Lock`;
+        const wrongPasswordError = loginMethod === 'phone'
+          ? `رقم الهاتف صحيح لكن كلمة المرور غير مطابقة\n\nالحلول المقترحة:\n• تحقق من صحة كلمة المرور\n• تأكد من حالة الأحرف (كبيرة/صغيرة)\n• استخدم "نسيت كلمة المرور" لإعادة تعيينها\n• تأكد من عدم تفعيل Caps Lock`
+          : `كلمة المرور غير صحيحة\n\nالحلول المقترحة:\n• تحقق من صحة كلمة المرور المدخلة\n• تأكد من حالة الأحرف (كبيرة/صغيرة)\n• استخدم "نسيت كلمة المرور" لإعادة تعيينها\n• تأكد من عدم تفعيل Caps Lock`;
 
         console.log('Setting error:', wrongPasswordError); // للتأكد من تعيين الخطأ
         toast.error(wrongPasswordError, { id: 'login', duration: 6000 });
