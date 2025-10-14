@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
@@ -34,7 +35,8 @@ import {
     UserCog,
     Users,
     UserX,
-    XCircle
+    XCircle,
+    Trash2
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -83,9 +85,8 @@ export default function AdminUsersPage() {
   const [filterCountry, setFilterCountry] = useState<string>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [showDeleted, setShowDeleted] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateFilter, setDateFilter] = useState<string>('all');
@@ -97,23 +98,15 @@ export default function AdminUsersPage() {
     recentVisits: []
   });
   const [showVisitDetails, setShowVisitDetails] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'deleted'>('active');
 
   // دالة لحساب نسبة اكتمال الملف الشخصي
-  const calculateProfileCompletion = (userDoc: any, accountType: string): number => {
+  const calculateProfileCompletion = (data: any, accountType: string): number => {
     try {
-      const data = userDoc.data();
-
-      // الحقول الأساسية المطلوبة لجميع الأنواع
       const basicFields = ['name', 'full_name', 'email', 'phone', 'country', 'city'];
-
       let requiredFields: string[] = [...basicFields];
-      let totalWeight = 100;
-      let completedWeight = 0;
 
-      // إضافة حقول خاصة بكل نوع حساب
       switch (accountType) {
         case 'player':
           requiredFields = [
@@ -124,7 +117,6 @@ export default function AdminUsersPage() {
             'preferred_foot',
             'height',
             'weight',
-            'profile_image',
             'profile_image_url'
           ];
           break;
@@ -134,9 +126,7 @@ export default function AdminUsersPage() {
             'academy_name',
             'description',
             'address',
-            'website',
-            'logo',
-            'established_year'
+            'logo'
           ];
           break;
         case 'club':
@@ -145,18 +135,14 @@ export default function AdminUsersPage() {
             'club_name',
             'description',
             'address',
-            'stadium',
-            'logo',
-            'founded_year'
+            'logo'
           ];
           break;
         case 'agent':
           requiredFields = [
             ...basicFields,
             'agent_name',
-            'license_number',
             'description',
-            'address',
             'profile_image'
           ];
           break;
@@ -165,27 +151,22 @@ export default function AdminUsersPage() {
             ...basicFields,
             'trainer_name',
             'specialization',
-            'experience_years',
-            'certificates',
             'profile_image'
           ];
           break;
       }
 
-      // حساب الوزن لكل حقل
-      const fieldWeight = totalWeight / requiredFields.length;
+      const fieldWeight = 100 / requiredFields.length;
+      let completedWeight = 0;
 
-      // فحص الحقول المكتملة
       requiredFields.forEach(field => {
         const value = data[field] || data[field.replace('_', '')];
         if (value && value !== '' && value !== null && value !== undefined) {
           if (typeof value === 'object' && !Array.isArray(value)) {
-            // للكائنات، نتحقق من وجود محتوى
             if (Object.keys(value).length > 0) {
               completedWeight += fieldWeight;
             }
           } else if (Array.isArray(value)) {
-            // للمصفوفات، نتحقق من وجود عناصر
             if (value.length > 0) {
               completedWeight += fieldWeight;
             }
@@ -216,7 +197,6 @@ export default function AdminUsersPage() {
         recentVisits: []
       };
 
-      // جلب إحصائيات الزيارات من Firebase
       try {
         const analyticsRef = collection(db, 'analytics');
         const analyticsSnapshot = await getDocs(analyticsRef);
@@ -226,7 +206,7 @@ export default function AdminUsersPage() {
           const date = data.timestamp?.toDate() || data.date?.toDate();
 
           if (date) {
-            const dateKey = date.toLocaleDateString('ar-SA');
+            const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
           }
 
@@ -253,7 +233,6 @@ export default function AdminUsersPage() {
         console.log('محاولة جلب من مجموعة visits...');
       }
 
-      // محاولة بديلة من مجموعة visits
       try {
         const visitsRef = collection(db, 'visits');
         const visitsSnapshot = await getDocs(visitsRef);
@@ -263,7 +242,7 @@ export default function AdminUsersPage() {
           const date = data.timestamp?.toDate();
 
           if (date) {
-            const dateKey = date.toLocaleDateString('ar-SA');
+            const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
           }
 
@@ -290,7 +269,6 @@ export default function AdminUsersPage() {
         console.error('خطأ في جلب الزيارات:', error);
       }
 
-      // ترتيب الزيارات الحديثة
       stats.recentVisits.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       stats.recentVisits = stats.recentVisits.slice(0, 10);
 
@@ -314,36 +292,42 @@ export default function AdminUsersPage() {
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-            const snapshot = await getDocs(collection(db, collectionName));
+            const collectionRef = collection(db, collectionName);
+            const snapshot = await getDocs(collectionRef);
+            
             console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
 
-            for (const userDoc of snapshot.docs) {
-              const data = userDoc.data();
-              const accountType = data.accountType || collectionName.replace(/s$/, '') as any;
+            snapshot.docs.forEach((userDoc) => {
+              try {
+                const data = userDoc.data();
+                const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
 
-              // حساب نسبة اكتمال الملف
-              const profileCompletion = calculateProfileCompletion(userDoc, accountType);
+                const profileCompletion = calculateProfileCompletion(data, accountType);
 
-              const userData: User = {
-                id: userDoc.id,
-                name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                email: data.email || '',
-                phone: data.phone || data.phoneNumber || '',
-                accountType: accountType,
-                isActive: data.isActive !== false,
-                createdAt: data.createdAt?.toDate() || data.created_at?.toDate() || null,
-                lastLogin: data.lastLogin?.toDate() || data.last_login?.toDate() || null,
-                city: data.city || data.location?.city || '',
-                country: data.country || data.location?.country || '',
-                parentAccountId: data.parentAccountId || data.parent_account_id || '',
-                parentAccountType: data.parentAccountType || data.parent_account_type || '',
-                isDeleted: data.isDeleted || data.deleted || false,
-                verificationStatus: data.verificationStatus || data.verification_status || 'pending',
-                profileCompletion: profileCompletion,
-                profileCompleted: profileCompletion >= 80 // يعتبر مكتمل إذا كان 80% أو أكثر
-              };
-              allUsers.push(userData);
-            }
+                const userData: User = {
+                  id: userDoc.id,
+                  name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
+                  email: data.email || '',
+                  phone: data.phone || data.phoneNumber || '',
+                  accountType: accountType,
+                  isActive: data.isActive !== false,
+                  createdAt: data.createdAt?.toDate() || data.created_at?.toDate() || null,
+                  lastLogin: data.lastLogin?.toDate() || data.last_login?.toDate() || null,
+                  city: data.city || data.location?.city || '',
+                  country: data.country || data.location?.country || '',
+                  parentAccountId: data.parentAccountId || data.parent_account_id || '',
+                  parentAccountType: data.parentAccountType || data.parent_account_type || '',
+                  isDeleted: data.isDeleted || data.deleted || false,
+                  verificationStatus: data.verificationStatus || data.verification_status || 'pending',
+                  profileCompletion: profileCompletion,
+                  profileCompleted: profileCompletion >= 80
+                };
+                
+                allUsers.push(userData);
+              } catch (docError) {
+                console.error(`خطأ في معالجة المستند ${userDoc.id}:`, docError);
+              }
+            });
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
           }
@@ -372,19 +356,28 @@ export default function AdminUsersPage() {
     }
   }, [user, userData]);
 
-  // Filter and sort users
-  const filteredAndSortedUsers = users.filter(user => {
-    if (!showDeleted && user.isDeleted) return false;
+  // Filter users by tab
+  const getUsersByTab = () => {
+    switch (activeTab) {
+      case 'active':
+        return users.filter(u => u.isActive && !u.isDeleted);
+      case 'inactive':
+        return users.filter(u => !u.isActive && !u.isDeleted);
+      case 'deleted':
+        return users.filter(u => u.isDeleted);
+      default:
+        return users;
+    }
+  };
 
+  // Filter and sort users
+  const filteredAndSortedUsers = getUsersByTab().filter(user => {
     const matchesSearch = searchTerm === '' ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phone.includes(searchTerm);
 
     const matchesType = filterType === 'all' || user.accountType === filterType;
-    const matchesStatus = filterStatus === 'all' ||
-                         (filterStatus === 'active' && user.isActive) ||
-                         (filterStatus === 'inactive' && !user.isActive);
     const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
     const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
     const matchesCity = filterCity === 'all' || user.city === filterCity;
@@ -429,7 +422,7 @@ export default function AdminUsersPage() {
       }
     })();
 
-    return matchesSearch && matchesType && matchesStatus && matchesVerification &&
+    return matchesSearch && matchesType && matchesVerification &&
            matchesDate && matchesProfileCompletion && matchesCountry && matchesCity;
   }).sort((a, b) => {
     let aValue: any = a[sortBy as keyof User];
@@ -462,7 +455,7 @@ export default function AdminUsersPage() {
   const uniqueCountries = Array.from(new Set(users.map(u => u.country).filter(c => c)));
   const uniqueCities = Array.from(new Set(users.map(u => u.city).filter(c => c)));
 
-  // Stats
+  // Real Stats
   const stats = {
     total: users.length,
     active: users.filter(u => u.isActive && !u.isDeleted).length,
@@ -524,19 +517,18 @@ export default function AdminUsersPage() {
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const getProfileCompletionColor = (completion: number) => {
-    if (completion >= 80) return 'text-green-600';
-    if (completion >= 50) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   const getProfileCompletionBgColor = (completion: number) => {
     if (completion >= 80) return 'bg-green-100 text-green-800 border-green-200';
     if (completion >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-red-100 text-red-800 border-red-200';
   };
 
-  const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete') => {
+  const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete' | 'restore') => {
+    if (selectedUsers.length === 0) {
+      toast.error('لم يتم اختيار أي مستخدمين');
+      return;
+    }
+
     try {
       const promises = selectedUsers.map(async userId => {
         const user = users.find(u => u.id === userId);
@@ -554,6 +546,8 @@ export default function AdminUsersPage() {
             return updateDoc(userRef, { verificationStatus: 'verified' });
           case 'delete':
             return updateDoc(userRef, { isDeleted: true, deletedAt: new Date() });
+          case 'restore':
+            return updateDoc(userRef, { isDeleted: false, restoredAt: new Date() });
         }
       });
 
@@ -571,6 +565,8 @@ export default function AdminUsersPage() {
             return { ...user, verificationStatus: 'verified' as const };
           case 'delete':
             return { ...user, isDeleted: true };
+          case 'restore':
+            return { ...user, isDeleted: false };
           default:
             return user;
         }
@@ -582,7 +578,8 @@ export default function AdminUsersPage() {
         activate: 'تفعيل',
         deactivate: 'تعطيل',
         verify: 'توثيق',
-        delete: 'حذف'
+        delete: 'حذف',
+        restore: 'استرجاع'
       };
 
       toast.success(`تم ${actionLabels[action]} ${selectedUsers.length} مستخدم بنجاح`);
@@ -606,8 +603,8 @@ export default function AdminUsersPage() {
         `${user.profileCompletion}%`,
         user.country,
         user.city,
-        user.createdAt?.toLocaleDateString('ar-SA') || '',
-        user.lastLogin?.toLocaleDateString('ar-SA') || ''
+        user.createdAt?.toLocaleDateString('en-GB') || '',
+        user.lastLogin?.toLocaleDateString('en-GB') || ''
       ].join(','))
     ].join('\n');
 
@@ -628,7 +625,8 @@ export default function AdminUsersPage() {
       <AccountTypeProtection allowedTypes={['admin']}>
         <div className="p-8 text-center text-gray-500">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          جاري تحميل بيانات المستخدمين...
+          <p className="text-lg">جاري تحميل بيانات المستخدمين...</p>
+          <p className="text-sm mt-2">قد يستغرق هذا بضع ثوانٍ...</p>
         </div>
       </AccountTypeProtection>
     );
@@ -649,7 +647,7 @@ export default function AdminUsersPage() {
                 </h1>
                 <p className="text-gray-600 mt-2 flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  نظام شامل لإدارة وتحليل {users.length} مستخدم مسجل
+                  نظام شامل لإدارة وتحليل <span className="font-bold text-blue-600">{users.length.toLocaleString()}</span> مستخدم مسجل
                 </p>
               </div>
               <div className="flex gap-3 flex-wrap">
@@ -659,7 +657,7 @@ export default function AdminUsersPage() {
                 </Button>
                 <Button onClick={exportToExcel} className="gap-2 bg-green-600 hover:bg-green-700">
                   <Download className="h-4 w-4" />
-                  تصدير Excel
+                  تصدير Excel ({filteredAndSortedUsers.length})
                 </Button>
               </div>
             </div>
@@ -672,11 +670,11 @@ export default function AdminUsersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">إجمالي المستخدمين</p>
-                    <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
                     <div className="mt-2 flex items-center gap-2 text-xs">
-                      <span className="text-green-600 font-semibold">{stats.active} نشط</span>
+                      <span className="text-green-600 font-semibold">{stats.active.toLocaleString()} نشط</span>
                       <span className="text-gray-400">•</span>
-                      <span className="text-red-600 font-semibold">{stats.inactive} معطل</span>
+                      <span className="text-red-600 font-semibold">{stats.inactive.toLocaleString()} معطل</span>
                     </div>
                   </div>
                   <Users className="h-12 w-12 text-blue-600 opacity-80" />
@@ -689,7 +687,7 @@ export default function AdminUsersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">اللاعبين</p>
-                    <p className="text-3xl font-bold text-purple-600">{stats.byType.player}</p>
+                    <p className="text-3xl font-bold text-purple-600">{stats.byType.player.toLocaleString()}</p>
                     <p className="text-xs text-gray-500 mt-2">أكبر فئة</p>
                   </div>
                   <Activity className="h-12 w-12 text-purple-600 opacity-80" />
@@ -702,9 +700,9 @@ export default function AdminUsersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">الأكاديميات</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.byType.academy}</p>
+                    <p className="text-3xl font-bold text-green-600">{stats.byType.academy.toLocaleString()}</p>
                     <div className="mt-2 text-xs text-gray-500">
-                      {stats.byType.club} نادي • {stats.byType.agent} وكيل
+                      {stats.byType.club.toLocaleString()} نادي • {stats.byType.agent.toLocaleString()} وكيل
                     </div>
                   </div>
                   <Shield className="h-12 w-12 text-green-600 opacity-80" />
@@ -717,9 +715,9 @@ export default function AdminUsersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">اكتمال الملف</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.profileComplete}</p>
+                    <p className="text-3xl font-bold text-green-600">{stats.profileComplete.toLocaleString()}</p>
                     <div className="mt-2 text-xs text-gray-500">
-                      {stats.profileIncomplete} غير مكتمل
+                      {stats.profileIncomplete.toLocaleString()} غير مكتمل
                     </div>
                   </div>
                   <CheckCircle2 className="h-12 w-12 text-yellow-600 opacity-80" />
@@ -731,8 +729,8 @@ export default function AdminUsersPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">الزيارات اليوم</p>
-                    <p className="text-3xl font-bold text-orange-600">{visitStats.total}</p>
+                    <p className="text-sm font-medium text-gray-600 mb-1">الزيارات الكلية</p>
+                    <p className="text-3xl font-bold text-orange-600">{visitStats.total.toLocaleString()}</p>
                     <p className="text-xs text-gray-500 mt-2">
                       {Object.keys(visitStats.byCountry).length} دولة
                     </p>
@@ -747,9 +745,9 @@ export default function AdminUsersPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">حالة التوثيق</p>
-                    <p className="text-3xl font-bold text-indigo-600">{stats.verified}</p>
+                    <p className="text-3xl font-bold text-indigo-600">{stats.verified.toLocaleString()}</p>
                     <p className="text-xs text-gray-500 mt-2">
-                      {stats.pending} في الانتظار
+                      {stats.pending.toLocaleString()} في الانتظار
                     </p>
                   </div>
                   <Shield className="h-12 w-12 text-indigo-600 opacity-80" />
@@ -759,126 +757,122 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Visit Statistics Details */}
-          <Card className="mb-6 border-2 border-blue-200 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer" onClick={() => setShowVisitDetails(!showVisitDetails)}>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-6 w-6 text-blue-600" />
-                  <span>تحليلات الزيارات التفصيلية</span>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                    {visitStats.total} زيارة
-                  </Badge>
-                </div>
-                {showVisitDetails ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </CardTitle>
-            </CardHeader>
-            {showVisitDetails && (
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* By Country */}
-                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <MapPin className="h-5 w-5 text-blue-600" />
-                      الزيارات حسب الدولة
-                    </h3>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                      {Object.entries(visitStats.byCountry)
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 10)
-                        .map(([country, count]) => {
-                          const percentage = (count / visitStats.total * 100).toFixed(1);
-                          return (
-                            <div key={country} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Globe className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-medium text-gray-700">{country || 'غير محدد'}</span>
-                                  <span className="text-sm font-bold text-blue-600">{count} زيارة</span>
+          {visitStats.total > 0 && (
+            <Card className="mb-6 border-2 border-blue-200 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer" onClick={() => setShowVisitDetails(!showVisitDetails)}>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-6 w-6 text-blue-600" />
+                    <span>تحليلات الزيارات التفصيلية</span>
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                      {visitStats.total.toLocaleString()} زيارة
+                    </Badge>
+                  </div>
+                  {showVisitDetails ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </CardTitle>
+              </CardHeader>
+              {showVisitDetails && (
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* By Country */}
+                    <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <MapPin className="h-5 w-5 text-blue-600" />
+                        الزيارات حسب الدولة
+                      </h3>
+                      <div className="space-y-3 max-h-80 overflow-y-auto">
+                        {Object.entries(visitStats.byCountry)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 10)
+                          .map(([country, count]) => {
+                            const percentage = (count / visitStats.total * 100).toFixed(1);
+                            return (
+                              <div key={country} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Globe className="h-4 w-4 text-gray-400" />
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="font-medium text-gray-700">{country || 'غير محدد'}</span>
+                                    <span className="text-sm font-bold text-blue-600">{count.toLocaleString()} زيارة</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
+                                      style={{ width: `${percentage}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
                               </div>
-                            </div>
-                          );
-                        })}
-                      {Object.keys(visitStats.byCountry).length === 0 && (
-                        <p className="text-center text-gray-500 py-8">لا توجد بيانات متاحة</p>
-                      )}
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* By City */}
+                    <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <MapPin className="h-5 w-5 text-green-600" />
+                        الزيارات حسب المدينة
+                      </h3>
+                      <div className="space-y-3 max-h-80 overflow-y-auto">
+                        {Object.entries(visitStats.byCity)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 10)
+                          .map(([city, count]) => {
+                            const percentage = (count / visitStats.total * 100).toFixed(1);
+                            return (
+                              <div key={city} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <MapPin className="h-4 w-4 text-gray-400" />
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="font-medium text-gray-700">{city || 'غير محدد'}</span>
+                                    <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                                      style={{ width: `${percentage}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
                     </div>
                   </div>
 
-                  {/* By City */}
-                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <MapPin className="h-5 w-5 text-green-600" />
-                      الزيارات حسب المدينة
-                    </h3>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                      {Object.entries(visitStats.byCity)
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 10)
-                        .map(([city, count]) => {
-                          const percentage = (count / visitStats.total * 100).toFixed(1);
-                          return (
-                            <div key={city} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <MapPin className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-medium text-gray-700">{city || 'غير محدد'}</span>
-                                  <span className="text-sm font-bold text-green-600">{count} زيارة</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
+                  {/* Recent Visits */}
+                  {visitStats.recentVisits.length > 0 && (
+                    <div className="mt-6 bg-white p-5 rounded-lg border-2 border-gray-100">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <Clock className="h-5 w-5 text-purple-600" />
+                        آخر الزيارات
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {visitStats.recentVisits.slice(0, 6).map((visit, index) => (
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-gray-400 mt-1" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-800 truncate">{visit.country}</p>
+                                <p className="text-sm text-gray-600 truncate">{visit.city}</p>
+                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {visit.timestamp.toLocaleTimeString('en-GB')}
+                                </p>
                               </div>
-                            </div>
-                          );
-                        })}
-                      {Object.keys(visitStats.byCity).length === 0 && (
-                        <p className="text-center text-gray-500 py-8">لا توجد بيانات متاحة</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recent Visits */}
-                {visitStats.recentVisits.length > 0 && (
-                  <div className="mt-6 bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                      آخر الزيارات
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {visitStats.recentVisits.slice(0, 6).map((visit, index) => (
-                        <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-gray-400 mt-1" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-800 truncate">{visit.country}</p>
-                              <p className="text-sm text-gray-600 truncate">{visit.city}</p>
-                              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {visit.timestamp.toLocaleTimeString('ar-SA')}
-                              </p>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Advanced Filters */}
           <Card className="mb-6 shadow-lg border-2 border-gray-200">
@@ -888,7 +882,7 @@ export default function AdminUsersPage() {
                   <Filter className="h-6 w-6 text-gray-700" />
                   <span>فلاتر البحث المتقدمة</span>
                   <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-                    {filteredAndSortedUsers.length} نتيجة
+                    {filteredAndSortedUsers.length.toLocaleString()} نتيجة
                   </Badge>
                 </div>
                 {showAdvancedFilters ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -914,49 +908,25 @@ export default function AdminUsersPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {/* Account Type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      نوع الحساب
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
                     <select
                       value={filterType}
                       onChange={(e) => setFilterType(e.target.value)}
                       title="اختر نوع الحساب"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
-                      <option value="all">جميع الأنواع ({stats.total})</option>
-                      <option value="player">لاعب ({stats.byType.player})</option>
-                      <option value="academy">أكاديمية ({stats.byType.academy})</option>
-                      <option value="agent">وكيل ({stats.byType.agent})</option>
-                      <option value="trainer">مدرب ({stats.byType.trainer})</option>
-                      <option value="club">نادي ({stats.byType.club})</option>
-                    </select>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      حالة النشاط
-                    </label>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      title="اختر حالة النشاط"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الحالات</option>
-                      <option value="active">نشط ({stats.active})</option>
-                      <option value="inactive">معطل ({stats.inactive})</option>
+                      <option value="all">جميع الأنواع ({stats.total.toLocaleString()})</option>
+                      <option value="player">لاعب ({stats.byType.player.toLocaleString()})</option>
+                      <option value="academy">أكاديمية ({stats.byType.academy.toLocaleString()})</option>
+                      <option value="agent">وكيل ({stats.byType.agent.toLocaleString()})</option>
+                      <option value="trainer">مدرب ({stats.byType.trainer.toLocaleString()})</option>
+                      <option value="club">نادي ({stats.byType.club.toLocaleString()})</option>
                     </select>
                   </div>
 
                   {/* Verification Status */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      حالة التوثيق
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">حالة التوثيق</label>
                     <select
                       value={filterVerification}
                       onChange={(e) => setFilterVerification(e.target.value)}
@@ -964,18 +934,15 @@ export default function AdminUsersPage() {
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع الحالات</option>
-                      <option value="verified">موثق ({stats.verified})</option>
-                      <option value="pending">في الانتظار ({stats.pending})</option>
+                      <option value="verified">موثق ({stats.verified.toLocaleString()})</option>
+                      <option value="pending">في الانتظار ({stats.pending.toLocaleString()})</option>
                       <option value="rejected">مرفوض</option>
                     </select>
                   </div>
 
                   {/* Profile Completion */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      اكتمال الملف
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">اكتمال الملف</label>
                     <select
                       value={filterProfileCompletion}
                       onChange={(e) => setFilterProfileCompletion(e.target.value)}
@@ -983,19 +950,16 @@ export default function AdminUsersPage() {
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع المستويات</option>
-                      <option value="complete">مكتمل (80%+) ({stats.profileComplete})</option>
+                      <option value="complete">مكتمل (80%+) ({stats.profileComplete.toLocaleString()})</option>
                       <option value="partial">جزئي (50-79%)</option>
-                      <option value="minimal">قليل (&lt;50%) ({stats.profileIncomplete})</option>
-                      <option value="incomplete">غير مكتمل (&lt;80%)</option>
+                      <option value="minimal">قليل (&lt;50%)</option>
+                      <option value="incomplete">غير مكتمل (&lt;80%) ({stats.profileIncomplete.toLocaleString()})</option>
                     </select>
                   </div>
 
                   {/* Country */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      الدولة
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">الدولة</label>
                     <select
                       value={filterCountry}
                       onChange={(e) => setFilterCountry(e.target.value)}
@@ -1013,10 +977,7 @@ export default function AdminUsersPage() {
 
                   {/* City */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      المدينة
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">المدينة</label>
                     <select
                       value={filterCity}
                       onChange={(e) => setFilterCity(e.target.value)}
@@ -1034,10 +995,7 @@ export default function AdminUsersPage() {
 
                   {/* Registration Date */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4" />
-                      تاريخ التسجيل
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
                     <select
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
@@ -1053,12 +1011,28 @@ export default function AdminUsersPage() {
                     </select>
                   </div>
 
+                  {/* Sort By */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">ترتيب حسب</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      title="اختر حقل الترتيب"
+                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="createdAt">تاريخ التسجيل</option>
+                      <option value="name">الاسم</option>
+                      <option value="email">البريد الإلكتروني</option>
+                      <option value="lastLogin">آخر دخول</option>
+                      <option value="accountType">نوع الحساب</option>
+                      <option value="profileCompletion">اكتمال الملف</option>
+                      <option value="country">الدولة</option>
+                    </select>
+                  </div>
+
                   {/* Items Per Page */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      عدد العناصر
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">عدد العناصر</label>
                     <select
                       value={itemsPerPage}
                       onChange={(e) => {
@@ -1068,61 +1042,12 @@ export default function AdminUsersPage() {
                       title="اختر عدد العناصر في الصفحة"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
-                      <option value={10}>10 في الصفحة</option>
                       <option value={25}>25 في الصفحة</option>
                       <option value={50}>50 في الصفحة</option>
                       <option value={100}>100 في الصفحة</option>
                       <option value={250}>250 في الصفحة</option>
+                      <option value={500}>500 في الصفحة</option>
                     </select>
-                  </div>
-                </div>
-
-                {/* Sorting and Additional Options */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">ترتيب حسب</label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        title="اختر حقل الترتيب"
-                        className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value="createdAt">تاريخ التسجيل</option>
-                        <option value="name">الاسم</option>
-                        <option value="email">البريد الإلكتروني</option>
-                        <option value="lastLogin">آخر دخول</option>
-                        <option value="accountType">نوع الحساب</option>
-                        <option value="profileCompletion">اكتمال الملف</option>
-                        <option value="city">المدينة</option>
-                        <option value="country">الدولة</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">اتجاه الترتيب</label>
-                      <select
-                        value={sortOrder}
-                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                        title="اختر اتجاه الترتيب"
-                        className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value="desc">تنازلي (الأحدث أولاً)</option>
-                        <option value="asc">تصاعدي (الأقدم أولاً)</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-end">
-                      <label className="flex items-center gap-2 cursor-pointer p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full">
-                        <input
-                          type="checkbox"
-                          checked={showDeleted}
-                          onChange={(e) => setShowDeleted(e.target.checked)}
-                          className="rounded h-5 w-5"
-                        />
-                        <span className="text-sm font-medium text-gray-700">عرض المحذوفين ({stats.deleted})</span>
-                      </label>
-                    </div>
                   </div>
                 </div>
 
@@ -1133,13 +1058,11 @@ export default function AdminUsersPage() {
                     onClick={() => {
                       setSearchTerm('');
                       setFilterType('all');
-                      setFilterStatus('all');
                       setFilterVerification('all');
                       setFilterProfileCompletion('all');
                       setFilterCountry('all');
                       setFilterCity('all');
                       setDateFilter('all');
-                      setShowDeleted(false);
                       setSortBy('createdAt');
                       setSortOrder('desc');
                       setCurrentPage(1);
@@ -1163,42 +1086,62 @@ export default function AdminUsersPage() {
                   <div className="flex items-center gap-3">
                     <UserCheck className="h-6 w-6 text-blue-600" />
                     <span className="text-lg font-semibold text-blue-900">
-                      تم اختيار {selectedUsers.length} مستخدم
+                      تم اختيار {selectedUsers.length.toLocaleString()} مستخدم
                     </span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      onClick={() => handleBulkAction('activate')}
-                      className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      تفعيل
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleBulkAction('deactivate')}
-                      className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
-                    >
-                      <UserX className="h-4 w-4" />
-                      تعطيل
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleBulkAction('verify')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                    >
-                      <Shield className="h-4 w-4" />
-                      توثيق
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleBulkAction('delete')}
-                      className="bg-red-600 hover:bg-red-700 text-white gap-2"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      حذف
-                    </Button>
+                    {activeTab === 'active' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('deactivate')}
+                          className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
+                        >
+                          <UserX className="h-4 w-4" />
+                          تعطيل
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('verify')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                        >
+                          <Shield className="h-4 w-4" />
+                          توثيق
+                        </Button>
+                      </>
+                    )}
+                    {activeTab === 'inactive' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('activate')}
+                          className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                          تفعيل
+                        </Button>
+                      </>
+                    )}
+                    {activeTab === 'deleted' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleBulkAction('restore')}
+                        className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                      >
+                        <RefreshCcw className="h-4 w-4" />
+                        استرجاع
+                      </Button>
+                    )}
+                    {activeTab !== 'deleted' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleBulkAction('delete')}
+                        className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        حذف
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -1213,19 +1156,43 @@ export default function AdminUsersPage() {
             </Card>
           )}
 
-          {/* Users Table */}
+          {/* Tabs for Active/Inactive/Deleted */}
           <Card className="shadow-xl border-2 border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50">
-              <CardTitle className="flex items-center justify-between flex-wrap gap-3">
-                <span className="flex items-center gap-2">
-                  <Users className="h-6 w-6 text-gray-700" />
-                  قائمة المستخدمين
-                </span>
-                <span className="text-sm font-normal text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
-                  عرض <span className="font-bold text-blue-600">{filteredAndSortedUsers.length}</span> من <span className="font-bold text-blue-600">{users.length}</span> مستخدم
-                </span>
-              </CardTitle>
+            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 pb-0">
+              <Tabs value={activeTab} onValueChange={(v) => {
+                setActiveTab(v as any);
+                setSelectedUsers([]);
+                setCurrentPage(1);
+              }}>
+                <TabsList className="grid w-full md:w-[600px] grid-cols-3 mb-4">
+                  <TabsTrigger value="active" className="gap-2">
+                    <UserCheck className="h-4 w-4" />
+                    النشطين ({stats.active.toLocaleString()})
+                  </TabsTrigger>
+                  <TabsTrigger value="inactive" className="gap-2">
+                    <UserX className="h-4 w-4" />
+                    المعطلين ({stats.inactive.toLocaleString()})
+                  </TabsTrigger>
+                  <TabsTrigger value="deleted" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    المحذوفين ({stats.deleted.toLocaleString()})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value={activeTab} className="mt-0">
+                  <CardTitle className="flex items-center justify-between flex-wrap gap-3 pb-4">
+                    <span className="flex items-center gap-2">
+                      <Users className="h-6 w-6 text-gray-700" />
+                      قائمة المستخدمين
+                    </span>
+                    <span className="text-sm font-normal text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
+                      عرض <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> من <span className="font-bold text-blue-600">{getUsersByTab().length.toLocaleString()}</span> مستخدم
+                    </span>
+                  </CardTitle>
+                </TabsContent>
+              </Tabs>
             </CardHeader>
+            
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -1250,7 +1217,6 @@ export default function AdminUsersPage() {
                       <th className="text-right p-4 font-semibold text-gray-700">البريد</th>
                       <th className="text-right p-4 font-semibold text-gray-700">الهاتف</th>
                       <th className="text-right p-4 font-semibold text-gray-700">النوع</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">الحالة</th>
                       <th className="text-right p-4 font-semibold text-gray-700">التوثيق</th>
                       <th className="text-right p-4 font-semibold text-gray-700">اكتمال الملف</th>
                       <th className="text-right p-4 font-semibold text-gray-700">الموقع</th>
@@ -1286,7 +1252,7 @@ export default function AdminUsersPage() {
                               {user.lastLogin && (
                                 <p className="text-xs text-gray-500 flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
-                                  آخر دخول: {user.lastLogin.toLocaleDateString('ar-SA')}
+                                  {user.lastLogin.toLocaleDateString('en-GB')}
                                 </p>
                               )}
                             </div>
@@ -1307,17 +1273,6 @@ export default function AdminUsersPage() {
                         <td className="p-4">
                           <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
                             {getAccountTypeLabel(user.accountType)}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <Badge
-                            className={`border font-semibold ${
-                              user.isActive
-                                ? 'bg-green-100 text-green-800 border-green-300'
-                                : 'bg-red-100 text-red-800 border-red-300'
-                            }`}
-                          >
-                            {user.isActive ? '✓ نشط' : '✗ معطل'}
                           </Badge>
                         </td>
                         <td className="p-4">
@@ -1366,10 +1321,10 @@ export default function AdminUsersPage() {
                           {user.createdAt ? (
                             <div className="text-sm">
                               <p className="font-medium text-gray-900">
-                                {user.createdAt.toLocaleDateString('ar-SA')}
+                                {user.createdAt.toLocaleDateString('en-GB')}
                               </p>
                               <p className="text-gray-600 text-xs">
-                                {user.createdAt.toLocaleTimeString('ar-SA')}
+                                {user.createdAt.toLocaleTimeString('en-GB')}
                               </p>
                             </div>
                           ) : (
@@ -1423,11 +1378,11 @@ export default function AdminUsersPage() {
                 <div className="p-6 bg-gradient-to-r from-gray-50 to-slate-50 border-t-2 border-gray-200">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="text-sm font-medium text-gray-700 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                      عرض <span className="font-bold text-blue-600">{startIndex + 1}</span> إلى{' '}
+                      عرض <span className="font-bold text-blue-600">{(startIndex + 1).toLocaleString()}</span> إلى{' '}
                       <span className="font-bold text-blue-600">
-                        {Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length)}
+                        {Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length).toLocaleString()}
                       </span>{' '}
-                      من <span className="font-bold text-blue-600">{filteredAndSortedUsers.length}</span> نتيجة
+                      من <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> نتيجة
                     </div>
                     <div className="flex gap-2 flex-wrap justify-center">
                       <Button
