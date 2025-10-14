@@ -59,7 +59,7 @@ import {
     Users,
     X
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // الصلاحيات الافتراضية لكل دور وظيفي
@@ -320,7 +320,21 @@ export default function EmployeesManagement() {
     }, [showAddDialog, editingEmployee]);
 
     const onInput = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setLocal(prev => ({ ...prev, [field]: e.target.value }));
+      let value = e.target.value;
+      // تقييد أنواع محددة أثناء الكتابة
+      if (field === 'phone') {
+        // أرقام فقط (تحذف أي رموز/حروف)
+        value = value.replace(/\D/g, '');
+      }
+      if (field === 'salary') {
+        // رقم عشري بسيط: يسمح بنقطة واحدة
+        value = value.replace(/[^\d.]/g, '');
+        const parts = value.split('.');
+        if (parts.length > 2) {
+          value = parts[0] + '.' + parts.slice(1).join('');
+        }
+      }
+      setLocal(prev => ({ ...prev, [field]: value }));
       if (formErrors[field as keyof typeof formErrors]) {
         setFormErrors(prev => ({ ...prev, [field]: '' }));
       }
@@ -850,8 +864,11 @@ export default function EmployeesManagement() {
   };
 
   // تحديث دالة حفظ الموظف
+  const savingRef = useRef(false);
   const handleSaveEmployee = async () => {
     try {
+      if (savingRef.current) return; // منع الضغط المزدوج
+      savingRef.current = true;
       console.log('🔄 بدء عملية حفظ الموظف...', { newEmployee, selectedCountry, selectedCities });
 
       // Validate form
@@ -892,26 +909,44 @@ export default function EmployeesManagement() {
         }));
       } catch {}
 
+      // قراءة أحدث قيم من الحقول مباشرة لضمان صحة التحقق
+      const nameVal = (document.querySelector('#emp_name') as HTMLInputElement | null)?.value || newEmployee.name || '';
+      const emailVal = (document.querySelector('#emp_email') as HTMLInputElement | null)?.value || newEmployee.email || '';
+      const phoneVal = (document.querySelector('#emp_phone') as HTMLInputElement | null)?.value || newEmployee.phone || '';
+
       // Validate required fields
-      if (!newEmployee.name?.trim()) {
+      if (!nameVal.trim()) {
         toast.error('يرجى إدخال اسم الموظف');
         return;
       }
 
-      if (!newEmployee.email?.trim()) {
+      if (!emailVal.trim()) {
         toast.error('يرجى إدخال البريد الإلكتروني');
         return;
       }
 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newEmployee.email)) {
+      if (!emailRegex.test(emailVal)) {
         toast.error('يرجى إدخال بريد إلكتروني صحيح');
         return;
       }
 
-      if (!newEmployee.phone?.trim()) {
+      if (!phoneVal.trim()) {
         toast.error('يرجى إدخال رقم الهاتف');
+        return;
+      }
+
+      // phone: 8-15 digits
+      if (!/^\d{8,15}$/.test(phoneVal)) {
+        toast.error('رقم الهاتف يجب أن يحتوي على 8 إلى 15 رقمًا');
+        return;
+      }
+
+      // salary (اختياري): رقم صالح
+      const salaryStr = (document.querySelector('#emp_salary') as HTMLInputElement | null)?.value || '';
+      if (salaryStr && isNaN(Number(salaryStr))) {
+        toast.error('الراتب يجب أن يكون رقمًا صالحًا');
         return;
       }
 
@@ -960,10 +995,10 @@ export default function EmployeesManagement() {
           console.log('🔑 تم إنشاء كلمة مرور مؤقتة');
 
           // Prepare employee data first
-          const employeeData: Partial<Employee> = {
-            name: newEmployee.name,
-            email: newEmployee.email,
-            phone: newEmployee.phone,
+      const employeeData: Partial<Employee> = {
+            name: nameVal,
+            email: emailVal,
+            phone: phoneVal,
             role: newEmployee.role,
             department: newEmployee.department,
             createdAt: new Date(),
