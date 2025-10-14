@@ -1,56 +1,71 @@
+import { db } from '@/lib/firebase/config';
+import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
-import { BEON_V3_CONFIG, createBeOnHeaders } from '@/lib/beon/config';
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, otp, reference } = await request.json();
+    const { phoneNumber, otp } = await request.json();
 
     if (!phoneNumber || !otp) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان' }, { status: 400 });
     }
 
-    const beonUrl = `${BEON_V3_CONFIG.BASE_URL}/api/v3/verify/otp`; // Correct V3 endpoint
-    const beonToken = BEON_V3_CONFIG.TOKEN;
+    console.log(`🔑 [verify-otp] Verifying OTP for ${phoneNumber}`);
 
-    if (!beonToken) {
-      console.error('❌ [verify-otp] BEON_V3_TOKEN is not set');
-      return NextResponse.json({ success: false, error: 'خدمة التحقق غير مهيأة' }, { status: 500 });
-    }
+    // Query Firestore for the OTP
+    const otpQuery = query(
+      collection(db, 'otp_codes'),
+      where('phoneNumber', '==', phoneNumber),
+      where('otp', '==', otp),
+      where('verified', '==', false)
+    );
 
-    const requestBody = {
-      phoneNumber: phoneNumber.replace(/^\+/, ''),
-      otp: otp,
-      reference: reference, // reference is often needed for verification
-    };
+    const querySnapshot = await getDocs(otpQuery);
 
-    const beonResponse = await fetch(beonUrl, {
-      method: 'POST',
-      headers: createBeOnHeaders(beonToken),
-      body: JSON.stringify(requestBody),
-    });
-
-    const responseText = await beonResponse.text();
-    let beonData;
-    try {
-      beonData = JSON.parse(responseText);
-    } catch (e) {
-      console.error('❌ [verify-otp] Failed to parse BeOn response. Status:', beonResponse.status, 'Response:', responseText);
-      return NextResponse.json({ success: false, error: 'Invalid response from verification service.' }, { status: 502 });
-    }
-
-    if (beonResponse.ok && (beonData.success || beonData.status === 'success')) {
-      return NextResponse.json({ success: true, message: 'تم التحقق بنجاح', verified: true });
-    } else {
+    if (querySnapshot.empty) {
+      console.error('❌ [verify-otp] No matching OTP found');
       return NextResponse.json({
         success: false,
         verified: false,
-        error: beonData.error || beonData.message || 'رمز التحقق غير صحيح'
+        error: 'رمز التحقق غير صحيح أو منتهي الصلاحية'
       }, { status: 400 });
     }
 
+    // Get the first matching document
+    const otpDoc = querySnapshot.docs[0];
+    const otpData = otpDoc.data();
+
+    // Check if OTP is expired
+    const expiresAt = otpData.expiresAt?.toDate();
+    if (expiresAt && expiresAt < new Date()) {
+      console.error('❌ [verify-otp] OTP expired');
+      return NextResponse.json({
+        success: false,
+        verified: false,
+        error: 'رمز التحقق منتهي الصلاحية'
+      }, { status: 400 });
+    }
+
+    // Mark OTP as verified
+    await updateDoc(otpDoc.ref, {
+      verified: true,
+      verifiedAt: new Date()
+    });
+
+    console.log(`✅ [verify-otp] OTP verified successfully for ${phoneNumber}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'تم التحقق بنجاح',
+      verified: true
+    });
+
   } catch (error: any) {
     console.error('❌ [verify-otp] Fatal error:', error);
-    return NextResponse.json({ success: false, error: 'حدث خطأ فادح في التحقق' }, { status: 500 });
+    return NextResponse.json({
+      success: false,
+      error: 'حدث خطأ في التحقق',
+      verified: false
+    }, { status: 500 });
   }
 }
-
