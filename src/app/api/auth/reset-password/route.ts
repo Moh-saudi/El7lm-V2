@@ -1,5 +1,5 @@
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 const COLLECTIONS_TO_SEARCH = [
   'users',
@@ -10,6 +10,7 @@ const COLLECTIONS_TO_SEARCH = [
   'employees',
   'trainers'
 ];
+
 const PHONE_FIELDS = [
   'phone',
   'phoneNumber',
@@ -19,110 +20,152 @@ const PHONE_FIELDS = [
   'mobile_number'
 ];
 
-// دالة موحدة للبحث عن المستخدم عبر مجموعات متعددة
+// دالة البحث عن المستخدم بواسطة رقم الهاتف
 async function findUserByPhone(phoneNumber: string): Promise<{
   uid: string | null;
   email: string | null;
   docId: string | null;
   collectionName: string | null;
 }> {
-  if (!phoneNumber) return { uid: null, email: null, docId: null, collectionName: null };
+  if (!phoneNumber) {
+    return { uid: null, email: null, docId: null, collectionName: null };
+  }
 
   if (!adminDb) {
-    console.error('❌ Admin DB is not available');
+    console.error('❌ [reset-password] Admin DB is not available');
     return { uid: null, email: null, docId: null, collectionName: null };
   }
 
   for (const collectionName of COLLECTIONS_TO_SEARCH) {
     for (const field of PHONE_FIELDS) {
       try {
-        const snapshot = await adminDb.collection(collectionName).where(field, '==', phoneNumber).get();
+        const snapshot = await adminDb
+          .collection(collectionName)
+          .where(field, '==', phoneNumber)
+          .limit(1)
+          .get();
 
         if (!snapshot.empty) {
           const userDoc = snapshot.docs[0];
           const userData = userDoc.data();
 
-          // العثور على البريد الإلكتروني أو UID
           const email = userData.email || userData.userEmail;
           const uid = userData.uid || userData.userId || userDoc.id;
 
           if (uid) {
-            console.log(`✅ User found in ${collectionName} with uid: ${uid}`);
+            console.log(`✅ [reset-password] User found in ${collectionName} with uid: ${uid}`);
             return { uid, email, docId: userDoc.id, collectionName };
           }
         }
       } catch (error) {
-        console.warn(`⚠️ Could not search in ${collectionName} on field ${field}:`, error);
+        console.warn(`⚠️ [reset-password] Could not search in ${collectionName} on field ${field}:`, error);
       }
     }
   }
 
-  console.log(`❌ User not found for phone number: ${phoneNumber}`);
+  console.log(`❌ [reset-password] User not found for phone number: ${phoneNumber}`);
   return { uid: null, email: null, docId: null, collectionName: null };
 }
 
-
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, newPassword } = await request.json();
+    const body = await request.json();
+    const { phoneNumber, newPassword } = body;
 
-    console.log('🔐 [reset-password] Starting password reset process for:', phoneNumber);
+    console.log('🔐 [reset-password] Starting password reset process');
+    console.log('📱 [reset-password] Phone number:', phoneNumber);
 
+    // التحقق من البيانات
     if (!phoneNumber || !newPassword) {
-      console.error('❌ [reset-password] Missing phoneNumber or newPassword');
-      return NextResponse.json({ success: false, error: 'رقم الهاتف وكلمة المرور الجديدة مطلوبان' }, { status: 400 });
+      console.error('❌ [reset-password] Missing required fields');
+      return NextResponse.json(
+        { success: false, error: 'رقم الهاتف وكلمة المرور الجديدة مطلوبان' },
+        { status: 400 }
+      );
     }
 
     if (newPassword.length < 6) {
       console.error('❌ [reset-password] Password too short');
-      return NextResponse.json({ success: false, error: 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل' },
+        { status: 400 }
+      );
     }
 
-    // 1. البحث عن المستخدم باستخدام رقم الهاتف
-    console.log('🔍 [reset-password] Searching for user with phone:', phoneNumber);
+    // البحث عن المستخدم
+    console.log('🔍 [reset-password] Searching for user...');
     const { uid, docId, collectionName } = await findUserByPhone(phoneNumber);
 
     if (!uid) {
       console.error('❌ [reset-password] User not found');
-      return NextResponse.json({ success: false, error: 'المستخدم غير موجود لرقم الهاتف المقدم' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'المستخدم غير موجود لرقم الهاتف المقدم' },
+        { status: 404 }
+      );
     }
 
-    console.log('✅ [reset-password] User found. UID:', uid, 'Collection:', collectionName);
+    console.log('✅ [reset-password] User found - UID:', uid, 'Collection:', collectionName);
 
+    // التحقق من توفر Firebase Admin Auth
     if (!adminAuth) {
       console.error('❌ [reset-password] Firebase Admin Auth is not available');
-      throw new Error('Firebase Admin Auth is not available.');
+      return NextResponse.json(
+        { success: false, error: 'خدمة المصادقة غير متاحة' },
+        { status: 500 }
+      );
     }
 
-    // 2. تحديث كلمة المرور في Firebase Authentication
-    console.log('🔄 [reset-password] Updating password in Firebase Auth for UID:', uid);
+    // تحديث كلمة المرور في Firebase Authentication
+    console.log('🔄 [reset-password] Updating password in Firebase Auth...');
     await adminAuth.updateUser(uid, {
       password: newPassword,
     });
 
-    console.log(`✅ [reset-password] Password updated successfully for UID: ${uid}`);
+    console.log('✅ [reset-password] Password updated successfully in Firebase Auth');
 
-    // 3. (اختياري) تحديث حقل في Firestore للإشارة إلى تغيير كلمة المرور
+    // تحديث Firestore
     if (docId && collectionName && adminDb) {
-      await adminDb.collection(collectionName).doc(docId).update({
-        passwordLastUpdated: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      console.log(`✅ Firestore document updated for user: ${docId} in ${collectionName}`);
+      try {
+        await adminDb.collection(collectionName).doc(docId).update({
+          passwordLastUpdated: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        console.log('✅ [reset-password] Firestore document updated');
+      } catch (error) {
+        console.warn('⚠️ [reset-password] Failed to update Firestore:', error);
+        // لا نفشل العملية إذا فشل تحديث Firestore
+      }
     }
 
-    return NextResponse.json({ success: true, message: 'Password updated successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'تم تحديث كلمة المرور بنجاح'
+    });
 
   } catch (error: any) {
-    console.error('❌ Error resetting password:', error);
+    console.error('❌ [reset-password] Fatal error:', error);
+    console.error('❌ [reset-password] Error details:', error.message, error.code);
 
-    let errorMessage = 'An internal server error occurred.';
+    let errorMessage = 'حدث خطأ أثناء إعادة تعيين كلمة المرور';
+    
     if (error.code === 'auth/user-not-found') {
-      errorMessage = 'User not found in Firebase Authentication.';
+      errorMessage = 'المستخدم غير موجود في نظام المصادقة';
     } else if (error.message) {
       errorMessage = error.message;
     }
 
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: errorMessage },
+      { status: 500 }
+    );
   }
+}
+
+// إضافة GET للاختبار
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    success: true,
+    message: 'Reset password endpoint is working',
+    timestamp: new Date().toISOString()
+  });
 }

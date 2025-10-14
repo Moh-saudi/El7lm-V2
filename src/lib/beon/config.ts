@@ -6,10 +6,10 @@
 export const BEON_V3_CONFIG = {
   // Base URL for BeOn V3 API
   BASE_URL: process.env.BEON_V3_BASE_URL || 'https://v3.api.beon.chat',
-  
+
   // Your API Token
   TOKEN: process.env.BEON_V3_TOKEN || 'Yt3A3RwMQHx49trsz1EMgSKP8qOD0CSVJXdJxy6IqNNtcYblsYWtfVAtaJpv',
-  
+
   // Endpoints
   ENDPOINTS: {
     // OTP Endpoint - The correct, dedicated endpoint for sending OTPs
@@ -19,17 +19,17 @@ export const BEON_V3_CONFIG = {
     // SMS Endpoints
     SMS_BULK: '/api/v3/messages/sms/bulk',
     SMS_TEMPLATE: '/api/v3/send/message/sms/template',
-    
+
     // WhatsApp Endpoints (using SMS endpoints as per documentation)
     WHATSAPP: '/api/v3/messages/sms/bulk',
-    
+
     // Template Management
     CREATE_TEMPLATE: '/api/v3/partner/templates/create',
-    
+
     // Account
     ACCOUNT_DETAILS: '/api/v3/account'
   },
-  
+
   // Default settings
   DEFAULTS: {
     SENDER_NAME: 'El7lm',
@@ -100,7 +100,7 @@ export interface TemplateCreateRequest {
 
 // Utility functions
 export async function retryRequest<T>(
-  requestFn: () => Promise<T>, 
+  requestFn: () => Promise<T>,
   maxRetries: number = 3,
   delay: number = 1000
 ): Promise<T> {
@@ -109,7 +109,7 @@ export async function retryRequest<T>(
       return await requestFn();
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      
+
       // زيادة التأخير مع كل محاولة
       const currentDelay = delay * Math.pow(2, i);
       console.log(`🔄 إعادة المحاولة ${i + 1}/${maxRetries} بعد ${currentDelay}ms`);
