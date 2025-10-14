@@ -282,6 +282,61 @@ export default function EmployeesManagement() {
   // تحديث نموذج إضافة/تعديل الموظف كمكوّن دالة بسيط
   // نموذج مبسط لتفادي أي تعقيد وإعادة تهيئة أثناء الكتابة
   function SimpleEmployeeForm() {
+    const [local, setLocal] = useState<Partial<Employee>>({
+      name: newEmployee.name || '',
+      email: newEmployee.email || '',
+      phone: newEmployee.phone || '',
+      birthDate: newEmployee.birthDate || '',
+      role: newEmployee.role || 'support',
+      department: newEmployee.department || '',
+      hireDate: newEmployee.hireDate || '',
+      salary: newEmployee.salary || '',
+      supervisor: newEmployee.supervisor || '',
+      workStartTime: newEmployee.workStartTime || '09:00',
+      workEndTime: newEmployee.workEndTime || '17:00',
+      notes: newEmployee.notes || '',
+      isActive: newEmployee.isActive !== false,
+      sendWelcomeEmail: newEmployee.sendWelcomeEmail !== false
+    });
+
+    // مزامنة عند فتح المودال وتبديل الموظف الجاري تحريره
+    useEffect(() => {
+      setLocal({
+        name: newEmployee.name || '',
+        email: newEmployee.email || '',
+        phone: newEmployee.phone || '',
+        birthDate: newEmployee.birthDate || '',
+        role: newEmployee.role || 'support',
+        department: newEmployee.department || '',
+        hireDate: newEmployee.hireDate || '',
+        salary: newEmployee.salary || '',
+        supervisor: newEmployee.supervisor || '',
+        workStartTime: newEmployee.workStartTime || '09:00',
+        workEndTime: newEmployee.workEndTime || '17:00',
+        notes: newEmployee.notes || '',
+        isActive: newEmployee.isActive !== false,
+        sendWelcomeEmail: newEmployee.sendWelcomeEmail !== false
+      });
+    }, [showAddDialog, editingEmployee]);
+
+    const onInput = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocal(prev => ({ ...prev, [field]: e.target.value }));
+      if (formErrors[field as keyof typeof formErrors]) {
+        setFormErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    };
+
+    const onCheckbox = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocal(prev => ({ ...prev, [field]: e.target.checked }));
+    };
+
+    const onSelect = (field: keyof Employee) => (value: string) => {
+      setLocal(prev => ({ ...prev, [field]: value }));
+      if (formErrors[field as keyof typeof formErrors]) {
+        setFormErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    };
+
     return (
     <div className="space-y-6 py-4">
       {/* معلومات شخصية */}
@@ -300,8 +355,9 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
             <Input
-              value={newEmployee.name || ''}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+              id="emp_name"
+              value={local.name as string}
+              onChange={onInput('name')}
               placeholder="أدخل الاسم الكامل"
               className={`w-full ${formErrors.name ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="rtl"
@@ -314,9 +370,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">البريد الإلكتروني *</Label>
             <Input
+              id="emp_email"
               type="email"
-              value={newEmployee.email || ''}
-              onChange={(e) => handleInputChange('email', e.target.value)}
+              value={local.email as string}
+              onChange={onInput('email')}
               placeholder="example@el7lm.com"
               className={`w-full ${formErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="ltr"
@@ -329,9 +386,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">رقم الهاتف *</Label>
             <Input
+              id="emp_phone"
               type="tel"
-              value={newEmployee.phone || ''}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
+              value={local.phone as string}
+              onChange={onInput('phone')}
               placeholder="05xxxxxxxx"
               className={`w-full text-left ${formErrors.phone ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               dir="ltr"
@@ -344,9 +402,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">تاريخ الميلاد</Label>
             <Input
+              id="emp_birth"
               type="date"
-              value={newEmployee.birthDate || ''}
-              onChange={(e) => handleInputChange('birthDate', e.target.value)}
+              value={(local.birthDate as string) || ''}
+              onChange={onInput('birthDate')}
               className="w-full border-gray-300 focus:border-blue-500"
             />
           </div>
@@ -369,58 +428,19 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
             <Select
-              value={newEmployee.role || ''}
-              onValueChange={(value: EmployeeRole) => {
-                setNewEmployee(prev => ({
-                  ...prev,
-                  role: value,
-                  permissions: DEFAULT_PERMISSIONS[value]
-                }));
-                if (formErrors.role) {
-                  setFormErrors(prev => ({ ...prev, role: '' }));
-                }
-              }}
+              value={(local.role as string) || ''}
+              onValueChange={onSelect('role')}
             >
               <SelectTrigger className={`w-full ${formErrors.role ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
                 <SelectValue placeholder="اختر الوظيفة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="support">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>دعم فني</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="finance">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>مالية</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="sales">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span>مبيعات</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="content">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span>محتوى</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="supervisor">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <span>مشرف</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span>مدير نظام</span>
-                  </div>
-                </SelectItem>
+                <SelectItem value="support">دعم فني</SelectItem>
+                <SelectItem value="finance">مالية</SelectItem>
+                <SelectItem value="sales">مبيعات</SelectItem>
+                <SelectItem value="content">محتوى</SelectItem>
+                <SelectItem value="supervisor">مشرف</SelectItem>
+                <SelectItem value="admin">مدير نظام</SelectItem>
               </SelectContent>
             </Select>
             {formErrors.role && (
@@ -431,8 +451,8 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">القسم *</Label>
             <Select
-              value={newEmployee.department || ''}
-              onValueChange={(value) => handleSelectChange('department', value)}
+              value={(local.department as string) || ''}
+              onValueChange={onSelect('department')}
             >
               <SelectTrigger className={`w-full ${formErrors.department ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
                 <SelectValue placeholder="اختر القسم" />
@@ -456,9 +476,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">تاريخ التعيين</Label>
             <Input
+              id="emp_hire"
               type="date"
-              value={newEmployee.hireDate || ''}
-              onChange={(e) => handleInputChange('hireDate', e.target.value)}
+              value={(local.hireDate as string) || ''}
+              onChange={onInput('hireDate')}
               className="w-full border-gray-300 focus:border-green-500"
             />
           </div>
@@ -466,9 +487,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الراتب الشهري</Label>
             <Input
+              id="emp_salary"
               type="number"
-              value={newEmployee.salary || ''}
-              onChange={(e) => handleInputChange('salary', e.target.value)}
+              value={(local.salary as string) || ''}
+              onChange={onInput('salary')}
               placeholder="0.00"
               className="w-full border-gray-300 focus:border-green-500"
               dir="ltr"
@@ -494,10 +516,8 @@ export default function EmployeesManagement() {
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">المشرف المباشر</Label>
               <Select
-                value={newEmployee.supervisor || ''}
-                onValueChange={(value) => {
-                  setNewEmployee(prev => ({ ...prev, supervisor: value }));
-                }}
+                value={(local.supervisor as string) || ''}
+                onValueChange={onSelect('supervisor')}
               >
                 <SelectTrigger className="w-full border-gray-300 focus:border-purple-500">
                   <SelectValue placeholder="اختر المشرف" />
@@ -517,20 +537,18 @@ export default function EmployeesManagement() {
               <Label className="text-sm font-medium text-gray-700">ساعات العمل</Label>
               <div className="flex gap-2">
                 <Input
+                  id="emp_wstart"
                   type="time"
-                  value={newEmployee.workStartTime || '09:00'}
-                  onChange={(e) => {
-                    setNewEmployee(prev => ({ ...prev, workStartTime: e.target.value }));
-                  }}
+                  value={(local.workStartTime as string) || '09:00'}
+                  onChange={onInput('workStartTime')}
                   className="flex-1 border-gray-300 focus:border-purple-500"
                 />
                 <span className="flex items-center text-gray-500">إلى</span>
                 <Input
+                  id="emp_wend"
                   type="time"
-                  value={newEmployee.workEndTime || '17:00'}
-                  onChange={(e) => {
-                    setNewEmployee(prev => ({ ...prev, workEndTime: e.target.value }));
-                  }}
+                  value={(local.workEndTime as string) || '17:00'}
+                  onChange={onInput('workEndTime')}
                   className="flex-1 border-gray-300 focus:border-purple-500"
                 />
               </div>
@@ -562,8 +580,9 @@ export default function EmployeesManagement() {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
             <Input
-              value={newEmployee.notes || ''}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              id="emp_notes"
+              value={(local.notes as string) || ''}
+              onChange={onInput('notes')}
               placeholder="أي ملاحظات إضافية حول الموظف..."
               className="w-full"
             />
@@ -575,8 +594,8 @@ export default function EmployeesManagement() {
                 type="checkbox"
                 id="isActive"
                 title="تفعيل الحساب فوراً"
-                checked={newEmployee.isActive !== false}
-                onChange={(e) => handleCheckboxChange('isActive', e.target.checked)}
+                checked={!!local.isActive}
+                onChange={onCheckbox('isActive')}
                 className="rounded border-gray-300"
               />
               <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
@@ -589,8 +608,8 @@ export default function EmployeesManagement() {
                 type="checkbox"
                 id="sendWelcomeEmail"
                 title="إرسال بريد ترحيبي"
-                checked={newEmployee.sendWelcomeEmail !== false}
-                onChange={(e) => handleCheckboxChange('sendWelcomeEmail', e.target.checked)}
+                checked={!!local.sendWelcomeEmail}
+                onChange={onCheckbox('sendWelcomeEmail')}
                 className="rounded border-gray-300"
               />
               <Label htmlFor="sendWelcomeEmail" className="text-sm font-medium text-gray-700">
@@ -599,6 +618,11 @@ export default function EmployeesManagement() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* مزامنة الحالة المحلية إلى الحالة العامة عند الحفظ */}
+      <div className="hidden">
+        {/* عنصر مخفي يُحدَّث قبل الحفظ عبر handleSaveEmployee */}
       </div>
     </div>
   );
@@ -835,6 +859,38 @@ export default function EmployeesManagement() {
         console.log('❌ فشل في التحقق من صحة النموذج');
         return;
       }
+
+      // مزامنة الحالة المحلية إلى العامة قبل التحقق والحفظ (إن وُجدت)
+      // نحاول قراءة القيم من عناصر النموذج المبسط إن كانت متاحة عبر state المحلية
+      // ملاحظة: SimpleEmployeeForm يُحدّث local داخلياً؛ هنا نستدعي آخر قيم عبر document query كحل بسيط
+      try {
+        const nameEl = document.querySelector('#emp_name') as HTMLInputElement | null;
+        const emailEl = document.querySelector('#emp_email') as HTMLInputElement | null;
+        const phoneEl = document.querySelector('#emp_phone') as HTMLInputElement | null;
+        const notesEl = document.querySelector('#emp_notes') as HTMLInputElement | null;
+        const birthEl = document.querySelector('#emp_birth') as HTMLInputElement | null;
+        const hireEl = document.querySelector('#emp_hire') as HTMLInputElement | null;
+        const salaryEl = document.querySelector('#emp_salary') as HTMLInputElement | null;
+        const wStartEl = document.querySelector('#emp_wstart') as HTMLInputElement | null;
+        const wEndEl = document.querySelector('#emp_wend') as HTMLInputElement | null;
+        const isActiveEl = document.querySelector('#isActive') as HTMLInputElement | null;
+        const welcomeEl = document.querySelector('#sendWelcomeEmail') as HTMLInputElement | null;
+
+        setNewEmployee(prev => ({
+          ...prev,
+          name: nameEl?.value ?? prev.name,
+          email: emailEl?.value ?? prev.email,
+          phone: phoneEl?.value ?? prev.phone,
+          notes: notesEl?.value ?? prev.notes,
+          birthDate: birthEl?.value ?? (prev as any).birthDate,
+          hireDate: hireEl?.value ?? (prev as any).hireDate,
+          salary: salaryEl?.value ?? (prev as any).salary,
+          workStartTime: wStartEl?.value ?? (prev as any).workStartTime,
+          workEndTime: wEndEl?.value ?? (prev as any).workEndTime,
+          isActive: isActiveEl ? isActiveEl.checked : prev.isActive,
+          sendWelcomeEmail: welcomeEl ? welcomeEl.checked : prev.sendWelcomeEmail
+        }));
+      } catch {}
 
       // Validate required fields
       if (!newEmployee.name?.trim()) {
