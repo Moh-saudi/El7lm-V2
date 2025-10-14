@@ -12,6 +12,8 @@ import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import {
     Activity,
     AlertCircle,
+    BarChart3,
+    Calendar,
     CheckCircle2,
     ChevronDown,
     ChevronUp,
@@ -28,15 +30,13 @@ import {
     RefreshCcw,
     Search,
     Shield,
+    Trash2,
     TrendingUp,
     UserCheck,
     UserCog,
     Users,
     UserX,
-    XCircle,
-    Trash2,
-    Calendar,
-    BarChart3
+    XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
   // دالة لحساب نسبة اكتمال الملف الشخصي
   const calculateProfileCompletion = (data: any, accountType: string): number => {
     if (!data) return 0;
-    
+
     try {
       const basicFields = ['name', 'full_name', 'email', 'phone', 'country', 'city'];
       let requiredFields: string[] = [...basicFields];
@@ -216,7 +216,7 @@ export default function AdminUsersPage() {
   // دالة مساعدة لتحويل التواريخ بشكل آمن
   const safeToDate = (dateValue: any): Date | null => {
     if (!dateValue) return null;
-    
+
     try {
       if (dateValue && typeof dateValue.toDate === 'function') {
         return dateValue.toDate();
@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
     } catch (e) {
       return null;
     }
-    
+
     return null;
   };
 
@@ -271,14 +271,14 @@ export default function AdminUsersPage() {
         const analyticsRef = collection(db, 'analytics');
         const analyticsSnapshot = await getDocs(analyticsRef);
 
-        analyticsSnapshot.forEach(doc => {
-          const data = doc.data();
+      analyticsSnapshot.forEach(doc => {
+        const data = doc.data();
           const date = safeToDate(data.timestamp || data.date);
 
           if (date) {
             const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
-            
+
             if (last7DaysData[dateKey]) {
               last7DaysData[dateKey].count++;
             }
@@ -301,7 +301,7 @@ export default function AdminUsersPage() {
 
           const sevenDaysAgo = new Date(today);
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          
+
           if (date && date >= sevenDaysAgo) {
             stats.recentVisits.push({
               country: data.country || 'غير محدد',
@@ -327,7 +327,7 @@ export default function AdminUsersPage() {
           if (date) {
             const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
-            
+
             if (last7DaysData[dateKey]) {
               last7DaysData[dateKey].count++;
             }
@@ -350,7 +350,7 @@ export default function AdminUsersPage() {
 
           const sevenDaysAgo = new Date(today);
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          
+
           if (date && date >= sevenDaysAgo) {
             stats.recentVisits.push({
               country: data.country || 'غير محدد',
@@ -396,7 +396,7 @@ export default function AdminUsersPage() {
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-            
+
             const collectionRef = collection(db, collectionName);
             const snapshot = await getDocs(collectionRef);
 
@@ -409,6 +409,28 @@ export default function AdminUsersPage() {
                 const data = userDoc.data();
                 const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
 
+                // محاولة استخراج تاريخ التسجيل من مصادر متعددة
+                let createdAtDate = safeToDate(
+                  data.createdAt || 
+                  data.created_at || 
+                  data.registrationDate || 
+                  data.registration_date ||
+                  data.signupDate ||
+                  data.signup_date ||
+                  data.dateCreated ||
+                  data.date_created ||
+                  data.timestamp
+                );
+
+                // إذا لم نجد تاريخ، نستخدم تاريخ إنشاء المستند في Firestore (metadata)
+                if (!createdAtDate && userDoc.metadata?.createTime) {
+                  try {
+                    createdAtDate = userDoc.metadata.createTime.toDate();
+                  } catch (e) {
+                    // تجاهل
+                  }
+                }
+
                 const profileCompletion = calculateProfileCompletion(data, accountType);
 
                 const userData: User = {
@@ -418,8 +440,8 @@ export default function AdminUsersPage() {
                   phone: data.phone || data.phoneNumber || '',
                   accountType: accountType,
                   isActive: data.isActive !== false,
-                  createdAt: safeToDate(data.createdAt || data.created_at),
-                  lastLogin: safeToDate(data.lastLogin || data.last_login),
+                  createdAt: createdAtDate,
+                  lastLogin: safeToDate(data.lastLogin || data.last_login || data.lastAccessTime),
                   city: data.city || data.location?.city || '',
                   country: data.country || data.location?.country || '',
                   parentAccountId: data.parentAccountId || data.parent_account_id || '',
@@ -438,10 +460,21 @@ export default function AdminUsersPage() {
                   console.log(`⏳ تمت معالجة ${totalProcessed} مستخدم...`);
                 }
               } catch (docError) {
-                // محاولة fallback: إضافة المستخدم بدون التواريخ المعقدة
+                console.error(`❌ خطأ في معالجة المستند ${userDoc.id}:`, docError);
+                // محاولة fallback: إضافة المستخدم بأقل معلومات ممكنة
                 try {
                   const data = userDoc.data();
                   const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
+                  
+                  // محاولة أخيرة لاستخراج التاريخ من metadata
+                  let fallbackDate = null;
+                  try {
+                    if (userDoc.metadata?.createTime) {
+                      fallbackDate = userDoc.metadata.createTime.toDate();
+                    }
+                  } catch (e) {
+                    // تجاهل
+                  }
                   
                   allUsers.push({
                     id: userDoc.id,
@@ -450,7 +483,7 @@ export default function AdminUsersPage() {
                     phone: data.phone || data.phoneNumber || '',
                     accountType: accountType,
                     isActive: data.isActive !== false,
-                    createdAt: null,
+                    createdAt: fallbackDate,
                     lastLogin: null,
                     city: data.city || data.location?.city || '',
                     country: data.country || data.location?.country || '',
@@ -463,6 +496,7 @@ export default function AdminUsersPage() {
                   });
                   collectionCount++;
                   totalProcessed++;
+                  console.log(`⚠️ تمت إضافة ${userDoc.id} بمعلومات محدودة`);
                 } catch (fallbackError) {
                   console.error(`❌ فشل تماماً: ${userDoc.id}`);
                 }
@@ -475,8 +509,10 @@ export default function AdminUsersPage() {
           }
         }
 
+        const usersWithoutDate = allUsers.filter(u => !u.createdAt).length;
+        
         console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
-        console.log(`📈 التوزيع: 
+        console.log(`📈 التوزيع حسب النوع:
           - Players: ${allUsers.filter(u => u.accountType === 'player').length}
           - Academies: ${allUsers.filter(u => u.accountType === 'academy').length}
           - Clubs: ${allUsers.filter(u => u.accountType === 'club').length}
@@ -484,7 +520,16 @@ export default function AdminUsersPage() {
           - Trainers: ${allUsers.filter(u => u.accountType === 'trainer').length}
           - Users: ${allUsers.filter(u => u.accountType === 'user').length}
         `);
-        
+        console.log(`⏰ حالة التواريخ:
+          - مع تاريخ: ${allUsers.length - usersWithoutDate}
+          - بدون تاريخ: ${usersWithoutDate} ${usersWithoutDate > 0 ? '⚠️' : '✅'}
+        `);
+
+        if (usersWithoutDate > 0) {
+          console.warn(`⚠️ تحذير: ${usersWithoutDate} مستخدم ليس لديهم تاريخ تسجيل محدد`);
+          console.log(`💡 يمكنك فلترتهم باختيار "بدون تاريخ" من فلتر تاريخ التسجيل`);
+        }
+
         setUsers(allUsers);
         await loadVisitStats();
 
@@ -543,7 +588,8 @@ export default function AdminUsersPage() {
 
     const matchesDate = (() => {
       if (dateFilter === 'all') return true;
-      if (!user.createdAt) return false;
+      if (dateFilter === 'noDate') return !user.createdAt; // فلتر خاص للمستخدمين بدون تاريخ
+      if (!user.createdAt) return false; // إخفاء المستخدمين بدون تواريخ من الفلاتر الأخرى
 
       const userDate = user.createdAt;
       const now = new Date();
@@ -621,6 +667,7 @@ export default function AdminUsersPage() {
     pending: users.filter(u => u.verificationStatus === 'pending' && !u.isDeleted).length,
     profileComplete: users.filter(u => u.profileCompletion >= 80 && !u.isDeleted).length,
     profileIncomplete: users.filter(u => u.profileCompletion < 80 && !u.isDeleted).length,
+    noDate: users.filter(u => !u.createdAt && !u.isDeleted).length,
     newToday: users.filter(u => {
       if (!u.createdAt) return false;
       const today = new Date();
@@ -857,6 +904,37 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
+          {/* Warning for users without dates */}
+          {stats.noDate > 0 && (
+            <Card className="mb-6 border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-6 w-6 text-yellow-600 mt-1" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-yellow-900 mb-1">
+                      ⚠️ تنبيه: {stats.noDate.toLocaleString()} مستخدم بدون تاريخ تسجيل
+                    </h3>
+                    <p className="text-sm text-yellow-800">
+                      هناك {stats.noDate.toLocaleString()} مستخدم ليس لديهم تاريخ تسجيل محدد في قاعدة البيانات.
+                      يمكنك فلترتهم باختيار <span className="font-bold">"بدون تاريخ"</span> من فلتر تاريخ التسجيل.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setDateFilter('noDate');
+                        setShowAdvancedFilters(true);
+                      }}
+                      className="mt-2 bg-yellow-100 hover:bg-yellow-200 border-yellow-400 text-yellow-900"
+                    >
+                      عرض المستخدمين بدون تاريخ
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Main Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
             <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
@@ -869,7 +947,7 @@ export default function AdminUsersPage() {
                       <span className="text-green-600 font-semibold">{stats.active.toLocaleString()} نشط</span>
                       <span className="text-gray-400">•</span>
                       <span className="text-red-600 font-semibold">{stats.inactive.toLocaleString()} معطل</span>
-                    </div>
+                  </div>
                   </div>
                   <Users className="h-12 w-12 text-blue-600 opacity-80" />
                 </div>
@@ -976,13 +1054,13 @@ export default function AdminUsersPage() {
                     {visitStats.last7Days.map((day, index) => {
                       const percentage = maxVisitsInWeek > 0 ? (day.count / maxVisitsInWeek) * 100 : 0;
                       const isToday = day.date === new Date().toLocaleDateString('en-GB');
-                      
+
                       return (
                         <div key={index} className={`p-4 rounded-lg ${isToday ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50'}`}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                               <Calendar className={`h-5 w-5 ${isToday ? 'text-blue-600' : 'text-gray-400'}`} />
-                              <div>
+                <div>
                                 <p className={`font-bold ${isToday ? 'text-blue-900' : 'text-gray-900'}`}>
                                   {day.dayName}
                                   {isToday && <span className="mr-2 text-xs bg-blue-600 text-white px-2 py-1 rounded">اليوم</span>}
@@ -1000,8 +1078,8 @@ export default function AdminUsersPage() {
                           <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                             <div
                               className={`h-3 rounded-full transition-all duration-500 ${
-                                isToday 
-                                  ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600' 
+                                isToday
+                                  ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600'
                                   : 'bg-gradient-to-r from-gray-400 to-gray-500'
                               }`}
                               style={{ width: `${percentage}%` }}
@@ -1139,8 +1217,8 @@ export default function AdminUsersPage() {
                               )}
                               <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {visit.timestamp.toLocaleString('en-GB', { 
-                                  day: '2-digit', 
+                                {visit.timestamp.toLocaleString('en-GB', {
+                                  day: '2-digit',
                                   month: '2-digit',
                                   hour: '2-digit',
                                   minute: '2-digit'
@@ -1193,15 +1271,15 @@ export default function AdminUsersPage() {
                 {/* Filter Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {/* Account Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
-                    <select
-                      value={filterType}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
+                  <select
+                    value={filterType}
                       onChange={(e) => {
                         setFilterType(e.target.value);
                         setCurrentPage(1);
                       }}
-                      title="اختر نوع الحساب"
+                    title="اختر نوع الحساب"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع الأنواع ({stats.total.toLocaleString()})</option>
@@ -1210,13 +1288,13 @@ export default function AdminUsersPage() {
                       <option value="agent">وكيل ({stats.byType.agent.toLocaleString()})</option>
                       <option value="trainer">مدرب ({stats.byType.trainer.toLocaleString()})</option>
                       <option value="club">نادي ({stats.byType.club.toLocaleString()})</option>
-                    </select>
-                  </div>
+                  </select>
+                </div>
 
                   {/* Verification Status */}
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">حالة التوثيق</label>
-                    <select
+                  <select
                       value={filterVerification}
                       onChange={(e) => {
                         setFilterVerification(e.target.value);
@@ -1224,18 +1302,18 @@ export default function AdminUsersPage() {
                       }}
                       title="اختر حالة التوثيق"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الحالات</option>
+                  >
+                    <option value="all">جميع الحالات</option>
                       <option value="verified">موثق ({stats.verified.toLocaleString()})</option>
                       <option value="pending">في الانتظار ({stats.pending.toLocaleString()})</option>
                       <option value="rejected">مرفوض</option>
-                    </select>
-                  </div>
+                  </select>
+                </div>
 
                   {/* Profile Completion */}
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">اكتمال الملف</label>
-                    <select
+                  <select
                       value={filterProfileCompletion}
                       onChange={(e) => {
                         setFilterProfileCompletion(e.target.value);
@@ -1249,8 +1327,8 @@ export default function AdminUsersPage() {
                       <option value="partial">جزئي 50-79%</option>
                       <option value="minimal">قليل &lt;50%</option>
                       <option value="incomplete">غير مكتمل &lt;80% ({stats.profileIncomplete.toLocaleString()})</option>
-                    </select>
-                  </div>
+                  </select>
+                </div>
 
                   {/* Country */}
                   <div>
@@ -1299,26 +1377,29 @@ export default function AdminUsersPage() {
                   </div>
 
                   {/* Registration Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
-                    <select
-                      value={dateFilter}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
+                  <select
+                    value={dateFilter}
                       onChange={(e) => {
                         setDateFilter(e.target.value);
                         setCurrentPage(1);
                       }}
                       title="اختر فترة التسجيل"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع التواريخ</option>
+                  >
+                    <option value="all">جميع التواريخ</option>
                       <option value="newest">الأحدث (آخر 24 ساعة) ⭐</option>
                       <option value="today">اليوم ({stats.newToday})</option>
-                      <option value="yesterday">أمس</option>
+                    <option value="yesterday">أمس</option>
                       <option value="last3Days">آخر 3 أيام</option>
                       <option value="thisWeek">هذا الأسبوع ({stats.newThisWeek})</option>
-                      <option value="thisMonth">هذا الشهر</option>
-                    </select>
-                  </div>
+                    <option value="thisMonth">هذا الشهر</option>
+                      {stats.noDate > 0 && (
+                        <option value="noDate">بدون تاريخ ({stats.noDate}) ⚠️</option>
+                      )}
+                  </select>
+              </div>
 
                   {/* Sort By */}
                   <div>
@@ -1358,7 +1439,7 @@ export default function AdminUsersPage() {
                       <option value={500}>500 في الصفحة</option>
                     </select>
                   </div>
-                </div>
+                  </div>
 
                 {/* Reset Filters */}
                 <div className="mt-6 flex justify-center">
@@ -1382,8 +1463,8 @@ export default function AdminUsersPage() {
                     <RefreshCcw className="h-4 w-4" />
                     إعادة تعيين جميع الفلاتر
                   </Button>
-                </div>
-              </CardContent>
+              </div>
+            </CardContent>
             )}
           </Card>
 
@@ -1421,14 +1502,14 @@ export default function AdminUsersPage() {
                     )}
                     {activeTab === 'inactive' && (
                       <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleBulkAction('activate')}
+                    <Button
+                      size="sm"
+                      onClick={() => handleBulkAction('activate')}
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                        >
+                    >
                           <UserCheck className="h-4 w-4" />
                           تفعيل ({selectedUsers.length})
-                        </Button>
+                    </Button>
                       </>
                     )}
                     {activeTab === 'deleted' && (
@@ -1500,8 +1581,8 @@ export default function AdminUsersPage() {
                     </span>
                     <span className="text-sm font-normal text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
                       عرض <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> من <span className="font-bold text-blue-600">{getUsersByTab().length.toLocaleString()}</span> مستخدم
-                    </span>
-                  </CardTitle>
+                </span>
+              </CardTitle>
                 </TabsContent>
               </Tabs>
             </CardHeader>
@@ -1540,25 +1621,25 @@ export default function AdminUsersPage() {
                   <tbody className="divide-y divide-gray-200">
                     {paginatedUsers.map((user) => {
                       const isNew = user.createdAt && (new Date().getTime() - user.createdAt.getTime()) < 24 * 60 * 60 * 1000;
-                      
+
                       return (
                         <tr key={user.id} className={`hover:bg-blue-50 transition-colors ${isNew ? 'bg-green-50' : ''}`}>
-                          <td className="p-4">
-                            <input
-                              type="checkbox"
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
                               title={`تحديد ${user.name}`}
-                              checked={selectedUsers.includes(user.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedUsers([...selectedUsers, user.id]);
-                                } else {
-                                  setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                                }
-                              }}
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUsers([...selectedUsers, user.id]);
+                              } else {
+                                setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                              }
+                            }}
                               className="rounded h-5 w-5 cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-4">
+                          />
+                        </td>
+                        <td className="p-4">
                             <div className="flex items-center gap-2">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
                                 {user.name.charAt(0).toUpperCase()}
@@ -1569,7 +1650,7 @@ export default function AdminUsersPage() {
                                   {isNew && (
                                     <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
                                       جديد!
-                                    </Badge>
+                          </Badge>
                                   )}
                                 </div>
                                 {user.lastLogin && (
@@ -1580,8 +1661,8 @@ export default function AdminUsersPage() {
                                 )}
                               </div>
                             </div>
-                          </td>
-                          <td className="p-4">
+                        </td>
+                        <td className="p-4">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Mail className="h-4 w-4 text-gray-400" />
                               <span className="text-sm">{user.email || 'غير محدد'}</span>
@@ -1596,13 +1677,13 @@ export default function AdminUsersPage() {
                           <td className="p-4">
                             <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
                               {getAccountTypeLabel(user.accountType)}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
+                          </Badge>
+                        </td>
+                        <td className="p-4">
                             <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
-                              {getVerificationLabel(user.verificationStatus)}
-                            </Badge>
-                          </td>
+                            {getVerificationLabel(user.verificationStatus)}
+                          </Badge>
+                        </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
                               <div className="w-20 bg-gray-200 rounded-full h-2.5">
@@ -1651,38 +1732,44 @@ export default function AdminUsersPage() {
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-gray-400">غير محدد</span>
+                              <div className="text-sm">
+                                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">
+                                  <AlertCircle className="h-3 w-3 inline mr-1" />
+                                  غير محدد
+                                </Badge>
+                                <p className="text-xs text-gray-500 mt-1">لا يوجد تاريخ</p>
+                              </div>
                             )}
                           </td>
-                          <td className="p-4">
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
                                 title="عرض التفاصيل"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
                                 title="تعديل"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
                                 title="إدارة الصلاحيات"
-                              >
-                                <KeyRound className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                       );
                     })}
                   </tbody>
@@ -1707,7 +1794,7 @@ export default function AdminUsersPage() {
                         {Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length).toLocaleString()}
                       </span>{' '}
                       من <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> نتيجة
-                    </div>
+                  </div>
                     <div className="flex gap-2 flex-wrap justify-center">
                       <Button
                         variant="outline"
@@ -1718,15 +1805,15 @@ export default function AdminUsersPage() {
                       >
                         الأول
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
-                      >
-                        السابق
-                      </Button>
+                    >
+                      السابق
+                    </Button>
                       {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
                         let page;
                         if (totalPages <= 7) {
@@ -1738,31 +1825,31 @@ export default function AdminUsersPage() {
                         } else {
                           page = currentPage - 3 + i;
                         }
-                        return (
-                          <Button
-                            key={page}
+                      return (
+                        <Button
+                          key={page}
                             variant={currentPage === page ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
                             className={
                               currentPage === page
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg font-bold min-w-[40px]'
                                 : 'bg-white hover:bg-blue-50 border-blue-300 text-blue-700 min-w-[40px]'
-                            }
-                          >
-                            {page}
-                          </Button>
-                        );
-                      })}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
+                          }
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
-                      >
-                        التالي
-                      </Button>
+                    >
+                      التالي
+                    </Button>
                       <Button
                         variant="outline"
                         size="sm"
