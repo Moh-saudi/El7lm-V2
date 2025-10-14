@@ -1,29 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Phone, KeyRound, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Loader2, Phone, KeyRound, ShieldCheck, ArrowRight, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Re-using the same country list from the old implementation
+// Using a simplified country list for clarity in the UI
 const countries = [
-  { name: 'السعودية', code: '+966', phoneLength: 9 },
-  { name: 'الإمارات', code: '+971', phoneLength: 9 },
-  { name: 'الكويت', code: '+965', phoneLength: 8 },
-  { name: 'قطر', code: '+974', phoneLength: 8 },
-  { name: 'البحرين', code: '+973', phoneLength: 8 },
-  { name: 'عمان', code: '+968', phoneLength: 8 },
-  { name: 'مصر', code: '+20', phoneLength: 10 },
-  { name: 'الأردن', code: '+962', phoneLength: 9 },
-  { name: 'المغرب', code: '+212', phoneLength: 9 },
-  // Add other countries as needed
+  { name: 'مصر', code: '+20' },
+  { name: 'السعودية', code: '+966' },
+  { name: 'الإمارات', code: '+971' },
+  { name: 'الكويت', code: '+965' },
+  { name: 'قطر', code: '+974' },
+  { name: 'البحرين', code: '+973' },
+  { name: 'عمان', code: '+968' },
 ];
 
 type Step = 'phone' | 'otp' | 'password';
+
+// Progress bar component to guide the user
+const ProgressBar = ({ step }: { step: Step }) => {
+  const steps = ['phone', 'otp', 'password'];
+  const currentStepIndex = steps.indexOf(step);
+  const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
+
+  return (
+    <div className="w-full px-10 pt-4 pb-2">
+      <div className="relative h-2 bg-gray-200 rounded-full">
+        <div 
+          className="absolute top-0 left-0 h-2 bg-blue-600 rounded-full transition-all duration-500"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-2 text-xs text-gray-500">
+        <span>رقم الهاتف</span>
+        <span>التحقق</span>
+        <span>كلمة المرور</span>
+      </div>
+    </div>
+  );
+};
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -35,9 +55,18 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const handlePhoneSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
     const fullNumber = `${countryCode}${phoneNumber}`;
     setFullPhoneNumber(fullNumber);
@@ -53,6 +82,7 @@ export default function ForgotPasswordPage() {
       
       toast.success('تم إرسال رمز التحقق بنجاح');
       setStep('otp');
+      setResendCooldown(60); // Start 60-second cooldown
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -111,24 +141,29 @@ export default function ForgotPasswordPage() {
       setLoading(false);
     }
   };
+  
+  const StepIcon = () => {
+      switch(step) {
+          case 'phone': return <Phone className="w-8 h-8 text-blue-600" />;
+          case 'otp': return <KeyRound className="w-8 h-8 text-blue-600" />;
+          case 'password': return <ShieldCheck className="w-8 h-8 text-blue-600" />;
+          default: return null;
+      }
+  }
 
   const renderStep = () => {
     switch (step) {
       case 'phone':
         return (
           <form onSubmit={handlePhoneSubmit}>
-            <CardHeader>
-              <CardTitle>إعادة تعيين كلمة المرور</CardTitle>
-              <CardDescription>أدخل رقم هاتفك المسجل لإرسال رمز التحقق.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
                 <Label htmlFor="country">الدولة</Label>
                 <select
                   id="country"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition"
                 >
                   {countries.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
                 </select>
@@ -136,7 +171,7 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <Label htmlFor="phone">رقم الهاتف</Label>
                 <div className="flex">
-                   <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md">
+                   <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-r-md">
                      {countryCode}
                    </span>
                   <Input
@@ -146,13 +181,14 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="1012345678"
                     required
-                    className="rounded-l-none"
+                    className="rounded-r-none text-left"
+                    dir="ltr"
                   />
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={loading}>
+            <CardFooter>
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                 إرسال الرمز
               </Button>
@@ -162,30 +198,31 @@ export default function ForgotPasswordPage() {
       case 'otp':
         return (
           <form onSubmit={handleOtpSubmit}>
-            <CardHeader>
-              <CardTitle>التحقق من الرمز</CardTitle>
-              <CardDescription>أدخل الرمز المكون من 6 أرقام الذي تم إرساله إلى {fullPhoneNumber}.</CardDescription>
-            </CardHeader>
             <CardContent>
               <Label htmlFor="otp">رمز التحقق</Label>
               <Input
                 id="otp"
                 type="text"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                 maxLength={6}
-                placeholder="_ _ _ _ _ _"
+                placeholder="· · · · · ·"
                 required
-                className="text-center tracking-[1em]"
+                className="text-center text-2xl font-bold tracking-[0.5em] mt-2"
+                dir="ltr"
               />
             </CardContent>
             <CardFooter className="flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                 تحقق من الرمز
               </Button>
-              <Button variant="link" onClick={() => setStep('phone')}>
-                تغيير رقم الهاتف
+              <Button 
+                variant="link" 
+                onClick={() => handlePhoneSubmit()} 
+                disabled={resendCooldown > 0 || loading}
+              >
+                {resendCooldown > 0 ? `أعد الإرسال بعد ${resendCooldown} ثانية` : 'ألم تستلم الرمز؟ أعد الإرسال'}
               </Button>
             </CardFooter>
           </form>
@@ -193,10 +230,6 @@ export default function ForgotPasswordPage() {
       case 'password':
         return (
           <form onSubmit={handlePasswordSubmit}>
-            <CardHeader>
-              <CardTitle>تعيين كلمة مرور جديدة</CardTitle>
-              <CardDescription>أدخل كلمة المرور الجديدة لحسابك.</CardDescription>
-            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
@@ -205,6 +238,7 @@ export default function ForgotPasswordPage() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="********"
                   required
                 />
               </div>
@@ -215,12 +249,17 @@ export default function ForgotPasswordPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="********"
                   required
                 />
               </div>
+               <div className="text-xs text-gray-500 flex items-center pt-2">
+                   <ShieldAlert className="w-4 h-4 ml-2"/>
+                   يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.
+               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                 حفظ كلمة المرور
               </Button>
@@ -230,18 +269,36 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const titles = {
+    phone: 'إعادة تعيين كلمة المرور',
+    otp: 'التحقق من الرمز',
+    password: 'تعيين كلمة مرور جديدة'
+  }
+  
+  const descriptions = {
+      phone: 'أدخل رقم هاتفك المسجل لإرسال رمز التحقق.',
+      otp: `أدخل الرمز المكون من 6 أرقام الذي تم إرساله إلى ${fullPhoneNumber}.`,
+      password: 'أدخل كلمة المرور الجديدة لحسابك.'
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4" dir="rtl">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4" dir="rtl">
       <div className="w-full max-w-md">
-        <Card>
+        <Card className="shadow-2xl shadow-blue-500/10">
+          <ProgressBar step={step} />
+          <CardHeader className="text-center">
+            <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-4">
+                <StepIcon />
+            </div>
+            <CardTitle>{titles[step]}</CardTitle>
+            <CardDescription>{descriptions[step]}</CardDescription>
+          </CardHeader>
           {renderStep()}
         </Card>
-        {step !== 'phone' && (
-            <Button variant="ghost" onClick={() => router.push('/auth/login')} className="w-full mt-4">
-                العودة إلى تسجيل الدخول
-                <ArrowRight className="mr-2 h-4 w-4" />
-            </Button>
-        )}
+        <Button variant="ghost" onClick={() => router.push('/auth/login')} className="w-full mt-4 text-gray-600">
+            <ArrowRight className="ml-2 h-4 w-4" />
+            العودة إلى تسجيل الدخول
+        </Button>
       </div>
     </div>
   );
