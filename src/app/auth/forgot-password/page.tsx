@@ -1,23 +1,45 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Phone, KeyRound, ShieldCheck, ArrowRight, ShieldAlert } from 'lucide-react';
+import { ArrowRight, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-// Using a simplified country list for clarity in the UI
+// Full country list from the registration page
 const countries = [
-  { name: 'مصر', code: '+20' },
   { name: 'السعودية', code: '+966' },
   { name: 'الإمارات', code: '+971' },
   { name: 'الكويت', code: '+965' },
   { name: 'قطر', code: '+974' },
   { name: 'البحرين', code: '+973' },
   { name: 'عمان', code: '+968' },
+  { name: 'مصر', code: '+20' },
+  { name: 'الأردن', code: '+962' },
+  { name: 'لبنان', code: '+961' },
+  { name: 'العراق', code: '+964' },
+  { name: 'سوريا', code: '+963' },
+  { name: 'المغرب', code: '+212' },
+  { name: 'الجزائر', code: '+213' },
+  { name: 'تونس', code: '+216' },
+  { name: 'ليبيا', code: '+218' },
+  { name: 'السودان', code: '+249' },
+  { name: 'السنغال', code: '+221' },
+  { name: 'ساحل العاج', code: '+225' },
+  { name: 'جيبوتي', code: '+253' },
+  { name: 'إسبانيا', code: '+34' },
+  { name: 'فرنسا', code: '+33' },
+  { name: 'إنجلترا', code: '+44' },
+  { name: 'البرتغال', code: '+351' },
+  { name: 'إيطاليا', code: '+39' },
+  { name: 'اليونان', code: '+30' },
+  { name: 'قبرص', code: '+357' },
+  { name: 'تركيا', code: '+90' },
+  { name: 'تايلاند', code: '+66' },
+  { name: 'اليمن', code: '+967' },
 ];
 
 type Step = 'phone' | 'otp' | 'password';
@@ -31,8 +53,8 @@ const ProgressBar = ({ step }: { step: Step }) => {
   return (
     <div className="w-full px-10 pt-4 pb-2">
       <div className="relative h-2 bg-gray-200 rounded-full">
-        <div 
-          className="absolute top-0 left-0 h-2 bg-blue-600 rounded-full transition-all duration-500"
+        <div
+          className="absolute top-0 left-0 h-2 bg-purple-600 rounded-full transition-all duration-500"
           style={{ width: `${progressPercentage}%` }}
         />
       </div>
@@ -79,7 +101,7 @@ export default function ForgotPasswordPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل إرسال الرمز');
-      
+
       toast.success('تم إرسال رمز التحقق بنجاح');
       setStep('otp');
       setResendCooldown(60); // Start 60-second cooldown
@@ -102,7 +124,7 @@ export default function ForgotPasswordPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'رمز التحقق غير صحيح');
-      
+
       toast.success('تم التحقق من الرمز بنجاح');
       setStep('password');
     } catch (error: any) {
@@ -132,7 +154,7 @@ export default function ForgotPasswordPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل تحديث كلمة المرور');
-      
+
       toast.success('تم تحديث كلمة المرور بنجاح! سيتم توجيهك لتسجيل الدخول.');
       setTimeout(() => router.push('/auth/login'), 2000);
     } catch (error: any) {
@@ -141,12 +163,12 @@ export default function ForgotPasswordPage() {
       setLoading(false);
     }
   };
-  
+
   const StepIcon = () => {
       switch(step) {
-          case 'phone': return <Phone className="w-8 h-8 text-blue-600" />;
-          case 'otp': return <KeyRound className="w-8 h-8 text-blue-600" />;
-          case 'password': return <ShieldCheck className="w-8 h-8 text-blue-600" />;
+          case 'phone': return <Phone className="w-8 h-8 text-purple-600" />;
+          case 'otp': return <KeyRound className="w-8 h-8 text-purple-600" />;
+          case 'password': return <ShieldCheck className="w-8 h-8 text-purple-600" />;
           default: return null;
       }
   }
@@ -163,7 +185,7 @@ export default function ForgotPasswordPage() {
                   id="country"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition"
                 >
                   {countries.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
                 </select>
@@ -188,7 +210,7 @@ export default function ForgotPasswordPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                 إرسال الرمز
               </Button>
@@ -213,13 +235,13 @@ export default function ForgotPasswordPage() {
               />
             </CardContent>
             <CardFooter className="flex-col gap-4">
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                 تحقق من الرمز
               </Button>
-              <Button 
-                variant="link" 
-                onClick={() => handlePhoneSubmit()} 
+              <Button
+                variant="link"
+                onClick={() => handlePhoneSubmit()}
                 disabled={resendCooldown > 0 || loading}
               >
                 {resendCooldown > 0 ? `أعد الإرسال بعد ${resendCooldown} ثانية` : 'ألم تستلم الرمز؟ أعد الإرسال'}
@@ -259,7 +281,7 @@ export default function ForgotPasswordPage() {
                </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                 حفظ كلمة المرور
               </Button>
@@ -274,7 +296,7 @@ export default function ForgotPasswordPage() {
     otp: 'التحقق من الرمز',
     password: 'تعيين كلمة مرور جديدة'
   }
-  
+
   const descriptions = {
       phone: 'أدخل رقم هاتفك المسجل لإرسال رمز التحقق.',
       otp: `أدخل الرمز المكون من 6 أرقام الذي تم إرساله إلى ${fullPhoneNumber}.`,
@@ -282,12 +304,12 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4" dir="rtl">
+    <div className="flex items-center justify-center min-h-screen bg-purple-950 p-4" dir="rtl">
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl shadow-blue-500/10">
+        <Card className="shadow-2xl shadow-purple-500/10 border border-purple-100 bg-white/95 backdrop-blur">
           <ProgressBar step={step} />
           <CardHeader className="text-center">
-            <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-4">
+            <div className="mx-auto bg-purple-100 p-3 rounded-full w-fit mb-4">
                 <StepIcon />
             </div>
             <CardTitle>{titles[step]}</CardTitle>
