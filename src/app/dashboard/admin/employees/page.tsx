@@ -137,40 +137,22 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
 export default function EmployeesManagement() {
   const { user, userData } = useAuth();
 
-  // التحقق من صلاحيات المستخدم
-  const isSystemAdmin = userData?.role === 'admin';
-  const isSupervisor = userData?.role === 'supervisor';
-
-  // تحديث التحكم في الصلاحيات
-  const canEditEmployee = (employee: Employee) => {
-    if (isSystemAdmin) return true; // مدير النظام يمكنه تعديل أي موظف
-    if (isSupervisor) {
-      // المشرف يمكنه تعديل الموظفين في نفس المناطق فقط
-      return employee.locations?.some(loc =>
-        userData?.permissions?.allowedLocations?.some(allowed =>
-          allowed.countryId === loc.countryId && allowed.cityId === loc.cityId
-        )
-      );
-    }
-    return false;
+  // التحقق من الصلاحيات - نسخة مبسطة سهلة الصيانة
+  const getUserRole = (): EmployeeRole => (userData?.role as EmployeeRole) || 'support';
+  const hasPermission = (perm: keyof RolePermissions): boolean => {
+    const role = getUserRole();
+    return !!DEFAULT_PERMISSIONS[role]?.[perm];
   };
 
-  const canDeleteEmployee = (employee: Employee) => {
-    return isSystemAdmin; // فقط مدير النظام يمكنه حذف الموظفين
-  };
-
-  const canAddEmployee = () => {
-    return isSystemAdmin || isSupervisor; // مدير النظام والمشرف يمكنهم إضافة موظفين
-  };
-
-  const canEditRole = (employee: Employee) => {
-    return isSystemAdmin; // فقط مدير النظام يمكنه تغيير نوع الوظيفة
-  };
+  const canEditEmployee = (): boolean => hasPermission('canManageEmployees') || hasPermission('canEditUsers');
+  const canDeleteEmployee = (): boolean => hasPermission('canManageEmployees');
+  const canAddEmployee = (): boolean => hasPermission('canManageEmployees');
+  const canEditRole = (): boolean => hasPermission('canManageEmployees');
 
   // تحديث واجهة المستخدم لعرض الصلاحيات
   const renderEmployeeActions = (employee: Employee) => (
     <div className="flex items-center gap-2">
-      {canEditEmployee(employee) && (
+      {canEditEmployee() && (
         <Button
           variant="ghost"
           size="sm"
@@ -187,7 +169,7 @@ export default function EmployeesManagement() {
         </Button>
       )}
 
-      {canDeleteEmployee(employee) && (
+      {canDeleteEmployee() && (
         <Button
           variant="ghost"
           size="sm"
@@ -301,7 +283,7 @@ export default function EmployeesManagement() {
 
     // مزامنة عند فتح المودال وتبديل الموظف الجاري تحريره
     useEffect(() => {
-      setLocal({
+      const payload = {
         name: newEmployee.name || '',
         email: newEmployee.email || '',
         phone: newEmployee.phone || '',
@@ -316,7 +298,9 @@ export default function EmployeesManagement() {
         notes: newEmployee.notes || '',
         isActive: newEmployee.isActive !== false,
         sendWelcomeEmail: newEmployee.sendWelcomeEmail !== false
-      });
+      };
+      setLocal(payload);
+      draftRef.current = payload;
     }, [showAddDialog, editingEmployee]);
 
     const onInput = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,18 +318,18 @@ export default function EmployeesManagement() {
           value = parts[0] + '.' + parts.slice(1).join('');
         }
       }
-      setLocal(prev => ({ ...prev, [field]: value }));
+      setLocal(prev => { const next = { ...prev, [field]: value }; draftRef.current = next; return next; });
       if (formErrors[field as keyof typeof formErrors]) {
         setFormErrors(prev => ({ ...prev, [field]: '' }));
       }
     };
 
     const onCheckbox = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setLocal(prev => ({ ...prev, [field]: e.target.checked }));
+      setLocal(prev => { const next = { ...prev, [field]: e.target.checked }; draftRef.current = next; return next; });
     };
 
     const onSelect = (field: keyof Employee) => (value: string) => {
-      setLocal(prev => ({ ...prev, [field]: value }));
+      setLocal(prev => { const next = { ...prev, [field]: value }; draftRef.current = next; return next; });
       if (formErrors[field as keyof typeof formErrors]) {
         setFormErrors(prev => ({ ...prev, [field]: '' }));
       }
@@ -653,6 +637,8 @@ export default function EmployeesManagement() {
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
+  // أحدث مسودّة للحقول من النموذج المبسط
+  const draftRef = useRef<Partial<Employee>>({});
 
   // New employee form state
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
@@ -944,7 +930,7 @@ export default function EmployeesManagement() {
       }
 
       // salary (اختياري): رقم صالح
-      const salaryStr = (document.querySelector('#emp_salary') as HTMLInputElement | null)?.value || '';
+      const salaryStr = (draftRef.current.salary as string) || '';
       if (salaryStr && isNaN(Number(salaryStr))) {
         toast.error('الراتب يجب أن يكون رقمًا صالحًا');
         return;
@@ -1098,8 +1084,8 @@ export default function EmployeesManagement() {
         // Update existing employee
         try {
           const employeeData: Partial<Employee> = {
-            name: newEmployee.name,
-            phone: newEmployee.phone,
+            name: (draftRef.current.name as string) || newEmployee.name,
+            phone: (draftRef.current.phone as string) || newEmployee.phone,
             role: newEmployee.role,
             department: newEmployee.department,
             locations: selectedCities.map(cityId => {
