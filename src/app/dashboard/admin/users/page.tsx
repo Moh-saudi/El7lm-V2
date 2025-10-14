@@ -432,6 +432,52 @@ export default function AdminUsersPage() {
         const allUsers: User[] = [];
         let totalProcessed = 0;
 
+        // تجميع تواريخ بديلة من analytics و visits و player_join_requests
+        const earliestActivityByUser: Record<string, Date> = {};
+        try {
+          const analyticsSnap = await getDocs(collection(db, 'analytics'));
+          analyticsSnap.forEach((docSnap) => {
+            const d = docSnap.data() as any;
+            const uid = d.userId || d.uid || d.user_id;
+            const t = safeToDate(d.timestamp || d.date);
+            if (uid && t) {
+              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
+                earliestActivityByUser[uid] = t;
+              }
+            }
+          });
+        } catch {}
+        try {
+          const visitsSnap = await getDocs(collection(db, 'visits'));
+          visitsSnap.forEach((docSnap) => {
+            const d = docSnap.data() as any;
+            const uid = d.userId || d.uid || d.user_id;
+            const t = safeToDate(d.timestamp || d.date);
+            if (uid && t) {
+              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
+                earliestActivityByUser[uid] = t;
+              }
+            }
+          });
+        } catch {}
+        try {
+          const joinsSnap = await getDocs(collection(db, 'player_join_requests'));
+          joinsSnap.forEach((docSnap) => {
+            const d = docSnap.data() as any;
+            const uid = d.playerId || d.userId || d.uid;
+            const t = safeToDate(d.requestedAt || d.createdAt || d.created_at);
+            if (uid && t) {
+              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
+                earliestActivityByUser[uid] = t;
+              }
+            }
+          });
+        } catch {}
+        const fallbackActivityCount = Object.keys(earliestActivityByUser).length;
+        if (fallbackActivityCount > 0) {
+          console.log(`🗂️ تم تجميع تواريخ بديلة لنشاط ${fallbackActivityCount} مستخدم لاستخدامها كتاريخ تسجيل عند الحاجة`);
+        }
+
         // أولاً، جلب جميع المنظمات للـ cache
         const orgsCache: {[key: string]: string} = {};
         for (const collectionName of ['clubs', 'academies', 'agents', 'trainers']) {
@@ -484,6 +530,14 @@ export default function AdminUsersPage() {
                     createdAtDate = userDoc.metadata.createTime.toDate();
                   } catch (e) {
                     // تجاهل
+                  }
+                }
+
+                // محاولة ثالثة: استخدام أقدم نشاط معروف لهذا المستخدم من analytics/visits/join_requests
+                if (!createdAtDate) {
+                  const candidate = earliestActivityByUser[userDoc.id];
+                  if (candidate) {
+                    createdAtDate = candidate;
                   }
                 }
 
@@ -543,6 +597,14 @@ export default function AdminUsersPage() {
                     }
                   } catch (e) {
                     // تجاهل
+                  }
+
+                  // إن لم يتوفر، جرّب تاريخ النشاط الأقدم
+                  if (!fallbackDate) {
+                    const candidate = earliestActivityByUser[userDoc.id];
+                    if (candidate) {
+                      fallbackDate = candidate;
+                    }
                   }
 
                   const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || '';
