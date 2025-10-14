@@ -256,14 +256,7 @@ export default function EmployeesManagement() {
   };
 
   // تحسين handlers باستخدام useCallback
-  const handleInputChange = useCallback((field: keyof Employee, value: string) => {
-    setNewEmployee(prev => ({ ...prev, [field]: value }));
-
-    // مسح خطأ الحقل عند التعديل
-    if (formErrors[field as keyof typeof formErrors]) {
-      setFormErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  }, [formErrors]);
+  // مدمجة ضمن handleInputChange أسفلًا
 
   const handleSelectChange = useCallback((field: keyof Employee, value: string) => {
     setNewEmployee(prev => ({ ...prev, [field]: value }));
