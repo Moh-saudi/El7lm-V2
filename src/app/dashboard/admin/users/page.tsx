@@ -28,13 +28,15 @@ import {
     RefreshCcw,
     Search,
     Shield,
-    Trash2,
     TrendingUp,
     UserCheck,
     UserCog,
     Users,
     UserX,
-    XCircle
+    XCircle,
+    Trash2,
+    Calendar,
+    BarChart3
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -63,11 +65,18 @@ interface VisitStats {
   byCountry: { [key: string]: number };
   byCity: { [key: string]: number };
   byDate: { [key: string]: number };
+  byPage: { [key: string]: number };
+  last7Days: Array<{
+    date: string;
+    count: number;
+    dayName: string;
+  }>;
   recentVisits: Array<{
     country: string;
     city: string;
     timestamp: Date;
     userId?: string;
+    page?: string;
   }>;
 }
 
@@ -93,9 +102,11 @@ export default function AdminUsersPage() {
     byCountry: {},
     byCity: {},
     byDate: {},
+    byPage: {},
+    last7Days: [],
     recentVisits: []
   });
-  const [showVisitDetails, setShowVisitDetails] = useState(false);
+  const [showVisitDetails, setShowVisitDetails] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'deleted'>('active');
 
@@ -202,6 +213,34 @@ export default function AdminUsersPage() {
     }
   };
 
+  // دالة مساعدة لتحويل التواريخ بشكل آمن
+  const safeToDate = (dateValue: any): Date | null => {
+    if (!dateValue) return null;
+    
+    try {
+      if (dateValue && typeof dateValue.toDate === 'function') {
+        return dateValue.toDate();
+      }
+      if (dateValue instanceof Date) {
+        return dateValue;
+      }
+      if (typeof dateValue === 'string') {
+        const date = new Date(dateValue);
+        return isNaN(date.getTime()) ? null : date;
+      }
+      if (typeof dateValue === 'number') {
+        return new Date(dateValue);
+      }
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        return new Date(dateValue.seconds * 1000);
+      }
+    } catch (e) {
+      return null;
+    }
+    
+    return null;
+  };
+
   // Load visit statistics
   const loadVisitStats = async () => {
     try {
@@ -213,8 +252,20 @@ export default function AdminUsersPage() {
         byCountry: {},
         byCity: {},
         byDate: {},
+        byPage: {},
+        last7Days: [],
         recentVisits: []
       };
+
+      // إنشاء آخر 7 أيام
+      const last7DaysData: { [key: string]: { count: number; dayName: string } } = {};
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toLocaleDateString('en-GB');
+        const dayName = date.toLocaleDateString('ar-SA', { weekday: 'long' });
+        last7DaysData[dateKey] = { count: 0, dayName };
+      }
 
       try {
         const analyticsRef = collection(db, 'analytics');
@@ -222,11 +273,15 @@ export default function AdminUsersPage() {
 
         analyticsSnapshot.forEach(doc => {
           const data = doc.data();
-          const date = data.timestamp?.toDate() || data.date?.toDate();
+          const date = safeToDate(data.timestamp || data.date);
 
           if (date) {
             const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
+            
+            if (last7DaysData[dateKey]) {
+              last7DaysData[dateKey].count++;
+            }
           }
 
           if (data.country) {
@@ -237,14 +292,23 @@ export default function AdminUsersPage() {
             stats.byCity[data.city] = (stats.byCity[data.city] || 0) + 1;
           }
 
+          if (data.route || data.page) {
+            const page = data.route || data.page;
+            stats.byPage[page] = (stats.byPage[page] || 0) + 1;
+          }
+
           stats.total++;
 
-          if (date && date >= today) {
+          const sevenDaysAgo = new Date(today);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          
+          if (date && date >= sevenDaysAgo) {
             stats.recentVisits.push({
               country: data.country || 'غير محدد',
               city: data.city || 'غير محدد',
               timestamp: date,
-              userId: data.userId
+              userId: data.userId,
+              page: data.route || data.page || '/'
             });
           }
         });
@@ -258,11 +322,15 @@ export default function AdminUsersPage() {
 
         visitsSnapshot.forEach(doc => {
           const data = doc.data();
-          const date = data.timestamp?.toDate();
+          const date = safeToDate(data.timestamp);
 
           if (date) {
             const dateKey = date.toLocaleDateString('en-GB');
             stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
+            
+            if (last7DaysData[dateKey]) {
+              last7DaysData[dateKey].count++;
+            }
           }
 
           if (data.country) {
@@ -273,14 +341,23 @@ export default function AdminUsersPage() {
             stats.byCity[data.city] = (stats.byCity[data.city] || 0) + 1;
           }
 
+          if (data.route || data.page) {
+            const page = data.route || data.page;
+            stats.byPage[page] = (stats.byPage[page] || 0) + 1;
+          }
+
           stats.total++;
 
-          if (date && date >= today) {
+          const sevenDaysAgo = new Date(today);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          
+          if (date && date >= sevenDaysAgo) {
             stats.recentVisits.push({
               country: data.country || 'غير محدد',
               city: data.city || 'غير محدد',
               timestamp: date,
-              userId: data.userId
+              userId: data.userId,
+              page: data.route || data.page || '/'
             });
           }
         });
@@ -288,8 +365,15 @@ export default function AdminUsersPage() {
         console.error('خطأ في جلب الزيارات:', error);
       }
 
+      // تحويل last7Days إلى مصفوفة مرتبة
+      stats.last7Days = Object.entries(last7DaysData).map(([date, data]) => ({
+        date,
+        count: data.count,
+        dayName: data.dayName
+      }));
+
       stats.recentVisits.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-      stats.recentVisits = stats.recentVisits.slice(0, 10);
+      stats.recentVisits = stats.recentVisits.slice(0, 20);
 
       setVisitStats(stats);
       console.log('📊 إحصائيات الزيارات:', stats);
@@ -312,8 +396,7 @@ export default function AdminUsersPage() {
         for (const collectionName of collections) {
           try {
             console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-
-            // جلب جميع المستندات بدون حد (استخدام getDocs بدون limit)
+            
             const collectionRef = collection(db, collectionName);
             const snapshot = await getDocs(collectionRef);
 
@@ -321,44 +404,10 @@ export default function AdminUsersPage() {
 
             let collectionCount = 0;
 
-            // معالجة كل مستند
             snapshot.forEach((userDoc) => {
               try {
                 const data = userDoc.data();
                 const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
-
-                // دالة مساعدة لتحويل التواريخ بشكل آمن
-                const safeToDate = (dateValue: any): Date | null => {
-                  if (!dateValue) return null;
-                  
-                  try {
-                    // إذا كان Firestore Timestamp
-                    if (dateValue && typeof dateValue.toDate === 'function') {
-                      return dateValue.toDate();
-                    }
-                    // إذا كان Date object
-                    if (dateValue instanceof Date) {
-                      return dateValue;
-                    }
-                    // إذا كان string
-                    if (typeof dateValue === 'string') {
-                      const date = new Date(dateValue);
-                      return isNaN(date.getTime()) ? null : date;
-                    }
-                    // إذا كان number (timestamp)
-                    if (typeof dateValue === 'number') {
-                      return new Date(dateValue);
-                    }
-                    // إذا كان object به seconds (Firestore Timestamp format)
-                    if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
-                      return new Date(dateValue.seconds * 1000);
-                    }
-                  } catch (e) {
-                    return null;
-                  }
-                  
-                  return null;
-                };
 
                 const profileCompletion = calculateProfileCompletion(data, accountType);
 
@@ -385,13 +434,11 @@ export default function AdminUsersPage() {
                 collectionCount++;
                 totalProcessed++;
 
-                // عرض تقدم كل 100 مستند
                 if (totalProcessed % 100 === 0) {
                   console.log(`⏳ تمت معالجة ${totalProcessed} مستخدم...`);
                 }
               } catch (docError) {
-                console.error(`❌ خطأ في معالجة المستند ${userDoc.id}:`, docError);
-                // حتى مع الخطأ، نحاول إضافة المستخدم بدون التاريخ
+                // محاولة fallback: إضافة المستخدم بدون التواريخ المعقدة
                 try {
                   const data = userDoc.data();
                   const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
@@ -417,7 +464,7 @@ export default function AdminUsersPage() {
                   collectionCount++;
                   totalProcessed++;
                 } catch (fallbackError) {
-                  console.error(`❌ فشل في إضافة المستخدم ${userDoc.id} حتى بدون تواريخ`);
+                  console.error(`❌ فشل تماماً: ${userDoc.id}`);
                 }
               }
             });
@@ -425,12 +472,11 @@ export default function AdminUsersPage() {
             console.log(`✔️ ${collectionName}: تمت معالجة ${collectionCount} مستخدم`);
           } catch (error) {
             console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
-            // الاستمرار في تحميل المجموعات الأخرى حتى لو فشلت إحداها
           }
         }
 
         console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
-        console.log(`📈 التوزيع:
+        console.log(`📈 التوزيع: 
           - Players: ${allUsers.filter(u => u.accountType === 'player').length}
           - Academies: ${allUsers.filter(u => u.accountType === 'academy').length}
           - Clubs: ${allUsers.filter(u => u.accountType === 'club').length}
@@ -438,19 +484,18 @@ export default function AdminUsersPage() {
           - Trainers: ${allUsers.filter(u => u.accountType === 'trainer').length}
           - Users: ${allUsers.filter(u => u.accountType === 'user').length}
         `);
-
+        
         setUsers(allUsers);
-
         await loadVisitStats();
 
         if (allUsers.length === 0) {
-          toast.warning('لم يتم العثور على أي مستخدمين. تحقق من إعدادات قاعدة البيانات.');
+          toast.warning('لم يتم العثور على أي مستخدمين.');
         } else {
-          toast.success(`✅ تم تحميل ${allUsers.length.toLocaleString()} مستخدم بنجاح من جميع المجموعات`);
+          toast.success(`✅ تم تحميل ${allUsers.length.toLocaleString()} مستخدم بنجاح`);
         }
       } catch (error) {
-        console.error('❌ خطأ عام في تحميل المستخدمين:', error);
-        toast.error('حدث خطأ في تحميل بيانات المستخدمين');
+        console.error('❌ خطأ عام:', error);
+        toast.error('حدث خطأ في تحميل البيانات');
       } finally {
         setLoading(false);
       }
@@ -501,27 +546,33 @@ export default function AdminUsersPage() {
       if (!user.createdAt) return false;
 
       const userDate = user.createdAt;
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const thisWeek = new Date(today);
-      thisWeek.setDate(thisWeek.getDate() - 7);
-      const thisMonth = new Date(today);
-      thisMonth.setMonth(thisMonth.getMonth() - 1);
+      const now = new Date();
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
 
       switch (dateFilter) {
         case 'today':
           return userDate.toDateString() === today.toDateString();
         case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
           return userDate.toDateString() === yesterday.toDateString();
         case 'thisWeek':
+          const thisWeek = new Date(today);
+          thisWeek.setDate(thisWeek.getDate() - 7);
           return userDate >= thisWeek;
         case 'thisMonth':
+          const thisMonth = new Date(today);
+          thisMonth.setMonth(thisMonth.getMonth() - 1);
           return userDate >= thisMonth;
-        case 'lastMonth':
-          const lastMonth = new Date(today);
-          lastMonth.setMonth(lastMonth.getMonth() - 2);
-          return userDate >= lastMonth && userDate < thisMonth;
+        case 'last3Days':
+          const last3Days = new Date(today);
+          last3Days.setDate(last3Days.getDate() - 3);
+          return userDate >= last3Days;
+        case 'newest':
+          const last24Hours = new Date(now);
+          last24Hours.setHours(last24Hours.getHours() - 24);
+          return userDate >= last24Hours;
         default:
           return true;
       }
@@ -570,6 +621,18 @@ export default function AdminUsersPage() {
     pending: users.filter(u => u.verificationStatus === 'pending' && !u.isDeleted).length,
     profileComplete: users.filter(u => u.profileCompletion >= 80 && !u.isDeleted).length,
     profileIncomplete: users.filter(u => u.profileCompletion < 80 && !u.isDeleted).length,
+    newToday: users.filter(u => {
+      if (!u.createdAt) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return u.createdAt >= today && !u.isDeleted;
+    }).length,
+    newThisWeek: users.filter(u => {
+      if (!u.createdAt) return false;
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return u.createdAt >= weekAgo && !u.isDeleted;
+    }).length,
     byType: {
       player: users.filter(u => u.accountType === 'player' && !u.isDeleted).length,
       academy: users.filter(u => u.accountType === 'academy' && !u.isDeleted).length,
@@ -626,6 +689,17 @@ export default function AdminUsersPage() {
     if (completion >= 80) return 'bg-green-100 text-green-800 border-green-200';
     if (completion >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-red-100 text-red-800 border-red-200';
+  };
+
+  const getPageLabel = (page: string) => {
+    const labels: { [key: string]: string } = {
+      '/': 'الصفحة الرئيسية',
+      '/auth/login': 'تسجيل الدخول',
+      '/auth/register': 'التسجيل',
+      '/dashboard': 'لوحة التحكم',
+      '/dashboard/admin/users': 'إدارة المستخدمين'
+    };
+    return labels[page] || page;
   };
 
   const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete' | 'restore') => {
@@ -699,7 +773,7 @@ export default function AdminUsersPage() {
     const csvContent = [
       headers.join(','),
       ...filteredAndSortedUsers.map(user => [
-        user.name,
+        `"${user.name}"`,
         user.email,
         user.phone,
         getAccountTypeLabel(user.accountType),
@@ -742,13 +816,15 @@ export default function AdminUsersPage() {
           </div>
           <div className="mt-8 flex justify-center gap-2">
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
-            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></div>
           </div>
         </div>
       </AccountTypeProtection>
     );
   }
+
+  const maxVisitsInWeek = Math.max(...visitStats.last7Days.map(d => d.count), 1);
 
   return (
     <AccountTypeProtection allowedTypes={['admin']}>
@@ -862,135 +938,224 @@ export default function AdminUsersPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">حالة التوثيق</p>
-                    <p className="text-3xl font-bold text-indigo-600">{stats.verified.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600 mb-1">مستخدمين جدد</p>
+                    <p className="text-3xl font-bold text-indigo-600">{stats.newToday.toLocaleString()}</p>
                     <p className="text-xs text-gray-500 mt-2">
-                      {stats.pending.toLocaleString()} في الانتظار
+                      {stats.newThisWeek.toLocaleString()} هذا الأسبوع
                     </p>
                   </div>
-                  <Shield className="h-12 w-12 text-indigo-600 opacity-80" />
+                  <Calendar className="h-12 w-12 text-indigo-600 opacity-80" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Visit Statistics Details */}
-          {visitStats.total > 0 && (
-            <Card className="mb-6 border-2 border-blue-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer" onClick={() => setShowVisitDetails(!showVisitDetails)}>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-6 w-6 text-blue-600" />
-                    <span>تحليلات الزيارات التفصيلية</span>
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                      {visitStats.total.toLocaleString()} زيارة
-                    </Badge>
-                  </div>
-                  {showVisitDetails ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-              {showVisitDetails && (
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* By Country */}
-                    <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                        <MapPin className="h-5 w-5 text-blue-600" />
-                        الزيارات حسب الدولة
-                      </h3>
-                      <div className="space-y-3 max-h-80 overflow-y-auto">
-                        {Object.entries(visitStats.byCountry)
-                          .sort(([, a], [, b]) => b - a)
-                          .slice(0, 10)
-                          .map(([country, count]) => {
-                            const percentage = (count / visitStats.total * 100).toFixed(1);
-                            return (
-                              <div key={country} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                <Globe className="h-4 w-4 text-gray-400" />
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="font-medium text-gray-700">{country || 'غير محدد'}</span>
-                                    <span className="text-sm font-bold text-blue-600">{count.toLocaleString()} زيارة</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div
-                                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
-                                      style={{ width: `${percentage}%` }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-
-                    {/* By City */}
-                    <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                        <MapPin className="h-5 w-5 text-green-600" />
-                        الزيارات حسب المدينة
-                      </h3>
-                      <div className="space-y-3 max-h-80 overflow-y-auto">
-                        {Object.entries(visitStats.byCity)
-                          .sort(([, a], [, b]) => b - a)
-                          .slice(0, 10)
-                          .map(([city, count]) => {
-                            const percentage = (count / visitStats.total * 100).toFixed(1);
-                            return (
-                              <div key={city} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                <MapPin className="h-4 w-4 text-gray-400" />
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="font-medium text-gray-700">{city || 'غير محدد'}</span>
-                                    <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div
-                                      className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
-                                      style={{ width: `${percentage}%` }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent Visits */}
-                  {visitStats.recentVisits.length > 0 && (
-                    <div className="mt-6 bg-white p-5 rounded-lg border-2 border-gray-100">
-                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                        <Clock className="h-5 w-5 text-purple-600" />
-                        آخر الزيارات
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {visitStats.recentVisits.slice(0, 6).map((visit, index) => (
-                          <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-gray-400 mt-1" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-800 truncate">{visit.country}</p>
-                                <p className="text-sm text-gray-600 truncate">{visit.city}</p>
-                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {visit.timestamp.toLocaleTimeString('en-GB')}
+          {/* Visit Statistics Details - Weekly Chart */}
+          <Card className="mb-6 border-2 border-blue-200 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer" onClick={() => setShowVisitDetails(!showVisitDetails)}>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-6 w-6 text-blue-600" />
+                  <span>إحصائيات الزيارات التفصيلية - آخر 7 أيام</span>
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                    {visitStats.total.toLocaleString()} زيارة
+                  </Badge>
+                </div>
+                {showVisitDetails ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </CardTitle>
+            </CardHeader>
+            {showVisitDetails && (
+              <CardContent className="p-6">
+                {/* Weekly Bar Chart */}
+                <div className="bg-white p-6 rounded-xl border-2 border-gray-100 mb-6">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                    الزيارات اليومية - آخر أسبوع
+                  </h3>
+                  <div className="space-y-4">
+                    {visitStats.last7Days.map((day, index) => {
+                      const percentage = maxVisitsInWeek > 0 ? (day.count / maxVisitsInWeek) * 100 : 0;
+                      const isToday = day.date === new Date().toLocaleDateString('en-GB');
+                      
+                      return (
+                        <div key={index} className={`p-4 rounded-lg ${isToday ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <Calendar className={`h-5 w-5 ${isToday ? 'text-blue-600' : 'text-gray-400'}`} />
+                              <div>
+                                <p className={`font-bold ${isToday ? 'text-blue-900' : 'text-gray-900'}`}>
+                                  {day.dayName}
+                                  {isToday && <span className="mr-2 text-xs bg-blue-600 text-white px-2 py-1 rounded">اليوم</span>}
                                 </p>
+                                <p className="text-xs text-gray-500">{day.date}</p>
                               </div>
                             </div>
+                            <div className="text-left">
+                              <p className={`text-2xl font-bold ${isToday ? 'text-blue-600' : 'text-gray-800'}`}>
+                                {day.count.toLocaleString()}
+                              </p>
+                              <p className="text-xs text-gray-500">زيارة</p>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-3 rounded-full transition-all duration-500 ${
+                                isToday 
+                                  ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600' 
+                                  : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Visits by Page */}
+                {Object.keys(visitStats.byPage).length > 0 && (
+                  <div className="bg-white p-6 rounded-xl border-2 border-gray-100 mb-6">
+                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
+                      <Globe className="h-6 w-6 text-green-600" />
+                      الزيارات حسب الصفحة
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(visitStats.byPage)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 5)
+                        .map(([page, count]) => {
+                          const percentage = (count / visitStats.total * 100).toFixed(1);
+                          return (
+                            <div key={page} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                              <Globe className="h-4 w-4 text-gray-400" />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-medium text-gray-700">{getPageLabel(page)}</span>
+                                  <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* By Country */}
+                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                      <MapPin className="h-5 w-5 text-blue-600" />
+                      الزيارات حسب الدولة
+                    </h3>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {Object.entries(visitStats.byCountry)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 10)
+                        .map(([country, count]) => {
+                          const percentage = (count / visitStats.total * 100).toFixed(1);
+                          return (
+                            <div key={country} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                              <Globe className="h-4 w-4 text-gray-400" />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-medium text-gray-700">{country || 'غير محدد'}</span>
+                                  <span className="text-sm font-bold text-blue-600">{count.toLocaleString()} زيارة</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* By City */}
+                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                      <MapPin className="h-5 w-5 text-green-600" />
+                      الزيارات حسب المدينة
+                    </h3>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {Object.entries(visitStats.byCity)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 10)
+                        .map(([city, count]) => {
+                          const percentage = (count / visitStats.total * 100).toFixed(1);
+                          return (
+                            <div key={city} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                              <MapPin className="h-4 w-4 text-gray-400" />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="font-medium text-gray-700">{city || 'غير محدد'}</span>
+                                  <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Visits */}
+                {visitStats.recentVisits.length > 0 && (
+                  <div className="mt-6 bg-white p-5 rounded-lg border-2 border-gray-100">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                      <Clock className="h-5 w-5 text-purple-600" />
+                      آخر الزيارات (آخر 7 أيام)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {visitStats.recentVisits.slice(0, 8).map((visit, index) => (
+                        <div key={index} className="p-3 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-blue-500 mt-1" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 truncate text-sm">{visit.country}</p>
+                              <p className="text-xs text-gray-600 truncate">{visit.city}</p>
+                              {visit.page && (
+                                <p className="text-xs text-blue-600 truncate mt-1">{getPageLabel(visit.page)}</p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {visit.timestamp.toLocaleString('en-GB', { 
+                                  day: '2-digit', 
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
 
           {/* Advanced Filters */}
           <Card className="mb-6 shadow-lg border-2 border-gray-200">
@@ -1016,7 +1181,10 @@ export default function AdminUsersPage() {
                     <Input
                       placeholder="ابحث بالاسم، البريد الإلكتروني، أو رقم الهاتف..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="pr-12 text-lg h-12 border-2 border-gray-300 focus:border-blue-500"
                     />
                   </div>
@@ -1029,7 +1197,10 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
                     <select
                       value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
+                      onChange={(e) => {
+                        setFilterType(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       title="اختر نوع الحساب"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
@@ -1047,7 +1218,10 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">حالة التوثيق</label>
                     <select
                       value={filterVerification}
-                      onChange={(e) => setFilterVerification(e.target.value)}
+                      onChange={(e) => {
+                        setFilterVerification(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       title="اختر حالة التوثيق"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
@@ -1063,15 +1237,18 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">اكتمال الملف</label>
                     <select
                       value={filterProfileCompletion}
-                      onChange={(e) => setFilterProfileCompletion(e.target.value)}
+                      onChange={(e) => {
+                        setFilterProfileCompletion(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       title="اختر مستوى اكتمال الملف"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع المستويات</option>
-                      <option value="complete">مكتمل (80%+) ({stats.profileComplete.toLocaleString()})</option>
-                      <option value="partial">جزئي (50-79%)</option>
-                      <option value="minimal">قليل (&lt;50%)</option>
-                      <option value="incomplete">غير مكتمل (&lt;80%) ({stats.profileIncomplete.toLocaleString()})</option>
+                      <option value="complete">مكتمل 80%+ ({stats.profileComplete.toLocaleString()})</option>
+                      <option value="partial">جزئي 50-79%</option>
+                      <option value="minimal">قليل &lt;50%</option>
+                      <option value="incomplete">غير مكتمل &lt;80% ({stats.profileIncomplete.toLocaleString()})</option>
                     </select>
                   </div>
 
@@ -1080,14 +1257,18 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">الدولة</label>
                     <select
                       value={filterCountry}
-                      onChange={(e) => setFilterCountry(e.target.value)}
+                      onChange={(e) => {
+                        setFilterCountry(e.target.value);
+                        setFilterCity('all');
+                        setCurrentPage(1);
+                      }}
                       title="اختر الدولة"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع الدول ({uniqueCountries.length})</option>
                       {uniqueCountries.sort().map(country => (
                         <option key={country} value={country}>
-                          {country} ({users.filter(u => u.country === country).length})
+                          {country} ({users.filter(u => u.country === country && !u.isDeleted).length})
                         </option>
                       ))}
                     </select>
@@ -1098,16 +1279,22 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">المدينة</label>
                     <select
                       value={filterCity}
-                      onChange={(e) => setFilterCity(e.target.value)}
+                      onChange={(e) => {
+                        setFilterCity(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       title="اختر المدينة"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع المدن ({uniqueCities.length})</option>
-                      {uniqueCities.sort().map(city => (
-                        <option key={city} value={city}>
-                          {city} ({users.filter(u => u.city === city).length})
-                        </option>
-                      ))}
+                      {uniqueCities
+                        .filter(city => filterCountry === 'all' || users.some(u => u.city === city && u.country === filterCountry))
+                        .sort()
+                        .map(city => (
+                          <option key={city} value={city}>
+                            {city} ({users.filter(u => u.city === city && (filterCountry === 'all' || u.country === filterCountry) && !u.isDeleted).length})
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -1116,16 +1303,20 @@ export default function AdminUsersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
                     <select
                       value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
+                      onChange={(e) => {
+                        setDateFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       title="اختر فترة التسجيل"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع التواريخ</option>
-                      <option value="today">اليوم</option>
+                      <option value="newest">الأحدث (آخر 24 ساعة) ⭐</option>
+                      <option value="today">اليوم ({stats.newToday})</option>
                       <option value="yesterday">أمس</option>
-                      <option value="thisWeek">هذا الأسبوع</option>
+                      <option value="last3Days">آخر 3 أيام</option>
+                      <option value="thisWeek">هذا الأسبوع ({stats.newThisWeek})</option>
                       <option value="thisMonth">هذا الشهر</option>
-                      <option value="lastMonth">الشهر الماضي</option>
                     </select>
                   </div>
 
@@ -1216,7 +1407,7 @@ export default function AdminUsersPage() {
                           className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
                         >
                           <UserX className="h-4 w-4" />
-                          تعطيل
+                          تعطيل ({selectedUsers.length})
                         </Button>
                         <Button
                           size="sm"
@@ -1224,7 +1415,7 @@ export default function AdminUsersPage() {
                           className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
                         >
                           <Shield className="h-4 w-4" />
-                          توثيق
+                          توثيق ({selectedUsers.length})
                         </Button>
                       </>
                     )}
@@ -1236,7 +1427,7 @@ export default function AdminUsersPage() {
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"
                         >
                           <UserCheck className="h-4 w-4" />
-                          تفعيل
+                          تفعيل ({selectedUsers.length})
                         </Button>
                       </>
                     )}
@@ -1247,17 +1438,21 @@ export default function AdminUsersPage() {
                         className="bg-green-600 hover:bg-green-700 text-white gap-2"
                       >
                         <RefreshCcw className="h-4 w-4" />
-                        استرجاع
+                        استرجاع ({selectedUsers.length})
                       </Button>
                     )}
                     {activeTab !== 'deleted' && (
                       <Button
                         size="sm"
-                        onClick={() => handleBulkAction('delete')}
+                        onClick={() => {
+                          if (confirm(`هل أنت متأكد من حذف ${selectedUsers.length} مستخدم؟`)) {
+                            handleBulkAction('delete');
+                          }
+                        }}
                         className="bg-red-600 hover:bg-red-700 text-white gap-2"
                       >
                         <XCircle className="h-4 w-4" />
-                        حذف
+                        حذف ({selectedUsers.length})
                       </Button>
                     )}
                     <Button
@@ -1316,7 +1511,7 @@ export default function AdminUsersPage() {
                 <table className="w-full">
                   <thead className="bg-gray-100 border-b-2 border-gray-200">
                     <tr>
-                      <th className="text-right p-4 font-semibold text-gray-700">
+                      <th className="text-right p-4 font-semibold text-gray-700 w-12">
                         <input
                           type="checkbox"
                           title="تحديد الكل"
@@ -1343,142 +1538,153 @@ export default function AdminUsersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {paginatedUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-blue-50 transition-colors">
-                        <td className="p-4">
-                          <input
-                            type="checkbox"
-                            title={`تحديد ${user.name}`}
-                            checked={selectedUsers.includes(user.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedUsers([...selectedUsers, user.id]);
-                              } else {
-                                setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                              }
-                            }}
-                            className="rounded h-5 w-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                              {user.name.charAt(0).toUpperCase()}
+                    {paginatedUsers.map((user) => {
+                      const isNew = user.createdAt && (new Date().getTime() - user.createdAt.getTime()) < 24 * 60 * 60 * 1000;
+                      
+                      return (
+                        <tr key={user.id} className={`hover:bg-blue-50 transition-colors ${isNew ? 'bg-green-50' : ''}`}>
+                          <td className="p-4">
+                            <input
+                              type="checkbox"
+                              title={`تحديد ${user.name}`}
+                              checked={selectedUsers.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUsers([...selectedUsers, user.id]);
+                                } else {
+                                  setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                                }
+                              }}
+                              className="rounded h-5 w-5 cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-gray-900">{user.name}</p>
+                                  {isNew && (
+                                    <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
+                                      جديد!
+                                    </Badge>
+                                  )}
+                                </div>
+                                {user.lastLogin && (
+                                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {user.lastLogin.toLocaleDateString('en-GB')}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">{user.name}</p>
-                              {user.lastLogin && (
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {user.lastLogin.toLocaleDateString('en-GB')}
-                                </p>
-                              )}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Mail className="h-4 w-4 text-gray-400" />
+                              <span className="text-sm">{user.email || 'غير محدد'}</span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Mail className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm">{user.email || 'غير محدد'}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Phone className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm">{user.phone || 'غير محدد'}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
-                            {getAccountTypeLabel(user.accountType)}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
-                            {getVerificationLabel(user.verificationStatus)}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-gray-200 rounded-full h-2.5">
-                              <div
-                                className={`h-2.5 rounded-full ${
-                                  user.profileCompletion >= 80
-                                    ? 'bg-green-500'
-                                    : user.profileCompletion >= 50
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-500'
-                                }`}
-                                style={{ width: `${user.profileCompletion}%` }}
-                              ></div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Phone className="h-4 w-4 text-gray-400" />
+                              <span className="text-sm">{user.phone || 'غير محدد'}</span>
                             </div>
-                            <Badge className={`${getProfileCompletionBgColor(user.profileCompletion)} border font-bold text-xs`}>
-                              {user.profileCompletion}%
+                          </td>
+                          <td className="p-4">
+                            <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
+                              {getAccountTypeLabel(user.accountType)}
                             </Badge>
-                          </div>
-                          {user.profileCompletion < 80 && (
-                            <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              غير مكتمل
-                            </p>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm">
-                            <p className="font-medium text-gray-900 flex items-center gap-1">
-                              <Globe className="h-3 w-3 text-gray-400" />
-                              {user.country || 'غير محدد'}
-                            </p>
-                            <p className="text-gray-600 flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-gray-400" />
-                              {user.city || 'غير محدد'}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          {user.createdAt ? (
-                            <div className="text-sm">
-                              <p className="font-medium text-gray-900">
-                                {user.createdAt.toLocaleDateString('en-GB')}
+                          </td>
+                          <td className="p-4">
+                            <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
+                              {getVerificationLabel(user.verificationStatus)}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 bg-gray-200 rounded-full h-2.5">
+                                <div
+                                  className={`h-2.5 rounded-full transition-all ${
+                                    user.profileCompletion >= 80
+                                      ? 'bg-green-500'
+                                      : user.profileCompletion >= 50
+                                      ? 'bg-yellow-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${user.profileCompletion}%` }}
+                                ></div>
+                              </div>
+                              <Badge className={`${getProfileCompletionBgColor(user.profileCompletion)} border font-bold text-xs`}>
+                                {user.profileCompletion}%
+                              </Badge>
+                            </div>
+                            {user.profileCompletion < 80 && (
+                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                غير مكتمل
                               </p>
-                              <p className="text-gray-600 text-xs">
-                                {user.createdAt.toLocaleTimeString('en-GB')}
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm">
+                              <p className="font-medium text-gray-900 flex items-center gap-1">
+                                <Globe className="h-3 w-3 text-gray-400" />
+                                {user.country || 'غير محدد'}
+                              </p>
+                              <p className="text-gray-600 flex items-center gap-1">
+                                <MapPin className="h-3 w-3 text-gray-400" />
+                                {user.city || 'غير محدد'}
                               </p>
                             </div>
-                          ) : (
-                            <span className="text-gray-400">غير محدد</span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
-                              title="عرض التفاصيل"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
-                              title="تعديل"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
-                              title="إدارة الصلاحيات"
-                            >
-                              <KeyRound className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="p-4">
+                            {user.createdAt ? (
+                              <div className="text-sm">
+                                <p className="font-medium text-gray-900">
+                                  {user.createdAt.toLocaleDateString('en-GB')}
+                                </p>
+                                <p className="text-gray-600 text-xs">
+                                  {user.createdAt.toLocaleTimeString('en-GB')}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">غير محدد</span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                title="عرض التفاصيل"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                title="تعديل"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                                title="إدارة الصلاحيات"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1564,7 +1770,7 @@ export default function AdminUsersPage() {
                         disabled={currentPage === totalPages}
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
                       >
-                        الأخير
+                        الأخير ({totalPages})
                       </Button>
                     </div>
                   </div>
