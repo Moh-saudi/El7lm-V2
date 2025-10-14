@@ -1,105 +1,98 @@
-// BeOn OTP Service - للتأكيد عند التسجيل
-// منفصل عن SMS العادي لتجنب التضارب
+/**
+ * BeOn V3 OTP Service
+ * خدمة إرسال رموز التحقق لمرة واحدة عبر BeOn V3
+ */
+import { BEON_V3_CONFIG, createBeOnHeaders, BeOnResponse } from './config';
 
-interface OTPResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  otpId?: string;
+// Interface for the OTP request body, which might differ from bulk SMS
+interface OTPRequest {
+  phoneNumbers: string[];
+  sender?: string;
+  lang?: string;
+  otp_length?: number;
+  type?: 'sms' | 'whatsapp'; // To specify the channel
 }
 
-class BeOnOTPService {
+export class BeOnOTPService {
   private baseUrl: string;
   private token: string;
 
   constructor() {
-    this.baseUrl = process.env.BEON_OTP_BASE_URL || 'https://beon.chat/api/send/message/otp';
-    this.token = process.env.BEON_OTP_TOKEN || 'vSCuMzZwLjDxzR882YphwEgW';
+    this.baseUrl = BEON_V3_CONFIG.BASE_URL;
+    this.token = BEON_V3_CONFIG.TOKEN;
   }
 
-  // إرسال رمز OTP للتأكيد
-  async sendOTP(phoneNumber: string, templateId?: string): Promise<OTPResponse> {
+  /**
+   * Sends an OTP, automatically selecting the channel (SMS/WhatsApp) based on the phone number.
+   * @param phoneNumber The full phone number including country code (e.g., +201234567890)
+   * @param otpLength The desired length of the OTP code.
+   * @returns A BeOnResponse indicating success or failure.
+   */
+  async sendOTP(phoneNumber: string, otpLength: number = 6): Promise<BeOnResponse> {
+    const isEgypt = phoneNumber.startsWith('+20');
+    const channel = isEgypt ? 'sms' : 'whatsapp';
+    
+    // Note: The admin panel and config suggest V3 sends WhatsApp as SMS.
+    // We will still pass the 'whatsapp' type in case their API handles it differently for OTPs.
+    // The endpoint itself might be the same.
+    const endpoint = '/api/v3/send/otp'; // Dedicated OTP endpoint seems more appropriate
+    const url = `${this.baseUrl}${endpoint}`;
+
+    console.log(`📱 Sending OTP via ${channel} to ${phoneNumber}`);
+
+    const requestBody: OTPRequest = {
+      phoneNumbers: [phoneNumber.replace(/^\+/, '')],
+      sender: BEON_V3_CONFIG.DEFAULTS.SENDER_NAME,
+      lang: BEON_V3_CONFIG.DEFAULTS.LANGUAGE,
+      otp_length: otpLength,
+      type: channel,
+    };
+
     try {
-      console.log('🔐 Sending OTP to:', phoneNumber);
-      
-      const response = await fetch(this.baseUrl, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneNumber,
-          templateId: templateId || 'default'
-        })
+        headers: createBeOnHeaders(this.token),
+        body: JSON.stringify(requestBody),
       });
 
-      const result = await response.json();
-      console.log('🔐 OTP API Response:', result);
+      const responseText = await response.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error(`❌ [BeOnOTPService] Failed to parse JSON response from BeOn. Status: ${response.status}. Response:`, responseText);
+        return { success: false, error: 'Invalid response from OTP provider.' };
+      }
 
-      if (response.ok) {
+      if (response.ok && (responseData.success || responseData.status === 'success')) {
+        console.log(`✅ [BeOnOTPService] OTP sent successfully via ${channel}.`);
         return {
           success: true,
-          message: 'تم إرسال رمز التأكيد بنجاح',
-          otpId: result.otpId
+          message: 'OTP sent successfully.',
+          data: responseData,
         };
       } else {
+        console.error(`❌ [BeOnOTPService] Failed to send OTP via ${channel}. Response:`, responseData);
         return {
           success: false,
-          error: result.error || 'فشل في إرسال رمز التأكيد'
+          error: responseData.error || responseData.message || 'Failed to send OTP.',
+          data: responseData,
         };
       }
     } catch (error) {
-      console.error('❌ OTP sending error:', error);
+      console.error('❌ [BeOnOTPService] Network or fetch error:', error);
       return {
         success: false,
-        error: 'حدث خطأ في إرسال رمز التأكيد'
-      };
-    }
-  }
-
-  // التحقق من رمز OTP
-  async verifyOTP(otpId: string, otpCode: string): Promise<OTPResponse> {
-    try {
-      console.log('🔐 Verifying OTP:', otpId);
-      
-      const response = await fetch(`${this.baseUrl}/verify`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          otpId: otpId,
-          otpCode: otpCode
-        })
-      });
-
-      const result = await response.json();
-      console.log('🔐 OTP Verification Response:', result);
-
-      if (response.ok && result.verified) {
-        return {
-          success: true,
-          message: 'تم التحقق من رمز التأكيد بنجاح'
-        };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'رمز التأكيد غير صحيح'
-        };
-      }
-    } catch (error) {
-      console.error('❌ OTP verification error:', error);
-      return {
-        success: false,
-        error: 'حدث خطأ في التحقق من رمز التأكيد'
+        error: 'A network error occurred while trying to send the OTP.',
+        data: error,
       };
     }
   }
 }
 
-export default new BeOnOTPService();
+// Export a singleton instance for easy use across the application
+export const beonOTPService = new BeOnOTPService();
 
 
 
