@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, CheckCircle, Clock, MessageCircle, RefreshCw, X } from 'lucide-react';
-import React, 'useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface WhatsAppOTPVerificationProps {
   phoneNumber: string;
@@ -70,7 +70,7 @@ export default function WhatsAppOTPVerification({
       setAttempts(0);
     }
   }, [isOpen]);
-  
+
   const handleOtpChange = (index: number, value: string) => {
     if (!/^[0-9]*$/.test(value)) return;
 
@@ -104,7 +104,7 @@ export default function WhatsAppOTPVerification({
       setLoading(false);
       return;
     }
-    
+
     setAttempts(prev => prev + 1);
 
     try {
@@ -138,7 +138,7 @@ export default function WhatsAppOTPVerification({
     setResendLoading(true);
     setError('');
     setMessage('');
-    
+
     try {
       const res = await fetch('/api/sms/send-otp', {
         method: 'POST',
@@ -147,7 +147,7 @@ export default function WhatsAppOTPVerification({
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
-      
+
       setMessage('تم إعادة إرسال الرمز بنجاح.');
       setTimeRemaining(otpExpirySeconds);
       setAttempts(0);
@@ -172,7 +172,7 @@ export default function WhatsAppOTPVerification({
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <p className="text-center text-gray-600 mb-4">{subtitle}</p>
 
         {error && (

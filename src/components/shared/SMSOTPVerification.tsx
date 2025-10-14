@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle, Clock, Phone, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SMSOTPVerificationProps {
@@ -96,7 +96,7 @@ export default function SMSOTPVerification({
       document.getElementById(`sms-otp-${index - 1}`)?.focus();
     }
   };
-  
+
   const verifyOTP = useCallback(async (otpCode: string) => {
     if (loading) return;
     setLoading(true);
@@ -107,7 +107,7 @@ export default function SMSOTPVerification({
       setLoading(false);
       return;
     }
-    
+
     setAttempts(prev => prev + 1);
 
     try {
@@ -140,7 +140,7 @@ export default function SMSOTPVerification({
     setResendLoading(true);
     setError('');
     setMessage('');
-    
+
     try {
       const res = await fetch('/api/sms/send-otp', {
         method: 'POST',
@@ -149,7 +149,7 @@ export default function SMSOTPVerification({
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
-      
+
       setMessage('تم إعادة إرسال الرمز بنجاح.');
       setTimeRemaining(otpExpirySeconds);
       setAttempts(0); // إعادة تعيين المحاولات
@@ -162,7 +162,7 @@ export default function SMSOTPVerification({
   }, [resendLoading, timeRemaining, phoneNumber, name, language, otpExpirySeconds]);
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-  
+
   if (!isOpen) return null;
 
   return (
@@ -174,7 +174,7 @@ export default function SMSOTPVerification({
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <p className="text-center text-gray-600 mb-4">{subtitle}</p>
 
         {error && (
