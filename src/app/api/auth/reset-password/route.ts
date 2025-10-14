@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { NextRequest, NextResponse } from 'next/server';
 
 const COLLECTIONS_TO_SEARCH = [
   'users',
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ [reset-password] Error details:', error.message, error.code);
 
     let errorMessage = 'حدث خطأ أثناء إعادة تعيين كلمة المرور';
-    
+
     if (error.code === 'auth/user-not-found') {
       errorMessage = 'المستخدم غير موجود في نظام المصادقة';
     } else if (error.message) {
