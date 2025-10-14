@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 
 async function sendBeonOtp(phoneNumber: string, name: string, otpLength: number, lang: string) {
@@ -36,16 +36,16 @@ async function sendBeonOtp(phoneNumber: string, name: string, otpLength: number,
   console.log('📨 [send-otp] استجابة BeOn:', beonData);
 
   if (beonResponse.ok && beonData.success) {
-    return { 
-      success: true, 
-      reference: beonData.reference || beonData.data?.reference 
+    return {
+      success: true,
+      reference: beonData.reference || beonData.data?.reference
     };
   }
 
   console.error('❌ [send-otp] فشل BeOn:', beonData);
-  return { 
-    success: false, 
-    error: beonData.error || beonData.message || 'فشل في إرسال رمز التحقق' 
+  return {
+    success: false,
+    error: beonData.error || beonData.message || 'فشل في إرسال رمز التحقق'
   };
 }
 
@@ -101,10 +101,10 @@ export async function POST(request: NextRequest) {
         method: 'beon'
       });
     }
-    
+
     // Fallback: Generate and save backup OTP
     console.warn(`⚠️ [send-otp] فشل الإرسال عبر BeOn لـ ${phoneNumber}. بدء النظام الاحتياطي.`);
-    
+
     const backupOtp = generateBackupOtp(otpLength);
     const saved = await saveBackupOtp(phoneNumber, backupOtp);
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         method: 'backup'
       });
     }
-    
+
     // If both BeOn and Firestore fallback fail
     return NextResponse.json({
       success: false,

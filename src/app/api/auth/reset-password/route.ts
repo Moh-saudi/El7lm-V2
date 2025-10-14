@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase/admin-config';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { NextRequest, NextResponse } from 'next/server';
 
 const COLLECTIONS_TO_SEARCH = [
-  'users', 
-  'players', 
-  'clubs', 
-  'academies', 
-  'agents', 
-  'employees', 
+  'users',
+  'players',
+  'clubs',
+  'academies',
+  'agents',
+  'employees',
   'trainers'
 ];
 const PHONE_FIELDS = [
@@ -35,11 +35,11 @@ async function findUserByPhone(phoneNumber: string): Promise<{
       try {
         const q = query(collection(db, collectionName), where(field, '==', phoneNumber));
         const snapshot = await getDocs(q);
-        
+
         if (!snapshot.empty) {
           const userDoc = snapshot.docs[0];
           const userData = userDoc.data();
-          
+
           // العثور على البريد الإلكتروني أو UID
           const email = userData.email || userData.userEmail;
           const uid = userData.uid || userData.userId || userDoc.id;
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     await adminAuth.updateUser(uid, {
       password: newPassword,
     });
-    
+
     console.log(`✅ Password updated for UID: ${uid}`);
 
     // 3. (اختياري) تحديث حقل في Firestore للإشارة إلى تغيير كلمة المرور
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Error resetting password:', error);
-    
+
     let errorMessage = 'An internal server error occurred.';
     if (error.code === 'auth/user-not-found') {
       errorMessage = 'User not found in Firebase Authentication.';
