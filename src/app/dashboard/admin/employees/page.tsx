@@ -59,7 +59,7 @@ import {
     Users,
     X
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // الصلاحيات الافتراضية لكل دور وظيفي
@@ -279,8 +279,9 @@ export default function EmployeesManagement() {
     }
   }, [formErrors]);
 
-  // تحديث نموذج إضافة/تعديل الموظف
-  const EmployeeForm = useMemo(() => (
+  // تحديث نموذج إضافة/تعديل الموظف كمكوّن دالة بسيط
+  function EmployeeForm() {
+    return (
     <div className="space-y-6 py-4">
       {/* معلومات شخصية */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
@@ -603,7 +604,8 @@ export default function EmployeesManagement() {
         </div>
       </div>
     </div>
-  ), [newEmployee, formErrors, handleInputChange, handleSelectChange, handleCheckboxChange, employees, countries, selectedCountry, selectedCities]);
+  );
+  }
 
   // State
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -1575,8 +1577,7 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* التفاف لتفادي أي مشاكل مع التصغير */}
-            <>{EmployeeForm}</>
+            <EmployeeForm />
 
             <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
               <Button
