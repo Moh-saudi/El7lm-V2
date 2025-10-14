@@ -42,7 +42,19 @@ export async function POST(request: NextRequest) {
       })
     });
 
-    const beonData = await beonResponse.json();
+    const responseText = await beonResponse.text();
+    let beonData;
+    try {
+      beonData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('❌ [verify-otp] Failed to parse BeOn response as JSON. Response text:', responseText);
+      return NextResponse.json({
+        success: false,
+        verified: false,
+        error: 'Invalid response from verification service.'
+      }, { status: 502 }); // Bad Gateway, since we got a bad response from an upstream server
+    }
+
     console.log('📨 [verify-otp] استجابة BeOn:', beonData);
 
     if (beonResponse.ok && beonData.success) {
