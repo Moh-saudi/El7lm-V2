@@ -30,8 +30,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
+import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { auth, db } from '@/lib/firebase/config';
 import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
@@ -698,7 +698,7 @@ export default function EmployeesManagement() {
   });
 
   // تحديث مكون اختيار المناطق
-  const LocationSelector = () => {
+  function LocationSelector() {
     const selectedCountryData = countries.find(c => c.id === selectedCountry);
 
     return (
@@ -796,7 +796,7 @@ export default function EmployeesManagement() {
         )}
       </div>
     );
-  };
+  }
 
   // دالة لإنشاء كلمة مرور قوية
   const generateStrongPassword = () => {
@@ -1100,7 +1100,8 @@ export default function EmployeesManagement() {
   };
 
   // Update CredentialsDialog component
-  const CredentialsDialog = () => (
+  function CredentialsDialog() {
+    return (
     <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -1248,6 +1249,7 @@ export default function EmployeesManagement() {
       </DialogContent>
     </Dialog>
   );
+  }
 
   // Delete employee
   const handleDeleteEmployee = async (employeeId: string) => {
@@ -1572,7 +1574,7 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <EmployeeForm />
+            {EmployeeForm}
 
             <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
               <Button
