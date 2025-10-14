@@ -13,6 +13,7 @@ import {
     Activity,
     AlertCircle,
     BarChart3,
+    Building2,
     Calendar,
     CheckCircle2,
     ChevronDown,
@@ -54,6 +55,8 @@ interface User {
   country: string;
   parentAccountId: string;
   parentAccountType: string;
+  parentOrganizationName: string;
+  registrationType: 'direct' | 'organization' | 'unknown';
   isDeleted: boolean;
   verificationStatus: 'verified' | 'pending' | 'rejected';
   profileCompletion: number;
@@ -91,8 +94,11 @@ export default function AdminUsersPage() {
   const [filterProfileCompletion, setFilterProfileCompletion] = useState<string>('all');
   const [filterCountry, setFilterCountry] = useState<string>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
+  const [filterOrganization, setFilterOrganization] = useState<string>('all');
+  const [filterRegistrationType, setFilterRegistrationType] = useState<string>('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [organizationsCache, setOrganizationsCache] = useState<{[key: string]: string}>({});
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -382,6 +388,39 @@ export default function AdminUsersPage() {
     }
   };
 
+  // دالة لجلب اسم المنظمة من cache أو من قاعدة البيانات
+  const getOrganizationName = async (parentId: string, parentType: string): Promise<string> => {
+    if (!parentId || !parentType) return '';
+
+    const cacheKey = `${parentType}_${parentId}`;
+    if (organizationsCache[cacheKey]) {
+      return organizationsCache[cacheKey];
+    }
+
+    try {
+      const collectionName = parentType === 'user' ? 'users' : `${parentType}s`;
+      const orgDoc = await doc(db, collectionName, parentId);
+      const orgSnap = await getDocs(collection(db, collectionName));
+
+      const found = orgSnap.docs.find(d => d.id === parentId);
+      if (found) {
+        const data = found.data();
+        const orgName = data.name || data.full_name || data.club_name || data.academy_name || data.agent_name || data.trainer_name || '';
+
+        setOrganizationsCache(prev => ({
+          ...prev,
+          [cacheKey]: orgName
+        }));
+
+        return orgName;
+      }
+    } catch (error) {
+      console.error('خطأ في جلب اسم المنظمة:', error);
+    }
+
+    return '';
+  };
+
   // Load users data - with pagination support for 1000+ users
   useEffect(() => {
     const loadUsers = async () => {
@@ -392,6 +431,23 @@ export default function AdminUsersPage() {
         const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
         const allUsers: User[] = [];
         let totalProcessed = 0;
+
+        // أولاً، جلب جميع المنظمات للـ cache
+        const orgsCache: {[key: string]: string} = {};
+        for (const collectionName of ['clubs', 'academies', 'agents', 'trainers']) {
+          try {
+            const snapshot = await getDocs(collection(db, collectionName));
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              const orgName = data.name || data.full_name || data.club_name || data.academy_name || data.agent_name || data.trainer_name || '';
+              orgsCache[`${collectionName.replace(/s$/, '')}_${doc.id}`] = orgName;
+            });
+          } catch (e) {
+            // تجاهل
+          }
+        }
+        setOrganizationsCache(orgsCache);
+        console.log(`📚 تم تحميل ${Object.keys(orgsCache).length} منظمة في الـ cache`);
 
         for (const collectionName of collections) {
           try {
@@ -411,9 +467,9 @@ export default function AdminUsersPage() {
 
                 // محاولة استخراج تاريخ التسجيل من مصادر متعددة
                 let createdAtDate = safeToDate(
-                  data.createdAt || 
-                  data.created_at || 
-                  data.registrationDate || 
+                  data.createdAt ||
+                  data.created_at ||
+                  data.registrationDate ||
                   data.registration_date ||
                   data.signupDate ||
                   data.signup_date ||
@@ -433,26 +489,39 @@ export default function AdminUsersPage() {
 
                 const profileCompletion = calculateProfileCompletion(data, accountType);
 
-                const userData: User = {
+                // تحديد نوع التسجيل واسم المنظمة
+                const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || data.agentId || data.agent_id || data.trainerId || data.trainer_id || '';
+                const parentType = data.parentAccountType || data.parent_account_type ||
+                                 (data.clubId || data.club_id ? 'club' : '') ||
+                                 (data.academyId || data.academy_id ? 'academy' : '') ||
+                                 (data.agentId || data.agent_id ? 'agent' : '') ||
+                                 (data.trainerId || data.trainer_id ? 'trainer' : '') || '';
+
+                const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
+                const registrationType = parentId ? 'organization' : 'direct';
+
+              const userData: User = {
                   id: userDoc.id,
-                  name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                  email: data.email || '',
-                  phone: data.phone || data.phoneNumber || '',
+                name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
+                email: data.email || '',
+                phone: data.phone || data.phoneNumber || '',
                   accountType: accountType,
-                  isActive: data.isActive !== false,
+                isActive: data.isActive !== false,
                   createdAt: createdAtDate,
                   lastLogin: safeToDate(data.lastLogin || data.last_login || data.lastAccessTime),
-                  city: data.city || data.location?.city || '',
-                  country: data.country || data.location?.country || '',
-                  parentAccountId: data.parentAccountId || data.parent_account_id || '',
-                  parentAccountType: data.parentAccountType || data.parent_account_type || '',
-                  isDeleted: data.isDeleted || data.deleted || false,
+                city: data.city || data.location?.city || '',
+                country: data.country || data.location?.country || '',
+                  parentAccountId: parentId,
+                  parentAccountType: parentType,
+                  parentOrganizationName: parentOrgName,
+                  registrationType: registrationType,
+                isDeleted: data.isDeleted || data.deleted || false,
                   verificationStatus: data.verificationStatus || data.verification_status || 'pending',
                   profileCompletion: profileCompletion,
                   profileCompleted: profileCompletion >= 80
-                };
+              };
 
-                allUsers.push(userData);
+              allUsers.push(userData);
                 collectionCount++;
                 totalProcessed++;
 
@@ -465,7 +534,7 @@ export default function AdminUsersPage() {
                 try {
                   const data = userDoc.data();
                   const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
-                  
+
                   // محاولة أخيرة لاستخراج التاريخ من metadata
                   let fallbackDate = null;
                   try {
@@ -475,20 +544,26 @@ export default function AdminUsersPage() {
                   } catch (e) {
                     // تجاهل
                   }
-                  
+
+                  const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || '';
+                  const parentType = data.parentAccountType || data.parent_account_type || '';
+                  const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
+
                   allUsers.push({
                     id: userDoc.id,
                     name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                    email: data.email || '',
+                  email: data.email || '',
                     phone: data.phone || data.phoneNumber || '',
                     accountType: accountType,
-                    isActive: data.isActive !== false,
+                  isActive: data.isActive !== false,
                     createdAt: fallbackDate,
                     lastLogin: null,
                     city: data.city || data.location?.city || '',
                     country: data.country || data.location?.country || '',
-                    parentAccountId: data.parentAccountId || data.parent_account_id || '',
-                    parentAccountType: data.parentAccountType || data.parent_account_type || '',
+                    parentAccountId: parentId,
+                    parentAccountType: parentType,
+                    parentOrganizationName: parentOrgName,
+                    registrationType: parentId ? 'organization' : 'unknown',
                     isDeleted: data.isDeleted || data.deleted || false,
                     verificationStatus: data.verificationStatus || data.verification_status || 'pending',
                     profileCompletion: 0,
@@ -510,7 +585,7 @@ export default function AdminUsersPage() {
         }
 
         const usersWithoutDate = allUsers.filter(u => !u.createdAt).length;
-        
+
         console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
         console.log(`📈 التوزيع حسب النوع:
           - Players: ${allUsers.filter(u => u.accountType === 'player').length}
@@ -576,6 +651,11 @@ export default function AdminUsersPage() {
     const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
     const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
     const matchesCity = filterCity === 'all' || user.city === filterCity;
+    const matchesOrganization = filterOrganization === 'all' ||
+                               (filterOrganization === 'direct' && !user.parentAccountId) ||
+                               (filterOrganization === 'organization' && user.parentAccountId) ||
+                               (user.parentOrganizationName && user.parentOrganizationName.toLowerCase().includes(filterOrganization.toLowerCase()));
+    const matchesRegistrationType = filterRegistrationType === 'all' || user.registrationType === filterRegistrationType;
 
     const matchesProfileCompletion = (() => {
       if (filterProfileCompletion === 'all') return true;
@@ -625,7 +705,8 @@ export default function AdminUsersPage() {
     })();
 
     return matchesSearch && matchesType && matchesVerification &&
-           matchesDate && matchesProfileCompletion && matchesCountry && matchesCity;
+           matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
+           matchesOrganization && matchesRegistrationType;
   }).sort((a, b) => {
     let aValue: any = a[sortBy as keyof User];
     let bValue: any = b[sortBy as keyof User];
@@ -653,9 +734,10 @@ export default function AdminUsersPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedUsers = filteredAndSortedUsers.slice(startIndex, startIndex + itemsPerPage);
 
-  // Get unique countries and cities for filters
+  // Get unique countries, cities, and organizations for filters
   const uniqueCountries = Array.from(new Set(users.map(u => u.country).filter(c => c)));
   const uniqueCities = Array.from(new Set(users.map(u => u.city).filter(c => c)));
+  const uniqueOrganizations = Array.from(new Set(users.map(u => u.parentOrganizationName).filter(o => o)));
 
   // Real Stats
   const stats = {
@@ -686,6 +768,11 @@ export default function AdminUsersPage() {
       agent: users.filter(u => u.accountType === 'agent' && !u.isDeleted).length,
       trainer: users.filter(u => u.accountType === 'trainer' && !u.isDeleted).length,
       club: users.filter(u => u.accountType === 'club' && !u.isDeleted).length,
+    },
+    byRegistrationType: {
+      direct: users.filter(u => u.registrationType === 'direct' && !u.isDeleted).length,
+      organization: users.filter(u => u.registrationType === 'organization' && !u.isDeleted).length,
+      unknown: users.filter(u => u.registrationType === 'unknown' && !u.isDeleted).length,
     }
   };
 
@@ -1023,6 +1110,21 @@ export default function AdminUsersPage() {
                     </p>
                   </div>
                   <Calendar className="h-12 w-12 text-indigo-600 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">تسجيل مباشر</p>
+                    <p className="text-3xl font-bold text-teal-600">{stats.byRegistrationType.direct.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {stats.byRegistrationType.organization.toLocaleString()} عبر منظمة
+                    </p>
+                  </div>
+                  <Building2 className="h-12 w-12 text-teal-600 opacity-80" />
                 </div>
               </CardContent>
             </Card>
@@ -1420,6 +1522,51 @@ export default function AdminUsersPage() {
                     </select>
                   </div>
 
+                  {/* Registration Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">طريقة التسجيل</label>
+                    <select
+                      value={filterRegistrationType}
+                      onChange={(e) => {
+                        setFilterRegistrationType(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      title="اختر طريقة التسجيل"
+                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="all">جميع الطرق</option>
+                      <option value="direct">تسجيل مباشر ({stats.byRegistrationType.direct})</option>
+                      <option value="organization">عبر منظمة ({stats.byRegistrationType.organization})</option>
+                      {stats.byRegistrationType.unknown > 0 && (
+                        <option value="unknown">غير محدد ({stats.byRegistrationType.unknown})</option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Organization Filter */}
+                  {uniqueOrganizations.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">المنظمة</label>
+                      <select
+                        value={filterOrganization}
+                        onChange={(e) => {
+                          setFilterOrganization(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        title="اختر المنظمة"
+                        className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      >
+                        <option value="all">جميع المنظمات</option>
+                        <option value="direct">بدون منظمة (تسجيل مباشر)</option>
+                        {uniqueOrganizations.sort().map(org => (
+                          <option key={org} value={org}>
+                            {org} ({users.filter(u => u.parentOrganizationName === org && !u.isDeleted).length})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Items Per Page */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">عدد العناصر</label>
@@ -1439,7 +1586,7 @@ export default function AdminUsersPage() {
                       <option value={500}>500 في الصفحة</option>
                     </select>
                   </div>
-                  </div>
+                </div>
 
                 {/* Reset Filters */}
                 <div className="mt-6 flex justify-center">
@@ -1452,18 +1599,20 @@ export default function AdminUsersPage() {
                       setFilterProfileCompletion('all');
                       setFilterCountry('all');
                       setFilterCity('all');
+                      setFilterOrganization('all');
+                      setFilterRegistrationType('all');
                       setDateFilter('all');
                       setSortBy('createdAt');
                       setSortOrder('desc');
                       setCurrentPage(1);
-                      toast.success('تم إعادة تعيين الفلاتر');
+                      toast.success('تم إعادة تعيين جميع الفلاتر');
                     }}
                     className="gap-2"
                   >
                     <RefreshCcw className="h-4 w-4" />
                     إعادة تعيين جميع الفلاتر
                   </Button>
-              </div>
+                </div>
             </CardContent>
             )}
           </Card>
@@ -1611,6 +1760,7 @@ export default function AdminUsersPage() {
                       <th className="text-right p-4 font-semibold text-gray-700">البريد</th>
                       <th className="text-right p-4 font-semibold text-gray-700">الهاتف</th>
                       <th className="text-right p-4 font-semibold text-gray-700">النوع</th>
+                      <th className="text-right p-4 font-semibold text-gray-700">المنظمة</th>
                       <th className="text-right p-4 font-semibold text-gray-700">التوثيق</th>
                       <th className="text-right p-4 font-semibold text-gray-700">اكتمال الملف</th>
                       <th className="text-right p-4 font-semibold text-gray-700">الموقع</th>
@@ -1680,6 +1830,22 @@ export default function AdminUsersPage() {
                           </Badge>
                         </td>
                         <td className="p-4">
+                          {user.parentOrganizationName ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
+                                🏢 {user.parentOrganizationName}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                ({getAccountTypeLabel(user.parentAccountType)})
+                              </span>
+                            </div>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
+                              📝 تسجيل مباشر
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-4">
                             <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
                             {getVerificationLabel(user.verificationStatus)}
                           </Badge>
@@ -1721,8 +1887,8 @@ export default function AdminUsersPage() {
                               </p>
                             </div>
                           </td>
-                          <td className="p-4">
-                            {user.createdAt ? (
+                        <td className="p-4">
+                          {user.createdAt ? (
                               <div className="text-sm">
                                 <p className="font-medium text-gray-900">
                                   {user.createdAt.toLocaleDateString('en-GB')}
@@ -1730,8 +1896,8 @@ export default function AdminUsersPage() {
                                 <p className="text-gray-600 text-xs">
                                   {user.createdAt.toLocaleTimeString('en-GB')}
                                 </p>
-                              </div>
-                            ) : (
+                            </div>
+                          ) : (
                               <div className="text-sm">
                                 <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">
                                   <AlertCircle className="h-3 w-3 inline mr-1" />
@@ -1739,8 +1905,8 @@ export default function AdminUsersPage() {
                                 </Badge>
                                 <p className="text-xs text-gray-500 mt-1">لا يوجد تاريخ</p>
                               </div>
-                            )}
-                          </td>
+                          )}
+                        </td>
                         <td className="p-4">
                           <div className="flex gap-2">
                             <Button
@@ -1858,7 +2024,7 @@ export default function AdminUsersPage() {
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
                       >
                         الأخير ({totalPages})
-                      </Button>
+                    </Button>
                     </div>
                   </div>
                 </div>
