@@ -7,18 +7,16 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { secureConsole } from '@/lib/utils/secure-console';
 import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Loader2,
-  LogIn,
-  Mail,
-  Phone,
-  Shield,
-  UserPlus
+    ArrowRight,
+    CheckCircle,
+    Eye,
+    EyeOff,
+    KeyRound,
+    Loader2,
+    LogIn,
+    Mail,
+    Phone,
+    Shield
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -116,7 +114,7 @@ export default function LoginPage() {
   // Get dashboard route based on account type
   const getDashboardRoute = (accountType: string | undefined) => {
     if (!accountType) return '/auth/login';
-    
+
     const routes: Record<string, string> = {
       player: '/dashboard/player',
       club: '/dashboard/club',
@@ -155,13 +153,13 @@ export default function LoginPage() {
 
         const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
         const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
-        
+
         if (!firebaseEmail) {
           toast.error('رقم الهاتف غير مسجل. يرجى إنشاء حساب جديد.');
           setLoading(false);
           return;
         }
-        
+
         loginEmail = firebaseEmail;
       }
 
@@ -205,9 +203,9 @@ export default function LoginPage() {
 
     } catch (err: any) {
       secureConsole.error('Login failed:', err);
-      
+
       let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
-      
+
       if (err.code === 'auth/user-not-found') {
         errorMessage = 'البريد الإلكتروني أو رقم الهاتف غير مسجل';
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
@@ -244,16 +242,16 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
-            <Button 
-              onClick={() => router.push(dashboardRoute)} 
+            <Button
+              onClick={() => router.push(dashboardRoute)}
               className="w-full bg-green-600 hover:bg-green-700"
             >
               <ArrowRight className="ml-2 h-4 w-4" />
               الذهاب إلى لوحة التحكم
             </Button>
-            <Button 
-              onClick={() => router.push('/auth/logout')} 
-              variant="outline" 
+            <Button
+              onClick={() => router.push('/auth/logout')}
+              variant="outline"
               className="w-full"
             >
               تسجيل الخروج
@@ -357,6 +355,8 @@ export default function LoginPage() {
                         required
                         className="flex-1"
                         dir="ltr"
+                        autoComplete="tel"
+                        name="phone"
                       />
                     </div>
                     <p className="text-xs text-gray-500">مثال: {selectedCountry.phoneLength === 10 ? '1012345678' : '12345678'}</p>
@@ -426,9 +426,9 @@ export default function LoginPage() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3">
-              <Button 
-                type="submit" 
-                className="w-full bg-purple-600 hover:bg-purple-700" 
+              <Button
+                type="submit"
+                className="w-full bg-purple-600 hover:bg-purple-700"
                 disabled={loading || authLoading}
               >
                 {loading ? (
