@@ -1575,7 +1575,8 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            {EmployeeForm}
+            {/* التفاف لتفادي أي مشاكل مع التصغير */}
+            <>{EmployeeForm}</>
 
             <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
               <Button
