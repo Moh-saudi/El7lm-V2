@@ -3,7 +3,16 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 
 const COLLECTIONS = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
-const PHONE_FIELDS = ['phone', 'phoneNumber', 'phone_number', 'mobile', 'mobileNumber', 'mobile_number'];
+const PHONE_FIELDS = [
+  'phone',
+  'phoneNumber',
+  'phone_number',
+  'mobile',
+  'mobileNumber',
+  'mobile_number',
+  'contact.phone',
+  'profile.phone'
+];
 
 const normalize = (raw: string): string[] => {
   const digits = (raw || '').toString().replace(/\D/g, '');
@@ -14,6 +23,10 @@ const normalize = (raw: string): string[] => {
   if (digits.length > 10) { c.add(digits.slice(-10)); c.add(`+${digits.slice(-10)}`); }
   if (digits.length > 11) { c.add(digits.slice(-11)); c.add(`+${digits.slice(-11)}`); }
   if (digits.length > 12) { c.add(digits.slice(-12)); c.add(`+${digits.slice(-12)}`); }
+  // صيغ محلية تبدأ بصفر (مثل 0XXXXXXXXXX)
+  if (digits.length >= 9) c.add('0' + digits.slice(-9));
+  if (digits.length >= 10) c.add('0' + digits.slice(-10));
+  if (digits.length >= 11) c.add('0' + digits.slice(-11));
   return Array.from(c);
 };
 

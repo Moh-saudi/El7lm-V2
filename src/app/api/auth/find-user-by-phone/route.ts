@@ -10,7 +10,17 @@ type LookupResult = {
 };
 
 const COLLECTIONS_TO_SEARCH = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
-const PHONE_FIELDS = ['phone', 'phoneNumber', 'phone_number', 'mobile', 'mobileNumber', 'mobile_number'];
+const PHONE_FIELDS = [
+  'phone',
+  'phoneNumber',
+  'phone_number',
+  'mobile',
+  'mobileNumber',
+  'mobile_number',
+  // حقول متداخلة شائعة
+  'contact.phone',
+  'profile.phone'
+];
 
 const normalizePhone = (raw: string): { candidates: string[] } => {
   const digits = (raw || '').toString().replace(/\D/g, '');
@@ -33,6 +43,10 @@ const normalizePhone = (raw: string): { candidates: string[] } => {
     candidates.add(digits.slice(-12));
     candidates.add(`+${digits.slice(-12)}`);
   }
+  // صيغ محلية تبدأ بصفر (مثل 0XXXXXXXXXX)
+  if (digits.length >= 9) candidates.add('0' + digits.slice(-9));
+  if (digits.length >= 10) candidates.add('0' + digits.slice(-10));
+  if (digits.length >= 11) candidates.add('0' + digits.slice(-11));
   return { candidates: Array.from(candidates) };
 };
 
