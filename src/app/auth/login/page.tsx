@@ -50,13 +50,34 @@ const countries = [
   { name: 'اليمن', code: '+967' },
 ];
 
-const motivationalQuotes = [
-  '⚽ ابدأ رحلتك نحو الاحتراف',
-  '🏆 فرص حقيقية تنتظرك',
-  '✨ موهبتك تستحق الظهور',
-  '🎯 خطوة واحدة نحو أحلامك',
-  '⭐ انضم لآلاف اللاعبين المحترفين',
+// NEW: Testimonials section
+const testimonials = [
+  {
+    quote: "منصة الحلم غيرت مسيرتي الكروية. وجدت فرصة احتراف حقيقية في نادٍ لم أكن لأصل إليه لولاهم.",
+    author: "أحمد علي",
+    role: "لاعب كرة قدم",
+    avatar: "/avatars/player-01.jpg"
+  },
+  {
+    quote: "كوكلاء لاعبين، نبحث دائماً عن المواهب الواعدة. الحلم هي أداتنا الأولى لاكتشاف النجوم القادمين.",
+    author: "شركة برو إيجنت",
+    role: "وكيل لاعبين معتمد",
+    avatar: "/avatars/agent-01.png"
+  },
+  {
+    quote: "عملية استقطاب اللاعبين أصبحت أسهل بكثير. قاعدة البيانات الضخمة والتقييمات الدقيقة توفر علينا الكثير من الوقت والجهد.",
+    author: "نادي النجوم السعودي",
+    role: "إدارة نادي رياضي",
+    avatar: "/avatars/club-01.png"
+  },
+  {
+    quote: "أقوم بتدريب لاعبين صغار، ومنصة الحلم هي النافذة التي يرون بها مستقبلهم الاحترافي. إنها تلهمهم كل يوم.",
+    author: "كابتن محمود السيد",
+    role: "مدرب فئات سنية",
+    avatar: "/avatars/trainer-01.jpg"
+  }
 ];
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -70,15 +91,17 @@ export default function LoginPage() {
   const [countryCode, setCountryCode] = useState('+20');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [quoteIndex, setQuoteIndex] = useState(0);
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
 
+  // Rotate testimonials
   useEffect(() => {
     const interval = setInterval(() => {
-      setQuoteIndex((prev) => (prev + 1) % motivationalQuotes.length);
-    }, 3000);
+      setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
+    }, 5000); // Change testimonial every 5 seconds
     return () => clearInterval(interval);
   }, []);
 
+  // Load Remember Me data
   useEffect(() => {
     const savedRememberMe = localStorage.getItem('rememberMe');
     const savedPhone = localStorage.getItem('userPhone');
@@ -280,213 +303,219 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-purple-950" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-400 animate-spin" />
-          <p className="text-gray-300">جاري التحميل...</p>
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-600 animate-spin" />
+          <p className="text-gray-600 dark:text-gray-300">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-purple-950 flex items-center justify-center px-4 py-8" dir="rtl">
-      <div className="w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-purple-100 overflow-hidden">
-          <div className="px-6 pt-6 pb-3">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex gap-2 items-center text-purple-600">
-                <Shield className="w-6 h-6" />
-                <span className="text-base font-bold">El7lm</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/auth/register')}
-                className="text-xs text-gray-600 hover:text-purple-600 transition"
-              >
-                حساب جديد؟ سجّل الآن
-              </button>
+    <div className="min-h-screen bg-white dark:bg-black" dir="rtl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 h-screen">
+        
+        {/* Left Panel: Testimonials */}
+        <div className="hidden lg:flex flex-col justify-center items-center bg-gray-900 p-12 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-purple-900/40 opacity-20"></div>
+          <div className="absolute top-0 left-0 w-72 h-72 bg-purple-600/30 rounded-full filter blur-3xl opacity-50 animate-blob"></div>
+          <div className="absolute bottom-0 right-0 w-72 h-72 bg-indigo-600/30 rounded-full filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+
+          <div className="z-10 w-full max-w-md">
+            <div className="mb-8 text-center">
+              <Shield className="w-16 h-16 mx-auto mb-4 text-purple-400" />
+              <h2 className="text-3xl font-bold">انضم إلى مجتمع الأبطال</h2>
+              <p className="mt-2 text-purple-200">اكتشف لماذا يثق بنا آلاف الرياضيين حول العالم</p>
             </div>
-
-            <div className="text-center mb-2">
-              <h1 className="text-xl font-extrabold text-gray-900 mb-1">مرحباً بعودتك!</h1>
-              <p className="text-xs text-gray-500 mb-2">ادخل إلى حسابك واكمل رحلتك</p>
-
-              <div className="min-h-[1.5rem]">
-                <span
-                  key={quoteIndex}
-                  className="inline-block text-xs text-purple-600 font-medium transition-opacity duration-500"
-                >
-                  {motivationalQuotes[quoteIndex]}
-                </span>
-              </div>
+            
+            <div className="relative h-48">
+              {testimonials.map((item, index) => (
+                <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === testimonialIndex ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
+                    <p className="text-lg italic mb-4">"{item.quote}"</p>
+                    <div className="flex items-center">
+                      {/* You can add avatars here if you have them */}
+                      <div>
+                        <p className="font-semibold">{item.author}</p>
+                        <p className="text-sm text-purple-300">{item.role}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+          </div>
+        </div>
 
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-4">
+        {/* Right Panel: Login Form */}
+        <div className="flex flex-col justify-center items-center p-8 bg-gray-50 dark:bg-gray-950">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">مرحباً بعودتك!</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">سجل دخولك وانطلق نحو حلمك</p>
+            </div>
+            
+            {/* Login Method Toggle */}
+            <div className="flex gap-2 p-1 bg-gray-200 dark:bg-gray-800 rounded-lg mb-6">
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
-                className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                   loginMethod === 'phone'
                     ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
-                <Phone className="inline-block w-3.5 h-3.5 ml-1" />
+                <Phone className="inline-block w-4 h-4 ml-1" />
                 رقم الهاتف
               </button>
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
-                className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                   loginMethod === 'email'
                     ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
-                <Mail className="inline-block w-3.5 h-3.5 ml-1" />
+                <Mail className="inline-block w-4 h-4 ml-1" />
                 البريد الإلكتروني
               </button>
             </div>
-          </div>
 
-          <form onSubmit={handleLogin} className="px-6 pb-6 space-y-3">
-            {loginMethod === 'phone' ? (
-              <>
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-gray-700">البلد</label>
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="w-full py-2 px-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    aria-label="اختر البلد"
-                  >
-                    {countries.map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {country.name} ({country.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-gray-700">رقم الهاتف</label>
-                  <div className="flex">
-                    <div className="flex items-center px-3 text-sm bg-gray-50 rounded-r-lg border border-l-0 border-gray-300">
-                      {countryCode}
-                    </div>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="flex-1 py-2 px-3 text-sm border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
-                      placeholder="1012345678"
-                      required
-                      dir="ltr"
-                      autoComplete="tel"
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className="block mb-1.5 text-xs font-medium text-gray-700">البريد الإلكتروني</label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full py-2 pr-10 pl-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                    placeholder="example@mail.com"
-                    required
-                  />
-                  <Mail className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block mb-1.5 text-xs font-medium text-gray-700">كلمة المرور</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full py-2 pr-10 pl-10 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="********"
-                  required
-                  autoComplete="current-password"
-                />
-                <Lock className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-gray-600">تذكرني</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => router.push('/auth/forgot-password')}
-                className="text-purple-600 hover:text-purple-700 font-medium"
-              >
-                نسيت كلمة المرور؟
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-2.5 px-4 text-sm text-white font-semibold rounded-lg transition-all ${
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl'
-              }`}
-            >
-              {loading ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              {loginMethod === 'phone' ? (
                 <>
-                  <Loader2 className="inline-block w-4 h-4 ml-2 animate-spin" />
-                  جاري تسجيل الدخول...
+                  <div>
+                    <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">البلد</label>
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="w-full py-2.5 px-3 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                      aria-label="اختر البلد"
+                    >
+                      {countries.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name} ({country.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">رقم الهاتف</label>
+                    <div className="flex">
+                      <div className="flex items-center px-3 text-sm bg-gray-100 dark:bg-gray-700 rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                        {countryCode}
+                      </div>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="flex-1 py-2.5 px-3 text-sm border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left text-gray-900 dark:text-white"
+                        placeholder="1012345678"
+                        required
+                        dir="ltr"
+                        autoComplete="tel"
+                      />
+                    </div>
+                  </div>
                 </>
               ) : (
-                'دخول'
+                <div>
+                  <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full py-2.5 pr-10 pl-3 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                      placeholder="example@mail.com"
+                      required
+                      autoComplete="email"
+                    />
+                    <Mail className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
+
+              <div>
+                <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full py-2.5 pr-10 pl-10 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                    placeholder="********"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <Lock className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <span className="text-gray-600 dark:text-gray-300">تذكرني</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/forgot-password')}
+                  className="text-purple-600 hover:text-purple-700 dark:hover:text-purple-500 font-medium"
+                >
+                  نسيت كلمة المرور؟
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full py-3 px-4 text-sm text-white font-semibold rounded-lg transition-all ${
+                  loading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30 hover:shadow-xl'
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="inline-block w-5 h-5 ml-2 animate-spin" />
+                    جاري...
+                  </>
+                ) : (
+                  'تسجيل الدخول'
+                )}
+              </button>
+              
+              <div className="text-center pt-4">
+                 <p className="text-sm text-gray-600 dark:text-gray-400">
+                   ليس لديك حساب؟{' '}
+                   <button
+                     type="button"
+                     onClick={() => router.push('/auth/register')}
+                     className="text-purple-600 hover:text-purple-700 dark:hover:text-purple-500 font-semibold"
+                   >
+                     سجّل الآن
+                   </button>
+                 </p>
+               </div>
+            </form>
+          </div>
         </div>
 
-        <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 text-white">
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-semibold">تقييم 4.8★ من آلاف المستخدمين</span>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-400" />
-              <p className="text-xs text-purple-200">فرص احترافية</p>
-            </div>
-            <div>
-              <Shield className="w-5 h-5 mx-auto mb-1 text-green-400" />
-              <p className="text-xs text-purple-200">أمان عالي</p>
-            </div>
-            <div>
-              <Star className="w-5 h-5 mx-auto mb-1 text-purple-400" />
-              <p className="text-xs text-purple-200">موثوق به</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
