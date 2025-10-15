@@ -152,6 +152,7 @@ export default function LoginPage() {
 
     try {
       let loginEmail: string;
+      let userExists = false;
 
       if (loginMethod === 'email') {
         if (!email.trim()) {
@@ -160,6 +161,8 @@ export default function LoginPage() {
           return;
         }
         loginEmail = email.trim();
+        // للبريد الإلكتروني، سنعرف إذا كان موجود من خطأ Firebase
+        userExists = true;
       } else {
         if (!phone.trim()) {
           toast.error('يرجى إدخال رقم الهاتف');
@@ -168,15 +171,21 @@ export default function LoginPage() {
         }
 
         const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
+        
+        // التحقق من وجود الحساب أولاً
+        toast.loading('جاري التحقق من الحساب...', { id: 'login' });
         const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
 
         if (!firebaseEmail) {
-          toast.error('رقم الهاتف غير مسجل. يرجى إنشاء حساب جديد.');
+          toast.error('❌ رقم الهاتف غير مسجل في النظام', { id: 'login', duration: 4000 });
+          toast.info('💡 يرجى إنشاء حساب جديد أولاً', { duration: 4000 });
           setLoading(false);
           return;
         }
 
         loginEmail = firebaseEmail;
+        userExists = true;
+        console.log('✅ Account found for phone:', fullPhone);
       }
 
       if (!password) {
@@ -210,7 +219,7 @@ export default function LoginPage() {
         localStorage.removeItem('userPhone');
       }
 
-      toast.success('تم تسجيل الدخول بنجاح!', { id: 'login' });
+      toast.success('✅ تم تسجيل الدخول بنجاح!', { id: 'login' });
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
       setTimeout(() => {
@@ -221,18 +230,52 @@ export default function LoginPage() {
       secureConsole.error('Login failed:', err);
 
       let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
+      let errorIcon = '❌';
 
+      // معالجة دقيقة للأخطاء مع رسائل واضحة
       if (err.code === 'auth/user-not-found') {
-        errorMessage = 'البريد الإلكتروني أو رقم الهاتف غير مسجل';
+        errorIcon = '👤';
+        if (loginMethod === 'email') {
+          errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
+          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          toast.info('💡 يرجى التأكد من البريد أو إنشاء حساب جديد', { duration: 4000 });
+        } else {
+          errorMessage = 'رقم الهاتف غير مسجل';
+          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
+        }
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorIcon = '🔒';
         errorMessage = 'كلمة المرور غير صحيحة';
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+        toast.info('💡 يمكنك استخدام "نسيت كلمة المرور؟" لإعادة تعيينها', { duration: 5000 });
       } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'تم تجاوز عدد المحاولات. حاول مرة أخرى لاحقاً';
+        errorIcon = '⏱️';
+        errorMessage = 'تم تجاوز عدد المحاولات المسموحة';
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+        toast.info('💡 يرجى الانتظار قليلاً ثم المحاولة مرة أخرى', { duration: 5000 });
       } else if (err.code === 'auth/network-request-failed') {
+        errorIcon = '🌐';
         errorMessage = 'خطأ في الاتصال بالإنترنت';
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+        toast.info('💡 يرجى التحقق من اتصالك بالإنترنت', { duration: 4000 });
+      } else if (err.code === 'auth/user-disabled') {
+        errorIcon = '🚫';
+        errorMessage = 'تم تعطيل هذا الحساب';
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+        toast.info('💡 يرجى التواصل مع الدعم الفني', { duration: 5000 });
+      } else if (err.code === 'auth/invalid-email') {
+        errorIcon = '📧';
+        errorMessage = 'صيغة البريد الإلكتروني غير صحيحة';
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+      } else {
+        // خطأ عام
+        toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+        if (err.message) {
+          secureConsole.error('Detailed error:', err.message);
+        }
       }
 
-      toast.error(errorMessage, { id: 'login' });
       setLoading(false);
     }
   };
