@@ -2,15 +2,15 @@
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  Phone,
-  Shield,
-  Star,
-  Trophy
+    Eye,
+    EyeOff,
+    Loader2,
+    Lock,
+    Mail,
+    Phone,
+    Shield,
+    Star,
+    Trophy
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -211,7 +211,7 @@ export default function LoginPage() {
 
       if (err && typeof err === 'object' && 'code' in err) {
         const error = err as { code: string; message?: string };
-        
+
         if (error.code === 'auth/user-not-found') {
           errorIcon = '👤';
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
@@ -219,7 +219,7 @@ export default function LoginPage() {
           toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
         } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           errorIcon = '🔒';
-          
+
           try {
             const verifyResponse = await fetch('/api/auth/verify-and-sync-user', {
               method: 'POST',
@@ -302,9 +302,9 @@ export default function LoginPage() {
             <div className="text-center mb-2">
               <h1 className="text-xl font-extrabold text-gray-900 mb-1">مرحباً بعودتك!</h1>
               <p className="text-xs text-gray-500 mb-2">ادخل إلى حسابك واكمل رحلتك</p>
-              
+
               <div className="min-h-[1.5rem]">
-                <span 
+                <span
                   key={quoteIndex}
                   className="inline-block text-xs text-purple-600 font-medium transition-opacity duration-500"
                 >
@@ -404,6 +404,7 @@ export default function LoginPage() {
                   className="w-full py-2 pr-10 pl-10 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                   placeholder="********"
                   required
+                  autoComplete="current-password"
                 />
                 <Lock className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
                 <button
