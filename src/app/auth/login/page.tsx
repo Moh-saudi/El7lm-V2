@@ -221,24 +221,33 @@ export default function LoginPage() {
           errorIcon = '🔒';
 
           try {
+            console.log(`[Sync Check] Verifying email: ${loginEmail}`);
             const verifyResponse = await fetch('/api/auth/verify-and-sync-user', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: loginEmail })
             });
 
+            console.log(`[Sync Check] Response status: ${verifyResponse.status}`);
+
             if (verifyResponse.ok) {
               const verifyData = await verifyResponse.json();
+              console.log('[Sync Check] Response data:', verifyData);
+
               if (verifyData.needsSync) {
                 errorMessage = 'حسابك يحتاج إلى تفعيل';
                 toast.error(`⚠️ ${errorMessage}`, { id: 'login', duration: 5000 });
                 toast.info('💡 يرجى استخدام "نسيت كلمة المرور؟" لتفعيل حسابك', { duration: 7000 });
                 setLoading(false);
                 return;
+              } else {
+                console.log('[Sync Check] User does not need sync. Showing wrong password message.');
               }
+            } else {
+               console.log('[Sync Check] Verification request failed.');
             }
           } catch (verifyError) {
-            console.error('Error verifying:', verifyError);
+            console.error('[Sync Check] Error during verification fetch:', verifyError);
           }
 
           errorMessage = 'كلمة المرور غير صحيحة';
@@ -373,6 +382,7 @@ export default function LoginPage() {
                       placeholder="1012345678"
                       required
                       dir="ltr"
+                      autoComplete="tel"
                     />
                   </div>
                 </div>
