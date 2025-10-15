@@ -1,78 +1,83 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { secureConsole } from '@/lib/utils/secure-console';
+import secureConsole from '@/utils/secureConsole';
 import {
-    ArrowRight,
-    CheckCircle,
-    Eye,
-    EyeOff,
-    KeyRound,
-    Loader2,
-    LogIn,
-    Mail,
-    Phone,
-    Shield
+  ArrowRight,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  Phone,
+  Shield,
+  Star,
+  Trophy,
+  Users,
+  Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-// Full country list
+type LoginMethod = 'phone' | 'email';
+
 const countries = [
-  { name: 'السعودية', code: '+966', phoneLength: 9 },
-  { name: 'الإمارات', code: '+971', phoneLength: 9 },
-  { name: 'الكويت', code: '+965', phoneLength: 8 },
-  { name: 'قطر', code: '+974', phoneLength: 8 },
-  { name: 'البحرين', code: '+973', phoneLength: 8 },
-  { name: 'عمان', code: '+968', phoneLength: 8 },
-  { name: 'مصر', code: '+20', phoneLength: 10 },
-  { name: 'الأردن', code: '+962', phoneLength: 9 },
-  { name: 'لبنان', code: '+961', phoneLength: 8 },
-  { name: 'العراق', code: '+964', phoneLength: 10 },
-  { name: 'سوريا', code: '+963', phoneLength: 9 },
-  { name: 'المغرب', code: '+212', phoneLength: 9 },
-  { name: 'الجزائر', code: '+213', phoneLength: 9 },
-  { name: 'تونس', code: '+216', phoneLength: 8 },
-  { name: 'ليبيا', code: '+218', phoneLength: 9 },
-  { name: 'السودان', code: '+249', phoneLength: 9 },
-  { name: 'السنغال', code: '+221', phoneLength: 9 },
-  { name: 'ساحل العاج', code: '+225', phoneLength: 10 },
-  { name: 'جيبوتي', code: '+253', phoneLength: 8 },
-  { name: 'إسبانيا', code: '+34', phoneLength: 9 },
-  { name: 'فرنسا', code: '+33', phoneLength: 9 },
-  { name: 'إنجلترا', code: '+44', phoneLength: 10 },
-  { name: 'البرتغال', code: '+351', phoneLength: 9 },
-  { name: 'إيطاليا', code: '+39', phoneLength: 10 },
-  { name: 'اليونان', code: '+30', phoneLength: 10 },
-  { name: 'قبرص', code: '+357', phoneLength: 8 },
-  { name: 'تركيا', code: '+90', phoneLength: 10 },
-  { name: 'تايلاند', code: '+66', phoneLength: 9 },
-  { name: 'اليمن', code: '+967', phoneLength: 9 },
+  { name: 'السعودية', code: '+966' },
+  { name: 'الإمارات', code: '+971' },
+  { name: 'الكويت', code: '+965' },
+  { name: 'قطر', code: '+974' },
+  { name: 'البحرين', code: '+973' },
+  { name: 'عمان', code: '+968' },
+  { name: 'مصر', code: '+20' },
+  { name: 'الأردن', code: '+962' },
+  { name: 'لبنان', code: '+961' },
+  { name: 'العراق', code: '+964' },
+  { name: 'سوريا', code: '+963' },
+  { name: 'المغرب', code: '+212' },
+  { name: 'الجزائر', code: '+213' },
+  { name: 'تونس', code: '+216' },
+  { name: 'ليبيا', code: '+218' },
+  { name: 'السودان', code: '+249' },
+  { name: 'السنغال', code: '+221' },
+  { name: 'ساحل العاج', code: '+225' },
+  { name: 'جيبوتي', code: '+253' },
+  { name: 'إسبانيا', code: '+34' },
+  { name: 'فرنسا', code: '+33' },
+  { name: 'إنجلترا', code: '+44' },
+  { name: 'البرتغال', code: '+351' },
+  { name: 'إيطاليا', code: '+39' },
+  { name: 'اليونان', code: '+30' },
+  { name: 'قبرص', code: '+357' },
+  { name: 'تركيا', code: '+90' },
+  { name: 'تايلاند', code: '+66' },
+  { name: 'اليمن', code: '+967' },
 ];
 
-type LoginMethod = 'phone' | 'email';
+// Platform features for marketing
+const platformFeatures = [
+  { icon: Users, title: 'آلاف المستخدمين', description: 'انضم لمجتمع كبير من اللاعبين والأندية' },
+  { icon: Trophy, title: 'فرص حقيقية', description: 'احصل على عروض احترافية من أندية عالمية' },
+  { icon: Zap, title: 'سهولة الاستخدام', description: 'منصة بسيطة وسريعة لعرض موهبتك' },
+  { icon: Shield, title: 'أمان وموثوقية', description: 'بياناتك محمية بأعلى معايير الأمان' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, user, userData, loading: authLoading } = useAuth();
+  
+  // States
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Form state
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+20');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-
-  // Get selected country details
-  const selectedCountry = countries.find(c => c.code === countryCode) || countries[0];
 
   // Load Remember Me data
   useEffect(() => {
@@ -83,7 +88,6 @@ export default function LoginPage() {
 
     // إذا جاء المستخدم من صفحة إعادة تعيين كلمة المرور
     if (resetPasswordPhone) {
-      // استخراج كود الدولة ورقم الهاتف
       const codeMatch = resetPasswordPhone.match(/^(\+\d+)/);
       if (codeMatch) {
         const code = codeMatch[1];
@@ -95,7 +99,7 @@ export default function LoginPage() {
       }
       setLoginMethod('phone');
       toast.success('✅ تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة');
-      localStorage.removeItem('resetPasswordPhone'); // مسح بعد الاستخدام
+      localStorage.removeItem('resetPasswordPhone');
     } else if (savedRememberMe === 'true') {
       setRememberMe(true);
       if (savedPhone) {
@@ -152,7 +156,6 @@ export default function LoginPage() {
 
     try {
       let loginEmail: string;
-      let userExists = false;
 
       if (loginMethod === 'email') {
         if (!email.trim()) {
@@ -161,8 +164,6 @@ export default function LoginPage() {
           return;
         }
         loginEmail = email.trim();
-        // للبريد الإلكتروني، سنعرف إذا كان موجود من خطأ Firebase
-        userExists = true;
       } else {
         if (!phone.trim()) {
           toast.error('يرجى إدخال رقم الهاتف');
@@ -172,7 +173,6 @@ export default function LoginPage() {
 
         const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
         
-        // التحقق من وجود الحساب أولاً
         toast.loading('جاري التحقق من الحساب...', { id: 'login' });
         const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
 
@@ -184,7 +184,6 @@ export default function LoginPage() {
         }
 
         loginEmail = firebaseEmail;
-        userExists = true;
         console.log('✅ Account found for phone:', fullPhone);
       }
 
@@ -232,7 +231,6 @@ export default function LoginPage() {
       let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
       let errorIcon = '❌';
 
-      // معالجة دقيقة للأخطاء مع رسائل واضحة
       if (err.code === 'auth/user-not-found') {
         errorIcon = '👤';
         if (loginMethod === 'email') {
@@ -269,7 +267,6 @@ export default function LoginPage() {
         errorMessage = 'صيغة البريد الإلكتروني غير صحيحة';
         toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
       } else {
-        // خطأ عام
         toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
         if (err.message) {
           secureConsole.error('Detailed error:', err.message);
@@ -281,114 +278,79 @@ export default function LoginPage() {
   };
 
   // If user is already logged in
-  if (user && userData && !loading) {
+  if (user && userData && !authLoading) {
     const dashboardRoute = getDashboardRoute(userData.accountType);
-
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-4" dir="rtl">
-        <Card className="w-full max-w-md shadow-2xl shadow-purple-500/20 border-purple-200/20">
-          <CardHeader className="text-center">
-            <div className="mx-auto bg-green-100 p-3 rounded-full w-fit mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl">مرحباً بك!</CardTitle>
-            <CardDescription>أنت مسجل دخولك بالفعل</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg text-center">
-              <p className="font-semibold text-lg mb-1">{userData.name || userData.displayName || 'مستخدم'}</p>
-              <p className="text-sm text-gray-600">نوع الحساب: {userData.accountType}</p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button
-              onClick={() => router.push(dashboardRoute)}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              <ArrowRight className="ml-2 h-4 w-4" />
-              الذهاب إلى لوحة التحكم
-            </Button>
-            <Button
-              onClick={() => router.push('/auth/logout')}
-              variant="outline"
-              className="w-full"
-            >
-              تسجيل الخروج
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
+    router.replace(dashboardRoute);
+    return null;
   }
 
   // Loading state
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900" dir="rtl">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-600 animate-spin" />
-            <p className="text-gray-600">جاري التحميل...</p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100" dir="rtl">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-600 animate-spin" />
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-4" dir="rtl">
-      <div className="w-full max-w-md">
-        <Card className="shadow-2xl shadow-purple-500/20 border-purple-200/20 bg-white/95 backdrop-blur">
-          <CardHeader className="text-center space-y-2">
-            <div className="mx-auto bg-purple-100 p-3 rounded-full w-fit mb-2">
-              <Shield className="h-8 w-8 text-purple-600" />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50" dir="rtl">
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-12 gap-8 max-w-6xl mx-auto">
+          
+          {/* Login Form Panel (Left) */}
+          <div className="md:col-span-6 bg-white rounded-2xl shadow-xl p-8">
+            {/* Logo & Header */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-2xl mb-4">
+                <Shield className="w-8 h-8 text-purple-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بعودتك!</h1>
+              <p className="text-gray-600">ادخل إلى حسابك واكمل رحلتك نحو الاحتراف</p>
             </div>
-            <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
-            <CardDescription>مرحباً بك مرة أخرى في منصة El7lm</CardDescription>
-          </CardHeader>
 
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              {/* Security Notice */}
-              <div className="flex items-center gap-2 p-3 text-sm text-blue-700 rounded-lg bg-blue-50">
-                <KeyRound className="flex-shrink-0 w-4 h-4" />
-                <p>نحن نستخدم أحدث تقنيات الأمان لحماية بياناتك</p>
-              </div>
+            {/* Login Method Toggle */}
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-6">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('phone')}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                  loginMethod === 'phone'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Phone className="inline-block w-4 h-4 ml-2" />
+                رقم الهاتف
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('email')}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                  loginMethod === 'email'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Mail className="inline-block w-4 h-4 ml-2" />
+                البريد الإلكتروني
+              </button>
+            </div>
 
-              {/* Login Method Toggle */}
-              <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                <Button
-                  type="button"
-                  onClick={() => setLoginMethod('phone')}
-                  variant={loginMethod === 'phone' ? 'default' : 'ghost'}
-                  className={`flex-1 ${loginMethod === 'phone' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-                  size="sm"
-                >
-                  <Phone className="ml-2 h-4 w-4" />
-                  رقم الهاتف
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setLoginMethod('email')}
-                  variant={loginMethod === 'email' ? 'default' : 'ghost'}
-                  className={`flex-1 ${loginMethod === 'email' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-                  size="sm"
-                >
-                  <Mail className="ml-2 h-4 w-4" />
-                  البريد الإلكتروني
-                </Button>
-              </div>
-
-              {/* Form Fields */}
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5">
               {loginMethod === 'phone' ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="country">البلد</Label>
+                <>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">البلد</label>
                     <select
-                      id="country"
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="w-full py-2.5 px-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      aria-label="اختر البلد"
                     >
                       {countries.map((country) => (
                         <option key={country.code} value={country.code}>
@@ -397,149 +359,198 @@ export default function LoginPage() {
                       ))}
                     </select>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">رقم الهاتف</Label>
-                    <div className="flex gap-2">
-                      <div className="flex items-center justify-center px-3 border rounded-md bg-gray-50 min-w-[70px]">
-                        <span className="text-sm font-medium">{countryCode}</span>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف</label>
+                    <div className="flex">
+                      <div className="flex items-center px-3 text-sm bg-gray-50 rounded-r-lg border border-l-0 border-gray-300">
+                        {countryCode}
                       </div>
-                      <Input
-                        id="phone"
+                      <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder={`${'0'.repeat(selectedCountry.phoneLength)}`}
-                        maxLength={selectedCountry.phoneLength}
+                        className="flex-1 py-2.5 px-4 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
+                        placeholder="1012345678"
                         required
-                        className="flex-1"
                         dir="ltr"
-                        autoComplete="tel"
-                        name="phone"
                       />
                     </div>
-                    <p className="text-xs text-gray-500">مثال: {selectedCountry.phoneLength === 10 ? '1012345678' : '12345678'}</p>
                   </div>
-                </div>
+                </>
               ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="email">البريد الإلكتروني</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@email.com"
-                    required
-                    autoComplete="email"
-                  />
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full py-2.5 pr-10 pl-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      placeholder="example@mail.com"
+                      required
+                    />
+                    <Mail className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
+                  </div>
                 </div>
               )}
 
               {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password">كلمة المرور</Label>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">كلمة المرور</label>
                 <div className="relative">
-                  <Input
-                    id="password"
+                  <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="w-full py-2.5 pr-10 pl-10 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                     placeholder="********"
                     required
-                    autoComplete="current-password"
                   />
+                  <Lock className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    id="rememberMe"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                   />
-                  <Label htmlFor="rememberMe" className="text-sm font-normal cursor-pointer">
-                    تذكرني
-                  </Label>
-                </div>
-                <Button
+                  <span className="text-sm text-gray-600">تذكرني</span>
+                </label>
+                <button
                   type="button"
-                  variant="link"
-                  className="text-sm text-purple-600 hover:text-purple-700 p-0 h-auto"
                   onClick={() => router.push('/auth/forgot-password')}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                 >
                   نسيت كلمة المرور؟
-                </Button>
+                </button>
               </div>
-            </CardContent>
 
-            <CardFooter className="flex flex-col gap-3">
-              <Button
+              {/* Submit Button */}
+              <button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700"
-                disabled={loading || authLoading}
+                disabled={loading}
+                className={`w-full py-3 px-6 text-white font-semibold rounded-lg transition-all ${
+                  loading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl'
+                }`}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="inline-block w-5 h-5 ml-2 animate-spin" />
                     جاري تسجيل الدخول...
                   </>
                 ) : (
                   <>
-                    <LogIn className="ml-2 h-4 w-4" />
-                    تسجيل الدخول
+                    <ArrowRight className="inline-block w-5 h-5 ml-2" />
+                    دخول
                   </>
                 )}
-              </Button>
+              </button>
 
-              <div className="text-center text-sm text-gray-600">
-                ليس لديك حساب؟{' '}
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-purple-600 hover:text-purple-700 p-0 h-auto font-semibold"
-                  onClick={() => router.push('/auth/register')}
-                >
-                  إنشاء حساب جديد
-                </Button>
+              {/* Register Link */}
+              <div className="text-center pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600">
+                  ليس لديك حساب؟{' '}
+                  <button
+                    type="button"
+                    onClick={() => router.push('/auth/register')}
+                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                  >
+                    سجّل الآن
+                  </button>
+                </p>
+              </div>
+            </form>
+          </div>
+
+          {/* Marketing Panel (Right) */}
+          <div className="hidden md:flex md:col-span-6 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl p-8 flex-col justify-center text-white shadow-2xl">
+            <div className="space-y-8">
+              {/* Rating Badge */}
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-white/20 backdrop-blur-sm rounded-full mb-6">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="font-semibold">تقييم 4.8★ من آلاف المستخدمين</span>
+                </div>
+                
+                <h2 className="text-3xl font-bold mb-4">ابدأ رحلتك الاحترافية اليوم</h2>
+                <p className="text-purple-100 text-lg">
+                  انضم لآلاف اللاعبين والأندية الذين يثقون بمنصتنا
+                </p>
               </div>
 
-              {/* Account Types */}
-              <div className="pt-3 text-center border-t">
-                <p className="text-xs text-gray-500 mb-2">يمكنك التسجيل كـ:</p>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <span className="text-blue-600">• لاعب</span>
-                  <span className="text-green-600">• نادي</span>
-                  <span className="text-purple-600">• وكيل</span>
-                  <span className="text-orange-600">• أكاديمية</span>
-                  <span className="text-cyan-600">• مدرب</span>
-                  <span className="text-red-600">• مسوق</span>
+              {/* Features */}
+              <div className="space-y-4">
+                {platformFeatures.map((feature, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all"
+                  >
+                    <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                      <feature.icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg mb-1">{feature.title}</h3>
+                      <p className="text-purple-100 text-sm">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Testimonial */}
+              <div className="p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-purple-50 leading-relaxed mb-4">
+                  "منصة رائعة ساعدتني في الوصول لفرص احترافية لم أكن أحلم بها. التواصل سريع والخدمة ممتازة!"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">أحمد محمد</p>
+                    <p className="text-sm text-purple-200">لاعب محترف</p>
+                  </div>
                 </div>
               </div>
-            </CardFooter>
-          </form>
-        </Card>
 
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/')}
-          className="w-full mt-4 text-white hover:text-white hover:bg-white/10"
-        >
-          <ArrowRight className="ml-2 h-4 w-4" />
-          العودة إلى الصفحة الرئيسية
-        </Button>
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/20">
+                <div className="text-center">
+                  <p className="text-3xl font-bold mb-1">15K+</p>
+                  <p className="text-sm text-purple-200">مستخدم نشط</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold mb-1">500+</p>
+                  <p className="text-sm text-purple-200">نادي ومؤسسة</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold mb-1">98%</p>
+                  <p className="text-sm text-purple-200">رضا العملاء</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
