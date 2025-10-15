@@ -142,13 +142,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // تحديث كلمة المرور في Firebase Authentication
-    console.log('🔄 [reset-password] Updating password in Firebase Auth...');
-    await adminAuth.updateUser(uid, {
-      password: newPassword,
-    });
+    // التحقق من وجود المستخدم في Firebase Auth
+    let userExistsInAuth = false;
+    try {
+      await adminAuth.getUser(uid);
+      userExistsInAuth = true;
+      console.log('✅ [reset-password] User exists in Firebase Auth');
+    } catch (authError: any) {
+      if (authError.code === 'auth/user-not-found') {
+        console.log('⚠️ [reset-password] User not found in Firebase Auth, will create...');
+        userExistsInAuth = false;
+      } else {
+        throw authError;
+      }
+    }
 
-    console.log('✅ [reset-password] Password updated successfully in Firebase Auth');
+    if (!userExistsInAuth) {
+      // إنشاء المستخدم في Firebase Auth
+      console.log('🔧 [reset-password] Creating user in Firebase Auth...');
+      
+      // الحصول على بيانات المستخدم من Firestore
+      let userData: any = {};
+      if (docId && collectionName && adminDb) {
+        const userDoc = await adminDb.collection(collectionName).doc(docId).get();
+        userData = userDoc.data() || {};
+      }
+
+      try {
+        await adminAuth.createUser({
+          uid: uid,
+          email: userData.email || userData.userEmail,
+          password: newPassword,
+          displayName: userData.full_name || userData.name,
+          emailVerified: false,
+          disabled: false
+        });
+        console.log('✅ [reset-password] User created successfully in Firebase Auth');
+      } catch (createError: any) {
+        console.error('❌ [reset-password] Error creating user in Auth:', createError);
+        return NextResponse.json(
+          { success: false, error: 'فشل إنشاء الحساب في نظام المصادقة' },
+          { status: 500 }
+        );
+      }
+    } else {
+      // تحديث كلمة المرور في Firebase Authentication
+      console.log('🔄 [reset-password] Updating password in Firebase Auth...');
+      await adminAuth.updateUser(uid, {
+        password: newPassword,
+      });
+      console.log('✅ [reset-password] Password updated successfully in Firebase Auth');
+    }
 
     // تحديث Firestore
     if (docId && collectionName && adminDb) {
