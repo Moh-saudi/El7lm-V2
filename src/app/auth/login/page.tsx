@@ -9,8 +9,7 @@ import {
     Mail,
     Phone,
     Shield,
-    Star,
-    Trophy
+    Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -303,96 +302,68 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100" dir="rtl">
         <div className="text-center">
           <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-600 animate-spin" />
-          <p className="text-gray-600 dark:text-gray-300">جاري التحميل...</p>
+          <p className="text-gray-600">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black" dir="rtl">
-      <div className="grid grid-cols-1 lg:grid-cols-2 h-screen">
-        
-        {/* Left Panel: Testimonials */}
-        <div className="hidden lg:flex flex-col justify-center items-center bg-gray-900 p-12 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-purple-900/40 opacity-20"></div>
-          <div className="absolute top-0 left-0 w-72 h-72 bg-purple-600/30 rounded-full filter blur-3xl opacity-50 animate-blob"></div>
-          <div className="absolute bottom-0 right-0 w-72 h-72 bg-indigo-600/30 rounded-full filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50" dir="rtl">
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-12 gap-8 max-w-6xl mx-auto">
 
-          <div className="z-10 w-full max-w-md">
-            <div className="mb-8 text-center">
-              <Shield className="w-16 h-16 mx-auto mb-4 text-purple-400" />
-              <h2 className="text-3xl font-bold">انضم إلى مجتمع الأبطال</h2>
-              <p className="mt-2 text-purple-200">اكتشف لماذا يثق بنا آلاف الرياضيين حول العالم</p>
-            </div>
-            
-            <div className="relative h-48">
-              {testimonials.map((item, index) => (
-                <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === testimonialIndex ? 'opacity-100' : 'opacity-0'}`}>
-                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
-                    <p className="text-lg italic mb-4">"{item.quote}"</p>
-                    <div className="flex items-center">
-                      {/* You can add avatars here if you have them */}
-                      <div>
-                        <p className="font-semibold">{item.author}</p>
-                        <p className="text-sm text-purple-300">{item.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel: Login Form */}
-        <div className="flex flex-col justify-center items-center p-8 bg-gray-50 dark:bg-gray-950">
-          <div className="w-full max-w-sm">
+          {/* Login Form Panel (Right on desktop, first on mobile) */}
+          <div className="md:col-span-6 order-1 md:order-2 bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">مرحباً بعودتك!</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">سجل دخولك وانطلق نحو حلمك</p>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-2xl mb-4">
+                <Shield className="w-8 h-8 text-purple-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بعودتك!</h1>
+              <p className="text-gray-600">ادخل إلى حسابك واكمل رحلتك نحو الاحتراف</p>
             </div>
-            
+
             {/* Login Method Toggle */}
-            <div className="flex gap-2 p-1 bg-gray-200 dark:bg-gray-800 rounded-lg mb-6">
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-6">
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
                   loginMethod === 'phone'
                     ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Phone className="inline-block w-4 h-4 ml-1" />
+                <Phone className="inline-block w-4 h-4 ml-2" />
                 رقم الهاتف
               </button>
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
                   loginMethod === 'email'
                     ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Mail className="inline-block w-4 h-4 ml-1" />
+                <Mail className="inline-block w-4 h-4 ml-2" />
                 البريد الإلكتروني
               </button>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5">
               {loginMethod === 'phone' ? (
                 <>
                   <div>
-                    <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">البلد</label>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">البلد</label>
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-full py-2.5 px-3 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                      className="w-full py-2.5 px-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                       aria-label="اختر البلد"
                     >
                       {countries.map((country) => (
@@ -403,16 +374,16 @@ export default function LoginPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">رقم الهاتف</label>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف</label>
                     <div className="flex">
-                      <div className="flex items-center px-3 text-sm bg-gray-100 dark:bg-gray-700 rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                      <div className="flex items-center px-3 text-sm bg-gray-50 rounded-r-lg border border-l-0 border-gray-300">
                         {countryCode}
                       </div>
                       <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="flex-1 py-2.5 px-3 text-sm border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left text-gray-900 dark:text-white"
+                        className="flex-1 py-2.5 px-4 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
                         placeholder="1012345678"
                         required
                         dir="ltr"
@@ -423,13 +394,13 @@ export default function LoginPage() {
                 </>
               ) : (
                 <div>
-                  <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
                   <div className="relative">
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full py-2.5 pr-10 pl-3 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                      className="w-full py-2.5 pr-10 pl-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                       placeholder="example@mail.com"
                       required
                       autoComplete="email"
@@ -439,14 +410,15 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* Password Field */}
               <div>
-                <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
+                <label className="block mb-2 text-sm font-medium text-gray-700">كلمة المرور</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full py-2.5 pr-10 pl-10 text-sm rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900 dark:text-white"
+                    className="w-full py-2.5 pr-10 pl-10 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                     placeholder="********"
                     required
                     autoComplete="current-password"
@@ -455,67 +427,95 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                   />
-                  <span className="text-gray-600 dark:text-gray-300">تذكرني</span>
+                  <span className="text-sm text-gray-600">تذكرني</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => router.push('/auth/forgot-password')}
-                  className="text-purple-600 hover:text-purple-700 dark:hover:text-purple-500 font-medium"
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                 >
                   نسيت كلمة المرور؟
                 </button>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 px-4 text-sm text-white font-semibold rounded-lg transition-all ${
+                className={`w-full py-3 px-6 text-white font-semibold rounded-lg transition-all ${
                   loading
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30 hover:shadow-xl'
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl'
                 }`}
               >
                 {loading ? (
                   <>
                     <Loader2 className="inline-block w-5 h-5 ml-2 animate-spin" />
-                    جاري...
+                    جاري تسجيل الدخول...
                   </>
                 ) : (
-                  'تسجيل الدخول'
+                  'دخول'
                 )}
               </button>
-              
-              <div className="text-center pt-4">
-                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                   ليس لديك حساب؟{' '}
-                   <button
-                     type="button"
-                     onClick={() => router.push('/auth/register')}
-                     className="text-purple-600 hover:text-purple-700 dark:hover:text-purple-500 font-semibold"
-                   >
-                     سجّل الآن
-                   </button>
-                 </p>
-               </div>
+
+              {/* Register Link */}
+              <div className="text-center pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600">
+                  ليس لديك حساب؟{' '}
+                  <button
+                    type="button"
+                    onClick={() => router.push('/auth/register')}
+                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                  >
+                    سجّل الآن
+                  </button>
+                </p>
+              </div>
             </form>
           </div>
-        </div>
 
+          {/* Testimonials Panel (Left on desktop, second on mobile) */}
+          <div className="md:col-span-6 order-2 md:order-1 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl p-8 flex flex-col justify-center text-white shadow-2xl">
+            <div className="space-y-8">
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-white/20 backdrop-blur-sm rounded-full mb-6">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="font-semibold">شهادات ثقة من مستخدمينا</span>
+                </div>
+                <h2 className="text-3xl font-bold mb-2">ابدأ رحلتك بثقة</h2>
+                <p className="text-purple-100 text-lg">آراء من لاعبين، أندية، ومدربين</p>
+              </div>
+
+              <div className="space-y-4">
+                {testimonials.map((t, idx) => (
+                  <div key={idx} className="p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                    <p className="text-purple-50 leading-relaxed mb-3">"{t.quote}"</p>
+                    <div className="text-sm text-purple-200">
+                      <span className="font-semibold">{t.author}</span> — {t.role}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
