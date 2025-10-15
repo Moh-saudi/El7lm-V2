@@ -2,14 +2,14 @@
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import {
-    Eye,
-    EyeOff,
-    Loader2,
-    Lock,
-    Mail,
-    Phone,
-    Shield,
-    Star
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  Phone,
+  Shield,
+  Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -49,34 +49,28 @@ const countries = [
   { name: 'اليمن', code: '+967' },
 ];
 
-// NEW: Testimonials section
 const testimonials = [
   {
     quote: "منصة الحلم غيرت مسيرتي الكروية. وجدت فرصة احتراف حقيقية في نادٍ لم أكن لأصل إليه لولاهم.",
     author: "أحمد علي",
-    role: "لاعب كرة قدم",
-    avatar: "/avatars/player-01.jpg"
+    role: "لاعب كرة قدم"
   },
   {
     quote: "كوكلاء لاعبين، نبحث دائماً عن المواهب الواعدة. الحلم هي أداتنا الأولى لاكتشاف النجوم القادمين.",
     author: "شركة برو إيجنت",
-    role: "وكيل لاعبين معتمد",
-    avatar: "/avatars/agent-01.png"
+    role: "وكيل لاعبين معتمد"
   },
   {
     quote: "عملية استقطاب اللاعبين أصبحت أسهل بكثير. قاعدة البيانات الضخمة والتقييمات الدقيقة توفر علينا الكثير من الوقت والجهد.",
     author: "نادي النجوم السعودي",
-    role: "إدارة نادي رياضي",
-    avatar: "/avatars/club-01.png"
+    role: "إدارة نادي رياضي"
   },
   {
     quote: "أقوم بتدريب لاعبين صغار، ومنصة الحلم هي النافذة التي يرون بها مستقبلهم الاحترافي. إنها تلهمهم كل يوم.",
     author: "كابتن محمود السيد",
-    role: "مدرب فئات سنية",
-    avatar: "/avatars/trainer-01.jpg"
+    role: "مدرب فئات سنية"
   }
 ];
-
 
 export default function LoginPage() {
   const router = useRouter();
@@ -92,15 +86,13 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
 
-  // Rotate testimonials
   useEffect(() => {
     const interval = setInterval(() => {
       setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
-    }, 5000); // Change testimonial every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Load Remember Me data
   useEffect(() => {
     const savedRememberMe = localStorage.getItem('rememberMe');
     const savedPhone = localStorage.getItem('userPhone');
@@ -233,7 +225,7 @@ export default function LoginPage() {
 
       if (err && typeof err === 'object' && 'code' in err) {
         const error = err as { code: string; message?: string };
-
+        
         if (error.code === 'auth/user-not-found') {
           errorIcon = '👤';
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
@@ -241,7 +233,7 @@ export default function LoginPage() {
           toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
         } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           errorIcon = '🔒';
-
+          
           try {
             console.log(`[Sync Check] Verifying email: ${loginEmail}`);
             const verifyResponse = await fetch('/api/auth/verify-and-sync-user', {
@@ -251,11 +243,11 @@ export default function LoginPage() {
             });
 
             console.log(`[Sync Check] Response status: ${verifyResponse.status}`);
-
+            
             if (verifyResponse.ok) {
               const verifyData = await verifyResponse.json();
               console.log('[Sync Check] Response data:', verifyData);
-
+              
               if (verifyData.needsSync) {
                 errorMessage = 'حسابك يحتاج إلى تفعيل';
                 toast.error(`⚠️ ${errorMessage}`, { id: 'login', duration: 5000 });
@@ -274,7 +266,7 @@ export default function LoginPage() {
 
           errorMessage = 'كلمة المرور غير صحيحة';
           toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
-          toast.info('💡 يمكنك استخدام "نسيت كلمة المرور؟"', { duration: 5000 });
+          toast.info('💡 يمكنك استخدام "نسيت كلمة المرور؟" لإعادة تعيينها', { duration: 5000 });
         } else if (error.code === 'auth/too-many-requests') {
           errorIcon = '⏱️';
           errorMessage = 'تم تجاوز عدد المحاولات';
@@ -302,68 +294,69 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-purple-950" dir="rtl">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-600 animate-spin" />
-          <p className="text-gray-600">جاري التحميل...</p>
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-400 animate-spin" />
+          <p className="text-gray-300">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50" dir="rtl">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-12 gap-8 max-w-6xl mx-auto">
-
-          {/* Login Form Panel (Right on desktop, first on mobile) */}
-          <div className="md:col-span-6 order-1 md:order-2 bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-2xl mb-4">
-                <Shield className="w-8 h-8 text-purple-600" />
+    <div className="min-h-screen bg-purple-950 flex items-center justify-center px-4 py-8" dir="rtl">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Login Form Card - Right Side (compact) */}
+        <div className="order-1 md:order-2">
+          <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-purple-100 p-6 max-w-md mx-auto">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-purple-100 rounded-2xl mb-3">
+                <Shield className="w-7 h-7 text-purple-600" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بعودتك!</h1>
-              <p className="text-gray-600">ادخل إلى حسابك واكمل رحلتك نحو الاحتراف</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">مرحباً بعودتك!</h1>
+              <p className="text-sm text-gray-600">سجل دخولك وانطلق نحو حلمك</p>
             </div>
 
             {/* Login Method Toggle */}
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-6">
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-5">
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
                   loginMethod === 'phone'
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Phone className="inline-block w-4 h-4 ml-2" />
+                <Phone className="inline-block w-3.5 h-3.5 ml-1" />
                 رقم الهاتف
               </button>
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
                   loginMethod === 'email'
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Mail className="inline-block w-4 h-4 ml-2" />
+                <Mail className="inline-block w-3.5 h-3.5 ml-1" />
                 البريد الإلكتروني
               </button>
             </div>
 
             {/* Login Form */}
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-4">
               {loginMethod === 'phone' ? (
                 <>
                   <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">البلد</label>
+                    <label className="block mb-1.5 text-xs font-medium text-gray-700">البلد</label>
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-full py-2.5 px-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      className="w-full py-2 px-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                       aria-label="اختر البلد"
                     >
                       {countries.map((country) => (
@@ -374,7 +367,7 @@ export default function LoginPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف</label>
+                    <label className="block mb-1.5 text-xs font-medium text-gray-700">رقم الهاتف</label>
                     <div className="flex">
                       <div className="flex items-center px-3 text-sm bg-gray-50 rounded-r-lg border border-l-0 border-gray-300">
                         {countryCode}
@@ -383,7 +376,7 @@ export default function LoginPage() {
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="flex-1 py-2.5 px-4 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
+                        className="flex-1 py-2 px-3 text-sm border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
                         placeholder="1012345678"
                         required
                         dir="ltr"
@@ -394,61 +387,61 @@ export default function LoginPage() {
                 </>
               ) : (
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+                  <label className="block mb-1.5 text-xs font-medium text-gray-700">البريد الإلكتروني</label>
                   <div className="relative">
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full py-2.5 pr-10 pl-4 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      className="w-full py-2 pr-9 pl-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                       placeholder="example@mail.com"
                       required
                       autoComplete="email"
                     />
-                    <Mail className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
+                    <Mail className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
                   </div>
                 </div>
               )}
 
               {/* Password Field */}
               <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">كلمة المرور</label>
+                <label className="block mb-1.5 text-xs font-medium text-gray-700">كلمة المرور</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full py-2.5 pr-10 pl-10 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    className="w-full py-2 pr-9 pl-9 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                     placeholder="********"
                     required
                     autoComplete="current-password"
                   />
-                  <Lock className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
+                  <Lock className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between text-xs">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    className="w-3.5 h-3.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-600">تذكرني</span>
+                  <span className="text-gray-600">تذكرني</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => router.push('/auth/forgot-password')}
-                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  className="text-purple-600 hover:text-purple-700 font-medium"
                 >
                   نسيت كلمة المرور؟
                 </button>
@@ -458,7 +451,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 px-6 text-white font-semibold rounded-lg transition-all ${
+                className={`w-full py-2.5 px-4 text-sm text-white font-semibold rounded-lg transition-all ${
                   loading
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl'
@@ -466,17 +459,17 @@ export default function LoginPage() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="inline-block w-5 h-5 ml-2 animate-spin" />
-                    جاري تسجيل الدخول...
+                    <Loader2 className="inline-block w-4 h-4 ml-2 animate-spin" />
+                    جاري الدخول...
                   </>
                 ) : (
-                  'دخول'
+                  'تسجيل الدخول'
                 )}
               </button>
 
               {/* Register Link */}
-              <div className="text-center pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
+              <div className="text-center pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-600">
                   ليس لديك حساب؟{' '}
                   <button
                     type="button"
@@ -489,33 +482,33 @@ export default function LoginPage() {
               </div>
             </form>
           </div>
+        </div>
 
-          {/* Testimonials Panel (Left on desktop, second on mobile) */}
-          <div className="md:col-span-6 order-2 md:order-1 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl p-8 flex flex-col justify-center text-white shadow-2xl">
-            <div className="space-y-8">
-              <div className="text-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-white/20 backdrop-blur-sm rounded-full mb-6">
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="font-semibold">شهادات ثقة من مستخدمينا</span>
-                </div>
-                <h2 className="text-3xl font-bold mb-2">ابدأ رحلتك بثقة</h2>
-                <p className="text-purple-100 text-lg">آراء من لاعبين، أندية، ومدربين</p>
-              </div>
+        {/* Testimonials Panel - Left Side */}
+        <div className="order-2 md:order-1 hidden md:block">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-white h-full flex flex-col justify-center">
+            <div className="text-center mb-6">
+              <Star className="w-10 h-10 mx-auto mb-3 text-yellow-400 fill-yellow-400" />
+              <h2 className="text-2xl font-bold mb-2">شهادات ثقة</h2>
+              <p className="text-purple-200 text-sm">آراء من مستخدمينا</p>
+            </div>
 
-              <div className="space-y-4">
-                {testimonials.map((t, idx) => (
-                  <div key={idx} className="p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                    <p className="text-purple-50 leading-relaxed mb-3">"{t.quote}"</p>
-                    <div className="text-sm text-purple-200">
-                      <span className="font-semibold">{t.author}</span> — {t.role}
+            <div className="space-y-4">
+              {testimonials.map((t, idx) => (
+                <div key={idx} className={`transition-opacity duration-1000 ${idx === testimonialIndex ? 'opacity-100' : 'opacity-0 hidden'}`}>
+                  <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
+                    <p className="text-sm italic mb-3 leading-relaxed">"{t.quote}"</p>
+                    <div className="text-xs">
+                      <span className="font-semibold text-white">{t.author}</span>
+                      <span className="text-purple-300"> — {t.role}</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
-
         </div>
+
       </div>
     </div>
   );
