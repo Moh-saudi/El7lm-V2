@@ -2,18 +2,18 @@
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  Phone,
-  Shield,
-  Star
+    Eye,
+    EyeOff,
+    Loader2,
+    Lock,
+    Mail,
+    Phone,
+    Shield,
+    Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 
 type LoginMethod = 'phone' | 'email';
 
@@ -225,7 +225,7 @@ export default function LoginPage() {
 
       if (err && typeof err === 'object' && 'code' in err) {
         const error = err as { code: string; message?: string };
-        
+
         if (error.code === 'auth/user-not-found') {
           errorIcon = '👤';
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
@@ -233,7 +233,7 @@ export default function LoginPage() {
           toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
         } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           errorIcon = '🔒';
-          
+
           try {
             console.log(`[Sync Check] Verifying email: ${loginEmail}`);
             const verifyResponse = await fetch('/api/auth/verify-and-sync-user', {
@@ -243,11 +243,11 @@ export default function LoginPage() {
             });
 
             console.log(`[Sync Check] Response status: ${verifyResponse.status}`);
-            
+
             if (verifyResponse.ok) {
               const verifyData = await verifyResponse.json();
               console.log('[Sync Check] Response data:', verifyData);
-              
+
               if (verifyData.needsSync) {
                 errorMessage = 'حسابك يحتاج إلى تفعيل';
                 toast.error(`⚠️ ${errorMessage}`, { id: 'login', duration: 5000 });
@@ -304,9 +304,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-purple-950 flex items-center justify-center px-4 py-8" dir="rtl">
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
-        
+    <>
+      <Toaster position="top-center" dir="rtl" richColors />
+      <div className="min-h-screen bg-purple-950 flex items-center justify-center px-4 py-8" dir="rtl">
+        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
+
         {/* Login Form Card - Right Side (compact) */}
         <div className="order-1 md:order-2">
           <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-purple-100 p-6 max-w-md mx-auto">
@@ -509,7 +511,8 @@ export default function LoginPage() {
           </div>
         </div>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }
