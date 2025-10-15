@@ -83,11 +83,11 @@ export function initializeFirebaseAdmin() {
 
     isInitialized = true;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Failed to initialize Firebase Admin:');
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Error code:', error instanceof Error ? (error as any).code : 'unknown');
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'N/A');
 
     console.log('💡 Troubleshooting tips:');
     console.log('1. Check FIREBASE_PROJECT_ID environment variable');
@@ -117,8 +117,8 @@ if (typeof window === 'undefined') {
 export const adminDb = (() => {
   try {
     return getFirestore();
-  } catch (error) {
-    console.warn('⚠️ Firebase Admin not available:', error.message);
+  } catch (error: unknown) {
+    console.warn('⚠️ Firebase Admin not available:', error instanceof Error ? error.message : String(error));
     return null;
   }
 })();
@@ -127,8 +127,8 @@ export const adminAuth = (() => {
   try {
     initializeFirebaseAdmin();
     return getAuth();
-  } catch (error) {
-    console.warn('⚠️ Firebase Admin Auth not available:', error.message);
+  } catch (error: unknown) {
+    console.warn('⚠️ Firebase Admin Auth not available:', error instanceof Error ? error.message : String(error));
     return null;
   }
 })();
