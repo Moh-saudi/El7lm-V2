@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 
 interface LoginAttempt {
   timestamp: Date;
@@ -37,19 +37,19 @@ interface LoginSecurityDecision {
 }
 
 export class SmartLoginSystem {
-  
+
   /**
    * تحديد طريقة تسجيل الدخول المطلوبة بناءً على ملف الأمان
    */
   async determineLoginMethod(
-    phone: string, 
-    deviceInfo: string, 
+    phone: string,
+    deviceInfo: string,
     ipAddress?: string
   ): Promise<LoginSecurityDecision> {
-    
+
     try {
       const userProfile = await this.getUserSecurityProfile(phone);
-      
+
       if (!userProfile) {
         return {
           method: 'otp',
@@ -83,10 +83,10 @@ export class SmartLoginSystem {
       }
 
       // التحقق من آخر دخول (أكثر من 30 يوم)
-      const daysSinceLastLogin = userProfile.lastLogin 
+      const daysSinceLastLogin = userProfile.lastLogin
         ? (Date.now() - userProfile.lastLogin.getTime()) / (1000 * 60 * 60 * 24)
         : 999;
-      
+
       if (daysSinceLastLogin > 30) {
         return {
           method: 'otp',
@@ -99,8 +99,8 @@ export class SmartLoginSystem {
 
       // التحقق من النشاط المشبوه
       const recentFailures = userProfile.loginAttempts
-        .filter(attempt => 
-          !attempt.success && 
+        .filter(attempt =>
+          !attempt.success &&
           (Date.now() - attempt.timestamp.getTime()) < (1000 * 60 * 60) // آخر ساعة
         ).length;
 
@@ -181,9 +181,9 @@ export class SmartLoginSystem {
    * تسجيل محاولة تسجيل دخول
    */
   async recordLoginAttempt(
-    phone: string, 
-    success: boolean, 
-    deviceInfo: string, 
+    phone: string,
+    success: boolean,
+    deviceInfo: string,
     ipAddress?: string
   ): Promise<void> {
     try {
@@ -197,7 +197,7 @@ export class SmartLoginSystem {
 
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
-      
+
       const newAttempt: LoginAttempt = {
         timestamp: new Date(),
         success,
@@ -221,7 +221,7 @@ export class SmartLoginSystem {
       if (success) {
         updateData.successfulLogins = (userData.successfulLogins || 0) + 1;
         updateData.lastLogin = new Date();
-        
+
         // إضافة الجهاز للقائمة الموثوقة بعد 3 دخولات ناجحة
         if (updateData.successfulLogins >= 3) {
           const trustedDevices = userData.trustedDevices || [];
@@ -266,24 +266,39 @@ export class SmartLoginSystem {
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'server';
     const language = typeof navigator !== 'undefined' ? navigator.language : 'unknown';
     const platform = typeof navigator !== 'undefined' ? navigator.platform : 'unknown';
-    
+
     return `${platform}-${language}-${userAgent.slice(0, 50)}`;
   }
 
   /**
-   * التحقق من قوة كلمة المرور
+   * التحقق من قوة كلمة المرور - أرقام فقط
    */
   validatePasswordStrength(password: string): { isStrong: boolean; message: string } {
+    // التحقق من أن كلمة المرور أرقام فقط
+    const isNumbersOnly = /^\d+$/.test(password);
+    if (!isNumbersOnly) {
+      return { isStrong: false, message: 'يجب أن تحتوي كلمة المرور على أرقام فقط' };
+    }
+
     if (password.length < 8) {
-      return { isStrong: false, message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' };
+      return { isStrong: false, message: 'يجب أن تتكون كلمة المرور من 8 أرقام على الأقل' };
     }
-    
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      return { isStrong: false, message: 'كلمة المرور يجب أن تحتوي على حروف كبيرة وصغيرة وأرقام' };
+
+    // منع الأرقام المتسلسلة والمتكررة
+    const weakPatterns = [
+      /^(\d)\1+$/, // نفس الرقم متكرر
+      /^(0123456789|9876543210)/, // أرقام متسلسلة
+      /^12345678$/, /^87654321$/,
+      /^123456/, /^654321/,
+      /^111111/, /^000000/, /^666666/, /^888888/
+    ];
+
+    if (weakPatterns.some(pattern => pattern.test(password))) {
+      return { isStrong: false, message: 'كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة (مثال: 19901234، 05012345)' };
     }
-    
-    return { isStrong: true, message: 'كلمة مرور قوية' };
+
+    return { isStrong: true, message: 'كلمة مرور مقبولة' };
   }
 }
 
-export const smartLoginSystem = new SmartLoginSystem(); 
+export const smartLoginSystem = new SmartLoginSystem();

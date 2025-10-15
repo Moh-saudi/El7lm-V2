@@ -327,9 +327,29 @@ export default function RegisterPage() {
       return false;
     }
 
-    // التحقق من كلمة المرور
+    // التحقق من كلمة المرور - أرقام فقط
+    const isNumbersOnly = /^\d+$/.test(formData.password);
+    if (!isNumbersOnly) {
+      setError('يجب أن تحتوي كلمة المرور على أرقام فقط');
+      return false;
+    }
+
     if (formData.password.length < 8) {
-      setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      setError('يجب أن تتكون كلمة المرور من 8 أرقام على الأقل');
+      return false;
+    }
+
+    // منع الأرقام المتسلسلة والمتكررة
+    const weakPatterns = [
+      /^(\d)\1+$/, // نفس الرقم متكرر (111111)
+      /^(0123456789|9876543210)/, // أرقام متسلسلة
+      /^12345678$/, /^87654321$/,
+      /^123456/, /^654321/,
+      /^111111/, /^000000/, /^666666/, /^888888/
+    ];
+
+    if (weakPatterns.some(pattern => pattern.test(formData.password))) {
+      setError('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة (مثال صحيح: 19901234، 05012345)');
       return false;
     }
 

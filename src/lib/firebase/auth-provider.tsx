@@ -614,9 +614,14 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         throw new Error('Email, password, and role are required');
       }
 
-      // Validate password strength
+      // Validate password strength - أرقام فقط
+      const isNumbersOnly = /^\d+$/.test(password);
+      if (!isNumbersOnly) {
+        throw new Error('يجب أن تحتوي كلمة المرور على أرقام فقط');
+      }
+
       if (password.length < 8) {
-        throw new Error('Password must be at least 8 characters long');
+        throw new Error('يجب أن تتكون كلمة المرور من 8 أرقام على الأقل');
       }
 
       // Additional password validation
@@ -624,10 +629,17 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         throw new Error('Password is too long. Maximum 128 characters allowed');
       }
 
-      // Check for common weak passwords
-      const weakPasswords = ['password', '123456', '12345678', 'qwerty', 'admin'];
-      if (weakPasswords.includes(password.toLowerCase())) {
-        throw new Error('Password is too weak. Please choose a stronger password');
+      // Check for weak number patterns
+      const weakPatterns = [
+        /^(\d)\1+$/, // نفس الرقم متكرر
+        /^(0123456789|9876543210)/, // أرقام متسلسلة
+        /^12345678$/, /^87654321$/,
+        /^123456/, /^654321/,
+        /^111111/, /^000000/, /^666666/, /^888888/
+      ];
+
+      if (weakPatterns.some(pattern => pattern.test(password))) {
+        throw new Error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
       }
 
       // Email validation disabled temporarily

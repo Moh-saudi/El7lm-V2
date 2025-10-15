@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { auth } from '@/lib/firebase/config';
+import { signOut as firebaseSignOut } from 'firebase/auth';
 import { ArrowRight, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -79,6 +81,28 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // تسجيل الخروج ومسح البيانات المحفوظة عند تحميل الصفحة
+  useEffect(() => {
+    const clearAuthData = async () => {
+      try {
+        // تسجيل الخروج من Firebase
+        if (auth.currentUser) {
+          await firebaseSignOut(auth);
+        }
+
+        // مسح البيانات المحفوظة في localStorage
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userPhone');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('accountType');
+      } catch (error) {
+        console.error('خطأ في مسح بيانات المصادقة:', error);
+      }
+    };
+
+    clearAuthData();
+  }, []);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (resendCooldown > 0) {
@@ -140,10 +164,34 @@ export default function ForgotPasswordPage() {
       toast.error('كلمتا المرور غير متطابقتين');
       return;
     }
-    if (newPassword.length < 6) {
-        toast.error('يجب أن تتكون كلمة المرور من 6 أحرف على الأقل');
-        return;
+
+    // التحقق من كلمة المرور - أرقام فقط
+    // التحقق من أن كلمة المرور أرقام فقط
+    const isNumbersOnly = /^\d+$/.test(newPassword);
+    if (!isNumbersOnly) {
+      toast.error('يجب أن تحتوي كلمة المرور على أرقام فقط');
+      return;
     }
+
+    if (newPassword.length < 8) {
+      toast.error('يجب أن تتكون كلمة المرور من 8 أرقام على الأقل');
+      return;
+    }
+
+    // منع الأرقام المتسلسلة والمتكررة
+    const weakPatterns = [
+      /^(\d)\1+$/, // نفس الرقم متكرر (111111)
+      /^(0123456789|9876543210)/, // أرقام متسلسلة
+      /^12345678$/, /^87654321$/,
+      /^123456/, /^654321/,
+      /^111111/, /^000000/, /^666666/, /^888888/
+    ];
+
+    if (weakPatterns.some(pattern => pattern.test(newPassword))) {
+      toast.error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة (مثال صحيح: 19901234، 05012345)');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -156,7 +204,11 @@ export default function ForgotPasswordPage() {
       if (!res.ok) throw new Error(data.error || 'فشل تحديث كلمة المرور');
 
       toast.success('تم تحديث كلمة المرور بنجاح! سيتم توجيهك لتسجيل الدخول.');
-      setTimeout(() => router.push('/auth/login'), 2000);
+
+      // حفظ رقم الهاتف لتسهيل تسجيل الدخول
+      localStorage.setItem('resetPasswordPhone', fullPhoneNumber);
+
+      setTimeout(() => router.push('/auth/login?from=reset-password'), 2000);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -186,6 +238,7 @@ export default function ForgotPasswordPage() {
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
                   className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition"
+                  aria-label="اختر الدولة"
                 >
                   {countries.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
                 </select>
@@ -277,9 +330,17 @@ export default function ForgotPasswordPage() {
                   autoComplete="new-password"
                 />
               </div>
-               <div className="text-xs text-gray-500 flex items-center pt-2">
-                   <ShieldAlert className="w-4 h-4 ml-2"/>
-                   يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.
+               <div className="space-y-2 text-xs text-gray-500 pt-2">
+                   <div className="flex items-center">
+                     <ShieldAlert className="w-4 h-4 ml-2 flex-shrink-0"/>
+                     <span>8 أرقام على الأقل (أرقام فقط)</span>
+                   </div>
+                   <div className="text-green-600 text-xs">
+                     ✅ أمثلة صحيحة: 19901234، 05012345678، 20249876
+                   </div>
+                   <div className="text-red-500 text-xs">
+                     ⚠️ ممنوع: 12345678، 11111111، 00000000
+                   </div>
                </div>
             </CardContent>
             <CardFooter>

@@ -84,10 +84,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (newPassword.length < 6) {
+    // التحقق من أن كلمة المرور أرقام فقط
+    const isNumbersOnly = /^\d+$/.test(newPassword);
+    if (!isNumbersOnly) {
+      console.error('❌ [reset-password] Password must be numbers only');
+      return NextResponse.json(
+        { success: false, error: 'يجب أن تحتوي كلمة المرور على أرقام فقط' },
+        { status: 400 }
+      );
+    }
+
+    if (newPassword.length < 8) {
       console.error('❌ [reset-password] Password too short');
       return NextResponse.json(
-        { success: false, error: 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل' },
+        { success: false, error: 'يجب أن تتكون كلمة المرور من 8 أرقام على الأقل' },
+        { status: 400 }
+      );
+    }
+
+    // منع الأرقام المتسلسلة والمتكررة
+    const weakPatterns = [
+      /^(\d)\1+$/,
+      /^(0123456789|9876543210)/,
+      /^12345678$/, /^87654321$/,
+      /^123456/, /^654321/,
+      /^111111/, /^000000/, /^666666/, /^888888/
+    ];
+
+    if (weakPatterns.some(pattern => pattern.test(newPassword))) {
+      console.error('❌ [reset-password] Weak password pattern detected');
+      return NextResponse.json(
+        { success: false, error: 'كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة' },
         { status: 400 }
       );
     }

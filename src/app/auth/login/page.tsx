@@ -79,8 +79,24 @@ export default function LoginPage() {
     const savedRememberMe = localStorage.getItem('rememberMe');
     const savedPhone = localStorage.getItem('userPhone');
     const savedEmail = localStorage.getItem('userEmail');
+    const resetPasswordPhone = localStorage.getItem('resetPasswordPhone');
 
-    if (savedRememberMe === 'true') {
+    // إذا جاء المستخدم من صفحة إعادة تعيين كلمة المرور
+    if (resetPasswordPhone) {
+      // استخراج كود الدولة ورقم الهاتف
+      const codeMatch = resetPasswordPhone.match(/^(\+\d+)/);
+      if (codeMatch) {
+        const code = codeMatch[1];
+        const phoneNumber = resetPasswordPhone.replace(code, '');
+        setCountryCode(code);
+        setPhone(phoneNumber);
+      } else {
+        setPhone(resetPasswordPhone);
+      }
+      setLoginMethod('phone');
+      toast.success('✅ تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة');
+      localStorage.removeItem('resetPasswordPhone'); // مسح بعد الاستخدام
+    } else if (savedRememberMe === 'true') {
       setRememberMe(true);
       if (savedPhone) {
         setPhone(savedPhone);
