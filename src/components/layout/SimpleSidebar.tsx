@@ -1,41 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/firebase/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Home, 
-  User, 
-  MessageSquare, 
-  Users, 
-  Search, 
-  Video, 
-  FileText, 
-  LogOut, 
-  ChevronLeft, 
-  ChevronRight, 
-  Shield,
-  GraduationCap,
-  Building,
-  Briefcase,
-  Star,
-  Crown,
-  Sparkles,
-  Bell,
-  Settings,
-  BarChart3,
-  Calendar,
-  Heart,
-  Trophy,
-  Target,
-  Zap,
-  Globe,
-  TrendingUp,
-  Mail
+import { useAuth } from '@/lib/firebase/auth-provider';
+import {
+    BarChart3,
+    Bell,
+    Briefcase,
+    Building,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Crown,
+    FileText,
+    Globe,
+    GraduationCap,
+    Home,
+    LogOut,
+    Mail,
+    MessageSquare,
+    Settings,
+    Shield,
+    Sparkles,
+    Star,
+    Target,
+    TrendingUp,
+    Trophy,
+    User,
+    Users,
+    Video
 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import React from 'react';
 
 interface SimpleSidebarProps {
   accountType: string;
@@ -61,50 +58,50 @@ const SimpleSidebar: React.FC<SimpleSidebarProps> = ({
   // Get account type info - simplified
   const getAccountTypeInfo = () => {
     const types = {
-      'player': { 
-        label: 'لاعب', 
-        icon: User, 
+      'player': {
+        label: 'لاعب',
+        icon: User,
         color: 'bg-blue-500',
         bgGradient: 'from-blue-500 to-cyan-500',
         gradient: 'from-blue-500 to-cyan-500'
       },
-      'club': { 
-        label: 'نادي', 
-        icon: Shield, 
+      'club': {
+        label: 'نادي',
+        icon: Shield,
         color: 'bg-green-500',
         bgGradient: 'from-green-500 to-emerald-500',
         gradient: 'from-green-500 to-emerald-500'
       },
-      'academy': { 
-        label: 'أكاديمية', 
-        icon: Star, 
+      'academy': {
+        label: 'أكاديمية',
+        icon: Star,
         color: 'bg-orange-500',
         bgGradient: 'from-orange-500 to-red-500',
         gradient: 'from-orange-500 to-red-500'
       },
-      'trainer': { 
-        label: 'مدرب', 
-        icon: Crown, 
+      'trainer': {
+        label: 'مدرب',
+        icon: Crown,
         color: 'bg-purple-500',
         bgGradient: 'from-purple-500 to-indigo-500',
         gradient: 'from-purple-500 to-indigo-500'
       },
-      'agent': { 
-        label: 'وكيل', 
-        icon: Sparkles, 
+      'agent': {
+        label: 'وكيل',
+        icon: Sparkles,
         color: 'bg-pink-500',
         bgGradient: 'from-pink-500 to-rose-500',
         gradient: 'from-pink-500 to-rose-500'
       },
-      'admin': { 
-        label: 'مدير', 
-        icon: Shield, 
+      'admin': {
+        label: 'مدير',
+        icon: Shield,
         color: 'bg-red-500',
         bgGradient: 'from-red-500 to-pink-500',
         gradient: 'from-red-500 to-pink-500'
       }
     };
-    
+
     return types[accountType as keyof typeof types] || types.player;
   };
 
@@ -165,6 +162,7 @@ const SimpleSidebar: React.FC<SimpleSidebarProps> = ({
         { icon: BarChart3, label: 'التقارير', href: '/dashboard/admin/reports' },
         { icon: BarChart3, label: 'Clarity Analytics', href: '/dashboard/admin/clarity' },
         { icon: MessageSquare, label: 'إدارة BeOn V3', href: '/dashboard/admin/beon-v3' },
+        { icon: MessageSquare, label: 'اختبار WhatsApp API', href: '/test-babaservice-whatsapp' },
         { icon: Globe, label: 'النظام', href: '/dashboard/admin/system' },
       ]
     };
@@ -194,7 +192,7 @@ const SimpleSidebar: React.FC<SimpleSidebarProps> = ({
               </div>
             </div>
           )}
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -236,14 +234,14 @@ const SimpleSidebar: React.FC<SimpleSidebarProps> = ({
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            
+
             return (
               <li key={item.href}>
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 h-12 ${
-                    isActive 
-                      ? `${accountInfo.color} text-white hover:${accountInfo.color}` 
+                    isActive
+                      ? `${accountInfo.color} text-white hover:${accountInfo.color}`
                       : 'hover:bg-white/60 text-slate-700'
                   }`}
                   onClick={() => router.push(item.href)}

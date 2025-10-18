@@ -345,6 +345,21 @@ html, body, * {
   50% { opacity: 0.5; }
 }
 
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
 .animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
 .animate-loading-bar { animation: loading-bar 2s ease-in-out infinite; }
 

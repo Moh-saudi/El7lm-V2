@@ -118,19 +118,50 @@ export default function ForgotPasswordPage() {
     setFullPhoneNumber(fullNumber);
 
     try {
-      const res = await fetch('/api/sms/send-otp', {
+      // تنسيق رقم الهاتف بنفس طريقة التسجيل (إزالة علامة +)
+      const normalizedPhone = fullNumber.replace(/^\+/, '');
+
+      // 1️⃣ التحقق من وجود المستخدم أولاً قبل إرسال OTP
+      const checkRes = await fetch('/api/auth/check-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: fullNumber }),
+        body: JSON.stringify({ phoneNumber: normalizedPhone }),
+      });
+      const checkData = await checkRes.json();
+
+      if (!checkRes.ok || !checkData.exists) {
+        toast.error('رقم الهاتف غير مسجل في النظام. يرجى إنشاء حساب جديد أولاً.');
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ إذا كان المستخدم موجوداً، نرسل OTP
+      // توليد OTP من 6 أرقام
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // استخدام Babaservice WhatsApp API الجديد
+      const res = await fetch('/api/whatsapp/babaservice/otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhone,
+          otp: generatedOtp,
+          name: checkData.userName || 'مستخدم', // استخدام اسم المستخدم الحقيقي
+          instance_id: '68F243B3A8D8D' // Instance ID الثابت
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل إرسال الرمز');
+      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرمز');
 
-      toast.success('تم إرسال رمز التحقق بنجاح');
+      // حفظ OTP المُرسل للتحقق لاحقاً
+      sessionStorage.setItem('reset_otp', generatedOtp);
+      sessionStorage.setItem('reset_otp_time', Date.now().toString());
+
+      toast.success('تم إرسال رمز التحقق عبر WhatsApp بنجاح ✅');
       setStep('otp');
       setResendCooldown(60); // Start 60-second cooldown
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'فشل إرسال رمز التحقق');
     } finally {
       setLoading(false);
     }
@@ -141,18 +172,31 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/sms/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: fullPhoneNumber, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'رمز التحقق غير صحيح');
+      // التحقق من OTP محلياً
+      const savedOtp = sessionStorage.getItem('reset_otp');
+      const savedTime = sessionStorage.getItem('reset_otp_time');
+
+      if (!savedOtp || !savedTime) {
+        throw new Error('انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد');
+      }
+
+      // التحقق من انتهاء صلاحية OTP (10 دقائق)
+      const otpAge = Date.now() - parseInt(savedTime);
+      if (otpAge > 10 * 60 * 1000) {
+        sessionStorage.removeItem('reset_otp');
+        sessionStorage.removeItem('reset_otp_time');
+        throw new Error('انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد');
+      }
+
+      // التحقق من تطابق OTP
+      if (otp !== savedOtp) {
+        throw new Error('رمز التحقق غير صحيح');
+      }
 
       toast.success('تم التحقق من الرمز بنجاح');
       setStep('password');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'فشل التحقق من الرمز');
     } finally {
       setLoading(false);
     }
@@ -195,10 +239,13 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
+      // تنسيق رقم الهاتف بنفس طريقة التسجيل (إزالة علامة +)
+      const normalizedPhone = fullPhoneNumber.replace(/^\+/, '');
+
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: fullPhoneNumber, newPassword }),
+        body: JSON.stringify({ phoneNumber: normalizedPhone, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل تحديث كلمة المرور');

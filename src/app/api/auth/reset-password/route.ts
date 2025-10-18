@@ -126,12 +126,23 @@ export async function POST(request: NextRequest) {
     if (!uid) {
       console.error('❌ [reset-password] User not found');
       return NextResponse.json(
-        { success: false, error: 'المستخدم غير موجود لرقم الهاتف المقدم' },
+        { success: false, error: 'المستخدم غير موجود. يرجى التسجيل أولاً من خلال صفحة إنشاء حساب جديد' },
         { status: 404 }
       );
     }
 
     console.log('✅ [reset-password] User found - UID:', uid, 'Collection:', collectionName);
+
+    // الحصول على بيانات المستخدم من Firestore للحصول على Firebase Email
+    let userData: any = {};
+    let firebaseEmail: string | null = null;
+
+    if (docId && collectionName && adminDb) {
+      const userDoc = await adminDb.collection(collectionName).doc(docId).get();
+      userData = userDoc.data() || {};
+      firebaseEmail = userData.email || userData.userEmail || userData.firebaseEmail;
+      console.log('📧 [reset-password] Firebase Email from Firestore:', firebaseEmail);
+    }
 
     // التحقق من توفر Firebase Admin Auth
     if (!adminAuth) {
@@ -142,36 +153,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // التحقق من وجود المستخدم في Firebase Auth
+    // التحقق من وجود المستخدم في Firebase Auth باستخدام Firebase Email
     let userExistsInAuth = false;
-    try {
-      await adminAuth.getUser(uid);
-      userExistsInAuth = true;
-      console.log('✅ [reset-password] User exists in Firebase Auth');
-    } catch (authError: any) {
-      if (authError.code === 'auth/user-not-found') {
-        console.log('⚠️ [reset-password] User not found in Firebase Auth, will create...');
-        userExistsInAuth = false;
-      } else {
-        throw authError;
+    let authUser: any = null;
+
+    if (firebaseEmail) {
+      try {
+        authUser = await adminAuth.getUserByEmail(firebaseEmail);
+        userExistsInAuth = true;
+        console.log('✅ [reset-password] User exists in Firebase Auth with email:', firebaseEmail);
+      } catch (authError: any) {
+        if (authError.code === 'auth/user-not-found') {
+          console.log('⚠️ [reset-password] User not found in Firebase Auth by email');
+          userExistsInAuth = false;
+        } else {
+          throw authError;
+        }
+      }
+    }
+
+    // إذا لم نجد المستخدم بالـ email، نجرب بالـ UID
+    if (!userExistsInAuth) {
+      try {
+        authUser = await adminAuth.getUser(uid);
+        userExistsInAuth = true;
+        console.log('✅ [reset-password] User exists in Firebase Auth with UID:', uid);
+        console.log('🔍 [reset-password] Auth User Details:', {
+          uid: authUser.uid,
+          email: authUser.email,
+          displayName: authUser.displayName
+        });
+      } catch (authError: any) {
+        if (authError.code === 'auth/user-not-found') {
+          console.log('⚠️ [reset-password] User not found in Firebase Auth, will create...');
+          userExistsInAuth = false;
+        } else {
+          throw authError;
+        }
       }
     }
 
     if (!userExistsInAuth) {
       // إنشاء المستخدم في Firebase Auth
       console.log('🔧 [reset-password] Creating user in Firebase Auth...');
-      
-      // الحصول على بيانات المستخدم من Firestore
-      let userData: any = {};
-      if (docId && collectionName && adminDb) {
-        const userDoc = await adminDb.collection(collectionName).doc(docId).get();
-        userData = userDoc.data() || {};
+
+      if (!firebaseEmail) {
+        console.error('❌ [reset-password] Cannot create user without email');
+        return NextResponse.json(
+          { success: false, error: 'البريد الإلكتروني مفقود. يرجى التواصل مع الدعم الفني' },
+          { status: 500 }
+        );
       }
 
       try {
         await adminAuth.createUser({
           uid: uid,
-          email: userData.email || userData.userEmail,
+          email: firebaseEmail,
           password: newPassword,
           displayName: userData.full_name || userData.name,
           emailVerified: false,
@@ -188,10 +225,29 @@ export async function POST(request: NextRequest) {
     } else {
       // تحديث كلمة المرور في Firebase Authentication
       console.log('🔄 [reset-password] Updating password in Firebase Auth...');
-      await adminAuth.updateUser(uid, {
+      const authUid = authUser?.uid || uid;
+      const realEmail = authUser?.email;
+      console.log('🔑 [reset-password] Using Auth UID:', authUid);
+      console.log('📧 [reset-password] Real Email from Auth:', realEmail);
+
+      await adminAuth.updateUser(authUid, {
         password: newPassword,
       });
       console.log('✅ [reset-password] Password updated successfully in Firebase Auth');
+
+      // تحديث Email في Firestore ليطابق Email الحقيقي في Firebase Auth
+      if (realEmail && realEmail !== firebaseEmail && docId && collectionName && adminDb) {
+        try {
+          await adminDb.collection(collectionName).doc(docId).update({
+            email: realEmail,
+            userEmail: realEmail,
+            firebaseEmail: realEmail,
+          });
+          console.log('✅ [reset-password] Email synced in Firestore:', realEmail);
+        } catch (error) {
+          console.warn('⚠️ [reset-password] Failed to sync email in Firestore:', error);
+        }
+      }
     }
 
     // تحديث Firestore

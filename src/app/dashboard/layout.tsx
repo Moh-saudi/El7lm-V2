@@ -1,6 +1,7 @@
 'use client';
 
 import ResponsiveLayoutWrapper from '@/components/layout/ResponsiveLayout';
+import PushNotificationSetup from '@/components/notifications/PushNotificationSetup';
 import FloatingChatWidget from '@/components/support/FloatingChatWidget';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePathname } from 'next/navigation';
@@ -80,6 +81,7 @@ export default function DashboardLayout({
       </ResponsiveLayoutWrapper>
 
       <FloatingChatWidget />
+      <PushNotificationSetup />
     </>
   );
 }

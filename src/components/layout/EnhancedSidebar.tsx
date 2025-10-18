@@ -1,37 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  ChevronRight, 
-  ChevronLeft,
-  Home,
-  User,
-  FileText,
-  Video,
-  Search,
-  BarChart3,
-  MessageSquare,
-  CreditCard,
-  Settings,
-  LogOut,
-  Bell,
-  Star,
-  Trophy,
-  Users,
-  UserPlus,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
-  Globe,
-  Shield,
-  Target,
-  TrendingUp
-} from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
 import { useSidebar } from '@/lib/context/SidebarContext';
+import { motion } from 'framer-motion';
+import {
+    BarChart3,
+    Bell,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Home,
+    LogOut,
+    MessageSquare,
+    Search,
+    Settings,
+    Shield,
+    Star,
+    Target,
+    TrendingUp,
+    Trophy,
+    User,
+    UserPlus,
+    Users,
+    Video,
+    X
+} from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useMobileSidebar } from './MobileSidebarManager';
 
 interface EnhancedSidebarProps {
@@ -382,6 +376,12 @@ export default function EnhancedSidebar({ accountType = 'player' }: EnhancedSide
           icon: Video,
           href: '/dashboard/admin/videos',
           color: 'text-red-400'
+        },
+        {
+          title: 'اختبار WhatsApp API',
+          icon: MessageSquare,
+          href: '/test-babaservice-whatsapp',
+          color: 'text-green-400'
         }
       ]
     };
@@ -416,11 +416,11 @@ export default function EnhancedSidebar({ accountType = 'player' }: EnhancedSide
           className="fixed inset-0 bg-black/50 z-30"
         />
       )}
-      
+
       <motion.div
         initial={{ x: isMobile ? '100%' : 0 }}
-        animate={{ 
-          x: isMobile ? (isMobileOpen ? 0 : '100%') : 0 
+        animate={{
+          x: isMobile ? (isMobileOpen ? 0 : '100%') : 0
         }}
         exit={{ x: isMobile ? '100%' : 0 }}
         className={`fixed top-16 bottom-20 right-0 bg-gradient-to-br from-[#1e40af] via-[#2563eb] to-[#3b82f6] z-40 shadow-2xl backdrop-blur-sm border-l border-white/10 transition-all duration-300 ease-in-out ${
@@ -444,7 +444,7 @@ export default function EnhancedSidebar({ accountType = 'player' }: EnhancedSide
               <X size={18} />
             </motion.button>
           )}
-          
+
           {/* زر التطويق/التوسع */}
           {!isMobile && (
             <motion.button
@@ -568,4 +568,4 @@ export default function EnhancedSidebar({ accountType = 'player' }: EnhancedSide
       </motion.div>
     </>
   );
-} 
+}

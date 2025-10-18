@@ -1,0 +1,798 @@
+/**
+ * Babaservice WhatsApp API Service
+ * خدمة WhatsApp API الجديدة - Babaservice
+ *
+ * API Base URL: https://wbot.babaservice.online/api/
+ * Access Token: 68f0029b4ce90
+ */
+
+export interface BabaserviceConfig {
+  accessToken: string;
+  baseUrl: string;
+  instanceId?: string;
+  webhookUrl?: string;
+}
+
+export interface BabaserviceResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+  error?: string;
+  code?: string;
+}
+
+export interface SendMessageRequest {
+  number: string;
+  type: 'text' | 'media';
+  message: string;
+  media_url?: string;
+  filename?: string;
+}
+
+export interface SendGroupMessageRequest {
+  group_id: string;
+  type: 'text' | 'media';
+  message: string;
+  media_url?: string;
+  filename?: string;
+}
+
+export interface InstanceResponse {
+  success: boolean;
+  instance_id?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface QRCodeResponse {
+  success: boolean;
+  qr_code?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface WebhookResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+class BabaserviceWhatsAppService {
+  private config: BabaserviceConfig;
+
+  constructor() {
+    this.config = {
+      accessToken: process.env.BABASERVICE_ACCESS_TOKEN || '68f0029b4ce90',
+      baseUrl: process.env.BABASERVICE_BASE_URL || 'https://wbot.babaservice.online/api',
+      instanceId: process.env.BABASERVICE_INSTANCE_ID,
+      webhookUrl: process.env.BABASERVICE_WEBHOOK_URL
+    };
+  }
+
+  /**
+   * التحقق من صحة التكوين
+   */
+  private validateConfig(): boolean {
+    return !!(this.config.accessToken && this.config.baseUrl);
+  }
+
+  /**
+   * دالة مساعدة لمعالجة استجابات API الخارجي
+   */
+  private async handleExternalApiResponse(response: Response, context: string): Promise<any> {
+    const contentType = response.headers.get('content-type');
+    console.log(`🔍 Content-Type لـ ${context}:`, contentType);
+    console.log(`🔍 Status لـ ${context}:`, response.status, response.statusText);
+
+    // محاولة قراءة النص أولاً
+    const textResponse = await response.text();
+    console.log(`📄 الاستجابة الكاملة لـ ${context}:`, textResponse);
+
+    // محاولة تحليل JSON
+    try {
+      const data = JSON.parse(textResponse);
+      console.log(`✅ تم تحليل JSON بنجاح لـ ${context}:`, data);
+      return data;
+    } catch (error) {
+      console.error(`❌ فشل تحليل JSON لـ ${context}:`, error);
+      console.error(`📋 النص الذي فشل تحليله:`, textResponse.substring(0, 1000));
+
+      // إذا كانت الاستجابة HTML
+      if (textResponse.trim().startsWith('<!DOCTYPE') || textResponse.trim().startsWith('<html')) {
+        throw new Error(`API يعيد صفحة HTML بدلاً من JSON. Status: ${response.status}. يرجى التحقق من رابط API والـ Access Token.`);
+      }
+
+      // إذا كانت الاستجابة فارغة
+      if (!textResponse.trim()) {
+        throw new Error(`API يعيد استجابة فارغة. Status: ${response.status}. قد يكون API غير جاهز أو هناك مشكلة في الاتصال.`);
+      }
+
+      // خطأ عام في تحليل JSON
+      throw new Error(`خطأ في تحليل استجابة API: ${error instanceof Error ? error.message : 'خطأ غير معروف'}. الاستجابة: ${textResponse.substring(0, 200)}...`);
+    }
+  }
+
+  /**
+   * إنشاء instance جديد
+   */
+  async createInstance(): Promise<InstanceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/create_instance?access_token=${this.config.accessToken}`;
+
+      console.log('🔧 Creating instance:', url);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await this.handleExternalApiResponse(response, 'Create Instance');
+
+      if (response.ok && data.success) {
+        // حفظ instance_id في التكوين
+        this.config.instanceId = data.instance_id;
+        return {
+          success: true,
+          instance_id: data.instance_id,
+          message: 'تم إنشاء Instance بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إنشاء Instance'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إنشاء Instance:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إنشاء Instance'
+      };
+    }
+  }
+
+  /**
+   * الحصول على QR Code للاتصال بـ WhatsApp
+   */
+  async getQRCode(instanceId?: string): Promise<QRCodeResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/get_qrcode?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await this.handleExternalApiResponse(response, 'Get QR Code');
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          qr_code: data.qr_code,
+          message: 'تم الحصول على QR Code بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في الحصول على QR Code'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في الحصول على QR Code:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في الحصول على QR Code'
+      };
+    }
+  }
+
+  /**
+   * إرسال رسالة نصية
+   */
+  async sendTextMessage(phoneNumber: string, message: string, instanceId?: string): Promise<BabaserviceResponse> {
+    console.log('🚀 sendTextMessage called with:', {
+      phoneNumber,
+      phoneNumberType: typeof phoneNumber,
+      phoneNumberLength: phoneNumber?.length,
+      message: message?.substring(0, 50),
+      instanceId
+    });
+
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const requestBody: SendMessageRequest = {
+        number: phoneNumber,
+        type: 'text',
+        message: message,
+        instance_id: instance,
+        access_token: this.config.accessToken
+      };
+
+      console.log('📦 Request body to external API:', requestBody);
+
+      const response = await fetch(`${this.config.baseUrl}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+      console.log('📥 Response from external API:', data);
+
+      // الـ API يُرجع object مباشرة بدون success flag
+      if (response.ok && data.key) {
+        return {
+          success: true,
+          message: 'تم إرسال الرسالة بنجاح ✅',
+          data: {
+            messageId: data.key?.id,
+            remoteJid: data.key?.remoteJid,
+            timestamp: data.messageTimestamp,
+            messageText: data.message?.extendedTextMessage?.text || data.message?.conversation
+          }
+        };
+      } else if (response.ok) {
+        // إذا كان response.ok لكن بدون key، يعني نجح
+        return {
+          success: true,
+          message: 'تم إرسال الرسالة بنجاح ✅',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || data.error || 'فشل في إرسال الرسالة'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الرسالة:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال الرسالة'
+      };
+    }
+  }
+
+  /**
+   * إرسال رسالة مع ميديا
+   */
+  async sendMediaMessage(
+    phoneNumber: string,
+    message: string,
+    mediaUrl: string,
+    filename?: string,
+    instanceId?: string
+  ): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const requestBody: SendMessageRequest = {
+        number: phoneNumber,
+        type: 'media',
+        message: message,
+        media_url: mediaUrl,
+        filename: filename,
+        instance_id: instance,
+        access_token: this.config.accessToken
+      };
+
+      const response = await fetch(`${this.config.baseUrl}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إرسال الرسالة مع الميديا بنجاح',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إرسال الرسالة مع الميديا'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الرسالة مع الميديا:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال الرسالة مع الميديا'
+      };
+    }
+  }
+
+  /**
+   * إرسال رسالة نصية لمجموعة
+   */
+  async sendGroupTextMessage(groupId: string, message: string, instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const requestBody: SendGroupMessageRequest = {
+        group_id: groupId,
+        type: 'text',
+        message: message,
+        instance_id: instance,
+        access_token: this.config.accessToken
+      };
+
+      const response = await fetch(`${this.config.baseUrl}/send_group`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إرسال الرسالة للمجموعة بنجاح',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إرسال الرسالة للمجموعة'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الرسالة للمجموعة:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال الرسالة للمجموعة'
+      };
+    }
+  }
+
+  /**
+   * إرسال رسالة مع ميديا لمجموعة
+   */
+  async sendGroupMediaMessage(
+    groupId: string,
+    message: string,
+    mediaUrl: string,
+    filename?: string,
+    instanceId?: string
+  ): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const requestBody: SendGroupMessageRequest = {
+        group_id: groupId,
+        type: 'media',
+        message: message,
+        media_url: mediaUrl,
+        filename: filename,
+        instance_id: instance,
+        access_token: this.config.accessToken
+      };
+
+      const response = await fetch(`${this.config.baseUrl}/send_group`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إرسال الرسالة مع الميديا للمجموعة بنجاح',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إرسال الرسالة مع الميديا للمجموعة'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الرسالة مع الميديا للمجموعة:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال الرسالة مع الميديا للمجموعة'
+      };
+    }
+  }
+
+  /**
+   * الحصول على المجموعات
+   */
+  async getGroups(instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/get_groups?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم الحصول على المجموعات بنجاح',
+          data: data.groups || data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في الحصول على المجموعات'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في الحصول على المجموعات:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في الحصول على المجموعات'
+      };
+    }
+  }
+
+  /**
+   * إعداد Webhook
+   */
+  async setWebhook(webhookUrl: string, enable: boolean = true, instanceId?: string): Promise<WebhookResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const encodedWebhookUrl = encodeURIComponent(webhookUrl);
+      const url = `${this.config.baseUrl}/set_webhook?webhook_url=${encodedWebhookUrl}&enable=${enable}&instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إعداد Webhook بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إعداد Webhook'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إعداد Webhook:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إعداد Webhook'
+      };
+    }
+  }
+
+  /**
+   * إعادة تشغيل Instance
+   */
+  async rebootInstance(instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/reboot?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إعادة تشغيل Instance بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إعادة تشغيل Instance'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إعادة تشغيل Instance:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إعادة تشغيل Instance'
+      };
+    }
+  }
+
+  /**
+   * إعادة تعيين Instance
+   */
+  async resetInstance(instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/reset_instance?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إعادة تعيين Instance بنجاح',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إعادة تعيين Instance'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إعادة تعيين Instance:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إعادة تعيين Instance'
+      };
+    }
+  }
+
+  /**
+   * إعادة الاتصال
+   */
+  async reconnect(instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/reconnect?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إعادة الاتصال بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إعادة الاتصال'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إعادة الاتصال:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إعادة الاتصال'
+      };
+    }
+  }
+
+  /**
+   * إرسال إشعار حالة الطلب
+   */
+  async sendPedidoNotification(instanceId?: string): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `${this.config.baseUrl}/send_pedido?instance_id=${instance}&access_token=${this.config.accessToken}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إرسال إشعار حالة الطلب بنجاح'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إرسال إشعار حالة الطلب'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال إشعار حالة الطلب:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال إشعار حالة الطلب'
+      };
+    }
+  }
+
+  /**
+   * إرسال رسالة أزرار
+   */
+  async sendButtonMessage(
+    chatId: string,
+    template: string,
+    type: '2' | '3' = '2',
+    instanceId?: string
+  ): Promise<BabaserviceResponse> {
+    if (!this.validateConfig()) {
+      return { success: false, error: 'تكوين API غير مكتمل' };
+    }
+
+    const instance = instanceId || this.config.instanceId;
+    if (!instance) {
+      return { success: false, error: 'Instance ID مطلوب' };
+    }
+
+    try {
+      const url = `https://dashapi.wappbuzz.in/api/send_button_message?instance_id=${instance}&access_token=${this.config.accessToken}&chat_id=${chatId}&template=${template}&type=${type}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          message: 'تم إرسال رسالة الأزرار بنجاح',
+          data: data
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'فشل في إرسال رسالة الأزرار'
+        };
+      }
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال رسالة الأزرار:', error);
+      return {
+        success: false,
+        error: error.message || 'حدث خطأ في إرسال رسالة الأزرار'
+      };
+    }
+  }
+
+  /**
+   * الحصول على معلومات التكوين الحالي
+   */
+  getConfig(): BabaserviceConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * تحديث Instance ID
+   */
+  setInstanceId(instanceId: string): void {
+    this.config.instanceId = instanceId;
+  }
+}
+
+export default BabaserviceWhatsAppService;
+
