@@ -83,7 +83,6 @@ import { getPlayerOrganization, getOrganizationDetails } from '@/utils/player-or
 import PlayerResume from '@/components/player/PlayerResume';
 import { FileText } from 'lucide-react';
 import { PlayerFormData, Achievement, Injury, ContractHistory, AgentHistory } from '@/types/player';
-import { beonSMSService } from '@/lib/beon';
 // import { PlayerVideo } from '@/types/common';
 import 'dayjs/locale/ar';
 
@@ -2041,75 +2040,7 @@ function PlayerReportPage() {
     }
   }, [player, targetPlayerId]);
 
-  // إرسال إشعار SMS للاعب عند مشاهدة ملفه
-  useEffect(() => {
-    const sendProfileViewNotification = async () => {
-      // التحقق من أن اللاعب موجود وأن المستخدم الحالي ليس اللاعب نفسه
-      if (player && user && player.id !== user.uid) {
-        try {
-          // التحقق من وجود رقم الهاتف
-          const playerPhone = player.phone || player.phoneNumber;
-          if (!playerPhone) {
-            console.log('📱 لا يوجد رقم هاتف للاعب، لن يتم إرسال SMS');
-            return;
-          }
-
-          // تحديد نوع المشاهد
-          let viewerType = 'نادي';
-          if (currentUserInfo?.type === 'academy') {
-            viewerType = 'أكاديمية';
-          } else if (currentUserInfo?.type === 'trainer') {
-            viewerType = 'مدرب';
-          } else if (currentUserInfo?.type === 'agent') {
-            viewerType = 'وكيل';
-          }
-
-          // إنشاء رسالة حماسية قصيرة
-          const motivationalMessages = [
-            `🔥 ${player.full_name || 'لاعبنا المميز'}، ${viewerType} يشاهد ملفك! استعد للفرصة القادمة!`,
-            `⚡ ${player.full_name || 'لاعبنا المميز'}، ${viewerType} مهتم بك! أظهر موهبتك!`,
-            `🚀 ${player.full_name || 'لاعبنا المميز'}، ${viewerType} يراقبك! كن جاهزاً للنجاح!`,
-            `⭐ ${player.full_name || 'لاعبنا المميز'}، ${viewerType} يتابعك! استعد للانطلاق!`,
-            `💪 ${player.full_name || 'لاعبنا المميز'}، ${viewerType} يبحث عنك! أظهر قوتك!`
-          ];
-
-          // اختيار رسالة عشوائية
-          const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-          
-          // التأكد من أن الرسالة لا تتعدى 65 حرف
-          const finalMessage = randomMessage.length > 65 
-            ? `🔥 ${player.full_name || 'لاعبنا المميز'}، ${viewerType} يشاهد ملفك! استعد!`
-            : randomMessage;
-
-          console.log('📱 إرسال إشعار مشاهدة الملف للاعب:', {
-            playerName: player.full_name,
-            playerPhone,
-            viewerType,
-            viewerId: user.uid,
-            message: finalMessage,
-            messageLength: finalMessage.length
-          });
-
-          // إرسال SMS باستخدام النظام الموجود
-          const result = await beonSMSService.sendBulkSMS([playerPhone], finalMessage);
-
-          if (result.success) {
-            console.log('✅ تم إرسال إشعار SMS بنجاح:', result);
-            toast.success('تم إشعار اللاعب بمشاهدة ملفه');
-          } else {
-            console.log('❌ فشل في إرسال إشعار SMS:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ خطأ في إرسال إشعار SMS:', error);
-        }
-      }
-    };
-
-    // إرسال الإشعار بعد تحميل بيانات اللاعب والمستخدم
-    if (player && user && currentUserInfo) {
-      sendProfileViewNotification();
-    }
-  }, [player, user, currentUserInfo]);
+  // تم إزالة إشعار SMS (Beon) - نستخدم فقط WhatsApp الآن
 
   // تم دمج هذه الـ useEffect في الـ useEffect السابق لتجنب التكرار
 

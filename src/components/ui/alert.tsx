@@ -1,23 +1,12 @@
 import React from "react";
 
-export const Alert: React.FC<{ children: React.ReactNode; open: boolean; onOpenChange: (open: boolean) => void }> = ({
+export const Alert: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
-  open,
-  onOpenChange,
+  className,
 }) => {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 relative">
-        {children}
-        <button
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-          onClick={() => onOpenChange(false)}
-        >
-          ×
-        </button>
-      </div>
+    <div className={`rounded-md p-4 ${className || ""}`}>
+      {children}
     </div>
   );
 };
@@ -37,7 +26,7 @@ export const AlertTitle: React.FC<{ children: React.ReactNode; className?: strin
 export const AlertDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className,
-}) => <p className={`text-sm ${className || ""}`}>{children}</p>;
+}) => <div className={`text-sm ${className || ""}`}>{children}</div>;
 
 export const AlertDialog: React.FC<{ open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode }> = ({
   open,
@@ -78,4 +67,4 @@ export const AlertDialogTitle: React.FC<{ children: React.ReactNode; className?:
 export const AlertDialogDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className,
-}) => <p className={`text-sm ${className || ""}`}>{children}</p>;
+}) => <div className={`text-sm ${className || ""}`}>{children}</div>;

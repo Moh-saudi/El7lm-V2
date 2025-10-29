@@ -3,9 +3,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
@@ -47,6 +49,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  countryCode?: string; // كود البلد من صفحة التسجيل (مثل +966, +20)
   accountType: 'user' | 'player' | 'club' | 'academy' | 'agent' | 'trainer';
   isActive: boolean;
   createdAt: Date | null;
@@ -115,6 +118,142 @@ export default function AdminUsersPage() {
   const [showVisitDetails, setShowVisitDetails] = useState(true);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'deleted'>('active');
+  const [selectedUserDetails, setSelectedUserDetails] = useState<User | null>(null);
+  const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false);
+  const [showQuickMessageDialog, setShowQuickMessageDialog] = useState(false);
+  const [quickMessage, setQuickMessage] = useState({ title: '', body: '' });
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [instanceId, setInstanceId] = useState('68F243B3A8D8D');
+
+  // دالة للتحقق من صحة أرقام الهواتف
+  const validateUserPhone = (user: User) => {
+    if (!user.phone || !user.countryCode) {
+      return { isValid: false, error: 'رقم الهاتف أو كود البلد غير موجود' };
+    }
+
+    return validatePhoneWithCountry(user.phone, user.countryCode);
+  };
+
+  // دالة لتحديد البلد من رقم الهاتف إذا لم يكن موجوداً
+  const detectUserCountry = (user: User) => {
+    if (user.countryCode) return user.countryCode;
+
+    const detectedCountry = detectCountryFromPhone(user.phone);
+    return detectedCountry?.code || '';
+  };
+
+  // دالة لإصلاح رقم الهاتف
+  const fixUserPhone = (user: User) => {
+    const countryCode = detectUserCountry(user);
+    if (!countryCode) return user.phone;
+
+    // تطبيع الرقم
+    let local = user.phone.replace(/^0+/, '').replace(/\D/g, '');
+    return `${countryCode.replace(/\D/g, '')}${local}`;
+  };
+
+  // نماذج رسائل جاهزة
+  const messageTemplates = [
+    {
+      id: 'welcome',
+      name: '👋 رسالة ترحيبية',
+      title: 'مرحباً بك في منصة الحلم!',
+      body: 'عزيزي {name}، نرحب بك في منصة الحلم الرياضية. نتمنى لك تجربة ممتعة ومفيدة. إذا كان لديك أي استفسار، لا تتردد في التواصل معنا.',
+      icon: '👋',
+      color: 'bg-blue-50 border-blue-300 hover:bg-blue-100'
+    },
+    {
+      id: 'complete_profile',
+      name: '📝 إكمال الملف الشخصي',
+      title: 'يرجى إكمال ملفك الشخصي',
+      body: 'مرحباً {name}، لاحظنا أن ملفك الشخصي غير مكتمل ({completion}%). نرجو منك إكمال جميع البيانات المطلوبة لتتمكن من الاستفادة من جميع خدمات المنصة.',
+      icon: '📝',
+      color: 'bg-yellow-50 border-yellow-300 hover:bg-yellow-100'
+    },
+    {
+      id: 'verification',
+      name: '✅ طلب التوثيق',
+      title: 'توثيق حسابك مطلوب',
+      body: 'عزيزي {name}، لزيادة مصداقية حسابك وفتح المزيد من الفرص، نرجو منك إكمال عملية توثيق الحساب من خلال رفع المستندات المطلوبة.',
+      icon: '✅',
+      color: 'bg-green-50 border-green-300 hover:bg-green-100'
+    },
+    {
+      id: 'update',
+      name: '🔔 تحديث مهم',
+      title: 'تحديث جديد في المنصة',
+      body: 'مرحباً {name}، يسعدنا إخبارك بأننا أطلقنا تحديثاً جديداً يتضمن ميزات رائعة. ندعوك لاستكشافها والاستفادة منها.',
+      icon: '🔔',
+      color: 'bg-purple-50 border-purple-300 hover:bg-purple-100'
+    },
+    {
+      id: 'payment_reminder',
+      name: '💳 تذكير بالدفع',
+      title: 'تذكير: الاشتراك قارب على الانتهاء',
+      body: 'عزيزي {name}، نود تذكيرك بأن اشتراكك الحالي سينتهي قريباً. للاستمرار في الاستفادة من خدماتنا، يرجى تجديد الاشتراك.',
+      icon: '💳',
+      color: 'bg-orange-50 border-orange-300 hover:bg-orange-100'
+    },
+    {
+      id: 'warning',
+      name: '⚠️ تنبيه هام',
+      title: 'تنبيه: يرجى الانتباه',
+      body: 'مرحباً {name}، لاحظنا بعض المخالفات في حسابك. يرجى مراجعة سياسة الاستخدام والالتزام بها لتجنب تعليق الحساب.',
+      icon: '⚠️',
+      color: 'bg-red-50 border-red-300 hover:bg-red-100'
+    },
+    {
+      id: 'support',
+      name: '💬 دعم فني',
+      title: 'رد على استفسارك',
+      body: 'مرحباً {name}، شكراً لتواصلك معنا. بخصوص استفسارك، نود إفادتك بأن فريق الدعم الفني يعمل على حل المشكلة وسيتم الرد عليك قريباً.',
+      icon: '💬',
+      color: 'bg-indigo-50 border-indigo-300 hover:bg-indigo-100'
+    },
+    {
+      id: 'opportunity',
+      name: '⭐ فرصة جديدة',
+      title: 'فرصة رائعة لك!',
+      body: 'عزيزي {name}، لدينا فرصة رائعة قد تكون مناسبة لك. ندعوك لمراجعة التفاصيل والتواصل معنا إذا كنت مهتماً.',
+      icon: '⭐',
+      color: 'bg-pink-50 border-pink-300 hover:bg-pink-100'
+    },
+    {
+      id: 'custom',
+      name: '✏️ رسالة مخصصة',
+      title: '',
+      body: '',
+      icon: '✏️',
+      color: 'bg-gray-50 border-gray-300 hover:bg-gray-100'
+    }
+  ];
+
+  const applyTemplate = (templateId: string) => {
+    const template = messageTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    setSelectedTemplate(templateId);
+
+    if (templateId === 'custom') {
+      setQuickMessage({ title: '', body: '' });
+      return;
+    }
+
+    // استبدال المتغيرات
+    let title = template.title;
+    let body = template.body;
+
+    if (selectedUserDetails) {
+      title = title.replace('{name}', selectedUserDetails.name);
+      body = body.replace('{name}', selectedUserDetails.name);
+      body = body.replace('{completion}', selectedUserDetails.profileCompletion.toString());
+      body = body.replace('{email}', selectedUserDetails.email || 'غير محدد');
+      body = body.replace('{phone}', selectedUserDetails.phone || 'غير محدد');
+    }
+
+    setQuickMessage({ title, body });
+  };
 
   // دالة لحساب نسبة اكتمال الملف الشخصي
   const calculateProfileCompletion = (data: any, accountType: string): number => {
@@ -559,6 +698,7 @@ export default function AdminUsersPage() {
                 name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
                 email: data.email || '',
                 phone: data.phone || data.phoneNumber || '',
+                countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                   accountType: accountType,
                 isActive: data.isActive !== false,
                   createdAt: createdAtDate,
@@ -616,6 +756,7 @@ export default function AdminUsersPage() {
                     name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
                   email: data.email || '',
                     phone: data.phone || data.phoneNumber || '',
+                    countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                     accountType: accountType,
                   isActive: data.isActive !== false,
                     createdAt: fallbackDate,
@@ -646,19 +787,44 @@ export default function AdminUsersPage() {
           }
         }
 
-        const usersWithoutDate = allUsers.filter(u => !u.createdAt).length;
+        // إزالة التكرارات - نفس المستخدم موجود في مجموعات متعددة (users + players/academies/etc)
+        const uniqueUsersMap = new Map<string, User>();
+        let duplicatesCount = 0;
+
+        allUsers.forEach(user => {
+          if (!uniqueUsersMap.has(user.id)) {
+            // مستخدم جديد - إضافة
+            uniqueUsersMap.set(user.id, user);
+          } else {
+            // مستخدم مكرر - تخطي
+            duplicatesCount++;
+
+            // اختياري: دمج البيانات إذا كانت النسخة الجديدة أكمل
+            const existingUser = uniqueUsersMap.get(user.id)!;
+            if (user.profileCompletion > existingUser.profileCompletion) {
+              // النسخة الجديدة أفضل، استبدال
+              uniqueUsersMap.set(user.id, user);
+            }
+          }
+        });
+
+        const uniqueUsers = Array.from(uniqueUsersMap.values());
+        const usersWithoutDate = uniqueUsers.filter(u => !u.createdAt).length;
 
         console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
+        if (duplicatesCount > 0) {
+          console.log(`🔄 تم إزالة ${duplicatesCount} تكرار - المستخدمين الفريدين: ${uniqueUsers.length}`);
+        }
         console.log(`📈 التوزيع حسب النوع:
-          - Players: ${allUsers.filter(u => u.accountType === 'player').length}
-          - Academies: ${allUsers.filter(u => u.accountType === 'academy').length}
-          - Clubs: ${allUsers.filter(u => u.accountType === 'club').length}
-          - Agents: ${allUsers.filter(u => u.accountType === 'agent').length}
-          - Trainers: ${allUsers.filter(u => u.accountType === 'trainer').length}
-          - Users: ${allUsers.filter(u => u.accountType === 'user').length}
+          - Players: ${uniqueUsers.filter(u => u.accountType === 'player').length}
+          - Academies: ${uniqueUsers.filter(u => u.accountType === 'academy').length}
+          - Clubs: ${uniqueUsers.filter(u => u.accountType === 'club').length}
+          - Agents: ${uniqueUsers.filter(u => u.accountType === 'agent').length}
+          - Trainers: ${uniqueUsers.filter(u => u.accountType === 'trainer').length}
+          - Users: ${uniqueUsers.filter(u => u.accountType === 'user').length}
         `);
         console.log(`⏰ حالة التواريخ:
-          - مع تاريخ: ${allUsers.length - usersWithoutDate}
+          - مع تاريخ: ${uniqueUsers.length - usersWithoutDate}
           - بدون تاريخ: ${usersWithoutDate} ${usersWithoutDate > 0 ? '⚠️' : '✅'}
         `);
 
@@ -667,7 +833,7 @@ export default function AdminUsersPage() {
           console.log(`💡 يمكنك فلترتهم باختيار "بدون تاريخ" من فلتر تاريخ التسجيل`);
         }
 
-        setUsers(allUsers);
+        setUsers(uniqueUsers);
         await loadVisitStats();
 
         if (allUsers.length === 0) {
@@ -964,6 +1130,202 @@ export default function AdminUsersPage() {
     }
   };
 
+  const sendQuickMessage = async () => {
+    if (!selectedUserDetails || !quickMessage.title || !quickMessage.body) {
+      toast.error('يرجى إدخال العنوان والرسالة');
+      return;
+    }
+
+    if (!selectedUserDetails.phone) {
+      toast.error('المستخدم ليس لديه رقم هاتف مسجل');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      // إرسال عبر WhatsApp
+      const whatsappMessage = `*${quickMessage.title}*\n\n${quickMessage.body}\n\n---\nمنصة الحلم`;
+
+      // تنسيق رقم الهاتف باستخدام البيانات المشتركة
+      let formattedPhone = selectedUserDetails.phone.replace(/\D/g, ''); // إزالة كل ما ليس رقم
+
+      // محاولة اكتشاف البلد من الرقم أولاً
+      const detectedCountry = detectCountryFromPhone(selectedUserDetails.phone);
+
+      if (detectedCountry) {
+        // استخدام البلد المكتشف
+        const countryCode = detectedCountry.code.replace(/\D/g, '');
+        const localNumber = formattedPhone.replace(/^0+/, ''); // إزالة الصفر من البداية
+        formattedPhone = countryCode + localNumber;
+
+        console.log('🔍 تم اكتشاف البلد من الرقم:', {
+          detectedCountry: detectedCountry.name,
+          countryCode: detectedCountry.code,
+          originalPhone: selectedUserDetails.phone,
+          formattedPhone: formattedPhone
+        });
+      } else if (selectedUserDetails.countryCode) {
+        // استخدام كود البلد المحفوظ
+        const countryCode = selectedUserDetails.countryCode.replace(/\D/g, '');
+        const localNumber = formattedPhone.replace(/^0+/, '');
+        formattedPhone = countryCode + localNumber;
+
+        console.log('📋 استخدام كود البلد المحفوظ:', {
+          countryCode: selectedUserDetails.countryCode,
+          originalPhone: selectedUserDetails.phone,
+          formattedPhone: formattedPhone
+        });
+      } else {
+        // البحث عن البلد من اسم البلد في قاعدة البيانات
+        const userCountryName = selectedUserDetails.country;
+        const country = countries.find(c => c.name === userCountryName);
+
+        if (country) {
+          const countryCode = country.code.replace(/\D/g, '');
+          const localNumber = formattedPhone.replace(/^0+/, '');
+          formattedPhone = countryCode + localNumber;
+
+          console.log('🌍 استخدام البلد من قاعدة البيانات:', {
+            userCountry: userCountryName,
+            countryCode: country.code,
+            originalPhone: selectedUserDetails.phone,
+            formattedPhone: formattedPhone
+          });
+        } else {
+          // افتراضي: مصر
+          const localNumber = formattedPhone.replace(/^0+/, '');
+          formattedPhone = '20' + localNumber;
+
+          console.log('⚠️ استخدام البلد الافتراضي (مصر):', {
+            originalPhone: selectedUserDetails.phone,
+            formattedPhone: formattedPhone
+          });
+        }
+      }
+
+      const whatsappPhone = formattedPhone.startsWith('+') ? formattedPhone : `+${formattedPhone}`;
+
+      console.log('📧 إرسال رسالة WhatsApp:', {
+        originalPhone: selectedUserDetails.phone,
+        countryCodeFromDB: selectedUserDetails.countryCode || 'غير موجود',
+        formattedPhone: formattedPhone,
+        whatsappPhone: whatsappPhone,
+        userName: selectedUserDetails.name,
+        userCountry: selectedUserDetails.country,
+        userCity: selectedUserDetails.city,
+        accountType: selectedUserDetails.accountType,
+        messageLength: whatsappMessage.length,
+        detectedCountry: detectedCountry?.name || 'غير مكتشف',
+        instanceId: instanceId // Instance ID المستخدم
+      });
+
+      // فحص حالة Instance ID أولاً
+      console.log('🔍 فحص حالة Instance ID...');
+      try {
+        const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
+        const statusResult = await statusResponse.json();
+        console.log('📊 حالة API:', statusResult);
+
+        // فحص التكوين
+        const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
+        const configResult = await configResponse.json();
+        console.log('⚙️ تكوين API:', configResult);
+
+        // فحص حالة Instance ID المحدد
+        if (instanceId && instanceId !== 'موجود') {
+          console.log('🔍 فحص حالة Instance ID المحدد:', instanceId);
+          try {
+            const qrResponse = await fetch('/api/whatsapp/babaservice', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'get_qr_code',
+                instance_id: instanceId
+              })
+            });
+            const qrResult = await qrResponse.json();
+            console.log('📱 حالة QR Code:', qrResult);
+          } catch (qrError) {
+            console.error('❌ خطأ في فحص QR Code:', qrError);
+          }
+        }
+      } catch (error) {
+        console.error('❌ خطأ في فحص حالة API:', error);
+      }
+
+      const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumbers: [whatsappPhone],
+          message: whatsappMessage,
+          type: 'admin_notification',
+          instance_id: instanceId !== 'موجود' ? instanceId : undefined
+        })
+      });
+
+      const whatsappResult = await whatsappResponse.json();
+
+      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
+
+      // عرض تفاصيل الخطأ إذا فشل الإرسال
+      if (!whatsappResult.success && whatsappResult.data?.errors) {
+        console.error('❌ تفاصيل الأخطاء:', whatsappResult.data.errors);
+        whatsappResult.data.errors.forEach((error: any) => {
+          console.error(`❌ خطأ في ${error.phoneNumber}:`, error.error);
+        });
+      }
+
+      // عرض تفاصيل النجاح للتشخيص
+      if (whatsappResult.success && whatsappResult.data?.results) {
+        console.log('✅ تفاصيل النجاح:', whatsappResult.data.results);
+        whatsappResult.data.results.forEach((result: any) => {
+          console.log(`✅ ${result.phoneNumber}:`, {
+            success: result.success,
+            message: result.message,
+            error: result.error,
+            data: result.data
+          });
+        });
+      }
+
+      if (whatsappResult.success) {
+        toast.success(`✅ تم إرسال الرسالة عبر WhatsApp إلى ${selectedUserDetails.name}`);
+        toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
+
+        // عرض تفاصيل إضافية للمساعدة في التشخيص
+        if (whatsappResult.data?.results?.[0]?.data) {
+          console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
+        }
+
+        setShowQuickMessageDialog(false);
+        setQuickMessage({ title: '', body: '' });
+        setSelectedTemplate('');
+      } else {
+        toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
+
+        // عرض تفاصيل الخطأ للمساعدة في التشخيص
+        if (whatsappResult.data?.errors?.[0]?.error) {
+          console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
+          toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
+
+          // إذا كان الخطأ متعلق بـ Instance ID، اقترح إعادة الربط
+          if (whatsappResult.data.errors[0].error.includes('instance') ||
+              whatsappResult.data.errors[0].error.includes('Instance') ||
+              whatsappResult.data.errors[0].error.includes('connection')) {
+            toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('خطأ في إرسال الرسالة:', error);
+      toast.error('حدث خطأ في إرسال الرسالة');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const exportToExcel = () => {
     const headers = ['الاسم', 'البريد الإلكتروني', 'الهاتف', 'نوع الحساب', 'الحالة', 'حالة التحقق', 'اكتمال الملف', 'الدولة', 'المدينة', 'تاريخ التسجيل', 'آخر دخول'];
     const csvContent = [
@@ -1103,6 +1465,67 @@ export default function AdminUsersPage() {
               </CardContent>
             </Card>
 
+            {/* إحصائيات أرقام الهواتف */}
+            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">أرقام صحيحة</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {users.filter(user => {
+                        if (!user.phone || !user.countryCode) return false;
+                        return validateUserPhone(user).isValid;
+                      }).length}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      <span className="text-green-600 font-semibold">مطابقة للبلد</span>
+                    </div>
+                  </div>
+                  <CheckCircle2 className="h-12 w-12 text-green-600 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">أرقام غير صحيحة</p>
+                    <p className="text-3xl font-bold text-red-600">
+                      {users.filter(user => {
+                        if (!user.phone || !user.countryCode) return true;
+                        return !validateUserPhone(user).isValid;
+                      }).length}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <AlertCircle className="h-3 w-3 text-red-500" />
+                      <span className="text-red-600 font-semibold">تحتاج إصلاح</span>
+                    </div>
+                  </div>
+                  <AlertCircle className="h-12 w-12 text-red-600 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">بدون كود بلد</p>
+                    <p className="text-3xl font-bold text-orange-600">
+                      {users.filter(user => user.phone && !user.countryCode).length}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs">
+                      <Globe className="h-3 w-3 text-orange-500" />
+                      <span className="text-orange-600 font-semibold">يمكن اكتشافها</span>
+                    </div>
+                  </div>
+                  <Globe className="h-12 w-12 text-orange-600 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -1192,204 +1615,130 @@ export default function AdminUsersPage() {
             </Card>
           </div>
 
-          {/* Visit Statistics Details - Weekly Chart */}
-          <Card className="mb-6 border-2 border-blue-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer" onClick={() => setShowVisitDetails(!showVisitDetails)}>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <BarChart3 className="h-6 w-6 text-blue-600" />
-                  <span>إحصائيات الزيارات التفصيلية - آخر 7 أيام</span>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                    {visitStats.total.toLocaleString()} زيارة
+          {/* Visit Statistics Details - Compact */}
+          <Card className="mb-6 border border-gray-200 shadow-sm">
+            <CardHeader className="bg-gray-50 cursor-pointer py-3" onClick={() => setShowVisitDetails(!showVisitDetails)}>
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  <span>إحصائيات الزيارات</span>
+                  <Badge variant="outline" className="text-xs">
+                    {visitStats.total.toLocaleString()}
                   </Badge>
                 </div>
-                {showVisitDetails ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                {showVisitDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </CardTitle>
             </CardHeader>
             {showVisitDetails && (
-              <CardContent className="p-6">
-                {/* Weekly Bar Chart */}
-                <div className="bg-white p-6 rounded-xl border-2 border-gray-100 mb-6">
-                  <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
-                    <BarChart3 className="h-6 w-6 text-blue-600" />
-                    الزيارات اليومية - آخر أسبوع
-                  </h3>
-                  <div className="space-y-4">
+              <CardContent className="p-4">
+                {/* Weekly Chart - Compact */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-700">
+                    <Calendar className="h-4 w-4" />
+                    آخر 7 أيام
+                  </h4>
+                  <div className="grid grid-cols-7 gap-2">
                     {visitStats.last7Days.map((day, index) => {
                       const percentage = maxVisitsInWeek > 0 ? (day.count / maxVisitsInWeek) * 100 : 0;
                       const isToday = day.date === new Date().toLocaleDateString('en-GB');
 
                       return (
-                        <div key={index} className={`p-4 rounded-lg ${isToday ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50'}`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <Calendar className={`h-5 w-5 ${isToday ? 'text-blue-600' : 'text-gray-400'}`} />
-                <div>
-                                <p className={`font-bold ${isToday ? 'text-blue-900' : 'text-gray-900'}`}>
-                                  {day.dayName}
-                                  {isToday && <span className="mr-2 text-xs bg-blue-600 text-white px-2 py-1 rounded">اليوم</span>}
-                                </p>
-                                <p className="text-xs text-gray-500">{day.date}</p>
-                              </div>
-                            </div>
-                            <div className="text-left">
-                              <p className={`text-2xl font-bold ${isToday ? 'text-blue-600' : 'text-gray-800'}`}>
-                                {day.count.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-gray-500">زيارة</p>
-                            </div>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div key={index} className="text-center">
+                          <div className="h-20 bg-gray-100 rounded relative mb-1 overflow-hidden">
                             <div
-                              className={`h-3 rounded-full transition-all duration-500 ${
-                                isToday
-                                  ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600'
-                                  : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                              className={`absolute bottom-0 left-0 right-0 transition-all ${
+                                isToday ? 'bg-blue-500' : 'bg-gray-400'
                               }`}
-                              style={{ width: `${percentage}%` }}
+                              style={{ height: `${percentage}%` }}
                             ></div>
                           </div>
+                          <p className={`text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
+                            {day.count}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{day.dayName.substring(0, 3)}</p>
                         </div>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Visits by Page */}
+                {/* Top Pages - Compact */}
                 {Object.keys(visitStats.byPage).length > 0 && (
-                  <div className="bg-white p-6 rounded-xl border-2 border-gray-100 mb-6">
-                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
-                      <Globe className="h-6 w-6 text-green-600" />
-                      الزيارات حسب الصفحة
-                    </h3>
-                    <div className="space-y-3">
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
+                      <Globe className="h-4 w-4" />
+                      أكثر الصفحات زيارة
+                    </h4>
+                    <div className="space-y-1.5">
                       {Object.entries(visitStats.byPage)
                         .sort(([, a], [, b]) => b - a)
-                        .slice(0, 5)
-                        .map(([page, count]) => {
-                          const percentage = (count / visitStats.total * 100).toFixed(1);
-                          return (
-                            <div key={page} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Globe className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-medium text-gray-700">{getPageLabel(page)}</span>
-                                  <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
+                        .slice(0, 3)
+                        .map(([page, count]) => (
+                            <div key={page} className="flex items-center justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                              <span className="text-gray-700 truncate flex-1">{getPageLabel(page)}</span>
+                              <span className="font-semibold text-blue-600 ml-2">{count}</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
-                              </div>
-                            </div>
-                          );
-                        })}
+                          ))}
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* By Country */}
-                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <MapPin className="h-5 w-5 text-blue-600" />
-                      الزيارات حسب الدولة
-                    </h3>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                {/* Geography - Compact Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
+                      <Globe className="h-4 w-4" />
+                      الدول ({Object.keys(visitStats.byCountry).length})
+                    </h4>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
                       {Object.entries(visitStats.byCountry)
                         .sort(([, a], [, b]) => b - a)
-                        .slice(0, 10)
-                        .map(([country, count]) => {
-                          const percentage = (count / visitStats.total * 100).toFixed(1);
-                          return (
-                            <div key={country} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Globe className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-medium text-gray-700">{country || 'غير محدد'}</span>
-                                  <span className="text-sm font-bold text-blue-600">{count.toLocaleString()} زيارة</span>
+                        .slice(0, 5)
+                        .map(([country, count]) => (
+                            <div key={country} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                              <span className="text-gray-700 truncate">{country}</span>
+                              <span className="font-semibold text-blue-600">{count}</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
-                              </div>
-                            </div>
-                          );
-                        })}
+                          ))}
                     </div>
                   </div>
 
-                  {/* By City */}
-                  <div className="bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <MapPin className="h-5 w-5 text-green-600" />
-                      الزيارات حسب المدينة
-                    </h3>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
+                      <MapPin className="h-4 w-4" />
+                      المدن ({Object.keys(visitStats.byCity).length})
+                    </h4>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
                       {Object.entries(visitStats.byCity)
                         .sort(([, a], [, b]) => b - a)
-                        .slice(0, 10)
-                        .map(([city, count]) => {
-                          const percentage = (count / visitStats.total * 100).toFixed(1);
-                          return (
-                            <div key={city} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <MapPin className="h-4 w-4 text-gray-400" />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-medium text-gray-700">{city || 'غير محدد'}</span>
-                                  <span className="text-sm font-bold text-green-600">{count.toLocaleString()} زيارة</span>
+                        .slice(0, 5)
+                        .map(([city, count]) => (
+                            <div key={city} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                              <span className="text-gray-700 truncate">{city}</span>
+                              <span className="font-semibold text-green-600">{count}</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 mt-1">{percentage}%</span>
-                              </div>
-                            </div>
-                          );
-                        })}
+                          ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Recent Visits */}
+                {/* Recent Visits - Compact */}
                 {visitStats.recentVisits.length > 0 && (
-                  <div className="mt-6 bg-white p-5 rounded-lg border-2 border-gray-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                      آخر الزيارات (آخر 7 أيام)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {visitStats.recentVisits.slice(0, 8).map((visit, index) => (
-                        <div key={index} className="p-3 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:shadow-md transition-all">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-blue-500 mt-1" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate text-sm">{visit.country}</p>
-                              <p className="text-xs text-gray-600 truncate">{visit.city}</p>
-                              {visit.page && (
-                                <p className="text-xs text-blue-600 truncate mt-1">{getPageLabel(visit.page)}</p>
-                              )}
-                              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {visit.timestamp.toLocaleString('en-GB', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
+                  <div className="mt-4 pt-3 border-t">
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
+                      <Clock className="h-4 w-4" />
+                      آخر الزيارات
+                    </h4>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {visitStats.recentVisits.slice(0, 5).map((visit, index) => (
+                        <div key={index} className="flex items-center justify-between text-xs py-1.5 px-2 bg-gray-50 rounded hover:bg-gray-100">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <MapPin className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                            <span className="text-gray-700 truncate">{visit.country} - {visit.city}</span>
                             </div>
-                          </div>
+                          <span className="text-gray-500 text-xs ml-2 flex-shrink-0">
+                            {visit.timestamp.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1883,7 +2232,43 @@ export default function AdminUsersPage() {
                           <td className="p-4">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Phone className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm">{user.phone || 'غير محدد'}</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm">{user.phone || 'غير محدد'}</span>
+                                {user.phone && user.countryCode && (() => {
+                                  const validation = validateUserPhone(user);
+                                  if (!validation.isValid) {
+                                    return (
+                                      <div className="flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3 text-red-500" />
+                                        <span className="text-xs text-red-600">{validation.error}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className="flex items-center gap-1">
+                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                      <span className="text-xs text-green-600">صحيح</span>
+                                    </div>
+                                  );
+                                })()}
+                                {user.phone && !user.countryCode && (() => {
+                                  const detectedCountry = detectCountryFromPhone(user.phone);
+                                  if (detectedCountry) {
+                                    return (
+                                      <div className="flex items-center gap-1">
+                                        <Globe className="h-3 w-3 text-blue-500" />
+                                        <span className="text-xs text-blue-600">مكتشف: {detectedCountry.name}</span>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className="flex items-center gap-1">
+                                      <AlertCircle className="h-3 w-3 text-orange-500" />
+                                      <span className="text-xs text-orange-600">كود البلد غير محدد</span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </td>
                           <td className="p-4">
@@ -1976,6 +2361,10 @@ export default function AdminUsersPage() {
                               variant="outline"
                               className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
                                 title="عرض التفاصيل"
+                              onClick={() => {
+                                setSelectedUserDetails(user);
+                                setShowUserDetailsDialog(true);
+                              }}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -2095,6 +2484,374 @@ export default function AdminUsersPage() {
           </Card>
 
         </div>
+
+        {/* User Details Dialog */}
+        <Dialog open={showUserDetailsDialog} onOpenChange={setShowUserDetailsDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-2xl">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
+                  {selectedUserDetails?.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p>{selectedUserDetails?.name}</p>
+                  <Badge className={`${getAccountTypeColor(selectedUserDetails?.accountType || 'user')} mt-1`}>
+                    {getAccountTypeLabel(selectedUserDetails?.accountType || 'user')}
+                  </Badge>
+                </div>
+              </DialogTitle>
+              <DialogDescription>
+                معرف المستخدم: {selectedUserDetails?.id}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedUserDetails && (
+              <div className="space-y-6 mt-4">
+                {/* معلومات أساسية */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-blue-900">
+                    <UserCog className="h-5 w-5" />
+                    المعلومات الأساسية
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        <Mail className="h-4 w-4" />
+                        البريد الإلكتروني
+                      </label>
+                      <p className="font-medium text-gray-900">{selectedUserDetails.email || 'غير محدد'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        <Phone className="h-4 w-4" />
+                        رقم الهاتف
+                      </label>
+                      <p className="font-medium text-gray-900">{selectedUserDetails.phone || 'غير محدد'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        <Globe className="h-4 w-4" />
+                        الدولة
+                      </label>
+                      <p className="font-medium text-gray-900">{selectedUserDetails.country || 'غير محدد'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        المدينة
+                      </label>
+                      <p className="font-medium text-gray-900">{selectedUserDetails.city || 'غير محدد'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* حالة الحساب */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-green-900">
+                    <Shield className="h-5 w-5" />
+                    حالة الحساب
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">حالة التفعيل</label>
+                      <div className="mt-1">
+                        <Badge className={selectedUserDetails.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {selectedUserDetails.isActive ? '✓ نشط' : '✗ معطل'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">حالة التوثيق</label>
+                      <div className="mt-1">
+                        <Badge className={getVerificationColor(selectedUserDetails.verificationStatus)}>
+                          {getVerificationLabel(selectedUserDetails.verificationStatus)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">حالة الحذف</label>
+                      <div className="mt-1">
+                        <Badge className={selectedUserDetails.isDeleted ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>
+                          {selectedUserDetails.isDeleted ? '✗ محذوف' : '✓ موجود'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">اكتمال الملف الشخصي</label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full ${
+                              selectedUserDetails.profileCompletion >= 80
+                                ? 'bg-green-500'
+                                : selectedUserDetails.profileCompletion >= 50
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${selectedUserDetails.profileCompletion}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-bold text-gray-900">{selectedUserDetails.profileCompletion}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* معلومات التسجيل */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-purple-900">
+                    <Calendar className="h-5 w-5" />
+                    معلومات التسجيل
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">تاريخ التسجيل</label>
+                      {selectedUserDetails.createdAt ? (
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {selectedUserDetails.createdAt.toLocaleDateString('ar-SA', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {selectedUserDetails.createdAt.toLocaleTimeString('ar-SA')}
+                          </p>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-600">غير محدد</Badge>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">آخر تسجيل دخول</label>
+                      {selectedUserDetails.lastLogin ? (
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {selectedUserDetails.lastLogin.toLocaleDateString('ar-SA', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {selectedUserDetails.lastLogin.toLocaleTimeString('ar-SA')}
+                          </p>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-gray-600">لم يسجل دخول بعد</Badge>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">طريقة التسجيل</label>
+                      <div className="mt-1">
+                        <Badge className={selectedUserDetails.registrationType === 'direct' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
+                          {selectedUserDetails.registrationType === 'direct' ? '📝 تسجيل مباشر' : '🏢 عبر منظمة'}
+                        </Badge>
+                      </div>
+                    </div>
+                    {selectedUserDetails.parentOrganizationName && (
+                      <div>
+                        <label className="text-sm text-gray-600">المنظمة التابع لها</label>
+                        <p className="font-medium text-gray-900">{selectedUserDetails.parentOrganizationName}</p>
+                        <p className="text-sm text-gray-600">({getAccountTypeLabel(selectedUserDetails.parentAccountType)})</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* الإحصائيات */}
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-2 border-orange-200">
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-orange-900">
+                    <BarChart3 className="h-5 w-5" />
+                    الإحصائيات
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{selectedUserDetails.profileCompletion}%</p>
+                      <p className="text-sm text-gray-600">نسبة الاكتمال</p>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">
+                        {selectedUserDetails.createdAt ?
+                          Math.floor((new Date().getTime() - selectedUserDetails.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+                          : '—'}
+                      </p>
+                      <p className="text-sm text-gray-600">أيام منذ التسجيل</p>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg">
+                      <p className="text-2xl font-bold text-purple-600">
+                        {selectedUserDetails.lastLogin ?
+                          Math.floor((new Date().getTime() - selectedUserDetails.lastLogin.getTime()) / (1000 * 60 * 60 * 24))
+                          : '—'}
+                      </p>
+                      <p className="text-sm text-gray-600">أيام منذ آخر دخول</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* أزرار الإجراءات */}
+                <div className="flex gap-3 justify-between pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowUserDetailsDialog(false)}
+                  >
+                    إغلاق
+                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                      onClick={() => {
+                        setShowQuickMessageDialog(true);
+                      }}
+                    >
+                      <Mail className="h-4 w-4 ml-2" />
+                      إرسال رسالة سريعة
+                    </Button>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        // TODO: إضافة وظيفة التعديل
+                        toast.info('وظيفة التعديل قيد التطوير');
+                      }}
+                    >
+                      <Edit className="h-4 w-4 ml-2" />
+                      تعديل المستخدم
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Quick Message Dialog - Ultra Simple */}
+        <Dialog open={showQuickMessageDialog} onOpenChange={(open) => {
+          setShowQuickMessageDialog(open);
+          if (!open) {
+            setQuickMessage({ title: '', body: '' });
+            setSelectedTemplate('');
+          }
+        }}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                إرسال رسالة إلى {selectedUserDetails?.name}
+              </DialogTitle>
+              <DialogDescription>
+                سيتم إرسال الرسالة عبر WhatsApp والإشعارات
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Templates */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">اختر نموذجاً سريعاً</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {messageTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => applyTemplate(template.id)}
+                      className={`p-3 rounded-lg border-2 hover:scale-105 transition-transform ${
+                        selectedTemplate === template.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                      title={template.name}
+                    >
+                      <div className="text-2xl">{template.icon}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">العنوان</label>
+                <Input
+                  placeholder="عنوان الرسالة"
+                  value={quickMessage.title}
+                  onChange={(e) => setQuickMessage({ ...quickMessage, title: e.target.value })}
+                  className="w-full"
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">{quickMessage.title.length}/100</p>
+              </div>
+
+              {/* Body */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">الرسالة</label>
+                <textarea
+                  placeholder="اكتب رسالتك هنا..."
+                  value={quickMessage.body}
+                  onChange={(e) => setQuickMessage({ ...quickMessage, body: e.target.value })}
+                  className="w-full min-h-[150px] p-3 border-2 border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-500 mt-1">{quickMessage.body.length}/500</p>
+              </div>
+
+              {/* Preview */}
+              {(quickMessage.title || quickMessage.body) && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm font-semibold mb-2">المعاينة:</p>
+                  <div className="bg-white p-3 rounded shadow-sm">
+                    {quickMessage.title && (
+                      <p className="font-bold mb-1">{quickMessage.title}</p>
+                    )}
+                    {quickMessage.body && (
+                      <p className="text-sm text-gray-700">{quickMessage.body}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowQuickMessageDialog(false);
+                  setQuickMessage({ title: '', body: '' });
+                  setSelectedTemplate('');
+                }}
+                disabled={sendingMessage}
+              >
+                إلغاء
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setQuickMessage({ title: '', body: '' });
+                  setSelectedTemplate('');
+                }}
+                disabled={sendingMessage}
+              >
+                مسح
+              </Button>
+              <Button
+                onClick={sendQuickMessage}
+                disabled={sendingMessage || !quickMessage.title || !quickMessage.body}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {sendingMessage ? (
+                  <>
+                    <RefreshCcw className="h-4 w-4 ml-2 animate-spin" />
+                    إرسال...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 ml-2" />
+                    إرسال WhatsApp
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </AccountTypeProtection>
   );

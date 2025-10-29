@@ -1,5 +1,6 @@
 'use client';
 
+import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -25,44 +26,13 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 // Define user role types
 type UserRole = 'player' | 'club' | 'academy' | 'agent' | 'trainer' | 'admin';
 
-// قائمة الدول مع أكوادها والعملات وأطوال أرقام الهاتف
-const countries = [
-  { name: 'السعودية', code: '+966', currency: 'SAR', currencySymbol: 'ر.س', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'الإمارات', code: '+971', currency: 'AED', currencySymbol: 'د.إ', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'الكويت', code: '+965', currency: 'KWD', currencySymbol: 'د.ك', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'قطر', code: '+974', currency: 'QAR', currencySymbol: 'ر.ق', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'البحرين', code: '+973', currency: 'BHD', currencySymbol: 'د.ب', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'عمان', code: '+968', currency: 'OMR', currencySymbol: 'ر.ع', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'مصر', code: '+20', currency: 'EGP', currencySymbol: 'ج.م', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'الأردن', code: '+962', currency: 'JOD', currencySymbol: 'د.أ', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'لبنان', code: '+961', currency: 'LBP', currencySymbol: 'ل.ل', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'العراق', code: '+964', currency: 'IQD', currencySymbol: 'د.ع', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'سوريا', code: '+963', currency: 'SYP', currencySymbol: 'ل.س', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'المغرب', code: '+212', currency: 'MAD', currencySymbol: 'د.م', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'الجزائر', code: '+213', currency: 'DZD', currencySymbol: 'د.ج', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'تونس', code: '+216', currency: 'TND', currencySymbol: 'د.ت', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'ليبيا', code: '+218', currency: 'LYD', currencySymbol: 'د.ل', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  // مضافة حديثاً
-  { name: 'السودان', code: '+249', currency: 'SDG', currencySymbol: 'ج.س', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'السنغال', code: '+221', currency: 'XOF', currencySymbol: 'Fr', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'ساحل العاج', code: '+225', currency: 'XOF', currencySymbol: 'Fr', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'جيبوتي', code: '+253', currency: 'DJF', currencySymbol: 'Fr', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'إسبانيا', code: '+34', currency: 'EUR', currencySymbol: '€', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'فرنسا', code: '+33', currency: 'EUR', currencySymbol: '€', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'إنجلترا', code: '+44', currency: 'GBP', currencySymbol: '£', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'البرتغال', code: '+351', currency: 'EUR', currencySymbol: '€', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'إيطاليا', code: '+39', currency: 'EUR', currencySymbol: '€', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'اليونان', code: '+30', currency: 'EUR', currencySymbol: '€', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'قبرص', code: '+357', currency: 'EUR', currencySymbol: '€', phoneLength: 8, phonePattern: '[0-9]{8}' },
-  { name: 'تركيا', code: '+90', currency: 'TRY', currencySymbol: '₺', phoneLength: 10, phonePattern: '[0-9]{10}' },
-  { name: 'تايلاند', code: '+66', currency: 'THB', currencySymbol: '฿', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'اليمن', code: '+967', currency: 'YER', currencySymbol: 'ر.ي', phoneLength: 9, phonePattern: '[0-9]{9}' },
-];
+// استخدام البيانات المشتركة من ملف الدول
+import { countries, normalizePhone } from '@/lib/constants/countries';
 
 // دالة للحصول على مسار لوحة التحكم حسب نوع الحساب
 const getDashboardRoute = (accountType: string) => {
@@ -83,14 +53,7 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email.trim());
 };
 
-function normalizePhone(countryCode: string, phone: string) {
-  // إزالة أي صفر في بداية الرقم المحلي
-  let local = phone.replace(/^0+/, '');
-  // إزالة أي رموز أو فراغات
-  local = local.replace(/\D/g, '');
-  // دمج كود الدولة مع الرقم المحلي (بدون +)
-  return `${countryCode.replace(/\D/g, '')}${local}`;
-}
+// استخدام دالة normalizePhone من الملف المشترك
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -110,18 +73,37 @@ export default function RegisterPage() {
     'أمان وحماية لبياناتك دائمًا'
   ];
   const [tipIndex, setTipIndex] = useState(0);
+  const [isPending, startTransition] = useTransition();
 
   // التأكد من أننا على العميل
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // تدوير العبارات تلقائياً
+  // تدوير العبارات تلقائياً مع إيقافه عند عدم ظهور الصفحة وتقليل التكرار
   useEffect(() => {
-    const id = setInterval(() => {
-      setTipIndex((i) => (i + 1) % rotatingTips.length);
-    }, 3500);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id) return;
+      id = setInterval(() => {
+        setTipIndex((i) => (i + 1) % rotatingTips.length);
+      }, 5000);
+    };
+    const stop = () => {
+      if (id) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) stop(); else start();
+    };
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      stop();
+    };
   }, []);
 
   const [formData, setFormData] = useState({
@@ -152,6 +134,7 @@ export default function RegisterPage() {
   const [enteredOTP, setEnteredOTP] = useState<string>('');
   const phoneCheckRef = useRef(false);
   const phoneCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const phoneValidationAbortRef = useRef<AbortController | null>(null);
   const [orgCodeChecking, setOrgCodeChecking] = useState(false);
   const [orgCodeError, setOrgCodeError] = useState('');
   const orgCodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -171,10 +154,17 @@ export default function RegisterPage() {
     phoneCheckTimeoutRef.current = setTimeout(async () => {
       setPhoneCheckLoading(true);
       try {
+        // ألغِ أي طلب سابق قيد التنفيذ
+        if (phoneValidationAbortRef.current) {
+          phoneValidationAbortRef.current.abort();
+        }
+        const controller = new AbortController();
+        phoneValidationAbortRef.current = controller;
         const checkRes = await fetch('/api/auth/check-user-exists', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: `${formData.countryCode}${phoneNumber}` }),
+          signal: controller.signal,
         });
         const checkData = await checkRes.json();
         if (checkData.phoneExists) {
@@ -183,7 +173,9 @@ export default function RegisterPage() {
           setPhoneExistsError('');
         }
       } catch (e) {
-        setPhoneExistsError('تعذر التحقق من رقم الهاتف. حاول لاحقًا.');
+        if ((e as any)?.name !== 'AbortError') {
+          setPhoneExistsError('تعذر التحقق من رقم الهاتف. حاول لاحقًا.');
+        }
       } finally {
         setPhoneCheckLoading(false);
       }
@@ -223,67 +215,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // التحقق من كود الانضمام (اختياري ولكن يتم التحقق عند الإدخال)
+    // كود الانضمام: اجعل التحقق عند الخروج من الحقل (onBlur) لتقليل الحمل أثناء الكتابة
     if (name === 'organizationCode') {
       const cleaned = value.trim();
-      setFormData(prev => ({ ...prev, organizationCode: cleaned }));
-      // إلغاء أي تحقق سابق
       if (orgCodeTimeoutRef.current) clearTimeout(orgCodeTimeoutRef.current);
-      // إذا كان الحقل فارغًا، نظّف الأخطاء
-      if (!cleaned) {
-        setOrgCodeError('');
-        setOrgCodeChecking(false);
-        setOrgPreview(null);
-        return;
-      }
-      orgCodeTimeoutRef.current = setTimeout(async () => {
-        try {
-          setOrgCodeChecking(true);
-          setOrgCodeError('');
-          const { organizationReferralService } = await import('@/lib/organization/organization-referral-service');
-          const { db } = await import('@/lib/firebase/config');
-          const { doc, getDoc } = await import('firebase/firestore');
-          const referral = await organizationReferralService.findReferralByCode(cleaned.toUpperCase());
-          if (!referral) {
-            setOrgCodeError('كود الانضمام غير صحيح');
-            setOrgPreview(null);
-          } else if (referral && referral.isActive === false) {
-            setOrgCodeError('كود الانضمام غير مفعل');
-            setOrgPreview(null);
-          } else if (typeof (referral as any).maxUsage === 'number' && (referral as any).maxUsage >= 0 && (referral as any).currentUsage >= (referral as any).maxUsage) {
-            setOrgCodeError('تم الوصول إلى الحد الأقصى لاستخدام هذا الكود');
-            setOrgPreview(null);
-          } else {
-            setOrgCodeError('');
-            // محاولة جلب صورة وشعار المنظمة من مجموعتها
-            let collectionName = '';
-            switch ((referral as any).organizationType) {
-              case 'club': collectionName = 'clubs'; break;
-              case 'academy': collectionName = 'academies'; break;
-              case 'agent': collectionName = 'agents'; break;
-              case 'trainer': collectionName = 'trainers'; break;
-              default: collectionName = '';
-            }
-            let logoUrl: string | undefined = undefined;
-            let orgName: string | undefined = (referral as any).organizationName;
-            if (collectionName) {
-              try {
-                const snap = await getDoc(doc(db, collectionName, (referral as any).organizationId));
-                const data: any = snap.exists() ? snap.data() : null;
-                logoUrl = data?.logo || data?.logoUrl || data?.image || data?.profileImage || data?.photoURL || undefined;
-                orgName = data?.name || data?.full_name || data?.displayName || orgName;
-              } catch {}
-            }
-            const type = (referral as any).organizationType;
-            setOrgPreview({ name: orgName || 'المنظمة', type, logoUrl });
-          }
-        } catch (err) {
-          setOrgCodeError('تعذر التحقق من كود الانضمام، حاول لاحقًا');
-          setOrgPreview(null);
-        } finally {
-          setOrgCodeChecking(false);
-        }
-      }, 500);
+      setFormData(prev => ({ ...prev, organizationCode: cleaned }));
+      // لا تحقق هنا، سيتم على onBlur
       return;
     }
 
@@ -291,6 +228,65 @@ export default function RegisterPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  // تحقق كود الانضمام عند الخروج من الحقل
+  const validateOrganizationCode = async (code: string) => {
+    const cleaned = code.trim();
+    if (orgCodeTimeoutRef.current) clearTimeout(orgCodeTimeoutRef.current);
+    if (!cleaned) {
+      setOrgCodeError('');
+      setOrgCodeChecking(false);
+      setOrgPreview(null);
+      return;
+    }
+    orgCodeTimeoutRef.current = setTimeout(async () => {
+      try {
+        setOrgCodeChecking(true);
+        setOrgCodeError('');
+        const { organizationReferralService } = await import('@/lib/organization/organization-referral-service');
+        const { db } = await import('@/lib/firebase/config');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const referral = await organizationReferralService.findReferralByCode(cleaned.toUpperCase());
+        if (!referral) {
+          setOrgCodeError('كود الانضمام غير صحيح');
+          setOrgPreview(null);
+        } else if (referral && (referral as any).isActive === false) {
+          setOrgCodeError('كود الانضمام غير مفعل');
+          setOrgPreview(null);
+        } else if (typeof (referral as any).maxUsage === 'number' && (referral as any).maxUsage >= 0 && (referral as any).currentUsage >= (referral as any).maxUsage) {
+          setOrgCodeError('تم الوصول إلى الحد الأقصى لاستخدام هذا الكود');
+          setOrgPreview(null);
+        } else {
+          setOrgCodeError('');
+          let collectionName = '';
+          switch ((referral as any).organizationType) {
+            case 'club': collectionName = 'clubs'; break;
+            case 'academy': collectionName = 'academies'; break;
+            case 'agent': collectionName = 'agents'; break;
+            case 'trainer': collectionName = 'trainers'; break;
+            default: collectionName = '';
+          }
+          let logoUrl: string | undefined = undefined;
+          let orgName: string | undefined = (referral as any).organizationName;
+          if (collectionName) {
+            try {
+              const snap = await getDoc(doc(db, collectionName, (referral as any).organizationId));
+              const data: any = snap.exists() ? snap.data() : null;
+              logoUrl = data?.logo || data?.logoUrl || data?.image || data?.profileImage || data?.photoURL || undefined;
+              orgName = data?.name || data?.full_name || data?.displayName || orgName;
+            } catch {}
+          }
+          const type = (referral as any).organizationType;
+          setOrgPreview({ name: orgName || 'المنظمة', type, logoUrl });
+        }
+      } catch (err) {
+        setOrgCodeError('تعذر التحقق من كود الانضمام، حاول لاحقًا');
+        setOrgPreview(null);
+      } finally {
+        setOrgCodeChecking(false);
+      }
+    }, 400);
   };
 
   // دالة لتحديث الدولة المختارة
@@ -387,67 +383,51 @@ export default function RegisterPage() {
     setError('');
     if (!validateForm()) return;
 
-    console.log('🚀 Starting registration process (OTP disabled)...');
+    console.log('🚀 Starting registration process with OTP verification...');
     setLoading(true);
 
     try {
-      // تخطي إرسال OTP وإنشاء الحساب مباشرة
       const formattedPhone = normalizePhone(formData.countryCode, formData.phone);
 
-      console.log('⏭️ OTP verification disabled, creating account directly...');
+      // إرسال OTP عبر WhatsApp
+      console.log('📱 Sending OTP via WhatsApp...');
+      const otpResponse = await fetch('/api/sms/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          name: formData.name,
+          method: 'whatsapp'
+        }),
+      });
 
-      // توليد بريد إلكتروني مؤقت قصير لـ Firebase
-      const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
-      const firebaseEmail = generateTypedFirebaseEmail(
-        formData.phone,
-        formData.countryCode,
-        formData.accountType
-      );
+      const otpData = await otpResponse.json();
+      if (!otpResponse.ok || !otpData.success) {
+        throw new Error(otpData.error || 'فشل في إرسال رمز التحقق');
+      }
 
-      const registrationData = {
-        full_name: formData.name,
+      console.log('✅ OTP sent successfully');
+
+      // حفظ بيانات التسجيل المعلقة
+      const pendingData = {
+        name: formData.name,
         phone: formattedPhone,
         country: formData.country,
         countryCode: formData.countryCode,
         currency: formData.currency,
-        currencySymbol: formData.currencySymbol
+        currencySymbol: formData.currencySymbol,
+        password: formData.password,
+        accountType: formData.accountType,
+        organizationCode: formData.organizationCode,
+        otp: otpData.reference
       };
 
-      // إنشاء الحساب مباشرة
-      const userData = await registerUser(
-        firebaseEmail,
-        formData.password,
-        formData.accountType as UserRole,
-        {
-          ...registrationData,
-          phone: formattedPhone,
-          originalEmail: formattedPhone.trim() || null,
-          firebaseEmail: firebaseEmail
-        }
-      );
-
-      console.log('✅ Account created successfully (OTP disabled):', userData);
-
-      // معالجة كود الانضمام إذا تم إدخاله وكان الحساب لاعب
-      if (formData.organizationCode && formData.accountType === 'player') {
-        try {
-          const { organizationReferralService } = await import('@/lib/organization/organization-referral-service');
-          await organizationReferralService.createJoinRequest(
-            (userData as any).uid || (userData as any).id,
-            userData,
-            formData.organizationCode.trim()
-          );
-          console.log('✅ Join request created successfully');
-        } catch (joinErr) {
-          console.warn('⚠️ Join request failed:', joinErr);
-        }
-      }
+      localStorage.setItem('pendingRegistration', JSON.stringify(pendingData));
+      localStorage.setItem('pendingPhoneVerification', formattedPhone);
 
       setLoading(false);
-
-      // إعادة التوجيه إلى لوحة التحكم
-      const dashboardRoute = getDashboardRoute(formData.accountType);
-      router.push(dashboardRoute);
+      setShowPhoneVerification(true);
+      setPendingPhone(formattedPhone);
 
     } catch (error: unknown) {
       console.error('❌ Registration failed:', error);
@@ -551,20 +531,36 @@ export default function RegisterPage() {
       }
 
       const pendingData = JSON.parse(pendingDataStr);
+      console.log('📋 Pending data:', { phone: pendingData.phone, otp: otp });
 
-      // التحقق من صحة OTP
-      if (otp !== pendingData.otp) {
-        throw new Error('رمز التحقق غير صحيح');
+      // التحقق من صحة OTP عبر API
+      const verifyResponse = await fetch('/api/sms/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: pendingData.phone,
+          otp: otp,
+          method: 'whatsapp'
+        }),
+      });
+
+      const verifyData = await verifyResponse.json();
+      console.log('🔍 Verify response:', { ok: verifyResponse.ok, success: verifyData.success, data: verifyData });
+
+      if (!verifyResponse.ok || !verifyData.success) {
+        console.error('❌ OTP verification failed:', verifyData.error);
+        throw new Error(verifyData.error || 'رمز التحقق غير صحيح');
       }
 
       console.log('✅ OTP verified, creating account...');
 
       // توليد بريد إلكتروني مؤقت آمن لـ Firebase
-      const cleanPhone = (pendingData.phone || '').replace(/[^0-9]/g, '');
-      const cleanCountryCode = (pendingData.countryCode || '').replace(/[^0-9]/g, '');
-      const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(2, 8);
-      const firebaseEmail = `user_${cleanCountryCode}_${cleanPhone}_${timestamp}_${randomSuffix}@el7lm.com`;
+      const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
+      const firebaseEmail = generateTypedFirebaseEmail(
+        pendingData.phone,
+        pendingData.countryCode,
+        pendingData.accountType
+      );
 
       const registrationData = {
         full_name: pendingData.name,
@@ -590,6 +586,21 @@ export default function RegisterPage() {
 
       console.log('✅ Account created successfully:', userData);
 
+      // معالجة كود الانضمام إذا تم إدخاله وكان الحساب لاعب
+      if (pendingData.organizationCode && pendingData.accountType === 'player') {
+        try {
+          const { organizationReferralService } = await import('@/lib/organization/organization-referral-service');
+          await organizationReferralService.createJoinRequest(
+            (userData as any).uid || (userData as any).id,
+            userData,
+            pendingData.organizationCode.trim()
+          );
+          console.log('✅ Join request created successfully');
+        } catch (joinErr) {
+          console.warn('⚠️ Join request failed:', joinErr);
+        }
+      }
+
       // تنظيف البيانات المعلقة
       localStorage.removeItem('pendingRegistration');
       localStorage.removeItem('pendingPhoneVerification');
@@ -605,10 +616,14 @@ export default function RegisterPage() {
     } catch (error: unknown) {
       console.error('❌ OTP verification failed:', error);
       if (error instanceof Error) {
+        console.error('❌ Error details:', error.message);
         setError(error.message || 'فشل في التحقق من رمز التحقق.');
       } else {
+        console.error('❌ Unknown error:', error);
         setError('حدث خطأ غير متوقع أثناء التحقق من رمز التحقق.');
       }
+      // إعادة رمي الخطأ لضمان أن WhatsAppOTPVerification يتعامل معه
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -647,10 +662,11 @@ export default function RegisterPage() {
           </div>
 
           <form
+            autoComplete="off"
             onSubmit={(e) => {
               if (step < 4) {
                 e.preventDefault();
-                setStep(step + 1);
+                startTransition(() => setStep(step + 1));
                 return;
               }
               handleRegister(e as any);
@@ -818,6 +834,7 @@ export default function RegisterPage() {
                       name="organizationCode"
                       value={formData.organizationCode}
                       onChange={handleInputChange}
+                      onBlur={(e) => validateOrganizationCode(e.target.value)}
                       className={`py-2 pr-10 pl-4 w-full text-sm rounded-lg border focus:ring-2 focus:border-transparent ${orgCodeError ? 'border-red-300 focus:ring-red-500' : orgCodeChecking ? 'border-purple-300 focus:ring-purple-500' : 'border-gray-300 focus:ring-indigo-500'}`}
                       placeholder="أدخل كود الانضمام إذا كان لديك"
                       aria-label="كود الانضمام"
@@ -865,6 +882,7 @@ export default function RegisterPage() {
                   placeholder="8 أحرف على الأقل"
                     required
                     minLength={8}
+                    autoComplete="new-password"
                   />
                   <Lock className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600">
@@ -883,6 +901,7 @@ export default function RegisterPage() {
                       className="py-2 pr-10 pl-10 w-full text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="أعد إدخال كلمة المرور"
                     required
+                    autoComplete="new-password"
                   />
                   <Lock className="absolute right-3 top-1/2 w-5 h-5 text-gray-400 -translate-y-1/2" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2 hover:text-gray-600">
@@ -941,6 +960,29 @@ export default function RegisterPage() {
             </div>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* WhatsApp OTP Verification Modal */}
+        <WhatsAppOTPVerification
+          phoneNumber={pendingPhone || ''}
+          name={formData.name}
+          isOpen={showPhoneVerification}
+          onVerificationSuccess={(phoneNumber) => {
+            console.log('✅ OTP verification successful for:', phoneNumber);
+            // سيتم التعامل مع هذا في handleOTPVerification
+          }}
+          onVerificationFailed={(error) => {
+            console.error('❌ OTP verification failed:', error);
+            setError(error);
+          }}
+          onClose={handlePhoneVerificationClose}
+          onOTPVerify={handleOTPVerification}
+          title="التحقق من رقم الهاتف"
+          subtitle="تم إرسال رمز التحقق عبر WhatsApp"
+          otpExpirySeconds={300} // 5 دقائق
+          maxAttempts={3}
+          language="ar"
+          t={t}
+        />
     </div>
   );
 }

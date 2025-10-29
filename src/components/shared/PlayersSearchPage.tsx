@@ -19,12 +19,12 @@ import {
     Minimize2,
     RefreshCw,
     Search,
+    Smartphone,
     Sword,
     Trophy,
     User,
     Users
 } from 'lucide-react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -202,7 +202,7 @@ interface PlayersSearchPageProps {
 }
 
 export default function PlayersSearchPage({ accountType }: PlayersSearchPageProps) {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const router = useRouter();
 
   // State management
@@ -220,6 +220,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   const [filterNationality, setFilterNationality] = useState('all');
   const [filterCountry, setFilterCountry] = useState('all');
   const [filterAccountType, setFilterAccountType] = useState('all');
+  const [filterPhone, setFilterPhone] = useState('');
 
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
@@ -298,7 +299,8 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       filterPosition !== 'all' ||
       filterNationality !== 'all' ||
       filterCountry !== 'all' ||
-      filterAccountType !== 'all';
+      filterAccountType !== 'all' ||
+      filterPhone !== '';
 
     if (!hasFilters) {
       return players;
@@ -351,15 +353,24 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         }
       }
 
+      // Phone filter
+      if (filterPhone && filterPhone.trim() !== '') {
+        const phoneSearch = filterPhone.trim().replace(/\D/g, '');
+        const playerPhone = (player.phone || player.whatsapp || '').toString().replace(/\D/g, '');
+        if (!playerPhone.includes(phoneSearch)) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry,
-      filterAccountType, getPlayerAccountType]);
+      filterAccountType, filterPhone, getPlayerAccountType]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, filterAccountType]);
+  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, filterAccountType, filterPhone]);
 
   // Pagination
   const totalPages = Math.ceil(filteredPlayers.length / playersPerPage);
@@ -427,6 +438,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     setFilterNationality('all');
     setFilterCountry('all');
     setFilterAccountType('all');
+    setFilterPhone('');
     setSearchTerm('');
   };
 
@@ -609,6 +621,22 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Phone Filter */}
+              <div>
+                <Label htmlFor="phone-filter">رقم الهاتف</Label>
+                <div className="relative">
+                  <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="phone-filter"
+                    type="text"
+                    placeholder="ابحث برقم الهاتف..."
+                    value={filterPhone}
+                    onChange={(e) => setFilterPhone(e.target.value)}
+                    className="pr-10"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -639,15 +667,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
               const imageUrl = getValidImageUrl(player.profile_image_url);
 
               return (
-                <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative">
+                <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                  <div className="relative w-full shrink-0">
                     {imageUrl ? (
-                      <div className="aspect-square relative">
-                        <Image
+                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-100 overflow-hidden">
+                        <img
                           src={imageUrl}
                           alt={player.full_name || player.name || 'لاعب'}
-                          fill
-                          className="object-cover"
+                          className="w-full h-full object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
@@ -655,8 +682,8 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         />
                       </div>
                     ) : (
-                      <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                        <User className="h-16 w-16 text-gray-400" />
+                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-200 flex items-center justify-center">
+                        <User className="h-10 w-10 sm:h-12 sm:w-12 md:h-16 md:w-16 text-gray-400" />
                       </div>
                     )}
 
@@ -667,7 +694,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                     </div>
                   </div>
 
-                  <div className="p-4">
+                  <div className="p-4 flex-1 flex flex-col">
                     <h3 className="font-semibold text-lg mb-2 line-clamp-1">
                       {player.full_name || player.name || 'لاعب غير محدد'}
                     </h3>
@@ -709,7 +736,118 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         variant="outline"
                         size="sm"
                         className="flex-1 bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100"
-                        onClick={() => router.push(`/dashboard/shared/player-profile/${player.id}`)}
+                        onClick={async () => {
+                          // إرسال رسالة واتساب للاعب
+                          try {
+                            const playerDoc = await getDocs(query(collection(db, 'players'), where('__name__', '==', player.id)));
+                            if (!playerDoc.empty) {
+                              const playerData = playerDoc.docs[0].data();
+                              let playerPhone = playerData.whatsapp || playerData.phone;
+
+                              if (playerPhone) {
+                                // تنسيق رقم الهاتف (إضافة كود الدولة إذا لزم الأمر)
+                                playerPhone = String(playerPhone).replace(/\D/g, ''); // إزالة أي أحرف غير رقمية
+
+                                // إضافة كود مصر (20) إذا كان الرقم مصري بدون كود
+                                if (playerPhone.length === 11 && playerPhone.startsWith('01')) {
+                                  playerPhone = '20' + playerPhone.substring(1);
+                                } else if (playerPhone.length === 10 && playerPhone.startsWith('1')) {
+                                  playerPhone = '20' + playerPhone;
+                                }
+                                // إضافة كود السعودية (966) إذا كان الرقم سعودي بدون كود
+                                else if (playerPhone.length === 10 && playerPhone.startsWith('05')) {
+                                  playerPhone = '966' + playerPhone.substring(1);
+                                } else if (playerPhone.length === 9 && playerPhone.startsWith('5')) {
+                                  playerPhone = '966' + playerPhone;
+                                }
+
+                                // جلب اسم النادي/الجهة المشاهدة من userData
+                                const clubName = userData?.name || userData?.full_name || user?.displayName || 'نادي مهتم';
+
+                                // تحديد نوع الحساب مع الإيموجي المناسب
+                                let accountTypeText = '';
+                                let accountEmoji = '';
+                                const accountType = userData?.accountType || userData?.type;
+
+                                if (accountType === 'club') {
+                                  accountTypeText = 'نادي';
+                                  accountEmoji = '🏟️';
+                                } else if (accountType === 'academy') {
+                                  accountTypeText = 'أكاديمية';
+                                  accountEmoji = '🎓';
+                                } else if (accountType === 'trainer') {
+                                  accountTypeText = 'مدرب';
+                                  accountEmoji = '👨‍🏫';
+                                } else if (accountType === 'agent') {
+                                  accountTypeText = 'وكيل';
+                                  accountEmoji = '💼';
+                                } else if (accountType === 'marketer') {
+                                  accountTypeText = 'مسوق';
+                                  accountEmoji = '📢';
+                                } else if (accountType === 'player') {
+                                  accountTypeText = 'لاعب';
+                                  accountEmoji = '⚽';
+                                } else {
+                                  accountTypeText = 'جهة مهتمة';
+                                  accountEmoji = '⭐';
+                                }
+
+                                const message = `🌟 *━━━━━━━━━━━━━━━━━━━*
+🎯 *تنبيه مهم من منصة الحلم!*
+🌟 *━━━━━━━━━━━━━━━━━━━*
+
+مرحباً *${playerData.full_name || 'اللاعب'}* 👋⚽
+
+✨ *خبر سار جداً!* 🎉
+تم مشاهدة ملفك الشخصي من قِبل:
+${accountEmoji} *${accountTypeText}:* ${clubName} 🏆
+
+🔥 *هذه فرصتك الذهبية!* 💎
+
+📋 *الخطوات التالية:*
+1️⃣ افتح حسابك على المنصة فوراً 🚀
+2️⃣ تأكد من تحديث جميع بياناتك ✅
+3️⃣ استعد للتواصل معهم! 📞💬
+
+⚡ *لا تفوّت هذه الفرصة الذهبية!* ⭐
+
+🌐 *رابط حسابك المباشر:*
+https://el7lm.com/dashboard/player
+
+━━━━━━━━━━━━━━━━━━━
+⚽ *منصة الحلم* ⚽
+من شركة ميسك القطرية 🇶🇦
+أول متجر إلكتروني لتسويق وبيع لاعبين كرة القدم 🌍✨
+
+💫 *حيث تتحقق الأحلام الرياضية* 🏆
+━━━━━━━━━━━━━━━━━━━`;
+
+                                // إرسال الرسالة
+                                const response = await fetch('/api/whatsapp/babaservice', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    action: 'send_text',
+                                    phoneNumber: playerPhone,
+                                    message: message,
+                                    instance_id: '68F243B3A8D8D'
+                                  })
+                                });
+
+                                if (response.ok) {
+                                  console.log('✅ تم إرسال إشعار واتساب للاعب:', playerData.full_name, 'على رقم:', playerPhone);
+                                } else {
+                                  console.error('❌ فشل إرسال واتساب:', response.status, response.statusText);
+                                }
+                              }
+                            }
+                          } catch (error) {
+                            console.error('❌ خطأ في إرسال إشعار واتساب:', error);
+                          }
+
+                          // الانتقال لملف اللاعب
+                          router.push(`/dashboard/shared/player-profile/${player.id}`);
+                        }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         عرض الملف

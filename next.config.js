@@ -9,6 +9,11 @@ const nextConfig = {
         BEON_OTP_TOKEN: process.env.BEON_OTP_TOKEN,
         BEON_SENDER_NAME: process.env.BEON_SENDER_NAME,
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
+        // Babaservice WhatsApp API Configuration
+        BABASERVICE_BASE_URL: process.env.BABASERVICE_BASE_URL,
+        BABASERVICE_ACCESS_TOKEN: process.env.BABASERVICE_ACCESS_TOKEN,
+        BABASERVICE_INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID,
+        BABASERVICE_WEBHOOK_URL: process.env.BABASERVICE_WEBHOOK_URL,
     },
     // تحسين التعامل مع الأخطاء
     output: 'standalone',

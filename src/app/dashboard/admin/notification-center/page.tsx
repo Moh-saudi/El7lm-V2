@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bell, X, Check, AlertCircle, Info, Shield, DollarSign, Users, Settings, Search, Clock, Video } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { detectCountryFromPhone } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { AlertCircle, Bell, Check, Clock, DollarSign, Info, MessageSquare, Search, Send, Settings, Shield, Users, Video } from 'lucide-react';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
 
 interface AdminNotification {
   id?: string;
@@ -36,6 +41,13 @@ export default function AdminNotificationCenterPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
+  // WhatsApp message states
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState({ title: '', body: '' });
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [instanceId, setInstanceId] = useState('68F243B3A8D8D');
+
   React.useEffect(() => {
     if (user?.uid) {
       loadNotifications();
@@ -49,7 +61,7 @@ export default function AdminNotificationCenterPage() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      
+
       // إشعارات تجريبية للعرض
       const sampleNotifications: AdminNotification[] = [
         {
@@ -133,9 +145,9 @@ export default function AdminNotificationCenterPage() {
           action: { label: 'عرض النسخ الاحتياطية', url: '/dashboard/admin/system/backups' }
         }
       ];
-      
+
       setNotifications(sampleNotifications);
-      
+
       const unread = sampleNotifications.filter(n => !n.isRead).length;
       setUnreadCount(unread);
     } catch (error) {
@@ -164,7 +176,7 @@ export default function AdminNotificationCenterPage() {
 
     // فلترة حسب البحث
     if (searchTerm) {
-      filtered = filtered.filter(n => 
+      filtered = filtered.filter(n =>
         n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         n.message.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -175,8 +187,8 @@ export default function AdminNotificationCenterPage() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      setNotifications(prev => 
-        prev.map(n => 
+      setNotifications(prev =>
+        prev.map(n =>
           n.id === notificationId ? { ...n, isRead: true } : n
         )
       );
@@ -267,13 +279,123 @@ export default function AdminNotificationCenterPage() {
       const now = new Date();
       const notificationDate = date.toDate ? date.toDate() : new Date(date);
       const diffInMinutes = Math.floor((now.getTime() - notificationDate.getTime()) / (1000 * 60));
-      
+
       if (diffInMinutes < 1) return 'الآن';
       if (diffInMinutes < 60) return `${diffInMinutes} دقيقة`;
       if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} ساعة`;
       return `${Math.floor(diffInMinutes / 1440)} يوم`;
     } catch (error) {
       return 'منذ فترة';
+    }
+  };
+
+  // دالة إرسال رسالة WhatsApp
+  const sendWhatsAppMessage = async () => {
+    if (!phoneNumber || !whatsappMessage.title || !whatsappMessage.body) {
+      toast.error('يرجى إدخال رقم الهاتف والعنوان والرسالة');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      // تنسيق رقم الهاتف
+      let formattedPhone = phoneNumber.replace(/\D/g, '');
+
+      // محاولة اكتشاف البلد من الرقم
+      const detectedCountry = detectCountryFromPhone(phoneNumber);
+
+      if (detectedCountry) {
+        const countryCode = detectedCountry.code.replace(/\D/g, '');
+        const localNumber = formattedPhone.replace(/^0+/, '');
+        formattedPhone = countryCode + localNumber;
+
+        console.log('🔍 تم اكتشاف البلد من الرقم:', {
+          detectedCountry: detectedCountry.name,
+          countryCode: detectedCountry.code,
+          originalPhone: phoneNumber,
+          formattedPhone: formattedPhone
+        });
+      } else {
+        // افتراضي: مصر
+        const localNumber = formattedPhone.replace(/^0+/, '');
+        formattedPhone = '20' + localNumber;
+
+        console.log('⚠️ استخدام البلد الافتراضي (مصر):', {
+          originalPhone: phoneNumber,
+          formattedPhone: formattedPhone
+        });
+      }
+
+      const whatsappPhone = formattedPhone.startsWith('+') ? formattedPhone : `+${formattedPhone}`;
+      const whatsappMessageText = `*${whatsappMessage.title}*\n\n${whatsappMessage.body}\n\n---\nمنصة الحلم`;
+
+      console.log('📧 إرسال رسالة WhatsApp:', {
+        originalPhone: phoneNumber,
+        formattedPhone: formattedPhone,
+        whatsappPhone: whatsappPhone,
+        messageLength: whatsappMessageText.length,
+        instanceId: instanceId
+      });
+
+      // فحص حالة Instance ID أولاً
+      console.log('🔍 فحص حالة Instance ID...');
+      try {
+        const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
+        const statusResult = await statusResponse.json();
+        console.log('📊 حالة API:', statusResult);
+
+        const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
+        const configResult = await configResponse.json();
+        console.log('⚙️ تكوين API:', configResult);
+      } catch (error) {
+        console.error('❌ خطأ في فحص حالة API:', error);
+      }
+
+      const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumbers: [whatsappPhone],
+          message: whatsappMessageText,
+          type: 'admin_notification',
+          instance_id: instanceId !== 'موجود' ? instanceId : undefined
+        })
+      });
+
+      const whatsappResult = await whatsappResponse.json();
+      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
+
+      if (whatsappResult.success) {
+        toast.success(`✅ تم إرسال الرسالة عبر WhatsApp بنجاح`);
+        toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
+
+        if (whatsappResult.data?.results?.[0]?.data) {
+          console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
+        }
+
+        setShowWhatsAppDialog(false);
+        setWhatsappMessage({ title: '', body: '' });
+        setPhoneNumber('');
+      } else {
+        toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
+
+        if (whatsappResult.data?.errors?.[0]?.error) {
+          console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
+          toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
+
+          if (whatsappResult.data.errors[0].error.includes('instance') ||
+              whatsappResult.data.errors[0].error.includes('Instance') ||
+              whatsappResult.data.errors[0].error.includes('connection')) {
+            toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('خطأ في إرسال الرسالة:', error);
+      toast.error('حدث خطأ في إرسال الرسالة');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -357,23 +479,100 @@ export default function AdminNotificationCenterPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Button 
-                onClick={markAllAsRead} 
-                variant="outline" 
+              <Button
+                onClick={markAllAsRead}
+                variant="outline"
                 className="flex-1"
                 disabled={unreadCount === 0}
               >
                 <Check className="w-4 h-4 ml-2" />
                 تحديد الكل كمقروء
               </Button>
-              <Button 
-                onClick={loadNotifications} 
+              <Button
+                onClick={loadNotifications}
                 variant="outline"
                 disabled={loading}
               >
                 <Bell className="w-4 h-4 ml-2" />
                 تحديث الإشعارات
               </Button>
+              <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                    <MessageSquare className="w-4 h-4 ml-2" />
+                    إرسال رسالة WhatsApp
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-green-600" />
+                      إرسال رسالة WhatsApp
+                    </DialogTitle>
+                    <DialogDescription>
+                      أرسل رسالة سريعة عبر WhatsApp لأي رقم هاتف
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="phone">رقم الهاتف</Label>
+                      <Input
+                        id="phone"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="966501234567 أو 01012345678"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="title">عنوان الرسالة</Label>
+                      <Input
+                        id="title"
+                        value={whatsappMessage.title}
+                        onChange={(e) => setWhatsappMessage(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="عنوان الرسالة"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="body">محتوى الرسالة</Label>
+                      <Textarea
+                        id="body"
+                        value={whatsappMessage.body}
+                        onChange={(e) => setWhatsappMessage(prev => ({ ...prev, body: e.target.value }))}
+                        placeholder="اكتب محتوى الرسالة هنا..."
+                        className="mt-1"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={sendWhatsAppMessage}
+                        disabled={sendingMessage}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        {sendingMessage ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+                            جاري الإرسال...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 ml-2" />
+                            إرسال الرسالة
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowWhatsAppDialog(false)}
+                      >
+                        إلغاء
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>
@@ -391,7 +590,7 @@ export default function AdminNotificationCenterPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -403,7 +602,7 @@ export default function AdminNotificationCenterPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -417,7 +616,7 @@ export default function AdminNotificationCenterPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -451,8 +650,8 @@ export default function AdminNotificationCenterPage() {
                 <Bell className="w-16 h-16 text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد إشعارات</h3>
                 <p className="text-sm text-gray-500">
-                  {searchTerm || filter !== 'all' || priorityFilter !== 'all' 
-                    ? 'لا توجد إشعارات تطابق الفلاتر المحددة' 
+                  {searchTerm || filter !== 'all' || priorityFilter !== 'all'
+                    ? 'لا توجد إشعارات تطابق الفلاتر المحددة'
                     : 'لم يتم العثور على أي إشعارات'}
                 </p>
               </div>
@@ -470,7 +669,7 @@ export default function AdminNotificationCenterPage() {
                       <div className="flex-shrink-0 mt-1">
                         {getNotificationIcon(notification.type, notification.priority)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className={`text-lg font-semibold truncate ${
@@ -478,7 +677,7 @@ export default function AdminNotificationCenterPage() {
                           }`}>
                             {notification.title}
                           </h4>
-                          
+
                           <div className="flex items-center gap-2 ml-4">
                             <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
                               {getPriorityLabel(notification.priority)}
@@ -488,23 +687,23 @@ export default function AdminNotificationCenterPage() {
                             )}
                           </div>
                         </div>
-                        
+
                         <p className="text-gray-600 leading-relaxed mb-3">
                           {notification.message}
                         </p>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
                               {formatTimeAgo(notification.createdAt)}
                             </span>
-                            
+
                             <Badge variant="outline" className="text-xs">
                               {getTypeLabel(notification.type)}
                             </Badge>
                           </div>
-                          
+
                           {notification.action && (
                             <Button
                               size="sm"

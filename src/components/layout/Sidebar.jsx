@@ -463,7 +463,7 @@ const Sidebar = () => {
     {
       title: 'اختبار WhatsApp API',
       icon: <MessageSquare className="w-5 h-5" />,
-      path: '/test-babaservice-whatsapp'
+      path: '/dashboard/admin/whatsapp-test'
     }
   ];
 

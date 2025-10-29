@@ -25,7 +25,7 @@ export async function addNotification(data: NotificationData) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    
+
     const docRef = await addDoc(notificationsRef, notification);
     return docRef.id;
   } catch (error) {
@@ -53,7 +53,7 @@ export async function addPaymentNotification({
   let title: string;
   let message: string;
   let type: 'info' | 'success' | 'warning' | 'error';
-  
+
   switch (status) {
     case 'pending':
       title = 'طلب دفع جديد';
@@ -144,7 +144,7 @@ export async function addSubscriptionNotification({
   let title: string;
   let message: string;
   let type: 'info' | 'success' | 'warning' | 'error';
-  
+
   switch (status) {
     case 'active':
       title = 'تم تفعيل الاشتراك';

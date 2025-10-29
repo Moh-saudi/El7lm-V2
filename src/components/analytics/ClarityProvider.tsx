@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import ClarityScript from './ClarityScript';
 
 interface ClarityProviderProps {
   children: React.ReactNode;
@@ -15,11 +14,11 @@ const ClarityProvider: React.FC<ClarityProviderProps> = ({ children, projectId }
       const checkClarity = () => {
         if ((window as any).clarity) {
           console.log('✅ Microsoft Clarity loaded successfully with project:', projectId);
-          
+
           // تعيين بعض الإعدادات الأساسية
           (window as any).clarity('set', 'project_id', projectId);
           (window as any).clarity('set', 'platform', 'el7lm');
-          
+
           return true;
         }
         return false;
@@ -51,24 +50,23 @@ const ClarityProvider: React.FC<ClarityProviderProps> = ({ children, projectId }
     // Track page views using correct Clarity API
     if (typeof window !== 'undefined' && (window as any).clarity) {
       const currentPath = window.location.pathname;
-      
+
       // Set custom tags using correct API
       (window as any).clarity('set', 'current_page', currentPath);
-      
+
       // Track specific page events using correct API
       if (currentPath.includes('/dashboard/messages')) {
         (window as any).clarity('event', 'messages_page_viewed');
       } else if (currentPath.includes('/dashboard')) {
         (window as any).clarity('event', 'dashboard_page_viewed');
       }
-      
+
       console.log('📊 Clarity page tracking initialized for:', currentPath);
     }
   }, []);
 
   return (
     <>
-      <ClarityScript projectId={projectId} />
       {children}
     </>
   );

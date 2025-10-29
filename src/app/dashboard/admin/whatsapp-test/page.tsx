@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { arabicCountries, countries, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { AlertTriangle, CheckCircle, Info, Loader2, MessageSquare, QrCode, Settings, Smartphone, Users, XCircle } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,15 +20,7 @@ interface TestResult {
   error?: string;
 }
 
-interface Country {
-  code: string;
-  name: string;
-  nameAr: string;
-  flag: string;
-  phoneCode: string;
-  testNumber: string;
-  region: string;
-}
+// استخدام واجهة Country من الملف المشترك
 
 export default function TestBabaserviceWhatsAppPage() {
   const [loading, setLoading] = useState(false);
@@ -46,165 +39,74 @@ export default function TestBabaserviceWhatsAppPage() {
   const [testWebhookUrl, setTestWebhookUrl] = useState('https://webhook.site/your-unique-url');
   const [selectedCountry, setSelectedCountry] = useState('SA');
 
-  // Generate comprehensive countries list with focus on Middle East, Africa, and North Africa
-  const generateCountriesList = (): Country[] => {
-    // Use comprehensive list directly instead of relying on world-countries library
-    const countries = [
-        // الدول العربية - الخليج العربي
-        { code: 'SA', name: 'Saudi Arabia', nameAr: 'السعودية', flag: '🇸🇦', phoneCode: '966', testNumber: '966501234567', region: 'Asia' },
-        { code: 'AE', name: 'United Arab Emirates', nameAr: 'الإمارات', flag: '🇦🇪', phoneCode: '971', testNumber: '971501234567', region: 'Asia' },
-        { code: 'KW', name: 'Kuwait', nameAr: 'الكويت', flag: '🇰🇼', phoneCode: '965', testNumber: '96550123456', region: 'Asia' },
-        { code: 'QA', name: 'Qatar', nameAr: 'قطر', flag: '🇶🇦', phoneCode: '974', testNumber: '97450123456', region: 'Asia' },
-        { code: 'BH', name: 'Bahrain', nameAr: 'البحرين', flag: '🇧🇭', phoneCode: '973', testNumber: '97350123456', region: 'Asia' },
-        { code: 'OM', name: 'Oman', nameAr: 'عُمان', flag: '🇴🇲', phoneCode: '968', testNumber: '96850123456', region: 'Asia' },
+  // استخدام البيانات المشتركة من ملف الدول
+  const countriesList = countries.map(country => ({
+    code: country.code.replace('+', ''), // إزالة + من الكود للتوافق مع الكود القديم
+    name: country.name,
+    nameAr: country.name,
+    flag: getCountryFlag(country.code),
+    phoneCode: country.code.replace('+', ''),
+    testNumber: generateTestNumber(country),
+    region: getCountryRegion(country.code)
+  }));
 
-        // الدول العربية - المشرق العربي
-        { code: 'EG', name: 'Egypt', nameAr: 'مصر', flag: '🇪🇬', phoneCode: '20', testNumber: '201234567890', region: 'Africa' },
-        { code: 'JO', name: 'Jordan', nameAr: 'الأردن', flag: '🇯🇴', phoneCode: '962', testNumber: '962501234567', region: 'Asia' },
-        { code: 'LB', name: 'Lebanon', nameAr: 'لبنان', flag: '🇱🇧', phoneCode: '961', testNumber: '96150123456', region: 'Asia' },
-        { code: 'SY', name: 'Syria', nameAr: 'سوريا', flag: '🇸🇾', phoneCode: '963', testNumber: '963501234567', region: 'Asia' },
-        { code: 'IQ', name: 'Iraq', nameAr: 'العراق', flag: '🇮🇶', phoneCode: '964', testNumber: '964501234567', region: 'Asia' },
-        { code: 'PS', name: 'Palestine', nameAr: 'فلسطين', flag: '🇵🇸', phoneCode: '970', testNumber: '970501234567', region: 'Asia' },
+  // دالة للحصول على علم البلد
+  function getCountryFlag(countryCode: string): string {
+    const flagMap: { [key: string]: string } = {
+      '+966': '🇸🇦', '+971': '🇦🇪', '+965': '🇰🇼', '+974': '🇶🇦', '+973': '🇧🇭', '+968': '🇴🇲',
+      '+20': '🇪🇬', '+962': '🇯🇴', '+961': '🇱🇧', '+964': '🇮🇶', '+963': '🇸🇾', '+212': '🇲🇦',
+      '+213': '🇩🇿', '+216': '🇹🇳', '+218': '🇱🇾', '+249': '🇸🇩', '+967': '🇾🇪', '+90': '🇹🇷',
+      '+98': '🇮🇷', '+972': '🇮🇱', '+27': '🇿🇦', '+234': '🇳🇬', '+254': '🇰🇪', '+251': '🇪🇹',
+      '+233': '🇬🇭', '+225': '🇨🇮', '+221': '🇸🇳', '+223': '🇲🇱', '+256': '🇺🇬', '+255': '🇹🇿',
+      '+250': '🇷🇼', '+257': '🇧🇮', '+265': '🇲🇼', '+260': '🇿🇲', '+263': '🇿🇼', '+267': '🇧🇼',
+      '+264': '🇳🇦', '+268': '🇸🇿', '+266': '🇱🇸', '+258': '🇲🇿', '+261': '🇲🇬', '+230': '🇲🇺',
+      '+248': '🇸🇨', '+269': '🇰🇲', '+244': '🇦🇴', '+243': '🇨🇩', '+242': '🇨🇬', '+236': '🇨🇫',
+      '+235': '🇹🇩', '+237': '🇨🇲', '+240': '🇬🇶', '+241': '🇬🇦', '+239': '🇸🇹', '+229': '🇧🇯',
+      '+228': '🇹🇬', '+226': '🇧🇫', '+231': '🇱🇷', '+232': '🇸🇱', '+224': '🇬🇳', '+245': '🇬🇼',
+      '+220': '🇬🇲', '+227': '🇳🇪', '+291': '🇪🇷', '+253': '🇩🇯', '+252': '🇸🇴', '+93': '🇦🇫',
+      '+92': '🇵🇰', '+880': '🇧🇩', '+91': '🇮🇳', '+86': '🇨🇳', '+81': '🇯🇵', '+82': '🇰🇷',
+      '+66': '🇹🇭', '+84': '🇻🇳', '+62': '🇮🇩', '+60': '🇲🇾', '+65': '🇸🇬', '+63': '🇵🇭',
+      '+7': '🇷🇺', '+44': '🇬🇧', '+33': '🇫🇷', '+49': '🇩🇪', '+39': '🇮🇹', '+34': '🇪🇸',
+      '+1': '🇺🇸', '+55': '🇧🇷', '+54': '🇦🇷', '+61': '🇦🇺', '+64': '🇳🇿'
+    };
+    return flagMap[countryCode] || '🌍';
+  }
 
-        // الدول العربية - المغرب العربي
-        { code: 'MA', name: 'Morocco', nameAr: 'المغرب', flag: '🇲🇦', phoneCode: '212', testNumber: '212501234567', region: 'Africa' },
-        { code: 'DZ', name: 'Algeria', nameAr: 'الجزائر', flag: '🇩🇿', phoneCode: '213', testNumber: '213501234567', region: 'Africa' },
-        { code: 'TN', name: 'Tunisia', nameAr: 'تونس', flag: '🇹🇳', phoneCode: '216', testNumber: '21650123456', region: 'Africa' },
-        { code: 'LY', name: 'Libya', nameAr: 'ليبيا', flag: '🇱🇾', phoneCode: '218', testNumber: '218501234567', region: 'Africa' },
-        { code: 'SD', name: 'Sudan', nameAr: 'السودان', flag: '🇸🇩', phoneCode: '249', testNumber: '249501234567', region: 'Africa' },
-        { code: 'SS', name: 'South Sudan', nameAr: 'جنوب السودان', flag: '🇸🇸', phoneCode: '211', testNumber: '211501234567', region: 'Africa' },
+  // دالة لتوليد رقم اختبار
+  function generateTestNumber(country: any): string {
+    const countryCode = country.code.replace('+', '');
+    const localLength = country.phoneLength;
+    let localNumber = '';
 
-        // الدول العربية - شبه الجزيرة العربية
-        { code: 'YE', name: 'Yemen', nameAr: 'اليمن', flag: '🇾🇪', phoneCode: '967', testNumber: '967501234567', region: 'Asia' },
+    // توليد رقم محلي عشوائي
+    for (let i = 0; i < localLength; i++) {
+      localNumber += Math.floor(Math.random() * 10);
+    }
 
-        // تركيا
-        { code: 'TR', name: 'Turkey', nameAr: 'تركيا', flag: '🇹🇷', phoneCode: '90', testNumber: '905551234567', region: 'Asia' },
+    return countryCode + localNumber;
+  }
 
-        // إيران
-        { code: 'IR', name: 'Iran', nameAr: 'إيران', flag: '🇮🇷', phoneCode: '98', testNumber: '989121234567', region: 'Asia' },
+  // دالة لتحديد المنطقة
+  function getCountryRegion(countryCode: string): string {
+    const arabicCodes = ['+966', '+971', '+965', '+974', '+973', '+968', '+20', '+962', '+961', '+964', '+963', '+212', '+213', '+216', '+218', '+249', '+967'];
+    const africanCodes = ['+27', '+234', '+254', '+251', '+233', '+225', '+221', '+223', '+256', '+255', '+250', '+257', '+265', '+260', '+263', '+267', '+264', '+268', '+266', '+258', '+261', '+230', '+248', '+269', '+244', '+243', '+242', '+236', '+235', '+237', '+240', '+241', '+239', '+229', '+228', '+226', '+231', '+232', '+224', '+245', '+220', '+227', '+291', '+253', '+252'];
 
-        // إسرائيل
-        { code: 'IL', name: 'Israel', nameAr: 'إسرائيل', flag: '🇮🇱', phoneCode: '972', testNumber: '972501234567', region: 'Asia' },
+    if (arabicCodes.includes(countryCode)) return 'Asia';
+    if (africanCodes.includes(countryCode)) return 'Africa';
+    if (['+90', '+98', '+93', '+92', '+880', '+91', '+86', '+81', '+82', '+66', '+84', '+62', '+60', '+65', '+63'].includes(countryCode)) return 'Asia';
+    if (['+7', '+44', '+33', '+49', '+39', '+34'].includes(countryCode)) return 'Europe';
+    if (['+1', '+55', '+54'].includes(countryCode)) return 'Americas';
+    if (['+61', '+64'].includes(countryCode)) return 'Oceania';
+    return 'Other';
+  }
 
-        // الدول الأفريقية الرئيسية
-        { code: 'ZA', name: 'South Africa', nameAr: 'جنوب أفريقيا', flag: '🇿🇦', phoneCode: '27', testNumber: '27821234567', region: 'Africa' },
-        { code: 'NG', name: 'Nigeria', nameAr: 'نيجيريا', flag: '🇳🇬', phoneCode: '234', testNumber: '2348012345678', region: 'Africa' },
-        { code: 'KE', name: 'Kenya', nameAr: 'كينيا', flag: '🇰🇪', phoneCode: '254', testNumber: '254701234567', region: 'Africa' },
-        { code: 'ET', name: 'Ethiopia', nameAr: 'إثيوبيا', flag: '🇪🇹', phoneCode: '251', testNumber: '251911234567', region: 'Africa' },
-        { code: 'GH', name: 'Ghana', nameAr: 'غانا', flag: '🇬🇭', phoneCode: '233', testNumber: '233241234567', region: 'Africa' },
-        { code: 'CI', name: 'Ivory Coast', nameAr: 'ساحل العاج', flag: '🇨🇮', phoneCode: '225', testNumber: '22507123456', region: 'Africa' },
-        { code: 'SN', name: 'Senegal', nameAr: 'السنغال', flag: '🇸🇳', phoneCode: '221', testNumber: '221701234567', region: 'Africa' },
-        { code: 'ML', name: 'Mali', nameAr: 'مالي', flag: '🇲🇱', phoneCode: '223', testNumber: '22370123456', region: 'Africa' },
-        { code: 'UG', name: 'Uganda', nameAr: 'أوغندا', flag: '🇺🇬', phoneCode: '256', testNumber: '256701234567', region: 'Africa' },
-        { code: 'TZ', name: 'Tanzania', nameAr: 'تنزانيا', flag: '🇹🇿', phoneCode: '255', testNumber: '255701234567', region: 'Africa' },
-        { code: 'RW', name: 'Rwanda', nameAr: 'رواندا', flag: '🇷🇼', phoneCode: '250', testNumber: '250701234567', region: 'Africa' },
-        { code: 'BI', name: 'Burundi', nameAr: 'بوروندي', flag: '🇧🇮', phoneCode: '257', testNumber: '257701234567', region: 'Africa' },
-        { code: 'MW', name: 'Malawi', nameAr: 'ملاوي', flag: '🇲🇼', phoneCode: '265', testNumber: '265701234567', region: 'Africa' },
-        { code: 'ZM', name: 'Zambia', nameAr: 'زامبيا', flag: '🇿🇲', phoneCode: '260', testNumber: '260701234567', region: 'Africa' },
-        { code: 'ZW', name: 'Zimbabwe', nameAr: 'زيمبابوي', flag: '🇿🇼', phoneCode: '263', testNumber: '263701234567', region: 'Africa' },
-        { code: 'BW', name: 'Botswana', nameAr: 'بوتسوانا', flag: '🇧🇼', phoneCode: '267', testNumber: '267701234567', region: 'Africa' },
-        { code: 'NA', name: 'Namibia', nameAr: 'ناميبيا', flag: '🇳🇦', phoneCode: '264', testNumber: '264701234567', region: 'Africa' },
-        { code: 'SZ', name: 'Eswatini', nameAr: 'إسواتيني', flag: '🇸🇿', phoneCode: '268', testNumber: '268701234567', region: 'Africa' },
-        { code: 'LS', name: 'Lesotho', nameAr: 'ليسوتو', flag: '🇱🇸', phoneCode: '266', testNumber: '266701234567', region: 'Africa' },
-        { code: 'MZ', name: 'Mozambique', nameAr: 'موزمبيق', flag: '🇲🇿', phoneCode: '258', testNumber: '258701234567', region: 'Africa' },
-        { code: 'MG', name: 'Madagascar', nameAr: 'مدغشقر', flag: '🇲🇬', phoneCode: '261', testNumber: '261701234567', region: 'Africa' },
-        { code: 'MU', name: 'Mauritius', nameAr: 'موريشيوس', flag: '🇲🇺', phoneCode: '230', testNumber: '230701234567', region: 'Africa' },
-        { code: 'SC', name: 'Seychelles', nameAr: 'سيشل', flag: '🇸🇨', phoneCode: '248', testNumber: '248701234567', region: 'Africa' },
-        { code: 'KM', name: 'Comoros', nameAr: 'جزر القمر', flag: '🇰🇲', phoneCode: '269', testNumber: '269701234567', region: 'Africa' },
-        { code: 'AO', name: 'Angola', nameAr: 'أنغولا', flag: '🇦🇴', phoneCode: '244', testNumber: '244701234567', region: 'Africa' },
-        { code: 'CD', name: 'DR Congo', nameAr: 'جمهورية الكونغو الديمقراطية', flag: '🇨🇩', phoneCode: '243', testNumber: '243701234567', region: 'Africa' },
-        { code: 'CG', name: 'Congo', nameAr: 'جمهورية الكونغو', flag: '🇨🇬', phoneCode: '242', testNumber: '242701234567', region: 'Africa' },
-        { code: 'CF', name: 'Central African Republic', nameAr: 'جمهورية أفريقيا الوسطى', flag: '🇨🇫', phoneCode: '236', testNumber: '236701234567', region: 'Africa' },
-        { code: 'TD', name: 'Chad', nameAr: 'تشاد', flag: '🇹🇩', phoneCode: '235', testNumber: '235701234567', region: 'Africa' },
-        { code: 'CM', name: 'Cameroon', nameAr: 'الكاميرون', flag: '🇨🇲', phoneCode: '237', testNumber: '237701234567', region: 'Africa' },
-        { code: 'GQ', name: 'Equatorial Guinea', nameAr: 'غينيا الاستوائية', flag: '🇬🇶', phoneCode: '240', testNumber: '240701234567', region: 'Africa' },
-        { code: 'GA', name: 'Gabon', nameAr: 'الغابون', flag: '🇬🇦', phoneCode: '241', testNumber: '241701234567', region: 'Africa' },
-        { code: 'ST', name: 'São Tomé and Príncipe', nameAr: 'ساو تومي وبرينسيبي', flag: '🇸🇹', phoneCode: '239', testNumber: '239701234567', region: 'Africa' },
-        { code: 'BJ', name: 'Benin', nameAr: 'بنين', flag: '🇧🇯', phoneCode: '229', testNumber: '229701234567', region: 'Africa' },
-        { code: 'TG', name: 'Togo', nameAr: 'توغو', flag: '🇹🇬', phoneCode: '228', testNumber: '228701234567', region: 'Africa' },
-        { code: 'BF', name: 'Burkina Faso', nameAr: 'بوركينا فاسو', flag: '🇧🇫', phoneCode: '226', testNumber: '226701234567', region: 'Africa' },
-        { code: 'LR', name: 'Liberia', nameAr: 'ليبيريا', flag: '🇱🇷', phoneCode: '231', testNumber: '231701234567', region: 'Africa' },
-        { code: 'SL', name: 'Sierra Leone', nameAr: 'سيراليون', flag: '🇸🇱', phoneCode: '232', testNumber: '232701234567', region: 'Africa' },
-        { code: 'GN', name: 'Guinea', nameAr: 'غينيا', flag: '🇬🇳', phoneCode: '224', testNumber: '224701234567', region: 'Africa' },
-        { code: 'GW', name: 'Guinea-Bissau', nameAr: 'غينيا بيساو', flag: '🇬🇼', phoneCode: '245', testNumber: '245701234567', region: 'Africa' },
-        { code: 'GM', name: 'Gambia', nameAr: 'غامبيا', flag: '🇬🇲', phoneCode: '220', testNumber: '220701234567', region: 'Africa' },
-        { code: 'NE', name: 'Niger', nameAr: 'النيجر', flag: '🇳🇪', phoneCode: '227', testNumber: '227701234567', region: 'Africa' },
-        { code: 'ER', name: 'Eritrea', nameAr: 'إريتريا', flag: '🇪🇷', phoneCode: '291', testNumber: '291701234567', region: 'Africa' },
-        { code: 'DJ', name: 'Djibouti', nameAr: 'جيبوتي', flag: '🇩🇯', phoneCode: '253', testNumber: '253701234567', region: 'Africa' },
-        { code: 'SO', name: 'Somalia', nameAr: 'الصومال', flag: '🇸🇴', phoneCode: '252', testNumber: '252701234567', region: 'Africa' },
+  // استخدام البيانات المشتركة للدول العربية وغير العربية
+  const arabicCountriesList = countriesList.filter(c => arabicCountries.some(ac => ac.code === c.phoneCode));
+  const nonArabicCountriesList = countriesList.filter(c => !arabicCountries.some(ac => ac.code === c.phoneCode));
 
-        // دول آسيوية مهمة
-        { code: 'AF', name: 'Afghanistan', nameAr: 'أفغانستان', flag: '🇦🇫', phoneCode: '93', testNumber: '93701234567', region: 'Asia' },
-        { code: 'PK', name: 'Pakistan', nameAr: 'باكستان', flag: '🇵🇰', phoneCode: '92', testNumber: '923001234567', region: 'Asia' },
-        { code: 'BD', name: 'Bangladesh', nameAr: 'بنغلاديش', flag: '🇧🇩', phoneCode: '880', testNumber: '8801712345678', region: 'Asia' },
-        { code: 'IN', name: 'India', nameAr: 'الهند', flag: '🇮🇳', phoneCode: '91', testNumber: '919876543210', region: 'Asia' },
-        { code: 'CN', name: 'China', nameAr: 'الصين', flag: '🇨🇳', phoneCode: '86', testNumber: '8613812345678', region: 'Asia' },
-        { code: 'JP', name: 'Japan', nameAr: 'اليابان', flag: '🇯🇵', phoneCode: '81', testNumber: '819012345678', region: 'Asia' },
-        { code: 'KR', name: 'South Korea', nameAr: 'كوريا الجنوبية', flag: '🇰🇷', phoneCode: '82', testNumber: '821012345678', region: 'Asia' },
-        { code: 'TH', name: 'Thailand', nameAr: 'تايلاند', flag: '🇹🇭', phoneCode: '66', testNumber: '66812345678', region: 'Asia' },
-        { code: 'VN', name: 'Vietnam', nameAr: 'فيتنام', flag: '🇻🇳', phoneCode: '84', testNumber: '84901234567', region: 'Asia' },
-        { code: 'ID', name: 'Indonesia', nameAr: 'إندونيسيا', flag: '🇮🇩', phoneCode: '62', testNumber: '628123456789', region: 'Asia' },
-        { code: 'MY', name: 'Malaysia', nameAr: 'ماليزيا', flag: '🇲🇾', phoneCode: '60', testNumber: '60123456789', region: 'Asia' },
-        { code: 'SG', name: 'Singapore', nameAr: 'سنغافورة', flag: '🇸🇬', phoneCode: '65', testNumber: '6512345678', region: 'Asia' },
-        { code: 'PH', name: 'Philippines', nameAr: 'الفلبين', flag: '🇵🇭', phoneCode: '63', testNumber: '639171234567', region: 'Asia' },
-
-        // دول أوروبية مهمة
-        { code: 'RU', name: 'Russia', nameAr: 'روسيا', flag: '🇷🇺', phoneCode: '7', testNumber: '79161234567', region: 'Europe' },
-        { code: 'GB', name: 'United Kingdom', nameAr: 'بريطانيا', flag: '🇬🇧', phoneCode: '44', testNumber: '447501234567', region: 'Europe' },
-        { code: 'FR', name: 'France', nameAr: 'فرنسا', flag: '🇫🇷', phoneCode: '33', testNumber: '33612345678', region: 'Europe' },
-        { code: 'DE', name: 'Germany', nameAr: 'ألمانيا', flag: '🇩🇪', phoneCode: '49', testNumber: '4915123456789', region: 'Europe' },
-        { code: 'IT', name: 'Italy', nameAr: 'إيطاليا', flag: '🇮🇹', phoneCode: '39', testNumber: '393123456789', region: 'Europe' },
-        { code: 'ES', name: 'Spain', nameAr: 'إسبانيا', flag: '🇪🇸', phoneCode: '34', testNumber: '34612345678', region: 'Europe' },
-
-        // دول أمريكية مهمة
-        { code: 'US', name: 'United States', nameAr: 'الولايات المتحدة', flag: '🇺🇸', phoneCode: '1', testNumber: '15551234567', region: 'Americas' },
-        { code: 'CA', name: 'Canada', nameAr: 'كندا', flag: '🇨🇦', phoneCode: '1', testNumber: '15551234567', region: 'Americas' },
-        { code: 'BR', name: 'Brazil', nameAr: 'البرازيل', flag: '🇧🇷', phoneCode: '55', testNumber: '5511987654321', region: 'Americas' },
-        { code: 'AR', name: 'Argentina', nameAr: 'الأرجنتين', flag: '🇦🇷', phoneCode: '54', testNumber: '549112345678', region: 'Americas' },
-
-        // دول أوقيانوسية
-        { code: 'AU', name: 'Australia', nameAr: 'أستراليا', flag: '🇦🇺', phoneCode: '61', testNumber: '61412345678', region: 'Oceania' },
-        { code: 'NZ', name: 'New Zealand', nameAr: 'نيوزيلندا', flag: '🇳🇿', phoneCode: '64', testNumber: '64211234567', region: 'Oceania' }
-      ];
-
-    // ترتيب الدول مع إعطاء الأولوية للدول العربية والأفريقية
-    return countries.sort((a, b) => {
-      const arabicCountries = ['SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'SY', 'IQ', 'PS', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'YE'];
-      const africanCountries = ['ZA', 'NG', 'KE', 'ET', 'GH', 'CI', 'SN', 'ML', 'UG', 'TZ', 'RW', 'BI', 'MW', 'ZM', 'ZW', 'BW', 'NA', 'SZ', 'LS', 'MZ', 'MG', 'MU', 'SC', 'KM', 'AO', 'CD', 'CG', 'CF', 'TD', 'CM', 'GQ', 'GA', 'ST', 'BJ', 'TG', 'BF', 'LR', 'SL', 'GN', 'GW', 'GM', 'NE', 'ER', 'DJ', 'SO'];
-
-      const aIsArabic = arabicCountries.includes(a.code);
-      const bIsArabic = arabicCountries.includes(b.code);
-      const aIsAfrican = africanCountries.includes(a.code);
-      const bIsAfrican = africanCountries.includes(b.code);
-
-      // الدول العربية أولاً
-      if (aIsArabic && !bIsArabic) return -1;
-      if (!aIsArabic && bIsArabic) return 1;
-
-      // الدول الأفريقية ثانياً
-      if (aIsAfrican && !bIsAfrican && !bIsArabic) return -1;
-      if (!aIsAfrican && bIsAfrican && !aIsArabic) return 1;
-
-      // ترتيب أبجدي للأسماء العربية
-      return a.nameAr.localeCompare(b.nameAr, 'ar');
-    });
-  };
-
-  const countriesList = generateCountriesList();
-
-  // Debug: التأكد من وجود الدول العربية
-  console.log('🌍 قائمة البلدان:', countriesList.length, 'دولة');
-  const arabicCountries = countriesList.filter(c => ['SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'SY', 'IQ', 'PS', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'YE'].includes(c.code));
-  console.log('🇸🇦 الدول العربية:', arabicCountries.length, 'دولة');
-  console.log('🇸🇦 أسماء الدول العربية:', arabicCountries.map(c => `${c.flag} ${c.nameAr} (${c.code})`));
-  console.log('🇸🇦 أول 5 دول عربية:', arabicCountries.slice(0, 5).map(c => c.nameAr));
-
-  // إضافة متغير للدول العربية
-  const arabicCountriesList = countriesList.filter(c => ['SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'SY', 'IQ', 'PS', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'YE'].includes(c.code));
-  const nonArabicCountriesList = countriesList.filter(c => !['SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'SY', 'IQ', 'PS', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'YE'].includes(c.code));
+  // Debug: تم إزالة console.log المتكررة لتحسين الأداء
 
   const addResult = (result: TestResult) => {
-    console.log('📊 إضافة نتيجة:', result);
     setResults(prev => [result, ...prev]);
   };
 
@@ -250,6 +152,16 @@ export default function TestBabaserviceWhatsAppPage() {
 
   // Get current selected country data
   const currentCountry = countriesList.find(country => country.code === selectedCountry);
+
+  // دالة للتحقق من صحة رقم الهاتف
+  const validateTestPhone = () => {
+    if (!testPhone || !currentCountry) {
+      return { isValid: false, error: 'يرجى اختيار البلد ورقم الهاتف' };
+    }
+
+    const countryCode = `+${currentCountry.phoneCode}`;
+    return validatePhoneWithCountry(testPhone, countryCode);
+  };
 
   // Function to test multiple countries
   const testMultipleCountries = async () => {
@@ -305,15 +217,21 @@ export default function TestBabaserviceWhatsAppPage() {
   };
 
   const testAPI = async (action: string, data: any = {}) => {
+    console.log('🚀 testAPI called with:', { action, data });
     setLoading(true);
     try {
+      const requestBody = { action, ...data };
+      console.log('📦 Sending request to API:', requestBody);
+
       const response = await fetch('/api/whatsapp/babaservice', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action, ...data }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('📥 Response status:', response.status, response.statusText);
 
       const result = await handleApiResponse(response, action);
       addResult(result);
@@ -359,7 +277,6 @@ export default function TestBabaserviceWhatsAppPage() {
         instance_id: instanceId
       };
 
-      console.log('📤 إرسال OTP:', requestBody);
 
       const response = await fetch('/api/whatsapp/babaservice/otp', {
         method: 'POST',
@@ -530,7 +447,7 @@ export default function TestBabaserviceWhatsAppPage() {
         </div>
 
       {/* Monthly Limit Warning */}
-      <Alert className="border-red-300 bg-gradient-to-r from-red-50 to-orange-50 shadow-xl">
+      <Alert>
         <AlertTriangle className="h-5 w-5 text-red-600" />
         <AlertTitle className="text-red-800 font-bold text-lg">⚠️ تحذير: تجاوز حد الرسائل الشهري</AlertTitle>
         <AlertDescription className="text-red-700 mt-2 space-y-3">
@@ -582,7 +499,7 @@ export default function TestBabaserviceWhatsAppPage() {
         {/* Instance Management Tab */}
         <TabsContent value="instance" className="space-y-4">
           {/* Important Notice */}
-          <Alert className="border-blue-200 bg-blue-50">
+          <Alert>
             <Info className="h-4 w-4 text-blue-600" />
             <AlertTitle className="text-blue-800">مهم: خطوات العمل</AlertTitle>
             <AlertDescription className="text-blue-700">
@@ -866,7 +783,7 @@ export default function TestBabaserviceWhatsAppPage() {
         <TabsContent value="messages" className="space-y-4">
           {/* Instance Status Alert */}
           {!instanceId && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert>
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertTitle className="text-red-800">تحذير: Instance غير موجود</AlertTitle>
               <AlertDescription className="text-red-700">
@@ -884,7 +801,7 @@ export default function TestBabaserviceWhatsAppPage() {
           )}
 
           {instanceId && (
-            <Alert className="border-green-200 bg-green-50">
+            <Alert>
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertTitle className="text-green-800">Instance جاهز</AlertTitle>
               <AlertDescription className="text-green-700">
@@ -908,8 +825,6 @@ export default function TestBabaserviceWhatsAppPage() {
               <Button
                 onClick={() => {
                   const arabicList = countriesList.filter(c => ['SA', 'AE', 'KW', 'QA', 'BH', 'OM', 'EG', 'JO', 'LB', 'SY', 'IQ', 'PS', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'YE'].includes(c.code));
-                  console.log('📋 قائمة الدول العربية الكاملة:', arabicList);
-                  console.log('🇪🇬 مصر موجودة؟', arabicList.find(c => c.code === 'EG'));
                   alert(`عدد الدول العربية: ${arabicList.length}\nمصر موجودة: ${arabicList.find(c => c.code === 'EG') ? 'نعم ✅' : 'لا ❌'}`);
                 }}
                 variant="outline"
@@ -977,6 +892,24 @@ export default function TestBabaserviceWhatsAppPage() {
                         </div>
                       )}
                     </div>
+                    {/* عرض تحذيرات صحة الرقم */}
+                    {testPhone && currentCountry && (() => {
+                      const validation = validateTestPhone();
+                      if (!validation.isValid) {
+                        return (
+                          <div className="flex items-center gap-2 text-red-600 text-sm">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>{validation.error}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-2 text-green-600 text-sm">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>رقم صحيح ومطابق للبلد</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1057,7 +990,7 @@ export default function TestBabaserviceWhatsAppPage() {
         <TabsContent value="groups" className="space-y-4">
           {/* Instance Status Alert */}
           {!instanceId && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert>
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertTitle className="text-red-800">تحذير: Instance غير موجود</AlertTitle>
               <AlertDescription className="text-red-700">
@@ -1075,7 +1008,7 @@ export default function TestBabaserviceWhatsAppPage() {
           )}
 
           {instanceId && (
-            <Alert className="border-green-200 bg-green-50">
+            <Alert>
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertTitle className="text-green-800">Instance جاهز</AlertTitle>
               <AlertDescription className="text-green-700">
@@ -1137,7 +1070,7 @@ export default function TestBabaserviceWhatsAppPage() {
         <TabsContent value="otp" className="space-y-6">
           {/* Instance Status Alert */}
           {!instanceId && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert>
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertTitle className="text-red-800">تحذير: Instance غير موجود</AlertTitle>
               <AlertDescription className="text-red-700">
@@ -1155,7 +1088,7 @@ export default function TestBabaserviceWhatsAppPage() {
           )}
 
           {instanceId && (
-            <Alert className="border-green-200 bg-green-50">
+            <Alert>
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertTitle className="text-green-800">Instance جاهز</AlertTitle>
               <AlertDescription className="text-green-700">
@@ -1257,7 +1190,7 @@ export default function TestBabaserviceWhatsAppPage() {
                 </Button>
               </div>
 
-              <Alert className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 border-l-4 border-l-orange-500">
+              <Alert>
                 <AlertDescription className="text-orange-800">
                   <div className="space-y-2">
                     <p className="font-semibold">
@@ -1283,7 +1216,7 @@ export default function TestBabaserviceWhatsAppPage() {
         <TabsContent value="notifications" className="space-y-4">
           {/* Instance Status Alert */}
           {!instanceId && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert>
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertTitle className="text-red-800">تحذير: Instance غير موجود</AlertTitle>
               <AlertDescription className="text-red-700">
@@ -1301,7 +1234,7 @@ export default function TestBabaserviceWhatsAppPage() {
           )}
 
           {instanceId && (
-            <Alert className="border-green-200 bg-green-50">
+            <Alert>
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertTitle className="text-green-800">Instance جاهز</AlertTitle>
               <AlertDescription className="text-green-700">
@@ -1399,7 +1332,7 @@ export default function TestBabaserviceWhatsAppPage() {
                 إرسال إشعار تجريبي
               </Button>
 
-              <Alert className="bg-teal-50 border-teal-200 border-l-4 border-l-teal-500">
+              <Alert>
                 <AlertDescription className="text-teal-800">
                   سيتم إرسال الإشعار إلى الرقم: <Badge className="bg-teal-100 text-teal-800 border-teal-300">{testPhone}</Badge>
                   {currentCountry && (

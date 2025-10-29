@@ -84,7 +84,7 @@ export async function createPlayerLoginAccount(
   source: 'players' | 'player' = 'players',
   customPassword?: string
 ): Promise<CreateLoginAccountResult> {
-  
+
   try {
     // التحقق من البيانات المطلوبة
     if (!playerData.email || !playerData.full_name && !playerData.name) {
@@ -103,7 +103,7 @@ export async function createPlayerLoginAccount(
       where('email', '==', email)
     );
     const existingUsers = await getDocs(existingUserQuery);
-    
+
     if (!existingUsers.empty) {
       return {
         success: false,
@@ -113,11 +113,11 @@ export async function createPlayerLoginAccount(
 
     // تحديد كلمة المرور (مخصصة أو الافتراضية)
     const password = customPassword || UNIFIED_PLAYER_PASSWORD;
-    
+
     // إنشاء حساب Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(
-      auth, 
-      email, 
+      auth,
+      email,
       password
     );
     const firebaseUser = userCredential.user;
@@ -131,13 +131,13 @@ export async function createPlayerLoginAccount(
       full_name: fullName,
       name: fullName,
       phone: playerData.phone || '',
-      
+
       // الاحتفاظ بالانتماء للمنظمة
       club_id: playerData.club_id || null,
       academy_id: playerData.academy_id || null,
       trainer_id: playerData.trainer_id || null,
       agent_id: playerData.agent_id || null,
-      
+
       // معلومات إضافية
       profile_image: playerData.profile_image || '',
       nationality: playerData.nationality || '',
@@ -145,20 +145,20 @@ export async function createPlayerLoginAccount(
       birth_date: playerData.birth_date || playerData.birthDate || null,
       country: playerData.country || '',
       city: playerData.city || '',
-      
+
       // حالة الحساب
       isActive: true,
       verified: false,
       profileCompleted: true,
       isNewUser: false,
-      
+
       // إعدادات خاصة
       tempPassword: password,
       needsPasswordChange: true,
       convertedFromDependent: true,
       originalSource: source,
       unifiedPassword: true,
-      
+
       // تواريخ
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -221,11 +221,11 @@ export async function getPlayerLoginAccountInfo(playerEmail: string): Promise<Pl
       where('email', '==', playerEmail)
     );
     const users = await getDocs(userQuery);
-    
+
     if (users.empty) {
       return null;
     }
-    
+
     const userData = users.docs[0].data();
     return {
       uid: userData.uid,
@@ -239,4 +239,4 @@ export async function getPlayerLoginAccountInfo(playerEmail: string): Promise<Pl
     console.error('خطأ في الحصول على معلومات حساب الدخول:', error);
     return null;
   }
-} 
+}

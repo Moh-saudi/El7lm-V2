@@ -1,44 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
-import { 
-  Loader2, 
-  Send, 
-  MessageSquare, 
-  Settings, 
-  BarChart3, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
-  Phone,
-  Mail,
-  Zap,
-  Shield,
-  Database,
-  Activity,
-  TrendingUp,
-  Users,
-  Clock,
-  RefreshCw,
-  Save,
-  Download,
-  Upload,
-  Trash2,
-  Eye,
-  Edit,
-  Plus,
-  Minus,
-  Calendar,
-  RotateCcw
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Activity,
+    AlertTriangle,
+    BarChart3,
+    Calendar,
+    CheckCircle,
+    Clock,
+    Database,
+    Download,
+    Loader2,
+    MessageSquare,
+    Phone,
+    RefreshCw,
+    RotateCcw,
+    Save,
+    Send,
+    Settings,
+    Shield,
+    Trash2,
+    TrendingUp,
+    Upload,
+    Users,
+    XCircle,
+    Zap
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface TestResult {
   success: boolean;
@@ -91,7 +86,7 @@ interface AccountInfo {
 export default function BeOnV3AdminPage() {
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('+201017799580');
-  const [message, setMessage] = useState('مرحباً! هذه رسالة اختبار من El7lm Platform مع BeOn V3 API');
+  const [message, setMessage] = useState('مرحباً! هذه رسالة اختبار من El7lm Platform مع Baba Service API');
   const [results, setResults] = useState<TestResult[]>([]);
   const [config, setConfig] = useState<BeOnConfig>({
     baseUrl: 'https://v3.api.beon.chat',
@@ -182,7 +177,7 @@ export default function BeOnV3AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config, updatedBy: 'admin' })
       });
-      
+
       const result = await response.json();
       if (result.success) {
         setConfig(result.data);
@@ -201,7 +196,7 @@ export default function BeOnV3AdminPage() {
       const response = await fetch('/api/admin/beon/config?reset=true', {
         method: 'DELETE'
       });
-      
+
       const result = await response.json();
       if (result.success) {
         setConfig(result.data);
@@ -218,18 +213,20 @@ export default function BeOnV3AdminPage() {
   const testSMS = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/beon/sms', {
+      const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'sms',
           phoneNumbers: [phone],
-          message: message
+          message: message,
+          instance_id: '68F243B3A8D8D'
         })
       });
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'SMS' }]);
-      
+
         if (result.success) {
           toast.success('تم إرسال SMS بنجاح!');
           updateStats('success', phone, 'sms');
@@ -250,15 +247,15 @@ export default function BeOnV3AdminPage() {
   // اختبار WhatsApp Share برقم ثابت
   const testWhatsAppShareFixed = () => {
     const testPhone = '201017799580';
-    const testMessage = 'اختبار WhatsApp Share من BeOn V3';
-    
+    const testMessage = 'اختبار WhatsApp Share من Baba Service';
+
     console.log(`🧪 اختبار WhatsApp Share برقم ثابت: ${testPhone}`);
-    
+
     const encodedMessage = encodeURIComponent(testMessage);
     const whatsappUrl = `https://wa.me/${testPhone}?text=${encodedMessage}`;
-    
+
     console.log(`🧪 رابط WhatsApp للاختبار: ${whatsappUrl}`);
-    
+
     // إضافة النتيجة
     const result = {
       success: true,
@@ -271,10 +268,10 @@ export default function BeOnV3AdminPage() {
         whatsappUrl: whatsappUrl
       }
     };
-    
+
     setResults(prev => [...prev, result]);
     updateStats('success');
-    
+
     // فتح WhatsApp
     window.open(whatsappUrl, '_blank');
     toast.success('تم فتح WhatsApp للاختبار!');
@@ -283,13 +280,13 @@ export default function BeOnV3AdminPage() {
   // اختبار WhatsApp Share (بسيط)
   const testWhatsAppShare = () => {
     console.log(`🚀 بدء إرسال WhatsApp Share للرقم: "${phone}"`);
-    
+
     // تنظيف رقم الهاتف
     let cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '').replace(/[^\d]/g, '');
-    
+
     console.log(`🔍 الرقم الأصلي: "${phone}" (طول: ${phone.length})`);
     console.log(`🔍 الرقم بعد التنظيف: "${cleanPhone}" (طول: ${cleanPhone.length})`);
-    
+
     // التأكد من أن الرقم يبدأ بـ 20 (مصر)
     if (cleanPhone && !cleanPhone.startsWith('20')) {
       if (cleanPhone.startsWith('0')) {
@@ -298,23 +295,23 @@ export default function BeOnV3AdminPage() {
         cleanPhone = '20' + cleanPhone;
       }
     }
-    
+
     console.log(`📱 الرقم النهائي: "${cleanPhone}" (طول: ${cleanPhone.length})`);
-    
+
     // التحقق من صحة الرقم
     if (!cleanPhone.startsWith('20') || cleanPhone.length !== 12) {
       console.error(`❌ رقم هاتف غير صحيح: "${cleanPhone}"`);
       toast.error(`رقم الهاتف غير صحيح: ${cleanPhone}`);
       return;
     }
-    
+
     // ترميز الرسالة
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-    
+
     console.log(`📱 رابط WhatsApp النهائي: ${whatsappUrl}`);
     console.log(`📱 طول الرابط: ${whatsappUrl.length}`);
-    
+
     // التحقق من صحة URL
     try {
       new URL(whatsappUrl);
@@ -324,7 +321,7 @@ export default function BeOnV3AdminPage() {
       toast.error('خطأ في إنشاء رابط WhatsApp');
       return;
     }
-    
+
     // إضافة النتيجة
     const result = {
       success: true,
@@ -338,14 +335,14 @@ export default function BeOnV3AdminPage() {
         messageLength: message.length
       }
     };
-    
+
     setResults(prev => [...prev, result]);
     updateStats('success');
-    
+
     // فتح WhatsApp
     console.log(`🚀 فتح WhatsApp...`);
     window.open(whatsappUrl, '_blank');
-    
+
     toast.success('تم فتح WhatsApp بنجاح!');
   };
 
@@ -353,18 +350,20 @@ export default function BeOnV3AdminPage() {
   const testWhatsApp = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/beon/whatsapp', {
+      const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'whatsapp',
           phoneNumbers: [phone],
-          message: message
+          message: message,
+          instance_id: '68F243B3A8D8D'
         })
       });
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'WhatsApp (SMS)' }]);
-      
+
       if (result.success) {
         toast.success('تم إرسال WhatsApp بنجاح!');
         updateStats('success');
@@ -386,19 +385,20 @@ export default function BeOnV3AdminPage() {
   const testUnified = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/beon/messages', {
+      const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'sms',
           phoneNumbers: [phone],
           message: message,
-          type: 'sms'
+          instance_id: '68F243B3A8D8D'
         })
       });
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'Unified Messages' }]);
-      
+
       if (result.success) {
         toast.success('تم إرسال الرسالة الموحدة بنجاح!');
         updateStats('success');
@@ -427,7 +427,7 @@ export default function BeOnV3AdminPage() {
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'Account Check' }]);
-      
+
       if (result.success) {
         toast.success('تم فحص الحساب بنجاح!');
         if (result.data) {
@@ -456,7 +456,7 @@ export default function BeOnV3AdminPage() {
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'Balance Check' }]);
-      
+
       if (result.success) {
         toast.success('تم فحص الرصيد بنجاح!');
       } else {
@@ -486,7 +486,7 @@ export default function BeOnV3AdminPage() {
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'Real Delivery Test' }]);
-      
+
       if (result.success) {
         toast.success('تم اختبار الإرسال الحقيقي بنجاح!');
       } else {
@@ -516,7 +516,7 @@ export default function BeOnV3AdminPage() {
 
       const result = await response.json();
       setResults(prev => [...prev, { ...result, method: 'Deep Diagnosis' }]);
-      
+
       if (result.success) {
         toast.success('تم التشخيص العميق بنجاح!');
       } else {
@@ -603,7 +603,7 @@ export default function BeOnV3AdminPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">إدارة BeOn V3 API</h1>
+        <h1 className="text-3xl font-bold mb-2">إدارة Baba Service API</h1>
         <p className="text-gray-600">لوحة تحكم شاملة لإدارة ومراقبة خدمات الرسائل</p>
       </div>
 
@@ -611,7 +611,7 @@ export default function BeOnV3AdminPage() {
       <Alert className="mb-6">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          <strong>ملاحظة مهمة:</strong> BeOn V3 لا يدعم WhatsApp فعلياً. جميع طلبات WhatsApp يتم إرسالها كـ SMS.
+          <strong>ملاحظة مهمة:</strong> Baba Service يدعم WhatsApp و SMS فعلياً مع إمكانيات متقدمة.
         </AlertDescription>
       </Alert>
 
@@ -672,8 +672,8 @@ export default function BeOnV3AdminPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <Button 
-                    onClick={testSMS} 
+                  <Button
+                    onClick={testSMS}
                     disabled={loading}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -681,9 +681,9 @@ export default function BeOnV3AdminPage() {
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
                     اختبار SMS
                   </Button>
-                  
-                  <Button 
-                    onClick={testWhatsAppShare} 
+
+                  <Button
+                    onClick={testWhatsAppShare}
                     disabled={loading}
                     className="w-full bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -691,9 +691,9 @@ export default function BeOnV3AdminPage() {
                     <MessageSquare className="h-4 w-4 mr-2" />
                     WhatsApp Share
                   </Button>
-                  
-                  <Button 
-                    onClick={testWhatsAppShareFixed} 
+
+                  <Button
+                    onClick={testWhatsAppShareFixed}
                     disabled={loading}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -701,9 +701,9 @@ export default function BeOnV3AdminPage() {
                   >
                     🧪 اختبار
                   </Button>
-                  
-                  <Button 
-                    onClick={testWhatsApp} 
+
+                  <Button
+                    onClick={testWhatsApp}
                     disabled={loading}
                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -711,9 +711,9 @@ export default function BeOnV3AdminPage() {
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
                     WhatsApp (SMS)
                   </Button>
-                  
-                  <Button 
-                    onClick={testUnified} 
+
+                  <Button
+                    onClick={testUnified}
                     disabled={loading}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -721,9 +721,9 @@ export default function BeOnV3AdminPage() {
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                     اختبار موحد
                   </Button>
-                  
-                  <Button 
-                    onClick={checkAccount} 
+
+                  <Button
+                    onClick={checkAccount}
                     disabled={loading}
                     className="w-full bg-orange-600 hover:bg-orange-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     variant="default"
@@ -747,8 +747,8 @@ export default function BeOnV3AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Button 
-                  onClick={checkBalance} 
+                <Button
+                  onClick={checkBalance}
                   disabled={loading}
                   className="w-full bg-cyan-600 hover:bg-cyan-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   variant="default"
@@ -756,9 +756,9 @@ export default function BeOnV3AdminPage() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                   فحص الرصيد
                 </Button>
-                
-                <Button 
-                  onClick={testRealDelivery} 
+
+                <Button
+                  onClick={testRealDelivery}
                   disabled={loading}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   variant="default"
@@ -766,9 +766,9 @@ export default function BeOnV3AdminPage() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                   اختبار حقيقي
                 </Button>
-                
-                <Button 
-                  onClick={deepDiagnosis} 
+
+                <Button
+                  onClick={deepDiagnosis}
                   disabled={loading}
                   className="w-full bg-red-600 hover:bg-red-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   variant="default"
@@ -776,9 +776,9 @@ export default function BeOnV3AdminPage() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
                   تشخيص عميق
                 </Button>
-                
-                <Button 
-                  onClick={clearResults} 
+
+                <Button
+                  onClick={clearResults}
                   disabled={loading}
                   className="w-full bg-gray-600 hover:bg-gray-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   variant="default"
@@ -800,16 +800,16 @@ export default function BeOnV3AdminPage() {
                     نتائج الاختبار
                   </CardTitle>
                   <div className="flex gap-2">
-                    <Button 
-                      onClick={exportResults} 
+                    <Button
+                      onClick={exportResults}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                       size="sm"
                     >
                       <Download className="h-4 w-4 mr-1" />
                       تصدير
                     </Button>
-                    <Button 
-                      onClick={clearResults} 
+                    <Button
+                      onClick={clearResults}
                       className="bg-rose-600 hover:bg-rose-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                       size="sm"
                     >
@@ -836,23 +836,23 @@ export default function BeOnV3AdminPage() {
                           </span>
                         )}
                       </div>
-                      
+
                       <p className="text-sm mb-2">
                         {result.success ? result.message : result.error}
                       </p>
-                      
+
                       {result.code && (
                         <Badge variant="outline" className="mb-2">
                           Code: {result.code}
                         </Badge>
                       )}
-                      
+
                       {result.retryAfter && (
                         <Badge variant="outline" className="mb-2">
                           Retry After: {result.retryAfter}s
                         </Badge>
                       )}
-                      
+
                       {result.data && (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-sm font-medium text-blue-600">
@@ -879,29 +879,29 @@ export default function BeOnV3AdminPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5" />
-                    إعدادات BeOn V3
+                    إعدادات Baba Service
                   </CardTitle>
                   <CardDescription>تكوين وإدارة إعدادات API</CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={saveConfig} 
+                  <Button
+                    onClick={saveConfig}
                     className="bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     size="sm"
                   >
                     <Save className="h-4 w-4 mr-1" />
                     حفظ
                   </Button>
-                  <Button 
-                    onClick={reloadConfig} 
+                  <Button
+                    onClick={reloadConfig}
                     className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     size="sm"
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
                     إعادة تحميل
                   </Button>
-                  <Button 
-                    onClick={resetConfig} 
+                  <Button
+                    onClick={resetConfig}
                     className="bg-orange-600 hover:bg-orange-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                     size="sm"
                   >
@@ -916,7 +916,7 @@ export default function BeOnV3AdminPage() {
                 {/* إعدادات أساسية */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">إعدادات أساسية</h3>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Base URL</label>
                     <Input
@@ -925,7 +925,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Token</label>
                     <Input
@@ -935,7 +935,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Sender Name</label>
                     <Input
@@ -944,7 +944,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Language</label>
                     <select
@@ -962,7 +962,7 @@ export default function BeOnV3AdminPage() {
                 {/* إعدادات متقدمة */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">إعدادات متقدمة</h3>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Max Retries</label>
                     <Input
@@ -972,7 +972,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Timeout (ms)</label>
                     <Input
@@ -982,7 +982,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Rate Limit (per minute)</label>
                     <Input
@@ -992,7 +992,7 @@ export default function BeOnV3AdminPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Log Level</label>
                     <select
@@ -1013,7 +1013,7 @@ export default function BeOnV3AdminPage() {
               {/* إعدادات الطوارئ */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">إعدادات الطوارئ</h3>
-                
+
                 <div className="flex items-center space-x-4">
                   <label className="flex items-center space-x-2">
                     <input
@@ -1024,7 +1024,7 @@ export default function BeOnV3AdminPage() {
                     />
                     <span>وضع الطوارئ</span>
                   </label>
-                  
+
                   <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -1035,7 +1035,7 @@ export default function BeOnV3AdminPage() {
                     <span>إعادة المحاولة التلقائية</span>
                   </label>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium">مزود النسخ الاحتياطي</label>
                   <select
@@ -1176,17 +1176,17 @@ export default function BeOnV3AdminPage() {
                     {accountInfo.status}
                   </Badge>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">الرصيد:</span>
                   <span className="font-bold">{accountInfo.balance} {accountInfo.currency}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">الخطة:</span>
                   <span>{accountInfo.plan}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">آخر نشاط:</span>
                   <span className="text-sm">{accountInfo.lastActivity || 'غير محدد'}</span>
@@ -1206,12 +1206,12 @@ export default function BeOnV3AdminPage() {
                   <span className="text-sm font-medium">يومياً:</span>
                   <span>{accountInfo.limits.daily}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">شهرياً:</span>
                   <span>{accountInfo.limits.monthly}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">في الدقيقة:</span>
                   <span>{accountInfo.limits.perMinute}</span>
@@ -1229,32 +1229,32 @@ export default function BeOnV3AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Button 
-                  onClick={checkAccount} 
-                  disabled={loading} 
+                <Button
+                  onClick={checkAccount}
+                  disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
                   فحص الحساب
                 </Button>
-                
-                <Button 
-                  onClick={checkBalance} 
-                  disabled={loading} 
+
+                <Button
+                  onClick={checkBalance}
+                  disabled={loading}
                   className="w-full bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                   فحص الرصيد
                 </Button>
-                
-                <Button 
+
+                <Button
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   شحن الرصيد
                 </Button>
-                
-                <Button 
+
+                <Button
                   className="w-full bg-orange-600 hover:bg-orange-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <Users className="h-4 w-4 mr-2" />
@@ -1284,7 +1284,7 @@ export default function BeOnV3AdminPage() {
                   <h3 className="font-semibold">SMS API</h3>
                   <p className="text-sm text-gray-600">يعمل بشكل طبيعي</p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="p-4 bg-yellow-100 rounded-full w-16 h-16 mx-auto mb-2 flex items-center justify-center">
                     <AlertTriangle className="h-8 w-8 text-yellow-600" />
@@ -1292,7 +1292,7 @@ export default function BeOnV3AdminPage() {
                   <h3 className="font-semibold">WhatsApp API</h3>
                   <p className="text-sm text-gray-600">يرسل كـ SMS</p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="p-4 bg-red-100 rounded-full w-16 h-16 mx-auto mb-2 flex items-center justify-center">
                     <XCircle className="h-8 w-8 text-red-600" />
@@ -1352,23 +1352,23 @@ export default function BeOnV3AdminPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">وضع الطوارئ</h3>
-                  
+
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h4 className="font-medium">تفعيل وضع الطوارئ</h4>
                       <p className="text-sm text-gray-600">إيقاف جميع الخدمات مؤقتاً</p>
                     </div>
-                    <Button 
+                    <Button
                       onClick={toggleEmergencyMode}
-                      className={config.emergencyMode 
-                        ? "bg-red-600 hover:bg-red-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200" 
+                      className={config.emergencyMode
+                        ? "bg-red-600 hover:bg-red-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                         : "bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                       }
                     >
                       {config.emergencyMode ? "معطل" : "مفعل"}
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h4 className="font-medium">مزود النسخ الاحتياطي</h4>
@@ -1380,29 +1380,29 @@ export default function BeOnV3AdminPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">إجراءات سريعة</h3>
-                  
-                  <Button 
+
+                  <Button
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     إعادة تشغيل الخدمات
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <Database className="h-4 w-4 mr-2" />
                     مسح ذاكرة التخزين المؤقت
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="w-full bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     تصدير سجل الأخطاء
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="w-full bg-red-600 hover:bg-red-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />

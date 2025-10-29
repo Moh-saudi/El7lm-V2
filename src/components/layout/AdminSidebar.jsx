@@ -1,39 +1,33 @@
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Users,
-  CreditCard,
-  FileText,
-  BarChart3,
-  Shield,
-  UserCheck,
-  DollarSign,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
-  Briefcase,
-  MessageSquare,
-  Monitor,
-  MapPin,
-  Database,
-  HardDrive,
-  Heart,
-  MessageCircle,
-  Headphones,
-  Settings,
-  UserCog,
-  Building,
-  GraduationCap,
-  UserPlus,
-  Trophy
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase/config';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import {
+    BarChart3,
+    Briefcase,
+    Building,
+    ChevronLeft,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    FileText,
+    GraduationCap,
+    HardDrive,
+    Headphones,
+    LayoutDashboard,
+    LogOut,
+    MessageCircle,
+    MessageSquare,
+    Monitor,
+    Settings,
+    Shield,
+    Trophy,
+    UserCheck,
+    UserCog,
+    UserPlus,
+    Users
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
   const pathname = usePathname();
@@ -51,51 +45,51 @@ const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
       icon: Users,
       color: 'text-green-600',
       subItems: [
-        { 
-          title: 'جميع المستخدمين', 
-          href: '/dashboard/admin/users', 
+        {
+          title: 'جميع المستخدمين',
+          href: '/dashboard/admin/users',
           icon: Users,
           description: 'إدارة جميع المستخدمين في النظام'
         },
-        { 
-          title: 'الموظفين', 
-          href: '/dashboard/admin/employees', 
+        {
+          title: 'الموظفين',
+          href: '/dashboard/admin/employees',
           icon: Briefcase,
           description: 'إدارة موظفي النظام وصلاحياتهم'
         },
-        { 
-          title: 'تحويل اللاعبين التابعين', 
-          href: '/admin/convert-dependent-players', 
+        {
+          title: 'تحويل اللاعبين التابعين',
+          href: '/admin/convert-dependent-players',
           icon: UserCheck,
           description: 'تحويل اللاعبين التابعين إلى حسابات قابلة لتسجيل الدخول'
         },
-        { 
-          title: 'اللاعبين', 
-          href: '/dashboard/admin/users/players', 
+        {
+          title: 'اللاعبين',
+          href: '/dashboard/admin/users/players',
           icon: UserCheck,
           description: 'إدارة حسابات اللاعبين'
         },
-        { 
-          title: 'الأكاديميات', 
-          href: '/dashboard/admin/users/academies', 
+        {
+          title: 'الأكاديميات',
+          href: '/dashboard/admin/users/academies',
           icon: GraduationCap,
           description: 'إدارة حسابات الأكاديميات'
         },
-        { 
-          title: 'الأندية', 
-          href: '/dashboard/admin/users/clubs', 
+        {
+          title: 'الأندية',
+          href: '/dashboard/admin/users/clubs',
           icon: Building,
           description: 'إدارة حسابات الأندية'
         },
-        { 
-          title: 'الوكلاء والمدربين', 
-          href: '/dashboard/admin/users/agents', 
+        {
+          title: 'الوكلاء والمدربين',
+          href: '/dashboard/admin/users/agents',
           icon: UserCog,
           description: 'إدارة حسابات الوكلاء والمدربين'
         },
-        { 
-          title: 'ترحيل البريد الإلكتروني', 
-          href: '/dashboard/admin/email-migration', 
+        {
+          title: 'ترحيل البريد الإلكتروني',
+          href: '/dashboard/admin/email-migration',
           icon: Mail,
           description: 'ترحيل البريد الإلكتروني الطويل إلى النظام الجديد'
         }
@@ -139,7 +133,7 @@ const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
       subItems: [
         { title: 'الرسائل', href: '/dashboard/admin/messages', icon: MessageSquare },
         { title: 'إدارة الإشعارات', href: '/dashboard/admin/notifications', icon: MessageCircle },
-        { title: 'إدارة BeOn V3', href: '/dashboard/admin/beon-v3', icon: MessageSquare },
+        { title: 'إدارة Baba Service', href: '/dashboard/admin/beon-v3', icon: MessageSquare },
         { title: 'الدعم الفني', href: '/dashboard/admin/support', icon: Headphones },
         { title: 'إدارة العملاء', href: '/dashboard/admin/customer-management', icon: UserPlus }
       ]

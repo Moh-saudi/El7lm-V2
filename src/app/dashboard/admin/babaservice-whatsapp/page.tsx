@@ -83,7 +83,7 @@ export default function BabaserviceWhatsAppAdminPage() {
       const response = await fetch('/api/whatsapp/babaservice', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify({ action, ...data }),
       });
@@ -124,7 +124,7 @@ export default function BabaserviceWhatsAppAdminPage() {
       const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify({
           type: 'admin_notification',

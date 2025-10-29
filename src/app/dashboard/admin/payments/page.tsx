@@ -430,21 +430,23 @@ export default function AdminPaymentsPage() {
 
         console.log(`رسالة مختصرة: ${shortMessage} (${shortMessage.length} حرف)`);
 
-        await fetch('/api/beon/sms', {
+        await fetch('/api/whatsapp/babaservice/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            singlePhone: adminPhone,
+            type: 'sms',
+            phoneNumbers: [adminPhone],
             message: shortMessage
           })
         });
       } else {
         // إرسال SMS للمدير
-        await fetch('/api/beon/sms', {
+        await fetch('/api/whatsapp/babaservice/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            singlePhone: adminPhone,
+            type: 'sms',
+            phoneNumbers: [adminPhone],
             message: smsData.message
           })
         });
@@ -635,11 +637,12 @@ export default function AdminPaymentsPage() {
 
       if (notificationMessage) {
         // إرسال SMS
-        await fetch('/api/beon/sms', {
+        await fetch('/api/whatsapp/babaservice/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            singlePhone: payment.playerPhone,
+            type: 'sms',
+            phoneNumbers: [payment.playerPhone],
             message: notificationMessage
           })
         });
@@ -1308,11 +1311,12 @@ export default function AdminPaymentsPage() {
     }
 
     try {
-      await fetch('/api/beon/sms', {
+      await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          singlePhone: selectedPayment.playerPhone,
+          type: 'sms',
+          phoneNumbers: [selectedPayment.playerPhone],
           message: messageText
         })
       });
@@ -1357,16 +1361,16 @@ export default function AdminPaymentsPage() {
     }
 
     try {
-      await fetch('/api/beon/messages', {
+      await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          singlePhone: selectedPayment.playerPhone,
-          message: messageText,
-          preferredMethod: 'whatsapp'
+          type: 'whatsapp',
+          phoneNumbers: [selectedPayment.playerPhone],
+          message: messageText
         })
       });
-      toast.success('تم إرسال الرسالة بنجاح (كـ SMS - BeOn V3 لا يدعم WhatsApp فعلياً)');
+      toast.success('تم إرسال الرسالة عبر WhatsApp بنجاح');
 
       // إغلاق الموديول وتنظيف النص بعد فتح WhatsApp
       setShowMessageDialog(false);

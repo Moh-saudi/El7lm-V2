@@ -11,7 +11,7 @@ export const BABASERVICE_CONFIG = {
   ACCESS_TOKEN: process.env.BABASERVICE_ACCESS_TOKEN || '68f0029b4ce90',
 
   // Instance ID (سيتم إنشاؤه تلقائياً)
-  INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID,
+  INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID || '68F243B3A8D8D',
 
   // Webhook URL
   WEBHOOK_URL: process.env.BABASERVICE_WEBHOOK_URL,
@@ -135,12 +135,63 @@ export const formatPhoneNumber = (phoneNumber: string): string => {
   // Remove all non-digit characters
   const cleaned = cleanNumber.replace(/\D/g, '');
 
-  // If it doesn't start with country code, assume it's Saudi (+966)
+  console.log('📞 formatPhoneNumber - Input:', phoneNumber, 'Cleaned:', cleaned);
+
+  // إذا كان الرقم فارغ أو قصير جداً
+  if (!cleaned || cleaned.length < 9) {
+    console.log('📞 formatPhoneNumber - Invalid number too short');
+    return cleaned;
+  }
+
+  // إذا كان الرقم يبدأ بـ 966 (السعودية) - احتفظ به كما هو
+  if (cleaned.startsWith('966')) {
+    console.log('📞 formatPhoneNumber - Saudi with code 966:', cleaned);
+    return cleaned;
+  }
+
+  // إذا كان الرقم يبدأ بـ 20 (مصر) - احتفظ به كما هو
+  if (cleaned.startsWith('20')) {
+    console.log('📞 formatPhoneNumber - Egypt with code 20:', cleaned);
+    return cleaned;
+  }
+
+  // إذا كان الرقم يبدأ بأكواد دول أخرى - احتفظ به كما هو
+  const countryCodes = ['971', '965', '974', '973', '968', '212', '213', '216', '218', '249', '967'];
+  for (const code of countryCodes) {
+    if (cleaned.startsWith(code)) {
+      console.log(`📞 formatPhoneNumber - Country code ${code}:`, cleaned);
+      return cleaned;
+    }
+  }
+
+  // حالات خاصة للسعودية
+  // رقم سعودي يبدأ بـ 5 وطوله 9 أرقام
   if (cleaned.length === 9 && cleaned.startsWith('5')) {
+    console.log('📞 formatPhoneNumber - Saudi 9 digits starting with 5, adding 966');
     return `966${cleaned}`;
   }
 
-  // إرجاع الرقم بدون @s.whatsapp.net (حسب الوثيقة الرسمية)
+  // رقم سعودي يبدأ بـ 05 وطوله 10 أرقام
+  if (cleaned.length === 10 && cleaned.startsWith('05')) {
+    console.log('📞 formatPhoneNumber - Saudi 10 digits starting with 05, removing 0 and adding 966');
+    return `966${cleaned.substring(1)}`;
+  }
+
+  // حالات خاصة لمصر
+  // رقم مصري يبدأ بـ 1 وطوله 10 أرقام (مثل: 1017799580)
+  if (cleaned.length === 10 && cleaned.startsWith('1')) {
+    console.log('📞 formatPhoneNumber - Egypt 10 digits starting with 1, adding 20');
+    return `20${cleaned}`;
+  }
+
+  // رقم مصري يبدأ بـ 01 وطوله 11 رقم (مثل: 01017799580)
+  if (cleaned.length === 11 && cleaned.startsWith('01')) {
+    console.log('📞 formatPhoneNumber - Egypt 11 digits starting with 01, removing 0 and adding 20');
+    return `20${cleaned.substring(1)}`;
+  }
+
+  // في جميع الحالات الأخرى، ارجع الرقم كما هو
+  console.log('📞 formatPhoneNumber - Returning as is:', cleaned);
   return cleaned;
 };
 

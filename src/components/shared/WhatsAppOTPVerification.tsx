@@ -1,7 +1,7 @@
 'use client';
 
-import { AlertTriangle, CheckCircle, Clock, MessageCircle, RefreshCw, X } from 'lucide-react';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AlertTriangle, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface WhatsAppOTPVerificationProps {
   phoneNumber: string;
@@ -16,6 +16,7 @@ interface WhatsAppOTPVerificationProps {
   maxAttempts?: number;
   language?: string;
   t?: (key: string) => string;
+  onOTPVerify?: (otp: string) => Promise<void>; // دالة مخصصة للتحقق من OTP
 }
 
 export default function WhatsAppOTPVerification({
@@ -31,6 +32,7 @@ export default function WhatsAppOTPVerification({
   maxAttempts = 3,
   language,
   t,
+  onOTPVerify,
 }: WhatsAppOTPVerificationProps) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -108,30 +110,41 @@ export default function WhatsAppOTPVerification({
     setAttempts(prev => prev + 1);
 
     try {
-      // API call to verify OTP
-      const verifyResponse = await fetch('/api/sms/verify-otp', { // Uses the same unified endpoint
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber, otp: otpCode, method: 'whatsapp' }),
-      });
+      // إذا كانت هناك دالة مخصصة للتحقق من OTP، استخدمها
+      if (onOTPVerify) {
+        console.log('🔐 Calling custom OTP verification function with:', otpCode);
+        await onOTPVerify(otpCode);
+        console.log('✅ Custom OTP verification succeeded');
+        // إذا وصلنا هنا بدون خطأ، يعني التحقق نجح
+        setMessage('تم التحقق بنجاح!');
+        setTimeout(() => onVerificationSuccess(phoneNumber), 1000);
+      } else {
+        // API call to verify OTP
+        const verifyResponse = await fetch('/api/sms/verify-otp', { // Uses the same unified endpoint
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber, otp: otpCode, method: 'whatsapp' }),
+        });
 
-      const verifyResult = await verifyResponse.json();
+        const verifyResult = await verifyResponse.json();
 
-      if (!verifyResponse.ok || !verifyResult.success) {
-        throw new Error(verifyResult.error || 'رمز التحقق غير صحيح.');
+        if (!verifyResponse.ok || !verifyResult.success) {
+          throw new Error(verifyResult.error || 'رمز التحقق غير صحيح.');
+        }
+
+        setMessage('تم التحقق بنجاح!');
+        setTimeout(() => onVerificationSuccess(phoneNumber), 1000);
       }
 
-      setMessage('تم التحقق بنجاح!');
-      setTimeout(() => onVerificationSuccess(phoneNumber), 1000);
-
     } catch (err: any) {
+      console.error('❌ OTP verification error in WhatsAppOTPVerification:', err);
       setError(err.message);
       setOtp(['', '', '', '', '', '']);
       document.getElementById('whatsapp-otp-0')?.focus();
     } finally {
       setLoading(false);
     }
-  }, [phoneNumber, onVerificationSuccess, loading, attempts, maxAttempts]);
+  }, [phoneNumber, onVerificationSuccess, loading, attempts, maxAttempts, onOTPVerify]);
 
   const handleResendOTP = useCallback(async () => {
     if (resendLoading || timeRemaining > 0) return;
@@ -148,7 +161,7 @@ export default function WhatsAppOTPVerification({
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
 
-      setMessage('تم إعادة إرسال الرمز بنجاح.');
+      setMessage('تم إعادة إرسال الرمز بنجاح عبر WhatsApp.');
       setTimeRemaining(otpExpirySeconds);
       setAttempts(0);
       setOtp(['', '', '', '', '', '']);
@@ -168,7 +181,7 @@ export default function WhatsAppOTPVerification({
       <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl" dir="rtl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" title="إغلاق">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -200,6 +213,9 @@ export default function WhatsAppOTPVerification({
               className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-green-500"
               maxLength={1}
               disabled={loading}
+              placeholder="0"
+              title={`رقم التحقق ${index + 1}`}
+              aria-label={`رقم التحقق ${index + 1}`}
             />
           ))}
         </div>

@@ -380,7 +380,7 @@ export default function EnhancedSidebar({ accountType = 'player' }: EnhancedSide
         {
           title: 'اختبار WhatsApp API',
           icon: MessageSquare,
-          href: '/test-babaservice-whatsapp',
+          href: '/dashboard/admin/whatsapp-test',
           color: 'text-green-400'
         }
       ]

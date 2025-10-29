@@ -64,7 +64,7 @@ class BabaserviceWhatsAppService {
     this.config = {
       accessToken: process.env.BABASERVICE_ACCESS_TOKEN || '68f0029b4ce90',
       baseUrl: process.env.BABASERVICE_BASE_URL || 'https://wbot.babaservice.online/api',
-      instanceId: process.env.BABASERVICE_INSTANCE_ID,
+      instanceId: process.env.BABASERVICE_INSTANCE_ID || '68F243B3A8D8D',
       webhookUrl: process.env.BABASERVICE_WEBHOOK_URL
     };
   }
@@ -128,7 +128,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -176,7 +176,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -212,33 +212,39 @@ class BabaserviceWhatsAppService {
       phoneNumberType: typeof phoneNumber,
       phoneNumberLength: phoneNumber?.length,
       message: message?.substring(0, 50),
-      instanceId
+      instanceId,
+      config: {
+        baseUrl: this.config.baseUrl,
+        accessToken: this.config.accessToken ? 'SET' : 'NOT_SET',
+        instanceId: this.config.instanceId
+      }
     });
 
     if (!this.validateConfig()) {
+      console.error('❌ تكوين API غير مكتمل:', this.config);
       return { success: false, error: 'تكوين API غير مكتمل' };
     }
 
     const instance = instanceId || this.config.instanceId;
     if (!instance) {
+      console.error('❌ Instance ID مطلوب:', { instanceId, configInstanceId: this.config.instanceId });
       return { success: false, error: 'Instance ID مطلوب' };
     }
 
     try {
-      const requestBody: SendMessageRequest = {
+      const requestBody = {
         number: phoneNumber,
         type: 'text',
-        message: message,
-        instance_id: instance,
-        access_token: this.config.accessToken
+        message: message
       };
 
       console.log('📦 Request body to external API:', requestBody);
+      console.log('📦 Request URL:', `${this.config.baseUrl}/send?instance_id=${instance}&access_token=${this.config.accessToken}`);
 
-      const response = await fetch(`${this.config.baseUrl}/send`, {
+      const response = await fetch(`${this.config.baseUrl}/send?instance_id=${instance}&access_token=${this.config.accessToken}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(requestBody)
       });
@@ -246,29 +252,51 @@ class BabaserviceWhatsAppService {
       const data = await response.json();
       console.log('📥 Response from external API:', data);
 
-      // الـ API يُرجع object مباشرة بدون success flag
-      if (response.ok && data.key) {
-        return {
-          success: true,
-          message: 'تم إرسال الرسالة بنجاح ✅',
-          data: {
-            messageId: data.key?.id,
-            remoteJid: data.key?.remoteJid,
-            timestamp: data.messageTimestamp,
-            messageText: data.message?.extendedTextMessage?.text || data.message?.conversation
-          }
-        };
-      } else if (response.ok) {
-        // إذا كان response.ok لكن بدون key، يعني نجح
-        return {
-          success: true,
-          message: 'تم إرسال الرسالة بنجاح ✅',
-          data: data
-        };
+      // معالجة الاستجابة المختلفة
+      if (response.ok) {
+        // إذا كان response.ok
+        if (Array.isArray(data) && data.length === 0) {
+          // مصفوفة فارغة - قد تكون رسالة ناجحة لكن بدون تفاصيل
+          return {
+            success: true,
+            message: 'تم إرسال الرسالة بنجاح ✅',
+            data: {
+              status: 'sent',
+              note: 'تم الإرسال بنجاح - لا توجد تفاصيل إضافية'
+            }
+          };
+        } else if (data && data.key) {
+          // استجابة مع تفاصيل الرسالة
+          return {
+            success: true,
+            message: 'تم إرسال الرسالة بنجاح ✅',
+            data: {
+              key: data.key,
+              status: 'sent',
+              timestamp: new Date().toISOString()
+            }
+          };
+        } else if (data && data.status === 'error') {
+          // خطأ في الاستجابة
+          return {
+            success: false,
+            error: data.message || 'Instance ID Invalidated',
+            data: data
+          };
+        } else {
+          // استجابة غير متوقعة
+          return {
+            success: true,
+            message: 'تم إرسال الرسالة بنجاح ✅',
+            data: data
+          };
+        }
       } else {
+        // خطأ في HTTP response
         return {
           success: false,
-          error: data.message || data.error || 'فشل في إرسال الرسالة'
+          error: data?.message || `HTTP Error: ${response.status}`,
+          data: data
         };
       }
     } catch (error: any) {
@@ -300,20 +328,20 @@ class BabaserviceWhatsAppService {
     }
 
     try {
-      const requestBody: SendMessageRequest = {
+      const requestBody = {
         number: phoneNumber,
         type: 'media',
         message: message,
         media_url: mediaUrl,
-        filename: filename,
-        instance_id: instance,
-        access_token: this.config.accessToken
+        filename: filename
       };
 
-      const response = await fetch(`${this.config.baseUrl}/send`, {
+      console.log('📦 Media message request:', requestBody);
+
+      const response = await fetch(`${this.config.baseUrl}/send?instance_id=${instance}&access_token=${this.config.accessToken}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(requestBody)
       });
@@ -355,18 +383,18 @@ class BabaserviceWhatsAppService {
     }
 
     try {
-      const requestBody: SendGroupMessageRequest = {
+      const requestBody = {
         group_id: groupId,
         type: 'text',
-        message: message,
-        instance_id: instance,
-        access_token: this.config.accessToken
+        message: message
       };
 
-      const response = await fetch(`${this.config.baseUrl}/send_group`, {
+      console.log('📦 Group message request:', requestBody);
+
+      const response = await fetch(`${this.config.baseUrl}/send_group?instance_id=${instance}&access_token=${this.config.accessToken}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(requestBody)
       });
@@ -414,20 +442,20 @@ class BabaserviceWhatsAppService {
     }
 
     try {
-      const requestBody: SendGroupMessageRequest = {
+      const requestBody = {
         group_id: groupId,
         type: 'media',
         message: message,
         media_url: mediaUrl,
-        filename: filename,
-        instance_id: instance,
-        access_token: this.config.accessToken
+        filename: filename
       };
 
-      const response = await fetch(`${this.config.baseUrl}/send_group`, {
+      console.log('📦 Group media message request:', requestBody);
+
+      const response = await fetch(`${this.config.baseUrl}/send_group?instance_id=${instance}&access_token=${this.config.accessToken}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(requestBody)
       });
@@ -474,7 +502,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -521,7 +549,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -566,7 +594,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -611,7 +639,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -657,7 +685,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -702,7 +730,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 
@@ -752,7 +780,7 @@ class BabaserviceWhatsAppService {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
       });
 

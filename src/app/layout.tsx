@@ -1,4 +1,5 @@
 import ClarityProvider from '@/components/analytics/ClarityProvider';
+import ClarityScript from '@/components/analytics/ClarityScript';
 import ClarityUserTracker from '@/components/analytics/ClarityUserTracker';
 import GoogleTagManager from '@/components/analytics/GoogleTagManager';
 import GTMDataLayer from '@/components/analytics/GTMDataLayer';
@@ -11,6 +12,7 @@ import '@mantine/core/styles.css';
 import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
 import 'react-toastify/dist/ReactToastify.css';
+import '../styles/analytics.css';
 import './globals.css';
 import { Providers } from './providers';
 // إصلاح مشكلة location
@@ -123,10 +125,14 @@ export default function RootLayout({
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://firestore.googleapis.com" />
         <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.clarity.ms" />
 
         {/* DNS Prefetch */}
         <link rel="dns-prefetch" href="//firestore.googleapis.com" />
         <link rel="dns-prefetch" href="//identitytoolkit.googleapis.com" />
+        <link rel="dns-prefetch" href="//www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="//www.clarity.ms" />
 
         {/* Font loading with fallback */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -137,11 +143,26 @@ export default function RootLayout({
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
         <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-        <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID || ''} />
+
+        {/* Analytics Scripts */}
+        <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID || 'GTM-WR4X2BD8'} />
+        <ClarityScript projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 't69agqt6n4'} />
 
         {/* Polyfill for SSR: self = globalThis */}
         <script dangerouslySetInnerHTML={{
           __html: `try{if(typeof self==='undefined')self=globalThis;}catch{}`
+        }} />
+
+        {/* Service Worker Analytics Fix */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // إصلاح مشكلة Service Worker مع خدمات التحليلات
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(registration => {
+                console.log('🔧 Service Worker ready, analytics should work now');
+              });
+            }
+          `
         }} />
       </head>
       <body className={`${cairo.className} antialiased`}>

@@ -104,23 +104,42 @@ const urlsToCache = [
 ];
 
 self.addEventListener('fetch', (event) => {
-  // نتجاهل طلبات Firebase و API
+  // نتجاهل طلبات Firebase و API وخدمات التحليلات
   if (event.request.url.includes('firebasestorage.googleapis.com') ||
       event.request.url.includes('firebaseio.com') ||
-      event.request.url.includes('/api/')) {
+      event.request.url.includes('/api/') ||
+      event.request.url.includes('googletagmanager.com') ||
+      event.request.url.includes('clarity.ms') ||
+      event.request.url.includes('google-analytics.com') ||
+      event.request.url.includes('googleadservices.com') ||
+      event.request.url.includes('googlesyndication.com') ||
+      event.request.url.includes('google.com/analytics') ||
+      event.request.url.includes('doubleclick.net')) {
     return;
   }
 
+  // معالجة محسنة للأخطاء
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // إرجاع من الكاش إذا موجود، وإلا جلب من الشبكة
-        return response || fetch(event.request).catch(() => {
-          // إذا فشل الجلب من الشبكة، نرجع صفحة offline
+        if (response) {
+          return response;
+        }
+
+        return fetch(event.request).catch((error) => {
+          console.warn('Service Worker fetch failed:', event.request.url, error);
+          // إذا فشل الجلب من الشبكة، نرجع صفحة offline فقط للمستندات
           if (event.request.destination === 'document') {
             return caches.match('/offline');
           }
+          // للطلبات الأخرى، نرمي الخطأ بدلاً من إرجاع undefined
+          throw error;
         });
+      })
+      .catch((error) => {
+        console.warn('Service Worker cache and fetch failed:', event.request.url, error);
+        // إرجاع response فارغ بدلاً من undefined
+        return new Response('', { status: 404, statusText: 'Not Found' });
       })
   );
 });

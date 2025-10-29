@@ -162,7 +162,7 @@ const SimpleSidebar: React.FC<SimpleSidebarProps> = ({
         { icon: BarChart3, label: 'التقارير', href: '/dashboard/admin/reports' },
         { icon: BarChart3, label: 'Clarity Analytics', href: '/dashboard/admin/clarity' },
         { icon: MessageSquare, label: 'إدارة BeOn V3', href: '/dashboard/admin/beon-v3' },
-        { icon: MessageSquare, label: 'اختبار WhatsApp API', href: '/test-babaservice-whatsapp' },
+        { icon: MessageSquare, label: 'اختبار WhatsApp API', href: '/dashboard/admin/whatsapp-test' },
         { icon: Globe, label: 'النظام', href: '/dashboard/admin/system' },
       ]
     };

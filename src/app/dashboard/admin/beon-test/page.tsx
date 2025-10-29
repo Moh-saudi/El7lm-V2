@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
-export default function BeOnTestPage() {
+export default function BabaServiceTestPage() {
   const [token, setToken] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('رسالة اختبار من صفحة التحقق');
@@ -20,7 +20,7 @@ export default function BeOnTestPage() {
     try {
       setLoading(true);
       setAccountResult(null);
-      const url = token ? `/api/beon/account?token=${encodeURIComponent(token)}` : '/api/beon/account';
+      const url = '/api/whatsapp/babaservice/config';
       const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       setAccountResult(json);
@@ -38,10 +38,15 @@ export default function BeOnTestPage() {
     if (!message.trim()) { toast.error('أدخل الرسالة'); return; }
     try {
       setLoading(true);
-      const res = await fetch('/api/beon/messages', {
+      const res = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({ singlePhone: phone, message, preferredMethod: method })
+        body: JSON.stringify({
+          type: method === 'whatsapp' ? 'whatsapp' : 'sms',
+          phoneNumbers: [phone],
+          message,
+          instance_id: '68F243B3A8D8D'
+        })
       });
       const json = await res.json();
       if (res.ok) {
@@ -60,7 +65,7 @@ export default function BeOnTestPage() {
     <div className="p-6" dir="rtl">
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle>🧪 صفحة اختبار BeOn (SMS/WhatsApp)</CardTitle>
+          <CardTitle>🧪 صفحة اختبار Baba Service (SMS/WhatsApp)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -1,37 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import SendMessageButton from '@/components/messaging/SendMessageButton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  Clock, 
-  Flag, 
-  CheckCircle, 
-  Target, 
-  Minimize2, 
-  Maximize2,
-  Eye,
-  User,
-  MapPin,
-  Sword,
-  Trophy,
-  Users
-} from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, doc, getDoc, where, startAfter } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import SendMessageButton from '@/components/messaging/SendMessageButton';
-import { ensurePlayerProfileData } from '@/lib/utils/player-data-migration';
-import { supabase, STORAGE_BUCKETS } from '@/lib/supabase/config';
+import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
+import { collection, getDocs } from 'firebase/firestore';
+import {
+    Eye,
+    Filter,
+    Flag,
+    MapPin,
+    Maximize2,
+    Minimize2,
+    RefreshCw,
+    Search,
+    Sword,
+    Trophy,
+    User,
+    Users
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Simple debounce hook - محسن
 const useDebounce = (value: string, delay: number) => {
@@ -95,19 +90,19 @@ interface PaginationProps {
   onPlayersPerPageChange: (playersPerPage: number) => void;
 }
 
-const Pagination: React.FC<PaginationProps> = ({ 
-  currentPage, 
-  totalPages, 
-  onPageChange, 
-  playersPerPage, 
-  totalPlayers, 
+const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+  playersPerPage,
+  totalPlayers,
   currentPagePlayers,
-  onPlayersPerPageChange 
+  onPlayersPerPageChange
 }) => {
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -115,18 +110,18 @@ const Pagination: React.FC<PaginationProps> = ({
     } else {
       const startPage = Math.max(1, currentPage - 2);
       const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
+
       if (startPage > 1) {
         pages.push(1);
         if (startPage > 2) {
           pages.push('...');
         }
       }
-      
+
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
-      
+
       if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
           pages.push('...');
@@ -134,7 +129,7 @@ const Pagination: React.FC<PaginationProps> = ({
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -155,13 +150,13 @@ const Pagination: React.FC<PaginationProps> = ({
         </Select>
         <span>لاعب في الصفحة</span>
       </div>
-      
+
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <span>
           عرض {((currentPage - 1) * playersPerPage) + 1} إلى {Math.min(currentPage * playersPerPage, totalPlayers)} من {totalPlayers} لاعب
         </span>
       </div>
-      
+
       <div className="flex items-center gap-1">
         <Button
           variant="outline"
@@ -171,7 +166,7 @@ const Pagination: React.FC<PaginationProps> = ({
         >
           السابق
         </Button>
-        
+
         {getPageNumbers().map((page, index) => (
           <React.Fragment key={index}>
             {page === '...' ? (
@@ -188,7 +183,7 @@ const Pagination: React.FC<PaginationProps> = ({
             )}
           </React.Fragment>
         ))}
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -209,17 +204,17 @@ interface PlayersSearchPageProps {
 export default function PlayersSearchPageUltraOptimized({ accountType }: PlayersSearchPageProps) {
   const { user } = useAuth();
   const router = useRouter();
-  
+
   // State management - محسن
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [playersPerPage, setPlayersPerPage] = useState(12);
-  
+
   // Filters - محسن
   const [filterPosition, setFilterPosition] = useState('all');
   const [filterNationality, setFilterNationality] = useState('all');
@@ -230,7 +225,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSkillLevel, setFilterSkillLevel] = useState('all');
   const [filterObjective, setFilterObjective] = useState('all');
-  
+
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -246,7 +241,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
 
   const setupCurrentUserInfo = useCallback(() => {
     if (!user?.uid) return;
-    
+
     // Basic user info setup without excessive logging
   }, [user?.uid]);
 
@@ -267,15 +262,15 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
 
     try {
       const accountType = player ? getPlayerAccountType(player) : 'independent';
-      
+
       // Only check the most likely bucket first
-      const primaryBucket = accountType === 'trainer' ? 'playertrainer' : 
-                           accountType === 'club' ? 'playerclub' : 
-                           accountType === 'agent' ? 'playeragent' : 
+      const primaryBucket = accountType === 'trainer' ? 'playertrainer' :
+                           accountType === 'club' ? 'playerclub' :
+                           accountType === 'agent' ? 'playeragent' :
                            accountType === 'academy' ? 'playeracademy' : 'avatars';
-      
+
       const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-      
+
       // Try primary bucket first
       for (const ext of extensions) {
         const fileName = `${playerId}.${ext}`;
@@ -283,7 +278,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
           const { data } = await supabase.storage
             .from(primaryBucket)
             .getPublicUrl(fileName);
-          
+
           if (data?.publicUrl) {
             // Cache the result directly without HEAD request check
             setImageCache(prev => new Map(prev).set(playerId, data.publicUrl));
@@ -293,7 +288,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
           continue;
         }
       }
-      
+
       // If not found in primary bucket, try avatars as fallback
       if (primaryBucket !== 'avatars') {
         for (const ext of extensions) {
@@ -302,7 +297,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
             const { data } = await supabase.storage
               .from('avatars')
               .getPublicUrl(fileName);
-            
+
             if (data?.publicUrl) {
               // Cache the result directly without HEAD request check
               setImageCache(prev => new Map(prev).set(playerId, data.publicUrl));
@@ -313,7 +308,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
           }
         }
       }
-      
+
       // Cache null result to avoid repeated checks
       setImageCache(prev => new Map(prev).set(playerId, null));
       return null;
@@ -359,7 +354,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
   // ULTRA OPTIMIZED: Load players with minimal Supabase calls
   const loadPlayersUltraOptimized = useCallback(async () => {
     if (!user?.uid) return;
-    
+
     setIsLoading(true);
     try {
       const allPlayers: Player[] = [];
@@ -368,7 +363,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
       // Load dependent players
       const dependentPlayersSnapshot = await getDocs(collection(db, 'players'));
       const dependentPlayers: Player[] = [];
-      
+
       dependentPlayersSnapshot.forEach((doc) => {
         const playerData = { id: doc.id, ...doc.data() } as Player;
         if (!playerData.isDeleted && !seenIds.has(playerData.id)) {
@@ -380,7 +375,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
       // Load independent players from users collection
       const usersSnapshot = await getDocs(collection(db, 'users'));
       const usersIndependentPlayers: Player[] = [];
-      
+
       usersSnapshot.forEach((doc) => {
         const userData = doc.data();
         if (userData.accountType === 'player' && !userData.isDeleted && !seenIds.has(doc.id)) {
@@ -395,23 +390,23 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
 
       // Combine and deduplicate
       const finalPlayers = [...dependentPlayers, ...usersIndependentPlayers];
-      
+
       // ULTRA OPTIMIZATION: Process images in smaller batches to avoid overwhelming Supabase
       const BATCH_SIZE = 5; // Process only 5 players at a time
       const playersWithImages: Player[] = [];
-      
+
       for (let i = 0; i < finalPlayers.length; i += BATCH_SIZE) {
         const batch = finalPlayers.slice(i, i + BATCH_SIZE);
-        
+
         const batchWithImages = await Promise.all(
           batch.map(async (player) => {
             const imageUrl = await getPlayerImageUltraOptimized(player);
             return { ...player, profile_image_url: imageUrl };
           })
         );
-        
+
         playersWithImages.push(...batchWithImages);
-        
+
         // Small delay between batches to avoid overwhelming Supabase
         if (i + BATCH_SIZE < finalPlayers.length) {
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -434,21 +429,21 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
 
   // Optimized filtering - محسن بدون console logs
   const filteredPlayers = useMemo(() => {
-    const hasFilters = debouncedSearchTerm || 
-      filterPosition !== 'all' || 
-      filterNationality !== 'all' || 
-      filterCountry !== 'all' || 
-      filterAccountType !== 'all' || 
-      filterAge !== 'all' || 
-      filterDependency !== 'all' || 
-      filterStatus !== 'all' || 
-      filterSkillLevel !== 'all' || 
+    const hasFilters = debouncedSearchTerm ||
+      filterPosition !== 'all' ||
+      filterNationality !== 'all' ||
+      filterCountry !== 'all' ||
+      filterAccountType !== 'all' ||
+      filterAge !== 'all' ||
+      filterDependency !== 'all' ||
+      filterStatus !== 'all' ||
+      filterSkillLevel !== 'all' ||
       filterObjective !== 'all';
-    
+
     if (!hasFilters) {
       return players;
     }
-    
+
     return players.filter(player => {
       // Search filter
       if (debouncedSearchTerm) {
@@ -465,29 +460,29 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
           player.country,
           player.city
         ].filter(Boolean).join(' ').toLowerCase();
-        
+
         if (!searchFields.includes(searchTerm)) {
           return false;
         }
       }
-      
+
       // Position filter
-      if (filterPosition !== 'all' && 
-          player.primary_position !== filterPosition && 
+      if (filterPosition !== 'all' &&
+          player.primary_position !== filterPosition &&
           player.position !== filterPosition) {
         return false;
       }
-      
+
       // Nationality filter
       if (filterNationality !== 'all' && player.nationality !== filterNationality) {
         return false;
       }
-      
+
       // Country filter
       if (filterCountry !== 'all' && player.country !== filterCountry) {
         return false;
       }
-      
+
       // Account type filter
       if (filterAccountType !== 'all') {
         const playerAccountType = getPlayerAccountType(player);
@@ -495,7 +490,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
           return false;
         }
       }
-      
+
       // Age filter
       if (filterAge !== 'all' && player.age) {
         const age = player.age;
@@ -504,38 +499,38 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
         if (filterAge === '26-35' && (age < 26 || age > 35)) return false;
         if (filterAge === 'over-35' && age <= 35) return false;
       }
-      
+
       // Dependency filter
       if (filterDependency !== 'all') {
         const playerAccountType = getPlayerAccountType(player);
         if (filterDependency === 'independent' && playerAccountType !== 'independent') return false;
         if (filterDependency === 'dependent' && playerAccountType === 'independent') return false;
       }
-      
+
       // Status filter
       if (filterStatus !== 'all' && player.status !== filterStatus) {
         return false;
       }
-      
+
       // Skill level filter
       if (filterSkillLevel !== 'all' && player.skill_level !== filterSkillLevel) {
         return false;
       }
-      
+
       // Objective filter
       if (filterObjective !== 'all' && player.objectives && !player.objectives.includes(filterObjective)) {
         return false;
       }
-      
+
       return true;
     });
-  }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry, 
+  }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry,
       filterAccountType, filterAge, filterDependency, filterStatus, filterSkillLevel, filterObjective, getPlayerAccountType]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, 
+  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry,
       filterAccountType, filterAge, filterDependency, filterStatus, filterSkillLevel, filterObjective]);
 
   // Pagination
@@ -698,7 +693,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
               الفلاتر
               {isFiltersExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
-            
+
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={resetFilters} size="sm">
                 إعادة تعيين
@@ -846,17 +841,16 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
             {pagedPlayers.map((player) => {
               const playerAccountType = getPlayerAccountType(player);
               const imageUrl = getValidImageUrl(player.profile_image_url);
-              
+
               return (
-                <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative">
+                <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                  <div className="relative w-full shrink-0">
                     {imageUrl ? (
-                      <div className="aspect-square relative">
-                        <Image
+                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-100 overflow-hidden">
+                        <img
                           src={imageUrl}
                           alt={player.full_name || player.name || 'لاعب'}
-                          fill
-                          className="object-cover"
+                          className="w-full h-full object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
@@ -864,23 +858,23 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
                         />
                       </div>
                     ) : (
-                      <div className="aspect-square bg-gray-200 flex items-center justify-center">
+                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-200 flex items-center justify-center">
                         <User className="h-16 w-16 text-gray-400" />
                       </div>
                     )}
-                    
+
                     <div className="absolute top-2 right-2">
                       <Badge className={getOrganizationBadgeStyle(playerAccountType)}>
                         {getOrganizationLabel(playerAccountType)}
                       </Badge>
                     </div>
                   </div>
-                  
-                  <div className="p-4">
+
+                  <div className="p-4 flex-1 flex flex-col">
                     <h3 className="font-semibold text-lg mb-2 line-clamp-1">
                       {player.full_name || player.name || 'لاعب غير محدد'}
                     </h3>
-                    
+
                     <div className="space-y-2 text-sm text-gray-600">
                       {(player.primary_position || player.position) && (
                         <div className="flex items-center gap-2">
@@ -890,21 +884,21 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
                           </Badge>
                         </div>
                       )}
-                      
+
                       {player.nationality && (
                         <div className="flex items-center gap-2">
                           <Flag className="h-4 w-4" />
                           <span>{player.nationality}</span>
                         </div>
                       )}
-                      
+
                       {player.country && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
                           <span>{player.country}</span>
                         </div>
                       )}
-                      
+
                       {player.current_club && (
                         <div className="flex items-center gap-2">
                           <Trophy className="h-4 w-4" />
@@ -912,7 +906,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="mt-4 flex gap-2">
                       <Button
                         variant="outline"
@@ -923,7 +917,7 @@ export default function PlayersSearchPageUltraOptimized({ accountType }: Players
                         <Eye className="h-4 w-4 mr-2" />
                         عرض الملف
                       </Button>
-                      
+
                       <SendMessageButton
                         recipientId={player.id}
                         recipientName={player.full_name || player.name || 'لاعب'}

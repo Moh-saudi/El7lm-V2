@@ -292,7 +292,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'support', label: 'الدعم الفني', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'system', label: 'النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
         { id: 'beon-v3', label: 'إدارة BeOn V3', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-        { id: 'whatsapp-test', label: 'اختبار WhatsApp API', icon: MessageSquare, href: `/test-babaservice-whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
+        { id: 'whatsapp-test', label: 'اختبار WhatsApp API', icon: MessageSquare, href: `/dashboard/admin/whatsapp-test`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'email-migration', label: 'ترحيل البريد الإلكتروني', icon: Globe, href: `/dashboard/admin/email-migration`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'dream-academy-categories', label: 'فئات الأكاديمية (ديناميكي)', icon: GraduationCap, href: `/dashboard/admin/dream-academy/categories`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },

@@ -76,54 +76,203 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchAllStats() {
       try {
-        setLoading(true);
+        if (isMounted) {
+          // Use setTimeout to avoid blocking the main thread
+          setTimeout(() => {
+            if (isMounted) {
+              setLoading(true);
+            }
+          }, 0);
+        }
+        console.log('🔍 Starting to fetch all stats...');
+
         // Fetch message stats
-        const messageResponse = await fetch('/api/admin/beon/stats');
+        console.log('📊 Fetching message stats...');
+        const messageResponse = await fetch('/api/admin/babaservice/stats');
+
+        if (!messageResponse.ok) {
+          throw new Error(`Message stats API failed: ${messageResponse.status} ${messageResponse.statusText}`);
+        }
+
         const messageData = await messageResponse.json();
-        if (messageData.success) {
+        console.log('📊 Message stats response:', messageData);
+
+        if (messageData.success && isMounted) {
           setMessageStats(messageData.data);
+          console.log('✅ Message stats set successfully');
         } else {
-          console.error('Failed to fetch message stats:', messageData.error);
+          console.warn('⚠️ Failed to fetch message stats:', messageData.error);
+          // Set default values if API fails
+          if (isMounted) {
+            setMessageStats({
+              totalMessages: 0,
+              activeUsers: 0,
+              successRate: 0,
+              lastUpdate: new Date().toISOString(),
+              platform: 'Baba Service',
+              status: 'error'
+            });
+          }
         }
 
         // Fetch user stats
         console.log('🔍 Fetching user stats...');
         const userResponse = await fetch('/api/admin/users/count');
-        const userData = await userResponse.json();
-        console.log('📊 User stats response:', userData);
-        if (userData.success) {
-          setUserStats(userData.data);
-          console.log('✅ User stats set:', userData.data);
+
+        if (!userResponse.ok) {
+          console.warn(`⚠️ User stats API failed: ${userResponse.status} ${userResponse.statusText}`);
+          // Set default values if API fails
+          setUserStats({
+            totalUsers: 0,
+            activeUsers: 0,
+            newUsersToday: 0,
+            lastUpdate: new Date().toISOString()
+          });
         } else {
-          console.error('❌ Failed to fetch user stats:', userData.error);
+          const userData = await userResponse.json();
+          console.log('📊 User stats response:', userData);
+          if (userData.success && isMounted) {
+            setUserStats(userData.data);
+            console.log('✅ User stats set:', userData.data);
+          } else {
+            console.warn('⚠️ Failed to fetch user stats:', userData.error);
+            // Set default values if API fails
+            if (isMounted) {
+              setUserStats({
+                totalUsers: 0,
+                activeUsers: 0,
+                newUsersToday: 0,
+                lastUpdate: new Date().toISOString()
+              });
+            }
+          }
         }
 
         // Fetch ad stats
+        console.log('🔍 Fetching ad stats...');
         const adResponse = await fetch('/api/admin/ads/count');
-        const adData = await adResponse.json();
-        if (adData.success) {
-          setAdStats(adData.data);
+
+        if (!adResponse.ok) {
+          console.warn(`⚠️ Ad stats API failed: ${adResponse.status} ${adResponse.statusText}`);
+          setAdStats({
+            totalAds: 0,
+            activeAds: 0,
+            pendingAds: 0,
+            lastUpdate: new Date().toISOString()
+          });
         } else {
-          console.error('Failed to fetch ad stats:', adData.error);
+          const adData = await adResponse.json();
+          if (adData.success && isMounted) {
+            setAdStats(adData.data);
+            console.log('✅ Ad stats set successfully');
+          } else {
+            console.warn('⚠️ Failed to fetch ad stats:', adData.error);
+            if (isMounted) {
+              setAdStats({
+                totalAds: 0,
+                activeAds: 0,
+                pendingAds: 0,
+                lastUpdate: new Date().toISOString()
+              });
+            }
+          }
         }
 
         // Fetch media stats
+        console.log('🔍 Fetching media stats...');
         const mediaResponse = await fetch('/api/admin/media/count');
-        const mediaData = await mediaResponse.json();
-        if (mediaData.success) {
-          setMediaStats(mediaData.data);
+
+        if (!mediaResponse.ok) {
+          console.warn(`⚠️ Media stats API failed: ${mediaResponse.status} ${mediaResponse.statusText}`);
+          setMediaStats({
+            totalMedia: 0,
+            images: 0,
+            videos: 0,
+            documents: 0,
+            lastUpdate: new Date().toISOString()
+          });
         } else {
-          console.error('Failed to fetch media stats:', mediaData.error);
+          const mediaData = await mediaResponse.json();
+          if (mediaData.success && isMounted) {
+            setMediaStats(mediaData.data);
+            console.log('✅ Media stats set successfully');
+          } else {
+            console.warn('⚠️ Failed to fetch media stats:', mediaData.error);
+            if (isMounted) {
+              setMediaStats({
+                totalMedia: 0,
+                images: 0,
+                videos: 0,
+                documents: 0,
+                lastUpdate: new Date().toISOString()
+              });
+            }
+          }
         }
       } catch (error) {
-        console.error('Error fetching all stats:', error);
+        console.error('❌ Error fetching all stats:', error);
+
+        // Set default values for all stats if there's a general error
+        if (isMounted) {
+          // Use setTimeout to avoid blocking the main thread
+          setTimeout(() => {
+            if (isMounted) {
+              setMessageStats({
+                totalMessages: 0,
+                activeUsers: 0,
+                successRate: 0,
+                lastUpdate: new Date().toISOString(),
+                platform: 'BeOn V3',
+                status: 'error'
+              });
+
+              setUserStats({
+                totalUsers: 0,
+                activeUsers: 0,
+                newUsersToday: 0,
+                lastUpdate: new Date().toISOString()
+              });
+
+              setAdStats({
+                totalAds: 0,
+                activeAds: 0,
+                pendingAds: 0,
+                lastUpdate: new Date().toISOString()
+              });
+
+              setMediaStats({
+                totalMedia: 0,
+                images: 0,
+                videos: 0,
+                documents: 0,
+                lastUpdate: new Date().toISOString()
+              });
+            }
+          }, 0);
+        }
+
+        console.log('✅ Default stats set due to error');
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          // Use setTimeout to avoid blocking the main thread
+          setTimeout(() => {
+            if (isMounted) {
+              setLoading(false);
+            }
+          }, 0);
+        }
       }
     }
+
     fetchAllStats();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const adminSections = [

@@ -942,6 +942,14 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             bgColor: 'bg-emerald-50'
           },
           {
+            id: 'admin-whatsapp-test',
+            label: 'اختبار WhatsApp API',
+            icon: MessageSquare,
+            href: `/dashboard/admin/whatsapp-test`,
+            color: 'text-green-600',
+            bgColor: 'bg-green-50'
+          },
+          {
             id: 'admin-tournaments',
             label: 'إدارة البطولات',
             icon: Award,

@@ -18,7 +18,9 @@ export async function POST(request: NextRequest) {
     console.log('🔔 [API /whatsapp/babaservice/notifications] طلب إرسال إشعارات:', {
       type,
       phoneNumbersCount: phoneNumbers?.length,
+      phoneNumbers: phoneNumbers?.slice(0, 3), // أول 3 أرقام فقط
       messageLength: message?.length,
+      messagePreview: message?.substring(0, 100),
       template,
       instance_id
     });
@@ -67,11 +69,14 @@ export async function POST(request: NextRequest) {
 
     for (const phoneNumber of phoneNumbers) {
       try {
+        console.log(`📱 معالجة رقم الهاتف: ${phoneNumber}`);
         const formattedPhone = formatPhoneNumber(phoneNumber);
+        console.log(`📱 الرقم بعد التنسيق: ${formattedPhone}`);
 
         let result;
         if (media_url) {
           // إرسال رسالة مع ميديا
+          console.log(`📱 إرسال رسالة مع ميديا لـ ${formattedPhone}`);
           result = await whatsappService.sendMediaMessage(
             formattedPhone,
             finalMessage,
@@ -81,12 +86,15 @@ export async function POST(request: NextRequest) {
           );
         } else {
           // إرسال رسالة نصية
+          console.log(`📱 إرسال رسالة نصية لـ ${formattedPhone}`);
           result = await whatsappService.sendTextMessage(
             formattedPhone,
             finalMessage,
-            instance_id
+            instance_id || '68F243B3A8D8D'
           );
         }
+
+        console.log(`📱 نتيجة الإرسال لـ ${formattedPhone}:`, result);
 
         results.push({
           phoneNumber: formattedPhone,
@@ -172,15 +180,12 @@ export async function GET(request: NextRequest) {
 
       case 'test':
         // اختبار إرسال إشعار وهمي
-        const testPhones = ['966501234567'];
-        const testMessage = createMessageFromTemplate('WELCOME');
-
         return NextResponse.json({
           success: true,
           message: 'اختبار إرسال الإشعارات',
           data: {
-            phoneNumbers: testPhones,
-            message: testMessage,
+            phoneNumbers: ['966501234567'],
+            message: 'مرحباً بك في منصة العلم! 🎓',
             timestamp: new Date().toISOString(),
             note: 'هذا اختبار وهمي - لم يتم إرسال رسائل فعلية'
           }

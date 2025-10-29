@@ -287,10 +287,12 @@ export default function LoginPage() {
     }
   };
 
-  if (user && userData && !authLoading) {
-    router.replace(getDashboardRoute(userData.accountType));
-    return null;
-  }
+  // Redirect to dashboard if user is already logged in
+  useEffect(() => {
+    if (user && userData && !authLoading) {
+      router.replace(getDashboardRoute(userData.accountType));
+    }
+  }, [user, userData, authLoading, router]);
 
   if (authLoading) {
     return (

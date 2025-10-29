@@ -1,30 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, MoreHorizontal, Image as ImageIcon, Download, Grid3X3, List, Search, Filter, Bell, Trash2, CheckSquare } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import ReactPlayer from 'react-player';
-import { Video, MessageSquare, Eye, User, Clock, Star, Flag, CheckCircle, XCircle, Phone, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import UnifiedMediaModal from '@/components/admin/media/UnifiedMediaModal';
+import StatusBadge from '@/components/admin/videos/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { actionLogService } from '@/lib/admin/action-logs';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { actionLogService } from '@/lib/admin/action-logs';
-import SendMessageButton from '@/components/messaging/SendMessageButton';
-import { supabase, STORAGE_BUCKETS } from '@/lib/supabase/config';
-import StatusBadge from '@/components/admin/videos/StatusBadge';
-import VideoSourceBadge from '@/components/admin/videos/VideoSourceBadge';
-import { performanceTemplateCategories, searchTemplates, exportTemplatesAsJson } from '@/lib/messages/performance-templates';
-import UnifiedMediaModal from '@/components/admin/media/UnifiedMediaModal';
-import { cleanPhoneNumber, getPhoneNumberType } from '@/lib/utils/whatsapp-share';
+import { performanceTemplateCategories } from '@/lib/messages/performance-templates';
+import { STORAGE_BUCKETS, supabase } from '@/lib/supabase/config';
+import { cleanPhoneNumber } from '@/lib/utils/whatsapp-share';
+import { collection, doc, getDoc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
+import { CheckCircle, CheckSquare, ChevronLeft, ChevronRight, Clock, Grid3X3, Image as ImageIcon, List, Phone, Search, Trash2, User, Video, XCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Interfaces
 interface ImageData {
@@ -72,7 +65,7 @@ type MediaData = VideoData | ImageData;
 
 export default function MediaAdminPage() {
   const { user, userData } = useAuth();
-  
+
   // Media Type State
   const [activeTab, setActiveTab] = useState<MediaType>('videos');
   const [videos, setVideos] = useState<VideoData[]>([]);
@@ -82,23 +75,23 @@ export default function MediaAdminPage() {
   const [videosTotalBytes, setVideosTotalBytes] = useState<number>(0);
   const [imagesTotalBytes, setImagesTotalBytes] = useState<number>(0);
   const [disabledUserIds, setDisabledUserIds] = useState<Set<string>>(new Set());
-  
+
   // View State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12); // Optimized for grid layout
-  
+
   // Selection State
   const [selectedMedia, setSelectedMedia] = useState<MediaData | null>(null);
-  
+
   // Bulk selection state
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  
+
   // Logs and Actions
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -123,7 +116,7 @@ export default function MediaAdminPage() {
     switch (collectionName) {
       case 'players':
         return 'player';
-      case 'students': 
+      case 'students':
         return 'player'; // students are treated as players
       case 'coaches':
         return 'trainer';
@@ -169,7 +162,7 @@ export default function MediaAdminPage() {
   const fetchSupabaseVideos = async (): Promise<VideoData[]> => {
     const supabaseVideos: VideoData[] = [];
     let totalBytes = 0;
-    
+
     try {
       const { data: files, error } = await supabase.storage
         .from(STORAGE_BUCKETS.VIDEOS)
@@ -231,22 +224,22 @@ export default function MediaAdminPage() {
   const fetchSupabaseImages = useCallback(async (): Promise<ImageData[]> => {
     const supabaseImages: ImageData[] = [];
     let totalBytes = 0;
-    
+
     // جميع الـ buckets التي قد تحتوي على صور
     const imageBuckets = [
-      'profile-images', 
-      'additional-images', 
-      'player-avatar', 
+      'profile-images',
+      'additional-images',
+      'player-avatar',
       'player-additional-images',
       'playertrainer',
       'playerclub',
-      'playeragent', 
+      'playeragent',
       'playeracademy',
       'avatars'
     ];
-    
+
     console.log('🔍 جاري البحث عن الصور في Supabase buckets:', imageBuckets);
-    
+
     for (const bucketName of imageBuckets) {
       try {
         console.log(`📂 فحص bucket: ${bucketName}`);
@@ -271,12 +264,12 @@ export default function MediaAdminPage() {
             // تحقق من نوع الملف (صور فقط)
             const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
             if (!isImage) continue;
-            
+
             console.log(`🖼️ معالجة صورة: ${file.name} من ${bucketName}`);
-            
+
             let userId = 'unknown';
             let userName = 'مستخدم غير معروف';
-            
+
             // استخراج معرف المستخدم من اسم الملف
             if (file.name.includes('/')) {
               userId = file.name.split('/')[0];
@@ -300,7 +293,7 @@ export default function MediaAdminPage() {
                 if (bucketName.includes('additional')) return 'additional';
                 return 'unknown';
               };
-              
+
               const imageData: ImageData = {
                 id: `supabase_img_${bucketName}_${file.name.replace(/[^a-zA-Z0-9]/g, '_')}`,
                 title: file.name.split('/').pop() || `صورة من ${bucketName}`,
@@ -333,7 +326,7 @@ export default function MediaAdminPage() {
         console.error(`❌ خطأ في جلب الصور من ${bucketName}:`, error);
       }
     }
-    
+
     console.log(`📈 إجمالي الصور المجلبة من Supabase: ${supabaseImages.length}`);
     setImagesTotalBytes(totalBytes);
     return supabaseImages;
@@ -344,13 +337,13 @@ export default function MediaAdminPage() {
   const cleanupUserMedia = useCallback(async (userId: string) => {
     try {
       const imageBuckets = [
-        'profile-images', 
-        'additional-images', 
-        'player-avatar', 
+        'profile-images',
+        'additional-images',
+        'player-avatar',
         'player-additional-images',
         'playertrainer',
         'playerclub',
-        'playeragent', 
+        'playeragent',
         'playeracademy',
         'avatars'
       ];
@@ -418,22 +411,22 @@ export default function MediaAdminPage() {
         setLoading(false);
         return;
       }
-      
+
       setLoading(true);
       const allVideos: VideoData[] = [];
 
       // Fetch from Firebase collections
       const collections = ['students', 'coaches', 'academies', 'players'];
-        
+
       for (const collectionName of collections) {
         try {
           const querySnapshot = await getDocs(collection(db, collectionName));
-            
+
           querySnapshot.forEach((doc) => {
             const userData = doc.data();
             if (userData?.isDeleted === true) return;
             const userVideos = userData.videos || [];
-              
+
             userVideos.forEach((video: any, index: number) => {
               if (video && video.url) {
                 const videoData: VideoData = {
@@ -483,7 +476,7 @@ export default function MediaAdminPage() {
   useEffect(() => {
     const fetchImages = async () => {
       if (!user || !userData || userData.role !== 'admin') return;
-      
+
       setImagesLoading(true);
       const allImages: ImageData[] = [];
 
@@ -491,31 +484,31 @@ export default function MediaAdminPage() {
 
       // Fetch from Firebase collections
       const collections = ['students', 'coaches', 'academies', 'players'];
-        
+
       for (const collectionName of collections) {
         try {
           console.log(`📂 جلب الصور من مجموعة: ${collectionName}`);
           const querySnapshot = await getDocs(collection(db, collectionName));
           let collectionImageCount = 0;
-            
+
           querySnapshot.forEach((doc) => {
             const userData = doc.data();
             if (userData?.isDeleted === true) return;
-            
+
             // البحث في حقول مختلفة للصور
             const imageFields = [
-              'images', 
-              'additional_images', 
+              'images',
+              'additional_images',
               'profile_image',
               'cover_image',
               'avatar',
               'profileImage',
               'coverImage'
             ];
-            
+
             imageFields.forEach(fieldName => {
               const fieldData = userData[fieldName];
-              
+
               if ((fieldName === 'profile_image' || fieldName === 'cover_image' || fieldName === 'avatar' || fieldName === 'profileImage' || fieldName === 'coverImage') && fieldData) {
                 // صورة واحدة
                 const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
@@ -524,16 +517,16 @@ export default function MediaAdminPage() {
                   if (fieldName === 'avatar') return 'avatar';
                   return 'unknown';
                 };
-                
+
                 const imageUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.url === 'string' ? fieldData.url : '');
                 const imageThumbnailUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.thumbnail === 'string' ? fieldData.thumbnail : (typeof fieldData?.url === 'string' ? fieldData.url : ''));
-                
+
                 // Skip if no valid URL
                 if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
                   console.warn(`Skipping invalid image URL for ${fieldName}:`, fieldData);
                   return;
                 }
-                
+
                 const imageData: ImageData = {
                   id: `${doc.id}_${fieldName}`,
                   title: `صورة ${fieldName === 'profile_image' ? 'شخصية' : fieldName === 'cover_image' ? 'غلاف' : fieldName === 'avatar' ? 'رمزية' : fieldName}`,
@@ -561,20 +554,20 @@ export default function MediaAdminPage() {
                   if (image && (image.url || typeof image === 'string')) {
                     const imageUrl = typeof image === 'string' ? image : (typeof image.url === 'string' ? image.url : '');
                     const imageThumbnailUrl = typeof image.thumbnail === 'string' ? image.thumbnail : imageUrl;
-                    
+
                     // Skip if no valid URL
                     if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
                       console.warn(`Skipping invalid image URL for ${fieldName}[${index}]:`, image);
                       return;
                     }
-                    
+
                     const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
                       if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
                       if (fieldName.includes('cover')) return 'cover';
                       if (fieldName === 'images' || fieldName === 'additional_images') return 'additional';
                       return 'unknown';
                     };
-                    
+
                     const imageData: ImageData = {
                       id: `${doc.id}_${fieldName}_${index}`,
                       title: image.title || image.desc || `صورة ${index + 1} من ${fieldName}`,
@@ -601,7 +594,7 @@ export default function MediaAdminPage() {
               }
             });
           });
-          
+
           console.log(`✅ تم جلب ${collectionImageCount} صورة من ${collectionName}`);
         } catch (error) {
           console.error(`❌ خطأ في جلب البيانات من مجموعة ${collectionName}:`, error);
@@ -634,7 +627,7 @@ export default function MediaAdminPage() {
   // Filter and Sort media
   const filteredMedia = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    
+
     // Filter data
     const filtered = currentMediaData.filter((item) => {
       const matchesTerm = !term ||
@@ -648,9 +641,9 @@ export default function MediaAdminPage() {
       const matchesEvent = eventFilter === 'all' || (meta?.lastAction === eventFilter);
       const matchesActionTaken = actionTakenFilter === 'all' || (actionTakenFilter === 'taken' ? !!meta?.hasAction : !meta?.hasAction);
       const matchesMessageSent = messageSentFilter === 'all' || (messageSentFilter === 'sent' ? !!meta?.hasMessage : !meta?.hasMessage);
-      
+
       // Image type filter only applies to images
-      const matchesImageType = activeTab === 'videos' || imageTypeFilter === 'all' || 
+      const matchesImageType = activeTab === 'videos' || imageTypeFilter === 'all' ||
         (activeTab === 'images' && (item as ImageData).imageType === imageTypeFilter);
 
       return matchesTerm && matchesStatus && matchesAccount && matchesSource && matchesEvent && matchesActionTaken && matchesMessageSent && matchesImageType;
@@ -663,22 +656,22 @@ export default function MediaAdminPage() {
           const dateA = new Date(a.uploadDate);
           const dateB = new Date(b.uploadDate);
           return dateB.getTime() - dateA.getTime();
-        
+
         case 'oldest':
           const dateAOld = new Date(a.uploadDate);
           const dateBOld = new Date(b.uploadDate);
           return dateAOld.getTime() - dateBOld.getTime();
-        
+
         case 'title_asc':
           return a.title.localeCompare(b.title, 'ar');
-        
+
         case 'title_desc':
           return b.title.localeCompare(a.title, 'ar');
-        
+
         case 'status':
           const statusOrder = { 'pending': 0, 'flagged': 1, 'approved': 2, 'rejected': 3 };
           return statusOrder[a.status] - statusOrder[b.status];
-        
+
         default:
           return 0;
       }
@@ -701,7 +694,7 @@ export default function MediaAdminPage() {
   // Fetch logs for media
   const fetchLogs = useCallback(async (mediaId: string) => {
     if (!mediaId) return;
-    
+
     setLogsLoading(true);
     try {
       const logs = await actionLogService.getVideoLogs(mediaId);
@@ -725,41 +718,41 @@ export default function MediaAdminPage() {
   // Update media status
   const updateMediaStatus = async (mediaId: string, newStatus: string) => {
     if (!selectedMedia) return;
-    
+
     try {
       const [userId, itemIndex] = mediaId.split('_');
       const isImage = mediaId.includes('img');
-      const collectionName = selectedMedia.accountType === 'student' ? 'students' : 
+      const collectionName = selectedMedia.accountType === 'student' ? 'students' :
                            selectedMedia.accountType === 'coach' ? 'coaches' : 'academies';
-      
+
       const userRef = doc(db, collectionName, userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
         const realIndex = parseInt(itemIndex.replace('img_', ''));
-        
+
         if (mediaArray[realIndex]) {
           mediaArray[realIndex].status = newStatus;
           mediaArray[realIndex].updatedAt = new Date();
-          
+
           const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
           await updateDoc(userRef, updateData);
-          
+
           // Update local state
           if (isImage) {
-            setImages(prev => prev.map(item => 
+            setImages(prev => prev.map(item =>
               item.id === mediaId ? { ...item, status: newStatus as any } : item
             ));
           } else {
-            setVideos(prev => prev.map(item => 
+            setVideos(prev => prev.map(item =>
               item.id === mediaId ? { ...item, status: newStatus as any } : item
             ));
           }
-          
+
           setSelectedMedia(prev => prev ? { ...prev, status: newStatus as any } : null);
-          
+
           // Log action
           await actionLogService.logVideoAction({
             action: 'status_change',
@@ -774,7 +767,7 @@ export default function MediaAdminPage() {
               adminNotes: `تم التغيير بواسطة: ${user?.email}`
             }
           });
-          
+
           fetchLogs(mediaId);
         }
       }
@@ -815,15 +808,15 @@ export default function MediaAdminPage() {
     try {
       // Update local state
       if (activeTab === 'videos') {
-        setVideos(prev => prev.map(v => 
+        setVideos(prev => prev.map(v =>
           v.id === media.id ? { ...v, status: 'approved' as const } : v
         ));
       } else {
-        setImages(prev => prev.map(i => 
+        setImages(prev => prev.map(i =>
           i.id === media.id ? { ...i, status: 'approved' as const } : i
         ));
       }
-      
+
       // Log action
       await actionLogService.logVideoAction({
         action: 'status_change',
@@ -838,7 +831,7 @@ export default function MediaAdminPage() {
           adminNotes: `تم التغيير بواسطة: ${user?.email}`
         }
       });
-      
+
     } catch (error) {
       console.error('Error approving media:', error);
     }
@@ -847,7 +840,7 @@ export default function MediaAdminPage() {
   // Delete media function
   const handleDeleteMedia = useCallback(async (media: MediaData, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent card click
-    
+
     // Log media data for debugging
     console.log('🗑️ محاولة حذف الوسائط:', {
       id: media.id,
@@ -859,7 +852,7 @@ export default function MediaAdminPage() {
       phone: media.phone,
       userName: media.userName
     });
-    
+
     // Confirm deletion
     const confirmMessage = `⚠️ تأكيد الحذف النهائي\n\nهل أنت متأكد من حذف ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} "${media.title}"؟\n\nهذا الإجراء سيقوم بحذف الوسائط من:\n• واجهة الإدارة\n• قاعدة البيانات (Firebase)\n• التخزين السحابي (إذا كان من Supabase)\n• جميع الصفحات المتعلقة\n\n⚠️ هذا الإجراء لا يمكن التراجع عنه!`;
     if (!confirm(confirmMessage)) {
@@ -919,13 +912,13 @@ export default function MediaAdminPage() {
 
             // Send SMS notification
             try {
-              const smsResponse = await fetch('/api/beon/messages', {
+              const smsResponse = await fetch('/api/whatsapp/babaservice/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({
-                  singlePhone: phoneNumber,
-                  message: deletionMessage,
-                  preferredMethod: 'sms'
+                  type: 'sms',
+                  phoneNumbers: [phoneNumber],
+                  message: deletionMessage
                 })
               });
 
@@ -983,25 +976,25 @@ export default function MediaAdminPage() {
         successMessage += `• التخزين السحابي (Supabase)\n`;
       }
       successMessage += `• جميع الصفحات المتعلقة\n\n`;
-      
+
       if (media.phone && shouldNotify) {
         successMessage += `📱 تم إرسال إشعار للعميل`;
       } else if (media.phone && !shouldNotify) {
         successMessage += `📱 لم يتم إرسال إشعار للعميل`;
       }
-      
+
       alert(successMessage);
-      
+
     } catch (error) {
       console.error('❌ خطأ في حذف الوسائط:', error);
-      
+
       // Show detailed error message
       let errorMessage = 'حدث خطأ أثناء حذف الوسائط';
       if (error instanceof Error) {
         errorMessage += `\n\nالتفاصيل: ${error.message}`;
       }
       alert(errorMessage);
-      
+
       // Revert local state on error
       if (activeTab === 'videos') {
         setVideos(prev => [...prev, media as VideoData]);
@@ -1082,18 +1075,18 @@ export default function MediaAdminPage() {
         userId: media.userId,
         sourceType: media.sourceType
       });
-      
+
       // Parse media ID to get user ID and media index
       const [userId, mediaIndex] = media.id.split('_');
       const isImage = media.id.includes('img');
-      
+
       console.log('🔍 تحليل معرف الوسائط:', {
         userId,
         mediaIndex,
         isImage,
         fullId: media.id
       });
-      
+
       // Determine collection name based on account type
       let collectionName = '';
       switch (media.accountType) {
@@ -1128,7 +1121,7 @@ export default function MediaAdminPage() {
       // Get user document
       const userRef = doc(db, collectionName, userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (!userDoc.exists()) {
         console.warn('⚠️ المستخدم غير موجود في قاعدة البيانات:', {
           collectionName,
@@ -1147,7 +1140,7 @@ export default function MediaAdminPage() {
         hasProfileImage: !!userData.profile_image,
         hasCoverImage: !!userData.cover_image
       });
-      
+
       let updatedData = { ...userData };
 
       if (isImage) {
@@ -1163,9 +1156,9 @@ export default function MediaAdminPage() {
           hasProfileImage: !!userData.profile_image,
           hasCoverImage: !!userData.cover_image
         });
-        
+
         let imageDeleted = false;
-        
+
         // Check different image fields
         if (userData.additional_images && userData.additional_images[imageIndex]) {
           updatedData.additional_images = userData.additional_images.filter((_: any, index: number) => index !== imageIndex);
@@ -1184,7 +1177,7 @@ export default function MediaAdminPage() {
           console.log('🖼️ حذف صورة الغلاف');
           imageDeleted = true;
         }
-        
+
         if (!imageDeleted) {
           console.warn('⚠️ لم يتم العثور على الصورة للحذف:', {
             imageIndex,
@@ -1203,7 +1196,7 @@ export default function MediaAdminPage() {
           hasVideos: !!userData.videos,
           videosLength: userData.videos?.length || 0
         });
-        
+
         if (userData.videos && userData.videos[videoIndex]) {
           updatedData.videos = userData.videos.filter((_: any, index: number) => index !== videoIndex);
           console.log('🎥 حذف فيديو من الفهرس:', videoIndex);
@@ -1239,27 +1232,27 @@ export default function MediaAdminPage() {
   const deleteFromSupabaseStorage = async (media: MediaData) => {
     try {
       console.log('🗑️ حذف من Supabase Storage:', media.url);
-      
+
       // Extract file path from URL
       const url = new URL(media.url);
       const pathParts = url.pathname.split('/');
       const bucketName = pathParts[1]; // e.g., 'videos' or 'profile-images'
       const filePath = pathParts.slice(2).join('/'); // e.g., 'userId/filename.mp4'
-      
+
       console.log(`📂 Bucket: ${bucketName}, File Path: ${filePath}`);
-      
+
       // Delete from Supabase Storage
       const { error } = await supabase.storage
         .from(bucketName)
         .remove([filePath]);
-      
+
       if (error) {
         console.error('❌ خطأ في حذف من Supabase Storage:', error);
         throw error;
       }
-      
+
       console.log('✅ تم حذف الملف من Supabase Storage بنجاح');
-      
+
     } catch (error) {
       console.error('❌ خطأ في حذف من Supabase Storage:', error);
       throw error;
@@ -1275,7 +1268,7 @@ export default function MediaAdminPage() {
     }
 
     const confirmMessage = `⚠️ تأكيد الحذف النهائي\n\nهل أنت متأكد من حذف ${selectedMedia.length} ${activeTab === 'videos' ? 'فيديو' : 'صورة'}؟\n\nهذا الإجراء سيقوم بحذف الوسائط من:\n• واجهة الإدارة\n• قاعدة البيانات (Firebase)\n• التخزين السحابي (إذا كان من Supabase)\n• جميع الصفحات المتعلقة\n\n⚠️ هذا الإجراء لا يمكن التراجع عنه!`;
-    
+
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -1337,13 +1330,13 @@ export default function MediaAdminPage() {
 
                 // Send SMS notification
                 try {
-                  const smsResponse = await fetch('/api/beon/messages', {
+                  const smsResponse = await fetch('/api/whatsapp/babaservice/notifications', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json; charset=utf-8' },
                     body: JSON.stringify({
-                      singlePhone: phoneNumber,
-                      message: deletionMessage,
-                      preferredMethod: 'sms'
+                      type: 'sms',
+                      phoneNumbers: [phoneNumber],
+                      message: deletionMessage
                     })
                   });
 
@@ -1381,7 +1374,7 @@ export default function MediaAdminPage() {
           console.error(`❌ خطأ في حذف الوسائط ${media.id}:`, error);
           errorCount++;
           errors.push(`${media.title}: ${error}`);
-          
+
           // Revert local state on error
           if (activeTab === 'videos') {
             setVideos(prev => [...prev, media as VideoData]);
@@ -1406,12 +1399,12 @@ export default function MediaAdminPage() {
       if (shouldNotify && hasPhoneNumbers) {
         resultMessage += `\n📱 تم إرسال إشعارات للعملاء`;
       }
-      
+
       alert(resultMessage);
 
     } catch (error) {
       console.error('❌ خطأ في الحذف المجمع:', error);
-      
+
       // Show detailed error message
       let errorMessage = 'حدث خطأ أثناء الحذف المجمع';
       if (error instanceof Error) {
@@ -1426,15 +1419,15 @@ export default function MediaAdminPage() {
     try {
       // Update local state
       if (activeTab === 'videos') {
-        setVideos(prev => prev.map(v => 
+        setVideos(prev => prev.map(v =>
           v.id === media.id ? { ...v, status: 'rejected' as const } : v
         ));
       } else {
-        setImages(prev => prev.map(i => 
+        setImages(prev => prev.map(i =>
           i.id === media.id ? { ...i, status: 'rejected' as const } : i
         ));
       }
-      
+
       // Log action
       await actionLogService.logVideoAction({
         action: 'status_change',
@@ -1449,7 +1442,7 @@ export default function MediaAdminPage() {
           adminNotes: `تم التغيير بواسطة: ${user?.email}`
         }
       });
-      
+
     } catch (error) {
       console.error('Error rejecting media:', error);
     }
@@ -1485,7 +1478,7 @@ export default function MediaAdminPage() {
       alert('رقم الهاتف غير متوفر');
       return;
     }
-    
+
     let message = '';
     if (messageType === 'custom') {
       message = customMessage.trim() || `مرحباً ${selectedMedia.userName}، تم مراجعة وسائطك في منصة العلم.`;
@@ -1495,13 +1488,13 @@ export default function MediaAdminPage() {
         .find(t => t.id === messageType);
       message = template?.whatsapp || (template as any)?.smsMessage || `مرحباً ${selectedMedia.userName}، تم مراجعة وسائطك.`;
     }
-    
+
     const phoneNumber = formatPhoneNumber(selectedMedia.phone);
     if (!phoneNumber || phoneNumber.length < 7 || phoneNumber.length > 15) {
       alert('رقم الهاتف غير صالح');
       return;
     }
-    
+
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -1530,13 +1523,13 @@ export default function MediaAdminPage() {
     }
 
     try {
-      const response = await fetch('/api/beon/messages', {
+      const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({
-          singlePhone: phoneNumber,
-          message: finalMessage,
-          preferredMethod: 'sms'
+          type: 'sms',
+          phoneNumbers: [phoneNumber],
+          message: finalMessage
         })
       });
 
@@ -1571,11 +1564,11 @@ export default function MediaAdminPage() {
           <ChevronRight className="w-3 h-3" />
           السابق
         </Button>
-        
+
         <span className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded">
           {currentPage} / {totalPages}
         </span>
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -1746,8 +1739,8 @@ export default function MediaAdminPage() {
                     <p className="text-sm text-gray-600">إجمالي</p>
                     <p className="text-xl font-bold">{currentMediaData.length}</p>
                   </div>
-                  {activeTab === 'videos' ? 
-                    <Video className="w-6 h-6 text-blue-600" /> : 
+                  {activeTab === 'videos' ?
+                    <Video className="w-6 h-6 text-blue-600" /> :
                     <ImageIcon className="w-6 h-6 text-purple-600" />
                   }
                 </div>
@@ -1907,7 +1900,7 @@ export default function MediaAdminPage() {
                             </div>
                           ) : (
                             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleQuickApprove(video, e)}
                               className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-6 text-xs"
@@ -1915,7 +1908,7 @@ export default function MediaAdminPage() {
                             >
                               <CheckCircle className="w-3 h-3" />
                             </Button>
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleQuickReject(video, e)}
                               className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-6 text-xs"
@@ -1923,7 +1916,7 @@ export default function MediaAdminPage() {
                             >
                               <XCircle className="w-3 h-3" />
                             </Button>
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleDeleteMedia(video, e)}
                               className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-6 text-xs"
@@ -1992,7 +1985,7 @@ export default function MediaAdminPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleQuickApprove(video, e)}
                                 className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs"
@@ -2000,7 +1993,7 @@ export default function MediaAdminPage() {
                               >
                                 <CheckCircle className="w-3 h-3" />
                               </Button>
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleQuickReject(video, e)}
                                 className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-7 text-xs"
@@ -2008,7 +2001,7 @@ export default function MediaAdminPage() {
                               >
                                 <XCircle className="w-3 h-3" />
                               </Button>
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleDeleteMedia(video, e)}
                                 className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-7 text-xs"
@@ -2068,7 +2061,7 @@ export default function MediaAdminPage() {
                             </div>
                           ) : (
                             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleQuickApprove(image, e)}
                               className="bg-green-600 hover:bg-green-700 text-white px-1 py-1 h-6 text-xs"
@@ -2076,7 +2069,7 @@ export default function MediaAdminPage() {
                             >
                               <CheckCircle className="w-3 h-3" />
                             </Button>
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleQuickReject(image, e)}
                               className="bg-red-600 hover:bg-red-700 text-white px-1 py-1 h-6 text-xs"
@@ -2084,7 +2077,7 @@ export default function MediaAdminPage() {
                             >
                               <XCircle className="w-3 h-3" />
                             </Button>
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={(e) => handleDeleteMedia(image, e)}
                               className="bg-gray-600 hover:bg-gray-700 text-white px-1 py-1 h-6 text-xs"
@@ -2148,7 +2141,7 @@ export default function MediaAdminPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleQuickApprove(image, e)}
                                 className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs"
@@ -2156,7 +2149,7 @@ export default function MediaAdminPage() {
                               >
                                 <CheckCircle className="w-3 h-3" />
                               </Button>
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleQuickReject(image, e)}
                                 className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-7 text-xs"
@@ -2164,7 +2157,7 @@ export default function MediaAdminPage() {
                               >
                                 <XCircle className="w-3 h-3" />
                               </Button>
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={(e) => handleDeleteMedia(image, e)}
                                 className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-7 text-xs"

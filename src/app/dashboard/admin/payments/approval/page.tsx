@@ -5,8 +5,8 @@ import { collection, query, where, getDocs, orderBy, doc, updateDoc, serverTimes
 import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/firebase/notifications';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  CheckCircle, XCircle, Clock, AlertTriangle, 
+import {
+  CheckCircle, XCircle, Clock, AlertTriangle,
   Search, Filter, RefreshCw, Eye, Check, X,
   FileImage, ExternalLink, Download
 } from 'lucide-react';
@@ -34,12 +34,12 @@ export default function PaymentApprovalPage() {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentRequest[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  
+
   // فلاتر
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  
+
   // إحصائيات
   const [stats, setStats] = useState({
     total: 0,
@@ -53,17 +53,17 @@ export default function PaymentApprovalPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      
+
       // استعلام Firebase
       const paymentsRef = collection(db, 'bulkPayments');
       const q = query(
         paymentsRef,
         orderBy('createdAt', 'desc')
       );
-      
+
       const snapshot = await getDocs(q);
       const fetchedPayments: PaymentRequest[] = [];
-      
+
       snapshot.forEach((doc) => {
         const data = doc.data();
         fetchedPayments.push({
@@ -83,11 +83,11 @@ export default function PaymentApprovalPage() {
           players: data.players
         });
       });
-      
+
       setPayments(fetchedPayments);
       updateStats(fetchedPayments);
       applyFilters(fetchedPayments, statusFilter, searchTerm, dateRange);
-      
+
     } catch (error) {
       console.error('Error fetching payments:', error);
     } finally {
@@ -115,35 +115,35 @@ export default function PaymentApprovalPage() {
     dates: { start: string; end: string }
   ) => {
     let filtered = [...paymentsList];
-    
+
     // فلتر الحالة
     if (status !== 'all') {
       filtered = filtered.filter(p => p.status === status);
     }
-    
+
     // فلتر البحث
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.userName.toLowerCase().includes(searchLower) ||
         p.userEmail.toLowerCase().includes(searchLower) ||
         p.transactionId?.toLowerCase().includes(searchLower) ||
         p.players?.some(player => player.name.toLowerCase().includes(searchLower))
       );
     }
-    
+
     // فلتر التاريخ
     if (dates.start) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.createdAt >= new Date(dates.start)
       );
     }
     if (dates.end) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.createdAt <= new Date(dates.end)
       );
     }
-    
+
     setFilteredPayments(filtered);
   };
 
@@ -158,7 +158,7 @@ export default function PaymentApprovalPage() {
   const handleApprove = async (payment: PaymentRequest) => {
     try {
       setActionLoading(payment.id);
-      
+
       // تحديث حالة الدفع
       const paymentRef = doc(db, 'bulkPayments', payment.id);
       await updateDoc(paymentRef, {
@@ -210,9 +210,9 @@ export default function PaymentApprovalPage() {
       });
 
       // تحديث القائمة محلياً
-      const updatedPayments = payments.map(p => 
-        p.id === payment.id 
-          ? { ...p, status: 'approved' } 
+      const updatedPayments = payments.map(p =>
+        p.id === payment.id
+          ? { ...p, status: 'approved' }
           : p
       );
       setPayments(updatedPayments);
@@ -220,7 +220,7 @@ export default function PaymentApprovalPage() {
       applyFilters(updatedPayments, statusFilter, searchTerm, dateRange);
 
       // تم قبول الدفع بنجاح
-      
+
     } catch (error) {
       console.error('Error approving payment:', error);
       console.error('حدث خطأ أثناء قبول الدفع:', error);
@@ -232,7 +232,7 @@ export default function PaymentApprovalPage() {
   const handleReject = async (payment: PaymentRequest) => {
     try {
       setActionLoading(payment.id);
-      
+
       // تحديث حالة الدفع
       const paymentRef = doc(db, 'bulkPayments', payment.id);
       await updateDoc(paymentRef, {
@@ -253,9 +253,9 @@ export default function PaymentApprovalPage() {
       });
 
       // تحديث القائمة محلياً
-      const updatedPayments = payments.map(p => 
-        p.id === payment.id 
-          ? { ...p, status: 'rejected' } 
+      const updatedPayments = payments.map(p =>
+        p.id === payment.id
+          ? { ...p, status: 'rejected' }
           : p
       );
       setPayments(updatedPayments);
@@ -263,7 +263,7 @@ export default function PaymentApprovalPage() {
       applyFilters(updatedPayments, statusFilter, searchTerm, dateRange);
 
       // تم رفض الدفع بنجاح
-      
+
     } catch (error) {
       console.error('Error rejecting payment:', error);
       console.error('حدث خطأ أثناء رفض الدفع:', error);
