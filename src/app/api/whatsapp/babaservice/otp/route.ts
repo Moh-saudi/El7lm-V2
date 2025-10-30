@@ -73,9 +73,76 @@ export async function POST(request: NextRequest) {
       instance_id
     });
 
-    // إرسال الرسالة
     const whatsappService = new BabaserviceWhatsAppService();
-    const result = await whatsappService.sendTextMessage(formattedPhone, message, instance_id);
+    const config = whatsappService.getConfig();
+    const targetInstanceId = instance_id || config.instanceId;
+
+    console.log('🔧 معلومات Instance:', {
+      requested: instance_id,
+      fromConfig: config.instanceId,
+      final: targetInstanceId,
+      baseUrl: config.baseUrl,
+      hasToken: !!config.accessToken
+    });
+
+    if (!targetInstanceId) {
+      console.error('❌ لا يوجد Instance ID متاح للإرسال');
+      return NextResponse.json({
+        success: false,
+        error: 'خدمة WhatsApp غير مهيأة بشكل صحيح (رقم الجهاز غير معروف)'
+      }, { status: 500 });
+    }
+
+    // التحقق من حالة الاتصال قبل الإرسال
+    console.log('📡 [Critical Check] التحقق من حالة اتصال WhatsApp Instance:', targetInstanceId);
+    try {
+      const connectionStatus = await whatsappService.getQRCode(targetInstanceId);
+      console.log('📡 [Critical Check] نتيجة فحص حالة الاتصال:', {
+        success: connectionStatus.success,
+        hasQrCode: !!connectionStatus.qr_code,
+        error: connectionStatus.error
+      });
+
+      if (connectionStatus.success && connectionStatus.qr_code) {
+        console.error('❌ [CRITICAL] Instance غير متصل بـ WhatsApp - يوجد QR Code للربط');
+        console.error('❌ [CRITICAL] الرسائل ستصل للمزود لكن لن تُرسل للأرقام!');
+        return NextResponse.json({
+          success: false,
+          error: `🔴 خدمة WhatsApp غير مربوطة برقم واتساب!
+
+⚠️ المشكلة:
+الرسائل تصل للمزود لكن لا تُرسل للأرقام لأن Instance ID (${targetInstanceId}) غير متصل بتطبيق WhatsApp.
+
+📱 الحل الفوري:
+1. افتح: /dashboard/admin/babaservice-whatsapp
+2. ستجد QR Code
+3. امسحه بتطبيق WhatsApp Business من هاتفك
+4. بعد ظهور "متصل"، عد وجرب مرة أخرى
+
+💡 هذه خطوة لمرة واحدة فقط!`,
+          data: {
+            instanceId: targetInstanceId,
+            status: 'disconnected',
+            needsQrScan: true,
+            managementUrl: '/dashboard/admin/babaservice-whatsapp'
+          }
+        }, { status: 503 });
+      }
+
+      if (connectionStatus.success && !connectionStatus.qr_code) {
+        console.log('✅ [Critical Check] Instance متصل بـ WhatsApp ومستعد للإرسال');
+      } else if (!connectionStatus.success) {
+        console.warn('⚠️ [Critical Check] تعذر التحقق من حالة الاتصال:', connectionStatus.error);
+        console.warn('⚠️ سنحاول الإرسال - قد تصل أو لا تصل حسب حالة Instance الفعلية');
+      }
+    } catch (statusError) {
+      console.warn('⚠️ [Critical Check] فشل فحص حالة اتصال WhatsApp:', statusError);
+      console.warn('⚠️ سنحاول الإرسال على أي حال...');
+    }
+
+    // إرسال الرسالة
+    console.log('📤 محاولة إرسال الرسالة الآن...');
+    const result = await whatsappService.sendTextMessage(formattedPhone, message, targetInstanceId);
 
     console.log('📱 [API /whatsapp/babaservice/otp] نتيجة الإرسال:', result);
 
@@ -88,14 +155,18 @@ export async function POST(request: NextRequest) {
           otp: otp,
           message: message,
           timestamp: new Date().toISOString(),
-          service: 'Babaservice WhatsApp'
+          service: 'Babaservice WhatsApp',
+          instanceId: targetInstanceId
         }
       });
     } else {
       return NextResponse.json({
         success: false,
         error: result.error || 'فشل في إرسال OTP',
-        data: result.data
+        data: {
+          ...result.data,
+          instanceId: targetInstanceId
+        }
       }, { status: 400 });
     }
 

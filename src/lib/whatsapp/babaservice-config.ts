@@ -59,8 +59,24 @@ export const BABASERVICE_CONFIG = {
 
   // Message templates
   MESSAGE_TEMPLATES: {
-    WELCOME: 'مرحباً بك في منصة العلم! 🎓',
-    OTP: 'رمز التحقق الخاص بك هو: {otp}',
+    WELCOME: 'مرحباً بك في منصة الحلم! ⚽',
+    OTP: `مرحباً *{name}*! 👋
+
+🔐 *رمز التحقق الخاص بك:*
+
+*{otp}*
+
+⏰ صالح لمدة 10 دقائق
+
+⚠️ *تنبيه أمني:*
+• لا تشارك هذا الرمز مع أي شخص
+• لن نطلب منك هذا الرمز أبداً
+
+━━━━━━━━━━━━━━━━━━━
+⚽ *منصة الحلم* 🇶🇦
+أول متجر إلكتروني لبيع وتسويق اللاعبين
+من شركة ميسك القطرية
+حيث تتحقق الأحلام الرياضية ✨`,
     ORDER_CONFIRMATION: 'تم تأكيد طلبك بنجاح! رقم الطلب: {orderId}',
     ORDER_UPDATE: 'تم تحديث حالة طلبك رقم {orderId} إلى: {status}',
     PAYMENT_SUCCESS: 'تم استلام دفعتك بنجاح! شكراً لك.',
@@ -162,6 +178,13 @@ export const formatPhoneNumber = (phoneNumber: string): string => {
       console.log(`📞 formatPhoneNumber - Country code ${code}:`, cleaned);
       return cleaned;
     }
+  }
+
+  // حالة خاصة لقطر
+  // رقم قطري يتكون من 8 أرقام (مثل: 77123456 أو 33123456)
+  if (cleaned.length === 8 && /^[3-7]\d{7}$/.test(cleaned)) {
+    console.log('📞 formatPhoneNumber - Qatar 8 digits, adding 974');
+    return `974${cleaned}`;
   }
 
   // حالات خاصة للسعودية

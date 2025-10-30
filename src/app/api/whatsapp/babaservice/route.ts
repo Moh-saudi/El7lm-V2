@@ -39,11 +39,17 @@ export async function POST(request: NextRequest) {
         if (!validatePhoneNumber(phoneNumber)) {
           return NextResponse.json({
             success: false,
-            error: 'رقم الهاتف غير صحيح'
+            error: 'رقم الهاتف غير صحيح - يجب أن يكون الرقم بصيغة دولية صحيحة (أمثلة: 🇪🇬 201017799580 - 🇸🇦 966501234567 - 🇶🇦 97477123456)'
           }, { status: 400 });
         }
 
         const formattedPhone = formatPhoneNumber(phoneNumber);
+        console.log('📱 تحويل رقم الهاتف:', {
+          original: phoneNumber,
+          formatted: formattedPhone,
+          note: 'إذا كان الرقم المنسق مختلفاً، تأكد من إدخال الرقم المحلي كاملاً'
+        });
+
         const textResult = await whatsappService.sendTextMessage(formattedPhone, message, textInstanceId);
         return NextResponse.json(textResult);
 
@@ -66,11 +72,17 @@ export async function POST(request: NextRequest) {
         if (!validatePhoneNumber(mediaPhone)) {
           return NextResponse.json({
             success: false,
-            error: 'رقم الهاتف غير صحيح'
+            error: 'رقم الهاتف غير صحيح - يجب أن يكون الرقم بصيغة دولية صحيحة (أمثلة: 🇪🇬 201017799580 - 🇸🇦 966501234567 - 🇶🇦 97477123456)'
           }, { status: 400 });
         }
 
         const formattedMediaPhone = formatPhoneNumber(mediaPhone);
+        console.log('📱 تحويل رقم الهاتف (ميديا):', {
+          original: mediaPhone,
+          formatted: formattedMediaPhone,
+          note: 'إذا كان الرقم المنسق مختلفاً، تأكد من إدخال الرقم المحلي كاملاً'
+        });
+
         const mediaResult = await whatsappService.sendMediaMessage(
           formattedMediaPhone,
           mediaMessage,

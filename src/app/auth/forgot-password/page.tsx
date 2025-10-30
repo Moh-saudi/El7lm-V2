@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { auth } from '@/lib/firebase/config';
 import { signOut as firebaseSignOut } from 'firebase/auth';
-import { ArrowRight, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle, Info, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { formatPhoneNumber } from '@/lib/whatsapp/babaservice-config';
 
 // Full country list from the registration page
 const countries = [
@@ -80,6 +82,8 @@ export default function ForgotPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [whatsappStatus, setWhatsappStatus] = useState<'checking' | 'connected' | 'disconnected' | null>(null);
+  const [detailedError, setDetailedError] = useState<string>('');
 
   // تسجيل الخروج ومسح البيانات المحفوظة عند تحميل الصفحة
   useEffect(() => {
@@ -114,54 +118,94 @@ export default function ForgotPasswordPage() {
   const handlePhoneSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLoading(true);
+    setDetailedError('');
+    setWhatsappStatus('checking');
     const fullNumber = `${countryCode}${phoneNumber}`;
     setFullPhoneNumber(fullNumber);
 
     try {
-      // تنسيق رقم الهاتف بنفس طريقة التسجيل (إزالة علامة +)
-      const normalizedPhone = fullNumber.replace(/^\+/, '');
+      // تنسيق رقم الهاتف بالطريقة الجديدة باستخدام formatPhoneNumber
+      const normalizedPhone = fullNumber.replace(/^\+/, ''); // إزالة + أولاً
+      const formattedPhone = formatPhoneNumber(normalizedPhone); // تنسيق الرقم حسب الدولة
+
+      console.log('📱 [Forgot Password] تنسيق رقم الهاتف:', {
+        original: fullNumber,
+        normalized: normalizedPhone,
+        formatted: formattedPhone
+      });
 
       // 1️⃣ التحقق من وجود المستخدم أولاً قبل إرسال OTP
+      console.log('🔍 [Step 1/3] التحقق من وجود المستخدم...');
       const checkRes = await fetch('/api/auth/check-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: normalizedPhone }),
+        body: JSON.stringify({ phoneNumber: formattedPhone }),
       });
       const checkData = await checkRes.json();
+      console.log('📋 [Step 1/3] نتيجة التحقق من المستخدم:', checkData);
 
       if (!checkRes.ok || !checkData.exists) {
-        toast.error('رقم الهاتف غير مسجل في النظام. يرجى إنشاء حساب جديد أولاً.');
+        const errorMsg = 'رقم الهاتف غير مسجل في النظام. يرجى إنشاء حساب جديد أولاً.';
+        setDetailedError(errorMsg);
+        toast.error(errorMsg);
+        setWhatsappStatus(null);
         setLoading(false);
         return;
       }
 
+      console.log('✅ [Step 1/3] المستخدم موجود:', checkData.userName);
+
       // 2️⃣ إذا كان المستخدم موجوداً، نرسل OTP
       // توليد OTP من 6 أرقام
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      console.log('📤 [Step 2/3] إرسال OTP عبر WhatsApp...');
+      console.log('📱 الرقم المنسق:', formattedPhone);
+      console.log('🔐 رمز OTP:', generatedOtp);
 
       // استخدام Babaservice WhatsApp API الجديد
       const res = await fetch('/api/whatsapp/babaservice/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: normalizedPhone,
+          phoneNumber: formattedPhone,
           otp: generatedOtp,
-          name: checkData.userName || 'مستخدم', // استخدام اسم المستخدم الحقيقي
-          instance_id: '68F243B3A8D8D' // Instance ID الثابت
+          name: checkData.userName || 'مستخدم',
+          instance_id: '68F243B3A8D8D'
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرمز');
 
-      // حفظ OTP المُرسل للتحقق لاحقاً
+      const data = await res.json();
+      console.log('📥 [Step 2/3] رد API إرسال OTP:', {
+        status: res.status,
+        ok: res.ok,
+        data: data
+      });
+
+      if (!res.ok || !data.success) {
+        const errorMsg = data.error || 'فشل إرسال الرمز';
+        console.error('❌ [Step 2/3] فشل إرسال OTP:', errorMsg);
+        setDetailedError(`خطأ في الإرسال: ${errorMsg}`);
+        setWhatsappStatus('disconnected');
+        throw new Error(errorMsg);
+      }
+
+      console.log('✅ [Step 2/3] تم إرسال OTP بنجاح');
+      setWhatsappStatus('connected');
+
+      // حفظ OTP المُرسل والرقم المنسق للتحقق لاحقاً
       sessionStorage.setItem('reset_otp', generatedOtp);
       sessionStorage.setItem('reset_otp_time', Date.now().toString());
+      sessionStorage.setItem('reset_formatted_phone', formattedPhone);
 
+      console.log('✅ [Step 3/3] الانتقال لخطوة إدخال OTP');
       toast.success('تم إرسال رمز التحقق عبر WhatsApp بنجاح ✅');
       setStep('otp');
-      setResendCooldown(60); // Start 60-second cooldown
+      setResendCooldown(60);
     } catch (error: any) {
+      console.error('❌ [Forgot Password] خطأ كامل:', error);
       toast.error(error.message || 'فشل إرسال رمز التحقق');
+      setWhatsappStatus('disconnected');
     } finally {
       setLoading(false);
     }
@@ -172,9 +216,15 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
+      console.log('🔐 [OTP Verification] بدء التحقق من رمز OTP...');
+      console.log('📱 الرمز المدخل:', otp);
+
       // التحقق من OTP محلياً
       const savedOtp = sessionStorage.getItem('reset_otp');
       const savedTime = sessionStorage.getItem('reset_otp_time');
+
+      console.log('💾 الرمز المحفوظ:', savedOtp);
+      console.log('⏰ وقت الإرسال:', savedTime ? new Date(parseInt(savedTime)).toLocaleString('ar-EG') : 'غير موجود');
 
       if (!savedOtp || !savedTime) {
         throw new Error('انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد');
@@ -182,6 +232,9 @@ export default function ForgotPasswordPage() {
 
       // التحقق من انتهاء صلاحية OTP (10 دقائق)
       const otpAge = Date.now() - parseInt(savedTime);
+      const otpAgeMinutes = Math.floor(otpAge / 60000);
+      console.log(`⏱️ عمر الرمز: ${otpAgeMinutes} دقيقة`);
+
       if (otpAge > 10 * 60 * 1000) {
         sessionStorage.removeItem('reset_otp');
         sessionStorage.removeItem('reset_otp_time');
@@ -190,12 +243,15 @@ export default function ForgotPasswordPage() {
 
       // التحقق من تطابق OTP
       if (otp !== savedOtp) {
+        console.error('❌ الرمز غير مطابق:', { entered: otp, expected: savedOtp });
         throw new Error('رمز التحقق غير صحيح');
       }
 
-      toast.success('تم التحقق من الرمز بنجاح');
+      console.log('✅ [OTP Verification] تم التحقق من الرمز بنجاح');
+      toast.success('تم التحقق من الرمز بنجاح ✅ يمكنك الآن إدخال كلمة المرور الجديدة');
       setStep('password');
     } catch (error: any) {
+      console.error('❌ [OTP Verification] خطأ:', error);
       toast.error(error.message || 'فشل التحقق من الرمز');
     } finally {
       setLoading(false);
@@ -204,13 +260,15 @@ export default function ForgotPasswordPage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('🔑 [Step 1/4] بدء عملية تحديث كلمة المرور...');
+
     if (newPassword !== confirmPassword) {
       toast.error('كلمتا المرور غير متطابقتين');
       return;
     }
 
     // التحقق من كلمة المرور - أرقام فقط
-    // التحقق من أن كلمة المرور أرقام فقط
     const isNumbersOnly = /^\d+$/.test(newPassword);
     if (!isNumbersOnly) {
       toast.error('يجب أن تحتوي كلمة المرور على أرقام فقط');
@@ -236,27 +294,56 @@ export default function ForgotPasswordPage() {
       return;
     }
 
+    console.log('✅ [Step 1/4] كلمة المرور اجتازت جميع التحققات');
     setLoading(true);
 
     try {
-      // تنسيق رقم الهاتف بنفس طريقة التسجيل (إزالة علامة +)
-      const normalizedPhone = fullPhoneNumber.replace(/^\+/, '');
+      // استخدام الرقم المنسق المحفوظ
+      const formattedPhone = sessionStorage.getItem('reset_formatted_phone');
+
+      if (!formattedPhone) {
+        throw new Error('حدث خطأ في استرجاع رقم الهاتف. يرجى المحاولة مرة أخرى.');
+      }
+
+      console.log('🔑 [Step 2/4] إرسال طلب تحديث كلمة المرور...');
+      console.log('📱 رقم الهاتف المنسق:', formattedPhone);
+      console.log('🔐 طول كلمة المرور الجديدة:', newPassword.length);
 
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: normalizedPhone, newPassword }),
+        body: JSON.stringify({ phoneNumber: formattedPhone, newPassword }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل تحديث كلمة المرور');
 
+      const data = await res.json();
+      console.log('📥 [Step 2/4] رد API تحديث كلمة المرور:', {
+        status: res.status,
+        ok: res.ok,
+        data: data
+      });
+
+      if (!res.ok) {
+        console.error('❌ [Step 2/4] فشل تحديث كلمة المرور:', data.error);
+        throw new Error(data.error || 'فشل تحديث كلمة المرور');
+      }
+
+      console.log('✅ [Step 3/4] تم تحديث كلمة المرور بنجاح في Firebase و Firestore');
       toast.success('تم تحديث كلمة المرور بنجاح! سيتم توجيهك لتسجيل الدخول.');
+
+      // مسح البيانات المؤقتة
+      sessionStorage.removeItem('reset_otp');
+      sessionStorage.removeItem('reset_otp_time');
+      sessionStorage.removeItem('reset_formatted_phone');
+      console.log('🧹 [Step 3/4] تم مسح البيانات المؤقتة');
 
       // حفظ رقم الهاتف لتسهيل تسجيل الدخول
       localStorage.setItem('resetPasswordPhone', fullPhoneNumber);
+      console.log('💾 [Step 3/4] تم حفظ رقم الهاتف للاستخدام في تسجيل الدخول');
 
+      console.log('✅ [Step 4/4] إعادة التوجيه لصفحة تسجيل الدخول...');
       setTimeout(() => router.push('/auth/login?from=reset-password'), 2000);
     } catch (error: any) {
+      console.error('❌ [Password Reset] خطأ في تحديث كلمة المرور:', error);
       toast.error(error.message);
     } finally {
       setLoading(false);
@@ -307,7 +394,98 @@ export default function ForgotPasswordPage() {
                     dir="ltr"
                   />
                 </div>
+                {/* تحذير إذا كان الرقم قصير */}
+                {phoneNumber && (() => {
+                  const fullNum = `${countryCode}${phoneNumber}`.replace(/\D/g, '');
+                  const isEgypt = countryCode === '+20';
+                  const isSaudi = countryCode === '+966';
+                  const isQatar = countryCode === '+974';
+
+                  if (isEgypt && phoneNumber.length < 10) {
+                    return (
+                      <div className="flex items-center gap-1 text-xs text-orange-600">
+                        <XCircle className="h-3 w-3" />
+                        <span>⚠️ الرقم المصري يجب أن يكون 10 أرقام على الأقل (مثال: 01017799580)</span>
+                      </div>
+                    );
+                  }
+
+                  if (isSaudi && phoneNumber.length < 9) {
+                    return (
+                      <div className="flex items-center gap-1 text-xs text-orange-600">
+                        <XCircle className="h-3 w-3" />
+                        <span>⚠️ الرقم السعودي يجب أن يكون 9 أرقام على الأقل (مثال: 0501234567)</span>
+                      </div>
+                    );
+                  }
+
+                  if (isQatar && phoneNumber.length < 8) {
+                    return (
+                      <div className="flex items-center gap-1 text-xs text-orange-600">
+                        <XCircle className="h-3 w-3" />
+                        <span>⚠️ الرقم القطري يجب أن يكون 8 أرقام (مثال: 77123456)</span>
+                      </div>
+                    );
+                  }
+
+                  if (fullNum.length >= 10) {
+                    return (
+                      <div className="flex items-center gap-1 text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        <span>✅ صيغة الرقم صحيحة</span>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()}
               </div>
+
+              {/* تنبيه مرئي لصيغة الأرقام الصحيحة */}
+              <Alert className="border-blue-200 bg-blue-50">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800 text-sm">💡 أمثلة لأرقام صحيحة:</AlertTitle>
+                <AlertDescription className="text-blue-700 space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    <span>🇪🇬 مصر: <code className="bg-white px-1 py-0.5 rounded">01017799580</code></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    <span>🇸🇦 السعودية: <code className="bg-white px-1 py-0.5 rounded">0501234567</code></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    <span>🇶🇦 قطر: <code className="bg-white px-1 py-0.5 rounded">77123456</code></span>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* عرض حالة WhatsApp أو رسائل الخطأ */}
+              {whatsappStatus === 'checking' && (
+                <Alert className="border-yellow-200 bg-yellow-50">
+                  <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
+                  <AlertDescription className="text-yellow-700 text-xs">
+                    جاري التحقق من حالة الاتصال وإرسال الرمز...
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {whatsappStatus === 'disconnected' && detailedError && (
+                <Alert className="border-red-200 bg-red-50">
+                  <XCircle className="h-4 w-4 text-red-600" />
+                  <AlertTitle className="text-red-800 text-sm font-bold">⚠️ فشل الإرسال</AlertTitle>
+                  <AlertDescription className="text-red-700 text-xs space-y-2">
+                    <p className="font-semibold">{detailedError}</p>
+                    <p>📋 الحلول المقترحة:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>تأكد من أن رقم WhatsApp Business مربوط بالنظام</li>
+                      <li>افتح صفحة <a href="/dashboard/admin/babaservice-whatsapp" className="underline font-semibold" target="_blank">إدارة WhatsApp</a> وتحقق من الاتصال</li>
+                      <li>إذا ظهر QR Code، قم بمسحه لإعادة الربط</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
@@ -320,19 +498,33 @@ export default function ForgotPasswordPage() {
       case 'otp':
         return (
           <form onSubmit={handleOtpSubmit}>
-            <CardContent>
-              <Label htmlFor="otp">رمز التحقق</Label>
-              <Input
-                id="otp"
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                maxLength={6}
-                placeholder="· · · · · ·"
-                required
-                className="text-center text-2xl font-bold tracking-[0.5em] mt-2"
-                dir="ltr"
-              />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp">رمز التحقق</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                  maxLength={6}
+                  placeholder="· · · · · ·"
+                  required
+                  className="text-center text-2xl font-bold tracking-[0.5em] mt-2"
+                  dir="ltr"
+                />
+              </div>
+
+              {/* معلومات إضافية عن OTP */}
+              <Alert className="border-green-200 bg-green-50">
+                <Info className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700 text-xs">
+                  <p className="font-semibold mb-1">📱 تم إرسال رمز التحقق عبر WhatsApp</p>
+                  <p className="font-semibold text-green-800">📩 افتح تطبيق WhatsApp الآن وستجد رسالة من منصة الحلم، ثم أدخل الرمز في الحقل بالأسفل.</p>
+                  <p>• الرمز مكون من 6 أرقام</p>
+                  <p>• صالح لمدة 10 دقائق</p>
+                  <p>• تحقق من رسائل WhatsApp على رقم: {fullPhoneNumber}</p>
+                </AlertDescription>
+              </Alert>
             </CardContent>
             <CardFooter className="flex-col gap-4">
               <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
@@ -343,8 +535,9 @@ export default function ForgotPasswordPage() {
                 variant="link"
                 onClick={() => handlePhoneSubmit()}
                 disabled={resendCooldown > 0 || loading}
+                className="text-purple-600 hover:text-purple-700"
               >
-                {resendCooldown > 0 ? `أعد الإرسال بعد ${resendCooldown} ثانية` : 'ألم تستلم الرمز؟ أعد الإرسال'}
+                {resendCooldown > 0 ? `⏱️ أعد الإرسال بعد ${resendCooldown} ثانية` : '🔄 ألم تستلم الرمز؟ أعد الإرسال'}
               </Button>
             </CardFooter>
           </form>

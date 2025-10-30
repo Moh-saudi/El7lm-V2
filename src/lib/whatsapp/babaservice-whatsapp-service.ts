@@ -232,6 +232,22 @@ class BabaserviceWhatsAppService {
     }
 
     try {
+      // تحقق إضافي من صحة الرقم
+      const phoneLength = phoneNumber.replace(/\D/g, '').length;
+      console.log('📏 طول رقم الهاتف (أرقام فقط):', phoneLength);
+
+      if (phoneLength < 10) {
+        console.error('❌ رقم الهاتف قصير جداً:', phoneNumber);
+        return {
+          success: false,
+          error: `رقم الهاتف قصير جداً (${phoneLength} أرقام). يجب أن يكون على الأقل 10 أرقام بصيغة دولية (مثال: 201017799580 للأرقام المصرية)`
+        };
+      }
+
+      if (phoneLength > 15) {
+        console.warn('⚠️ رقم الهاتف طويل جداً:', phoneNumber);
+      }
+
       const requestBody = {
         number: phoneNumber,
         type: 'text',
@@ -251,51 +267,73 @@ class BabaserviceWhatsAppService {
 
       const data = await response.json();
       console.log('📥 Response from external API:', data);
+      console.log('📊 Response details:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        data: data
+      });
 
       // معالجة الاستجابة المختلفة
       if (response.ok) {
-        // إذا كان response.ok
+        // التحقق من وجود خطأ في الرد حتى لو كان status 200
+        const messageStr = typeof data.message === 'string' ? data.message : JSON.stringify(data.message || '');
+        const hasErrorInMessage = messageStr.toLowerCase().includes('error') || messageStr.toLowerCase().includes('invalid');
+
+        if (data && (data.status === 'error' || data.error || hasErrorInMessage)) {
+          console.error('❌ المزود أرجع خطأ رغم status 200:', data);
+          return {
+            success: false,
+            error: typeof data.message === 'string' ? data.message : (data.error || 'Instance ID Invalidated - يرجى إعادة ربط WhatsApp'),
+            data: data
+          };
+        }
+
+        // إذا كان response.ok وبدون أخطاء
         if (Array.isArray(data) && data.length === 0) {
           // مصفوفة فارغة - قد تكون رسالة ناجحة لكن بدون تفاصيل
+          console.log('✅ المزود أرجع مصفوفة فارغة (نجاح محتمل)');
           return {
             success: true,
             message: 'تم إرسال الرسالة بنجاح ✅',
             data: {
               status: 'sent',
-              note: 'تم الإرسال بنجاح - لا توجد تفاصيل إضافية'
+              note: 'تم الإرسال بنجاح - لا توجد تفاصيل إضافية',
+              phoneNumber: phoneNumber
             }
           };
         } else if (data && data.key) {
-          // استجابة مع تفاصيل الرسالة
+          // استجابة مع تفاصيل الرسالة - نجاح مؤكد
+          console.log('✅ المزود أرجع key (نجاح مؤكد):', data.key);
           return {
             success: true,
             message: 'تم إرسال الرسالة بنجاح ✅',
             data: {
               key: data.key,
               status: 'sent',
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              phoneNumber: phoneNumber
             }
-          };
-        } else if (data && data.status === 'error') {
-          // خطأ في الاستجابة
-          return {
-            success: false,
-            error: data.message || 'Instance ID Invalidated',
-            data: data
           };
         } else {
           // استجابة غير متوقعة
+          console.warn('⚠️ استجابة غير متوقعة من المزود:', data);
           return {
             success: true,
-            message: 'تم إرسال الرسالة بنجاح ✅',
-            data: data
+            message: 'تم إرسال الرسالة (استجابة غير قياسية) ⚠️',
+            data: {
+              ...data,
+              phoneNumber: phoneNumber,
+              note: 'تحقق من وصول الرسالة - الاستجابة غير قياسية'
+            }
           };
         }
       } else {
         // خطأ في HTTP response
+        console.error('❌ خطأ HTTP من المزود:', response.status, data);
         return {
           success: false,
-          error: data?.message || `HTTP Error: ${response.status}`,
+          error: data?.message || data?.error || `HTTP Error: ${response.status}`,
           data: data
         };
       }

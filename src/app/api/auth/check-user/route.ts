@@ -20,6 +20,52 @@ const PHONE_FIELDS = [
   'mobile_number'
 ];
 
+// دالة لتوليد جميع الصيغ الممكنة لرقم الهاتف
+function generatePhoneVariants(phoneNumber: string): string[] {
+  const variants: string[] = [];
+  const cleaned = phoneNumber.replace(/\D/g, ''); // إزالة أي رموز
+
+  variants.push(phoneNumber); // الرقم الأصلي
+  variants.push(cleaned); // الرقم المنظف
+  variants.push(`+${cleaned}`); // مع +
+
+  // إذا كان مصري (يبدأ بـ 20 أو 2)
+  if (cleaned.startsWith('20')) {
+    variants.push(cleaned.substring(2)); // إزالة 20
+    variants.push(`0${cleaned.substring(2)}`); // إضافة 0 بعد إزالة 20
+
+    // حالة خاصة: إذا كان يبدأ بـ 200 (خطأ شائع)
+    if (cleaned.startsWith('200') && cleaned.length > 11) {
+      variants.push(cleaned.substring(3)); // إزالة 200
+      variants.push(`20${cleaned.substring(3)}`); // تصحيح إلى 20
+      variants.push(`0${cleaned.substring(3)}`); // إضافة 0
+    }
+  }
+
+  // إذا كان يبدأ بـ 0 (رقم محلي)
+  if (cleaned.startsWith('0') && !cleaned.startsWith('00')) {
+    // محاولة إضافة كود مصر
+    if (cleaned.length === 11) {
+      variants.push(`20${cleaned.substring(1)}`); // إزالة 0 وإضافة 20
+      variants.push(cleaned.substring(1)); // إزالة 0 فقط
+    }
+  }
+
+  // إذا كان سعودي (يبدأ بـ 966)
+  if (cleaned.startsWith('966')) {
+    variants.push(`0${cleaned.substring(3)}`); // إضافة 0
+    variants.push(cleaned.substring(3)); // إزالة 966
+  }
+
+  // إذا كان قطري (يبدأ بـ 974)
+  if (cleaned.startsWith('974') && cleaned.length === 11) {
+    variants.push(cleaned.substring(3)); // إزالة 974
+  }
+
+  // إزالة المكررات
+  return [...new Set(variants)].filter(v => v.length >= 8); // الحد الأدنى 8 أرقام
+}
+
 // دالة البحث عن المستخدم بواسطة رقم الهاتف
 async function findUserByPhone(phoneNumber: string): Promise<{
   exists: boolean;
@@ -35,36 +81,43 @@ async function findUserByPhone(phoneNumber: string): Promise<{
     return { exists: false };
   }
 
+  // توليد جميع الصيغ الممكنة للرقم
+  const phoneVariants = generatePhoneVariants(phoneNumber);
+  console.log(`🔍 [check-user] Searching for phone variants:`, phoneVariants);
+
   for (const collectionName of COLLECTIONS_TO_SEARCH) {
     for (const field of PHONE_FIELDS) {
-      try {
-        const snapshot = await adminDb
-          .collection(collectionName)
-          .where(field, '==', phoneNumber)
-          .limit(1)
-          .get();
+      // البحث عن كل صيغة ممكنة
+      for (const variant of phoneVariants) {
+        try {
+          const snapshot = await adminDb
+            .collection(collectionName)
+            .where(field, '==', variant)
+            .limit(1)
+            .get();
 
-        if (!snapshot.empty) {
-          const userDoc = snapshot.docs[0];
-          const userData = userDoc.data();
+          if (!snapshot.empty) {
+            const userDoc = snapshot.docs[0];
+            const userData = userDoc.data();
 
-          const userName = userData.full_name || userData.name || userData.displayName || 'مستخدم';
-          const accountType = userData.accountType || collectionName.slice(0, -1); // Remove 's' from collection name
+            const userName = userData.full_name || userData.name || userData.displayName || 'مستخدم';
+            const accountType = userData.accountType || collectionName.slice(0, -1); // Remove 's' from collection name
 
-          console.log(`✅ [check-user] User found in ${collectionName}: ${userName}`);
-          return {
-            exists: true,
-            userName,
-            accountType
-          };
+            console.log(`✅ [check-user] User found in ${collectionName} with variant "${variant}": ${userName}`);
+            return {
+              exists: true,
+              userName,
+              accountType
+            };
+          }
+        } catch (error) {
+          console.warn(`⚠️ [check-user] Could not search in ${collectionName} on field ${field}:`, error);
         }
-      } catch (error) {
-        console.warn(`⚠️ [check-user] Could not search in ${collectionName} on field ${field}:`, error);
       }
     }
   }
 
-  console.log(`❌ [check-user] User not found for phone number: ${phoneNumber}`);
+  console.log(`❌ [check-user] User not found for any phone variant`);
   return { exists: false };
 }
 

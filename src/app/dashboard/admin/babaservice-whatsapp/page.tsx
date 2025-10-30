@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle, Loader2, MessageSquare, QrCode, Send, Settings, Smartphone, Upload, XCircle } from 'lucide-react';
+import { CheckCircle, Info, Loader2, MessageSquare, QrCode, Send, Settings, Smartphone, Upload, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -381,6 +381,42 @@ export default function BabaserviceWhatsAppAdminPage() {
                   </Button>
                 </div>
               </div>
+
+              {/* تنبيه مهم حول صيغة الأرقام */}
+              <Alert className="border-blue-200 bg-blue-50">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">⚠️ مهم: صيغة رقم الهاتف الصحيحة</AlertTitle>
+                <AlertDescription className="text-blue-700 space-y-2">
+                  <p className="font-semibold">يجب إدخال الرقم بصيغة دولية كاملة:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <span>✅ 🇪🇬 مصر: <code className="bg-white px-1 py-0.5 rounded text-xs">01017799580</code></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <span>✅ 🇸🇦 السعودية: <code className="bg-white px-1 py-0.5 rounded text-xs">0501234567</code></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <span>✅ 🇶🇦 قطر: <code className="bg-white px-1 py-0.5 rounded text-xs">77123456</code> أو <code className="bg-white px-1 py-0.5 rounded text-xs">97477123456</code></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-3 w-3 text-red-600" />
+                      <span>❌ خطأ: <code className="bg-white px-1 py-0.5 rounded text-xs">1017799580</code> (ناقص رقم)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-3 w-3 text-red-600" />
+                      <span>❌ خطأ: <code className="bg-white px-1 py-0.5 rounded text-xs">501234567</code> (ناقص رقم)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-3 w-3 text-red-600" />
+                      <span>❌ خطأ: <code className="bg-white px-1 py-0.5 rounded text-xs">7123456</code> (ناقص رقم)</span>
+                    </div>
+                  </div>
+                  <p className="text-xs mt-2">💡 النظام يحول الأرقام تلقائياً، لكن يجب إدخال الرقم المحلي **كاملاً**</p>
+                </AlertDescription>
+              </Alert>
 
               <div className="space-y-2">
                 <Label htmlFor="message">الرسالة</Label>
