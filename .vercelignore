@@ -98,3 +98,11 @@ ACCOUNT_*.md
 ADMIN_*.md
 account-*.md
 ADS_*.md
+
+# Old BeOn test pages (causing build errors)
+src/app/debug-beon/
+src/app/test-beon-correct/
+src/app/test-beon-final/
+src/app/test-beon-tokens/
+src/app/test-beon-v3/
+src/app/admin/beon-v3/

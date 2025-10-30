@@ -296,9 +296,9 @@ export default function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-purple-950" dir="rtl">
+      <div className="flex justify-center items-center min-h-screen bg-purple-950" dir="rtl">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-400 animate-spin" />
+          <Loader2 className="mx-auto mb-4 w-12 h-12 text-purple-400 animate-spin" />
           <p className="text-gray-300">جاري التحميل...</p>
         </div>
       </div>
@@ -308,23 +308,23 @@ export default function LoginPage() {
   return (
     <>
       <Toaster position="top-center" dir="rtl" richColors />
-      <div className="min-h-screen bg-purple-950 flex items-center justify-center px-4 py-8" dir="rtl">
-        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="flex justify-center items-center px-4 py-8 min-h-screen bg-purple-950" dir="rtl">
+        <div className="grid grid-cols-1 gap-6 w-full max-w-5xl md:grid-cols-2">
 
         {/* Login Form Card - Right Side (compact) */}
         <div className="order-1 md:order-2">
-          <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-purple-100 p-6 max-w-md mx-auto">
+          <div className="p-6 mx-auto max-w-md rounded-2xl border border-purple-100 shadow-2xl backdrop-blur bg-white/95">
             {/* Header */}
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-purple-100 rounded-2xl mb-3">
+            <div className="mb-6 text-center">
+              <div className="inline-flex justify-center items-center mb-3 w-14 h-14 bg-purple-100 rounded-2xl">
                 <Shield className="w-7 h-7 text-purple-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">مرحباً بعودتك!</h1>
+              <h1 className="mb-1 text-2xl font-bold text-gray-900">مرحباً بعودتك!</h1>
               <p className="text-sm text-gray-600">سجل دخولك وانطلق نحو حلمك</p>
             </div>
 
             {/* Login Method Toggle */}
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-5">
+            <div className="flex gap-2 p-1 mb-5 bg-gray-100 rounded-lg">
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
@@ -360,7 +360,7 @@ export default function LoginPage() {
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-full py-2 px-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      className="px-3 py-2 w-full text-sm rounded-lg border border-gray-300 transition focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       aria-label="اختر البلد"
                     >
                       {countries.map((country) => (
@@ -380,7 +380,7 @@ export default function LoginPage() {
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="flex-1 py-2 px-3 text-sm border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-left"
+                        className="flex-1 px-3 py-2 text-sm text-left rounded-l-lg border border-gray-300 transition focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder="1012345678"
                         required
                         dir="ltr"
@@ -397,7 +397,7 @@ export default function LoginPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full py-2 pr-9 pl-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      className="py-2 pr-9 pl-3 w-full text-sm rounded-lg border border-gray-300 transition focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="example@mail.com"
                       required
                       autoComplete="email"
@@ -415,7 +415,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full py-2 pr-9 pl-9 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    className="py-2 pr-9 pl-9 w-full text-sm rounded-lg border border-gray-300 transition focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="********"
                     required
                     autoComplete="current-password"
@@ -432,8 +432,8 @@ export default function LoginPage() {
               </div>
 
               {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between text-xs">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex justify-between items-center text-xs">
+                <label className="flex gap-2 items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
@@ -445,7 +445,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => router.push('/auth/forgot-password')}
-                  className="text-purple-600 hover:text-purple-700 font-medium"
+                  className="font-medium text-purple-600 hover:text-purple-700"
                 >
                   نسيت كلمة المرور؟
                 </button>
@@ -463,7 +463,7 @@ export default function LoginPage() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="inline-block w-4 h-4 ml-2 animate-spin" />
+                    <Loader2 className="inline-block ml-2 w-4 h-4 animate-spin" />
                     جاري الدخول...
                   </>
                 ) : (
@@ -472,13 +472,13 @@ export default function LoginPage() {
               </button>
 
               {/* Register Link */}
-              <div className="text-center pt-3 border-t border-gray-200">
+              <div className="pt-3 text-center border-t border-gray-200">
                 <p className="text-xs text-gray-600">
                   ليس لديك حساب؟{' '}
                   <button
                     type="button"
                     onClick={() => router.push('/auth/register')}
-                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                    className="font-semibold text-purple-600 hover:text-purple-700"
                   >
                     سجّل الآن
                   </button>
@@ -489,19 +489,19 @@ export default function LoginPage() {
         </div>
 
         {/* Testimonials Panel - Left Side */}
-        <div className="order-2 md:order-1 hidden md:block">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-white h-full flex flex-col justify-center">
-            <div className="text-center mb-6">
-              <Star className="w-10 h-10 mx-auto mb-3 text-yellow-400 fill-yellow-400" />
-              <h2 className="text-2xl font-bold mb-2">شهادات ثقة</h2>
-              <p className="text-purple-200 text-sm">آراء من مستخدمينا</p>
+        <div className="hidden order-2 md:order-1 md:block">
+          <div className="flex flex-col justify-center p-6 h-full text-white rounded-2xl border backdrop-blur-sm bg-white/10 border-white/20">
+            <div className="mb-6 text-center">
+              <Star className="mx-auto mb-3 w-10 h-10 text-yellow-400 fill-yellow-400" />
+              <h2 className="mb-2 text-2xl font-bold">شهادات ثقة</h2>
+              <p className="text-sm text-purple-200">آراء من مستخدمينا</p>
             </div>
 
             <div className="space-y-4">
               {testimonials.map((t, idx) => (
                 <div key={idx} className={`transition-opacity duration-1000 ${idx === testimonialIndex ? 'opacity-100' : 'opacity-0 hidden'}`}>
-                  <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-                    <p className="text-sm italic mb-3 leading-relaxed">"{t.quote}"</p>
+                  <div className="p-4 rounded-xl border backdrop-blur-sm bg-white/10 border-white/10">
+                    <p className="mb-3 text-sm italic leading-relaxed">"{t.quote}"</p>
                     <div className="text-xs">
                       <span className="font-semibold text-white">{t.author}</span>
                       <span className="text-purple-300"> — {t.role}</span>

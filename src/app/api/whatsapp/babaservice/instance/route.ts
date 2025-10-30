@@ -1,90 +1,64 @@
-import { instanceManager } from '@/lib/whatsapp/instance-manager';
+import BabaserviceWhatsAppService from '@/lib/whatsapp/babaservice-whatsapp-service';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, instanceId } = await request.json();
+    const body = await request.json();
+    const { action } = body;
 
-    console.log('🔧 [API /whatsapp/babaservice/instance] طلب إدارة Instance:', { action, instanceId });
+    console.log('🔧 [API /whatsapp/babaservice/instance] Action:', action);
+
+    const whatsappService = new BabaserviceWhatsAppService();
 
     switch (action) {
       case 'create':
-        const newInstanceId = await instanceManager.createNewInstance();
-        return NextResponse.json({
-          success: true,
-          message: 'تم إنشاء Instance جديد بنجاح',
-          data: {
-            instanceId: newInstanceId,
-            status: 'created'
-          }
-        });
+        const createResult = await whatsappService.createInstance();
+        return NextResponse.json(createResult);
 
-      case 'check':
-        if (!instanceId) {
-          return NextResponse.json({
-            success: false,
-            error: 'Instance ID مطلوب'
-          }, { status: 400 });
-        }
+      case 'status':
+      case 'qr_code':
+        const instanceId = body.instance_id || '68F243B3A8D8D';
+        const qrResult = await whatsappService.getQRCode(instanceId);
 
-        const status = await instanceManager.checkInstanceStatus(instanceId);
-        return NextResponse.json({
-          success: true,
-          message: 'تم فحص حالة Instance',
-          data: status
-        });
+        // تحويل النتيجة لتطابق InstanceStatus interface
+        const statusResult = {
+          instanceId: instanceId,
+          status: qrResult.success ?
+            (qrResult.qr_code ? 'disconnected' : 'connected') :
+            'invalidated',
+          qrCode: qrResult.qr_code,
+          lastChecked: new Date(),
+          error: qrResult.error
+        };
+
+        return NextResponse.json(statusResult);
 
       case 'reboot':
-        if (!instanceId) {
-          return NextResponse.json({
-            success: false,
-            error: 'Instance ID مطلوب'
-          }, { status: 400 });
-        }
-
-        const rebootResult = await instanceManager.rebootInstance(instanceId);
-        return NextResponse.json({
-          success: rebootResult,
-          message: rebootResult ? 'تم إعادة تشغيل Instance بنجاح' : 'فشل في إعادة تشغيل Instance',
-          data: { instanceId, rebooted: rebootResult }
-        });
+        const rebootInstanceId = body.instance_id || '68F243B3A8D8D';
+        const rebootResult = await whatsappService.rebootInstance(rebootInstanceId);
+        return NextResponse.json(rebootResult);
 
       case 'reset':
-        if (!instanceId) {
-          return NextResponse.json({
-            success: false,
-            error: 'Instance ID مطلوب'
-          }, { status: 400 });
-        }
+        const resetInstanceId = body.instance_id || '68F243B3A8D8D';
+        const resetResult = await whatsappService.resetInstance(resetInstanceId);
+        return NextResponse.json(resetResult);
 
-        const resetResult = await instanceManager.resetInstance(instanceId);
-        return NextResponse.json({
-          success: resetResult,
-          message: resetResult ? 'تم إعادة تعيين Instance بنجاح' : 'فشل في إعادة تعيين Instance',
-          data: { instanceId, reset: resetResult }
-        });
-
-      case 'get_current':
-        const currentInstance = instanceManager.getCurrentInstance();
-        return NextResponse.json({
-          success: true,
-          message: 'تم جلب معلومات Instance الحالي',
-          data: currentInstance
-        });
+      case 'reconnect':
+        const reconnectInstanceId = body.instance_id || '68F243B3A8D8D';
+        const reconnectResult = await whatsappService.reconnect(reconnectInstanceId);
+        return NextResponse.json(reconnectResult);
 
       default:
         return NextResponse.json({
           success: false,
-          error: 'إجراء غير مدعوم',
-          supported_actions: ['create', 'check', 'reboot', 'reset', 'get_current']
+          error: 'Action غير مدعوم'
         }, { status: 400 });
     }
-
   } catch (error: any) {
     console.error('❌ [API /whatsapp/babaservice/instance] خطأ:', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'حدث خطأ في إدارة Instance'
+      error: error.message || 'حدث خطأ في معالجة الطلب'
     }, { status: 500 });
   }
 }
@@ -93,56 +67,68 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
+    const instanceId = searchParams.get('instance_id') || '68F243B3A8D8D';
 
-    console.log('🔧 [API /whatsapp/babaservice/instance] GET request:', { action });
+    console.log('🔧 [API /whatsapp/babaservice/instance] GET Action:', action);
+
+    const whatsappService = new BabaserviceWhatsAppService();
 
     switch (action) {
       case 'status':
-        const currentInstance = instanceManager.getCurrentInstance();
-        return NextResponse.json({
-          success: true,
-          message: 'حالة Instance الحالي',
-          data: currentInstance
-        });
+      case 'qr_code':
+        const qrResult = await whatsappService.getQRCode(instanceId);
 
-      case 'create_new':
-        const newInstanceId = await instanceManager.createNewInstance();
+        // تحويل النتيجة لتطابق InstanceStatus interface
+        const statusResult = {
+          instanceId: instanceId,
+          status: qrResult.success ?
+            (qrResult.qr_code ? 'disconnected' : 'connected') :
+            'invalidated',
+          qrCode: qrResult.qr_code,
+          lastChecked: new Date(),
+          error: qrResult.error
+        };
+
+        return NextResponse.json(statusResult);
+
+      case 'config':
+        const config = whatsappService.getConfig();
         return NextResponse.json({
           success: true,
-          message: 'تم إنشاء Instance جديد',
-          data: {
-            instanceId: newInstanceId,
-            status: 'created'
+          config: {
+            baseUrl: config.baseUrl,
+            instanceId: config.instanceId,
+            hasAccessToken: !!config.accessToken
           }
         });
 
       default:
         return NextResponse.json({
           success: true,
-          message: 'Baba Service Instance Management API',
+          message: 'Babaservice Instance API',
           endpoints: {
-            POST: [
-              'create - إنشاء Instance جديد',
-              'check - فحص حالة Instance',
-              'reboot - إعادة تشغيل Instance',
-              'reset - إعادة تعيين Instance',
-              'get_current - جلب Instance الحالي'
-            ],
-            GET: [
-              'status - حالة Instance الحالي',
-              'create_new - إنشاء Instance جديد'
-            ]
-          }
+            POST: {
+              create: 'إنشاء instance جديد',
+              status: 'فحص حالة instance',
+              qr_code: 'الحصول على QR Code',
+              reboot: 'إعادة تشغيل instance',
+              reset: 'إعادة تعيين instance',
+              reconnect: 'إعادة الاتصال'
+            },
+            GET: {
+              status: 'فحص حالة instance',
+              qr_code: 'الحصول على QR Code',
+              config: 'عرض التكوين'
+            }
+          },
+          currentInstanceId: '68F243B3A8D8D'
         });
     }
-
   } catch (error: any) {
     console.error('❌ [API /whatsapp/babaservice/instance] خطأ GET:', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'حدث خطأ في الخادم'
+      error: error.message || 'حدث خطأ في معالجة الطلب'
     }, { status: 500 });
   }
 }
-
-
