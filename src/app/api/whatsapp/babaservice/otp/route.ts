@@ -1,13 +1,26 @@
 import { createMessageFromTemplate, formatPhoneNumber, validatePhoneNumber } from '@/lib/whatsapp/babaservice-config';
 import BabaserviceWhatsAppService from '@/lib/whatsapp/babaservice-whatsapp-service';
 import { NextRequest, NextResponse } from 'next/server';
+import { storeOtp } from '../verify-otp/route';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('📱 [API /whatsapp/babaservice/otp] Body كامل:', JSON.stringify(body, null, 2));
 
-    const { phoneNumber, otp, name, instance_id } = body;
+    let { phoneNumber, otp, name, instance_id } = body;
+
+    // 💡 إنشاء OTP على الخادم إذا لم يتم توفيره
+    if (!otp) {
+      otp = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log(`🔑 OTP لم يتم توفيره, تم إنشاء واحد جديد: ${otp}`);
+    }
+
+    // تنسيق رقم الهاتف أولاً قبل أي استخدام
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+
+    // تخزين الرمز للتحقق لاحقاً
+    storeOtp(formattedPhone, otp);
 
     console.log('📱 [API /whatsapp/babaservice/otp] طلب إرسال OTP:', {
       phoneNumber,
@@ -49,7 +62,6 @@ export async function POST(request: NextRequest) {
 
     // تنسيق رقم الهاتف أولاً
     console.log('🔧 قبل formatPhoneNumber:', phoneNumber);
-    const formattedPhone = formatPhoneNumber(phoneNumber);
     console.log('🔧 بعد formatPhoneNumber:', formattedPhone);
 
     // التحقق من صحة رقم الهاتف بعد التنسيق

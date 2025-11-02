@@ -142,7 +142,7 @@ export default function SMSOTPVerification({
     setMessage('');
 
     try {
-      const res = await fetch('/api/sms/send-otp', {
+      const res = await fetch('/api/whatsapp/babaservice/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber, name, lang: language }),

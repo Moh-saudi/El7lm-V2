@@ -27,12 +27,14 @@ import {
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { BABASERVICE_CONFIG } from '@/lib/whatsapp/babaservice-config';
 
 // Define user role types
 type UserRole = 'player' | 'club' | 'academy' | 'agent' | 'trainer' | 'admin';
 
 // استخدام البيانات المشتركة من ملف الدول
 import { countries, normalizePhone } from '@/lib/constants/countries';
+import { formatPhoneNumber } from '@/lib/whatsapp/babaservice-config';
 
 // دالة للحصول على مسار لوحة التحكم حسب نوع الحساب
 const getDashboardRoute = (accountType: string) => {
@@ -387,17 +389,17 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const formattedPhone = normalizePhone(formData.countryCode, formData.phone);
+      const formattedPhone = formatPhoneNumber(`${formData.countryCode}${formData.phone}`);
 
       // إرسال OTP عبر WhatsApp
       console.log('📱 Sending OTP via WhatsApp...');
-      const otpResponse = await fetch('/api/sms/send-otp', {
+      const otpResponse = await fetch('/api/whatsapp/babaservice/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: formattedPhone,
           name: formData.name,
-          method: 'whatsapp'
+          instance_id: BABASERVICE_CONFIG.INSTANCE_ID,
         }),
       });
 
@@ -419,7 +421,6 @@ export default function RegisterPage() {
         password: formData.password,
         accountType: formData.accountType,
         organizationCode: formData.organizationCode,
-        otp: otpData.reference
       };
 
       localStorage.setItem('pendingRegistration', JSON.stringify(pendingData));
@@ -534,7 +535,7 @@ export default function RegisterPage() {
       console.log('📋 Pending data:', { phone: pendingData.phone, otp: otp });
 
       // التحقق من صحة OTP عبر API
-      const verifyResponse = await fetch('/api/sms/verify-otp', {
+      const verifyResponse = await fetch('/api/whatsapp/babaservice/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
