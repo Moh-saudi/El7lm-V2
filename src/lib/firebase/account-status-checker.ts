@@ -15,10 +15,10 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       userId: userId,
       timestamp: new Date().toISOString()
     });
-    
+
     // Check in users collection first
     const userDoc = await getDoc(doc(db, 'users', userId));
-    
+
     if (!userDoc.exists()) {
       console.log('❌ Account Status Check - User document not found:', userId);
       return {
@@ -37,13 +37,14 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       isActive: userData.isActive,
       isDeleted: userData.isDeleted
     });
-    
+
     // Check if account is active
     if (userData.isActive === false) {
+      const suspendReason = userData.suspendReason || 'لم يتم تحديد السبب';
       return {
         isActive: false,
         canLogin: false,
-        message: 'تم إيقاف حسابك مؤقتاً. يرجى التواصل مع الإدارة لإعادة تفعيل الحساب.',
+        message: `تم إيقاف حسابك مؤقتاً.\n\nالسبب: ${suspendReason}\n\nيرجى التواصل مع الإدارة لإعادة تفعيل الحساب.`,
         messageType: 'error'
       };
     }
@@ -122,4 +123,4 @@ export async function updateLastLogin(userId: string): Promise<void> {
 function getClientIP(): string {
   // This is a simple implementation - in production you might want to use a service
   return 'unknown';
-} 
+}

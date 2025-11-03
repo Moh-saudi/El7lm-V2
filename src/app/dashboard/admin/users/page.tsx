@@ -64,6 +64,8 @@ interface User {
   verificationStatus: 'verified' | 'pending' | 'rejected';
   profileCompletion: number;
   profileCompleted: boolean;
+  suspendReason?: string;
+  suspendedAt?: Date;
 }
 
 interface VisitStats {
@@ -125,6 +127,15 @@ export default function AdminUsersPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [instanceId, setInstanceId] = useState('68F243B3A8D8D');
+
+  // New states for account management
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [showChangeTypeDialog, setShowChangeTypeDialog] = useState(false);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [newAccountType, setNewAccountType] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   // دالة للتحقق من صحة أرقام الهواتف
   const validateUserPhone = (user: User) => {
@@ -560,6 +571,203 @@ export default function AdminUsersPage() {
     return '';
   };
 
+  // Account Management Functions
+  const handleSuspendAccount = async () => {
+    if (!selectedUserDetails || !suspendReason.trim()) {
+      toast.error('يرجى إدخال سبب الإيقاف');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+
+      // Determine collection name based on account type
+      const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
+                            selectedUserDetails.accountType + 's';
+
+      await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
+        isActive: false,
+        suspendedAt: new Date(),
+        suspendReason: suspendReason,
+        suspendedBy: user?.uid || 'admin'
+      });
+
+      // Update local state
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === selectedUserDetails.id
+          ? { ...u, isActive: false }
+          : u
+      ));
+
+      toast.success('تم إيقاف الحساب مؤقتاً');
+      setShowSuspendDialog(false);
+      setSuspendReason('');
+      setShowUserDetailsDialog(false);
+    } catch (error) {
+      console.error('Error suspending account:', error);
+      toast.error('حدث خطأ في إيقاف الحساب');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleActivateAccount = async () => {
+    if (!selectedUserDetails) return;
+
+    try {
+      setActionLoading(true);
+
+      const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
+                            selectedUserDetails.accountType + 's';
+
+      await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
+        isActive: true,
+        reactivatedAt: new Date(),
+        reactivatedBy: user?.uid || 'admin'
+      });
+
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === selectedUserDetails.id
+          ? { ...u, isActive: true }
+          : u
+      ));
+
+      toast.success('تم تفعيل الحساب بنجاح');
+      setShowActivateDialog(false);
+      setShowUserDetailsDialog(false);
+    } catch (error) {
+      console.error('Error activating account:', error);
+      toast.error('حدث خطأ في تفعيل الحساب');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedUserDetails) return;
+
+    try {
+      setActionLoading(true);
+
+      const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
+                            selectedUserDetails.accountType + 's';
+
+      await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: user?.uid || 'admin'
+      });
+
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === selectedUserDetails.id
+          ? { ...u, isDeleted: true }
+          : u
+      ));
+
+      toast.success('تم حذف الحساب بنجاح');
+      setShowDeleteDialog(false);
+      setShowUserDetailsDialog(false);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error('حدث خطأ في حذف الحساب');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleChangeAccountType = async () => {
+    if (!selectedUserDetails || !newAccountType) {
+      toast.error('يرجى اختيار نوع الحساب الجديد');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+
+      const oldCollectionName = selectedUserDetails.accountType === 'user' ? 'users' :
+                                selectedUserDetails.accountType + 's';
+      const newCollectionName = newAccountType === 'user' ? 'users' : newAccountType + 's';
+
+      // Update in current collection
+      await updateDoc(doc(db, oldCollectionName, selectedUserDetails.id), {
+        accountType: newAccountType,
+        accountTypeChangedAt: new Date(),
+        accountTypeChangedBy: user?.uid || 'admin',
+        previousAccountType: selectedUserDetails.accountType
+      });
+
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === selectedUserDetails.id
+          ? { ...u, accountType: newAccountType as any }
+          : u
+      ));
+
+      toast.success('تم تغيير نوع الحساب بنجاح');
+      setShowChangeTypeDialog(false);
+      setNewAccountType('');
+      setShowUserDetailsDialog(false);
+    } catch (error) {
+      console.error('Error changing account type:', error);
+      toast.error('حدث خطأ في تغيير نوع الحساب');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleVerifyAccount = async (userId: string) => {
+    try {
+      const userToVerify = users.find(u => u.id === userId);
+      if (!userToVerify) return;
+
+      const collectionName = userToVerify.accountType === 'user' ? 'users' :
+                            userToVerify.accountType + 's';
+
+      await updateDoc(doc(db, collectionName, userId), {
+        verificationStatus: 'verified',
+        verifiedAt: new Date(),
+        verifiedBy: user?.uid || 'admin'
+      });
+
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === userId
+          ? { ...u, verificationStatus: 'verified' as const }
+          : u
+      ));
+
+      toast.success('تم التحقق من الحساب بنجاح');
+    } catch (error) {
+      console.error('Error verifying account:', error);
+      toast.error('حدث خطأ في التحقق من الحساب');
+    }
+  };
+
+  const handleRejectAccount = async (userId: string) => {
+    try {
+      const userToReject = users.find(u => u.id === userId);
+      if (!userToReject) return;
+
+      const collectionName = userToReject.accountType === 'user' ? 'users' :
+                            userToReject.accountType + 's';
+
+      await updateDoc(doc(db, collectionName, userId), {
+        verificationStatus: 'rejected',
+        rejectedAt: new Date(),
+        rejectedBy: user?.uid || 'admin'
+      });
+
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === userId
+          ? { ...u, verificationStatus: 'rejected' as const }
+          : u
+      ));
+
+      toast.success('تم رفض الحساب');
+    } catch (error) {
+      console.error('Error rejecting account:', error);
+      toast.error('حدث خطأ في رفض الحساب');
+    }
+  };
+
   // Load users data - with pagination support for 1000+ users
   useEffect(() => {
     const loadUsers = async () => {
@@ -712,7 +920,9 @@ export default function AdminUsersPage() {
                 isDeleted: data.isDeleted || data.deleted || false,
                   verificationStatus: data.verificationStatus || data.verification_status || 'pending',
                   profileCompletion: profileCompletion,
-                  profileCompleted: profileCompletion >= 80
+                  profileCompleted: profileCompletion >= 80,
+                  suspendReason: data.suspendReason || undefined,
+                  suspendedAt: safeToDate(data.suspendedAt)
               };
 
               allUsers.push(userData);
@@ -770,7 +980,9 @@ export default function AdminUsersPage() {
                     isDeleted: data.isDeleted || data.deleted || false,
                     verificationStatus: data.verificationStatus || data.verification_status || 'pending',
                     profileCompletion: 0,
-                    profileCompleted: false
+                    profileCompleted: false,
+                    suspendReason: data.suspendReason || undefined,
+                    suspendedAt: safeToDate(data.suspendedAt)
                   });
                   collectionCount++;
                   totalProcessed++;
@@ -2206,18 +2418,34 @@ export default function AdminUsersPage() {
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-semibold text-gray-900">{user.name}</p>
                                   {isNew && (
                                     <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
                                       جديد!
-                          </Badge>
+                                    </Badge>
+                                  )}
+                                  {!user.isActive && (
+                                    <Badge className="bg-orange-500 text-white text-xs px-2 py-0.5">
+                                      موقوف
+                                    </Badge>
+                                  )}
+                                  {user.isDeleted && (
+                                    <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
+                                      محذوف
+                                    </Badge>
                                   )}
                                 </div>
                                 {user.lastLogin && (
                                   <p className="text-xs text-gray-500 flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     {user.lastLogin.toLocaleDateString('en-GB')}
+                                  </p>
+                                )}
+                                {!user.isActive && user.suspendReason && (
+                                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    {user.suspendReason.substring(0, 30)}{user.suspendReason.length > 30 ? '...' : ''}
                                   </p>
                                 )}
                               </div>
@@ -2355,12 +2583,12 @@ export default function AdminUsersPage() {
                           )}
                         </td>
                         <td className="p-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
                               className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
-                                title="عرض التفاصيل"
+                              title="عرض التفاصيل"
                               onClick={() => {
                                 setSelectedUserDetails(user);
                                 setShowUserDetailsDialog(true);
@@ -2368,21 +2596,89 @@ export default function AdminUsersPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+
+                            {/* Verify/Reject Buttons */}
+                            {user.verificationStatus === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                  title="توثيق الحساب"
+                                  onClick={() => handleVerifyAccount(user.id)}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
+                                  title="رفض التوثيق"
+                                  onClick={() => handleRejectAccount(user.id)}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+
+                            {/* Suspend/Activate Button */}
+                            {user.isActive ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                                title="إيقاف مؤقت"
+                                onClick={() => {
+                                  setSelectedUserDetails(user);
+                                  setShowSuspendDialog(true);
+                                }}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                title="تفعيل الحساب"
+                                onClick={() => {
+                                  setSelectedUserDetails(user);
+                                  setShowActivateDialog(true);
+                                }}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Delete Button */}
+                            {!user.isDeleted && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
+                                title="حذف الحساب"
+                                onClick={() => {
+                                  setSelectedUserDetails(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Change Account Type Button */}
                             <Button
                               size="sm"
                               variant="outline"
-                              className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
-                                title="تعديل"
+                              className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800"
+                              title="تغيير نوع الحساب"
+                              onClick={() => {
+                                setSelectedUserDetails(user);
+                                setNewAccountType(user.accountType);
+                                setShowChangeTypeDialog(true);
+                              }}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
-                                title="إدارة الصلاحيات"
-                            >
-                              <KeyRound className="h-4 w-4" />
+                              <UserCog className="h-4 w-4" />
                             </Button>
                           </div>
                         </td>
@@ -2576,25 +2872,23 @@ export default function AdminUsersPage() {
                         </Badge>
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-600">اكتمال الملف الشخصي</label>
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-3">
-                          <div
-                            className={`h-3 rounded-full ${
-                              selectedUserDetails.profileCompletion >= 80
-                                ? 'bg-green-500'
-                                : selectedUserDetails.profileCompletion >= 50
-                                ? 'bg-yellow-500'
-                                : 'bg-red-500'
-                            }`}
-                            style={{ width: `${selectedUserDetails.profileCompletion}%` }}
-                          ></div>
-                        </div>
-                        <span className="font-bold text-gray-900">{selectedUserDetails.profileCompletion}%</span>
-                      </div>
-                    </div>
                   </div>
+
+                  {/* عرض سبب الإيقاف إذا كان الحساب موقوفاً */}
+                  {!selectedUserDetails.isActive && selectedUserDetails.suspendReason && (
+                    <div className="mt-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                      <p className="text-sm font-medium text-orange-900 mb-1 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        سبب الإيقاف:
+                      </p>
+                      <p className="text-sm text-orange-700">{selectedUserDetails.suspendReason}</p>
+                      {selectedUserDetails.suspendedAt && (
+                        <p className="text-xs text-orange-600 mt-2">
+                          تاريخ الإيقاف: {selectedUserDetails.suspendedAt.toLocaleDateString('ar-SA')}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* معلومات التسجيل */}
@@ -2691,14 +2985,98 @@ export default function AdminUsersPage() {
                 </div>
 
                 {/* أزرار الإجراءات */}
-                <div className="flex gap-3 justify-between pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowUserDetailsDialog(false)}
-                  >
-                    إغلاق
-                  </Button>
-                  <div className="flex gap-3">
+                <div className="flex flex-col gap-3 pt-4 border-t">
+                  {/* أزرار الإدارة */}
+                  <div className="flex gap-2 flex-wrap">
+                    {/* Suspend/Activate */}
+                    {selectedUserDetails.isActive ? (
+                      <Button
+                        variant="outline"
+                        className="bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-700"
+                        onClick={() => {
+                          setShowSuspendDialog(true);
+                        }}
+                      >
+                        <UserX className="h-4 w-4 ml-2" />
+                        إيقاف مؤقت
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                        onClick={() => {
+                          setShowActivateDialog(true);
+                        }}
+                      >
+                        <UserCheck className="h-4 w-4 ml-2" />
+                        تفعيل الحساب
+                      </Button>
+                    )}
+
+                    {/* Delete */}
+                    {!selectedUserDetails.isDeleted && (
+                      <Button
+                        variant="outline"
+                        className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
+                        onClick={() => {
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 ml-2" />
+                        حذف الحساب
+                      </Button>
+                    )}
+
+                    {/* Change Type */}
+                    <Button
+                      variant="outline"
+                      className="bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700"
+                      onClick={() => {
+                        setNewAccountType(selectedUserDetails.accountType);
+                        setShowChangeTypeDialog(true);
+                      }}
+                    >
+                      <UserCog className="h-4 w-4 ml-2" />
+                      تغيير النوع
+                    </Button>
+
+                    {/* Verify/Reject */}
+                    {selectedUserDetails.verificationStatus === 'pending' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                          onClick={() => {
+                            handleVerifyAccount(selectedUserDetails.id);
+                            setShowUserDetailsDialog(false);
+                          }}
+                        >
+                          <CheckCircle2 className="h-4 w-4 ml-2" />
+                          توثيق
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
+                          onClick={() => {
+                            handleRejectAccount(selectedUserDetails.id);
+                            setShowUserDetailsDialog(false);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4 ml-2" />
+                          رفض
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* أزرار التواصل والإغلاق */}
+                  <div className="flex gap-3 justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowUserDetailsDialog(false)}
+                    >
+                      إغلاق
+                    </Button>
                     <Button
                       variant="outline"
                       className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
@@ -2707,17 +3085,7 @@ export default function AdminUsersPage() {
                       }}
                     >
                       <Mail className="h-4 w-4 ml-2" />
-                      إرسال رسالة سريعة
-                    </Button>
-                    <Button
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => {
-                        // TODO: إضافة وظيفة التعديل
-                        toast.info('وظيفة التعديل قيد التطوير');
-                      }}
-                    >
-                      <Edit className="h-4 w-4 ml-2" />
-                      تعديل المستخدم
+                      إرسال رسالة
                     </Button>
                   </div>
                 </div>
@@ -2847,6 +3215,171 @@ export default function AdminUsersPage() {
                     إرسال WhatsApp
                   </>
                 )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Suspend Account Dialog */}
+        <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>إيقاف الحساب مؤقتاً</DialogTitle>
+              <DialogDescription>
+                هل أنت متأكد من إيقاف حساب {selectedUserDetails?.name}؟ يجب إدخال سبب الإيقاف.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">سبب الإيقاف</label>
+                <textarea
+                  placeholder="اذكر سبب إيقاف الحساب..."
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  className="w-full min-h-[100px] p-3 border-2 border-gray-300 rounded-md focus:border-orange-500 focus:ring-1 focus:ring-orange-500 resize-none"
+                  maxLength={300}
+                />
+                <p className="text-xs text-gray-500 mt-1">{suspendReason.length}/300</p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSuspendDialog(false);
+                  setSuspendReason('');
+                }}
+                disabled={actionLoading}
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleSuspendAccount}
+                disabled={actionLoading || !suspendReason.trim()}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {actionLoading ? 'جاري الإيقاف...' : 'إيقاف الحساب'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Activate Account Dialog */}
+        <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>تفعيل الحساب</DialogTitle>
+              <DialogDescription>
+                هل أنت متأكد من تفعيل حساب {selectedUserDetails?.name}؟
+              </DialogDescription>
+            </DialogHeader>
+            {selectedUserDetails?.suspendReason && (
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <p className="text-sm font-medium text-orange-900 mb-1">سبب الإيقاف السابق:</p>
+                <p className="text-sm text-orange-700">{selectedUserDetails.suspendReason}</p>
+              </div>
+            )}
+            <div className="flex gap-3 justify-end pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowActivateDialog(false)}
+                disabled={actionLoading}
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleActivateAccount}
+                disabled={actionLoading}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {actionLoading ? 'جاري التفعيل...' : 'تفعيل الحساب'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Account Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-red-600">حذف الحساب</DialogTitle>
+              <DialogDescription>
+                هل أنت متأكد من حذف حساب {selectedUserDetails?.name}؟ سيتمكن المستخدم من التسجيل مرة أخرى باستخدام نفس البريد الإلكتروني.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <p className="text-sm text-red-700">
+                <strong>ملاحظة:</strong> عملية الحذف ستقوم بوضع علامة حذف على الحساب، ولن يتم حذف البيانات نهائياً. يمكن للمستخدم إنشاء حساب جديد.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={actionLoading}
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleDeleteAccount}
+                disabled={actionLoading}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {actionLoading ? 'جاري الحذف...' : 'حذف الحساب'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Account Type Dialog */}
+        <Dialog open={showChangeTypeDialog} onOpenChange={setShowChangeTypeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>تغيير نوع الحساب</DialogTitle>
+              <DialogDescription>
+                تغيير نوع حساب {selectedUserDetails?.name} من {getAccountTypeLabel(selectedUserDetails?.accountType || 'user')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">نوع الحساب الجديد</label>
+                <select
+                  value={newAccountType}
+                  onChange={(e) => setNewAccountType(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-300 rounded-md focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="">اختر نوع الحساب</option>
+                  <option value="user">مستخدم عادي</option>
+                  <option value="player">لاعب</option>
+                  <option value="academy">أكاديمية</option>
+                  <option value="club">نادي</option>
+                  <option value="agent">وكيل</option>
+                  <option value="trainer">مدرب</option>
+                </select>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <p className="text-sm text-yellow-700">
+                  <strong>تحذير:</strong> تغيير نوع الحساب قد يؤثر على البيانات والصلاحيات المرتبطة بالمستخدم.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowChangeTypeDialog(false);
+                  setNewAccountType('');
+                }}
+                disabled={actionLoading}
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleChangeAccountType}
+                disabled={actionLoading || !newAccountType || newAccountType === selectedUserDetails?.accountType}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {actionLoading ? 'جاري التغيير...' : 'تغيير نوع الحساب'}
               </Button>
             </div>
           </DialogContent>
