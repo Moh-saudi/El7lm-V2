@@ -392,25 +392,89 @@ export default function SendNotificationsPage() {
     }
   };
 
+  // دالة لحساب الترتيب لكل مستخدم بناءً على نوع الحساب
+  const calculateUserRanking = (targetUser: User, allUsersOfSameType: User[]): { ranking: number; total: number } => {
+    // ترتيب المستخدمين حسب معايير متعددة
+    const sortedUsers = [...allUsersOfSameType].sort((a, b) => {
+      // معيار 1: تاريخ الإنشاء (الأقدم أولاً)
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      
+      // معيار 2: اكتمال الملف الشخصي (يمكن إضافة حساب أكثر دقة)
+      const aComplete = a.displayName && a.email && a.phone ? 1 : 0;
+      const bComplete = b.displayName && b.email && b.phone ? 1 : 0;
+      
+      // ترتيب حسب: اكتمال الملف أولاً، ثم التاريخ
+      if (aComplete !== bComplete) {
+        return bComplete - aComplete; // الأكمل أولاً
+      }
+      return aDate - bDate; // الأقدم أولاً
+    });
+
+    // إيجاد ترتيب المستخدم الحالي
+    const userIndex = sortedUsers.findIndex(u => u.id === targetUser.id);
+    const ranking = userIndex >= 0 ? userIndex + 1 : allUsersOfSameType.length;
+    const total = allUsersOfSameType.length;
+
+    return { ranking, total };
+  };
+
+  // دالة لاستبدال المتغيرات في الرسالة بالقيم الفعلية
+  const replaceMessageVariables = (message: string, targetUser: User): string => {
+    let finalMessage = message;
+    
+    // حساب الترتيب والإجمالي
+    const usersOfSameType = users.filter(u => u.accountType === targetUser.accountType && u.isActive);
+    const { ranking, total } = calculateUserRanking(targetUser, usersOfSameType);
+    
+    // استبدال المتغيرات
+    finalMessage = finalMessage.replace(/{ranking}/g, ranking.toString());
+    finalMessage = finalMessage.replace(/{total}/g, total.toString());
+    finalMessage = finalMessage.replace(/{user_name}/g, targetUser.displayName || 'المستخدم');
+    finalMessage = finalMessage.replace(/{account_type}/g, getAccountTypeLabel(targetUser.accountType));
+    
+    return finalMessage;
+  };
+
   const sendNotification = async () => {
-     if (!form.title || !form.message) {
-       toast.error('يرجى ملء العنوان والرسالة');
-       return;
-     }
+    console.log('🚀 بدء إرسال الإشعار...', {
+      title: form.title,
+      messageLength: form.message.length,
+      targetType: form.targetType,
+      sendMethods: form.sendMethods
+    });
+
+    if (!form.title || !form.message) {
+      toast.error('يرجى ملء العنوان والرسالة');
+      console.error('❌ العنوان أو الرسالة فارغة');
+      return;
+    }
 
     if (form.message.length > 1000) {
       toast.error('الرسالة تتجاوز الحد الأقصى للحروف (1000 حرف)');
+      console.error('❌ الرسالة طويلة جداً:', form.message.length);
       return;
     }
 
     const targetUsers = getTargetUsers();
+    console.log('👥 المستخدمين المستهدفين:', targetUsers.length);
+    
     if (targetUsers.length === 0) {
       toast.error('لا يوجد مستخدمين مستهدفين');
+      console.error('❌ لا يوجد مستخدمين مستهدفين');
+      return;
+    }
+
+    // التحقق من أن هناك طريقة إرسال واحدة على الأقل
+    if (!form.sendMethods.inApp && !form.sendMethods.sms && !form.sendMethods.whatsapp) {
+      toast.error('يرجى اختيار طريقة إرسال واحدة على الأقل');
+      console.error('❌ لم يتم اختيار طريقة إرسال');
       return;
     }
 
     setLoading(true);
     try {
+      console.log('✅ بدء عملية الإرسال...');
       const notificationData = {
       title: form.title,
       message: form.message,
@@ -432,10 +496,16 @@ export default function SendNotificationsPage() {
       }
       };
 
-      // حفظ الإشعارات في Firebase
+      // حفظ الإشعارات في Firebase مع استبدال المتغيرات لكل مستخدم
       const notificationPromises = targetUsers.map(async (targetUser) => {
+        // استبدال المتغيرات في الرسالة (ranking, total, etc.)
+        const personalizedMessage = replaceMessageVariables(form.message, targetUser);
+        const personalizedTitle = replaceMessageVariables(form.title, targetUser);
+        
         const notification = {
           ...notificationData,
+          title: personalizedTitle,
+          message: personalizedMessage,
           userId: targetUser.id,
           userEmail: targetUser.email,
           userPhone: targetUser.phone
@@ -444,9 +514,53 @@ export default function SendNotificationsPage() {
       });
 
       await Promise.all(notificationPromises);
+      console.log(`✅ تم حفظ ${notificationPromises.length} إشعار في Firebase`);
 
-      // إرسال SMS لجميع المستخدمين في طلب واحد
+      // إرسال SMS لجميع المستخدمين (رسالة مخصصة لكل مستخدم)
       if (form.sendMethods.sms) {
+        const smsPromises = targetUsers
+          .filter(user => user.phone)
+          .map(async (targetUser) => {
+            try {
+              // استبدال المتغيرات في الرسالة
+              const personalizedMessage = replaceMessageVariables(form.message, targetUser);
+              const personalizedTitle = replaceMessageVariables(form.title, targetUser);
+              
+              const smsRes = await fetch('/api/whatsapp/babaservice/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({
+                  phoneNumbers: [targetUser.phone],
+                  message: `${personalizedTitle}\n\n${personalizedMessage}`,
+                  type: 'sms'
+                })
+              });
+              
+              if (smsRes.ok) {
+                const result = await smsRes.json();
+                if (result.success) {
+                  console.log(`📱 تم إرسال SMS إلى ${targetUser.displayName || targetUser.phone}`);
+                  return true;
+                }
+              }
+              return false;
+            } catch (error) {
+              console.error(`❌ فشل إرسال SMS إلى ${targetUser.phone}:`, error);
+              return false;
+            }
+          });
+          
+        try {
+          await Promise.all(smsPromises);
+          console.log('📱 تم إرسال جميع رسائل SMS');
+        } catch (error) {
+          console.error('❌ فشل إرسال بعض رسائل SMS:', error);
+          toast.error('فشل في إرسال بعض الرسائل النصية');
+        }
+      }
+
+      // الكود القديم للإرسال الجماعي (محذوف - تم استبداله بالكود أعلاه)
+      if (false && form.sendMethods.sms) {
         const smsPhones = targetUsers.filter(user => user.phone).map(user => user.phone);
         if (smsPhones.length > 0) {
           try {
@@ -478,8 +592,51 @@ export default function SendNotificationsPage() {
         }
       }
 
-      // إرسال WhatsApp لجميع المستخدمين في طلب واحد
+      // إرسال WhatsApp لجميع المستخدمين (رسالة مخصصة لكل مستخدم)
       if (form.sendMethods.whatsapp) {
+        const whatsappPromises = targetUsers
+          .filter(user => user.phone)
+          .map(async (targetUser) => {
+            try {
+              // استبدال المتغيرات في الرسالة
+              const personalizedMessage = replaceMessageVariables(form.message, targetUser);
+              const personalizedTitle = replaceMessageVariables(form.title, targetUser);
+              
+              const whatsappRes = await fetch('/api/whatsapp/babaservice/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({
+                  phoneNumbers: [targetUser.phone],
+                  message: `${personalizedTitle}\n\n${personalizedMessage}`,
+                  type: 'whatsapp'
+                })
+              });
+              
+              if (whatsappRes.ok) {
+                const result = await whatsappRes.json();
+                if (result.success) {
+                  console.log(`📱 تم إرسال WhatsApp إلى ${targetUser.displayName || targetUser.phone}`);
+                  return true;
+                }
+              }
+              return false;
+            } catch (error) {
+              console.error(`❌ فشل إرسال WhatsApp إلى ${targetUser.phone}:`, error);
+              return false;
+            }
+          });
+          
+        try {
+          await Promise.all(whatsappPromises);
+          console.log('📱 تم إرسال جميع رسائل WhatsApp');
+        } catch (error) {
+          console.error('❌ فشل إرسال بعض رسائل WhatsApp:', error);
+          toast.error('فشل في إرسال بعض رسائل WhatsApp');
+        }
+      }
+
+      // الكود القديم للإرسال الجماعي (محذوف - تم استبداله بالكود أعلاه)
+      if (false && form.sendMethods.whatsapp) {
         const whatsappPhones = targetUsers.filter(user => user.phone).map(user => user.phone);
         if (whatsappPhones.length > 0) {
           try {
@@ -511,8 +668,10 @@ export default function SendNotificationsPage() {
         }
       }
 
-      // عرض روابط WhatsApp إذا كانت متوفرة
-      toast.success(`تم إرسال الإشعار بنجاح إلى ${targetUsers.length} مستخدم عبر baba API`);
+      // عرض رسالة النجاح
+      const successMessage = `✅ تم إرسال الإشعار بنجاح إلى ${targetUsers.length} مستخدم`;
+      console.log(successMessage);
+      toast.success(successMessage);
 
       // إعادة تعيين النموذج
       setForm({
@@ -532,11 +691,12 @@ export default function SendNotificationsPage() {
       scheduleType: 'immediate'
       });
 
-    } catch (error) {
-      console.error('خطأ في إرسال الإشعارات:', error);
-      toast.error('فشل في إرسال الإشعارات');
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الإشعارات:', error);
+      toast.error(`فشل في إرسال الإشعارات: ${error.message || 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);
+      console.log('🏁 انتهت عملية الإرسال');
     }
   };
 
@@ -1041,6 +1201,378 @@ export default function SendNotificationsPage() {
       category: 'الأمان والحماية',
       description: 'تأكيد التحقق من الحساب'
       },
+
+    // نماذج خدمة العملاء والدعم
+    {
+      id: 'customer-support-contact',
+      title: 'تواصل مع خدمة العملاء',
+      message: '📞 نحن هنا لمساعدتك! للاستفسارات أو المساعدة، تواصل معنا على: 01000940321 (خدمة عملاء مصر). اضغط هنا للتواصل.',
+      type: 'info',
+      priority: 'medium',
+      category: 'خدمة العملاء',
+      description: 'معلومات التواصل مع خدمة العملاء'
+    },
+    {
+      id: 'customer-support-hours',
+      title: 'أوقات عمل خدمة العملاء',
+      message: '⏰ خدمة العملاء متاحة من الأحد إلى الخميس من 9 صباحاً حتى 6 مساءً. للتواصل: 01000940321. اضغط هنا للتواصل.',
+      type: 'info',
+      priority: 'low',
+      category: 'خدمة العملاء',
+      description: 'إشعار بأوقات عمل خدمة العملاء'
+    },
+    {
+      id: 'customer-support-urgent',
+      title: 'دعم فوري - خدمة العملاء',
+      message: '🚨 تحتاج مساعدة فورية؟ تواصل معنا الآن على 01000940321 (خدمة عملاء مصر). فريقنا جاهز لمساعدتك! اضغط هنا للتواصل.',
+      type: 'warning',
+      priority: 'high',
+      category: 'خدمة العملاء',
+      description: 'طلب دعم فوري'
+    },
+
+    // نماذج إشعارات الرفض والموافقة
+    {
+      id: 'media-approved',
+      title: 'تم الموافقة على المحتوى',
+      message: '✅ تمت الموافقة على محتواك! شكراً لمشاركتك. يمكنك الآن الاطلاع على المحتوى في ملفك الشخصي. اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'medium',
+      category: 'المحتوى والوسائط',
+      description: 'إشعار الموافقة على المحتوى'
+    },
+    {
+      id: 'media-rejected',
+      title: 'تم رفض المحتوى',
+      message: '❌ تم رفض محتواك. يرجى مراجعة الشروط والمحاولة مرة أخرى. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
+      type: 'error',
+      priority: 'high',
+      category: 'المحتوى والوسائط',
+      description: 'إشعار رفض المحتوى'
+    },
+    {
+      id: 'media-pending',
+      title: 'محتوى قيد المراجعة',
+      message: '⏳ المحتوى الخاص بك قيد المراجعة. سنقوم بالرد عليك قريباً. للاستفسار: 01000940321. اضغط هنا للمتابعة.',
+      type: 'info',
+      priority: 'medium',
+      category: 'المحتوى والوسائط',
+      description: 'إشعار محتوى قيد المراجعة'
+    },
+
+    // نماذج التذكيرات والإشعارات المهمة
+    {
+      id: 'account-suspension-warning',
+      title: 'تنبيه: حسابك معرض للإيقاف',
+      message: '⚠️ حسابك معرض للإيقاف المؤقت بسبب عدم الالتزام بالشروط. يرجى مراجعة ملفك. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
+      type: 'error',
+      priority: 'critical',
+      category: 'التذكيرات المهمة',
+      description: 'تنبيه إيقاف الحساب'
+    },
+    {
+      id: 'account-activated',
+      title: 'تم تفعيل حسابك',
+      message: '🎉 تم تفعيل حسابك بنجاح! يمكنك الآن استخدام جميع المميزات. للاستفسار: 01000940321. اضغط هنا للبدء.',
+      type: 'success',
+      priority: 'high',
+      category: 'التذكيرات المهمة',
+      description: 'إشعار تفعيل الحساب'
+    },
+    {
+      id: 'account-deactivated',
+      title: 'تم إيقاف حسابك مؤقتاً',
+      message: '⛔ تم إيقاف حسابك مؤقتاً. للاستفسار عن السبب أو استعادة الحساب، تواصل معنا: 01000940321. اضغط هنا للتواصل.',
+      type: 'error',
+      priority: 'critical',
+      category: 'التذكيرات المهمة',
+      description: 'إشعار إيقاف الحساب'
+    },
+
+    // نماذج إشعارات الملفات والوثائق
+    {
+      id: 'document-uploaded',
+      title: 'تم رفع الوثيقة',
+      message: '📄 تم رفع وثيقتك بنجاح! جاري مراجعتها. سنقوم بإشعارك عند الانتهاء. للاستفسار: 01000940321. اضغط هنا للمتابعة.',
+      type: 'success',
+      priority: 'medium',
+      category: 'الملفات والوثائق',
+      description: 'تأكيد رفع الوثيقة'
+    },
+    {
+      id: 'document-approved',
+      title: 'تم اعتماد الوثيقة',
+      message: '✅ تم اعتماد وثيقتك بنجاح! يمكنك الآن استخدامها في ملفك الشخصي. اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'medium',
+      category: 'الملفات والوثائق',
+      description: 'إشعار اعتماد الوثيقة'
+    },
+    {
+      id: 'document-rejected',
+      title: 'تم رفض الوثيقة',
+      message: '❌ تم رفض وثيقتك. يرجى التأكد من صحة البيانات وإعادة الرفع. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
+      type: 'error',
+      priority: 'high',
+      category: 'الملفات والوثائق',
+      description: 'إشعار رفض الوثيقة'
+    },
+
+    // نماذج إشعارات الرسائل والتواصل
+    {
+      id: 'new-message',
+      title: 'رسالة جديدة',
+      message: '💬 لديك رسالة جديدة من {sender_name}. اضغط هنا للاطلاع على الرسالة والرد.',
+      type: 'info',
+      priority: 'medium',
+      category: 'الرسائل والتواصل',
+      description: 'إشعار رسالة جديدة'
+    },
+    {
+      id: 'offer-received',
+      title: 'عرض جديد',
+      message: '🎁 تلقيت عرضاً جديداً! تحقق من التفاصيل في ملفك الشخصي. اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'high',
+      category: 'الرسائل والتواصل',
+      description: 'إشعار عرض جديد'
+    },
+    {
+      id: 'connection-request',
+      title: 'طلب اتصال جديد',
+      message: '🤝 تلقيت طلب اتصال من {sender_name}. اضغط هنا للموافقة أو الرفض.',
+      type: 'info',
+      priority: 'medium',
+      category: 'الرسائل والتواصل',
+      description: 'إشعار طلب اتصال'
+    },
+
+    // نماذج إشعارات التقييمات والمراجعات
+    {
+      id: 'rating-received',
+      title: 'تقييم جديد',
+      message: '⭐ تلقيت تقييماً جديداً! شكراً لك. يمكنك الاطلاع على التقييم في ملفك الشخصي. اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'low',
+      category: 'التقييمات والمراجعات',
+      description: 'إشعار تقييم جديد'
+    },
+    {
+      id: 'review-request',
+      title: 'طلب تقييم',
+      message: '📝 نحن نرغب في معرفة رأيك! ساعدنا في تحسين الخدمة من خلال تقييم تجربتك. اضغط هنا للتقييم.',
+      type: 'info',
+      priority: 'medium',
+      category: 'التقييمات والمراجعات',
+      description: 'طلب تقييم الخدمة'
+    },
+
+    // نماذج إشعارات الأحداث والمناسبات
+    {
+      id: 'event-invitation',
+      title: 'دعوة لحضور حدث',
+      message: '🎪 تم إرسال دعوة لك لحضور حدث {event_name}! فرصة رائعة للتعلم والاستمتاع. اضغط هنا للمشاركة.',
+      type: 'success',
+      priority: 'high',
+      category: 'الأحداث والمناسبات',
+      description: 'دعوة لحضور حدث'
+    },
+    {
+      id: 'event-reminder',
+      title: 'تذكير بالحدث',
+      message: '📅 تذكير: حدث {event_name} غداً في الساعة {time}. لا تفوت الفرصة! اضغط هنا للتفاصيل.',
+      type: 'warning',
+      priority: 'high',
+      category: 'الأحداث والمناسبات',
+      description: 'تذكير بموعد حدث'
+    },
+    {
+      id: 'event-cancelled',
+      title: 'تم إلغاء الحدث',
+      message: '❌ تم إلغاء حدث {event_name}. نعتذر عن الإزعاج. سيتم إعادة جدولته قريباً. للاستفسار: 01000940321.',
+      type: 'warning',
+      priority: 'high',
+      category: 'الأحداث والمناسبات',
+      description: 'إشعار إلغاء حدث'
+    },
+
+    // نماذج إشعارات البرامج والخطط
+    {
+      id: 'program-enrolled',
+      title: 'تم التسجيل في البرنامج',
+      message: '🎓 تم تسجيلك في برنامج {program_name} بنجاح! نتمنى لك رحلة تعليمية ممتعة. اضغط هنا للبدء.',
+      type: 'success',
+      priority: 'high',
+      category: 'البرامج والخطط',
+      description: 'تأكيد التسجيل في برنامج'
+    },
+    {
+      id: 'program-completed',
+      title: 'تم إكمال البرنامج',
+      message: '🏅 مبروك! لقد أكملت برنامج {program_name} بنجاح. يمكنك الآن الحصول على شهادة الإتمام. اضغط هنا للشهادة.',
+      type: 'success',
+      priority: 'high',
+      category: 'البرامج والخطط',
+      description: 'إشعار إكمال برنامج'
+    },
+    {
+      id: 'program-reminder',
+      title: 'تذكير بموعد البرنامج',
+      message: '⏰ تذكير: لديك جلسة في برنامج {program_name} غداً. تأكد من الاستعداد! اضغط هنا للتفاصيل.',
+      type: 'warning',
+      priority: 'medium',
+      category: 'البرامج والخطط',
+      description: 'تذكير بموعد برنامج'
+    },
+
+    // نماذج إشعارات الشهادات والاعتمادات
+    {
+      id: 'certificate-ready',
+      title: 'شهادة جاهزة',
+      message: '📜 شهادتك جاهزة الآن! يمكنك تحميلها من ملفك الشخصي. للاستفسار: 01000940321. اضغط هنا للتحميل.',
+      type: 'success',
+      priority: 'medium',
+      category: 'الشهادات والاعتمادات',
+      description: 'إشعار جاهزية الشهادة'
+    },
+    {
+      id: 'certificate-verified',
+      title: 'تم التحقق من الشهادة',
+      message: '✅ تم التحقق من شهادتك بنجاح! يمكنك الآن استخدامها في ملفك الشخصي. اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'medium',
+      category: 'الشهادات والاعتمادات',
+      description: 'تأكيد التحقق من الشهادة'
+    },
+
+    // نماذج إشعارات التحديثات والتطويرات
+    {
+      id: 'app-update',
+      title: 'تحديث التطبيق متاح',
+      message: '🔄 تحديث جديد للتطبيق متاح الآن! احصل على آخر المميزات والتحسينات. اضغط هنا للتحديث.',
+      type: 'info',
+      priority: 'medium',
+      category: 'التحديثات والتطويرات',
+      description: 'إشعار تحديث التطبيق'
+    },
+    {
+      id: 'feature-update',
+      title: 'تحديث ميزة',
+      message: '✨ تم تحديث ميزة {feature_name}! جرب الميزات الجديدة الآن. اضغط هنا للاستكشاف.',
+      type: 'info',
+      priority: 'low',
+      category: 'التحديثات والتطويرات',
+      description: 'إشعار تحديث ميزة'
+    },
+
+    // نماذج إشعارات الطوارئ والمهام العاجلة
+    {
+      id: 'urgent-action-required',
+      title: 'إجراء عاجل مطلوب',
+      message: '🚨 يرجى تنفيذ إجراء عاجل: {action_description}. للاستفسار: 01000940321. اضغط هنا للتنفيذ.',
+      type: 'error',
+      priority: 'critical',
+      category: 'الطوارئ والمهام العاجلة',
+      description: 'طلب إجراء عاجل'
+    },
+    {
+      id: 'deadline-approaching',
+      title: 'اقتراب الموعد النهائي',
+      message: '⏰ تنبيه: الموعد النهائي لـ {task_name} يقترب! يرجى الإكمال قبل انتهاء الوقت. اضغط هنا للإكمال.',
+      type: 'warning',
+      priority: 'high',
+      category: 'الطوارئ والمهام العاجلة',
+      description: 'تذكير بالموعد النهائي'
+    },
+
+    // نماذج إشعارات التهنئة والمناسبات
+    {
+      id: 'birthday-greeting',
+      title: 'عيد ميلاد سعيد!',
+      message: '🎂 عيد ميلاد سعيد! نتمنى لك عاماً مليئاً بالنجاح والفرح. استمر في السعي لتحقيق أحلامك!',
+      type: 'success',
+      priority: 'low',
+      category: 'التهنئة والمناسبات',
+      description: 'تهنئة بعيد الميلاد'
+    },
+    {
+      id: 'achievement-congratulations',
+      title: 'تهنئة بالإنجاز',
+      message: '🎉 مبروك على إنجازك الرائع! استمر في التقدم والنجاح. نحن فخورون بك!',
+      type: 'success',
+      priority: 'medium',
+      category: 'التهنئة والمناسبات',
+      description: 'تهنئة بالإنجاز'
+    },
+
+    // نماذج إشعارات الاستطلاعات والاستبيانات
+    {
+      id: 'survey-request',
+      title: 'طلب المشاركة في استطلاع',
+      message: '📊 نحن نرغب في معرفة رأيك! شاركنا في استطلاع قصير لمساعدتنا في تحسين الخدمة. اضغط هنا للمشاركة.',
+      type: 'info',
+      priority: 'low',
+      category: 'الاستطلاعات والاستبيانات',
+      description: 'طلب المشاركة في استطلاع'
+    },
+    {
+      id: 'survey-thanks',
+      title: 'شكراً لمشاركتك',
+      message: '🙏 شكراً لمشاركتك في الاستطلاع! رأيك مهم جداً لنا. للاستفسار: 01000940321.',
+      type: 'success',
+      priority: 'low',
+      category: 'الاستطلاعات والاستبيانات',
+      description: 'شكر على المشاركة'
+    },
+
+    // نماذج إشعارات الإعلانات والتسويق
+    {
+      id: 'new-partner',
+      title: 'شريك جديد',
+      message: '🤝 مرحباً بك كشريك جديد في منصة الحلم! نتمنى لك تجربة رائعة. للاستفسار: 01000940321. اضغط هنا للبدء.',
+      type: 'success',
+      priority: 'medium',
+      category: 'الإعلانات والتسويق',
+      description: 'ترحيب بشريك جديد'
+    },
+    {
+      id: 'partnership-benefits',
+      title: 'مميزات الشراكة',
+      message: '💼 استمتع بمميزات الشراكة الحصرية! احصل على خصومات وعروض خاصة. للاستفسار: 01000940321. اضغط هنا للمميزات.',
+      type: 'info',
+      priority: 'medium',
+      category: 'الإعلانات والتسويق',
+      description: 'إشعار مميزات الشراكة'
+    },
+
+    // نماذج إشعارات التقييمات والتحسينات
+    {
+      id: 'profile-featured',
+      title: 'ملفك مميز الآن',
+      message: '⭐ تم تمييز ملفك الشخصي! ملفك يظهر في الصفحة الرئيسية. استمر في التميز! اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'high',
+      category: 'التقييمات والتحسينات',
+      description: 'إشعار تمييز الملف'
+    },
+    {
+      id: 'rank-improved',
+      title: 'تحسن ترتيبك',
+      message: '📈 مبروك! تحسن ترتيبك في المنصة. استمر في التقدم لتحقيق المزيد من النجاح! اضغط هنا للمراجعة.',
+      type: 'success',
+      priority: 'medium',
+      category: 'التقييمات والتحسينات',
+      description: 'إشعار تحسن الترتيب'
+    },
+    {
+      id: 'top-ten-ranking',
+      title: 'أنت من العشرة الأوائل!',
+      message: '🏆 حسابك الآن في ترتيب رقم {ranking} - أنت من العشرة الأوائل! يمكن للأندية والأكاديميات العالمية مشاهدتك الآن. اضغط هنا.',
+      type: 'success',
+      priority: 'high',
+      category: 'الملف الشخصي',
+      description: 'إشعار ترتيب من العشرة الأوائل'
+    }
     ];
 
   const filteredTemplates = selectedCategory === 'all'
@@ -1050,8 +1582,8 @@ export default function SendNotificationsPage() {
   const categories = ['all', ...Array.from(new Set(messageTemplates.map(t => t.category)))];
 
   const handleTemplateSelect = (template: MessageTemplate) => {
-    if (template.message.length > 160) {
-      toast.warning(`هذا النموذج يتجاوز الحد الأقصى للحروف (${template.message.length}/160). سيتم اختياره ولكن يرجى تعديله.`);
+    if (template.message.length > 1000) {
+      toast.warning(`هذا النموذج يتجاوز الحد الأقصى للحروف (${template.message.length}/1000). سيتم اختياره ولكن يرجى تعديله.`);
     }
 
     setForm(prev => ({
@@ -1233,8 +1765,8 @@ export default function SendNotificationsPage() {
                               <span className="text-xs text-gray-400">
                                 {template.message.length} حرف
                               </span>
-                              <span className={`text-xs ${template.message.length > 160 ? 'text-red-500' : 'text-green-500'}`}>
-                                {template.message.length > 160 ? 'تجاوز الحد' : 'ضمن الحد'}
+                              <span className={`text-xs ${template.message.length > 1000 ? 'text-red-500' : 'text-green-500'}`}>
+                                {template.message.length > 1000 ? 'تجاوز الحد' : 'ضمن الحد'}
                               </span>
                             </div>
                           </div>
@@ -1658,10 +2190,14 @@ export default function SendNotificationsPage() {
 
                 {/* Regular Send Button */}
                 <Button
-                   onClick={sendNotification}
-                   disabled={loading || !form.title || !form.message || form.message.length > 160}
-                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
+                   onClick={() => {
+                     console.log('🔘 تم النقر على زر الإرسال');
+                     sendNotification();
+                   }}
+                   disabled={loading || !form.title || !form.message || form.message.length > 1000 || getTargetUsers().length === 0}
+                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                    size="lg"
+                   type="button"
                  >
                 {loading ? (
                   <div className="flex items-center gap-2">
@@ -1669,12 +2205,20 @@ export default function SendNotificationsPage() {
                     جاري الإرسال...
                   </div>
                 ) : (
-                                     <div className="flex items-center gap-2">
-                   <Send className="w-4 h-4 text-white" />
-                   إرسال الإشعار
-                 </div>
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4 text-white" />
+                    {getTargetUsers().length === 0 ? 'لا يوجد مستهدفين' : `إرسال الإشعار (${getTargetUsers().length})`}
+                  </div>
                 )}
               </Button>
+              {(!form.title || !form.message || form.message.length > 1000 || getTargetUsers().length === 0) && !loading && (
+                <div className="text-xs text-red-600 mt-2 space-y-1">
+                  {!form.title && <p>• يرجى إدخال عنوان الإشعار</p>}
+                  {!form.message && <p>• يرجى إدخال رسالة الإشعار</p>}
+                  {form.message.length > 1000 && <p>• الرسالة طويلة جداً ({form.message.length}/1000)</p>}
+                  {getTargetUsers().length === 0 && <p>• لا يوجد مستخدمين مستهدفين</p>}
+                </div>
+              )}
               </div>
             </CardContent>
           </Card>
@@ -1710,8 +2254,8 @@ export default function SendNotificationsPage() {
                        <Clock className="w-3 h-3 text-orange-600" />
                        {form.scheduleType === 'immediate' ? 'إرسال فوري' : 'إرسال مجدول'}
                      </div>
-                     <span className={`${form.message.length > 160 ? 'text-red-500' : 'text-green-500'}`}>
-                       {form.message.length}/160 حرف
+                     <span className={`${form.message.length > 1000 ? 'text-red-500' : 'text-green-500'}`}>
+                       {form.message.length}/1000 حرف
                      </span>
                    </div>
                 </div>

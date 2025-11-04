@@ -16,8 +16,9 @@ import { performanceTemplateCategories } from '@/lib/messages/performance-templa
 import { STORAGE_BUCKETS, supabase } from '@/lib/supabase/config';
 import { cleanPhoneNumber } from '@/lib/utils/whatsapp-share';
 import { collection, doc, getDoc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
-import { CheckCircle, CheckSquare, ChevronLeft, ChevronRight, Clock, Grid3X3, Image as ImageIcon, List, Phone, Search, Trash2, User, Video, XCircle } from 'lucide-react';
+import { CheckCircle, CheckSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Grid3X3, Image as ImageIcon, List, Phone, Play, Search, Trash2, User, Video, XCircle } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 // Interfaces
 interface ImageData {
@@ -81,7 +82,7 @@ export default function MediaAdminPage() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12); // Optimized for grid layout
+  const [itemsPerPage, setItemsPerPage] = useState(12); // Optimized for grid layout
 
   // Selection State
   const [selectedMedia, setSelectedMedia] = useState<MediaData | null>(null);
@@ -156,6 +157,26 @@ export default function MediaAdminPage() {
     } else {
       return 'external';
     }
+  };
+
+  // Get YouTube thumbnail from URL
+  const getYouTubeThumbnail = (url: string): string | null => {
+    const youtubeMatch = url.match(/(?:youtube\.com.*[?&]v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+    if (youtubeMatch && youtubeMatch[1]) {
+      return `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
+    }
+    return null;
+  };
+
+  // Get video thumbnail - prioritize YouTube thumbnail, then use provided thumbnailUrl
+  const getVideoThumbnail = (video: VideoData): string | null => {
+    // If it's a YouTube video, get the thumbnail
+    if (video.sourceType === 'youtube' || video.url.includes('youtube.com') || video.url.includes('youtu.be')) {
+      const ytThumb = getYouTubeThumbnail(video.url);
+      if (ytThumb) return ytThumb;
+    }
+    // Otherwise use the provided thumbnailUrl
+    return video.thumbnailUrl || null;
   };
 
   // Fetch Supabase Videos
@@ -375,7 +396,7 @@ export default function MediaAdminPage() {
 
   // Watch users status changes and hide/cleanup media for disabled/deleted users
   useEffect(() => {
-    if (!user || !userData || userData.role !== 'admin') return;
+    if (!user || !userData || (userData.accountType !== 'admin' && userData.role !== 'admin')) return;
     const collections = ['students', 'coaches', 'academies', 'players'];
     const unsubs: (() => void)[] = [];
     const currentDisabled = new Set<string>();
@@ -407,7 +428,7 @@ export default function MediaAdminPage() {
   // Fetch Videos
   useEffect(() => {
     const fetchVideos = async () => {
-      if (!user || !userData || userData.role !== 'admin') {
+      if (!user || !userData || (userData.accountType !== 'admin' && userData.role !== 'admin')) {
         setLoading(false);
         return;
       }
@@ -472,153 +493,163 @@ export default function MediaAdminPage() {
     fetchVideos();
   }, [user?.uid, userData?.role]);
 
-  // Fetch Images
-  useEffect(() => {
-    const fetchImages = async () => {
-      if (!user || !userData || userData.role !== 'admin') return;
+  // Function to refetch images after update
+  const refetchImages = useCallback(async () => {
+    if (!user || !userData || (userData.accountType !== 'admin' && userData.role !== 'admin')) return;
 
-      setImagesLoading(true);
-      const allImages: ImageData[] = [];
+    setImagesLoading(true);
+    const allImages: ImageData[] = [];
 
-      console.log('🔍 بدء جلب الصور من Firebase و Supabase...');
+    console.log('🔍 بدء جلب الصور من Firebase و Supabase...');
 
-      // Fetch from Firebase collections
-      const collections = ['students', 'coaches', 'academies', 'players'];
+    // Fetch from Firebase collections
+    const collections = ['students', 'coaches', 'academies', 'players'];
 
-      for (const collectionName of collections) {
-        try {
-          console.log(`📂 جلب الصور من مجموعة: ${collectionName}`);
-          const querySnapshot = await getDocs(collection(db, collectionName));
-          let collectionImageCount = 0;
-
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            if (userData?.isDeleted === true) return;
-
-            // البحث في حقول مختلفة للصور
-            const imageFields = [
-              'images',
-              'additional_images',
-              'profile_image',
-              'cover_image',
-              'avatar',
-              'profileImage',
-              'coverImage'
-            ];
-
-            imageFields.forEach(fieldName => {
-              const fieldData = userData[fieldName];
-
-              if ((fieldName === 'profile_image' || fieldName === 'cover_image' || fieldName === 'avatar' || fieldName === 'profileImage' || fieldName === 'coverImage') && fieldData) {
-                // صورة واحدة
-                const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
-                  if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
-                  if (fieldName.includes('cover')) return 'cover';
-                  if (fieldName === 'avatar') return 'avatar';
-                  return 'unknown';
-                };
-
-                const imageUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.url === 'string' ? fieldData.url : '');
-                const imageThumbnailUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.thumbnail === 'string' ? fieldData.thumbnail : (typeof fieldData?.url === 'string' ? fieldData.url : ''));
-
-                // Skip if no valid URL
-                if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
-                  console.warn(`Skipping invalid image URL for ${fieldName}:`, fieldData);
-                  return;
-                }
-
-                const imageData: ImageData = {
-                  id: `${doc.id}_${fieldName}`,
-                  title: `صورة ${fieldName === 'profile_image' ? 'شخصية' : fieldName === 'cover_image' ? 'غلاف' : fieldName === 'avatar' ? 'رمزية' : fieldName}`,
-                  description: `صورة من حقل ${fieldName}`,
-                  url: imageUrl,
-                  thumbnailUrl: imageThumbnailUrl,
-                  uploadDate: fieldData.uploadDate || fieldData.createdAt || new Date(),
-                  userId: doc.id,
-                  userEmail: userData.email || userData.userEmail || '',
-                  userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
-                  accountType: getAccountTypeFromCollection(collectionName),
-                  status: fieldData.status || 'pending',
-                  views: fieldData.views || 0,
-                  likes: fieldData.likes || 0,
-                  comments: fieldData.comments || 0,
-                  phone: userData.phone || userData.phoneNumber || '',
-                  sourceType: 'firebase' as const,
-                  imageType: getImageType(fieldName)
-                };
-                allImages.push(imageData);
-                collectionImageCount++;
-              } else if (Array.isArray(fieldData) && fieldData.length > 0) {
-                // مصفوفة صور
-                fieldData.forEach((image: any, index: number) => {
-                  if (image && (image.url || typeof image === 'string')) {
-                    const imageUrl = typeof image === 'string' ? image : (typeof image.url === 'string' ? image.url : '');
-                    const imageThumbnailUrl = typeof image.thumbnail === 'string' ? image.thumbnail : imageUrl;
-
-                    // Skip if no valid URL
-                    if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
-                      console.warn(`Skipping invalid image URL for ${fieldName}[${index}]:`, image);
-                      return;
-                    }
-
-                    const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
-                      if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
-                      if (fieldName.includes('cover')) return 'cover';
-                      if (fieldName === 'images' || fieldName === 'additional_images') return 'additional';
-                      return 'unknown';
-                    };
-
-                    const imageData: ImageData = {
-                      id: `${doc.id}_${fieldName}_${index}`,
-                      title: image.title || image.desc || `صورة ${index + 1} من ${fieldName}`,
-                      description: image.description || image.desc || `صورة من حقل ${fieldName}`,
-                      url: imageUrl,
-                      thumbnailUrl: imageThumbnailUrl,
-                      uploadDate: image.uploadDate || image.createdAt || image.updated_at || new Date(),
-                      userId: doc.id,
-                      userEmail: userData.email || userData.userEmail || '',
-                      userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
-                      accountType: getAccountTypeFromCollection(collectionName),
-                      status: image.status || 'pending',
-                      views: image.views || 0,
-                      likes: image.likes || 0,
-                      comments: image.comments || 0,
-                      phone: userData.phone || userData.phoneNumber || '',
-                      sourceType: 'firebase' as const,
-                      imageType: getImageType(fieldName)
-                    };
-                    allImages.push(imageData);
-                    collectionImageCount++;
-                  }
-                });
-              }
-            });
-          });
-
-          console.log(`✅ تم جلب ${collectionImageCount} صورة من ${collectionName}`);
-        } catch (error) {
-          console.error(`❌ خطأ في جلب البيانات من مجموعة ${collectionName}:`, error);
-        }
-      }
-
-      console.log(`📊 إجمالي الصور من Firebase: ${allImages.length}`);
-
-      // Fetch from Supabase
+    for (const collectionName of collections) {
       try {
-        const supabaseImages = await fetchSupabaseImages();
-        allImages.push(...supabaseImages);
-        console.log(`📊 إجمالي الصور بعد Supabase: ${allImages.length}`);
+        console.log(`📂 جلب الصور من مجموعة: ${collectionName}`);
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        let collectionImageCount = 0;
+
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          if (userData?.isDeleted === true) return;
+
+          // البحث في حقول مختلفة للصور
+          const imageFields = [
+            'images',
+            'additional_images',
+            'profile_image',
+            'cover_image',
+            'avatar',
+            'profileImage',
+            'coverImage'
+          ];
+
+          imageFields.forEach(fieldName => {
+            const fieldData = userData[fieldName];
+
+            if ((fieldName === 'profile_image' || fieldName === 'cover_image' || fieldName === 'avatar' || fieldName === 'profileImage' || fieldName === 'coverImage') && fieldData) {
+              // صورة واحدة
+              const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+                if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
+                if (fieldName.includes('cover')) return 'cover';
+                if (fieldName === 'avatar') return 'avatar';
+                return 'unknown';
+              };
+
+              const imageUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.url === 'string' ? fieldData.url : '');
+              const imageThumbnailUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.thumbnail === 'string' ? fieldData.thumbnail : (typeof fieldData?.url === 'string' ? fieldData.url : ''));
+
+              // Skip if no valid URL
+              if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
+                console.warn(`Skipping invalid image URL for ${fieldName}:`, fieldData);
+                return;
+              }
+
+              const imageData: ImageData = {
+                id: `${doc.id}_${fieldName}`,
+                title: `صورة ${fieldName === 'profile_image' ? 'شخصية' : fieldName === 'cover_image' ? 'غلاف' : fieldName === 'avatar' ? 'رمزية' : fieldName}`,
+                description: `صورة من حقل ${fieldName}`,
+                url: imageUrl,
+                thumbnailUrl: imageThumbnailUrl,
+                uploadDate: fieldData.uploadDate || fieldData.createdAt || new Date(),
+                userId: doc.id,
+                userEmail: userData.email || userData.userEmail || '',
+                userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+                accountType: getAccountTypeFromCollection(collectionName),
+                status: fieldData.status || 'pending',
+                views: fieldData.views || 0,
+                likes: fieldData.likes || 0,
+                comments: fieldData.comments || 0,
+                phone: userData.phone || userData.phoneNumber || '',
+                sourceType: 'firebase' as const,
+                imageType: getImageType(fieldName)
+              };
+              allImages.push(imageData);
+              collectionImageCount++;
+            } else if (Array.isArray(fieldData) && fieldData.length > 0) {
+              // مصفوفة صور
+              fieldData.forEach((image: any, index: number) => {
+                if (image && (image.url || typeof image === 'string')) {
+                  const imageUrl = typeof image === 'string' ? image : (typeof image.url === 'string' ? image.url : '');
+                  const imageThumbnailUrl = typeof image.thumbnail === 'string' ? image.thumbnail : imageUrl;
+
+                  // Skip if no valid URL
+                  if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
+                    console.warn(`Skipping invalid image URL for ${fieldName}[${index}]:`, image);
+                    return;
+                  }
+
+                  const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+                    if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
+                    if (fieldName.includes('cover')) return 'cover';
+                    if (fieldName === 'images' || fieldName === 'additional_images') return 'additional';
+                    return 'unknown';
+                  };
+
+                  const imageData: ImageData = {
+                    id: `${doc.id}_${fieldName}_${index}`,
+                    title: image.title || image.desc || `صورة ${index + 1} من ${fieldName}`,
+                    description: image.description || image.desc || `صورة من حقل ${fieldName}`,
+                    url: imageUrl,
+                    thumbnailUrl: imageThumbnailUrl,
+                    uploadDate: image.uploadDate || image.createdAt || image.updated_at || new Date(),
+                    userId: doc.id,
+                    userEmail: userData.email || userData.userEmail || '',
+                    userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+                    accountType: getAccountTypeFromCollection(collectionName),
+                    status: image.status || 'pending',
+                    views: image.views || 0,
+                    likes: image.likes || 0,
+                    comments: image.comments || 0,
+                    phone: userData.phone || userData.phoneNumber || '',
+                    sourceType: 'firebase' as const,
+                    imageType: getImageType(fieldName)
+                  };
+                  allImages.push(imageData);
+                  collectionImageCount++;
+                }
+              });
+            }
+          });
+        });
+
+        console.log(`✅ تم جلب ${collectionImageCount} صورة من ${collectionName}`);
       } catch (error) {
-        console.error('❌ خطأ في جلب الصور من Supabase:', error);
+        console.error(`❌ خطأ في جلب البيانات من مجموعة ${collectionName}:`, error);
       }
+    }
+
+    console.log(`📊 إجمالي الصور من Firebase: ${allImages.length}`);
+
+    // Fetch from Supabase
+    try {
+      const supabaseImages = await fetchSupabaseImages();
+      allImages.push(...supabaseImages);
+      console.log(`📊 إجمالي الصور بعد Supabase: ${allImages.length}`);
+    } catch (error) {
+      console.error('❌ خطأ في جلب الصور من Supabase:', error);
+    }
 
       setImages(allImages);
       setImagesLoading(false);
       console.log(`🎉 انتهى جلب الصور. العدد النهائي: ${allImages.length}`);
+      
+      return allImages;
+  }, [user?.uid, userData?.role, fetchSupabaseImages]);
+
+  // Fetch Images
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!user || !userData || (userData.accountType !== 'admin' && userData.role !== 'admin')) return;
+
+      setImagesLoading(true);
+      await refetchImages();
     };
 
     fetchImages();
-  }, [user?.uid, userData?.role, fetchSupabaseImages]);
+  }, [user?.uid, userData?.role, refetchImages]);
 
   // Get current media data based on active tab
   const currentMediaData = activeTab === 'videos' ? videos : images;
@@ -689,7 +720,7 @@ export default function MediaAdminPage() {
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, accountTypeFilter, sourceFilter, eventFilter, actionTakenFilter, messageSentFilter, imageTypeFilter, sortOrder, activeTab]);
+  }, [searchTerm, statusFilter, accountTypeFilter, sourceFilter, eventFilter, actionTakenFilter, messageSentFilter, imageTypeFilter, sortOrder, activeTab, itemsPerPage]);
 
   // Fetch logs for media
   const fetchLogs = useCallback(async (mediaId: string) => {
@@ -806,36 +837,102 @@ export default function MediaAdminPage() {
   const handleQuickApprove = useCallback(async (media: MediaData, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent card click
     try {
-      // Update local state
+      // Update database
+      const userId = media.userId;
+      const userRef = doc(db, 'players', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const isImage = activeTab === 'images';
+        const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
+        
+        // Find the media in the array - try multiple matching strategies
+        let mediaIndex = -1;
+        
+        // Strategy 1: Match by ID
+        mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
+        
+        // Strategy 2: Match by URL (if ID didn't match)
+        if (mediaIndex === -1 && media.url) {
+          mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
+        }
+        
+        // Strategy 3: Match by title (if URL didn't match)
+        if (mediaIndex === -1 && media.title) {
+          mediaIndex = mediaArray.findIndex((m: any) => 
+            (m.title && m.title === media.title) || 
+            (m.desc && m.desc === media.title) ||
+            (m.description && m.description === media.title)
+          );
+        }
+        
+        // Strategy 4: Match by index in ID (for IDs like userId_index)
+        if (mediaIndex === -1 && media.id.includes('_')) {
+          const parts = media.id.split('_');
+          const indexPart = parts[parts.length - 1];
+          const numericIndex = parseInt(indexPart);
+          if (!isNaN(numericIndex) && numericIndex < mediaArray.length) {
+            mediaIndex = numericIndex;
+          }
+        }
+        
+        if (mediaIndex !== -1) {
+          mediaArray[mediaIndex].status = 'approved';
+          mediaArray[mediaIndex].updatedAt = new Date();
+          
+          const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
+          await updateDoc(userRef, updateData);
+        } else {
+          console.warn(`⚠️ لم يتم العثور على ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+        }
+      }
+
+          // Update local state
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: 'approved' as const } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: 'approved' as const } : i
+            ));
+            // Refetch images to ensure database changes are reflected
+            setTimeout(() => refetchImages(), 500);
+          }
+
+          // Log action
+          await actionLogService.logVideoAction({
+            action: 'status_change',
+            videoId: media.id,
+            playerId: media.userId,
+            actionBy: user?.uid || 'system',
+            actionByType: 'admin',
+            details: {
+              oldStatus: media.status,
+              newStatus: 'approved',
+              notes: `تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بواسطة المدير`,
+              adminNotes: `تم التغيير بواسطة: ${user?.email}`
+            }
+          });
+
+      toast.success(`تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بنجاح`);
+    } catch (error) {
+      console.error('Error approving media:', error);
+      toast.error(`حدث خطأ أثناء الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'}`);
+      
+      // Revert local state on error
       if (activeTab === 'videos') {
         setVideos(prev => prev.map(v =>
-          v.id === media.id ? { ...v, status: 'approved' as const } : v
+          v.id === media.id ? { ...v, status: media.status } : v
         ));
       } else {
         setImages(prev => prev.map(i =>
-          i.id === media.id ? { ...i, status: 'approved' as const } : i
+          i.id === media.id ? { ...i, status: media.status } : i
         ));
       }
-
-      // Log action
-      await actionLogService.logVideoAction({
-        action: 'status_change',
-        videoId: media.id,
-        playerId: media.userId,
-        actionBy: user?.uid || 'system',
-        actionByType: 'admin',
-        details: {
-          oldStatus: media.status,
-          newStatus: 'approved',
-          notes: `تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بواسطة المدير`,
-          adminNotes: `تم التغيير بواسطة: ${user?.email}`
-        }
-      });
-
-    } catch (error) {
-      console.error('Error approving media:', error);
     }
-  }, [activeTab]);
+  }, [activeTab, user?.uid, user?.email]);
 
   // Delete media function
   const handleDeleteMedia = useCallback(async (media: MediaData, event: React.MouseEvent) => {
@@ -910,7 +1007,7 @@ export default function MediaAdminPage() {
             let notificationSent = false;
             let notificationMethod = '';
 
-            // Send SMS notification
+            // Send SMS notification via Baba Service (not BeOn)
             try {
               const smsResponse = await fetch('/api/whatsapp/babaservice/notifications', {
                 method: 'POST',
@@ -1328,7 +1425,7 @@ export default function MediaAdminPage() {
 
 مع تحيات فريق العمل`;
 
-                // Send SMS notification
+                // Send SMS notification via Baba Service (not BeOn)
                 try {
                   const smsResponse = await fetch('/api/whatsapp/babaservice/notifications', {
                     method: 'POST',
@@ -1417,16 +1514,69 @@ export default function MediaAdminPage() {
   const handleQuickReject = useCallback(async (media: MediaData, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent card click
     try {
-      // Update local state
-      if (activeTab === 'videos') {
-        setVideos(prev => prev.map(v =>
-          v.id === media.id ? { ...v, status: 'rejected' as const } : v
-        ));
-      } else {
-        setImages(prev => prev.map(i =>
-          i.id === media.id ? { ...i, status: 'rejected' as const } : i
-        ));
+      // Update database
+      const userId = media.userId;
+      const userRef = doc(db, 'players', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const isImage = activeTab === 'images';
+        const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
+        
+        // Find the media in the array - try multiple matching strategies
+        let mediaIndex = -1;
+        
+        // Strategy 1: Match by ID
+        mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
+        
+        // Strategy 2: Match by URL (if ID didn't match)
+        if (mediaIndex === -1 && media.url) {
+          mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
+        }
+        
+        // Strategy 3: Match by title (if URL didn't match)
+        if (mediaIndex === -1 && media.title) {
+          mediaIndex = mediaArray.findIndex((m: any) => 
+            (m.title && m.title === media.title) || 
+            (m.desc && m.desc === media.title) ||
+            (m.description && m.description === media.title)
+          );
+        }
+        
+        // Strategy 4: Match by index in ID (for IDs like userId_index)
+        if (mediaIndex === -1 && media.id.includes('_')) {
+          const parts = media.id.split('_');
+          const indexPart = parts[parts.length - 1];
+          const numericIndex = parseInt(indexPart);
+          if (!isNaN(numericIndex) && numericIndex < mediaArray.length) {
+            mediaIndex = numericIndex;
+          }
+        }
+        
+        if (mediaIndex !== -1) {
+          mediaArray[mediaIndex].status = 'rejected';
+          mediaArray[mediaIndex].updatedAt = new Date();
+          
+          const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
+          await updateDoc(userRef, updateData);
+        } else {
+          console.warn(`⚠️ لم يتم العثور على ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+        }
       }
+
+          // Update local state
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: 'rejected' as const } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: 'rejected' as const } : i
+            ));
+            // Refetch images to ensure database changes are reflected
+            setTimeout(() => refetchImages(), 500);
+          }
 
       // Log action
       await actionLogService.logVideoAction({
@@ -1443,10 +1593,331 @@ export default function MediaAdminPage() {
         }
       });
 
+      toast.success(`تم رفض ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بنجاح`);
     } catch (error) {
       console.error('Error rejecting media:', error);
+      toast.error(`حدث خطأ أثناء رفض ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'}`);
+      
+      // Revert local state on error
+      if (activeTab === 'videos') {
+        setVideos(prev => prev.map(v =>
+          v.id === media.id ? { ...v, status: media.status } : v
+        ));
+      } else {
+        setImages(prev => prev.map(i =>
+          i.id === media.id ? { ...i, status: media.status } : i
+        ));
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, user?.uid, user?.email]);
+
+  // Bulk approve function
+  const handleBulkApprove = async () => {
+    const selectedMedia = getSelectedMedia();
+    if (selectedMedia.length === 0) {
+      toast.error('لم يتم تحديد أي وسائط للموافقة');
+      return;
+    }
+
+    if (!confirm(`هل أنت متأكد من الموافقة على ${selectedMedia.length} ${activeTab === 'videos' ? 'فيديو' : 'صورة'}؟`)) {
+      return;
+    }
+
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const media of selectedMedia) {
+        try {
+          // Update database
+          const userId = media.userId;
+          const userRef = doc(db, 'players', userId);
+          const userDoc = await getDoc(userRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const isImage = activeTab === 'images';
+            const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
+            
+            console.log(`🔍 البحث عن ${isImage ? 'صورة' : 'فيديو'}:`, {
+              mediaId: media.id,
+              mediaUrl: media.url,
+              mediaTitle: media.title,
+              arrayLength: mediaArray.length,
+              isImage
+            });
+            
+            // Find the media in the array - try multiple matching strategies
+            let mediaIndex = -1;
+            
+            // Strategy 1: Match by ID
+            mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
+            
+            // Strategy 2: Match by URL (if ID didn't match)
+            if (mediaIndex === -1 && media.url) {
+              mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
+            }
+            
+            // Strategy 3: Match by title (if URL didn't match)
+            if (mediaIndex === -1 && media.title) {
+              mediaIndex = mediaArray.findIndex((m: any) => 
+                (m.title && m.title === media.title) || 
+                (m.desc && m.desc === media.title) ||
+                (m.description && m.description === media.title)
+              );
+            }
+            
+            // Strategy 4: Match by index in ID (for IDs like userId_index)
+            if (mediaIndex === -1 && media.id.includes('_')) {
+              const parts = media.id.split('_');
+              const indexPart = parts[parts.length - 1];
+              const numericIndex = parseInt(indexPart);
+              if (!isNaN(numericIndex) && numericIndex < mediaArray.length) {
+                mediaIndex = numericIndex;
+              }
+            }
+            
+            console.log(`📌 النتيجة:`, {
+              found: mediaIndex !== -1,
+              index: mediaIndex,
+              currentStatus: mediaIndex !== -1 ? mediaArray[mediaIndex]?.status : 'N/A'
+            });
+            
+            if (mediaIndex !== -1) {
+              mediaArray[mediaIndex].status = 'approved';
+              mediaArray[mediaIndex].updatedAt = new Date();
+              
+              const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
+              await updateDoc(userRef, updateData);
+              console.log(`✅ تم تحديث ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+            } else {
+              console.warn(`⚠️ لم يتم العثور على ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+            }
+          } else {
+            console.warn(`⚠️ المستخدم ${userId} غير موجود في قاعدة البيانات`);
+          }
+
+          // Update local state
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: 'approved' as const } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: 'approved' as const } : i
+            ));
+          }
+
+          // Log action
+          await actionLogService.logVideoAction({
+            action: 'status_change',
+            videoId: media.id,
+            playerId: media.userId,
+            actionBy: user?.uid || 'system',
+            actionByType: 'admin',
+            details: {
+              oldStatus: media.status,
+              newStatus: 'approved',
+              notes: `تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} "${media.title}" بواسطة المدير (موافقة مجمعة)`,
+              adminNotes: `تم التغيير بواسطة: ${user?.email}`
+            }
+          });
+
+          successCount++;
+        } catch (error: any) {
+          console.error(`❌ خطأ في الموافقة على ${media.id}:`, error);
+          errorCount++;
+          errors.push(`${media.title}: ${error.message || error}`);
+          
+          // Revert local state on error
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: media.status } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: media.status } : i
+            ));
+          }
+        }
+      }
+
+      // Clear selections
+      clearAllSelections();
+
+      // Refetch images if we updated images
+      if (activeTab === 'images' && successCount > 0) {
+        setTimeout(() => refetchImages(), 500);
+      }
+
+      // Show results
+      if (successCount > 0) {
+        toast.success(`تم الموافقة على ${successCount} ${activeTab === 'videos' ? 'فيديو' : 'صورة'} بنجاح`);
+      }
+      if (errorCount > 0) {
+        toast.error(`فشل في الموافقة على ${errorCount} ${activeTab === 'videos' ? 'فيديو' : 'صورة'}`);
+        console.error('الأخطاء:', errors);
+      }
+    } catch (error) {
+      console.error('❌ خطأ في الموافقة المجمعة:', error);
+      toast.error('حدث خطأ أثناء الموافقة المجمعة');
+    }
+  };
+
+  // Bulk reject function
+  const handleBulkReject = async () => {
+    const selectedMedia = getSelectedMedia();
+    if (selectedMedia.length === 0) {
+      toast.error('لم يتم تحديد أي وسائط للرفض');
+      return;
+    }
+
+    if (!confirm(`هل أنت متأكد من رفض ${selectedMedia.length} ${activeTab === 'videos' ? 'فيديو' : 'صورة'}؟`)) {
+      return;
+    }
+
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const media of selectedMedia) {
+        try {
+          // Update database
+          const userId = media.userId;
+          const userRef = doc(db, 'players', userId);
+          const userDoc = await getDoc(userRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const isImage = activeTab === 'images';
+            const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
+            
+            console.log(`🔍 البحث عن ${isImage ? 'صورة' : 'فيديو'} للرفض:`, {
+              mediaId: media.id,
+              mediaUrl: media.url,
+              mediaTitle: media.title,
+              arrayLength: mediaArray.length,
+              isImage
+            });
+            
+            // Find the media in the array - try multiple matching strategies
+            let mediaIndex = -1;
+            
+            // Strategy 1: Match by ID
+            mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
+            
+            // Strategy 2: Match by URL (if ID didn't match)
+            if (mediaIndex === -1 && media.url) {
+              mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
+            }
+            
+            // Strategy 3: Match by title (if URL didn't match)
+            if (mediaIndex === -1 && media.title) {
+              mediaIndex = mediaArray.findIndex((m: any) => 
+                (m.title && m.title === media.title) || 
+                (m.desc && m.desc === media.title) ||
+                (m.description && m.description === media.title)
+              );
+            }
+            
+            // Strategy 4: Match by index in ID (for IDs like userId_index)
+            if (mediaIndex === -1 && media.id.includes('_')) {
+              const parts = media.id.split('_');
+              const indexPart = parts[parts.length - 1];
+              const numericIndex = parseInt(indexPart);
+              if (!isNaN(numericIndex) && numericIndex < mediaArray.length) {
+                mediaIndex = numericIndex;
+              }
+            }
+            
+            console.log(`📌 النتيجة:`, {
+              found: mediaIndex !== -1,
+              index: mediaIndex,
+              currentStatus: mediaIndex !== -1 ? mediaArray[mediaIndex]?.status : 'N/A'
+            });
+            
+            if (mediaIndex !== -1) {
+              mediaArray[mediaIndex].status = 'rejected';
+              mediaArray[mediaIndex].updatedAt = new Date();
+              
+              const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
+              await updateDoc(userRef, updateData);
+              console.log(`✅ تم تحديث ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+            } else {
+              console.warn(`⚠️ لم يتم العثور على ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
+            }
+          } else {
+            console.warn(`⚠️ المستخدم ${userId} غير موجود في قاعدة البيانات`);
+          }
+
+          // Update local state
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: 'rejected' as const } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: 'rejected' as const } : i
+            ));
+          }
+
+          // Log action
+          await actionLogService.logVideoAction({
+            action: 'status_change',
+            videoId: media.id,
+            playerId: media.userId,
+            actionBy: user?.uid || 'system',
+            actionByType: 'admin',
+            details: {
+              oldStatus: media.status,
+              newStatus: 'rejected',
+              notes: `تم رفض ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} "${media.title}" بواسطة المدير (رفض مجمع)`,
+              adminNotes: `تم التغيير بواسطة: ${user?.email}`
+            }
+          });
+
+          successCount++;
+        } catch (error: any) {
+          console.error(`❌ خطأ في رفض ${media.id}:`, error);
+          errorCount++;
+          errors.push(`${media.title}: ${error.message || error}`);
+          
+          // Revert local state on error
+          if (activeTab === 'videos') {
+            setVideos(prev => prev.map(v =>
+              v.id === media.id ? { ...v, status: media.status } : v
+            ));
+          } else {
+            setImages(prev => prev.map(i =>
+              i.id === media.id ? { ...i, status: media.status } : i
+            ));
+          }
+        }
+      }
+
+      // Clear selections
+      clearAllSelections();
+
+      // Refetch images if we updated images
+      if (activeTab === 'images' && successCount > 0) {
+        setTimeout(() => refetchImages(), 500);
+      }
+
+      // Show results
+      if (successCount > 0) {
+        toast.success(`تم رفض ${successCount} ${activeTab === 'videos' ? 'فيديو' : 'صورة'} بنجاح`);
+      }
+      if (errorCount > 0) {
+        toast.error(`فشل في رفض ${errorCount} ${activeTab === 'videos' ? 'فيديو' : 'صورة'}`);
+        console.error('الأخطاء:', errors);
+      }
+    } catch (error) {
+      console.error('❌ خطأ في الرفض المجمع:', error);
+      toast.error('حدث خطأ أثناء الرفض المجمع');
+    }
+  };
 
   // Simplified WhatsApp test functions
   const testWhatsAppLink = () => {
@@ -1499,7 +1970,7 @@ export default function MediaAdminPage() {
     window.open(whatsappUrl, '_blank');
   };
 
-  // Simplified SMS sender
+  // Simplified SMS sender - uses Baba Service (not BeOn)
   const sendSMS = async (messageType: string = 'custom') => {
     if (!selectedMedia) return;
 
@@ -1523,6 +1994,7 @@ export default function MediaAdminPage() {
     }
 
     try {
+      // Using Baba Service API endpoint (not BeOn)
       const response = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -1547,41 +2019,165 @@ export default function MediaAdminPage() {
   };
 
 
-  // Simplified pagination component
-  const PaginationControls = () => (
-    <div className="flex items-center justify-between mt-4 bg-white p-3 rounded-lg border">
-      <div className="text-sm text-gray-600">
-        عرض {startIndex + 1} إلى {Math.min(startIndex + itemsPerPage, totalItems)} من {totalItems}
-      </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="h-8 px-2 text-xs"
-        >
-          <ChevronRight className="w-3 h-3" />
-          السابق
-        </Button>
+  // Enhanced pagination component
+  const PaginationControls = () => {
+    const getPageNumbers = () => {
+      const pages: (number | string)[] = [];
+      const maxVisible = 5;
+      
+      if (totalPages <= maxVisible) {
+        // Show all pages if total is small
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Always show first page
+        pages.push(1);
+        
+        if (currentPage > 3) {
+          pages.push('...');
+        }
+        
+        // Show pages around current page
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+        
+        for (let i = start; i <= end; i++) {
+          pages.push(i);
+        }
+        
+        if (currentPage < totalPages - 2) {
+          pages.push('...');
+        }
+        
+        // Always show last page
+        pages.push(totalPages);
+      }
+      
+      return pages;
+    };
 
-        <span className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded">
-          {currentPage} / {totalPages}
-        </span>
+    const goToPage = (page: number) => {
+      if (page >= 1 && page <= totalPages) {
+        setCurrentPage(page);
+      }
+    };
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="h-8 px-2 text-xs"
-        >
-          التالي
-          <ChevronLeft className="w-3 h-3" />
-        </Button>
+    return (
+      <div className="bg-white p-4 rounded-lg border shadow-sm mt-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Left side - Info and page size selector */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-sm text-gray-600">
+              عرض <span className="font-semibold text-gray-900">{startIndex + 1}</span> إلى{' '}
+              <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, totalItems)}</span> من{' '}
+              <span className="font-semibold text-gray-900">{totalItems.toLocaleString()}</span> عنصر
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-500">عرض:</Label>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-20 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12">12</SelectItem>
+                  <SelectItem value="24">24</SelectItem>
+                  <SelectItem value="48">48</SelectItem>
+                  <SelectItem value="96">96</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Right side - Pagination controls */}
+          <div className="flex items-center gap-2">
+            {/* First page */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+              className="h-8 px-2"
+              title="الصفحة الأولى"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </Button>
+
+            {/* Previous page */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="h-8 px-3"
+            >
+              <ChevronRight className="w-4 h-4 ml-1" />
+              السابق
+            </Button>
+
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((page, index) => {
+                if (page === '...') {
+                  return (
+                    <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+                      ...
+                    </span>
+                  );
+                }
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => goToPage(page as number)}
+                    className={`h-8 w-8 p-0 ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : ''
+                    }`}
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Next page */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="h-8 px-3"
+            >
+              التالي
+              <ChevronLeft className="w-4 h-4 mr-1" />
+            </Button>
+
+            {/* Last page */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2"
+              title="الصفحة الأخيرة"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Check access permissions
   if (!user) {
@@ -1598,7 +2194,10 @@ export default function MediaAdminPage() {
     );
   }
 
-  if (!userData || userData.role !== 'admin') {
+  // Check if user is admin using accountType (primary) or role (fallback)
+  const isAdmin = userData?.accountType === 'admin' || userData?.role === 'admin';
+  
+  if (!userData || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -1607,7 +2206,7 @@ export default function MediaAdminPage() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">غير مصرح لك بالوصول</h3>
           <p className="text-gray-600">هذه الصفحة مخصصة للمديرين فقط</p>
-          <p className="text-sm text-gray-500 mt-2">دورك الحالي: {userData?.role || 'غير محدد'}</p>
+          <p className="text-sm text-gray-500 mt-2">نوع حسابك الحالي: {userData?.accountType || userData?.role || 'غير محدد'}</p>
         </div>
       </div>
     );
@@ -1683,9 +2282,27 @@ export default function MediaAdminPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {getSelectedCount() > 0 && (
                     <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleBulkApprove}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        موافقة ({getSelectedCount()})
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleBulkReject}
+                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        رفض ({getSelectedCount()})
+                      </Button>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -1693,7 +2310,7 @@ export default function MediaAdminPage() {
                         className="flex items-center gap-2"
                       >
                         <Trash2 className="w-4 h-4" />
-                        حذف المحدد ({getSelectedCount()})
+                        حذف ({getSelectedCount()})
                       </Button>
                       <Button
                         variant="outline"
@@ -1873,16 +2490,53 @@ export default function MediaAdminPage() {
                 {viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {paginatedMedia.map((video) => (
-                      <Card key={video.id} className="group hover:shadow-lg transition-shadow cursor-pointer" onClick={() => !isBulkMode && openMediaDetails(video)}>
+                      <Card key={video.id} className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-200 hover:border-blue-300" onClick={() => !isBulkMode && openMediaDetails(video)}>
                         <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden relative">
-                          {video.thumbnailUrl ? (
-                            <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Video className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="absolute top-2 right-2">
+                          {(() => {
+                            const thumbnail = getVideoThumbnail(video);
+                            return thumbnail ? (
+                              <>
+                                <img 
+                                  src={thumbnail} 
+                                  alt={video.title}
+                                  onError={(e) => {
+                                    // Fallback if thumbnail fails to load
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent) {
+                                      const fallback = parent.querySelector('.fallback-thumbnail') as HTMLElement;
+                                      if (fallback) fallback.style.display = 'flex';
+                                    }
+                                  }}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                />
+                                {/* Fallback thumbnail */}
+                                <div className="fallback-thumbnail hidden w-full h-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                                  <Video className="w-12 h-12 text-gray-500" />
+                                </div>
+                                {/* Play button overlay */}
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openMediaPreview(video, e);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg h-12 w-12 rounded-full"
+                                    size="sm"
+                                    title="معاينة الفيديو"
+                                  >
+                                    <Play className="w-6 h-6 fill-white" />
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                                <Video className="w-12 h-12 text-gray-500" />
+                              </div>
+                            );
+                          })()}
+                          {/* Status badge */}
+                          <div className="absolute top-2 right-2 z-10">
                             <StatusBadge status={video.status} />
                           </div>
                           {isBulkMode ? (
@@ -1927,28 +2581,64 @@ export default function MediaAdminPage() {
                             </div>
                           )}
                         </div>
-                        <CardContent className="p-3">
-                          <h3 className="font-medium text-gray-900 line-clamp-2 mb-2">{video.title}</h3>
+                        <CardContent className="p-4 bg-white">
+                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-3 text-sm leading-tight">
+                            {video.title}
+                          </h3>
+                          
+                          {/* Description if available */}
+                          {video.description && (
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                              {video.description}
+                            </p>
+                          )}
+                          
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-500" />
-                              <span className="text-gray-700">{video.userName}</span>
+                              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              <span className="text-gray-700 truncate text-xs">{video.userName}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-green-600" />
-                              <span className="text-green-700 text-xs">
+                              <Phone className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              <span className="text-green-700 text-xs truncate">
                                 {displayPhoneNumber(video.phone)}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="text-gray-600">{video.views} مشاهدة</span>
-                                <span className="text-gray-600">{video.likes} إعجاب</span>
+                            
+                            {/* Stats row */}
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <div className="flex items-center gap-3 text-xs text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <Video className="w-3 h-3" />
+                                  {video.views || 0}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" />
+                                  {video.likes || 0}
+                                </span>
                               </div>
-                              <Badge variant="outline" className="text-xs">
-                                {video.accountType}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                {video.sourceType && (
+                                  <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5">
+                                    {video.sourceType === 'youtube' ? 'YouTube' : video.sourceType === 'supabase' ? 'Supabase' : video.sourceType}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  {video.accountType}
+                                </Badge>
+                              </div>
                             </div>
+                            
+                            {/* Upload date */}
+                            {video.uploadDate && (
+                              <div className="text-xs text-gray-500 pt-1">
+                                {new Date(video.uploadDate).toLocaleDateString('en-GB', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -2032,22 +2722,68 @@ export default function MediaAdminPage() {
             ) : (
               <>
                 {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                     {paginatedMedia.map((image) => (
-                      <Card key={image.id} className="group hover:shadow-lg transition-shadow cursor-pointer" onClick={() => !isBulkMode && openMediaDetails(image)}>
-                        <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
-                          {image.thumbnailUrl ? (
-                            <img src={image.thumbnailUrl} alt={image.title} className="w-full h-full object-cover" />
+                      <Card key={image.id} className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-200 hover:border-purple-300 flex flex-col h-full" onClick={() => !isBulkMode && openMediaDetails(image)}>
+                        <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative flex-shrink-0">
+                          {image.thumbnailUrl || image.url ? (
+                            <>
+                              <img 
+                                src={image.thumbnailUrl || image.url} 
+                                alt={image.title}
+                                onError={(e) => {
+                                  // Fallback if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    const fallback = parent.querySelector('.fallback-image') as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }
+                                }}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                              />
+                              {/* Fallback image */}
+                              <div className="fallback-image hidden w-full h-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                                <ImageIcon className="w-12 h-12 text-gray-500" />
+                              </div>
+                              {/* View overlay */}
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openMediaPreview(image, e);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-purple-600 hover:bg-purple-700 text-white border-none shadow-lg px-3 py-1.5"
+                                  size="sm"
+                                  title="معاينة الصورة"
+                                >
+                                  <ImageIcon className="w-4 h-4 mr-1" />
+                                  معاينة
+                                </Button>
+                              </div>
+                            </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="w-8 h-8 text-gray-400" />
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                              <ImageIcon className="w-12 h-12 text-gray-500" />
                             </div>
                           )}
-                          <div className="absolute top-2 right-2">
+                          {/* Status badge */}
+                          <div className="absolute top-2 right-2 z-10">
                             <StatusBadge status={image.status} />
                           </div>
+                          {/* Image type badge - moved to bottom left */}
+                          {image.imageType && (
+                            <div className="absolute bottom-2 left-2 z-10">
+                              <Badge variant="secondary" className="text-xs bg-black/70 text-white backdrop-blur-sm px-2 py-0.5">
+                                {image.imageType === 'profile' ? 'شخصية' : 
+                                 image.imageType === 'cover' ? 'غلاف' :
+                                 image.imageType === 'avatar' ? 'رمزية' :
+                                 image.imageType === 'additional' ? 'إضافية' : image.imageType}
+                              </Badge>
+                            </div>
+                          )}
                           {isBulkMode ? (
-                            <div className="absolute top-2 left-2">
+                            <div className="absolute top-2 left-2 z-10">
                               <input
                                 type="checkbox"
                                 checked={selectedImages.has(image.id)}
@@ -2060,11 +2796,11 @@ export default function MediaAdminPage() {
                               />
                             </div>
                           ) : (
-                            <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button
                               size="sm"
                               onClick={(e) => handleQuickApprove(image, e)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-1 py-1 h-6 text-xs"
+                              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
                               title="موافقة"
                             >
                               <CheckCircle className="w-3 h-3" />
@@ -2072,7 +2808,7 @@ export default function MediaAdminPage() {
                             <Button
                               size="sm"
                               onClick={(e) => handleQuickReject(image, e)}
-                              className="bg-red-600 hover:bg-red-700 text-white px-1 py-1 h-6 text-xs"
+                              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
                               title="رفض"
                             >
                               <XCircle className="w-3 h-3" />
@@ -2080,7 +2816,7 @@ export default function MediaAdminPage() {
                             <Button
                               size="sm"
                               onClick={(e) => handleDeleteMedia(image, e)}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-1 py-1 h-6 text-xs"
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
                               title="حذف"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -2088,23 +2824,68 @@ export default function MediaAdminPage() {
                             </div>
                           )}
                         </div>
-                        <CardContent className="p-3">
-                          <h3 className="font-medium text-gray-900 line-clamp-1 mb-2">{image.title}</h3>
-                          <div className="space-y-2 text-sm">
+                        <CardContent className="p-4 bg-white flex-1 flex flex-col">
+                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 text-sm leading-tight min-h-[2.5rem]">
+                            {image.title}
+                          </h3>
+                          
+                          {/* Description if available */}
+                          {image.description && (
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-3 flex-shrink-0">
+                              {image.description}
+                            </p>
+                          )}
+                          
+                          <div className="space-y-2 text-sm mt-auto">
                             <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-500" />
-                              <span className="text-gray-700 truncate">{image.userName}</span>
+                              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              <span className="text-gray-700 truncate text-xs">{image.userName}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-green-600" />
-                              <span className="text-green-700 text-xs truncate">
-                                {displayPhoneNumber(image.phone)}
-                              </span>
+                            {image.phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                <span className="text-green-700 text-xs truncate">
+                                  {displayPhoneNumber(image.phone)}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Stats row */}
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
+                              <div className="flex items-center gap-3 text-xs text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <ImageIcon className="w-3 h-3" />
+                                  {image.views || 0}
+                                </span>
+                                {image.likes > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" />
+                                    {image.likes}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {image.sourceType && (
+                                  <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5">
+                                    {image.sourceType === 'supabase' ? 'SB' : image.sourceType === 'firebase' ? 'FB' : image.sourceType.substring(0, 2).toUpperCase()}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  {image.accountType}
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-600 text-xs">{image.views} مشاهدة</span>
-                              <Badge variant="outline" className="text-xs">{image.accountType}</Badge>
-                            </div>
+                            
+                            {/* Upload date */}
+                            {image.uploadDate && (
+                              <div className="text-xs text-gray-500 pt-1">
+                                {new Date(image.uploadDate).toLocaleDateString('en-GB', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
