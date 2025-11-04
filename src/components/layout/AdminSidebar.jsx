@@ -15,9 +15,11 @@ import {
     Headphones,
     LayoutDashboard,
     LogOut,
+    Mail,
     MessageCircle,
     MessageSquare,
     Monitor,
+    Search,
     Settings,
     Shield,
     Trophy,
@@ -92,6 +94,12 @@ const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
           href: '/dashboard/admin/email-migration',
           icon: Mail,
           description: 'ترحيل البريد الإلكتروني الطويل إلى النظام الجديد'
+        },
+        {
+          title: 'فحص رقم الهاتف',
+          href: '/dashboard/admin/users/check-phone',
+          icon: Search,
+          description: 'فحص حالة رقم الهاتف في قاعدة البيانات'
         }
       ]
     },

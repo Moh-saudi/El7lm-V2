@@ -10,7 +10,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import {
     Activity,
     AlertCircle,
@@ -652,15 +652,31 @@ export default function AdminUsersPage() {
       const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
                             selectedUserDetails.accountType + 's';
 
-      await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
+      const deletePayload = {
         isDeleted: true,
+        isActive: false, // Ensure account is inactive upon deletion
         deletedAt: new Date(),
         deletedBy: user?.uid || 'admin'
-      });
+      };
+
+      // Update in the source collection
+      await updateDoc(doc(db, collectionName, selectedUserDetails.id), deletePayload);
+
+      // Also update in users collection if it exists (for sync purposes)
+      try {
+        const userDocRef = doc(db, 'users', selectedUserDetails.id);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          await updateDoc(userDocRef, deletePayload);
+        }
+      } catch (syncError) {
+        // Non-critical if users collection doesn't exist for this user
+        console.warn('Could not sync deletion to users collection:', syncError);
+      }
 
       setUsers(prevUsers => prevUsers.map(u =>
         u.id === selectedUserDetails.id
-          ? { ...u, isDeleted: true }
+          ? { ...u, isDeleted: true, isActive: false }
           : u
       ));
 
@@ -1284,10 +1300,10 @@ export default function AdminUsersPage() {
 
     try {
       const promises = selectedUsers.map(async userId => {
-        const user = users.find(u => u.id === userId);
-        if (!user) return Promise.resolve();
+        const targetUser = users.find(u => u.id === userId);
+        if (!targetUser) return Promise.resolve();
 
-        const collectionName = user.accountType === 'user' ? 'users' : `${user.accountType}s`;
+        const collectionName = targetUser.accountType === 'user' ? 'users' : `${targetUser.accountType}s`;
         const userRef = doc(db, collectionName, userId);
 
         switch (action) {
@@ -1297,10 +1313,44 @@ export default function AdminUsersPage() {
             return updateDoc(userRef, { isActive: false });
           case 'verify':
             return updateDoc(userRef, { verificationStatus: 'verified' });
-          case 'delete':
-            return updateDoc(userRef, { isDeleted: true, deletedAt: new Date() });
-          case 'restore':
-            return updateDoc(userRef, { isDeleted: false, restoredAt: new Date() });
+          case 'delete': {
+            const deletePayload = {
+              isDeleted: true,
+              isActive: false, // Ensure account is inactive upon deletion
+              deletedAt: new Date(),
+              deletedBy: user?.uid || 'admin'
+            };
+            // Update in source collection
+            const updatePromise = updateDoc(userRef, deletePayload);
+            // Also sync to users collection if exists
+            const syncPromise = getDoc(doc(db, 'users', userId)).then(userDoc => {
+              if (userDoc.exists()) {
+                return updateDoc(doc(db, 'users', userId), deletePayload);
+              }
+            }).catch(() => {
+              // Non-critical if users collection doesn't exist
+            });
+            return Promise.all([updatePromise, syncPromise]);
+          }
+          case 'restore': {
+            const restorePayload = {
+              isDeleted: false,
+              isActive: true,
+              restoredAt: new Date(),
+              restoredBy: user?.uid || 'admin'
+            };
+            // Update in source collection
+            const updatePromise = updateDoc(userRef, restorePayload);
+            // Also sync to users collection if exists
+            const syncPromise = getDoc(doc(db, 'users', userId)).then(userDoc => {
+              if (userDoc.exists()) {
+                return updateDoc(doc(db, 'users', userId), restorePayload);
+              }
+            }).catch(() => {
+              // Non-critical if users collection doesn't exist
+            });
+            return Promise.all([updatePromise, syncPromise]);
+          }
         }
       });
 
@@ -1317,9 +1367,9 @@ export default function AdminUsersPage() {
           case 'verify':
             return { ...user, verificationStatus: 'verified' as const };
           case 'delete':
-            return { ...user, isDeleted: true };
+            return { ...user, isDeleted: true, isActive: false };
           case 'restore':
-            return { ...user, isDeleted: false };
+            return { ...user, isDeleted: false, isActive: true };
           default:
             return user;
         }

@@ -827,6 +827,14 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             href: `/dashboard/admin/email-migration`,
             color: 'text-orange-600',
             bgColor: 'bg-orange-50'
+          },
+          {
+            id: 'admin-check-phone',
+            label: 'فحص رقم الهاتف',
+            icon: Search,
+            href: `/dashboard/admin/users/check-phone`,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50'
           }
         ]
       });

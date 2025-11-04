@@ -144,6 +144,7 @@ export default function RegisterPage() {
 
   // تحقق من تكرار رقم الهاتف عند الكتابة
   const handlePhoneValidation = async (phoneNumber: string) => {
+    console.log('[register] handlePhoneValidation called:', { phoneNumber, countryCode: formData.countryCode });
     if (!formData.countryCode) {
       setPhoneExistsError('يرجى اختيار الدولة أولاً');
       return;
@@ -152,8 +153,13 @@ export default function RegisterPage() {
       clearTimeout(phoneCheckTimeoutRef.current);
     }
     setPhoneExistsError('');
-    if (!phoneNumber || phoneNumber.length < 6) return;
+    if (!phoneNumber || phoneNumber.length < 6) {
+      console.log('[register] Phone number too short or empty:', phoneNumber);
+      return;
+    }
     phoneCheckTimeoutRef.current = setTimeout(async () => {
+      const fullPhone = `${formData.countryCode}${phoneNumber}`;
+      console.log('[register] Checking phone number:', fullPhone);
       setPhoneCheckLoading(true);
       try {
         // ألغِ أي طلب سابق قيد التنفيذ
@@ -162,13 +168,15 @@ export default function RegisterPage() {
         }
         const controller = new AbortController();
         phoneValidationAbortRef.current = controller;
+        console.log('[register] Calling API /api/auth/check-user-exists with phone:', fullPhone);
         const checkRes = await fetch('/api/auth/check-user-exists', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: `${formData.countryCode}${phoneNumber}` }),
+          body: JSON.stringify({ phone: fullPhone }),
           signal: controller.signal,
         });
         const checkData = await checkRes.json();
+        console.log('[register] API response:', checkData);
         if (checkData.phoneExists) {
           setPhoneExistsError('رقم الهاتف مستخدم بالفعل. يمكنك تسجيل الدخول مباشرة.');
         } else {
@@ -176,6 +184,7 @@ export default function RegisterPage() {
         }
       } catch (e) {
         if ((e as any)?.name !== 'AbortError') {
+          console.error('[register] Error checking phone:', e);
           setPhoneExistsError('تعذر التحقق من رقم الهاتف. حاول لاحقًا.');
         }
       } finally {

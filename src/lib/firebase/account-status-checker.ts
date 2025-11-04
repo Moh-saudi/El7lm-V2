@@ -16,11 +16,35 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       timestamp: new Date().toISOString()
     });
 
-    // Check in users collection first
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    // Search in all possible collections (same as auth-provider does)
+    const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'users'];
+    let userData = null;
+    let foundCollection = null;
 
-    if (!userDoc.exists()) {
-      console.log('❌ Account Status Check - User document not found:', userId);
+    // Search in parallel across all collections
+    const queries = accountTypes.map(collection =>
+      getDoc(doc(db, collection, userId))
+    );
+
+    const results = await Promise.all(queries);
+
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].exists()) {
+        userData = results[i].data();
+        foundCollection = accountTypes[i];
+        console.log(`✅ Account Status Check - User data found in ${foundCollection}:`, {
+          userId: userId,
+          email: userData.email,
+          accountType: userData.accountType,
+          isActive: userData.isActive,
+          isDeleted: userData.isDeleted
+        });
+        break;
+      }
+    }
+
+    if (!userData) {
+      console.log('❌ Account Status Check - User document not found in any collection:', userId);
       return {
         isActive: false,
         canLogin: false,
@@ -29,32 +53,25 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       };
     }
 
-    const userData = userDoc.data();
-    console.log('📋 Account Status Check - User data found:', {
-      userId: userId,
-      email: userData.email,
-      accountType: userData.accountType,
-      isActive: userData.isActive,
-      isDeleted: userData.isDeleted
-    });
-
-    // Check if account is active
-    if (userData.isActive === false) {
-      const suspendReason = userData.suspendReason || 'لم يتم تحديد السبب';
-      return {
-        isActive: false,
-        canLogin: false,
-        message: `تم إيقاف حسابك مؤقتاً.\n\nالسبب: ${suspendReason}\n\nيرجى التواصل مع الإدارة لإعادة تفعيل الحساب.`,
-        messageType: 'error'
-      };
-    }
-
-    // Check if account is deleted
+    // Check if account is deleted (priority check)
     if (userData.isDeleted === true) {
+      console.log('❌ Account Status Check - Account is deleted:', userId);
       return {
         isActive: false,
         canLogin: false,
         message: 'تم حذف حسابك من النظام. يرجى التواصل مع الإدارة.',
+        messageType: 'error'
+      };
+    }
+
+    // Check if account is active
+    if (userData.isActive === false) {
+      const suspendReason = userData.suspendReason || 'لم يتم تحديد السبب';
+      console.log('⚠️ Account Status Check - Account is suspended:', userId);
+      return {
+        isActive: false,
+        canLogin: false,
+        message: `تم إيقاف حسابك مؤقتاً.\n\nالسبب: ${suspendReason}\n\nيرجى التواصل مع الإدارة لإعادة تفعيل الحساب.`,
         messageType: 'error'
       };
     }

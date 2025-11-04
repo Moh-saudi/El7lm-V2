@@ -475,6 +475,14 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
               href: `/dashboard/admin/convert-dependent-players`,
               color: 'text-orange-600',
               bgColor: 'bg-orange-50'
+            },
+            {
+              id: 'checkPhone',
+              label: 'فحص رقم الهاتف',
+              icon: Search,
+              href: `/dashboard/admin/users/check-phone`,
+              color: 'text-teal-600',
+              bgColor: 'bg-teal-50'
             }
           ]
         },
