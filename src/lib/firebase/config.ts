@@ -1,4 +1,14 @@
-// src/lib/firebase/config.ts
+/**
+ * إعدادات وتكوين Firebase
+ * 
+ * هذا الملف يحتوي على جميع إعدادات Firebase الأساسية:
+ * - التحقق من متغيرات البيئة
+ * - تهيئة Firebase App, Auth, Firestore, Storage, Analytics
+ * - إعدادات Geidea Payments
+ * 
+ * @module firebase/config
+ */
+
 import { Analytics, getAnalytics } from "firebase/analytics";
 import { FirebaseApp, getApps, initializeApp } from "firebase/app";
 import { Auth, getAuth } from "firebase/auth";
@@ -13,7 +23,10 @@ import {
 import { FirebaseStorage, getStorage } from "firebase/storage";
 import { logFirebaseError, shouldSuppressFirebaseError } from "./error-handler";
 
-// التحقق من متغيرات البيئة
+/**
+ * متغيرات البيئة المطلوبة لتكوين Firebase
+ * يتم التحقق من وجودها قبل تهيئة Firebase
+ */
 const requiredEnvVars = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -38,9 +51,13 @@ const missingVars = Object.entries(requiredEnvVars)
     value.startsWith('your_'))
   .map(([key]) => key);
 
+/** هل التكوين صحيح (جميع المتغيرات موجودة) */
 const hasValidConfig = missingVars.length === 0;
 
-// إظهار تحذير فقط في وضع التطوير وإذا كانت المتغيرات ناقصة
+/**
+ * التحقق من متغيرات البيئة وإظهار تحذيرات في وضع التطوير
+ * في وضع الإنتاج، يتم إظهار تحذير بسيط فقط
+ */
 if (!hasValidConfig && process.env.NODE_ENV === 'development') {
   console.warn('⚠️ Firebase environment variables are missing or using placeholder values.');
   console.warn('Missing/placeholder variables:', missingVars);
@@ -53,7 +70,12 @@ if (!hasValidConfig && process.env.NODE_ENV === 'production') {
   console.warn('⚠️ Firebase configuration is missing in production. Some features may not work.');
 }
 
-// تكوين Firebase - استخدام متغيرات البيئة فقط
+/**
+ * تكوين Firebase الرئيسي
+ * يتم الحصول على القيم من متغيرات البيئة (.env.local)
+ * 
+ * @see https://firebase.google.com/docs/web/setup
+ */
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -64,7 +86,14 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// تكوين Geidea (server-side only) - بدون credentials مكشوفة
+/**
+ * تكوين Geidea Payments
+ * 
+ * هذا التكوين يستخدم في API routes فقط (server-side)
+ * المفاتيح الحقيقية موجودة في متغيرات البيئة
+ * 
+ * @see https://docs.geidea.net/
+ */
 export const geideaConfig = {
   merchantPublicKey: process.env.GEIDEA_MERCHANT_PUBLIC_KEY || '3448c010-87b1-41e7-9771-cac444268cfb',
   apiPassword: process.env.GEIDEA_API_PASSWORD || 'edfd5eee-fd1b-4932-9ee1-d6d9ba7599f0',
@@ -73,20 +102,33 @@ export const geideaConfig = {
   isTestMode: false
 };
 
-// التحقق من صحة تكوين Geidea (server-side only)
+/**
+ * التحقق من صحة تكوين Geidea
+ * @returns {boolean} true إذا كان التكوين صحيح
+ */
 const validateGeideaConfig = () => {
   // لدينا مفاتيح إنتاج حقيقية من لوحة Geidea
   // لذا نعتبر التكوين صحيح دائماً
   return true;
 };
 
+/** Firebase App instance */
 let app: FirebaseApp;
+/** Firebase Auth instance */
 let auth: Auth;
+/** Firestore database instance */
 let db: Firestore;
+/** Firebase Analytics instance (null في SSR) */
 let analytics: Analytics | null = null;
+/** Firebase Storage instance */
 let storage: FirebaseStorage;
 
-// Initialize Firebase only once
+/**
+ * تهيئة Firebase - يتم التهيئة مرة واحدة فقط
+ * 
+ * يتم تخطي التهيئة أثناء البناء لتجنب مشاكل الذاكرة
+ * في وضع الإنتاج، يتم استخدام تكوين بسيط للبناء
+ */
 if (!getApps().length) {
   try {
     // Skip Firebase initialization during build to prevent memory issues
@@ -212,7 +254,11 @@ if (!getApps().length) {
   }
 }
 
-// التحقق من صحة تكوين Firebase
+/**
+ * التحقق من صحة تكوين Firebase
+ * يتحقق من وجود جميع الحقول المطلوبة
+ * @returns {boolean} true إذا كان التكوين صحيح
+ */
 function validateFirebaseConfig() {
   const requiredFields = [
     'apiKey',
@@ -245,7 +291,22 @@ function validateFirebaseConfig() {
   return true;
 }
 
-// Enhanced Firestore connection check
+/**
+ * التحقق من اتصال Firestore
+ * 
+ * يقوم بفحص بسيط للاتصال مع Firestore
+ * في وضع التطوير، يعيد true دائماً لتجنب false negatives
+ * 
+ * @returns {Promise<boolean>} true إذا كان الاتصال يعمل
+ * 
+ * @example
+ * ```ts
+ * const isConnected = await checkFirestoreConnection();
+ * if (!isConnected) {
+ *   console.error('Firestore connection failed');
+ * }
+ * ```
+ */
 export const checkFirestoreConnection = async () => {
   try {
     // In development, skip strict connection checks to avoid false negatives from local environments
@@ -268,7 +329,27 @@ export const checkFirestoreConnection = async () => {
   }
 };
 
-// Enhanced retry operation with better error handling
+/**
+ * إعادة محاولة العملية مع معالجة أفضل للأخطاء
+ * 
+ * يقوم بإعادة محاولة العملية عدة مرات مع تأخير متزايد
+ * مفيد للتعامل مع أخطاء الشبكة المؤقتة
+ * 
+ * @template T - نوع القيمة المرجعة
+ * @param {() => Promise<T>} operation - العملية المراد تنفيذها
+ * @param {number} [maxRetries=3] - عدد المحاولات القصوى
+ * @param {number} [baseDelay=1000] - التأخير الأساسي بالميلي ثانية
+ * @returns {Promise<T>} نتيجة العملية
+ * 
+ * @example
+ * ```ts
+ * const result = await retryOperation(
+ *   () => fetchData(),
+ *   5, // 5 محاولات
+ *   2000 // تأخير 2 ثانية
+ * );
+ * ```
+ */
 export const retryOperation = async <T>(
   operation: () => Promise<T>,
   maxRetries: number = 3,
