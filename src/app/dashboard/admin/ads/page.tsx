@@ -35,10 +35,11 @@ import {
    ExternalLink,
    Upload
  } from 'lucide-react';
-import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdAnalytics from '@/components/ads/AdAnalytics';
 import AdFileUpload from '@/components/ads/AdFileUpload';
 import { ensureAdsBucketExists, getAdsStorageStats } from '@/lib/supabase/ads-storage';
@@ -61,6 +62,8 @@ interface Ad {
   updatedAt: Date;
   views: number;
   clicks: number;
+  // Display location - where the ad should appear
+  displayLocation?: 'landing' | 'dashboard' | 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin' | 'all';
   // New popup-specific fields
   popupType: 'modal' | 'toast' | 'banner' | 'side-panel';
   displayDelay: number; // seconds
@@ -103,6 +106,7 @@ export default function AdminAdsPage() {
     isActive: true,
     priority: 1,
     targetAudience: 'new_users',
+    displayLocation: 'all', // Default: show everywhere
     startDate: '',
     endDate: '',
     // New popup fields
@@ -145,6 +149,8 @@ export default function AdminAdsPage() {
     }
   ];
 
+  const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes: ['admin'] });
+
   useEffect(() => {
     fetchAds();
     checkBucketStatus();
@@ -185,28 +191,28 @@ export default function AdminAdsPage() {
     }
   };
 
-     const handleSubmit = async (e: React.FormEvent) => {
-     e.preventDefault();
-     try {
-       // Handle custom URL logic
-       let finalCtaUrl = formData.ctaUrl;
-       if (formData.ctaUrl === 'custom' && formData.customUrl) {
-         // Validate custom URL
-         if (!formData.customUrl.startsWith('http://') && !formData.customUrl.startsWith('https://')) {
-           alert('يجب أن يبدأ الرابط المخصص بـ http:// أو https://');
-           return;
-         }
-         finalCtaUrl = formData.customUrl;
-       }
-       
-       const adData: Partial<Ad> = {
-         ...formData,
-         ctaUrl: finalCtaUrl,
-         createdAt: editingAd ? editingAd.createdAt : new Date(),
-         updatedAt: new Date(),
-         views: editingAd?.views || 0,
-         clicks: editingAd?.clicks || 0
-       };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Handle custom URL logic
+      let finalCtaUrl = formData.ctaUrl;
+      if (formData.ctaUrl === 'custom' && formData.customUrl) {
+        // Validate custom URL
+        if (!formData.customUrl.startsWith('http://') && !formData.customUrl.startsWith('https://')) {
+          alert('يجب أن يبدأ الرابط المخصص بـ http:// أو https://');
+          return;
+        }
+        finalCtaUrl = formData.customUrl;
+      }
+      
+      const adData: Partial<Ad> = {
+        ...formData,
+        ctaUrl: finalCtaUrl,
+        createdAt: editingAd ? editingAd.createdAt : new Date(),
+        updatedAt: new Date(),
+        views: editingAd?.views || 0,
+        clicks: editingAd?.clicks || 0
+      };
 
       if (editingAd?.id) {
         await updateDoc(doc(db, 'ads', editingAd.id), adData);
@@ -223,38 +229,39 @@ export default function AdminAdsPage() {
     }
   };
 
-     const handleEdit = (ad: Ad) => {
-     setEditingAd(ad);
-     
-     // Handle custom URL logic for editing
-     let ctaUrl = ad.ctaUrl || '';
-     let customUrl = '';
-     
-     // Check if the URL is one of our predefined options
-     const predefinedUrls = [
-       '/auth/register', '/auth/login', '/dashboard', '/dashboard/player', 
-       '/dashboard/club', '/dashboard/academy', '/dashboard/trainer', '/dashboard/agent',
-       '/pricing', '/about', '/contact', '/features', '/testimonials', 
-       '/blog', '/support', '/careers', '/platform', '/dashboard/dream-academy', 
-       '/dashboard/player/referrals'
-     ];
-     
-     if (ctaUrl && !predefinedUrls.includes(ctaUrl)) {
-       customUrl = ctaUrl;
-       ctaUrl = 'custom';
-     }
-     
-     setFormData({
-       title: ad.title,
-       description: ad.description,
-       type: ad.type,
-       mediaUrl: ad.mediaUrl || '',
-       ctaText: ad.ctaText || '',
-       ctaUrl: ctaUrl,
-       customUrl: customUrl,
+  const handleEdit = (ad: Ad) => {
+    setEditingAd(ad);
+    
+    // Handle custom URL logic for editing
+    let ctaUrl = ad.ctaUrl || '';
+    let customUrl = '';
+    
+    // Check if the URL is one of our predefined options
+    const predefinedUrls = [
+      '/auth/register', '/auth/login', '/dashboard', '/dashboard/player', 
+      '/dashboard/club', '/dashboard/academy', '/dashboard/trainer', '/dashboard/agent',
+      '/pricing', '/about', '/contact', '/features', '/testimonials', 
+      '/blog', '/support', '/careers', '/platform', '/dashboard/dream-academy', 
+      '/dashboard/player/referrals'
+    ];
+    
+    if (ctaUrl && !predefinedUrls.includes(ctaUrl)) {
+      customUrl = ctaUrl;
+      ctaUrl = 'custom';
+    }
+    
+    setFormData({
+      title: ad.title,
+      description: ad.description,
+      type: ad.type,
+      mediaUrl: ad.mediaUrl || '',
+      ctaText: ad.ctaText || '',
+      ctaUrl: ctaUrl,
+      customUrl: customUrl,
       isActive: ad.isActive,
       priority: ad.priority,
       targetAudience: ad.targetAudience,
+      displayLocation: ad.displayLocation || 'all',
       startDate: ad.startDate || '',
       endDate: ad.endDate || '',
       // Popup fields
@@ -267,7 +274,7 @@ export default function AdminAdsPage() {
       showProgressBar: ad.showProgressBar || false,
       urgency: ad.urgency || 'medium',
       discount: ad.discount || '',
-      countdown: ad.countdown || ''
+      countdown: ''
     });
     setShowAddDialog(true);
   };
@@ -295,33 +302,34 @@ export default function AdminAdsPage() {
     }
   };
 
-     const resetForm = () => {
-     setFormData({
-       title: '',
-       description: '',
-       type: 'text',
-       mediaUrl: '',
-       ctaText: '',
-       ctaUrl: '',
-       customUrl: '',
-       isActive: true,
-       priority: 1,
-       targetAudience: 'new_users',
-       startDate: '',
-       endDate: '',
-       // Reset popup fields
-       popupType: 'modal',
-       displayDelay: 3,
-       maxDisplays: 1,
-       displayFrequency: 'once',
-       showCloseButton: true,
-       autoClose: 0,
-       showProgressBar: false,
-       urgency: 'medium',
-       discount: '',
-       countdown: ''
-     });
-   };
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      type: 'text',
+      mediaUrl: '',
+      ctaText: '',
+      ctaUrl: '',
+      customUrl: '',
+      isActive: true,
+      priority: 1,
+      targetAudience: 'new_users',
+      displayLocation: 'all',
+      startDate: '',
+      endDate: '',
+      // Reset popup fields
+      popupType: 'modal',
+      displayDelay: 3,
+      maxDisplays: 1,
+      displayFrequency: 'once',
+      showCloseButton: true,
+      autoClose: 0,
+      showProgressBar: false,
+      urgency: 'medium',
+      discount: '',
+      countdown: ''
+    });
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -347,13 +355,20 @@ export default function AdminAdsPage() {
     }
   };
 
+  if (isCheckingAuth) {
+    return null;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
+
   return (
-    <AccountTypeProtection allowedTypes={['admin']}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          
-          {/* Header */}
-          <div className="mb-6 lg:mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="mb-6">
             {/* تنبيه حالة bucket الإعلانات */}
             {bucketStatus === 'missing' && (
               <div className="mb-4 lg:mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 lg:p-6">
@@ -385,18 +400,18 @@ export default function AdminAdsPage() {
               </div>
             )}
             
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex-1">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">إدارة الإعلانات</h1>
-                <p className="text-gray-600 text-sm lg:text-base">إدارة الإعلانات المعروضة على صفحة الترحيب</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">إدارة الإعلانات</h1>
+                <p className="text-gray-600">إدارة الإعلانات المعروضة على صفحة الترحيب</p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button 
                   onClick={() => setShowAnalytics(true)}
                   variant="outline"
-                  className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 px-4 lg:px-6 py-2 lg:py-3 h-10 lg:h-12 transition-all duration-200 shadow-sm hover:shadow-md text-sm lg:text-base font-medium"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-100 hover:border-purple-400 hover:text-purple-800 px-4 py-2.5 h-auto transition-all duration-200 shadow-sm hover:shadow-md font-medium"
                 >
-                  <BarChart3 className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  <BarChart3 className="h-4 w-4 mr-2" />
                   التحليلات المتقدمة
                 </Button>
                 <Button 
@@ -405,9 +420,9 @@ export default function AdminAdsPage() {
                     resetForm();
                     setShowAddDialog(true);
                   }}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 px-4 lg:px-8 py-2 lg:py-3 h-10 lg:h-12 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-sm lg:text-base font-semibold"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 px-6 py-2.5 h-auto shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
                 >
-                  <Plus className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  <Plus className="h-4 w-4 mr-2" />
                   إضافة إعلان جديد
                 </Button>
               </div>
@@ -415,17 +430,17 @@ export default function AdminAdsPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {stats.map((stat, index) => (
-              <Card key={index} className="hover:shadow-lg transition-all duration-300 hover:scale-105 border-0 bg-gradient-to-br from-white to-gray-50">
-                <CardContent className="p-4 lg:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                      <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stat.value}</p>
+              <Card key={index} className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-white overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-500 mb-2 truncate">{stat.title}</p>
+                      <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
                     </div>
-                    <div className="p-3 lg:p-4 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 shadow-inner">
-                      <stat.icon className={`h-6 w-6 lg:h-7 lg:w-7 ${stat.color}`} />
+                    <div className="ml-4 p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex-shrink-0">
+                      {React.createElement(stat.icon as any, { className: `h-6 w-6 ${stat.color}` })}
                     </div>
                   </div>
                 </CardContent>
@@ -434,20 +449,20 @@ export default function AdminAdsPage() {
             
             {/* Storage Stats Card */}
             {bucketStatus === 'exists' && storageStats && (
-              <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-                <CardContent className="p-4 lg:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs lg:text-sm font-medium text-blue-600 mb-1">ملفات التخزين</p>
-                      <p className="text-2xl lg:text-3xl font-bold text-blue-900">{storageStats.totalFiles}</p>
-                      <div className="text-xs text-blue-600 mt-1 space-y-0.5">
-                        <div>الصور: {storageStats.imagesCount}</div>
-                        <div>الفيديوهات: {storageStats.videosCount}</div>
-                        <div>الحجم: {(storageStats.totalSize / (1024 * 1024)).toFixed(1)}MB</div>
+              <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-600 mb-2">ملفات التخزين</p>
+                      <p className="text-3xl font-bold text-blue-900 mb-2">{storageStats.totalFiles}</p>
+                      <div className="text-xs text-blue-600 space-y-0.5">
+                        <div className="truncate">الصور: {storageStats.imagesCount}</div>
+                        <div className="truncate">الفيديوهات: {storageStats.videosCount}</div>
+                        <div className="truncate">الحجم: {(storageStats.totalSize / (1024 * 1024)).toFixed(1)}MB</div>
                       </div>
                     </div>
-                    <div className="p-3 lg:p-4 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-200 shadow-inner">
-                      <Upload className="h-6 w-6 lg:h-7 lg:w-7 text-blue-600" />
+                    <div className="ml-4 p-3 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-200 flex-shrink-0">
+                      <Upload className="h-6 w-6 text-blue-600" />
                     </div>
                   </div>
                 </CardContent>
@@ -456,7 +471,7 @@ export default function AdminAdsPage() {
           </div>
 
           {/* Ads Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {loading ? (
               <div className="col-span-full text-center py-12 lg:py-16">
                 <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 lg:mb-6 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin shadow-lg"></div>
@@ -484,103 +499,115 @@ export default function AdminAdsPage() {
               </div>
             ) : (
               ads.map((ad) => (
-                <Card key={ad.id} className="hover:shadow-lg transition-all duration-300 hover:scale-105 border-0 bg-gradient-to-br from-white to-gray-50 overflow-hidden group">
-                  <CardHeader className="pb-3 lg:pb-4 bg-gradient-to-r from-gray-50 to-gray-100">
-                    <div className="flex items-center justify-between mb-2 lg:mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 lg:p-2 rounded-lg bg-white shadow-sm">
+                <Card key={ad.id} className="flex flex-col h-full hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-white overflow-hidden group">
+                  <CardHeader className="pb-4 bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="p-2 rounded-lg bg-white shadow-sm flex-shrink-0">
                           {getTypeIcon(ad.type)}
                         </div>
-                        <Badge className={`${getTypeColor(ad.type)} shadow-sm text-xs lg:text-sm px-2 py-1`}>
+                        <Badge className={`${getTypeColor(ad.type)} text-xs px-2 py-1 flex-shrink-0`}>
                           {ad.type === 'video' ? 'فيديو' : ad.type === 'image' ? 'صورة' : 'نص'}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={`${getAudienceColor(ad.targetAudience)} shadow-sm text-xs lg:text-sm px-2 py-1`}>
-                          {ad.targetAudience === 'new_users' ? 'مستخدمين جدد' : 
-                           ad.targetAudience === 'returning_users' ? 'مستخدمين عائدين' : 'الجميع'}
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <Badge className={`text-xs px-2 py-0.5 ${ad.displayLocation === 'all' ? 'bg-purple-100 text-purple-700 border border-purple-300' : 
+                          ad.displayLocation === 'landing' ? 'bg-blue-100 text-blue-700 border border-blue-300' :
+                          ad.displayLocation === 'player' ? 'bg-green-100 text-green-700 border border-green-300' :
+                          ad.displayLocation === 'club' ? 'bg-orange-100 text-orange-700 border border-orange-300' :
+                          ad.displayLocation === 'academy' ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' :
+                          'bg-gray-100 text-gray-700 border border-gray-300'}`}>
+                          {ad.displayLocation === 'all' ? '🌐 الكل' :
+                           ad.displayLocation === 'landing' ? '🏠 الرئيسية' :
+                           ad.displayLocation === 'dashboard' ? '📊 عام' :
+                           ad.displayLocation === 'player' ? '⚽ لاعب' :
+                           ad.displayLocation === 'club' ? '🏟️ نادي' :
+                           ad.displayLocation === 'academy' ? '🎓 أكاديمية' :
+                           ad.displayLocation === 'trainer' ? '👨‍🏫 مدرب' :
+                           ad.displayLocation === 'agent' ? '🤝 وكيل' :
+                           ad.displayLocation === 'admin' ? '⚙️ أدمن' : '🌐 الكل'}
                         </Badge>
-                        <div className="bg-white p-1.5 lg:p-2 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-2">
                           <Switch
                             checked={ad.isActive}
                             onCheckedChange={() => toggleActive(ad)}
-                            className={`${ad.isActive ? 'bg-green-600' : 'bg-gray-300'}`}
+                            className={`${ad.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'} flex-shrink-0`}
                           />
-                          <Badge className={`mt-1 text-xs ${ad.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {ad.isActive ? 'نشط' : 'معطل'}
-                          </Badge>
                         </div>
                       </div>
+                      <Badge className={`text-xs px-2 py-0.5 ${ad.isActive ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>
+                        {ad.isActive ? 'نشط' : 'معطل'}
+                      </Badge>
                     </div>
-                    <CardTitle className="text-lg lg:text-xl font-bold text-gray-900 mb-2">{ad.title}</CardTitle>
-                    <CardDescription className="line-clamp-2 text-gray-600 leading-relaxed text-sm lg:text-base">
+                    <CardTitle className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{ad.title}</CardTitle>
+                    <CardDescription className="line-clamp-2 text-gray-600 text-sm leading-relaxed">
                       {ad.description}
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="p-4 lg:p-6">
+                  <CardContent className="p-5 flex-1 flex flex-col">
                     {ad.mediaUrl && (
-                      <div className="mb-3 lg:mb-4">
+                      <div className="mb-4 flex-shrink-0">
                         {ad.type === 'image' ? (
-                          <div className="relative overflow-hidden rounded-lg lg:rounded-xl">
+                          <div className="relative overflow-hidden rounded-lg aspect-video">
                             <img 
                               src={ad.mediaUrl} 
                               alt={ad.title}
-                              className="w-full h-32 lg:h-40 object-cover transition-transform duration-300 group-hover:scale-110"
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
                           </div>
                         ) : ad.type === 'video' ? (
-                          <div className="w-full h-32 lg:h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg lg:rounded-xl flex items-center justify-center relative overflow-hidden">
-                            <Video className="h-8 w-8 lg:h-12 lg:w-12 text-gray-400 relative z-10" />
+                          <div className="w-full aspect-video bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center relative overflow-hidden">
+                            <Video className="h-10 w-10 text-purple-400 relative z-10" />
                             <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 to-blue-100/50"></div>
                           </div>
                         ) : null}
                       </div>
                     )}
                     
-                    <div className="space-y-2 lg:space-y-3 text-xs lg:text-sm">
-                      <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-lg">
-                        <Calendar className="h-3 w-3 lg:h-4 lg:w-4 text-blue-600" />
-                        <span className="text-blue-700 font-medium">الأولوية: {ad.priority}</span>
+                    <div className="space-y-2 text-sm flex-1">
+                      <div className="flex items-center gap-2 bg-blue-50 p-2.5 rounded-lg">
+                        <Calendar className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        <span className="text-blue-700 font-medium text-xs">الأولوية: {ad.priority}</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-green-50 p-2 rounded-lg">
-                        <Users className="h-3 w-3 lg:h-4 lg:w-4 text-green-600" />
-                        <span className="text-green-700 font-medium">المشاهدات: {ad.views}</span>
+                      <div className="flex items-center gap-2 bg-green-50 p-2.5 rounded-lg">
+                        <Users className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-green-700 font-medium text-xs">المشاهدات: {ad.views.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-orange-50 p-2 rounded-lg">
-                        <Target className="h-3 w-3 lg:h-4 lg:w-4 text-orange-600" />
-                        <span className="text-orange-700 font-medium">النقرات: {ad.clicks}</span>
+                      <div className="flex items-center gap-2 bg-orange-50 p-2.5 rounded-lg">
+                        <Target className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                        <span className="text-orange-700 font-medium text-xs">النقرات: {ad.clicks.toLocaleString()}</span>
                       </div>
                       {ad.ctaUrl && (
-                        <div className="flex items-center gap-2 bg-indigo-50 p-2 rounded-lg">
-                          <ExternalLink className="h-3 w-3 lg:h-4 lg:w-4 text-indigo-600" />
-                          <span className="text-indigo-700 font-medium text-xs">
-                            وجهة: {ad.ctaUrl.startsWith('http') ? 'رابط خارجي' : ad.ctaUrl}
+                        <div className="flex items-center gap-2 bg-indigo-50 p-2.5 rounded-lg">
+                          <ExternalLink className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                          <span className="text-indigo-700 font-medium text-xs truncate">
+                            {ad.ctaUrl.startsWith('http') ? 'رابط خارجي' : ad.ctaUrl}
                           </span>
                         </div>
                       )}
                       
-                      {/* Popup Info */}
-                      <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-2 lg:p-3 rounded-lg border border-purple-100 mt-3 lg:mt-4">
+                      {/* Popup Info - Compact */}
+                      <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-3 rounded-lg border border-purple-100 mt-3">
                         <div className="flex items-center gap-2 mb-2">
-                          <Zap className="h-3 w-3 lg:h-4 lg:w-4 text-purple-600" />
-                          <span className="text-xs lg:text-sm font-semibold text-purple-700">إعدادات النافذة المنبثقة</span>
+                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-purple-700">إعدادات النافذة</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 lg:gap-2 text-xs">
-                          <div className="flex items-center gap-1 bg-white p-1 rounded">
-                            <span className="text-purple-600 font-medium">النوع:</span>
-                            <Badge variant="outline" className="text-xs px-1 lg:px-2 py-0 border-purple-200 text-purple-700">
+                        <div className="grid grid-cols-2 gap-1.5 text-xs">
+                          <div className="bg-white p-1.5 rounded text-center">
+                            <span className="text-purple-600 font-medium block mb-0.5">النوع</span>
+                            <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-purple-200 text-purple-700">
                               {ad.popupType === 'modal' ? 'مركزي' : 
                                ad.popupType === 'toast' ? 'إشعار' : 
                                ad.popupType === 'banner' ? 'شريط' : 'جانبي'}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1 bg-white p-1 rounded">
-                            <span className="text-purple-600 font-medium">الأهمية:</span>
+                          <div className="bg-white p-1.5 rounded text-center">
+                            <span className="text-purple-600 font-medium block mb-0.5">الأهمية</span>
                             <Badge 
                               variant="outline" 
-                              className={`text-xs px-1 lg:px-2 py-0 ${
+                              className={`text-xs px-1.5 py-0.5 ${
                                 ad.urgency === 'critical' ? 'border-red-200 text-red-700' :
                                 ad.urgency === 'high' ? 'border-orange-200 text-orange-700' :
                                 ad.urgency === 'medium' ? 'border-blue-200 text-blue-700' :
@@ -592,37 +619,27 @@ export default function AdminAdsPage() {
                                ad.urgency === 'medium' ? 'عادي' : 'منخفض'}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1 bg-white p-1 rounded">
-                            <span className="text-purple-600 font-medium">التأخير:</span>
-                            <span className="text-purple-700">{ad.displayDelay || 3}s</span>
-                          </div>
-                          <div className="flex items-center gap-1 bg-white p-1 rounded">
-                            <span className="text-purple-600 font-medium">التكرار:</span>
-                            <span className="text-purple-700">{ad.displayFrequency === 'once' ? 'مرة' :
-                                   ad.displayFrequency === 'daily' ? 'يومي' :
-                                   ad.displayFrequency === 'weekly' ? 'أسبوعي' : 'دائم'}</span>
-                          </div>
                         </div>
                         
                         {/* Special Features */}
                         {(ad.discount || ad.countdown || ad.autoClose) && (
-                          <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-purple-200">
-                            <div className="flex flex-wrap gap-1 lg:gap-2">
+                          <div className="mt-2 pt-2 border-t border-purple-200">
+                            <div className="flex flex-wrap gap-1.5 justify-center">
                               {ad.discount && (
-                                <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2 lg:px-3 py-1 shadow-md">
-                                  <Gift className="h-3 w-3 mr-1" />
+                                <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2 py-0.5">
+                                  <Gift className="h-3 w-3 mr-1 inline" />
                                   {ad.discount}
                                 </Badge>
                               )}
                               {ad.countdown && (
-                                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 lg:px-3 py-1 shadow-md">
-                                  <Clock className="h-3 w-3 mr-1" />
+                                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5">
+                                  <Clock className="h-3 w-3 mr-1 inline" />
                                   {ad.countdown}
                                 </Badge>
                               )}
                               {ad.autoClose && ad.autoClose > 0 && (
-                                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 lg:px-3 py-1 shadow-md">
-                                  <Settings className="h-3 w-3 mr-1" />
+                                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-0.5">
+                                  <Settings className="h-3 w-3 mr-1 inline" />
                                   إغلاق تلقائي
                                 </Badge>
                               )}
@@ -632,32 +649,32 @@ export default function AdminAdsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 lg:gap-3 mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 flex-shrink-0">
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => setPreviewAd(ad)}
-                        className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 h-8 lg:h-10 px-2 lg:px-4 text-xs lg:text-sm"
+                        className="flex-1 border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400 hover:text-blue-800 transition-all h-9 text-xs font-medium"
                       >
-                        <Eye className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+                        <Eye className="h-3.5 w-3.5 mr-1" />
                         معاينة
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => handleEdit(ad)}
-                        className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200 h-8 lg:h-10 px-2 lg:px-4 text-xs lg:text-sm"
+                        className="flex-1 border-green-300 text-green-700 hover:bg-green-100 hover:border-green-400 hover:text-green-800 transition-all h-9 text-xs font-medium"
                       >
-                        <Edit className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+                        <Edit className="h-3.5 w-3.5 mr-1" />
                         تعديل
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => handleDelete(ad.id!)}
-                        className="border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 transition-all duration-200 h-8 lg:h-10 px-2 lg:px-4 text-xs lg:text-sm"
+                        className="flex-1 border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 hover:text-red-800 transition-all h-9 text-xs font-medium"
                       >
-                        <Trash2 className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
                         حذف
                       </Button>
                     </div>
@@ -668,531 +685,800 @@ export default function AdminAdsPage() {
           </div>
         </div>
 
-        {/* Add/Edit Dialog */}
+        {/* Add/Edit Dialog - Premium Design */}
         <Dialog open={showAddDialog} onOpenChange={(open) => {
           console.log('Dialog state changing to:', open);
           setShowAddDialog(open);
         }}>
-          <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingAd ? 'تعديل الإعلان' : 'إضافة إعلان جديد'}
-              </DialogTitle>
-              <DialogDescription>
-                قم بإضافة إعلان جديد ليظهر على صفحة الترحيب للعملاء
-              </DialogDescription>
-            </DialogHeader>
-            
-                         <form onSubmit={handleSubmit} className="space-y-8">
-               {/* Basic Information Section */}
-               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
-                   <FileText className="h-5 w-5" />
-                   المعلومات الأساسية
-                 </h3>
-                 
-                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="title" className="text-sm lg:text-base font-semibold text-gray-700">
-                         عنوان الإعلان *
-                       </Label>
-                                             <Input
-                         id="title"
-                         value={formData.title}
-                         onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))}
-                         placeholder="أدخل عنوان الإعلان الجذاب"
-                         required
-                         className="h-14 lg:h-16 border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                       />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="type" className="text-sm lg:text-base font-semibold text-gray-700">
-                         نوع الإعلان *
-                       </Label>
-                      <Select 
-                        value={formData.type} 
-                        onValueChange={(value) => setFormData(prev => ({...prev, type: value as any}))}
-                      >
-                                                 <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                           <SelectValue placeholder="اختر نوع الإعلان" />
-                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="text">📝 نص</SelectItem>
-                          <SelectItem value="image">🖼️ صورة</SelectItem>
-                          <SelectItem value="video">🎥 فيديو</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-               </div>
-
-                             {/* Description Section */}
-               <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-green-800">
-                   <FileText className="h-5 w-5" />
-                   وصف الإعلان
-                 </h3>
-                 
-                                   <div className="space-y-2 lg:space-y-3">
-                                         <Label htmlFor="description" className="text-sm lg:text-base font-semibold text-gray-700">
-                       وصف الإعلان *
-                     </Label>
-                                         <Textarea
-                       id="description"
-                       value={formData.description}
-                       onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
-                       placeholder="اكتب وصفاً مفصلاً ومقنعاً للإعلان..."
-                       rows={4}
-                       required
-                       className="border-gray-300 focus:border-green-500 focus:ring-green-500 bg-white resize-none text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4 min-h-[120px] lg:min-h-[150px]"
-                     />
-                  </div>
-               </div>
-
-                                                           {/* Media Section */}
-                {(formData.type === 'image' || formData.type === 'video') && (
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-purple-800">
-                      {formData.type === 'image' ? <Image className="h-5 w-5" /> : <Video className="h-5 w-5" />}
-                      الوسائط
-                    </h3>
-                    
-                    <div className="space-y-6">
-                      {/* مكون رفع الملفات */}
-                      <AdFileUpload
-                        adId={editingAd?.id || `temp_${Date.now()}`}
-                        fileType={formData.type}
-                        onFileUploaded={(url) => {
-                          console.log('File uploaded successfully, updating formData with URL:', url);
-                          setFormData(prev => {
-                            console.log('Previous formData:', prev);
-                            const newFormData = {...prev, mediaUrl: url};
-                            console.log('New formData:', newFormData);
-                            return newFormData;
-                          });
-                        }}
-                        onFileDeleted={() => {
-                          setFormData(prev => ({...prev, mediaUrl: ''}));
-                        }}
-                        currentFileUrl={formData.mediaUrl}
-                      />
-                      
-                      {/* حقل الرابط اليدوي (اختياري) */}
-                      <div className="space-y-2 lg:space-y-3">
-                        <Label htmlFor="mediaUrl" className="text-sm lg:text-base font-semibold text-gray-700">
-                          أو أدخل رابط {formData.type === 'image' ? 'الصورة' : 'الفيديو'} يدوياً
-                        </Label>
-                        <Input
-                          id="mediaUrl"
-                          value={formData.mediaUrl}
-                          onChange={(e) => setFormData(prev => ({...prev, mediaUrl: e.target.value}))}
-                          placeholder={`أدخل رابط ${formData.type === 'image' ? 'الصورة' : 'الفيديو'} (https://example.com/image.jpg)`}
-                          className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                        />
-                        <p className="text-xs lg:text-sm text-gray-600">
-                          يمكنك رفع ملف من جهازك أعلاه أو إدخال رابط خارجي هنا
-                        </p>
+          <DialogContent className="max-w-[98vw] lg:max-w-7xl max-h-[96vh] overflow-hidden p-0 bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-0">
+            <form onSubmit={handleSubmit} className="flex flex-col h-full">
+              {/* Premium Header with Glass Effect */}
+              <div className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-8 py-5 overflow-hidden">
+                {/* Animated Background Pattern */}
+                <div className="absolute inset-0 opacity-30">
+                  <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+                  <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+                  <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+                </div>
+                
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="relative p-3 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+                      <div className="relative">
+                        {editingAd ? (
+                          <Edit className="h-6 w-6 text-white drop-shadow-lg" />
+                        ) : (
+                          <Plus className="h-6 w-6 text-white drop-shadow-lg" />
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
-
-                             {/* Call to Action Section */}
-               <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-orange-800">
-                   <Target className="h-5 w-5" />
-                   زر الدعوة للعمل
-                 </h3>
-                 
-                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="ctaText" className="text-sm lg:text-base font-semibold text-gray-700">
-                         نص الزر
-                       </Label>
-                                             <Input
-                         id="ctaText"
-                         value={formData.ctaText}
-                         onChange={(e) => setFormData(prev => ({...prev, ctaText: e.target.value}))}
-                         placeholder="مثال: اشترك الآن، احصل على الخصم، تعرف على المزيد"
-                         className="h-14 lg:h-16 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                       />
+                    <div>
+                      <DialogTitle className="text-2xl font-extrabold text-white mb-1 drop-shadow-lg tracking-tight">
+                        {editingAd ? '✏️ تعديل الإعلان' : '✨ إنشاء إعلان جديد'}
+                      </DialogTitle>
+                      <DialogDescription className="text-white/80 text-sm font-medium">
+                        صمم إعلانك الاحترافي بخطوات بسيطة
+                      </DialogDescription>
                     </div>
-                    
-                                         <div className="space-y-2 lg:space-y-3">
-                       <Label htmlFor="ctaUrl" className="text-sm lg:text-base font-semibold text-gray-700">
-                         وجهة الزر
-                       </Label>
-                       <p className="text-xs lg:text-sm text-gray-600 -mt-1">
-                         اختر وجهة الزر أو اختر "رابط مخصص" لإدخال رابط خارجي (WhatsApp، مواقع خارجية، إلخ)
-                       </p>
-                       <Select 
-                         value={formData.ctaUrl} 
-                         onValueChange={(value) => setFormData(prev => ({...prev, ctaUrl: value}))}
-                       >
-                         <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                           <SelectValue placeholder="اختر وجهة الزر" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="/auth/register">📝 التسجيل</SelectItem>
-                           <SelectItem value="/auth/login">🔑 تسجيل الدخول</SelectItem>
-                           <SelectItem value="/dashboard">🏠 لوحة التحكم</SelectItem>
-                           <SelectItem value="/dashboard/player">⚽ لوحة اللاعب</SelectItem>
-                           <SelectItem value="/dashboard/club">🏟️ لوحة النادي</SelectItem>
-                           <SelectItem value="/dashboard/academy">🎓 لوحة الأكاديمية</SelectItem>
-                           <SelectItem value="/dashboard/trainer">👨‍🏫 لوحة المدرب</SelectItem>
-                           <SelectItem value="/dashboard/agent">🤝 لوحة الوكيل</SelectItem>
-                           <SelectItem value="/pricing">💰 الأسعار</SelectItem>
-                           <SelectItem value="/about">ℹ️ من نحن</SelectItem>
-                           <SelectItem value="/contact">📞 اتصل بنا</SelectItem>
-                           <SelectItem value="/features">✨ المميزات</SelectItem>
-                           <SelectItem value="/testimonials">💬 آراء العملاء</SelectItem>
-                           <SelectItem value="/blog">📰 المدونة</SelectItem>
-                           <SelectItem value="/support">🆘 الدعم الفني</SelectItem>
-                           <SelectItem value="/careers">💼 الوظائف</SelectItem>
-                           <SelectItem value="/platform">📋 شرح المنصة</SelectItem>
-                           <SelectItem value="/dashboard/dream-academy">🎯 مدرسة الحلم</SelectItem>
-                           <SelectItem value="/dashboard/player/referrals">🔗 نظام الإحالات</SelectItem>
-                           <SelectItem value="custom">🔗 رابط مخصص</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
                   </div>
                   
-                                     {/* Custom URL Input - Only show when "custom" is selected */}
-                   {formData.ctaUrl === 'custom' && (
-                     <div className="space-y-2 lg:space-y-3 mt-4">
-                       <Label htmlFor="customUrl" className="text-sm lg:text-base font-semibold text-gray-700">
-                         الرابط المخصص
-                       </Label>
-                       <p className="text-xs lg:text-sm text-gray-600 -mt-1">
-                         أدخل الرابط الكامل مع https:// أو http:// (مثال: https://example.com أو https://wa.me/1234567890)
-                       </p>
-                      <Input
-                        id="customUrl"
-                        value={formData.customUrl || ''}
-                        onChange={(e) => setFormData(prev => ({...prev, customUrl: e.target.value}))}
-                        placeholder="https://example.com أو https://wa.me/1234567890"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                  )}
-               </div>
-
-                             {/* Settings Section */}
-               <div className="bg-gradient-to-r from-teal-50 to-cyan-50 p-6 rounded-xl border border-teal-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-teal-800">
-                   <Settings className="h-5 w-5" />
-                   الإعدادات الأساسية
-                 </h3>
-                 
-                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="priority" className="text-sm lg:text-base font-semibold text-gray-700">
-                         الأولوية
-                       </Label>
-                                             <Input
-                         id="priority"
-                         type="number"
-                         value={formData.priority}
-                         onChange={(e) => setFormData(prev => ({...prev, priority: parseInt(e.target.value)}))}
-                         min="1"
-                         max="10"
-                         className="h-14 lg:h-16 border-gray-300 focus:border-teal-500 focus:ring-teal-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                       />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="targetAudience" className="text-sm lg:text-base font-semibold text-gray-700">
-                         الجمهور المستهدف
-                       </Label>
-                      <Select 
-                        value={formData.targetAudience} 
-                        onValueChange={(value) => setFormData(prev => ({...prev, targetAudience: value as any}))}
-                      >
-                                                 <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-teal-500 focus:ring-teal-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                           <SelectValue />
-                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">👥 الجميع</SelectItem>
-                          <SelectItem value="new_users">🆕 مستخدمين جدد</SelectItem>
-                          <SelectItem value="returning_users">🔄 مستخدمين عائدين</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                                       <div className="flex items-center justify-between bg-white p-3 lg:p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          id="isActive"
-                          checked={formData.isActive}
-                          onCheckedChange={(checked) => setFormData(prev => ({...prev, isActive: checked}))}
-                          className={`${formData.isActive ? 'bg-green-600' : 'bg-gray-300'}`}
-                        />
-                                                 <Label htmlFor="isActive" className="text-sm lg:text-base font-semibold text-gray-700">حالة الإعلان</Label>
+                  {/* Enhanced Progress Indicator */}
+                  <div className="flex items-center gap-3 bg-white/15 backdrop-blur-xl rounded-2xl px-5 py-2.5 border border-white/20 shadow-xl">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`relative w-3 h-3 rounded-full ${formData.title && formData.description ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50' : 'bg-white/40'}`}>
+                        {formData.title && formData.description && (
+                          <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                        )}
                       </div>
-                      <Badge className={`${formData.isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'} text-xs lg:text-sm`}>
-                        {formData.isActive ? 'نشط' : 'غير نشط'}
-                      </Badge>
-                    </div>
-                 </div>
-               </div>
-
-                             {/* Schedule Section */}
-               <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-indigo-800">
-                   <Calendar className="h-5 w-5" />
-                   جدولة الإعلان
-                 </h3>
-                 
-                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="startDate" className="text-sm lg:text-base font-semibold text-gray-700">
-                         تاريخ البداية
-                       </Label>
-                                             <Input
-                         id="startDate"
-                         type="date"
-                         value={formData.startDate}
-                         onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
-                         className="h-14 lg:h-16 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                       />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                                             <Label htmlFor="endDate" className="text-sm lg:text-base font-semibold text-gray-700">
-                         تاريخ النهاية
-                       </Label>
-                                             <Input
-                         id="endDate"
-                         type="date"
-                         value={formData.endDate}
-                         onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
-                         className="h-14 lg:h-16 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                       />
+                      <span className="text-xs font-bold text-white tracking-wide">
+                        {formData.title && formData.description ? '✅ جاهز للنشر' : '⏳ قيد الإنشاء'}
+                      </span>
                     </div>
                   </div>
-               </div>
-
-                             {/* Popup Settings Section */}
-               <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-xl border border-purple-100">
-                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-purple-800">
-                   <Zap className="h-5 w-5" />
-                   إعدادات النافذة المنبثقة
-                 </h3>
-                
-                                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-4 lg:mb-6">
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="popupType" className="text-sm lg:text-base font-semibold text-gray-700">
-                        نوع النافذة المنبثقة
-                      </Label>
-                      <Select 
-                        value={formData.popupType} 
-                        onValueChange={(value) => setFormData(prev => ({...prev, popupType: value as any}))}
-                      >
-                        <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="modal">🎯 نافذة مركزية</SelectItem>
-                          <SelectItem value="toast">🔔 إشعار صغير</SelectItem>
-                          <SelectItem value="banner">📢 شريط علوي</SelectItem>
-                          <SelectItem value="side-panel">📋 لوحة جانبية</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="displayDelay" className="text-sm lg:text-base font-semibold text-gray-700">
-                        تأخير العرض (ثواني)
-                      </Label>
-                      <Input
-                        id="displayDelay"
-                        type="number"
-                        value={formData.displayDelay}
-                        onChange={(e) => setFormData(prev => ({...prev, displayDelay: parseInt(e.target.value)}))}
-                        min="0"
-                        max="60"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="urgency" className="text-sm lg:text-base font-semibold text-gray-700">
-                        مستوى الأهمية
-                      </Label>
-                      <Select 
-                        value={formData.urgency} 
-                        onValueChange={(value) => setFormData(prev => ({...prev, urgency: value as any}))}
-                      >
-                        <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">🟢 منخفض</SelectItem>
-                          <SelectItem value="medium">🟡 عادي</SelectItem>
-                          <SelectItem value="high">🟠 مهم</SelectItem>
-                          <SelectItem value="critical">🔴 عاجل</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-4 lg:mb-6">
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="displayFrequency" className="text-sm lg:text-base font-semibold text-gray-700">
-                        تكرار العرض
-                      </Label>
-                      <Select 
-                        value={formData.displayFrequency} 
-                        onValueChange={(value) => setFormData(prev => ({...prev, displayFrequency: value as any}))}
-                      >
-                        <SelectTrigger className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="once">1️⃣ مرة</SelectItem>
-                          <SelectItem value="daily">📅 يومياً</SelectItem>
-                          <SelectItem value="weekly">📆 أسبوعياً</SelectItem>
-                          <SelectItem value="always">♾️ دائماً</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="maxDisplays" className="text-sm lg:text-base font-semibold text-gray-700">
-                        الحد الأقصى للعرض
-                      </Label>
-                      <Input
-                        id="maxDisplays"
-                        type="number"
-                        value={formData.maxDisplays}
-                        onChange={(e) => setFormData(prev => ({...prev, maxDisplays: parseInt(e.target.value)}))}
-                        min="1"
-                        max="100"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="autoClose" className="text-sm lg:text-base font-semibold text-gray-700">
-                        إغلاق تلقائي (ثواني)
-                      </Label>
-                      <Input
-                        id="autoClose"
-                        type="number"
-                        value={formData.autoClose}
-                        onChange={(e) => setFormData(prev => ({...prev, autoClose: parseInt(e.target.value)}))}
-                        min="0"
-                        max="300"
-                        placeholder="0 = لا إغلاق تلقائي"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                  </div>
-
-                                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-4 lg:mb-6">
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="discount" className="text-sm lg:text-base font-semibold text-gray-700">
-                        نص الخصم/العرض
-                      </Label>
-                      <Input
-                        id="discount"
-                        value={formData.discount}
-                        onChange={(e) => setFormData(prev => ({...prev, discount: e.target.value}))}
-                        placeholder="مثال: خصم 50% لفترة محدودة"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2 lg:space-y-3">
-                      <Label htmlFor="countdown" className="text-sm lg:text-base font-semibold text-gray-700">
-                        العد التنازلي
-                      </Label>
-                      <Input
-                        id="countdown"
-                        value={formData.countdown}
-                        onChange={(e) => setFormData(prev => ({...prev, countdown: e.target.value}))}
-                        placeholder="مثال: 2h 30m 15s"
-                        className="h-14 lg:h-16 border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white text-base lg:text-lg px-4 lg:px-6 py-3 lg:py-4"
-                      />
-                    </div>
-                  </div>
-
-                                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    <div className="flex items-center justify-between bg-white p-3 lg:p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          id="showCloseButton"
-                          checked={formData.showCloseButton}
-                          onCheckedChange={(checked) => setFormData(prev => ({...prev, showCloseButton: checked}))}
-                          className={`${formData.showCloseButton ? 'bg-blue-600' : 'bg-gray-300'}`}
-                        />
-                                                 <Label htmlFor="showCloseButton" className="text-sm lg:text-base font-semibold text-gray-700">
-                           إظهار زر الإغلاق
-                         </Label>
-                      </div>
-                      <Badge className={`${formData.showCloseButton ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'} text-xs lg:text-sm`}>
-                        {formData.showCloseButton ? 'مفعل' : 'معطل'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between bg-white p-3 lg:p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          id="showProgressBar"
-                          checked={formData.showProgressBar}
-                          onCheckedChange={(checked) => setFormData(prev => ({...prev, showProgressBar: checked}))}
-                          className={`${formData.showProgressBar ? 'bg-purple-600' : 'bg-gray-300'}`}
-                        />
-                                                 <Label htmlFor="showProgressBar" className="text-sm lg:text-base font-semibold text-gray-700">
-                           إظهار شريط التقدم
-                         </Label>
-                      </div>
-                      <Badge className={`${formData.showProgressBar ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-gray-100 text-gray-700 border-gray-200'} text-xs lg:text-sm`}>
-                        {formData.showProgressBar ? 'مفعل' : 'معطل'}
-                      </Badge>
-                    </div>
-                  </div>
+                </div>
               </div>
 
-                             {/* Form Actions */}
-               <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200">
-                                   <div className="flex flex-col sm:flex-row justify-end gap-3 lg:gap-4">
+              {/* Main Content - Split Layout */}
+              <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+                {/* Left Side - Form */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-8">
+                    <Tabs defaultValue="basic" className="space-y-6">
+                      {/* Premium Tabs Navigation */}
+                      <div className="flex gap-3 border-b-2 border-gray-200/50 pb-3">
+                        <TabsList className="bg-gradient-to-r from-gray-100 to-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/50">
+                          <TabsTrigger 
+                            value="basic" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                          >
+                            <FileText className="h-4 w-4 ml-2" />
+                            المعلومات الأساسية
+                          </TabsTrigger>
+                          <TabsTrigger 
+                            value="media" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                          >
+                            <Image className="h-4 w-4 ml-2" />
+                            الوسائط
+                          </TabsTrigger>
+                          <TabsTrigger 
+                            value="settings" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                          >
+                            <Settings className="h-4 w-4 ml-2" />
+                            الإعدادات
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
+
+                      {/* Tab Content - Basic */}
+                      <TabsContent value="basic" className="mt-6">
+                      <div className="grid grid-cols-2 gap-6">
+                        {/* Right Column - Title, Type, Description */}
+                        <div className="space-y-5">
+                          {/* Title & Type - Premium Card */}
+                          <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                                  <Zap className="h-4 w-4 text-white" />
+                                </div>
+                                معلومات أساسية
+                              </h3>
+                              
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="title" className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5 block">
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                    عنوان الإعلان
+                                  </Label>
+                                  <Input
+                                    id="title"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))}
+                                    placeholder="عنوان جذاب ومميز للإعلان..."
+                                    required
+                                    className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="type" className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5 block">
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                    نوع الإعلان
+                                  </Label>
+                                  <Select 
+                                    value={formData.type} 
+                                    onValueChange={(value) => setFormData(prev => ({...prev, type: value as any}))}
+                                  >
+                                    <SelectTrigger className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-xl shadow-sm focus:shadow-md bg-white">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="text">📝 نص</SelectItem>
+                                      <SelectItem value="image">🖼️ صورة</SelectItem>
+                                      <SelectItem value="video">🎥 فيديو</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Description - Premium Card */}
+                          <div className="relative bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-purple-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-purple-200/20 to-pink-200/20 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                                  <FileText className="h-4 w-4 text-white" />
+                                </div>
+                                وصف الإعلان
+                              </h3>
+                              
+                              <Textarea
+                                id="description"
+                                value={formData.description}
+                                onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
+                                placeholder="اكتب وصفاً مفصلاً وجذاباً يشرح مزايا الإعلان..."
+                                rows={6}
+                                required
+                                className="text-sm resize-none border-2 border-purple-200 focus:border-purple-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Left Column - CTA */}
+                        <div className="space-y-5">
+                          <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-6 rounded-2xl border-2 border-emerald-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-emerald-200/20 to-teal-200/20 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
+                                  <Target className="h-4 w-4 text-white" />
+                                </div>
+                                زر الإجراء (CTA)
+                              </h3>
+                              
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="ctaText" className="text-sm font-bold text-gray-800 mb-2 block">
+                                    نص الزر
+                                  </Label>
+                                  <Input
+                                    id="ctaText"
+                                    value={formData.ctaText}
+                                    onChange={(e) => setFormData(prev => ({...prev, ctaText: e.target.value}))}
+                                    placeholder="مثال: اشترك الآن، احصل على خصم..."
+                                    className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="ctaUrl" className="text-sm font-bold text-gray-800 mb-2 block">
+                                    وجهة الزر
+                                  </Label>
+                                  <Select 
+                                    value={formData.ctaUrl} 
+                                    onValueChange={(value) => setFormData(prev => ({...prev, ctaUrl: value}))}
+                                  >
+                                    <SelectTrigger className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md bg-white">
+                                      <SelectValue placeholder="اختر الوجهة" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="/auth/register">📝 التسجيل</SelectItem>
+                                      <SelectItem value="/auth/login">🔑 تسجيل الدخول</SelectItem>
+                                      <SelectItem value="/dashboard">🏠 لوحة التحكم</SelectItem>
+                                      <SelectItem value="/dashboard/player">⚽ لوحة اللاعب</SelectItem>
+                                      <SelectItem value="/dashboard/club">🏟️ لوحة النادي</SelectItem>
+                                      <SelectItem value="/dashboard/academy">🎓 لوحة الأكاديمية</SelectItem>
+                                      <SelectItem value="/dashboard/trainer">👨‍🏫 لوحة المدرب</SelectItem>
+                                      <SelectItem value="/dashboard/agent">🤝 لوحة الوكيل</SelectItem>
+                                      <SelectItem value="/pricing">💰 الأسعار</SelectItem>
+                                      <SelectItem value="custom">🔗 رابط مخصص</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {formData.ctaUrl === 'custom' && (
+                                  <div>
+                                    <Label htmlFor="customUrl" className="text-sm font-bold text-gray-800 mb-2 block">
+                                      الرابط المخصص
+                                    </Label>
+                                    <Input
+                                      id="customUrl"
+                                      value={formData.customUrl || ''}
+                                      onChange={(e) => setFormData(prev => ({...prev, customUrl: e.target.value}))}
+                                      placeholder="https://example.com"
+                                      className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Premium Tips Card */}
+                          <div className="relative bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 p-6 rounded-2xl border-2 border-amber-200/50 shadow-xl overflow-hidden">
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-200/30 to-orange-200/30 rounded-full blur-3xl"></div>
+                            <div className="relative">
+                              <div className="flex items-start gap-3 mb-3">
+                                <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg">
+                                  <Gift className="h-5 w-5 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-sm font-extrabold text-gray-900 mb-2">💡 نصائح لإعلان ناجح</h3>
+                                  <ul className="text-xs text-gray-700 space-y-1.5 font-medium">
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-amber-600 mt-0.5">✓</span>
+                                      <span>استخدم عنواناً جذاباً ومباشراً</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-amber-600 mt-0.5">✓</span>
+                                      <span>اجعل الوصف واضحاً ومختصراً</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-amber-600 mt-0.5">✓</span>
+                                      <span>اختر CTA قوي ومحفز للنقر</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                      <span className="text-amber-600 mt-0.5">✓</span>
+                                      <span>راجع المعاينة الحية على اليمين ⬅️</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* Tab Content - Media */}
+                    <TabsContent value="media" className="mt-0">
+                      {(formData.type === 'image' || formData.type === 'video') ? (
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Upload Section */}
+                          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                            <h3 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                              <Upload className="h-4 w-4" />
+                              رفع {formData.type === 'image' ? 'صورة' : 'فيديو'}
+                            </h3>
+                            
+                            <AdFileUpload
+                              adId={editingAd?.id || `temp_${Date.now()}`}
+                              fileType={formData.type}
+                              onFileUploaded={(url) => {
+                                setFormData(prev => ({...prev, mediaUrl: url}));
+                              }}
+                              onFileDeleted={() => {
+                                setFormData(prev => ({...prev, mediaUrl: ''}));
+                              }}
+                              currentFileUrl={formData.mediaUrl}
+                            />
+                          </div>
+
+                          {/* Manual URL */}
+                          <div className="bg-violet-50 p-4 rounded-lg border border-violet-200">
+                            <h3 className="text-sm font-bold text-violet-900 mb-3 flex items-center gap-2">
+                              <ExternalLink className="h-4 w-4" />
+                              رابط مباشر
+                            </h3>
+                            
+                            <div>
+                              <Label htmlFor="mediaUrl" className="text-xs font-semibold mb-1.5 block">
+                                أدخل الرابط
+                              </Label>
+                              <Input
+                                id="mediaUrl"
+                                value={formData.mediaUrl}
+                                onChange={(e) => setFormData(prev => ({...prev, mediaUrl: e.target.value}))}
+                                placeholder={`https://example.com/${formData.type === 'image' ? 'image.jpg' : 'video.mp4'}`}
+                                className="h-9 text-sm"
+                              />
+                            </div>
+
+                            {/* Preview if URL exists */}
+                            {formData.mediaUrl && (
+                              <div className="mt-3 p-2 bg-white rounded border">
+                                <p className="text-xs text-gray-600 mb-2">معاينة:</p>
+                                {formData.type === 'image' ? (
+                                  <img src={formData.mediaUrl} alt="Preview" className="w-full h-32 object-cover rounded" />
+                                ) : (
+                                  <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center">
+                                    <Video className="h-10 w-10 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <FileText className="h-16 w-16 text-gray-400 mb-4" />
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">لا يوجد محتوى وسائط</h3>
+                          <p className="text-sm text-gray-600">
+                            اختر "صورة" أو "فيديو" من التبويب الأول
+                          </p>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab Content - Settings */}
+                    <TabsContent value="settings" className="mt-0">
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Right Column - Basic Settings */}
+                        <div className="space-y-4">
+                          {/* Basic Settings */}
+                          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <h3 className="text-sm font-bold text-orange-900 mb-3 flex items-center gap-2">
+                              <Settings className="h-4 w-4" />
+                              إعدادات أساسية
+                            </h3>
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label htmlFor="priority" className="text-xs font-semibold mb-1.5 block">
+                                  الأولوية
+                                </Label>
+                                <Input
+                                  id="priority"
+                                  type="number"
+                                  value={formData.priority}
+                                  onChange={(e) => setFormData(prev => ({...prev, priority: parseInt(e.target.value)}))}
+                                  min="1"
+                                  max="10"
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <Label htmlFor="targetAudience" className="text-xs font-semibold mb-1.5 block">
+                                  الجمهور
+                                </Label>
+                                <Select 
+                                  value={formData.targetAudience} 
+                                  onValueChange={(value) => setFormData(prev => ({...prev, targetAudience: value as any}))}
+                                >
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="all">الجميع</SelectItem>
+                                    <SelectItem value="new_users">جدد</SelectItem>
+                                    <SelectItem value="returning_users">عائدين</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <Label htmlFor="displayLocation" className="text-xs font-semibold mb-1.5 block">
+                                مكان الظهور
+                              </Label>
+                              <Select 
+                                value={formData.displayLocation || 'all'} 
+                                onValueChange={(value) => setFormData(prev => ({...prev, displayLocation: value as any}))}
+                              >
+                                <SelectTrigger className="h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">🌐 جميع الصفحات</SelectItem>
+                                  <SelectItem value="landing">🏠 الصفحة الرئيسية</SelectItem>
+                                  <SelectItem value="dashboard">📊 لوحة التحكم</SelectItem>
+                                  <SelectItem value="player">⚽ لوحة اللاعب</SelectItem>
+                                  <SelectItem value="club">🏟️ لوحة النادي</SelectItem>
+                                  <SelectItem value="academy">🎓 لوحة الأكاديمية</SelectItem>
+                                  <SelectItem value="trainer">👨‍🏫 لوحة المدرب</SelectItem>
+                                  <SelectItem value="agent">🤝 لوحة الوكيل</SelectItem>
+                                  <SelectItem value="admin">⚙️ لوحة الأدمن</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Active Status */}
+                            <div className="mt-3 flex items-center justify-between p-3 bg-white rounded-lg border">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id="isActive"
+                                  checked={formData.isActive}
+                                  onCheckedChange={(checked) => setFormData(prev => ({...prev, isActive: checked}))}
+                                  className={formData.isActive ? 'bg-green-600' : 'bg-gray-300'}
+                                />
+                                <Label htmlFor="isActive" className="text-xs font-semibold">
+                                  حالة الإعلان
+                                </Label>
+                              </div>
+                              <Badge variant={formData.isActive ? "default" : "secondary"} className={`text-xs ${formData.isActive ? "bg-green-500" : ""}`}>
+                                {formData.isActive ? 'نشط' : 'معطل'}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Schedule */}
+                          <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                            <h3 className="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              جدولة العرض
+                            </h3>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor="startDate" className="text-xs font-semibold mb-1.5 block">
+                                  تاريخ البداية
+                                </Label>
+                                <Input
+                                  id="startDate"
+                                  type="date"
+                                  value={formData.startDate}
+                                  onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="endDate" className="text-xs font-semibold mb-1.5 block">
+                                  تاريخ النهاية
+                                </Label>
+                                <Input
+                                  id="endDate"
+                                  type="date"
+                                  value={formData.endDate}
+                                  onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Left Column - Popup Settings */}
+                        <div className="bg-rose-50 p-4 rounded-lg border border-rose-200">
+                          <h3 className="text-sm font-bold text-rose-900 mb-3 flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                            إعدادات النافذة المنبثقة
+                          </h3>
+                          
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <Label htmlFor="popupType" className="text-xs font-semibold mb-1.5 block">
+                                النوع
+                              </Label>
+                              <Select 
+                                value={formData.popupType} 
+                                onValueChange={(value) => setFormData(prev => ({...prev, popupType: value as any}))}
+                              >
+                                <SelectTrigger className="h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="modal">🎯 نافذة مركزية</SelectItem>
+                                  <SelectItem value="toast">🔔 إشعار صغير</SelectItem>
+                                  <SelectItem value="banner">📢 شريط علوي</SelectItem>
+                                  <SelectItem value="side-panel">📋 لوحة جانبية</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="displayDelay" className="text-xs font-semibold mb-1.5 block">
+                                التأخير (ث)
+                              </Label>
+                              <Input
+                                id="displayDelay"
+                                type="number"
+                                value={formData.displayDelay}
+                                onChange={(e) => setFormData(prev => ({...prev, displayDelay: parseInt(e.target.value)}))}
+                                min="0"
+                                max="60"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="displayFrequency" className="text-xs font-semibold mb-1.5 block">
+                                التكرار
+                              </Label>
+                              <Select 
+                                value={formData.displayFrequency} 
+                                onValueChange={(value) => setFormData(prev => ({...prev, displayFrequency: value as any}))}
+                              >
+                                <SelectTrigger className="h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="once">1️⃣ مرة</SelectItem>
+                                  <SelectItem value="daily">📅 يومياً</SelectItem>
+                                  <SelectItem value="weekly">📆 أسبوعياً</SelectItem>
+                                  <SelectItem value="always">♾️ دائماً</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="maxDisplays" className="text-xs font-semibold mb-1.5 block">
+                                الحد الأقصى
+                              </Label>
+                              <Input
+                                id="maxDisplays"
+                                type="number"
+                                value={formData.maxDisplays}
+                                onChange={(e) => setFormData(prev => ({...prev, maxDisplays: parseInt(e.target.value)}))}
+                                min="1"
+                                max="100"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="autoClose" className="text-xs font-semibold mb-1.5 block">
+                                إغلاق تلقائي (ث)
+                              </Label>
+                              <Input
+                                id="autoClose"
+                                type="number"
+                                value={formData.autoClose || 0}
+                                onChange={(e) => setFormData(prev => ({...prev, autoClose: parseInt(e.target.value)}))}
+                                min="0"
+                                max="300"
+                                placeholder="0 = بدون إغلاق"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="urgency" className="text-xs font-semibold mb-1.5 block">
+                                مستوى الأهمية
+                              </Label>
+                              <Select 
+                                value={formData.urgency || 'medium'} 
+                                onValueChange={(value) => setFormData(prev => ({...prev, urgency: value as any}))}
+                              >
+                                <SelectTrigger className="h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="low">🟢 منخفض</SelectItem>
+                                  <SelectItem value="medium">🟡 متوسط</SelectItem>
+                                  <SelectItem value="high">🟠 عالي</SelectItem>
+                                  <SelectItem value="critical">🔴 حرج</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="flex items-center gap-2 p-2 bg-white rounded border">
+                              <Switch
+                                id="showCloseButton"
+                                checked={formData.showCloseButton}
+                                onCheckedChange={(checked) => setFormData(prev => ({...prev, showCloseButton: checked}))}
+                                className={formData.showCloseButton ? 'bg-blue-600' : 'bg-gray-300'}
+                              />
+                              <Label htmlFor="showCloseButton" className="text-xs font-semibold">
+                                زر إغلاق
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2 p-2 bg-white rounded border">
+                              <Switch
+                                id="showProgressBar"
+                                checked={formData.showProgressBar}
+                                onCheckedChange={(checked) => setFormData(prev => ({...prev, showProgressBar: checked}))}
+                                className={formData.showProgressBar ? 'bg-purple-600' : 'bg-gray-300'}
+                              />
+                              <Label htmlFor="showProgressBar" className="text-xs font-semibold">
+                                شريط تقدم
+                              </Label>
+                            </div>
+                          </div>
+
+                          {/* Additional Fields */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="discount" className="text-xs font-semibold mb-1.5 block">
+                                خصم (اختياري)
+                              </Label>
+                              <Input
+                                id="discount"
+                                value={formData.discount || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, discount: e.target.value}))}
+                                placeholder="مثال: 50%"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="countdown" className="text-xs font-semibold mb-1.5 block">
+                                عد تنازلي (اختياري)
+                              </Label>
+                              <Input
+                                id="countdown"
+                                value={formData.countdown || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, countdown: e.target.value}))}
+                                placeholder="مثال: 24:00:00"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                    </Tabs>
+                  </div>
+                </div>
+
+                {/* Right Side - Premium Live Preview */}
+                <div className="w-[420px] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6 flex flex-col border-l-4 border-purple-400 shadow-2xl relative overflow-hidden">
+                  {/* Animated Background */}
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-10 right-10 w-40 h-40 bg-purple-500 rounded-full mix-blend-screen filter blur-2xl animate-pulse"></div>
+                    <div className="absolute bottom-10 left-10 w-32 h-32 bg-pink-500 rounded-full mix-blend-screen filter blur-2xl animate-pulse animation-delay-2000"></div>
+                  </div>
+                  
+                  <div className="relative mb-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="relative p-3 bg-gradient-to-br from-white/25 to-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+                        <Eye className="h-6 w-6 text-white drop-shadow-lg relative z-10" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-extrabold text-white drop-shadow-lg">المعاينة الحية</h3>
+                        <p className="text-xs text-white/80 font-medium">شاهد إعلانك كما سيظهر للمستخدمين</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Premium Live Preview Card */}
+                  <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-6 border-2 border-white/20 shadow-2xl overflow-y-auto">
+                    {formData.title ? (
+                      <div className="bg-white rounded-2xl p-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02]">
+                        <div className="text-center mb-5">
+                          <h3 className="font-extrabold text-gray-900 text-lg mb-3 line-clamp-2 leading-tight">
+                            {formData.title}
+                          </h3>
+                          {formData.description && (
+                            <p className="text-sm text-gray-600 mb-5 line-clamp-4 leading-relaxed">
+                              {formData.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {formData.mediaUrl && (
+                          <div className="my-5">
+                            {formData.type === 'image' ? (
+                              <img 
+                                src={formData.mediaUrl} 
+                                alt="Preview"
+                                className="w-full h-48 object-cover rounded-2xl shadow-xl"
+                              />
+                            ) : formData.type === 'video' ? (
+                              <div className="w-full h-48 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 rounded-2xl flex items-center justify-center shadow-xl">
+                                <Video className="h-20 w-20 text-gray-600" />
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {formData.ctaText && (
+                          <Button 
+                            type="button"
+                            size="sm" 
+                            className="w-full h-12 text-sm bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 font-extrabold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
+                          >
+                            {formData.ctaText}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-white/5 rounded-2xl p-10 text-center border-2 border-dashed border-white/30">
+                        <div className="p-4 bg-white/10 rounded-2xl inline-block mb-4">
+                          <FileText className="h-20 w-20 text-white/40" />
+                        </div>
+                        <p className="text-sm text-white/80 leading-relaxed font-medium">
+                          ابدأ بإدخال البيانات<br />لرؤية المعاينة الحية
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Premium Quick Stats */}
+                  <div className="mt-5 grid grid-cols-3 gap-3">
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-blue-400/20 rounded-full blur-xl"></div>
+                      <div className="relative">
+                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
+                          {formData.priority || 1}
+                        </div>
+                        <div className="text-xs text-white/90 font-bold">الأولوية</div>
+                      </div>
+                    </div>
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-green-400/20 rounded-full blur-xl"></div>
+                      <div className="relative">
+                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
+                          {formData.isActive ? '✓' : '✗'}
+                        </div>
+                        <div className="text-xs text-white/90 font-bold">الحالة</div>
+                      </div>
+                    </div>
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-purple-400/20 rounded-full blur-xl"></div>
+                      <div className="relative">
+                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
+                          {formData.type === 'video' ? '🎥' : formData.type === 'image' ? '🖼️' : '📝'}
+                        </div>
+                        <div className="text-xs text-white/90 font-bold">النوع</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+                
+              {/* Premium Footer */}
+              <div className="relative px-8 py-5 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 border-t-4 border-purple-400 overflow-hidden">
+                <div className="absolute inset-0 bg-black/20"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`relative w-4 h-4 rounded-full ${formData.title && formData.description ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50' : 'bg-white/40'}`}>
+                      {formData.title && formData.description && (
+                        <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                      )}
+                    </div>
+                    <span className="text-sm font-extrabold text-white drop-shadow-lg">
+                      {formData.title && formData.description ? '✅ جاهز للنشر' : '⏳ قيد الإنشاء'}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-4">
                     <Button 
                       type="button" 
                       variant="outline"
                       onClick={() => setShowAddDialog(false)}
-                      className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 px-4 lg:px-8 py-2 lg:py-3 h-10 lg:h-12 text-sm lg:text-base font-medium"
+                      className="h-12 px-8 border-2 border-white/30 bg-white/10 backdrop-blur-md hover:bg-red-500/20 hover:border-red-400 hover:text-white transition-all font-extrabold text-white shadow-xl"
                     >
-                      <X className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                      <X className="h-5 w-5 mr-2" />
                       إلغاء
                     </Button>
                     <Button 
                       type="submit"
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 px-4 lg:px-10 py-2 lg:py-3 h-10 lg:h-12 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-sm lg:text-base font-semibold"
+                      className="h-12 px-12 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white font-black shadow-2xl hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all transform hover:scale-105"
                     >
-                      <Save className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
-                      {editingAd ? 'تحديث الإعلان' : 'إضافة الإعلان'}
+                      <Save className="h-5 w-5 mr-2" />
+                      {editingAd ? '💾 تحديث الإعلان' : '🚀 نشر الإعلان'}
                     </Button>
                   </div>
-               </div>
+                </div>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
 
-                 {/* Preview Dialog */}
-         <Dialog open={!!previewAd} onOpenChange={() => setPreviewAd(null)}>
-           <DialogContent className="max-w-3xl">
-             <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-t-xl">
+        {/* Preview Dialog */}
+        <Dialog open={!!previewAd} onOpenChange={() => setPreviewAd(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-t-xl">
                <DialogTitle className="text-2xl font-bold text-blue-900 flex items-center gap-2">
                  <Eye className="h-6 w-6" />
                  معاينة الإعلان
                </DialogTitle>
-             </DialogHeader>
+            </DialogHeader>
             
-                         {previewAd && (
-               <div className="space-y-6 p-6">
+            {previewAd && (
+              <div className="space-y-6 p-6">
                  <div className="text-center bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-xl">
                    <h3 className="text-2xl font-bold mb-3 text-gray-900">{previewAd.title}</h3>
                    <p className="text-gray-600 text-lg leading-relaxed">{previewAd.description}</p>
@@ -1287,8 +1573,7 @@ export default function AdminAdsPage() {
                <AdAnalytics />
              </div>
            </DialogContent>
-         </Dialog>
+        </Dialog>
       </div>
-    </AccountTypeProtection>
   );
 }
