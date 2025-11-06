@@ -89,7 +89,10 @@ const nextConfig = {
     // تحسين الأداء - optimizeFonts هو الافتراضي في Next.js 14
     // Prevent font optimization issues during build
     compiler: {
-        removeConsole: false, // Keep console for debugging
+        // Remove console.log in production, keep console.error and console.warn
+        removeConsole: process.env.NODE_ENV === 'production' ? {
+            exclude: ['error', 'warn']
+        } : false,
     },
     // إعدادات الخادم الخارجية - تم إزالة serverExternalPackages لأنه غير مدعوم في Next.js 14
     experimental: {
