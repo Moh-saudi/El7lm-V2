@@ -364,8 +364,8 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         
         // إذا لم يكن هناك اشتراك في subscriptions ولكن هناك مدفوعات مكتملة
         // (نستخدم subscriptionRef بدلاً من subscription state لأن setState غير متزامن)
-        const subscriptionRef = doc(db, 'subscriptions', user.uid);
-        const subscriptionDocCheck = await getDoc(subscriptionRef);
+        const subscriptionDocCheckRef = doc(db, 'subscriptions', user.uid);
+        const subscriptionDocCheck = await getDoc(subscriptionDocCheckRef);
         
         if (!subscriptionDocCheck.exists() && paymentData.length > 0) {
           const completedPayment = paymentData.find(p => p.status === 'completed' || p.status === 'success');
@@ -899,3 +899,4 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
 };
 
 export default SubscriptionStatusPage;
+
