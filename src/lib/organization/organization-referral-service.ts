@@ -365,10 +365,10 @@ class OrganizationReferralService {
     status?: string
   ): Promise<PlayerJoinRequest[]> {
     try {
+      // استعلام بسيط بدون orderBy لتجنب مشاكل الفهرسة
       let q = query(
         collection(db, 'player_join_requests'),
-        where('organizationId', '==', organizationId),
-        orderBy('requestedAt', 'desc')
+        where('organizationId', '==', organizationId)
       );
 
       if (status) {
@@ -377,19 +377,58 @@ class OrganizationReferralService {
 
       const snapshot = await getDocs(q);
 
-      return snapshot.docs.map(s => ({
+      // الفرز على جانب العميل
+      const requests = snapshot.docs.map(s => ({
         id: s.id,
         ...(s.data() as any)
       })) as PlayerJoinRequest[];
+
+      // ترتيب النتائج بناءً على تاريخ الطلب (الأحدث أولاً)
+      return requests.sort((a, b) => {
+        const dateA = a.requestedAt instanceof Date ? a.requestedAt : new Date(a.requestedAt as any);
+        const dateB = b.requestedAt instanceof Date ? b.requestedAt : new Date(b.requestedAt as any);
+        return dateB.getTime() - dateA.getTime();
+      });
     } catch (error: any) {
-      // تحسين معالجة الأخطاء
-      if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
-        console.warn('⚠️ Firebase index is still building. Please wait a few minutes and refresh the page.');
-        // إرجاع مصفوفة فارغة مؤقتاً حتى يتم بناء الفهرس
-        return [];
-      }
-      
       console.error('خطأ في جلب طلبات الانضمام:', error);
+      return [];
+    }
+  }
+
+  /**
+   * جلب طلبات الانضمام الخاصة بلاعب معين
+   */
+  async getPlayerJoinRequests(
+    playerId: string,
+    status?: string
+  ): Promise<PlayerJoinRequest[]> {
+    try {
+      // استعلام بسيط بدون orderBy لتجنب مشاكل الفهرسة
+      let q = query(
+        collection(db, 'player_join_requests'),
+        where('playerId', '==', playerId)
+      );
+
+      if (status) {
+        q = query(q, where('status', '==', status));
+      }
+
+      const snapshot = await getDocs(q);
+
+      // الفرز على جانب العميل
+      const requests = snapshot.docs.map(s => ({
+        id: s.id,
+        ...(s.data() as any)
+      })) as PlayerJoinRequest[];
+
+      // ترتيب النتائج بناءً على تاريخ الطلب (الأحدث أولاً)
+      return requests.sort((a, b) => {
+        const dateA = a.requestedAt instanceof Date ? a.requestedAt : new Date(a.requestedAt as any);
+        const dateB = b.requestedAt instanceof Date ? b.requestedAt : new Date(b.requestedAt as any);
+        return dateB.getTime() - dateA.getTime();
+      });
+    } catch (error: any) {
+      console.error('خطأ في جلب طلبات انضمام اللاعب:', error);
       return [];
     }
   }

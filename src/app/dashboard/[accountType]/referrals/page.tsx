@@ -142,6 +142,9 @@ export default function SharedReferralsPage() {
       if (accountType !== 'player') {
         loadOrganizationReferrals();
         loadJoinRequests();
+      } else {
+        // للاعبين: جلب طلبات الانضمام الخاصة بهم
+        loadPlayerJoinRequests();
       }
     }
   }, [user]);
@@ -190,6 +193,17 @@ export default function SharedReferralsPage() {
       setJoinRequests(requests);
     } catch (err) {
       console.error('خطأ في تحميل طلبات الانضمام:', err);
+    }
+  };
+
+  // Player: load their own join requests
+  const loadPlayerJoinRequests = async () => {
+    try {
+      const requests = await organizationReferralService.getPlayerJoinRequests(user!.uid);
+      setJoinRequests(requests);
+      console.log('✅ تم تحميل طلبات انضمام اللاعب:', requests);
+    } catch (err) {
+      console.error('خطأ في تحميل طلبات انضمام اللاعب:', err);
     }
   };
 
@@ -576,29 +590,63 @@ export default function SharedReferralsPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">طلبات الانضمام</h2>
+            <h2 className="text-xl font-bold mb-6">
+              {accountType === 'player' ? 'طلبات الانضمام الخاصة بي' : 'طلبات الانضمام'}
+            </h2>
             <div className="space-y-4">
-              {joinRequests.filter(r => r.status === 'pending').map((request) => (
+              {joinRequests.map((request) => (
                 <div key={request.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{request.playerName}</h3>
-                    <Badge className="bg-amber-100 text-amber-700 border border-amber-200">في الانتظار</Badge>
+                    <h3 className="font-semibold">
+                      {accountType === 'player' ? request.organizationName : request.playerName}
+                    </h3>
+                    <Badge className={
+                      request.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                      request.status === 'approved' ? 'bg-green-100 text-green-700 border border-green-200' :
+                      'bg-red-100 text-red-700 border border-red-200'
+                    }>
+                      {request.status === 'pending' ? 'في الانتظار' :
+                       request.status === 'approved' ? 'تم القبول' :
+                       'تم الرفض'}
+                    </Badge>
                   </div>
                   <div className="text-sm text-gray-600 space-y-1">
-                    <p>📧 {request.playerEmail}</p>
-                    {request.playerPhone && <p>📱 {request.playerPhone}</p>}
-                    {request.playerData?.position && <p>⚽ المركز: {request.playerData.position}</p>}
-                    {request.playerData?.age && <p>🎂 العمر: {request.playerData.age}</p>}
-                    <p>📅 طلب الانضمام: {new Date(request.requestedAt as any).toLocaleDateString('ar')}</p>
+                    {accountType === 'player' ? (
+                      <>
+                        <p>🏢 {request.organizationType === 'club' ? 'نادي' : 'أكاديمية'}: {request.organizationName}</p>
+                        <p>📅 تاريخ الطلب: {new Date(request.requestedAt as any).toLocaleDateString('ar')}</p>
+                        {request.status === 'approved' && request.approvedAt && (
+                          <p>✅ تم القبول في: {new Date(request.approvedAt as any).toLocaleDateString('ar')}</p>
+                        )}
+                        {request.status === 'rejected' && request.rejectedAt && (
+                          <p>❌ تم الرفض في: {new Date(request.rejectedAt as any).toLocaleDateString('ar')}</p>
+                        )}
+                        {request.rejectionReason && (
+                          <p className="text-red-600">💬 السبب: {request.rejectionReason}</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p>📧 {request.playerEmail}</p>
+                        {request.playerPhone && <p>📱 {request.playerPhone}</p>}
+                        {request.playerData?.position && <p>⚽ المركز: {request.playerData.position}</p>}
+                        {request.playerData?.age && <p>🎂 العمر: {request.playerData.age}</p>}
+                        <p>📅 طلب الانضمام: {new Date(request.requestedAt as any).toLocaleDateString('ar')}</p>
+                      </>
+                    )}
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => approveJoin(request.id)}>✅ قبول</Button>
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => rejectJoin(request.id)}>❌ رفض</Button>
-                  </div>
+                  {accountType !== 'player' && request.status === 'pending' && (
+                    <div className="flex gap-2 mt-4">
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => approveJoin(request.id)}>✅ قبول</Button>
+                      <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => rejectJoin(request.id)}>❌ رفض</Button>
+                    </div>
+                  )}
                 </div>
               ))}
-              {joinRequests.filter(r => r.status === 'pending').length === 0 && (
-                <p className="text-center text-gray-500 py-8">لا توجد طلبات انضمام في الانتظار</p>
+              {joinRequests.length === 0 && (
+                <p className="text-center text-gray-500 py-8">
+                  {accountType === 'player' ? 'لم تقم بإنشاء أي طلبات انضمام بعد' : 'لا توجد طلبات انضمام'}
+                </p>
               )}
             </div>
           </Card>

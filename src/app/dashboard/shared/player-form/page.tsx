@@ -7,7 +7,7 @@ import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
-import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
+import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity } from '@/data/countries-from-register';
 import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
 import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
 import { User } from 'firebase/auth';
@@ -1131,8 +1131,8 @@ export default function SharedPlayerForm({
                     >
                       <option value="">اختر الدولة</option>
                       {COUNTRIES.map(country => (
-                        <option key={country} value={country}>
-                          {country}
+                        <option key={country.id || country.code} value={country.name}>
+                          {country.name}
                         </option>
                       ))}
                     </select>
@@ -1142,50 +1142,24 @@ export default function SharedPlayerForm({
                   </div>
 
                   {/* المدينة */}
-                  <div className="relative">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       المدينة *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       name="city"
                       value={formData.city}
-                      onChange={(e) => handleCitySearch(e.target.value)}
-                      onFocus={() => {
-                        if (formData.country) {
-                          setAvailableCities(getCitiesByCountry(formData.country));
-                          setShowCityDropdown(true);
-                        }
-                      }}
-                      onBlur={() => {
-                        // تأخير إخفاء القائمة للسماح بالنقر على الخيارات
-                        setTimeout(() => setShowCityDropdown(false), 150);
-                      }}
+                      onChange={(e) => handleCityChange(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder={formData.country ? "ابحث عن المدينة أو اختر من القائمة" : "اختر الدولة أولاً"}
                       disabled={!formData.country}
-                    />
-
-                    {showCityDropdown && availableCities.length > 0 && (
-                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg">
-                        {availableCities.map((city, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleCityChange(city)}
-                            className="w-full px-3 py-2 text-right text-gray-900 hover:bg-blue-50 hover:text-blue-900 border-b border-gray-100 last:border-b-0"
-                          >
-                            {city}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {formData.country && availableCities.length === 0 && citySearchQuery && (
-                      <div className="absolute left-0 right-0 top-full z-10 mt-1 p-3 text-center text-gray-500 bg-white border border-gray-300 rounded-md shadow-lg">
-                        لا توجد مدن تطابق البحث "{citySearchQuery}"
-                      </div>
-                    )}
+                    >
+                      <option value="">{formData.country ? "اختر المدينة" : "اختر الدولة أولاً"}</option>
+                      {availableCities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
 
                     {formErrors.city && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>

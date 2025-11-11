@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
+    Calendar,
     Eye,
     Filter,
     Flag,
@@ -20,13 +21,15 @@ import {
     RefreshCw,
     Search,
     Smartphone,
+    Star,
     Sword,
     Trophy,
     User,
-    Users
+    Users,
+    Zap
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -43,6 +46,45 @@ const useDebounce = (value: string, delay: number) => {
   }, [value, delay]);
 
   return debouncedValue;
+};
+
+// دالة للحصول على علم الدولة
+const getCountryFlag = (countryName: string): string => {
+  const flagMap: Record<string, string> = {
+    'السعودية': '🇸🇦',
+    'الإمارات': '🇦🇪',
+    'الكويت': '🇰🇼',
+    'قطر': '🇶🇦',
+    'البحرين': '🇧🇭',
+    'عمان': '🇴🇲',
+    'مصر': '🇪🇬',
+    'الأردن': '🇯🇴',
+    'لبنان': '🇱🇧',
+    'العراق': '🇮🇶',
+    'سوريا': '🇸🇾',
+    'المغرب': '🇲🇦',
+    'الجزائر': '🇩🇿',
+    'تونس': '🇹🇳',
+    'ليبيا': '🇱🇾',
+    'السودان': '🇸🇩',
+    'اليمن': '🇾🇪',
+    'إسبانيا': '🇪🇸',
+    'فرنسا': '🇫🇷',
+    'إنجلترا': '🇬🇧',
+    'البرتغال': '🇵🇹',
+    'إيطاليا': '🇮🇹',
+    'اليونان': '🇬🇷',
+    'قبرص': '🇨🇾',
+    'تركيا': '🇹🇷',
+    'تايلاند': '🇹🇭',
+    'السنغال': '🇸🇳',
+    'ساحل العاج': '🇨🇮',
+    'جيبوتي': '🇩🇯',
+    'الولايات المتحدة': '🇺🇸',
+    'بريطانيا': '🇬🇧',
+    'ألمانيا': '🇩🇪',
+  };
+  return flagMap[countryName] || '🏳️';
 };
 
 interface Player {
@@ -70,10 +112,17 @@ interface Player {
   agent_id?: string;
   agentId?: string;
   age?: number;
+  birth_date?: any;
+  birthDate?: any;
+  dateOfBirth?: any;
   status?: string;
   skill_level?: string;
+  skillLevel?: string;
   objectives?: string[];
   isDeleted?: boolean;
+  isActive?: boolean;
+  createdAt?: any;
+  created_at?: any;
 }
 
 interface PaginationProps {
@@ -204,6 +253,7 @@ interface PlayersSearchPageProps {
 export default function PlayersSearchPage({ accountType }: PlayersSearchPageProps) {
   const { user, userData } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // State management
   const [players, setPlayers] = useState<Player[]>([]);
@@ -211,25 +261,82 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination - استعادة رقم الصفحة من URL
+  const getInitialPage = () => {
+    if (typeof window === 'undefined') return 1;
+    const pageParam = new URLSearchParams(window.location.search).get('page');
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    return isNaN(page) || page < 1 ? 1 : page;
+  };
+  
+  const [currentPage, setCurrentPage] = useState(() => getInitialPage());
   const [playersPerPage, setPlayersPerPage] = useState(12);
+  const isUpdatingFromUser = React.useRef(false);
+  const hasInitializedFilters = useRef(false);
+  const filtersSignatureRef = useRef<string>('');
+  
+  // استعادة رقم الصفحة من URL عند تغيير searchParams (مثل العودة من صفحة أخرى)
+  useEffect(() => {
+    // تجاهل التحديثات التي تأتي من المستخدم
+    if (isUpdatingFromUser.current) {
+      return;
+    }
+    
+    // قراءة رقم الصفحة من URL مباشرة
+    const pageParam = typeof window !== 'undefined' 
+      ? new URLSearchParams(window.location.search).get('page')
+      : searchParams.get('page');
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const validPage = isNaN(page) || page < 1 ? 1 : page;
+    
+    console.log('📄 استعادة رقم الصفحة من URL:', { pageParam, validPage, currentPage, searchParamsString: searchParams.toString() });
+    setCurrentPage(validPage);
+  }, [searchParams]); // استمع لتغييرات searchParams فقط
 
-  // Filters
+  // Filters - مرتبة بشكل منطقي
   const [filterPosition, setFilterPosition] = useState('all');
-  const [filterNationality, setFilterNationality] = useState('all');
   const [filterCountry, setFilterCountry] = useState('all');
-  const [filterAccountType, setFilterAccountType] = useState('all');
+  const [filterNationality, setFilterNationality] = useState('all');
+  const [filterAgeMin, setFilterAgeMin] = useState('');
+  const [filterAgeMax, setFilterAgeMax] = useState('');
+  const [filterBirthYear, setFilterBirthYear] = useState('all');
+  const [filterSkillLevel, setFilterSkillLevel] = useState('all');
   const [filterPhone, setFilterPhone] = useState('');
 
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+    basic: false,
+    age: false,
+    additional: false
+  });
+
+  // تحديث URL عند تغيير الصفحة
+  const updatePageInURL = useCallback((page: number) => {
+    if (typeof window === 'undefined') return;
+    
+    const params = new URLSearchParams(window.location.search);
+    if (page > 1) {
+      params.set('page', page.toString());
+    } else {
+      params.delete('page');
+    }
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+    
+    // إعادة تعيين isUpdatingFromUser بعد تحديث URL
+    setTimeout(() => {
+      isUpdatingFromUser.current = false;
+    }, 100);
+    
+    router.replace(newUrl, { scroll: false });
+  }, [router]);
 
   // Memoized callbacks
   const handlePlayersPerPageChange = useCallback((newPlayersPerPage: number) => {
     setPlayersPerPage(newPlayersPerPage);
     setCurrentPage(1);
-  }, []);
+    updatePageInURL(1);
+  }, [updatePageInURL]);
 
   const getPlayerAccountType = useCallback((player: any) => {
     if (player.trainer_id || player.trainerId) return 'trainer';
@@ -249,12 +356,13 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
       // Load players from 'players' collection
       const playersSnapshot = await getDocs(collection(db, 'players'));
-      const playersData: Player[] = [];
+      const playersMap = new Map<string, Player>();
 
       playersSnapshot.forEach((doc) => {
         const playerData = { id: doc.id, ...doc.data() } as Player;
         if (!playerData.isDeleted) {
-          playersData.push(playerData);
+          // استخدام Map لإزالة التكرارات بناءً على id
+          playersMap.set(doc.id, playerData);
         }
       });
 
@@ -268,16 +376,21 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       usersSnapshot.forEach((doc) => {
         const userData = doc.data();
         if (!userData.isDeleted) {
-          playersData.push({
-            id: doc.id,
-            ...userData,
-            accountType: 'independent'
-          } as Player);
+          // إضافة فقط إذا لم يكن موجوداً في players collection
+          if (!playersMap.has(doc.id)) {
+            playersMap.set(doc.id, {
+              id: doc.id,
+              ...userData,
+              accountType: 'independent'
+            } as Player);
+          }
         }
       });
 
+      // تحويل Map إلى Array
+      const playersData = Array.from(playersMap.values());
       setPlayers(playersData);
-      console.log(`✅ Loaded ${playersData.length} players successfully`);
+      console.log(`✅ Loaded ${playersData.length} unique players successfully`);
 
     } catch (error) {
       console.error('❌ Error loading players:', error);
@@ -293,13 +406,123 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     }
   }, [user?.uid, loadPlayers]);
 
-  // Optimized filtering
+  // Helper function to calculate player age
+  const calculatePlayerAge = useCallback((player: Player): number | null => {
+    if (player.age && typeof player.age === 'number') {
+      return player.age;
+    }
+
+    let birthDate: Date | null = null;
+    const currentYear = new Date().getFullYear();
+
+    // محاولة استخراج تاريخ الميلاد من مختلف الحقول
+    if (player.birth_date) {
+      try {
+        if (player.birth_date.toDate) {
+          birthDate = player.birth_date.toDate();
+        } else if (player.birth_date.seconds) {
+          birthDate = new Date(player.birth_date.seconds * 1000);
+        } else if (typeof player.birth_date === 'string') {
+          birthDate = new Date(player.birth_date);
+        }
+      } catch (e) {
+        // تجاهل الأخطاء
+      }
+    } else if (player.birthDate) {
+      try {
+        if (player.birthDate.toDate) {
+          birthDate = player.birthDate.toDate();
+        } else if (player.birthDate.seconds) {
+          birthDate = new Date(player.birthDate.seconds * 1000);
+        } else if (typeof player.birthDate === 'string') {
+          birthDate = new Date(player.birthDate);
+        }
+      } catch (e) {
+        // تجاهل الأخطاء
+      }
+    } else if (player.dateOfBirth) {
+      try {
+        if (player.dateOfBirth.toDate) {
+          birthDate = player.dateOfBirth.toDate();
+        } else if (player.dateOfBirth.seconds) {
+          birthDate = new Date(player.dateOfBirth.seconds * 1000);
+        } else if (typeof player.dateOfBirth === 'string') {
+          birthDate = new Date(player.dateOfBirth);
+        }
+      } catch (e) {
+        // تجاهل الأخطاء
+      }
+    }
+
+    if (birthDate && !isNaN(birthDate.getTime())) {
+      const age = currentYear - birthDate.getFullYear();
+      const monthDiff = new Date().getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && new Date().getDate() < birthDate.getDate())) {
+        return age - 1;
+      }
+      return age;
+    }
+
+    return null;
+  }, []);
+
+  // Helper function to get birth year
+  const getBirthYear = useCallback((player: Player): number | null => {
+    const age = calculatePlayerAge(player);
+    if (age !== null) {
+      return new Date().getFullYear() - age;
+    }
+
+    let birthDate: Date | null = null;
+    if (player.birth_date) {
+      try {
+        if (player.birth_date.toDate) {
+          birthDate = player.birth_date.toDate();
+        } else if (player.birth_date.seconds) {
+          birthDate = new Date(player.birth_date.seconds * 1000);
+        } else if (typeof player.birth_date === 'string') {
+          birthDate = new Date(player.birth_date);
+        }
+      } catch (e) {}
+    } else if (player.birthDate) {
+      try {
+        if (player.birthDate.toDate) {
+          birthDate = player.birthDate.toDate();
+        } else if (player.birthDate.seconds) {
+          birthDate = new Date(player.birthDate.seconds * 1000);
+        } else if (typeof player.birthDate === 'string') {
+          birthDate = new Date(player.birthDate);
+        }
+      } catch (e) {}
+    } else if (player.dateOfBirth) {
+      try {
+        if (player.dateOfBirth.toDate) {
+          birthDate = player.dateOfBirth.toDate();
+        } else if (player.dateOfBirth.seconds) {
+          birthDate = new Date(player.dateOfBirth.seconds * 1000);
+        } else if (typeof player.dateOfBirth === 'string') {
+          birthDate = new Date(player.dateOfBirth);
+        }
+      } catch (e) {}
+    }
+
+    if (birthDate && !isNaN(birthDate.getTime())) {
+      return birthDate.getFullYear();
+    }
+
+    return null;
+  }, [calculatePlayerAge]);
+
+  // Optimized filtering - جميع الفلاتر تعمل معاً (AND logic)
   const filteredPlayers = useMemo(() => {
     const hasFilters = debouncedSearchTerm ||
       filterPosition !== 'all' ||
-      filterNationality !== 'all' ||
       filterCountry !== 'all' ||
-      filterAccountType !== 'all' ||
+      filterNationality !== 'all' ||
+      filterAgeMin !== '' ||
+      filterAgeMax !== '' ||
+      filterBirthYear !== 'all' ||
+      filterSkillLevel !== 'all' ||
       filterPhone !== '';
 
     if (!hasFilters) {
@@ -307,7 +530,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     }
 
     return players.filter(player => {
-      // Search filter
+      // 1. Search filter - البحث النصي
       if (debouncedSearchTerm) {
         const searchTerm = debouncedSearchTerm.toLowerCase();
         const searchFields = [
@@ -328,32 +551,57 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         }
       }
 
-      // Position filter
-      if (filterPosition !== 'all' &&
-          player.primary_position !== filterPosition &&
-          player.position !== filterPosition) {
-        return false;
-      }
-
-      // Nationality filter
-      if (filterNationality !== 'all' && player.nationality !== filterNationality) {
-        return false;
-      }
-
-      // Country filter
-      if (filterCountry !== 'all' && player.country !== filterCountry) {
-        return false;
-      }
-
-      // Account type filter
-      if (filterAccountType !== 'all') {
-        const playerAccountType = getPlayerAccountType(player);
-        if (playerAccountType !== filterAccountType) {
+      // 2. Position filter - فلتر المركز
+      if (filterPosition !== 'all') {
+        const playerPosition = player.primary_position || player.position;
+        if (playerPosition !== filterPosition) {
           return false;
         }
       }
 
-      // Phone filter
+      // 3. Country filter - فلتر البلد
+      if (filterCountry !== 'all' && player.country !== filterCountry) {
+        return false;
+      }
+
+      // 4. Nationality filter - فلتر الجنسية
+      if (filterNationality !== 'all' && player.nationality !== filterNationality) {
+        return false;
+      }
+
+      // 5. Age range filter - فلتر العمر (الحد الأدنى والأقصى)
+      const playerAge = calculatePlayerAge(player);
+      if (playerAge !== null) {
+        if (filterAgeMin !== '' && playerAge < parseInt(filterAgeMin)) {
+          return false;
+        }
+        if (filterAgeMax !== '' && playerAge > parseInt(filterAgeMax)) {
+          return false;
+        }
+      } else {
+        // إذا لم يكن العمر متاحاً وكان هناك فلتر للعمر، استبعد اللاعب
+        if (filterAgeMin !== '' || filterAgeMax !== '') {
+          return false;
+        }
+      }
+
+      // 6. Birth year filter - فلتر عام الميلاد
+      if (filterBirthYear !== 'all') {
+        const birthYear = getBirthYear(player);
+        if (birthYear === null || birthYear !== parseInt(filterBirthYear)) {
+          return false;
+        }
+      }
+
+      // 7. Skill level filter - فلتر مستوى المهارة
+      if (filterSkillLevel !== 'all') {
+        const skillLevel = player.skill_level || player.skillLevel;
+        if (skillLevel !== filterSkillLevel) {
+          return false;
+        }
+      }
+
+      // 8. Phone filter - فلتر رقم الهاتف
       if (filterPhone && filterPhone.trim() !== '') {
         const phoneSearch = filterPhone.trim().replace(/\D/g, '');
         const playerPhone = (player.phone || player.whatsapp || '').toString().replace(/\D/g, '');
@@ -362,15 +610,42 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         }
       }
 
+      // جميع الفلاتر تم تطبيقها بنجاح
       return true;
     });
-  }, [players, debouncedSearchTerm, filterPosition, filterNationality, filterCountry,
-      filterAccountType, filterPhone, getPlayerAccountType]);
+  }, [players, debouncedSearchTerm, filterPosition, filterCountry, 
+      filterNationality, filterAgeMin, filterAgeMax, filterBirthYear, 
+      filterSkillLevel, filterPhone, calculatePlayerAge, getBirthYear]);
+
+  const filtersSignature = useMemo(() => JSON.stringify({
+    debouncedSearchTerm,
+    filterPosition,
+    filterCountry,
+    filterNationality,
+    filterAgeMin,
+    filterAgeMax,
+    filterBirthYear,
+    filterSkillLevel,
+    filterPhone
+  }), [debouncedSearchTerm, filterPosition, filterCountry, filterNationality,
+      filterAgeMin, filterAgeMax, filterBirthYear, filterSkillLevel, filterPhone]);
 
   // Reset page when filters change
   useEffect(() => {
+    if (!hasInitializedFilters.current) {
+      hasInitializedFilters.current = true;
+      filtersSignatureRef.current = filtersSignature;
+      return;
+    }
+
+    if (filtersSignatureRef.current === filtersSignature) {
+      return;
+    }
+
+    filtersSignatureRef.current = filtersSignature;
     setCurrentPage(1);
-  }, [debouncedSearchTerm, filterPosition, filterNationality, filterCountry, filterAccountType, filterPhone]);
+    updatePageInURL(1);
+  }, [filtersSignature, updatePageInURL]);
 
   // Pagination
   const totalPages = Math.ceil(filteredPlayers.length / playersPerPage);
@@ -435,9 +710,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   // Reset filters function
   const resetFilters = () => {
     setFilterPosition('all');
-    setFilterNationality('all');
     setFilterCountry('all');
-    setFilterAccountType('all');
+    setFilterNationality('all');
+    setFilterAgeMin('');
+    setFilterAgeMax('');
+    setFilterBirthYear('all');
+    setFilterSkillLevel('all');
     setFilterPhone('');
     setSearchTerm('');
   };
@@ -466,6 +744,80 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       if (player.country) countries.add(player.country);
     });
     return Array.from(countries).sort();
+  }, [players]);
+
+  const uniqueCities = useMemo(() => {
+    const cities = new Set<string>();
+    players.forEach(player => {
+      if (player.city) cities.add(player.city);
+    });
+    return Array.from(cities).sort();
+  }, [players]);
+
+  const uniqueBirthYears = useMemo(() => {
+    const years = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    
+    players.forEach(player => {
+      let birthYear: number | null = null;
+      
+      // محاولة استخراج عام الميلاد من مختلف الحقول
+      if (player.birth_date) {
+        try {
+          if (player.birth_date.toDate) {
+            birthYear = player.birth_date.toDate().getFullYear();
+          } else if (player.birth_date.seconds) {
+            birthYear = new Date(player.birth_date.seconds * 1000).getFullYear();
+          } else if (typeof player.birth_date === 'string') {
+            birthYear = new Date(player.birth_date).getFullYear();
+          }
+        } catch (e) {
+          // تجاهل الأخطاء
+        }
+      } else if (player.birthDate) {
+        try {
+          if (player.birthDate.toDate) {
+            birthYear = player.birthDate.toDate().getFullYear();
+          } else if (player.birthDate.seconds) {
+            birthYear = new Date(player.birthDate.seconds * 1000).getFullYear();
+          } else if (typeof player.birthDate === 'string') {
+            birthYear = new Date(player.birthDate).getFullYear();
+          }
+        } catch (e) {
+          // تجاهل الأخطاء
+        }
+      } else if (player.dateOfBirth) {
+        try {
+          if (player.dateOfBirth.toDate) {
+            birthYear = player.dateOfBirth.toDate().getFullYear();
+          } else if (player.dateOfBirth.seconds) {
+            birthYear = new Date(player.dateOfBirth.seconds * 1000).getFullYear();
+          } else if (typeof player.dateOfBirth === 'string') {
+            birthYear = new Date(player.dateOfBirth).getFullYear();
+          }
+        } catch (e) {
+          // تجاهل الأخطاء
+        }
+      } else if (player.age) {
+        // حساب عام الميلاد من العمر
+        birthYear = currentYear - player.age;
+      }
+      
+      if (birthYear && birthYear > 1950 && birthYear <= currentYear) {
+        years.add(birthYear);
+      }
+    });
+    
+    return Array.from(years).sort((a, b) => b - a); // ترتيب تنازلي
+  }, [players]);
+
+  const uniqueSkillLevels = useMemo(() => {
+    const levels = new Set<string>();
+    players.forEach(player => {
+      if (player.skill_level) levels.add(player.skill_level);
+      if (player.skillLevel) levels.add(player.skillLevel);
+    });
+    return Array.from(levels).sort();
   }, [players]);
 
   if (isLoading) {
@@ -497,17 +849,18 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg shadow-md border border-gray-200 p-4 mb-4">
           {/* Search Bar */}
           <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-md blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4 z-10" />
               <Input
                 type="text"
                 placeholder="ابحث عن اللاعبين بالاسم، المركز، الجنسية، أو النادي..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full"
+                className="pl-10 pr-3 py-2 w-full border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 bg-white text-sm"
               />
             </div>
           </div>
@@ -517,11 +870,11 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
             <Button
               variant="outline"
               onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-              className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 shadow-md hover:shadow-lg hover:from-orange-600 hover:to-pink-600 transition-all duration-300 rounded-md px-4 py-2 text-sm"
             >
-              <Filter className="h-4 w-4" />
-              الفلاتر
-              {isFiltersExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <Filter className="h-3.5 w-3.5" />
+              <span className="font-medium">الفلاتر</span>
+              {isFiltersExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </Button>
 
             <div className="flex items-center gap-2">
@@ -529,7 +882,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 variant="outline"
                 onClick={resetFilters}
                 size="sm"
-                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                className="bg-gradient-to-r from-red-500 to-rose-500 text-white border-0 shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 transition-all duration-300 rounded-md px-3 py-1.5 text-xs"
               >
                 إعادة تعيين
               </Button>
@@ -537,104 +890,288 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 variant="outline"
                 onClick={() => loadPlayers()}
                 size="sm"
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 rounded-md px-3 py-1.5 text-xs"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 تحديث
               </Button>
             </div>
           </div>
 
-          {/* Filters */}
+          {/* Filters - مرتبة بشكل منطقي */}
           {isFiltersExpanded && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {/* Position Filter */}
-              <div>
-                <Label htmlFor="position-filter">المركز</Label>
-                <Select value={filterPosition} onValueChange={setFilterPosition}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر المركز" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع المراكز</SelectItem>
-                    {uniquePositions.map(position => (
-                      <SelectItem key={position} value={position}>
-                        {getPositionEmoji(position)} {position}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
+              {/* Section 1: معلومات أساسية */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100 shadow-sm">
+                <button
+                  onClick={() => setExpandedSections(prev => ({ ...prev, basic: !prev.basic }))}
+                  className="flex items-center justify-between w-full mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md shadow-sm">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-800">معلومات أساسية</h3>
+                  </div>
+                  {expandedSections.basic ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
+                </button>
+                {expandedSections.basic && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  {/* Position Filter */}
+                  <div className="group">
+                    <Label htmlFor="position-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
+                        <Sword className="h-3 w-3 text-white" />
+                      </div>
+                      المركز
+                    </Label>
+                    <Select value={filterPosition} onValueChange={setFilterPosition}>
+                      <SelectTrigger className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                        <SelectValue placeholder="اختر المركز" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="all" className="pl-2">🌍 جميع المراكز</SelectItem>
+                        {uniquePositions.map(position => (
+                          <SelectItem key={position} value={position} className="flex items-center gap-2 pl-2">
+                            <span className="text-base flex-shrink-0">{getPositionEmoji(position)}</span>
+                            <span className="flex-1">{position}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Country Filter */}
+                  <div className="group">
+                    <Label htmlFor="country-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded shadow-sm">
+                        <MapPin className="h-3 w-3 text-white" />
+                      </div>
+                      البلد
+                    </Label>
+                    <Select value={filterCountry} onValueChange={setFilterCountry}>
+                      <SelectTrigger className="bg-white border border-gray-200 hover:border-green-400 focus:border-green-500 focus:ring-1 focus:ring-green-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                        <SelectValue placeholder="اختر البلد">
+                          {filterCountry !== 'all' && (
+                            <span className="flex items-center gap-2">
+                              <span className="text-lg">{getCountryFlag(filterCountry)}</span>
+                              <span>{filterCountry}</span>
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="all" className="pl-2">🌍 جميع البلدان</SelectItem>
+                        {uniqueCountries.map(country => (
+                          <SelectItem key={country} value={country} className="flex items-center gap-2 py-2 pl-2">
+                            <span className="text-xl flex-shrink-0">{getCountryFlag(country)}</span>
+                            <span className="flex-1">{country}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Nationality Filter */}
+                  <div className="group">
+                    <Label htmlFor="nationality-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-orange-400 to-red-400 rounded shadow-sm">
+                        <Flag className="h-3 w-3 text-white" />
+                      </div>
+                      الجنسية
+                    </Label>
+                    <Select value={filterNationality} onValueChange={setFilterNationality}>
+                      <SelectTrigger className="bg-white border border-gray-200 hover:border-orange-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                        <SelectValue placeholder="اختر الجنسية">
+                          {filterNationality !== 'all' && (
+                            <span className="flex items-center gap-2">
+                              <span className="text-lg">{getCountryFlag(filterNationality)}</span>
+                              <span>{filterNationality}</span>
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="all" className="pl-2">🌍 جميع الجنسيات</SelectItem>
+                        {uniqueNationalities.map(nationality => (
+                          <SelectItem key={nationality} value={nationality} className="flex items-center gap-2 py-2 pl-2">
+                            <span className="text-xl flex-shrink-0">{getCountryFlag(nationality)}</span>
+                            <span className="flex-1">{nationality}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  </div>
+                )}
               </div>
 
-              {/* Nationality Filter */}
-              <div>
-                <Label htmlFor="nationality-filter">الجنسية</Label>
-                <Select value={filterNationality} onValueChange={setFilterNationality}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر الجنسية" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الجنسيات</SelectItem>
-                    {uniqueNationalities.map(nationality => (
-                      <SelectItem key={nationality} value={nationality}>
-                        <Flag className="h-4 w-4 mr-2" />
-                        {nationality}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Section 2: العمر وتاريخ الميلاد */}
+              <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg p-3 border border-amber-100 shadow-sm">
+                <button
+                  onClick={() => setExpandedSections(prev => ({ ...prev, age: !prev.age }))}
+                  className="flex items-center justify-between w-full mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-md shadow-sm">
+                      <Calendar className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-800">العمر وتاريخ الميلاد</h3>
+                  </div>
+                  {expandedSections.age ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
+                </button>
+                {expandedSections.age && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  {/* Age Range Filters */}
+                  <div className="group">
+                    <Label htmlFor="age-min-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-blue-400 to-cyan-400 rounded shadow-sm">
+                        <User className="h-3 w-3 text-white" />
+                      </div>
+                      الحد الأدنى للعمر
+                    </Label>
+                    <Input
+                      id="age-min-filter"
+                      type="number"
+                      placeholder="مثال: 18"
+                      min="0"
+                      max="100"
+                      value={filterAgeMin}
+                      onChange={(e) => setFilterAgeMin(e.target.value)}
+                      className="bg-white border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                    />
+                  </div>
+
+                  <div className="group">
+                    <Label htmlFor="age-max-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
+                        <User className="h-3 w-3 text-white" />
+                      </div>
+                      الحد الأقصى للعمر
+                    </Label>
+                    <Input
+                      id="age-max-filter"
+                      type="number"
+                      placeholder="مثال: 30"
+                      min="0"
+                      max="100"
+                      value={filterAgeMax}
+                      onChange={(e) => setFilterAgeMax(e.target.value)}
+                      className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                    />
+                  </div>
+
+                  {/* Birth Year Filter */}
+                  <div className="group">
+                    <Label htmlFor="birth-year-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-indigo-400 to-purple-400 rounded shadow-sm">
+                        <Calendar className="h-3 w-3 text-white" />
+                      </div>
+                      عام الميلاد
+                    </Label>
+                    <Select value={filterBirthYear} onValueChange={setFilterBirthYear}>
+                      <SelectTrigger className="bg-white border border-gray-200 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                        <SelectValue placeholder="اختر عام الميلاد" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="all" className="pl-2">📅 جميع الأعوام</SelectItem>
+                        {uniqueBirthYears.map(year => (
+                          <SelectItem key={year} value={year.toString()} className="flex items-center gap-2 pl-2">
+                            <span className="text-base flex-shrink-0">📆</span>
+                            <span className="flex-1">{year}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  </div>
+                )}
               </div>
 
-              {/* Country Filter */}
-              <div>
-                <Label htmlFor="country-filter">البلد</Label>
-                <Select value={filterCountry} onValueChange={setFilterCountry}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر البلد" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع البلدان</SelectItem>
-                    {uniqueCountries.map(country => (
-                      <SelectItem key={country} value={country}>
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {country}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Section 3: معلومات إضافية */}
+              <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg p-3 border border-pink-100 shadow-sm">
+                <button
+                  onClick={() => setExpandedSections(prev => ({ ...prev, additional: !prev.additional }))}
+                  className="flex items-center justify-between w-full mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-pink-500 to-rose-600 rounded-md shadow-sm">
+                      <Star className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-800">معلومات إضافية</h3>
+                  </div>
+                  {expandedSections.additional ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
+                </button>
+                {expandedSections.additional && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  {/* Skill Level Filter */}
+                  {uniqueSkillLevels.length > 0 && (
+                    <div className="group">
+                      <Label htmlFor="skill-level-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-yellow-400 to-orange-400 rounded shadow-sm">
+                          <Star className="h-3 w-3 text-white" />
+                        </div>
+                        مستوى المهارة
+                      </Label>
+                      <Select value={filterSkillLevel} onValueChange={setFilterSkillLevel}>
+                        <SelectTrigger className="bg-white border border-gray-200 hover:border-yellow-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                          <SelectValue placeholder="اختر مستوى المهارة" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all" className="pl-2">⭐ جميع المستويات</SelectItem>
+                          {uniqueSkillLevels.map(level => (
+                            <SelectItem key={level} value={level} className="flex items-center gap-2 pl-2">
+                              <span className="text-base flex-shrink-0">⭐</span>
+                              <span className="flex-1">{level}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Phone Filter */}
+                  <div className="group">
+                    <Label htmlFor="phone-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                      <div className="p-1 bg-gradient-to-br from-teal-400 to-cyan-400 rounded shadow-sm">
+                        <Smartphone className="h-3 w-3 text-white" />
+                      </div>
+                      رقم الهاتف
+                    </Label>
+                    <div className="relative">
+                      <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-teal-500 h-3.5 w-3.5 z-10" />
+                      <Input
+                        id="phone-filter"
+                        type="text"
+                        placeholder="ابحث برقم الهاتف..."
+                        value={filterPhone}
+                        onChange={(e) => setFilterPhone(e.target.value)}
+                        className="pr-10 bg-white border border-gray-200 hover:border-teal-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                      />
+                    </div>
+                  </div>
+                  </div>
+                )}
               </div>
 
-              {/* Account Type Filter */}
-              <div>
-                <Label htmlFor="account-type-filter">نوع الحساب</Label>
-                <Select value={filterAccountType} onValueChange={setFilterAccountType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر نوع الحساب" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الأنواع</SelectItem>
-                    <SelectItem value="independent">مستقل</SelectItem>
-                    <SelectItem value="trainer">مدرب</SelectItem>
-                    <SelectItem value="club">نادي</SelectItem>
-                    <SelectItem value="agent">وكيل</SelectItem>
-                    <SelectItem value="academy">أكاديمية</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Phone Filter */}
-              <div>
-                <Label htmlFor="phone-filter">رقم الهاتف</Label>
-                <div className="relative">
-                  <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    id="phone-filter"
-                    type="text"
-                    placeholder="ابحث برقم الهاتف..."
-                    value={filterPhone}
-                    onChange={(e) => setFilterPhone(e.target.value)}
-                    className="pr-10"
-                  />
+              {/* Info Box */}
+              <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-lg p-3 shadow-md border border-blue-300">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="p-1.5 bg-white/20 backdrop-blur-sm rounded-md shadow-sm">
+                      <Search className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-xs font-semibold text-white mb-1 flex items-center gap-1.5">
+                      <span className="text-base">💡</span>
+                      ملاحظة مهمة
+                    </h4>
+                    <p className="text-xs text-blue-50 leading-relaxed">
+                      جميع الفلاتر تعمل معاً - يمكنك اختيار لاعب من دولة معينة مع عمر محدد في نفس الوقت. 
+                      النتائج ستظهر فقط اللاعبين الذين يطابقون <strong className="text-white font-semibold">جميع</strong> الفلاتر المختارة.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -845,8 +1382,17 @@ https://el7lm.com/dashboard/player
                             console.error('❌ خطأ في إرسال إشعار واتساب:', error);
                           }
 
-                          // الانتقال لملف اللاعب
-                          router.push(`/dashboard/shared/player-profile/${player.id}`);
+                          // الانتقال لملف اللاعب مع حفظ رقم الصفحة الحالي
+                          const params = new URLSearchParams(window.location.search);
+                          if (currentPage > 1) {
+                            params.set('page', currentPage.toString());
+                          } else {
+                            params.delete('page');
+                          }
+                          const returnUrl = params.toString() ? `?${params.toString()}` : '';
+                          const fullReturnPath = window.location.pathname + returnUrl;
+                          console.log('🔗 حفظ المسار للعودة:', { currentPage, returnPath: fullReturnPath });
+                          router.push(`/dashboard/shared/player-profile/${player.id}?returnPath=${encodeURIComponent(fullReturnPath)}`);
                         }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
@@ -878,7 +1424,11 @@ https://el7lm.com/dashboard/player
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={(page) => {
+              isUpdatingFromUser.current = true;
+              setCurrentPage(page);
+              updatePageInURL(page);
+            }}
             playersPerPage={playersPerPage}
             totalPlayers={filteredPlayers.length}
             onPlayersPerPageChange={handlePlayersPerPageChange}

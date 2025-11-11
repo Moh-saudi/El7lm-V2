@@ -20,6 +20,7 @@ interface Ad {
   isActive: boolean;
   priority: number;
   targetAudience: 'all' | 'new_users' | 'returning_users';
+  displayLocation?: 'landing' | 'dashboard' | 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin' | 'all';
   startDate?: string;
   endDate?: string;
   views: number;
@@ -29,9 +30,10 @@ interface Ad {
 interface AdBannerProps {
   className?: string;
   maxAds?: number;
+  location?: 'landing' | 'dashboard' | 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin';
 }
 
-export default function AdBanner({ className = '', maxAds = 3 }: AdBannerProps) {
+export default function AdBanner({ className = '', maxAds = 3, location }: AdBannerProps) {
   const [ads, setAds] = useState<Ad[]>([]);
   const [visibleAds, setVisibleAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function AdBanner({ className = '', maxAds = 3 }: AdBannerProps) 
 
   useEffect(() => {
     if (ads.length > 0) {
-      // Filter ads based on target audience and date
+      // Filter ads based on target audience, date, and display location
       const now = new Date();
       const filteredAds = ads.filter(ad => {
         if (!ad.isActive) return false;
@@ -52,6 +54,12 @@ export default function AdBanner({ className = '', maxAds = 3 }: AdBannerProps) 
         // Check date range if specified
         if (ad.startDate && new Date(ad.startDate) > now) return false;
         if (ad.endDate && new Date(ad.endDate) < now) return false;
+        
+        // Check display location
+        if (location) {
+          const adLocation = ad.displayLocation || 'all';
+          if (adLocation !== 'all' && adLocation !== location) return false;
+        }
         
         // Check target audience
         if (ad.targetAudience === 'all') return true;
@@ -68,10 +76,11 @@ export default function AdBanner({ className = '', maxAds = 3 }: AdBannerProps) 
 
       setVisibleAds(sortedAds);
     }
-  }, [ads, userData, maxAds]);
+  }, [ads, userData, maxAds, location]);
 
   const fetchAds = async () => {
     try {
+      // Try the optimized query with index first
       const q = query(
         collection(db, 'ads'),
         where('isActive', '==', true),
@@ -85,9 +94,38 @@ export default function AdBanner({ className = '', maxAds = 3 }: AdBannerProps) 
         views: doc.data().views || 0,
         clicks: doc.data().clicks || 0
       })) as Ad[];
+      
+      // Sort by priority in memory if query succeeded
+      adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
       setAds(adsData);
-    } catch (error) {
-      console.error('Error fetching ads:', error);
+    } catch (error: any) {
+      // If index is missing, fallback to simpler query
+      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+        try {
+          const fallbackQ = query(
+            collection(db, 'ads'),
+            where('isActive', '==', true),
+            limit(maxAds * 2)
+          );
+          const fallbackSnapshot = await getDocs(fallbackQ);
+          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            views: doc.data().views || 0,
+            clicks: doc.data().clicks || 0
+          })) as Ad[];
+          
+          // Sort by priority in memory
+          adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+          setAds(adsData);
+        } catch (fallbackError) {
+          console.error('Error fetching ads (fallback also failed):', fallbackError);
+          setAds([]);
+        }
+      } else {
+        console.error('Error fetching ads:', error);
+        setAds([]);
+      }
     } finally {
       setLoading(false);
     }

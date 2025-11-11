@@ -18,7 +18,11 @@ import {
     getDoc,
     serverTimestamp,
     setDoc,
-    updateDoc
+    updateDoc,
+    collection,
+    query,
+    where,
+    getDocs
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -273,142 +277,155 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           setError(null);
 
           try {
-            // Check if user document exists
-            const userRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userRef);
-
-            if (userDoc.exists()) {
-              const data = userDoc.data() as UserData;
-
-              // Check if uid field is missing and fix it
-              if (!data.uid) {
-                console.log('🔧 AuthProvider - Missing uid field detected, fixing...');
-                try {
-                  await updateDoc(userRef, {
-                    uid: user.uid,
-                    updatedAt: new Date()
-                  });
-                  console.log('✅ AuthProvider - Successfully added uid field');
-                  // Update the data object with the uid
-                  data.uid = user.uid;
-                } catch (error) {
-                  console.error('❌ AuthProvider - Error adding uid field:', error);
-                }
-              }
-
-              console.log('📋 AuthProvider - User document found:', {
+            // Handle admin users first
+            const adminEmails = ['admin@el7lm.com', 'admin@el7lm-go.com', 'admin@el7lm-go.com'];
+            if (adminEmails.includes(user.email || '')) {
+              const userRef = doc(db, 'users', user.uid);
+              const adminData: UserData = {
                 uid: user.uid,
-                email: data.email,
-                accountType: data.accountType,
-                isActive: data.isActive,
-                hasAllRequiredFields: !!(data.uid && data.email && data.accountType)
-              });
+                email: user.email || '',
+                accountType: 'admin',
+                full_name: 'System Administrator',
+                phone: '',
+                profile_image: '',
+                isNewUser: false,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+              };
 
               if (isSubscribed) {
-                setUserData(data);
-                console.log('✅ AuthProvider - User data set in state successfully');
-              }
-            } else {
-              // Handle new or admin users
-              const adminEmails = ['admin@el7lm.com', 'admin@el7lm-go.com', 'admin@el7lm-go.com'];
-              if (adminEmails.includes(user.email || '')) {
-                const adminData: UserData = {
-                  uid: user.uid,
-                  email: user.email || '',
-                  accountType: 'admin',
-                  full_name: 'System Administrator',
-                  phone: '',
-                  profile_image: '',
-                  isNewUser: false,
-                  created_at: serverTimestamp(),
-                  updated_at: serverTimestamp()
-                };
-
-                if (isSubscribed) {
                 await setDoc(userRef, adminData);
                 setUserData(adminData);
+              }
+            } else {
+              // 🔧 FIX: Search in role-specific collections FIRST (this is the source of truth)
+              // This ensures we get the correct accountType from clubs, academies, etc.
+              const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players'];
+              let userAccountType: UserRole = 'player';
+              let foundData = null;
+              let foundCollection = null;
+
+              console.log('🔍 AuthProvider - Searching in role-specific collections first...');
+
+              // Use Promise.all for parallel queries
+              const queries = accountTypes.map(collection =>
+                getDoc(doc(db, collection, user.uid))
+              );
+
+              const results = await Promise.all(queries);
+
+              for (let i = 0; i < results.length; i++) {
+                if (results[i].exists()) {
+                  foundData = results[i].data();
+                  foundCollection = accountTypes[i];
+                  userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+                  console.log(`✅ AuthProvider - Found user data in ${accountTypes[i]} collection (PRIORITY):`, {
+                    uid: user.uid,
+                    accountType: userAccountType,
+                    collection: accountTypes[i],
+                    full_name: foundData.full_name || foundData.name,
+                    email: foundData.email,
+                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url
+                  });
+                  break; // Use first found collection as source of truth
                 }
-              } else {
-                // Handle other users - search in role-specific collections
-                try {
-                  const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players'];
-                  let userAccountType: UserRole = 'player';
-                  let foundData = null;
+              }
 
-                  // Use Promise.all for parallel queries
-                  const queries = accountTypes.map(collection =>
-                    getDoc(doc(db, collection, user.uid))
-                  );
+              if (isSubscribed) {
+                if (foundData && foundCollection) {
+                  // Use data from role-specific collection (source of truth)
+                  console.log('🔍 AuthProvider - Using data from role collection:', {
+                    collection: foundCollection,
+                    userAccountType,
+                    academy_name: foundData.academy_name,
+                    club_name: foundData.club_name,
+                    name: foundData.name,
+                    full_name: foundData.full_name,
+                    allFields: Object.keys(foundData)
+                  });
 
-                  const results = await Promise.all(queries);
+                  const userData: UserData = {
+                    uid: user.uid,
+                    email: user.email || foundData.email || '',
+                    accountType: userAccountType,
+                    full_name: foundData.full_name || foundData.name || '',
+                    phone: foundData.phone || '',
+                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || '',
+                    country: foundData.country || '',
+                    isNewUser: false,
+                    isActive: foundData.isActive !== undefined ? foundData.isActive : true,
+                    created_at: foundData.created_at || foundData.createdAt || new Date(),
+                    updated_at: new Date(),
+                    // إضافة الحقول المختصة بكل نوع حساب
+                    academy_name: foundData.academy_name,
+                    club_name: foundData.club_name,
+                    agent_name: foundData.agent_name,
+                    trainer_name: foundData.trainer_name,
+                    ...foundData
+                  };
 
-                  for (let i = 0; i < results.length; i++) {
-                    if (results[i].exists()) {
-                      foundData = results[i].data();
-                      userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-                      console.log(`✅ AuthProvider - Found user data in ${accountTypes[i]} collection:`, {
-                        uid: user.uid,
-                        accountType: userAccountType,
-                        full_name: foundData.full_name,
-                        email: foundData.email,
-                        profile_image: foundData.profile_image,
-                        profileImage: foundData.profileImage,
-                        profile_image_url: foundData.profile_image_url,
-                        allData: foundData
-                      });
-                      break;
-                    }
+                  console.log('✅ AuthProvider - User data created from role collection:', {
+                    accountType: userData.accountType,
+                    collection: foundCollection,
+                    full_name: userData.full_name,
+                    club_name: userData.club_name,
+                    academy_name: userData.academy_name
+                  });
+
+                  // Update users collection to sync with role collection
+                  const userRef = doc(db, 'users', user.uid);
+                  try {
+                    await setDoc(userRef, {
+                      ...userData,
+                      updated_at: new Date()
+                    }, { merge: true });
+                    console.log('✅ AuthProvider - Synced users collection with role collection');
+                  } catch (syncError) {
+                    console.warn('⚠️ AuthProvider - Failed to sync users collection:', syncError);
+                    // Continue anyway - this is not critical
                   }
 
-                  if (isSubscribed) {
-                    if (foundData) {
-                      console.log('🔍 AuthProvider - Found data details:', {
-                        userAccountType,
-                        academy_name: foundData.academy_name,
-                        name: foundData.name,
-                        full_name: foundData.full_name,
-                        allFields: Object.keys(foundData)
-                      });
+                  setUserData(userData);
+                  console.log('✅ AuthProvider - User data set from role collection successfully');
+                } else {
+                  // Fallback: Check users collection if no role-specific data found
+                  console.log('⚠️ AuthProvider - No data in role collections, checking users collection...');
+                  const userRef = doc(db, 'users', user.uid);
+                  const userDoc = await getDoc(userRef);
 
-                      // Use the data directly from the role collection
-                      const userData: UserData = {
-                        uid: user.uid,
-                        email: user.email || '',
-                        accountType: userAccountType,
-                        full_name: foundData.full_name || foundData.name || '',
-                        phone: foundData.phone || '',
-                        profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || '',
-                        country: foundData.country || '',
-                        isNewUser: false,
-                        created_at: foundData.created_at || foundData.createdAt || new Date(),
-                        updated_at: new Date(),
-                        // إضافة الحقول المختصة بكل نوع حساب
-                        academy_name: foundData.academy_name,
-                        club_name: foundData.club_name,
-                        agent_name: foundData.agent_name,
-                        trainer_name: foundData.trainer_name,
-                        ...foundData
-                      };
+                  if (userDoc.exists()) {
+                    const data = userDoc.data() as UserData;
 
-                      console.log('🔍 AuthProvider - Final userData created:', {
-                        accountType: userData.accountType,
-                        academy_name: userData.academy_name,
-                        full_name: userData.full_name,
-                        name: userData.name
-                      });
-
-                      setUserData(userData);
-                      console.log('✅ AuthProvider - User data set from role collection:', userData);
-                    } else {
-                      // Create basic user document if no data found
-                      const basicData = await createBasicUserDocument(user, userAccountType, foundData || {});
-                      setUserData(basicData);
+                    // Check if uid field is missing and fix it
+                    if (!data.uid) {
+                      console.log('🔧 AuthProvider - Missing uid field detected, fixing...');
+                      try {
+                        await updateDoc(userRef, {
+                          uid: user.uid,
+                          updatedAt: new Date()
+                        });
+                        console.log('✅ AuthProvider - Successfully added uid field');
+                        data.uid = user.uid;
+                      } catch (error) {
+                        console.error('❌ AuthProvider - Error adding uid field:', error);
+                      }
                     }
-                  }
-                } catch (createError) {
-                  console.error('Failed to create user document:', createError);
-                  if (isSubscribed) {
-                    setError('Failed to create user data - please try again later');
+
+                    console.log('📋 AuthProvider - User document found in users collection (fallback):', {
+                      uid: user.uid,
+                      email: data.email,
+                      accountType: data.accountType,
+                      isActive: data.isActive,
+                      hasAllRequiredFields: !!(data.uid && data.email && data.accountType)
+                    });
+
+                    setUserData(data);
+                    console.log('✅ AuthProvider - User data set from users collection (fallback)');
+                  } else {
+                    // Create basic user document if no data found anywhere
+                    console.log('⚠️ AuthProvider - No data found in any collection, creating basic user document...');
+                    const basicData = await createBasicUserDocument(user, userAccountType, foundData || {});
+                    setUserData(basicData);
                   }
                 }
               }
@@ -595,6 +612,135 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
     }
   };
 
+  /**
+   * إعادة تفعيل حساب محذوف
+   */
+  const reactivateDeletedAccount = async (
+    email: string,
+    password: string,
+    role: UserRole,
+    additionalData: any
+  ): Promise<UserData | null> => {
+    try {
+      // محاولة تسجيل الدخول للحصول على UID
+      const signInResult = await signInWithEmailAndPassword(auth, email, password);
+      const uid = signInResult.user.uid;
+      
+      console.log('🔍 Checking account status in Firestore for UID:', uid);
+      
+      // التحقق من حالة الحساب في جميع المجموعات
+      const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
+      let isDeleted = false;
+      
+      for (const coll of collections) {
+        try {
+          const docRef = doc(db, coll, uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            // التحقق من حالة الحذف
+            if (data.isDeleted === true || data.isActive === false || data.deletedAt) {
+              isDeleted = true;
+              console.log(`✅ Found deleted account in ${coll}, will reactivate`);
+              break;
+            } else {
+              console.log(`⚠️ Account exists and is active in ${coll}`);
+              return null; // الحساب موجود ونشط
+            }
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+      
+      if (!isDeleted) {
+        console.log('⚠️ Account not found or not deleted');
+        return null;
+      }
+      
+      // إعادة تفعيل الحساب
+      console.log('🔄 Reactivating account with new data...', {
+        organizationCode: additionalData.organizationCode,
+        accountType: role
+      });
+      
+      // دمج البيانات الجديدة مع البيانات القديمة (إن وجدت)
+      const userData: UserData = {
+        uid: uid,
+        email: email,
+        accountType: role,
+        full_name: additionalData.full_name || additionalData.name || '',
+        phone: additionalData.phone || '',
+        profile_image: additionalData.profile_image || additionalData.profileImage || '',
+        isNewUser: false,
+        isDeleted: false,
+        isActive: true,
+        updated_at: serverTimestamp(),
+        reactivated_at: serverTimestamp(),
+        country: additionalData.country || '',
+        countryCode: additionalData.countryCode || '',
+        currency: additionalData.currency || '',
+        currencySymbol: additionalData.currencySymbol || '',
+        firebaseEmail: email,
+        originalPhone: additionalData.originalPhone || additionalData.phone || '',
+        // البيانات الجديدة المهمة (مثل كود الانضمام)
+        organizationCode: additionalData.organizationCode || '',
+        clubId: additionalData.clubId || '',
+        academyId: additionalData.academyId || '',
+        ...additionalData
+      };
+      
+      // تحديث البيانات في users collection
+      const userRef = doc(db, 'users', uid);
+      await setDoc(userRef, sanitizeForFirestore(userData), { merge: true });
+      
+      // تحديث البيانات في المجموعة الخاصة بالدور
+      if (role !== 'admin') {
+        const roleRef = doc(db, role + 's', uid);
+        await setDoc(roleRef, sanitizeForFirestore(userData), { merge: true });
+        
+        // إذا كان لاعب، نحذف طلبات الانضمام القديمة المعلقة
+        if (role === 'player') {
+          try {
+            const joinRequestsQuery = query(
+              collection(db, 'player_join_requests'),
+              where('playerId', '==', uid),
+              where('status', '==', 'pending')
+            );
+            const oldRequests = await getDocs(joinRequestsQuery);
+            
+            if (!oldRequests.empty) {
+              console.log(`🗑️ Deleting ${oldRequests.size} old join requests...`);
+              const deletePromises = oldRequests.docs.map(doc => 
+                updateDoc(doc.ref, { 
+                  status: 'cancelled',
+                  cancelledAt: serverTimestamp(),
+                  cancelReason: 'Account reactivated'
+                })
+              );
+              await Promise.all(deletePromises);
+              console.log('✅ Old join requests cancelled');
+            }
+          } catch (err) {
+            console.warn('⚠️ Failed to cancel old join requests:', err);
+          }
+        }
+      }
+      
+      setUser(signInResult.user);
+      setUserData(userData);
+      
+      console.log('✅ Account reactivated successfully');
+      return userData;
+      
+    } catch (error: any) {
+      console.error('❌ Reactivation error:', error);
+      return null;
+    }
+  };
+
   // Enhanced registration function
   const register = async (
     email: string,
@@ -736,7 +882,19 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       // Handle specific Firebase Auth errors
       switch (error.code) {
         case 'auth/email-already-in-use':
-          errorMessage = 'An account with this email already exists';
+          // محاولة إعادة تفعيل الحساب إذا كان محذوفاً
+          try {
+            console.log('🔍 Checking if account is deleted...');
+            const reactivationResult = await reactivateDeletedAccount(email, password, role, additionalData);
+            if (reactivationResult) {
+              console.log('✅ Account reactivated successfully');
+              return reactivationResult;
+            }
+          } catch (reactivationError) {
+            console.error('❌ Reactivation failed:', reactivationError);
+          }
+          
+          errorMessage = 'هذا الحساب موجود مسبقاً. إذا كان الحساب قد تم حذفه، يرجى التواصل مع الإدارة لإعادة تفعيله أو تسجيل الدخول.';
           break;
         case 'auth/weak-password':
           errorMessage = 'Password is too weak. Please use at least 8 characters';

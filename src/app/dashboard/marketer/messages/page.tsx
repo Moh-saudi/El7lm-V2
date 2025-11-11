@@ -1,16 +1,17 @@
 'use client';
 
-import { useAuth } from '@/lib/firebase/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+/**
+ * إعادة توجيه إلى صفحة الرسائل المشتركة
+ * تم توحيد صفحة الرسائل في: /dashboard/shared/messages
+ */
 export default function MarketerMessagesPage() {
-  const { userData } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // إعادة التوجيه إلى صفحة الرسائل المشتركة
-    router.replace('/dashboard/messages');
+    router.replace('/dashboard/shared/messages');
   }, [router]);
 
   return (

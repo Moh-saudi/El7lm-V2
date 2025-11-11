@@ -168,11 +168,14 @@ export default function RegisterPage() {
         }
         const controller = new AbortController();
         phoneValidationAbortRef.current = controller;
-        console.log('[register] Calling API /api/auth/check-user-exists with phone:', fullPhone);
+        console.log('[register] Calling API /api/auth/check-user-exists with phone:', fullPhone, 'countryCode:', formData.countryCode);
         const checkRes = await fetch('/api/auth/check-user-exists', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: fullPhone }),
+          body: JSON.stringify({ 
+            phone: fullPhone,
+            countryCode: formData.countryCode 
+          }),
           signal: controller.signal,
         });
         const checkData = await checkRes.json();
@@ -422,7 +425,7 @@ export default function RegisterPage() {
       // حفظ بيانات التسجيل المعلقة
       const pendingData = {
         name: formData.name,
-        phone: formattedPhone,
+        phone: formattedPhone, // الرقم الكامل (كما تم إرساله في OTP)
         country: formData.country,
         countryCode: formData.countryCode,
         currency: formData.currency,
@@ -548,7 +551,7 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: pendingData.phone,
+          phoneNumber: pendingData.phone, // الرقم الكامل المحفوظ
           otp: otp,
           method: 'whatsapp'
         }),
@@ -627,6 +630,26 @@ export default function RegisterPage() {
       console.error('❌ OTP verification failed:', error);
       if (error instanceof Error) {
         console.error('❌ Error details:', error.message);
+        
+        // معالجة حالة الحساب الموجود مسبقاً
+        if (error.message.includes('email already exists') || 
+            error.message.includes('An account with this email already exists') ||
+            error.message.includes('هذا الحساب موجود مسبقاً')) {
+          
+          // التحقق من أن الحساب محذوف من Firestore (تم التحقق مسبقاً في check-user-exists)
+          // إذا وصلنا هنا، يعني أن الحساب موجود في Auth لكن محذوف من Firestore
+          setError('هذا الحساب موجود في النظام لكن تم حذفه. يرجى التواصل مع الإدارة لإعادة تفعيل الحساب أو تسجيل الدخول إذا كان الحساب نشطاً.');
+          
+          // توجيه المستخدم لتسجيل الدخول بعد 3 ثوانٍ (لإعطاء وقت لقراءة الرسالة)
+          setTimeout(() => {
+            router.push('/auth/login');
+          }, 3000);
+          
+          // لا نرمي الخطأ هنا لأننا نريد أن يرى المستخدم الرسالة
+          setLoading(false);
+          return;
+        }
+        
         setError(error.message || 'فشل في التحقق من رمز التحقق.');
       } else {
         console.error('❌ Unknown error:', error);

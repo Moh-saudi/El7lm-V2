@@ -8,7 +8,11 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import dynamic from 'next/dynamic';
 // import OfflineIndicator from '@/components/ui/OfflineIndicator'; // تم حذف المكون
+
+// Lazy load ad components
+const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
 
 export default function DashboardLayout({
   children,
@@ -82,6 +86,9 @@ export default function DashboardLayout({
 
       <FloatingChatWidget />
       <PushNotificationSetup />
+      
+      {/* Display ads based on account type */}
+      <ProfessionalAdPopup location={accountType as any} />
     </>
   );
 }

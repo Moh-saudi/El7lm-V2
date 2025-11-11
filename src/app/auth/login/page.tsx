@@ -178,8 +178,38 @@ export default function LoginPage() {
         toast.loading('جاري التحقق...', { id: 'login' });
         const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
         if (!firebaseEmail) {
-          toast.error('❌ رقم الهاتف غير مسجل', { id: 'login', duration: 4000 });
-          toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
+          // رسالة خطأ محسنة مع زر للتسجيل
+          toast.custom((t) => (
+            <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">👤</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
+                    رقم الهاتف غير مسجل
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
+                    💡 يرجى إنشاء حساب جديد للبدء
+                  </p>
+                  <button
+                    onClick={() => {
+                      toast.dismiss(t.id);
+                      router.push('/auth/register');
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
+                  >
+                    إنشاء حساب جديد
+                  </button>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 8000 });
           setLoading(false);
           return;
         }
@@ -229,8 +259,39 @@ export default function LoginPage() {
         if (error.code === 'auth/user-not-found') {
           errorIcon = '👤';
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
-          toast.info('💡 يرجى إنشاء حساب جديد', { duration: 4000 });
+          
+          // رسالة خطأ محسنة مع زر للتسجيل
+          toast.custom((t) => (
+            <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
+                    💡 يرجى إنشاء حساب جديد للبدء
+                  </p>
+                  <button
+                    onClick={() => {
+                      toast.dismiss(t.id);
+                      router.push('/auth/register');
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
+                  >
+                    إنشاء حساب جديد
+                  </button>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 8000 });
         } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           errorIcon = '🔒';
 
@@ -244,44 +305,267 @@ export default function LoginPage() {
 
             console.log(`[Sync Check] Response status: ${verifyResponse.status}`);
 
-            if (verifyResponse.ok) {
-              const verifyData = await verifyResponse.json();
-              console.log('[Sync Check] Response data:', verifyData);
+            // ⬅️ معالجة الاستجابة حتى لو كانت status غير 200
+            const verifyData = await verifyResponse.json().catch(() => ({}));
+            console.log('[Sync Check] Response data:', verifyData);
 
-              if (verifyData.needsSync) {
-                errorMessage = 'حسابك يحتاج إلى تفعيل';
-                toast.error(`⚠️ ${errorMessage}`, { id: 'login', duration: 5000 });
-                toast.info('💡 يرجى استخدام "نسيت كلمة المرور؟" لتفعيل حسابك', { duration: 7000 });
-                setLoading(false);
-                return;
-              } else {
-                console.log('[Sync Check] User does not need sync. Showing wrong password message.');
-              }
+            if (verifyData.needsSync) {
+              errorMessage = 'حسابك يحتاج إلى تفعيل';
+              
+              // رسالة خطأ محسنة مع زر "نسيت كلمة المرور" واضح
+              toast.custom((t) => (
+                <div className={`bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 text-2xl">⚠️</div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-yellow-800 dark:text-yellow-200 text-base sm:text-lg mb-2">
+                        {errorMessage}
+                      </h3>
+                      <p className="text-yellow-600 dark:text-yellow-300 text-sm sm:text-base mb-4">
+                        💡 لتفعيل حسابك، يرجى استخدام "نسيت كلمة المرور؟" لإعادة تعيين كلمة المرور
+                      </p>
+                      <button
+                        onClick={() => {
+                          toast.dismiss(t.id);
+                          router.push('/auth/forgot-password');
+                        }}
+                        className="w-full px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm sm:text-base font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        نسيت كلمة المرور؟ اضغط هنا للتفعيل
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => toast.dismiss(t.id)}
+                      className="flex-shrink-0 text-yellow-400 hover:text-yellow-600 transition-colors text-lg font-bold"
+                      aria-label="إغلاق"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ), { id: 'login', duration: 12000 });
+              setLoading(false);
+              return;
+            } else if (verifyData.existsInFirestore === false) {
+              // ⬅️ المستخدم غير موجود في قاعدة البيانات
+              errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
+              
+              // رسالة خطأ محسنة مع زر للتسجيل
+              toast.custom((t) => (
+                <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 text-2xl">👤</div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
+                        {errorMessage}
+                      </h3>
+                      <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
+                        💡 يرجى إنشاء حساب جديد للبدء
+                      </p>
+                      <button
+                        onClick={() => {
+                          toast.dismiss(t.id);
+                          router.push('/auth/register');
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
+                      >
+                        إنشاء حساب جديد
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => toast.dismiss(t.id)}
+                      className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                      aria-label="إغلاق"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ), { id: 'login', duration: 8000 });
+              setLoading(false);
+              return;
             } else {
-               console.log('[Sync Check] Verification request failed.');
+              console.log('[Sync Check] User does not need sync. Showing wrong password message.');
             }
           } catch (verifyError) {
             console.error('[Sync Check] Error during verification fetch:', verifyError);
           }
 
           errorMessage = 'كلمة المرور غير صحيحة';
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
-          toast.info('💡 يمكنك استخدام "نسيت كلمة المرور؟" لإعادة تعيينها', { duration: 5000 });
+          
+          // رسالة خطأ محسنة مع زر "نسيت كلمة المرور" واضح
+          toast.custom((t) => (
+            <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-2">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-4">
+                    💡 هل نسيت كلمة المرور؟ يمكنك إعادة تعيينها الآن
+                  </p>
+                  <button
+                    onClick={() => {
+                      toast.dismiss(t.id);
+                      router.push('/auth/forgot-password');
+                    }}
+                    className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    نسيت كلمة المرور؟ اضغط هنا
+                  </button>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors text-lg font-bold"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 10000 });
         } else if (error.code === 'auth/too-many-requests') {
           errorIcon = '⏱️';
-          errorMessage = 'تم تجاوز عدد المحاولات';
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          errorMessage = 'تم تجاوز عدد المحاولات المسموحة';
+          
+          toast.custom((t) => (
+            <div className={`bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-orange-800 dark:text-orange-200 text-base sm:text-lg mb-1">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-orange-600 dark:text-orange-300 text-sm sm:text-base">
+                    ⏳ يرجى الانتظار قليلاً ثم المحاولة مرة أخرى
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-orange-400 hover:text-orange-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 6000 });
         } else if (error.code === 'auth/network-request-failed') {
           errorIcon = '🌐';
-          errorMessage = 'خطأ في الاتصال';
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          errorMessage = 'خطأ في الاتصال بالإنترنت';
+          
+          toast.custom((t) => (
+            <div className={`bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-blue-800 dark:text-blue-200 text-base sm:text-lg mb-1">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-blue-600 dark:text-blue-300 text-sm sm:text-base">
+                    🔄 يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 6000 });
         } else if (error.code === 'auth/user-disabled') {
           errorIcon = '🚫';
           errorMessage = 'تم تعطيل الحساب';
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          
+          toast.custom((t) => (
+            <div className={`bg-gray-50 dark:bg-gray-900/20 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-800 dark:text-gray-200 text-base sm:text-lg mb-1">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                    📞 يرجى التواصل مع الدعم الفني لتفعيل حسابك
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 6000 });
         } else {
-          toast.error(`${errorIcon} ${errorMessage}`, { id: 'login', duration: 4000 });
+          toast.custom((t) => (
+            <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
+                    {errorMessage}
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300 text-sm sm:text-base">
+                    🔄 يرجى المحاولة مرة أخرى أو التواصل مع الدعم
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  aria-label="إغلاق"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ), { id: 'login', duration: 6000 });
         }
+      } else if (err instanceof Error && err.message) {
+        // معالجة الأخطاء العادية (مثل أخطاء حالة الحساب)
+        errorMessage = err.message;
+        errorIcon = '⚠️';
+        
+        // عرض رسالة الخطأ في toast
+        toast.custom((t) => (
+          <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1 whitespace-pre-line">
+                  {errorMessage}
+                </h3>
+                <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
+                  📞 يرجى التواصل مع الإدارة للحصول على المساعدة
+                </p>
+                <button
+                  onClick={() => {
+                    toast.dismiss(t.id);
+                    router.push('/support');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
+                >
+                  التوجه إلى صفحة الدعم الفني
+                </button>
+              </div>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                aria-label="إغلاق"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ), { id: 'login', duration: 10000 });
       }
       setLoading(false);
     }
@@ -307,7 +591,21 @@ export default function LoginPage() {
 
   return (
     <>
-      <Toaster position="top-center" dir="rtl" richColors />
+      <Toaster 
+        position="top-center" 
+        dir="rtl" 
+        richColors
+        toastOptions={{
+          className: '!text-sm sm:!text-base',
+          style: {
+            maxWidth: '90vw',
+            width: 'auto',
+            minWidth: '280px',
+            fontSize: '14px',
+            fontFamily: 'Cairo, sans-serif',
+          },
+        }}
+      />
       <div className="flex justify-center items-center px-4 py-8 min-h-screen bg-purple-950" dir="rtl">
         <div className="grid grid-cols-1 gap-6 w-full max-w-5xl md:grid-cols-2">
 

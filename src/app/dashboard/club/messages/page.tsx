@@ -1,13 +1,24 @@
 'use client';
-import WorkingMessageCenter from '@/components/messaging/WorkingMessageCenter';
-import ClientOnlyToaster from '@/components/ClientOnlyToaster';
 
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
+/**
+ * إعادة توجيه إلى صفحة الرسائل المشتركة
+ * تم توحيد صفحة الرسائل في: /dashboard/shared/messages
+ */
 export default function ClubMessagesPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/dashboard/shared/messages');
+  }, [router]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ClientOnlyToaster position="top-center" />
-      <div className="h-full">
-        <WorkingMessageCenter />
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">جاري التحويل إلى مركز الرسائل...</p>
       </div>
     </div>
   );

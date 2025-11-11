@@ -40,7 +40,7 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       <SelectPrimitive.Viewport
-        className={`p-1 ${position === "popper" ? "max-h-[var(--radix-select-content-available-height)] overflow-y-auto" : ""}`}
+        className={`p-1 ${position === "popper" ? "max-h-[var(--radix-select-content-available-height)] overflow-y-auto scrollbar-thin" : ""}`}
       >
         {children}
       </SelectPrimitive.Viewport>

@@ -34,7 +34,19 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
 }) => {
   const { user, userData, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [visitorMetrics] = useState(() => {
+    const randomActiveMembers = 18500 + Math.floor(Math.random() * 2200);
+    const randomClubsCount = 140 + Math.floor(Math.random() * 40);
+    const randomVisitorNumber = 24000 + Math.floor(Math.random() * 1800);
+
+    return {
+      activeMembers: randomActiveMembers,
+      clubsCount: randomClubsCount,
+      visitorNumber: randomVisitorNumber
+    };
+  });
   // Prefer explicitly provided accountType (e.g., admin layout) over user data
   const effectiveAccountType = accountType || (userData?.accountType as string) || 'player';
 
@@ -61,9 +73,53 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
   // عرض رسالة خطأ إذا لم يكن هناك مستخدم
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-gray-600">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-sky-50 via-white to-rose-50 px-6 py-16">
+        <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden="true">
+          <div className="absolute -top-24 -right-16 h-80 w-80 rounded-full bg-sky-200 blur-3xl"></div>
+          <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-rose-200 blur-3xl"></div>
+        </div>
+        <div className="relative z-10 w-full max-w-3xl rounded-3xl border border-white/70 bg-white/80 p-10 text-center shadow-2xl backdrop-blur-md">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-rose-500 text-3xl shadow-lg">
+            &#9917;
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+            مرحباً بك في حلم!
+          </h1>
+          <p className="mt-3 text-lg text-slate-600">
+            أول متجر إلكتروني متكامل لتسويق وبيع اللاعبين في الشرق الأوسط. اكتشف أفضل المواهب، وابقَ قريباً من الأندية الطموحة، وابدأ رحلتك الاحترافية معنا.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white/70 p-5 shadow-lg">
+              <p className="text-sm font-medium text-slate-500">الأعضاء النشطون الآن</p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {visitorMetrics.activeMembers.toLocaleString('en-US')}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-5 shadow-lg">
+              <p className="text-sm font-medium text-slate-500">الأندية والشركاء</p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {visitorMetrics.clubsCount.toLocaleString('en-US')}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-5 shadow-lg">
+              <p className="text-sm font-medium text-slate-500">أنت الزائر اليوم رقم</p>
+              <p className="mt-2 text-2xl font-bold text-rose-600">
+                {visitorMetrics.visitorNumber.toLocaleString('en-US')}
+              </p>
+            </div>
+          </div>
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button
+              size="lg"
+              className="w-full rounded-xl bg-gradient-to-r from-rose-500 via-sky-500 to-sky-600 px-8 py-6 text-lg font-semibold text-white shadow-xl transition-all hover:from-rose-600 hover:via-sky-600 hover:to-sky-700 sm:w-auto"
+              onClick={() => router.push('/auth/login')}
+            >
+              الانتقال إلى صفحة تسجيل الدخول
+            </Button>
+            <p className="text-sm text-slate-500">
+              لديك حساب جديد للأندية أو الوكلاء؟ انضم إلينا واستكشف فرصاً غير محدودة.
+            </p>
+          </div>
         </div>
       </div>
     );

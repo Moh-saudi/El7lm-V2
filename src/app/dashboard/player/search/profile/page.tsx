@@ -6,9 +6,8 @@ import { useState, useEffect } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { useAuthState } from 'react-firebase-hooks/auth';
-
-import { auth, db } from '@/lib/firebase/config';
+import { db } from '@/lib/firebase/config';
+import { useAuth } from '@/lib/firebase/auth-provider';
 
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -19,54 +18,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { 
-
   ArrowLeft, 
-
   MapPin, 
-
   Star, 
-
-  MessageSquare, 
-
   UserPlus, 
-
   UserCheck,
-
   Building,
-
   Briefcase,
-
   Eye,
-
   Mail,
-
   Phone,
-
   Globe,
-
   Award,
-
   Target,
-
   Trophy,
-
   CheckCircle,
-
   Loader2,
-
   Sparkles,
-
   User,
-
   Users,
-
   Calendar,
-
   Languages,
-
   Share2
-
 } from 'lucide-react';
+import SendMessageButton from '@/components/messaging/SendMessageButton';
 
 
 
@@ -168,7 +143,7 @@ const ENTITY_TYPES = {
 
 export default function EntityProfilePage() {
 
-  const [user, loading] = useAuthState(auth);
+  const { user, userData, loading: authLoading } = useAuth();
 
   const router = useRouter();
 
@@ -436,28 +411,6 @@ export default function EntityProfilePage() {
 
 
 
-  // إرسال رسالة
-
-  const handleMessage = () => {
-
-    if (!user || !entity) return;
-
-    setActionLoading('message');
-
-    
-    
-    // إضافة تأخير صغير لمحاكاة التحميل
-
-    setTimeout(() => {
-
-      router.push(`/dashboard/messages?recipient=${entity.id}`);
-
-    }, 500);
-
-  };
-
-
-
   // تنسيق الأرقام
 
   const formatNumber = (num: number) => {
@@ -474,7 +427,7 @@ export default function EntityProfilePage() {
 
   // التحقق من تسجيل الدخول
 
-  if (loading || isLoading) {
+  if (authLoading || isLoading) {
 
     return (
 
@@ -731,43 +684,29 @@ export default function EntityProfilePage() {
 
 
 
-                  <Button
-
-                    onClick={handleMessage}
-
-                    disabled={actionLoading === 'message'}
-
-                    variant="outline"
-
-                    className={`w-full md:w-48 transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-
-                      actionLoading === 'message'
-
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 animate-pulse'
-
-                        : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white'
-
-                    }`}
-
-                  >
-
-                    {actionLoading === 'message' ? (
-
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-
-                    ) : (
-
-                      <>
-
-                        <MessageSquare className="w-4 h-4 mr-2" />
-
-                        إرسال رسالة
-
-                      </>
-
-                    )}
-
-                  </Button>
+                  {user && userData && (
+                    <SendMessageButton
+                      user={user}
+                      userData={userData}
+                      getUserDisplayName={() =>
+                        (userData as any)?.full_name ||
+                        (userData as any)?.displayName ||
+                        (userData as any)?.name ||
+                        user?.displayName ||
+                        user?.email ||
+                        'مستخدم'
+                      }
+                      targetUserId={entity.id}
+                      targetUserName={entity.name}
+                      targetUserType={entity.type}
+                      organizationName={entity.specialization}
+                      buttonText="إرسال رسالة"
+                      buttonVariant="default"
+                      buttonSize="default"
+                      className="w-full md:w-48 transition-all duration-300 transform hover:scale-105 active:scale-95 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-md hover:shadow-lg"
+                      redirectToMessages={true}
+                    />
+                  )}
 
                 </div>
 

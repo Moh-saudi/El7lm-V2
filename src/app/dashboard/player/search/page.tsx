@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase/config';
 import { 
@@ -80,6 +80,7 @@ interface SearchEntity {
   connectionsCount: number;
   achievements?: string[];
   services?: string[];
+  opportunities?: string[];
   established?: string;
   languages?: string[];
   createdAt: any;
@@ -106,13 +107,8 @@ interface FilterOptions {
   searchQuery: string;
   type: 'all' | 'club' | 'agent' | 'scout' | 'academy' | 'sponsor' | 'trainer';
   country: string;
-  city: string;
-  minRating: number;
-  verified: boolean | null;
-  premium: boolean | null;
-  sortBy: 'relevance' | 'rating' | 'followers' | 'recent' | 'alphabetical';
-  playerGoals: string[];
-  requiredServices: string[];
+  opportunity: string;
+  sortBy: 'relevance' | 'followers' | 'recent' | 'alphabetical';
 }
 
 export default function SearchPage() {
@@ -121,6 +117,17 @@ export default function SearchPage() {
   const isRTL = true;
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const getInitialPage = () => {
+    const pageParam = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('page')
+      : searchParams.get('page');
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    return isNaN(page) || page < 1 ? 1 : page;
+  };
+  const isUpdatingFromUser = useRef(false);
+  const hasInitializedFilters = useRef(false);
+  const filtersSignatureRef = useRef<string>('');
   const [userData, setUserData] = useState<any>(null);
   
   // حالة البحث والتصفية
@@ -128,13 +135,8 @@ export default function SearchPage() {
     searchQuery: '',
     type: 'all',
     country: '',
-    city: '',
-    minRating: 0,
-    verified: null,
-    premium: null,
-    sortBy: 'relevance',
-    playerGoals: [],
-    requiredServices: []
+    opportunity: '',
+    sortBy: 'relevance'
   });
 
   // حالة النتائج والتحميل
@@ -143,10 +145,37 @@ export default function SearchPage() {
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
+  const [availableOpportunities, setAvailableOpportunities] = useState<string[]>([]);
   
   // حالة التنقل بين الصفحات
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => getInitialPage());
   const [itemsPerPage] = useState(6); // 3 صفوف × 2 كروت
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(entities.length / itemsPerPage)), [entities.length, itemsPerPage]);
+  const filtersSignature = useMemo(() => JSON.stringify(filters), [filters]);
+  const updatePageInURL = useCallback((page: number) => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (page > 1) {
+      params.set('page', page.toString());
+    } else {
+      params.delete('page');
+    }
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+
+    setTimeout(() => {
+      isUpdatingFromUser.current = false;
+    }, 100);
+
+    router.replace(newUrl, { scroll: false });
+  }, [router]);
+  const handlePageChange = useCallback((page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), totalPages);
+    isUpdatingFromUser.current = true;
+    setCurrentPage(nextPage);
+    updatePageInURL(nextPage);
+  }, [totalPages, updatePageInURL]);
 
   // حالة الواجهة
   const [showFilters, setShowFilters] = useState(false);
@@ -163,92 +192,12 @@ export default function SearchPage() {
     trainer: { label: 'المدربين', icon: User, color: 'bg-cyan-500' }
   };
 
-  const COUNTRIES = [
-    'مصر',
-    'السعودية',
-    'الإمارات',
-    'قطر',
-    'الكويت',
-    'البحرين',
-    'عمان',
-    'الأردن',
-    'لبنان',
-    'العراق',
-    'المغرب',
-    'الجزائر',
-    'تونس',
-    'ليبيا'
-  ];
-
   // جلب البيانات من Firestore
   const fetchEntities = useCallback(async (reset = false) => {
     if (!user) return;
 
     try {
       setIsLoading(true);
-      
-      // دالة مساعدة لتصفية الكيانات حسب الأهداف والخدمات
-      const matchesPlayerGoals = (entity: SearchEntity) => {
-        if (filters.playerGoals.length === 0) return true;
-        
-        // تحويل أهداف اللاعب إلى خدمات مطلوبة
-        const goalToServiceMap: Record<string, string[]> = {
-          'europeanLeague': ['playerRepresentation', 'contractNegotiation'],
-          'nationalTeam': ['playerRepresentation', 'advancedPrograms'],
-          'professionalClub': ['playerRepresentation', 'contractNegotiation'],
-          'localChampionship': ['playerTraining', 'officialCompetitions'],
-          'regionalChampionship': ['playerTraining', 'officialCompetitions'],
-          'internationalChampionship': ['playerRepresentation', 'advancedPrograms'],
-          'teamCaptain': ['playerTraining', 'personalTraining'],
-          'technicalSkills': ['playerTraining', 'personalTraining'],
-          'physicalFitness': ['playerTraining', 'personalTraining'],
-          'individualAwards': ['playerRepresentation', 'advancedPrograms'],
-          'inspireYouth': ['youthPrograms', 'talentDevelopment'],
-          'firstDivision': ['playerTraining', 'officialCompetitions'],
-          'sportsScholarship': ['playerRepresentation', 'advancedPrograms'],
-          'topScorer': ['playerTraining', 'personalTraining'],
-          'goalkeeperDefense': ['playerTraining', 'personalTraining'],
-          'worldCup': ['playerRepresentation', 'advancedPrograms'],
-          'gulfLeague': ['playerRepresentation', 'contractNegotiation'],
-          'professionalReputation': ['playerRepresentation', 'sportsConsultations'],
-          'olympics': ['playerRepresentation', 'advancedPrograms'],
-          'bestYoungPlayer': ['playerRepresentation', 'advancedPrograms'],
-          'leadershipSkills': ['playerTraining', 'personalTraining'],
-          'playWithStars': ['playerRepresentation', 'advancedPrograms'],
-          'clubStability': ['playerRepresentation', 'contractNegotiation'],
-          'returnAsStar': ['playerRepresentation', 'contractNegotiation'],
-          'futureTraining': ['playerTraining', 'talentDevelopment'],
-          'internationalTrials': ['playerRepresentation', 'advancedPrograms'],
-          'investmentClub': ['playerRepresentation', 'contractNegotiation'],
-          'accreditedAcademy': ['youthPrograms', 'talentDevelopment'],
-          'fifaRegistration': ['playerRepresentation', 'legalConsultation'],
-          'englishCourses': ['advancedPrograms', 'preparationPrograms'],
-          'additionalLanguages': ['advancedPrograms', 'preparationPrograms'],
-          'sportsAnalysis': ['advancedPrograms', 'sportsConsultations'],
-          'physicalPreparation': ['playerTraining', 'preparationPrograms'],
-          'psychologicalPreparation': ['personalTraining', 'sportsConsultations'],
-          'coachingLicense': ['advancedPrograms', 'trainingCamps'],
-          'clubManagement': ['advancedPrograms', 'sportsConsultations']
-        };
-
-        // فحص إذا كان الكيان يقدم الخدمات المطلوبة لأهداف اللاعب
-        const requiredServices = filters.playerGoals.flatMap(goal => goalToServiceMap[goal] || []);
-        return requiredServices.some(service => 
-          entity.services?.some(entityService => 
-            entityService.toLowerCase().includes(service.toLowerCase())
-          )
-        );
-      };
-
-      const matchesRequiredServices = (entity: SearchEntity) => {
-        if (filters.requiredServices.length === 0) return true;
-        
-        return filters.requiredServices.some(requiredService => 
-          entity.services?.some(entityService => 
-            entityService.toLowerCase().includes(requiredService.toLowerCase())
-          )
-        );
-      };
       
       // جلب البيانات الحقيقية من collections مختلفة
       const allEntities: SearchEntity[] = [];
@@ -328,7 +277,8 @@ export default function SearchPage() {
               },
               isFollowing: Array.isArray(clubData.followers) ? clubData.followers.includes(user.uid) : false,
               isConnected: false,
-              hasPendingRequest: false
+              hasPendingRequest: false,
+              opportunities: Array.isArray(clubData.opportunities) ? clubData.opportunities : []
             };
             
             allEntities.push(entity);
@@ -414,7 +364,8 @@ export default function SearchPage() {
               },
               isFollowing: Array.isArray(agentData.followers) ? agentData.followers.includes(user.uid) : false,
               isConnected: false,
-              hasPendingRequest: false
+              hasPendingRequest: false,
+              opportunities: Array.isArray(agentData.opportunities) ? agentData.opportunities : []
             };
             
             allEntities.push(entity);
@@ -490,7 +441,8 @@ export default function SearchPage() {
               },
               isFollowing: Array.isArray(academyData.followers) ? academyData.followers.includes(user.uid) : false,
               isConnected: false,
-              hasPendingRequest: false
+              hasPendingRequest: false,
+              opportunities: Array.isArray(academyData.opportunities) ? academyData.opportunities : []
             };
             
             allEntities.push(entity);
@@ -570,7 +522,8 @@ export default function SearchPage() {
               },
               isFollowing: Array.isArray(trainerData.followers) ? trainerData.followers.includes(user.uid) : false,
               isConnected: false,
-              hasPendingRequest: false
+              hasPendingRequest: false,
+              opportunities: Array.isArray(trainerData.opportunities) ? trainerData.opportunities : []
             };
             
             allEntities.push(entity);
@@ -608,7 +561,8 @@ export default function SearchPage() {
             stats: { successfulDeals: 150, playersRepresented: 300, activeContracts: 45 },
             isFollowing: false,
             isConnected: false,
-            hasPendingRequest: false
+            hasPendingRequest: false,
+            opportunities: []
           },
           {
             id: '2',
@@ -636,7 +590,8 @@ export default function SearchPage() {
             stats: { successfulDeals: 85, playersRepresented: 120, activeContracts: 35 },
             isFollowing: false,
             isConnected: false,
-            hasPendingRequest: false
+            hasPendingRequest: false,
+            opportunities: []
           },
           {
             id: '3',
@@ -760,28 +715,27 @@ export default function SearchPage() {
           if (!matchesSearch) return false;
         }
         
-        // فلتر التقييم الأدنى
-        if (filters.minRating > 0 && entity.rating < filters.minRating) {
-          return false;
+        // فلتر الفرص
+        if (filters.opportunity) {
+          const opportunities = Array.isArray(entity.opportunities) ? entity.opportunities : [];
+          const matchesOpportunity = opportunities.some(opportunity => 
+            opportunity && opportunity.toLowerCase() === filters.opportunity.toLowerCase()
+          );
+          if (!matchesOpportunity) {
+            return false;
+          }
         }
         
-        // فلتر الحسابات المحققة
-        if (filters.verified === true && !entity.verified) {
-          return false;
+        // فلتر الدول
+        if (filters.country) {
+          const country = entity.location?.country || '';
+          if (!country.toLowerCase().includes(filters.country.toLowerCase())) {
+            return false;
+          }
         }
         
-        // فلتر الحسابات المميزة
-        if (filters.premium === true && !entity.isPremium) {
-          return false;
-        }
-        
-        // فلتر أهداف اللاعب
-        if (!matchesPlayerGoals(entity)) {
-          return false;
-        }
-        
-        // فلتر الخدمات المطلوبة
-        if (!matchesRequiredServices(entity)) {
+        // فلتر نوع الكيان
+        if (filters.type !== 'all' && entity.type !== filters.type) {
           return false;
         }
         
@@ -790,9 +744,6 @@ export default function SearchPage() {
       
       // ترتيب النتائج
       switch (filters.sortBy) {
-        case 'rating':
-          filteredEntities.sort((a, b) => b.rating - a.rating);
-          break;
         case 'followers':
           filteredEntities.sort((a, b) => b.followersCount - a.followersCount);
           break;
@@ -803,27 +754,30 @@ export default function SearchPage() {
           filteredEntities.sort((a, b) => a.name.localeCompare(b.name));
           break;
         default: // relevance
-          // ترتيب حسب الصلة (عدد المطابقات مع الفلاتر)
-          filteredEntities.sort((a, b) => {
-            let aScore = 0;
-            let bScore = 0;
-            
-            // نقاط إضافية للحسابات المحققة والمميزة
-            if (a.verified) aScore += 10;
-            if (b.verified) bScore += 10;
-            if (a.isPremium) aScore += 5;
-            if (b.isPremium) bScore += 5;
-            
-            // نقاط إضافية للتقييم العالي
-            aScore += a.rating * 2;
-            bScore += b.rating * 2;
-            
-            return bScore - aScore;
-          });
+          filteredEntities.sort((a, b) => a.name.localeCompare(b.name));
       }
       
       // استبعاد أي كيانات من نوع admin (وقائي)
       const safeEntities = filteredEntities.filter((e) => (e as any).type !== 'admin');
+
+      const uniqueCountries = Array.from(
+        new Set(
+          safeEntities
+            .map((entity) => entity.location?.country)
+            .filter((country): country is string => Boolean(country))
+        )
+      ).sort((a, b) => a.localeCompare(b));
+
+      const uniqueOpportunities = Array.from(
+        new Set(
+          safeEntities.flatMap((entity) =>
+            Array.isArray(entity.opportunities) ? entity.opportunities : []
+          )
+        )
+      ).filter((opportunity): opportunity is string => Boolean(opportunity));
+
+      setAvailableCountries(uniqueCountries);
+      setAvailableOpportunities(uniqueOpportunities);
 
       setEntities(safeEntities);
       setTotalResults(filteredEntities.length);
@@ -858,7 +812,8 @@ export default function SearchPage() {
           stats: { successfulDeals: 150, playersRepresented: 300, activeContracts: 45 },
           isFollowing: false,
           isConnected: false,
-          hasPendingRequest: false
+          hasPendingRequest: false,
+          opportunities: []
         },
         {
           id: '2',
@@ -886,7 +841,8 @@ export default function SearchPage() {
           stats: { successfulDeals: 85, playersRepresented: 120, activeContracts: 35 },
           isFollowing: false,
           isConnected: false,
-          hasPendingRequest: false
+          hasPendingRequest: false,
+          opportunities: []
         },
         {
           id: '3',
@@ -914,7 +870,8 @@ export default function SearchPage() {
           stats: { successfulDeals: 65, playersRepresented: 200, activeContracts: 25 },
           isFollowing: false,
           isConnected: false,
-          hasPendingRequest: false
+          hasPendingRequest: false,
+          opportunities: []
         },
         {
           id: '4',
@@ -942,7 +899,8 @@ export default function SearchPage() {
           stats: { successfulDeals: 45, playersRepresented: 80, activeContracts: 15 },
           isFollowing: false,
           isConnected: false,
-          hasPendingRequest: false
+          hasPendingRequest: false,
+          opportunities: []
         },
         {
           id: '5',
@@ -968,11 +926,30 @@ export default function SearchPage() {
           stats: { successfulDeals: 120, playersRepresented: 250, activeContracts: 40 },
           isFollowing: false,
           isConnected: false,
-          hasPendingRequest: false
+          hasPendingRequest: false,
+          opportunities: []
         }
       ];
       setEntities(mockEntities);
       setTotalResults(mockEntities.length);
+      setAvailableCountries(
+        Array.from(
+          new Set(
+            mockEntities
+              .map((entity) => entity.location?.country)
+              .filter((country): country is string => Boolean(country))
+          )
+        )
+      );
+      setAvailableOpportunities(
+        Array.from(
+          new Set(
+            mockEntities.flatMap((entity) =>
+              Array.isArray(entity.opportunities) ? entity.opportunities : []
+            )
+          )
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -985,6 +962,23 @@ export default function SearchPage() {
     }
   }, [user, fetchEntities]);
 
+  useEffect(() => {
+    if (isUpdatingFromUser.current) {
+      return;
+    }
+
+    const pageParam = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('page')
+      : searchParams.get('page');
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const validPage = isNaN(page) || page < 1 ? 1 : page;
+    const safePage = Math.min(validPage, totalPages || 1);
+
+    if (safePage !== currentPage) {
+      setCurrentPage(safePage);
+    }
+  }, [searchParams, totalPages, currentPage]);
+
   // تأثير لتشغيل البحث عند تغيير المرشحات
   useEffect(() => {
     if (user) {
@@ -995,6 +989,25 @@ export default function SearchPage() {
       return () => clearTimeout(timeoutId);
     }
   }, [filters, user]);
+
+  useEffect(() => {
+    if (!hasInitializedFilters.current) {
+      hasInitializedFilters.current = true;
+      filtersSignatureRef.current = filtersSignature;
+      return;
+    }
+
+    if (filtersSignatureRef.current === filtersSignature) {
+      return;
+    }
+
+    filtersSignatureRef.current = filtersSignature;
+    isUpdatingFromUser.current = true;
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+    updatePageInURL(1);
+  }, [filtersSignature, currentPage, updatePageInURL]);
 
   // معالج البحث المباشر
   const handleSearchChange = (value: string) => {
@@ -1012,13 +1025,8 @@ export default function SearchPage() {
       searchQuery: '',
       type: 'all',
       country: '',
-      city: '',
-      minRating: 0,
-      verified: null,
-      premium: null,
-      sortBy: 'relevance',
-      playerGoals: [],
-      requiredServices: []
+      opportunity: '',
+      sortBy: 'relevance'
     });
   };
 
@@ -1288,7 +1296,14 @@ export default function SearchPage() {
     }
     
     // توجيه إلى صفحة عرض الملف الشخصي للكيان
-    router.push(`/dashboard/player/search/profile?type=${entity.type}&id=${entity.id}`);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const returnUrl = params.toString() ? `?${params.toString()}` : '';
+      const fullReturnPath = `${window.location.pathname}${returnUrl}`;
+      router.push(`/dashboard/player/search/profile?type=${entity.type}&id=${entity.id}&returnPath=${encodeURIComponent(fullReturnPath)}`);
+    } else {
+      router.push(`/dashboard/player/search/profile?type=${entity.type}&id=${entity.id}`);
+    }
   };
 
   // تنسيق الأرقام
@@ -1300,287 +1315,79 @@ export default function SearchPage() {
 
   // مكون البحث المتقدم
   const SearchFilters = () => (
-    <Card className="p-6 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {/* نوع الكيان */}
+    <Card className="p-4 md:p-6 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">نوع الكيان</label>
-          <select
+          <label className="block text-sm font-semibold text-gray-700 mb-2">نوع الكيان</label>
+          <Select
             value={filters.type}
-            onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as any }))}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            title="نوع الكيان"
+            onValueChange={(value) => setFilters(prev => ({ ...prev, type: value as any }))}
           >
-            <option value="all">جميع الأنواع</option>
-            {Object.entries(ENTITY_TYPES).map(([key, value]) => (
-              <option key={key} value={key}>{value.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full border-gray-300 bg-white">
+              <SelectValue placeholder="اختر نوع الكيان" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الأنواع</SelectItem>
+              {Object.entries(ENTITY_TYPES).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* الدولة */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">الدولة</label>
-          <select
+          <label className="block text-sm font-semibold text-gray-700 mb-2">الدولة</label>
+          <Select
             value={filters.country}
-            onChange={(e) => setFilters(prev => ({ ...prev, country: e.target.value }))}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            title="الدولة"
+            onValueChange={(value) => setFilters(prev => ({ ...prev, country: value }))}
           >
-            <option value="">جميع الدول</option>
-            {COUNTRIES.map(country => (
-              <option key={country} value={country}>{country}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* التقييم الأدنى */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">التقييم الأدنى</label>
-          <div className="flex gap-2">
-            {[0, 3, 3.5, 4, 4.5].map(rating => (
-              <Button
-                key={rating}
-                variant={filters.minRating === rating ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilters(prev => ({ ...prev, minRating: rating }))}
-                className={`${filters.minRating === rating ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-              >
-                {rating > 0 ? `${rating}+` : 'الكل'}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* خيارات إضافية */}
-        <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700">خيارات إضافية</label>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={filters.verified === true}
-                onChange={(e) => setFilters(prev => ({ 
-                  ...prev, 
-                  verified: e.target.checked ? true : null 
-                }))}
-                className="rounded border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">الحسابات المحققة فقط</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={filters.premium === true}
-                onChange={(e) => setFilters(prev => ({ 
-                  ...prev, 
-                  premium: e.target.checked ? true : null 
-                }))}
-                className="rounded border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">الحسابات المميزة فقط</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* فلاتر الأهداف والخدمات */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* أهداف اللاعب */}
-          <div>
-            <label className="block text-sm font-medium mb-3 text-gray-700">أهداف اللاعب</label>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {[
-                'europeanLeague',
-                'nationalTeam',
-                'professionalClub',
-                'localChampionship',
-                'regionalChampionship',
-                'internationalChampionship',
-                'teamCaptain',
-                'technicalSkills',
-                'physicalFitness',
-                'individualAwards',
-                'inspireYouth',
-                'firstDivision',
-                'sportsScholarship',
-                'topScorer',
-                'goalkeeperDefense',
-                'worldCup',
-                'gulfLeague',
-                'professionalReputation',
-                'olympics',
-                'bestYoungPlayer',
-                'leadershipSkills',
-                'playWithStars',
-                'clubStability',
-                'returnAsStar',
-                'futureTraining',
-                'internationalTrials',
-                'investmentClub',
-                'accreditedAcademy',
-                'fifaRegistration',
-                'englishCourses',
-                'additionalLanguages',
-                'sportsAnalysis',
-                'physicalPreparation',
-                'psychologicalPreparation',
-                'coachingLicense',
-                'clubManagement'
-              ].map(goal => (
-                <label key={goal} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={filters.playerGoals.includes(goal)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFilters(prev => ({
-                          ...prev,
-                          playerGoals: [...prev.playerGoals, goal]
-                        }));
-                      } else {
-                        setFilters(prev => ({
-                          ...prev,
-                          playerGoals: prev.playerGoals.filter(g => g !== goal)
-                        }));
-                      }
-                    }}
-                    className="rounded border-gray-300 text-blue-600"
-                  />
-                  <span className="text-sm">{goal === 'europeanLeague' ? 'الدوري الأوروبي' :
-                    goal === 'nationalTeam' ? 'المنتخب الوطني' :
-                    goal === 'professionalClub' ? 'النادي الاحترافي' :
-                    goal === 'localChampionship' ? 'البطولة المحلية' :
-                    goal === 'regionalChampionship' ? 'البطولة الإقليمية' :
-                    goal === 'internationalChampionship' ? 'البطولة الدولية' :
-                    goal === 'teamCaptain' ? 'قائد الفريق' :
-                    goal === 'technicalSkills' ? 'المهارات التقنية' :
-                    goal === 'physicalFitness' ? 'اللياقة البدنية' :
-                    goal === 'individualAwards' ? 'الجوائز الفردية' :
-                    goal === 'inspireYouth' ? 'إلهام الشباب' :
-                    goal === 'firstDivision' ? 'الدوري الأول' :
-                    goal === 'sportsScholarship' ? 'المنحة الرياضية' :
-                    goal === 'topScorer' ? 'الهداف الأول' :
-                    goal === 'goalkeeperDefense' ? 'دفاع حارس المرمى' :
-                    goal === 'worldCup' ? 'كأس العالم' :
-                    goal === 'gulfLeague' ? 'دوري الخليج' :
-                    goal === 'professionalReputation' ? 'السمعة الاحترافية' :
-                    goal === 'olympics' ? 'الأولمبياد' :
-                    goal === 'bestYoungPlayer' ? 'أفضل لاعب شاب' :
-                    goal === 'leadershipSkills' ? 'مهارات القيادة' :
-                    goal === 'playWithStars' ? 'اللعب مع النجوم' :
-                    goal === 'clubStability' ? 'استقرار النادي' :
-                    goal === 'returnAsStar' ? 'العودة كنجم' :
-                    goal === 'futureTraining' ? 'التدريب المستقبلي' :
-                    goal === 'internationalTrials' ? 'التجارب الدولية' :
-                    goal === 'investmentClub' ? 'نادي الاستثمار' :
-                    goal === 'accreditedAcademy' ? 'الأكاديمية المعتمدة' :
-                    goal === 'fifaRegistration' ? 'تسجيل الفيفا' :
-                    goal === 'englishCourses' ? 'دورات اللغة الإنجليزية' :
-                    goal === 'additionalLanguages' ? 'اللغات الإضافية' :
-                    goal === 'sportsAnalysis' ? 'التحليل الرياضي' :
-                    goal === 'physicalPreparation' ? 'الإعداد البدني' :
-                    goal === 'psychologicalPreparation' ? 'الإعداد النفسي' :
-                    goal === 'coachingLicense' ? 'رخصة التدريب' :
-                    goal === 'clubManagement' ? 'إدارة النادي' : goal}</span>
-                </label>
+            <SelectTrigger className="w-full border-gray-300 bg-white">
+              <SelectValue placeholder="جميع الدول" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">جميع الدول</SelectItem>
+              {availableCountries.map((country) => (
+                <SelectItem key={country} value={country}>{country}</SelectItem>
               ))}
-            </div>
-          </div>
-
-          {/* الخدمات المطلوبة */}
-          <div>
-            <label className="block text-sm font-medium mb-3 text-gray-700">الخدمات المطلوبة</label>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {[
-                'playerTraining',
-                'youthPrograms',
-                'officialCompetitions',
-                'playerRepresentation',
-                'contractNegotiation',
-                'advancedPrograms',
-                'talentDevelopment',
-                'personalTraining',
-                'preparationPrograms',
-                'sportsConsultations',
-                'legalConsultation',
-                'trainingCamps'
-              ].map(service => (
-                <label key={service} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={filters.requiredServices.includes(service)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFilters(prev => ({
-                          ...prev,
-                          requiredServices: [...prev.requiredServices, service]
-                        }));
-                      } else {
-                        setFilters(prev => ({
-                          ...prev,
-                          requiredServices: prev.requiredServices.filter(s => s !== service)
-                        }));
-                      }
-                    }}
-                    className="rounded border-gray-300 text-blue-600"
-                  />
-                  <span className="text-sm">{service === 'playerTraining' ? 'تدريب اللاعبين' :
-                    service === 'youthPrograms' ? 'برامج الشباب' :
-                    service === 'officialCompetitions' ? 'المنافسات الرسمية' :
-                    service === 'playerRepresentation' ? 'تمثيل اللاعبين' :
-                    service === 'contractNegotiation' ? 'تفاوض العقود' :
-                    service === 'advancedPrograms' ? 'البرامج المتقدمة' :
-                    service === 'talentDevelopment' ? 'تطوير المواهب' :
-                    service === 'personalTraining' ? 'التدريب الشخصي' :
-                    service === 'preparationPrograms' ? 'برامج الإعداد' :
-                    service === 'sportsConsultations' ? 'الاستشارات الرياضية' :
-                    service === 'legalConsultation' ? 'الاستشارات القانونية' :
-                    service === 'trainingCamps' ? 'معسكرات التدريب' : service}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+            </SelectContent>
+          </Select>
+          {availableCountries.length === 0 && (
+            <p className="mt-2 text-xs text-gray-500">سيتم تحديث قائمة الدول تلقائياً بعد توفر بيانات.</p>
+          )}
         </div>
-      </div>
 
-      {/* ترتيب النتائج */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-          <label className="block text-sm font-medium mb-2 text-gray-700">ترتيب النتائج</label>
-        <div className="flex flex-wrap gap-2">
-          {[
-              { key: 'relevance', label: 'الأكثر صلة' },
-              { key: 'rating', label: 'الأعلى تقييماً' },
-              { key: 'followers', label: 'الأكثر متابعة' },
-              { key: 'recent', label: 'الأحدث' },
-              { key: 'alphabetical', label: 'أبجدياً' }
-          ].map(sort => (
-            <Button
-              key={sort.key}
-              variant={filters.sortBy === sort.key ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilters(prev => ({ ...prev, sortBy: sort.key as any }))}
-                className={`${filters.sortBy === sort.key ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">الفرص</label>
+          {availableOpportunities.length > 0 ? (
+            <Select
+              value={filters.opportunity}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, opportunity: value }))}
             >
-              {sort.label}
-            </Button>
-          ))}
+              <SelectTrigger className="w-full border-gray-300 bg-white">
+                <SelectValue placeholder="جميع الفرص" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">جميع الفرص</SelectItem>
+                {availableOpportunities.map((opportunity) => (
+                  <SelectItem key={opportunity} value={opportunity}>{opportunity}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 bg-white">
+              لا توجد فرص مضافة حالياً، سيتم إتاحتها من قبل الإدارة قريباً.
+            </div>
+          )}
         </div>
       </div>
 
-      {/* أزرار التحكم */}
-      <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
+      <div className="mt-4 flex flex-wrap gap-3 items-center">
         <div className="text-sm text-gray-600">
-            {totalResults} نتيجة تم العثور عليها
+          اختر نوع الكيان، الدولة، أو الفرص المتاحة لتصفية النتائج.
         </div>
-        <Button
-          variant="outline"
-          onClick={handleResetFilters}
-          className="flex items-center gap-2"
-        >
+        <Button variant="outline" onClick={handleResetFilters} className="ml-auto flex items-center gap-2">
           <Filter className="w-4 h-4" />
-            إعادة تعيين المرشحات
+          إعادة تعيين
         </Button>
       </div>
     </Card>
@@ -1592,10 +1399,10 @@ export default function SearchPage() {
     const EntityIcon = entityType.icon;
 
     return (
-      <Card className="group hover:shadow-xl transition-all duration-500 ease-out overflow-hidden h-full flex flex-col min-h-[500px] border border-gray-200 hover:border-blue-300">
+      <Card className="group hover:shadow-xl transition-all duration-500 ease-out overflow-hidden h-full flex flex-col min-h-[420px] md:min-h-[500px] border border-gray-200 hover:border-blue-300">
         {/* الصورة الغلاف */}
         {entity.coverImage && (
-          <div className="h-40 bg-gradient-to-r from-blue-400 to-purple-500 relative overflow-hidden">
+          <div className="h-32 md:h-40 bg-gradient-to-r from-blue-400 to-purple-500 relative overflow-hidden">
             <img 
               src={entity.coverImage} 
               alt={entity.name}
@@ -1605,20 +1412,20 @@ export default function SearchPage() {
           </div>
         )}
 
-        <div className="p-6 flex-1 flex flex-col bg-white group-hover:bg-gray-50 transition-colors duration-500">
+        <div className="p-4 md:p-6 flex-1 flex flex-col bg-white group-hover:bg-gray-50 transition-colors duration-500">
                       {/* الرأس */}
-          <div className="flex items-start gap-4 mb-6">
+          <div className="flex items-start gap-3 md:gap-4 mb-4 md:mb-6">
             {/* الصورة الشخصية */}
             <div className="relative flex-shrink-0">
               {entity.profileImage ? (
                 <img 
                   src={entity.profileImage} 
                   alt={entity.name}
-                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg transition-shadow duration-500 group-hover:shadow-xl"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white shadow-lg transition-shadow duration-500 group-hover:shadow-xl"
                 />
               ) : (
-                <div className={`w-20 h-20 rounded-full ${entityType.color} flex items-center justify-center shadow-lg transition-shadow duration-500 group-hover:shadow-xl`}>
-                  <EntityIcon className="w-10 h-10 text-white" />
+                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full ${entityType.color} flex items-center justify-center shadow-lg transition-shadow duration-500 group-hover:shadow-xl`}>
+                  <EntityIcon className="w-8 h-8 md:w-10 md:h-10 text-white" />
                 </div>
               )}
               
@@ -1640,13 +1447,13 @@ export default function SearchPage() {
             {/* معلومات أساسية */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-bold text-xl text-gray-900 truncate transition-colors duration-500 group-hover:text-blue-600">{entity.name}</h3>
+                <h3 className="font-bold text-base md:text-lg text-gray-900 transition-colors duration-500 group-hover:text-blue-600 break-words">{entity.name}</h3>
                 <Badge variant="secondary" className={`${entityType.color} text-white flex-shrink-0`}>
                   {entityType.label}
                 </Badge>
               </div>
               
-              <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-2 md:mb-3">
                 <div className="flex items-center gap-1 transition-colors duration-500 group-hover:text-blue-600">
                   <MapPin className="w-4 h-4 flex-shrink-0" />
                   <span className="truncate">{entity.location.city}, {entity.location.country}</span>
@@ -1658,7 +1465,7 @@ export default function SearchPage() {
               </div>
 
               {entity.specialization && (
-                <div className="flex items-center gap-1 text-sm text-gray-600 mb-2 transition-colors duration-500 group-hover:text-purple-600">
+                <div className="flex items-center gap-1 text-xs md:text-sm text-gray-600 mb-2 transition-colors duration-500 group-hover:text-purple-600">
                   <Target className="w-4 h-4 flex-shrink-0" />
                   <span className="truncate">{entity.specialization}</span>
                 </div>
@@ -1666,7 +1473,7 @@ export default function SearchPage() {
 
               {/* معلومات إضافية */}
               {entity.established && (
-                <div className="flex items-center gap-1 text-sm text-gray-500 transition-colors duration-500 group-hover:text-green-600">
+                <div className="flex items-center gap-1 text-xs md:text-sm text-gray-500 transition-colors duration-500 group-hover:text-green-600">
                   <Calendar className="w-4 h-4 flex-shrink-0" />
                   <span>تأسس في: {entity.established}</span>
                 </div>
@@ -1675,15 +1482,15 @@ export default function SearchPage() {
           </div>
 
           {/* الوصف */}
-          <div className="mb-6 flex-1">
-            <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 transition-colors duration-500 group-hover:text-gray-700">{entity.description}</p>
+          <div className="mb-4 md:mb-6 flex-1">
+            <p className="text-gray-600 text-xs md:text-sm leading-relaxed line-clamp-3 transition-colors duration-500 group-hover:text-gray-700">{entity.description}</p>
           </div>
 
           {/* الخدمات */}
           {entity.services && entity.services.length > 0 && (
-            <div className="mb-4">
-              <h4 className="font-semibold text-sm text-gray-700 mb-2 transition-colors duration-500 group-hover:text-gray-800">الخدمات المقدمة</h4>
-              <div className="flex flex-wrap gap-1">
+            <div className="mb-3 md:mb-4">
+              <h4 className="font-semibold text-xs md:text-sm text-gray-700 mb-2 transition-colors duration-500 group-hover:text-gray-800">الخدمات المقدمة</h4>
+              <div className="flex flex-wrap gap-1.5">
                               {entity.services.slice(0, 3).map((service, index) => {
                 // تحويل مفاتيح الترجمة إلى نصوص عربية
                 const serviceText = service.includes('dashboard.player.search.services.') 
@@ -1703,13 +1510,13 @@ export default function SearchPage() {
                   : service;
                 
                 return (
-                    <Badge key={index} variant="outline" className="text-xs">
+                    <Badge key={index} variant="outline" className="text-[10px] md:text-xs">
                     {serviceText}
                   </Badge>
                 );
               })}
                 {entity.services.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-[10px] md:text-xs">
                     +{entity.services.length - 3} المزيد
                   </Badge>
                 )}
@@ -1718,7 +1525,7 @@ export default function SearchPage() {
           )}
 
           {/* الأزرار */}
-          <div className="flex flex-col gap-3 mt-auto">
+          <div className="flex flex-col gap-2.5 md:gap-3 mt-auto">
             <Button
               onClick={() => handleViewProfile(entity)}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-0 transition-all duration-500 ease-out shadow-md hover:shadow-lg"
@@ -1732,14 +1539,14 @@ export default function SearchPage() {
               عرض الملف الشخصي
             </Button>
             
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleFollow(entity.id)}
                 disabled={actionLoading === `follow-${entity.id}`}
                 data-entity-id={entity.id}
-                className={`flex-1 border-0 transition-all duration-500 ease-out shadow-md hover:shadow-lg ${
+                className={`w-full sm:flex-1 border-0 transition-all duration-500 ease-out shadow-md hover:shadow-lg ${
                   actionLoading === `follow-${entity.id}`
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 animate-pulse text-white'
                     : actionSuccess === `follow-${entity.id}`
@@ -1783,7 +1590,7 @@ export default function SearchPage() {
                 buttonText={'رسالة'}
                 buttonVariant="outline"
                 buttonSize="sm"
-                className={`flex-1 border-0 transition-all duration-500 ease-out shadow-md hover:shadow-lg ${
+                className={`w-full sm:flex-1 border-0 transition-all duration-500 ease-out shadow-md hover:shadow-lg ${
                   actionLoading === `message-${entity.id}`
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 animate-pulse text-white'
                     : actionSuccess === `message-${entity.id}`
@@ -1926,20 +1733,20 @@ export default function SearchPage() {
           </Card>
         ) : (
           <>
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 w-full max-w-[1100px] mx-auto">
               {entities
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                .map((entity) => (
-                <EntityCard key={entity.id} entity={entity} />
+                .map((entity, index) => (
+                <EntityCard key={`${entity.id}-${index}`} entity={entity} />
               ))}
             </div>
 
             {/* التنقل بين الصفحات */}
-            {entities.length > itemsPerPage && (
+            {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8">
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                   className="px-4 py-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
                 >
@@ -1947,11 +1754,11 @@ export default function SearchPage() {
                 </Button>
                 
                 <div className="flex gap-1">
-                  {Array.from({ length: Math.ceil(entities.length / itemsPerPage) }, (_, i) => (
+                  {Array.from({ length: totalPages }, (_, i) => (
                     <Button
                       key={i + 1}
                       variant={currentPage === i + 1 ? "default" : "outline"}
-                      onClick={() => setCurrentPage(i + 1)}
+                      onClick={() => handlePageChange(i + 1)}
                       className={`w-10 h-10 p-0 ${
                         currentPage === i + 1 
                           ? 'bg-blue-600 text-white hover:bg-blue-700' 
@@ -1965,8 +1772,8 @@ export default function SearchPage() {
                 
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(entities.length / itemsPerPage), prev + 1))}
-                  disabled={currentPage === Math.ceil(entities.length / itemsPerPage)}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
                   className="px-4 py-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
                 >
                   التالي

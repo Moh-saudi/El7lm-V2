@@ -37,6 +37,7 @@ interface Ad {
   isActive: boolean;
   priority: number;
   targetAudience: 'all' | 'new_users' | 'returning_users';
+  displayLocation?: 'landing' | 'dashboard' | 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin' | 'all';
   startDate?: string;
   endDate?: string;
   views: number;
@@ -61,6 +62,7 @@ interface ProfessionalAdPopupProps {
   className?: string;
   maxAds?: number;
   enableAnalytics?: boolean;
+  location?: 'landing' | 'dashboard' | 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin';
   userPreferences?: {
     allowAds: boolean;
     preferredTypes: string[];
@@ -72,6 +74,7 @@ export default function ProfessionalAdPopup({
   className = '', 
   maxAds = 1,
   enableAnalytics = true,
+  location,
   userPreferences = {
     allowAds: true,
     preferredTypes: ['modal', 'toast', 'banner'],
@@ -100,7 +103,7 @@ export default function ProfessionalAdPopup({
         scheduleAdDisplay(eligibleAd);
       }
     }
-  }, [ads, userData]);
+  }, [ads, userData, location]);
 
   useEffect(() => {
     if (currentAd && showPopup) {
@@ -147,6 +150,7 @@ export default function ProfessionalAdPopup({
 
   const fetchAds = async () => {
     try {
+      // Try the optimized query with index first
       const q = query(
         collection(db, 'ads'),
         where('isActive', '==', true),
@@ -170,9 +174,48 @@ export default function ProfessionalAdPopup({
         discount: doc.data().discount,
         countdown: doc.data().countdown
       })) as Ad[];
+      
+      // Sort by priority in memory if query succeeded
+      adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
       setAds(adsData);
-    } catch (error) {
-      console.error('Error fetching ads:', error);
+    } catch (error: any) {
+      // If index is missing, fallback to simpler query
+      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+        try {
+          const fallbackQ = query(
+            collection(db, 'ads'),
+            where('isActive', '==', true),
+            limit(maxAds * 3)
+          );
+          const fallbackSnapshot = await getDocs(fallbackQ);
+          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            views: doc.data().views || 0,
+            clicks: doc.data().clicks || 0,
+            popupType: doc.data().popupType || 'modal',
+            displayDelay: doc.data().displayDelay || 3,
+            maxDisplays: doc.data().maxDisplays || 1,
+            displayFrequency: doc.data().displayFrequency || 'once',
+            showCloseButton: doc.data().showCloseButton !== false,
+            autoClose: doc.data().autoClose,
+            showProgressBar: doc.data().showProgressBar || false,
+            urgency: doc.data().urgency || 'medium',
+            discount: doc.data().discount,
+            countdown: doc.data().countdown
+          })) as Ad[];
+          
+          // Sort by priority in memory
+          adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+          setAds(adsData);
+        } catch (fallbackError) {
+          console.error('Error fetching ads (fallback also failed):', fallbackError);
+          setAds([]);
+        }
+      } else {
+        console.error('Error fetching ads:', error);
+        setAds([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -189,6 +232,12 @@ export default function ProfessionalAdPopup({
     // Filter and sort ads
     const eligibleAds = ads.filter(ad => {
       if (!ad.isActive) return false;
+      
+      // Check display location
+      if (location) {
+        const adLocation = ad.displayLocation || 'all';
+        if (adLocation !== 'all' && adLocation !== location) return false;
+      }
       
       // Check date range
       if (ad.startDate && new Date(ad.startDate) > now) return false;

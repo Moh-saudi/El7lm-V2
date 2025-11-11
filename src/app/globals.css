@@ -631,6 +631,55 @@ html, body, * {
   background: #a8a8a8;
 }
 
+/* Custom scrollbar for select dropdowns */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Colored scrollbars for different filters */
+.scrollbar-thumb-purple-300::-webkit-scrollbar-thumb {
+  background: #c4b5fd;
+}
+
+.scrollbar-thumb-green-300::-webkit-scrollbar-thumb {
+  background: #86efac;
+}
+
+.scrollbar-thumb-orange-300::-webkit-scrollbar-thumb {
+  background: #fdba74;
+}
+
+.scrollbar-thumb-indigo-300::-webkit-scrollbar-thumb {
+  background: #a5b4fc;
+}
+
+.scrollbar-thumb-yellow-300::-webkit-scrollbar-thumb {
+  background: #fde047;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
 /* ==============================================
    10. FOCUS STYLES
    ============================================== */

@@ -125,10 +125,12 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [lastTap, setLastTap] = useState(0);
+  const [videoReady, setVideoReady] = useState<{[id: string]: boolean}>({});
   
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const sentViewNotificationsRef = useRef<Set<string>>(new Set());
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const router = useRouter();
 
@@ -149,6 +151,40 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     fetchVideos();
     loadUserPreferences();
   }, [accountType, user]);
+
+  // تنظيف timeout عند تغيير الفيديو
+  useEffect(() => {
+    return () => {
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+    };
+  }, [currentVideoIndex]);
+
+  // إعادة تعيين حالة playing عند تغيير الفيديو
+  useEffect(() => {
+    setPlaying(true);
+  }, [currentVideoIndex]);
+
+  // معالجة الأخطاء غير المعالجة المتعلقة بالفيديو
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      // تجاهل أخطاء AbortError المتعلقة بتشغيل الفيديو
+      if (error?.name === 'AbortError' || 
+          error?.message?.includes('play() request was interrupted') ||
+          error?.message?.includes('pause()')) {
+        event.preventDefault();
+        return;
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   const loadUserPreferences = async () => {
     if (!user?.uid) {
@@ -397,20 +433,51 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     const newIndex = Math.round(scrollPosition / videoHeight);
     
     if (newIndex !== currentVideoIndex && newIndex >= 0 && newIndex < filteredVideos.length) {
+      // إيقاف الفيديو السابق أولاً
+      const previousVideo = videoRefs.current[currentVideoIndex];
+      if (previousVideo) {
+        try {
+          const pausePromise = previousVideo.pause();
+          if (pausePromise !== undefined) {
+            pausePromise.catch((error: any) => {
+              // تجاهل أخطاء pause المتعارضة
+              if (error.name !== 'AbortError') {
+                console.debug('Pause error in scroll:', error);
+              }
+            });
+          }
+        } catch (error: any) {
+          if (error.name !== 'AbortError') {
+            console.debug('Pause error in scroll (catch):', error);
+          }
+        }
+      }
+      
       setCurrentVideoIndex(newIndex);
       setSelectedVideoId(null);
       
-      // تشغيل الفيديو الحالي وإيقاف الآخرين
-      videoRefs.current.forEach((ref, idx) => {
-        if (ref) {
-          if (idx === newIndex) {
-            ref.currentTime = 0;
-            ref.play();
-          } else {
-            ref.pause();
+      // تشغيل الفيديو الحالي بعد تأخير قصير
+      setTimeout(() => {
+        const newVideo = videoRefs.current[newIndex];
+        if (newVideo) {
+          try {
+            newVideo.currentTime = 0;
+            const playPromise = newVideo.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error: any) => {
+                // تجاهل أخطاء play/pause المتعارضة
+                if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
+                  console.debug('Play error in scroll:', error);
+                }
+              });
+            }
+          } catch (error: any) {
+            if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
+              console.debug('Play error in scroll (catch):', error);
+            }
           }
         }
-      });
+      }, 100);
       
       // تتبع المشاهدات
       const video = filteredVideos[newIndex];
@@ -893,17 +960,38 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
             >
               {isDirectVideo(video.url) ? (
                 <video
-                  ref={el => { videoRefs.current[index] = el; }}
+                  ref={el => { 
+                    videoRefs.current[index] = el;
+                    if (el && index === currentVideoIndex) {
+                      // معالجة آمنة لتشغيل الفيديو
+                      const playPromise = el.play();
+                      if (playPromise !== undefined) {
+                        playPromise.catch((error: any) => {
+                          // تجاهل أخطاء play/pause المتعارضة
+                          if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
+                            console.debug('Video play error:', error);
+                          }
+                        });
+                      }
+                    }
+                  }}
                   src={video.url}
                   className="w-full h-full object-cover"
                   loop
                   playsInline
                   muted={muted}
                   autoPlay={index === currentVideoIndex}
+                  onLoadedData={() => {
+                    setVideoReady(prev => ({ ...prev, [video.id]: true }));
+                  }}
                   onTimeUpdate={(e) => {
                     const video = e.currentTarget;
                     const progressPercent = (video.currentTime / video.duration) * 100;
                     setProgress(prev => ({ ...prev, [filteredVideos[index].id]: progressPercent }));
+                  }}
+                  onError={(e) => {
+                    console.debug('Video error:', video.id);
+                    setVideoReady(prev => ({ ...prev, [video.id]: false }));
                   }}
                 />
               ) : (
@@ -912,7 +1000,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                     url={video.url}
                     width="100%"
                     height="100%"
-                    playing={index === currentVideoIndex && playing}
+                    playing={index === currentVideoIndex && playing && videoReady[video.id]}
                     muted={muted}
                     loop
                     controls={false}
@@ -979,15 +1067,79 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                     }}
                     onReady={(player) => {
                       console.debug('Player ready:', video.id);
+                      setVideoReady(prev => ({ ...prev, [video.id]: true }));
+                      
+                      // معالجة آمنة لـ YouTube player
+                      if (player && typeof player.getInternalPlayer === 'function') {
+                        try {
+                          const internalPlayer = player.getInternalPlayer();
+                          if (internalPlayer && typeof internalPlayer.getPlayerState === 'function') {
+                            // التأكد من أن اللاعب متصل بـ DOM
+                            const state = internalPlayer.getPlayerState();
+                            if (state === -1 || state === 0 || state === 1 || state === 2 || state === 3 || state === 5) {
+                              // اللاعب جاهز
+                            }
+                          }
+                        } catch (error: any) {
+                          // تجاهل أخطاء YouTube API
+                          if (!error.message?.includes('not attached to the DOM')) {
+                            console.debug('YouTube player ready check error:', error);
+                          }
+                        }
+                      }
+                      
+                      // تأخير قصير قبل بدء التشغيل لتجنب تعارضات play/pause
+                      if (index === currentVideoIndex) {
+                        if (playTimeoutRef.current) {
+                          clearTimeout(playTimeoutRef.current);
+                        }
+                        playTimeoutRef.current = setTimeout(() => {
+                          try {
+                            setPlaying(true);
+                          } catch (error: any) {
+                            // تجاهل أخطاء play/pause المتعارضة
+                            if (error.name !== 'AbortError') {
+                              console.debug('Play error after ready:', error);
+                            }
+                          }
+                        }, 500);
+                      }
                     }}
                     onStart={() => {
                       console.debug('Video started:', video.id);
-                      setPlaying(true);
+                      try {
+                        setPlaying(true);
+                      } catch (error: any) {
+                        if (error.name !== 'AbortError') {
+                          console.debug('Play error on start:', error);
+                        }
+                      }
                     }}
-                    onPlay={() => setPlaying(true)}
-                    onPause={() => setPlaying(false)}
+                    onPlay={() => {
+                      if (index === currentVideoIndex) {
+                        try {
+                          setPlaying(true);
+                        } catch (error: any) {
+                          if (error.name !== 'AbortError') {
+                            console.debug('Play error on play:', error);
+                          }
+                        }
+                      }
+                    }}
+                    onPause={() => {
+                      if (index === currentVideoIndex) {
+                        try {
+                          setPlaying(false);
+                        } catch (error: any) {
+                          if (error.name !== 'AbortError') {
+                            console.debug('Pause error:', error);
+                          }
+                        }
+                      }
+                    }}
                     onError={(error) => {
                       console.debug('Player error for video (using fallback):', video.id, 'Error:', error);
+                      setVideoReady(prev => ({ ...prev, [video.id]: false }));
                     }}
                     onEnded={() => {
                       if (index < filteredVideos.length - 1) {

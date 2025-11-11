@@ -1,6 +1,8 @@
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { generateTypedFirebaseEmail } from '@/lib/utils/firebase-email-generator';
 
 const COLLECTIONS = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
 const PHONE_FIELDS = [
@@ -13,6 +15,8 @@ const PHONE_FIELDS = [
   'contact.phone',
   'profile.phone'
 ];
+const ACCOUNT_TYPES = ['player', 'club', 'academy', 'agent', 'trainer', 'marketer'];
+const COUNTRY_CODES = ['974', '966', '971', '965', '973', '968', '20', '212', '213', '216', '218', '249', '967'];
 
 const normalize = (raw: string): string[] => {
   const digits = (raw || '').toString().replace(/\D/g, '');
@@ -80,7 +84,159 @@ function isAccountDeleted(data: any): boolean {
   return true;
 }
 
-async function existsByPhone(phoneRaw: string): Promise<{ phoneExists: boolean; email?: string }> {
+/**
+ * التحقق من حالة الحساب في Firestore (هل هو محذوف أم لا)
+ */
+async function checkFirestoreAccountStatus(uid: string): Promise<{ isDeleted: boolean; collection?: string }> {
+  if (!adminDb) {
+    console.log('[check-user-exists] Admin DB not available, cannot check Firestore status');
+    return { isDeleted: false };
+  }
+
+  // التحقق من جميع المجموعات الممكنة
+  for (const coll of COLLECTIONS) {
+    try {
+      const docRef = adminDb.collection(coll).doc(uid);
+      const docSnap = await docRef.get();
+      
+      if (docSnap.exists) {
+        const data = docSnap.data();
+        const deleted = isAccountDeleted(data || {});
+        
+        console.log(`[check-user-exists] Found account in ${coll}:`, {
+          uid,
+          isDeleted: deleted,
+          isActive: data?.isActive,
+          hasDeletedAt: !!data?.deletedAt
+        });
+        
+        return { isDeleted: deleted, collection: coll };
+      }
+    } catch (error) {
+      // استمر في البحث في المجموعات الأخرى
+      continue;
+    }
+  }
+
+  // إذا لم نجد الحساب في أي مجموعة، نعتبره غير موجود (يمكن التسجيل)
+  console.log(`[check-user-exists] Account ${uid} not found in Firestore - allowing registration`);
+  return { isDeleted: true }; // نعتبره محذوفاً للسماح بالتسجيل
+}
+
+/**
+ * استخراج countryCode من الرقم إذا لم يكن موجوداً
+ */
+function extractCountryCode(phone: string): string | null {
+  for (const code of COUNTRY_CODES) {
+    if (phone.startsWith(code)) {
+      return code;
+    }
+  }
+  return null;
+}
+
+/**
+ * توليد جميع الإيميلات الممكنة للرقم
+ * يدعم صيغتين: الرقم الكامل والرقم بدون countryCode
+ */
+function generatePossibleEmails(phone: string, countryCode: string): string[] {
+  const phoneVariants = new Set<string>();
+  
+  // الصيغة 1: الرقم كما هو
+  phoneVariants.add(phone);
+  
+  // الصيغة 2: الرقم بدون countryCode (إذا كان موجوداً في البداية)
+  if (phone.startsWith(countryCode) && phone.length > countryCode.length) {
+    phoneVariants.add(phone.substring(countryCode.length));
+  }
+  
+  // توليد الإيميلات لكل نوع حساب ولكل صيغة رقم
+  const emails: string[] = [];
+  phoneVariants.forEach(phoneVariant => {
+    ACCOUNT_TYPES.forEach(type => {
+      emails.push(generateTypedFirebaseEmail(phoneVariant, countryCode, type));
+    });
+  });
+  
+  return [...new Set(emails)]; // إزالة التكرارات
+}
+
+/**
+ * التحقق من وجود الحساب في Firebase Authentication
+ * نتحقق من جميع أنواع الحسابات الممكنة (player, club, academy, etc.)
+ * وإذا وجد الحساب في Auth، نتحقق من حالته في Firestore
+ */
+async function checkAuthByPhone(phoneRaw: string, countryCode?: string): Promise<{ exists: boolean; email?: string; uid?: string }> {
+  if (!adminAuth) {
+    console.log('[check-user-exists] ⚠️ Admin Auth not available, skipping Auth check');
+    return { exists: false };
+  }
+  
+  console.log(`[check-user-exists] 🔍 Starting Auth check for phone: ${phoneRaw}, countryCode: ${countryCode}`);
+
+  // تنظيف البيانات
+  const cleanPhone = phoneRaw.replace(/[^0-9]/g, '');
+  let cleanCountryCode = countryCode?.replace(/[^0-9]/g, '') || '';
+
+  // استخراج countryCode إذا لم يكن موجوداً
+  if (!cleanCountryCode) {
+    cleanCountryCode = extractCountryCode(cleanPhone) || '';
+  }
+
+  if (!cleanCountryCode) {
+    console.log('[check-user-exists] Cannot check Auth - missing country code');
+    return { exists: false };
+  }
+
+  // توليد جميع الإيميلات الممكنة
+  const possibleEmails = generatePossibleEmails(cleanPhone, cleanCountryCode);
+
+  console.log(`[check-user-exists] Checking Auth for ${possibleEmails.length} possible emails:`, {
+    cleanPhone,
+    cleanCountryCode,
+    possibleEmails
+  });
+
+  // التحقق من كل إيميل في Firebase Authentication
+  for (const email of possibleEmails) {
+    try {
+      const userRecord = await adminAuth.getUserByEmail(email);
+      console.log(`[check-user-exists] ⚠️ FOUND in Firebase Auth: ${email} (UID: ${userRecord.uid})`);
+      
+      // التحقق من حالة الحساب في Firestore
+      const firestoreStatus = await checkFirestoreAccountStatus(userRecord.uid);
+      
+      if (firestoreStatus.isDeleted) {
+        console.log(`[check-user-exists] ✅ Account ${userRecord.uid} is deleted in Firestore - allowing re-registration`);
+        return { exists: false };
+      } else {
+        console.log(`[check-user-exists] ⚠️ Account ${userRecord.uid} is active in Firestore - preventing registration`);
+        return { exists: true, email, uid: userRecord.uid };
+      }
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        continue; // جرب الإيميل التالي
+      } else {
+        console.warn(`[check-user-exists] Error checking Auth for ${email}:`, error.message);
+      }
+    }
+  }
+
+  return { exists: false };
+}
+
+async function existsByPhone(phoneRaw: string, countryCode?: string): Promise<{ phoneExists: boolean; email?: string }> {
+  // أولاً: التحقق من Firebase Authentication وحالة الحساب في Firestore
+  const authCheck = await checkAuthByPhone(phoneRaw, countryCode);
+  if (authCheck.exists) {
+    console.log(`[check-user-exists] ⚠️ Phone exists in Firebase Auth and is active: ${phoneRaw}`);
+    return { phoneExists: true, email: authCheck.email };
+  }
+  
+  // إذا كان الحساب موجوداً في Auth لكن محذوف من Firestore، authCheck.exists سيكون false
+  // وهذا يعني أنه يمكن التسجيل من جديد
+
+  // ثانياً: التحقق من Firestore (للحسابات النشطة)
   const candidates = normalize(phoneRaw);
   console.log(`[check-user-exists] Checking phone: ${phoneRaw}, candidates:`, candidates);
   if (candidates.length === 0) return { phoneExists: false };
@@ -190,9 +346,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const phone = (body?.phone || '').toString();
-    console.log(`[check-user-exists] POST request received for phone: ${phone}`);
+    const countryCode = body?.countryCode?.toString();
+    console.log(`[check-user-exists] POST request received for phone: ${phone}, countryCode: ${countryCode}`);
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
-    const result = await existsByPhone(phone);
+    const result = await existsByPhone(phone, countryCode);
     console.log(`[check-user-exists] Result for ${phone}:`, result);
     return NextResponse.json(result);
   } catch (e: any) {

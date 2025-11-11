@@ -338,13 +338,26 @@ export default function AdminPaymentsPage() {
 
       // حفظ الاشتراك في قاعدة البيانات باستخدام userId كمفتاح
       const subscriptionRef = doc(db, 'subscriptions', userId);
+      console.log('🔄 [Admin Payments] جاري تحديث subscriptions collection:', {
+        userId,
+        subscriptionData: {
+          status: subscriptionData.status,
+          package_name: subscriptionData.package_name,
+          expires_at: subscriptionData.expires_at,
+          activated_at: subscriptionData.activated_at
+        }
+      });
+      
       await updateDoc(subscriptionRef, subscriptionData).catch(async () => {
         // إذا لم يكن موجود، أنشئه
+        console.log('📝 [Admin Payments] إنشاء اشتراك جديد (لم يكن موجوداً)');
         await addDoc(collection(db, 'subscriptions'), {
           ...subscriptionData,
           id: userId
         });
       });
+      
+      console.log('✅ [Admin Payments] تم تحديث subscriptions collection بنجاح!');
 
       // تحديث بيانات المستخدم
       const userRef = doc(db, 'users', userId);

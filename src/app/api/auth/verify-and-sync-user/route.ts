@@ -54,9 +54,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!firestoreUid) {
+      // ⬅️ المستخدم غير موجود في Firestore - هذا يعني أن الحساب غير موجود أو البريد/الهاتف غير صحيح
       return NextResponse.json(
-        { success: false, error: 'المستخدم غير موجود', needsSync: false, existsInAuth: false, existsInFirestore: false },
-        { status: 404 }
+        { 
+          success: false, 
+          error: 'المستخدم غير موجود في قاعدة البيانات', 
+          needsSync: false, 
+          existsInAuth: false, 
+          existsInFirestore: false 
+        },
+        { status: 200 } // ⬅️ نعيد 200 لأن هذا ليس خطأ في الـ API، بل المستخدم غير موجود
       );
     }
 
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
           needsSync: true,
           firestoreUid,
           error: 'الحساب يحتاج لتفعيل'
-        });
+        }, { status: 200 }); // ⬅️ نعيد 200 بدلاً من 404 لأن المستخدم موجود في Firestore
       }
       throw authError;
     }

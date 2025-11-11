@@ -2210,7 +2210,19 @@ function PlayerReportPage() {
               
               <div className="flex space-x-2 space-x-reverse">
                 <button
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    const returnPath = searchParams.get('returnPath');
+                    console.log('🔙 زر العودة - returnPath:', returnPath);
+                    if (returnPath) {
+                      // استعادة المسار مباشرة (يحتوي بالفعل على page في الـ URL)
+                      const decodedPath = decodeURIComponent(returnPath);
+                      console.log('🔙 العودة إلى:', decodedPath);
+                      router.push(decodedPath);
+                    } else {
+                      console.log('🔙 لا يوجد returnPath، استخدام router.back()');
+                      router.back();
+                    }
+                  }}
                   className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
                 >
                   🔙 العودة

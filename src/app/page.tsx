@@ -28,6 +28,11 @@ import {
     X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import nextDynamic from 'next/dynamic';
+
+// Lazy load ad components to improve performance
+const AdBanner = nextDynamic(() => import('@/components/ads/AdBanner'), { ssr: false });
+const ProfessionalAdPopup = nextDynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
 
 // Force dynamic rendering to avoid SSR issues with browser APIs
 export const dynamic = 'force-dynamic';
@@ -2552,6 +2557,16 @@ export default function AdvancedLandingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Ads Section - Display ads for landing page */}
+      <section className="py-12 bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AdBanner location="landing" maxAds={3} className="mb-8" />
+        </div>
+      </section>
+
+      {/* Professional Ad Popup - Shows popup ads */}
+      <ProfessionalAdPopup location="landing" />
 
       {/* Footer */}
       <footer className={`${
