@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Search, 
   Filter, 
@@ -1020,7 +1021,7 @@ export default function SearchPage() {
   };
 
   // معالج إعادة تعيين المرشحات
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setFilters({
       searchQuery: '',
       type: 'all',
@@ -1028,7 +1029,7 @@ export default function SearchPage() {
       opportunity: '',
       sortBy: 'relevance'
     });
-  };
+  }, []);
 
   // Fetch user data when component mounts
   useEffect(() => {
@@ -1314,7 +1315,7 @@ export default function SearchPage() {
   };
 
   // مكون البحث المتقدم
-  const SearchFilters = () => (
+  const searchFilters = useMemo(() => (
     <Card className="p-4 md:p-6 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
@@ -1338,14 +1339,14 @@ export default function SearchPage() {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">الدولة</label>
           <Select
-            value={filters.country}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, country: value }))}
+            value={filters.country || "all"}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, country: value === "all" ? "" : value }))}
           >
             <SelectTrigger className="w-full border-gray-300 bg-white">
               <SelectValue placeholder="جميع الدول" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">جميع الدول</SelectItem>
+              <SelectItem value="all">جميع الدول</SelectItem>
               {availableCountries.map((country) => (
                 <SelectItem key={country} value={country}>{country}</SelectItem>
               ))}
@@ -1360,14 +1361,14 @@ export default function SearchPage() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">الفرص</label>
           {availableOpportunities.length > 0 ? (
             <Select
-              value={filters.opportunity}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, opportunity: value }))}
+              value={filters.opportunity || "all"}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, opportunity: value === "all" ? "" : value }))}
             >
               <SelectTrigger className="w-full border-gray-300 bg-white">
                 <SelectValue placeholder="جميع الفرص" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الفرص</SelectItem>
+                <SelectItem value="all">جميع الفرص</SelectItem>
                 {availableOpportunities.map((opportunity) => (
                   <SelectItem key={opportunity} value={opportunity}>{opportunity}</SelectItem>
                 ))}
@@ -1391,7 +1392,7 @@ export default function SearchPage() {
         </Button>
       </div>
     </Card>
-  );
+  ), [filters, availableCountries, availableOpportunities, handleResetFilters]);
 
   // مكون عرض الكيان
   const EntityCard = ({ entity }: { entity: SearchEntity }) => {
@@ -1680,7 +1681,11 @@ export default function SearchPage() {
             <Button
               variant={showFilters ? "default" : "outline"}
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 transition-all duration-300 ${
+                showFilters 
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg' 
+                  : 'bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-purple-700 border-purple-300 hover:border-purple-400'
+              }`}
             >
               <Filter className="w-4 h-4" />
               المرشحات المتقدمة
@@ -1694,7 +1699,7 @@ export default function SearchPage() {
         </div>
 
         {/* المرشحات المتقدمة */}
-        {showFilters && <SearchFilters />}
+        {showFilters && searchFilters}
 
         {/* النتائج */}
         {isLoading && entities.length === 0 ? (

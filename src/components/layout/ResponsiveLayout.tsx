@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
+import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import {
     collection,
     doc,
@@ -1183,29 +1184,28 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const sidebarWidth = useMemo(() => getSidebarWidth(), [isMobile, isTablet, isSidebarCollapsed]);
 
   const getUserAvatar = () => {
-    // التحقق من photoURL
-    if (userData?.photoURL) {
-      if (typeof userData.photoURL === 'string') return userData.photoURL;
-      if (typeof userData.photoURL === 'object' && userData.photoURL?.url) return userData.photoURL.url;
-    }
-
-    // التحقق من avatar
-    if (userData?.avatar) {
-      if (typeof userData.avatar === 'string') return userData.avatar;
-      if (typeof userData.avatar === 'object' && userData.avatar?.url) return userData.avatar.url;
-    }
-
-    // التحقق من profileImage
-    if (userData?.profileImage) {
-      if (typeof userData.profileImage === 'string') return userData.profileImage;
-      if (typeof userData.profileImage === 'object' && userData.profileImage?.url) return userData.profileImage.url;
-    }
-
-    return null;
+    // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
+    return getPlayerAvatarUrl(userData, user);
   };
 
   const getUserDisplayName = () => {
-    return userData?.displayName || userData?.name || user?.displayName || user?.email?.split('@')[0] || 'مستخدم';
+    if (!userData) return 'مستخدم';
+    
+    // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
+    switch (userData.accountType) {
+      case 'player':
+        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
+      case 'club':
+        return userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
+      case 'academy':
+        return userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'أكاديمية رياضية';
+      case 'agent':
+        return userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
+      case 'trainer':
+        return userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
+      default:
+        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+    }
   };
 
   const handleNavigation = (href: string, id: string) => {
@@ -1335,7 +1335,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           <div className="p-3 border-b border-white/20">
             <div className="flex gap-2 items-center">
               <Avatar className="w-10 h-10 ring-2 ring-white/30">
-                <AvatarImage src={getUserAvatar() || '/default-avatar.png'} alt={getUserDisplayName()} />
+                <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
                 <AvatarFallback className={`${accountInfo.bgColor} ${accountInfo.textColor} font-bold text-sm`}>
                   {getUserDisplayName().slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -1542,29 +1542,28 @@ const ResponsiveHeader: React.FC = () => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const getUserDisplayName = () => {
-    return userData?.displayName || userData?.name || user?.displayName || user?.email?.split('@')[0] || 'مستخدم';
+    if (!userData) return 'مستخدم';
+    
+    // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
+    switch (userData.accountType) {
+      case 'player':
+        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
+      case 'club':
+        return userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
+      case 'academy':
+        return userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'أكاديمية رياضية';
+      case 'agent':
+        return userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
+      case 'trainer':
+        return userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
+      default:
+        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+    }
   };
 
   const getUserAvatar = () => {
-    // التحقق من photoURL
-    if (userData?.photoURL) {
-      if (typeof userData.photoURL === 'string') return userData.photoURL;
-      if (typeof userData.photoURL === 'object' && userData.photoURL?.url) return userData.photoURL.url;
-    }
-
-    // التحقق من avatar
-    if (userData?.avatar) {
-      if (typeof userData.avatar === 'string') return userData.avatar;
-      if (typeof userData.avatar === 'object' && userData.avatar?.url) return userData.avatar.url;
-    }
-
-    // التحقق من profileImage
-    if (userData?.profileImage) {
-      if (typeof userData.profileImage === 'string') return userData.profileImage;
-      if (typeof userData.profileImage === 'object' && userData.profileImage?.url) return userData.profileImage.url;
-    }
-
-    return null;
+    // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
+    return getPlayerAvatarUrl(userData, user);
   };
 
   // تحديد margin للهيدر ليتناسق مع السايدبار - أحجام مصغرة
@@ -2098,7 +2097,7 @@ const ResponsiveHeader: React.FC = () => {
           {/* صورة المستخدم */}
           <div className="flex gap-2 items-center">
             <Avatar className="w-8 h-8 transition-transform duration-500 ease-out cursor-pointer hover:scale-105">
-            <AvatarImage src={getUserAvatar() || '/default-avatar.png'} alt={getUserDisplayName()} />
+            <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
             <AvatarFallback className="font-bold text-blue-600 bg-blue-100">
               {getUserDisplayName().slice(0, 2).toUpperCase()}
             </AvatarFallback>

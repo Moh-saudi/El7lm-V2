@@ -351,7 +351,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'none' | 'expired' | 'active' | 'upgrade'>('all');
   
   // متغيرات الدولة والعملة
-  const [selectedCountry, setSelectedCountry] = useState('US');
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
   const [currencyLoading, setCurrencyLoading] = useState(true);
 
@@ -374,77 +374,127 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   // حالة الطوي والتوسيع للميزات التفصيلية
   const [isFeaturesExpanded, setIsFeaturesExpanded] = useState(false);
 
-  // دالة قراءة بلد المستخدم (محسنة بدون APIs خارجية)
+  // دالة قراءة بلد المستخدم (محسنة مع Geolocation API)
   const detectUserCountry = async () => {
     try {
       setCurrencyLoading(true);
       
-      // استخدام Intl API المدمج في المتصفح (آمن ولا يحتاج CORS)
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const locale = navigator.language || 'ar-EG';
+      let detectedCountryCode: string | null = null;
 
-      // خريطة المناطق الزمنية للبلدان الرئيسية
-      const timezoneCountryMap: Record<string, string> = {
-        // البلدان العربية
-        'Africa/Cairo': 'EG',
-        'Asia/Riyadh': 'SA',
-        'Asia/Dubai': 'AE',
-        'Asia/Kuwait': 'KW',
-        'Asia/Qatar': 'QA',
-        'Asia/Bahrain': 'BH',
-        'Asia/Baghdad': 'IQ',
-        'Asia/Damascus': 'SY',
-        'Asia/Beirut': 'LB',
-        'Asia/Amman': 'JO',
-        'Africa/Tunis': 'TN',
-        'Africa/Algiers': 'DZ',
-        'Africa/Casablanca': 'MA',
-        // بلدان أخرى
-        'Europe/London': 'GB',
-        'America/New_York': 'US',
-        'America/Los_Angeles': 'US',
-        'America/Chicago': 'US',
-        'Europe/Paris': 'FR',
-        'Europe/Berlin': 'DE',
-        'Asia/Tokyo': 'JP'
-      };
+      // محاولة 1: استخدام Geolocation API للحصول على الموقع الدقيق
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              resolve,
+              reject,
+              { timeout: 5000, enableHighAccuracy: false }
+            );
+          });
 
-      // محاولة اكتشاف البلد من المنطقة الزمنية
-      let detectedCountry = timezoneCountryMap[timezone];
-      
-      // إذا لم نجد المنطقة الزمنية، حاول من اللغة
-      if (!detectedCountry) {
-        if (locale.includes('ar') || locale.includes('AR')) {
-          detectedCountry = 'EG'; // مصر كافتراضي للعربية
-        } else if (locale.startsWith('en-US')) {
-          detectedCountry = 'US';
-        } else if (locale.startsWith('en-GB')) {
-          detectedCountry = 'GB';
-        } else if (locale.startsWith('fr')) {
-          detectedCountry = 'FR';
-        } else if (locale.startsWith('de')) {
-          detectedCountry = 'DE';
-        } else {
-          detectedCountry = 'EG'; // افتراضي للمنطقة العربية
+          const { latitude, longitude } = position.coords;
+          
+          // استخدام Reverse Geocoding API (مجاني من OpenStreetMap)
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+              {
+                headers: {
+                  'User-Agent': 'El7lm Payment App'
+                }
+              }
+            );
+            
+            if (response.ok) {
+              const data = await response.json();
+              const countryCode = data.address?.country_code?.toUpperCase();
+              
+              if (countryCode && SUPPORTED_COUNTRIES[countryCode as keyof typeof SUPPORTED_COUNTRIES]) {
+                detectedCountryCode = countryCode;
+                console.log('✅ تم اكتشاف الدولة من الموقع الجغرافي:', countryCode);
+              }
+            }
+          } catch (geoError) {
+            console.log('⚠️ فشل في الحصول على الدولة من الموقع الجغرافي، استخدام الطرق البديلة');
+          }
+        } catch (geoError) {
+          console.log('⚠️ المستخدم لم يسمح بالوصول للموقع الجغرافي، استخدام الطرق البديلة');
+        }
+      }
+
+      // محاولة 2: استخدام Intl API المدمج في المتصفح (إذا فشلت المحاولة الأولى)
+      if (!detectedCountryCode) {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const locale = navigator.language || 'ar-EG';
+
+        // خريطة المناطق الزمنية للبلدان الرئيسية
+        const timezoneCountryMap: Record<string, string> = {
+          // البلدان العربية
+          'Africa/Cairo': 'EG',
+          'Asia/Riyadh': 'SA',
+          'Asia/Dubai': 'AE',
+          'Asia/Kuwait': 'KW',
+          'Asia/Qatar': 'QA',
+          'Asia/Bahrain': 'BH',
+          'Asia/Baghdad': 'IQ',
+          'Asia/Damascus': 'SY',
+          'Asia/Beirut': 'LB',
+          'Asia/Amman': 'JO',
+          'Africa/Tunis': 'TN',
+          'Africa/Algiers': 'DZ',
+          'Africa/Casablanca': 'MA',
+          // بلدان أخرى
+          'Europe/London': 'GB',
+          'America/New_York': 'US',
+          'America/Los_Angeles': 'US',
+          'America/Chicago': 'US',
+          'Europe/Paris': 'FR',
+          'Europe/Berlin': 'DE',
+          'Asia/Tokyo': 'JP'
+        };
+
+        // محاولة اكتشاف البلد من المنطقة الزمنية
+        detectedCountryCode = timezoneCountryMap[timezone];
+        
+        // إذا لم نجد المنطقة الزمنية، حاول من اللغة
+        if (!detectedCountryCode) {
+          if (locale.includes('ar') || locale.includes('AR')) {
+            detectedCountryCode = 'EG'; // مصر كافتراضي للعربية
+          } else if (locale.startsWith('en-US')) {
+            detectedCountryCode = 'US';
+          } else if (locale.startsWith('en-GB')) {
+            detectedCountryCode = 'GB';
+          } else if (locale.startsWith('fr')) {
+            detectedCountryCode = 'FR';
+          } else if (locale.startsWith('de')) {
+            detectedCountryCode = 'DE';
+          } else {
+            detectedCountryCode = 'EG'; // افتراضي للمنطقة العربية
+          }
         }
       }
 
       // التحقق من وجود البلد في قائمة البلدان المدعومة
-      if (detectedCountry && SUPPORTED_COUNTRIES[detectedCountry as keyof typeof SUPPORTED_COUNTRIES]) {
-        setDetectedCountry(detectedCountry);
-        setSelectedCountry(detectedCountry);
-        return detectedCountry;
+      if (detectedCountryCode && SUPPORTED_COUNTRIES[detectedCountryCode as keyof typeof SUPPORTED_COUNTRIES]) {
+        setDetectedCountry(detectedCountryCode);
+        setSelectedCountry(detectedCountryCode);
+        console.log('✅ تم تحديد الدولة:', detectedCountryCode);
+        return detectedCountryCode;
       } else {
         // افتراضي: مصر للمنطقة العربية
-        setDetectedCountry('EG');
-        setSelectedCountry('EG');
-        return 'EG';
+        const defaultCountry = 'EG';
+        setDetectedCountry(defaultCountry);
+        setSelectedCountry(defaultCountry);
+        console.log('⚠️ استخدام الدولة الافتراضية:', defaultCountry);
+        return defaultCountry;
       }
     } catch (error) {
+      console.error('❌ خطأ في اكتشاف الدولة:', error);
       // في حالة أي خطأ، استخدم مصر كافتراضي
-      setDetectedCountry('EG');
-      setSelectedCountry('EG');
-      return 'EG';
+      const defaultCountry = 'EG';
+      setDetectedCountry(defaultCountry);
+      setSelectedCountry(defaultCountry);
+      return defaultCountry;
     } finally {
       setCurrencyLoading(false);
     }
@@ -528,6 +578,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
   // دالة الحصول على العملة الحالية
   const getCurrentCurrency = () => {
+    if (!selectedCountry) return 'USD';
     const country = SUPPORTED_COUNTRIES[selectedCountry as keyof typeof SUPPORTED_COUNTRIES];
     return country?.currency || 'USD';
   };
@@ -1075,7 +1126,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   };
 
   // تحديد البيانات حسب البلد المختار
-  const selectedCountryData = SUPPORTED_COUNTRIES[selectedCountry as keyof typeof SUPPORTED_COUNTRIES];
+  const selectedCountryData = selectedCountry ? SUPPORTED_COUNTRIES[selectedCountry as keyof typeof SUPPORTED_COUNTRIES] : null;
   const currentCurrency = selectedCountryData?.currency || 'USD';
   
   // استخدام باقات مصرية خاصة أم الباقات العالمية المحولة
@@ -1592,8 +1643,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 <label htmlFor="country-select" className="sr-only">الدولة</label>
                 <select
                   id="country-select"
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  value={selectedCountry || ''}
+                  onChange={(e) => setSelectedCountry(e.target.value || null)}
                   className="px-3 py-2 w-full bg-white rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   disabled={currencyLoading}
                   aria-label="اختر الدولة"

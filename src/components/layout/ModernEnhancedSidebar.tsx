@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     BarChart3,
@@ -118,28 +119,8 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
   };
 
   const getUserAvatar = () => {
-    if (!userData) return null;
-
-    // Check profile_image_url first
-    if (userData.profile_image_url) return userData.profile_image_url;
-
-    // Check profile_image (can be string or object)
-    if (userData.profile_image) {
-      if (typeof userData.profile_image === 'string') {
-        return userData.profile_image;
-      }
-      if (typeof userData.profile_image === 'object' && userData.profile_image.url) {
-        return userData.profile_image.url;
-      }
-    }
-
-    // Check avatar field
-    if (userData.avatar) return userData.avatar;
-
-    // Check Firebase user photo
-    if (user?.photoURL) return user.photoURL;
-
-    return null;
+    // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
+    return getPlayerAvatarUrl(userData, user);
   };
 
   // Get account type info with beautiful styling
@@ -370,7 +351,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
-              <AvatarImage src={getUserAvatar() || '/default-avatar.png'} alt={getUserDisplayName()} />
+              <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
               <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
                 {getUserDisplayName().slice(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -395,9 +376,6 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
                   <Badge variant="secondary" className={`bg-gradient-to-r ${accountInfo.gradient} text-white border-0 text-xs px-2 py-1`}>
                     {accountInfo.label}
                   </Badge>
-                </div>
-                <div className="text-xs text-slate-600 truncate mt-1">
-                  {user?.email}
                 </div>
               </motion.div>
             )}
@@ -793,12 +771,6 @@ export default ModernEnhancedSidebar;
                     {accountInfo.label}
 
                   </Badge>
-
-                </div>
-
-                <div className="text-xs text-slate-600 truncate mt-1">
-
-                  {user?.email}
 
                 </div>
 
@@ -1299,12 +1271,6 @@ export default ModernEnhancedSidebar;
                     {accountInfo.label}
 
                   </Badge>
-
-                </div>
-
-                <div className="text-xs text-slate-600 truncate mt-1">
-
-                  {user?.email}
 
                 </div>
 
