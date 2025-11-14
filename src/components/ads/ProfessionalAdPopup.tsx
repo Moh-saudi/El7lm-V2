@@ -158,22 +158,27 @@ export default function ProfessionalAdPopup({
         limit(maxAds * 3)
       );
       const snapshot = await getDocs(q);
-      const adsData: Ad[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        views: doc.data().views || 0,
-        clicks: doc.data().clicks || 0,
-        popupType: doc.data().popupType || 'modal',
-        displayDelay: doc.data().displayDelay || 3,
-        maxDisplays: doc.data().maxDisplays || 1,
-        displayFrequency: doc.data().displayFrequency || 'once',
-        showCloseButton: doc.data().showCloseButton !== false,
-        autoClose: doc.data().autoClose,
-        showProgressBar: doc.data().showProgressBar || false,
-        urgency: doc.data().urgency || 'medium',
-        discount: doc.data().discount,
-        countdown: doc.data().countdown
-      })) as Ad[];
+      const adsData: Ad[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          ctaText: data.ctaText || '',
+          ctaUrl: data.ctaUrl || '',
+          views: data.views || 0,
+          clicks: data.clicks || 0,
+          popupType: data.popupType || 'modal',
+          displayDelay: data.displayDelay || 3,
+          maxDisplays: data.maxDisplays || 1,
+          displayFrequency: data.displayFrequency || 'once',
+          showCloseButton: data.showCloseButton !== false,
+          autoClose: data.autoClose,
+          showProgressBar: data.showProgressBar || false,
+          urgency: data.urgency || 'medium',
+          discount: data.discount,
+          countdown: data.countdown
+        } as Ad;
+      });
       
       // Sort by priority in memory if query succeeded
       adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -188,22 +193,27 @@ export default function ProfessionalAdPopup({
             limit(maxAds * 3)
           );
           const fallbackSnapshot = await getDocs(fallbackQ);
-          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            views: doc.data().views || 0,
-            clicks: doc.data().clicks || 0,
-            popupType: doc.data().popupType || 'modal',
-            displayDelay: doc.data().displayDelay || 3,
-            maxDisplays: doc.data().maxDisplays || 1,
-            displayFrequency: doc.data().displayFrequency || 'once',
-            showCloseButton: doc.data().showCloseButton !== false,
-            autoClose: doc.data().autoClose,
-            showProgressBar: doc.data().showProgressBar || false,
-            urgency: doc.data().urgency || 'medium',
-            discount: doc.data().discount,
-            countdown: doc.data().countdown
-          })) as Ad[];
+          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              ctaText: data.ctaText || '',
+              ctaUrl: data.ctaUrl || '',
+              views: data.views || 0,
+              clicks: data.clicks || 0,
+              popupType: data.popupType || 'modal',
+              displayDelay: data.displayDelay || 3,
+              maxDisplays: data.maxDisplays || 1,
+              displayFrequency: data.displayFrequency || 'once',
+              showCloseButton: data.showCloseButton !== false,
+              autoClose: data.autoClose,
+              showProgressBar: data.showProgressBar || false,
+              urgency: data.urgency || 'medium',
+              discount: data.discount,
+              countdown: data.countdown
+            } as Ad;
+          });
           
           // Sort by priority in memory
           adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -491,10 +501,10 @@ export default function ProfessionalAdPopup({
                 </p>
 
                 {/* CTA Button */}
-                {currentAd.ctaText && currentAd.ctaUrl && (
+                {currentAd.ctaText && currentAd.ctaUrl ? (
                   <div className="space-y-3">
                     <Button
-                      onClick={() => handleAdClick(currentAd.id, currentAd.ctaUrl)}
+                      onClick={() => handleAdClick(currentAd.id, currentAd.ctaUrl!)}
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
                       size="lg"
                     >
@@ -508,7 +518,7 @@ export default function ProfessionalAdPopup({
                       <span>عرض محدود - لا تفوت الفرصة!</span>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Ad Info */}
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-200 bg-white/30 backdrop-blur-sm p-3 rounded-lg">

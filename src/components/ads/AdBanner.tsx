@@ -88,12 +88,17 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
         limit(maxAds * 2) // Fetch more to account for filtering
       );
       const snapshot = await getDocs(q);
-      const adsData: Ad[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        views: doc.data().views || 0,
-        clicks: doc.data().clicks || 0
-      })) as Ad[];
+      const adsData: Ad[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          ctaText: data.ctaText || '',
+          ctaUrl: data.ctaUrl || '',
+          views: data.views || 0,
+          clicks: data.clicks || 0
+        } as Ad;
+      });
       
       // Sort by priority in memory if query succeeded
       adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -108,12 +113,17 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
             limit(maxAds * 2)
           );
           const fallbackSnapshot = await getDocs(fallbackQ);
-          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            views: doc.data().views || 0,
-            clicks: doc.data().clicks || 0
-          })) as Ad[];
+          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              ctaText: data.ctaText || '',
+              ctaUrl: data.ctaUrl || '',
+              views: data.views || 0,
+              clicks: data.clicks || 0
+            } as Ad;
+          });
           
           // Sort by priority in memory
           adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -311,10 +321,10 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
                 </div>
 
                 {/* CTA Button */}
-                {ad.ctaText && ad.ctaUrl && (
+                {ad.ctaText && ad.ctaUrl ? (
                   <div className="flex items-center gap-4">
                     <Button
-                      onClick={() => handleAdClick(ad.id, ad.ctaUrl)}
+                      onClick={() => handleAdClick(ad.id, ad.ctaUrl!)}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
                     >
                       <Sparkles className="h-5 w-5 mr-2 group-hover:animate-pulse" />
@@ -327,7 +337,7 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
                       <span>عرض محدود</span>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Additional Info */}
                 <div className="flex items-center gap-4 text-xs text-gray-500">
