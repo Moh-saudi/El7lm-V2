@@ -36,7 +36,10 @@ import {
     Smartphone,
     Trophy,
     User,
-    Users
+    Users,
+    Mail,
+    MessageSquare,
+    Send
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -266,7 +269,7 @@ interface UserProfile {
 interface RegistrationData {
   tournamentId: string;
   selectedPlayers: Player[];
-  paymentMethod: 'mobile_wallet' | 'card' | 'later';
+  paymentMethod: 'mobile_wallet' | 'card' | 'later' | 'office';
   notes: string;
 }
 
@@ -335,6 +338,12 @@ export default function UnifiedTournamentRegistrationPage() {
       if (userData.accountType === 'player') {
         profileType = 'individual';
       }
+      
+      console.log('👤 User profile data:', {
+        accountType: userData.accountType,
+        profileType: profileType,
+        name: userData.name
+      });
       
       const profileData: UserProfile = {
         id: user.uid,
@@ -512,49 +521,122 @@ export default function UnifiedTournamentRegistrationPage() {
   // Fetch available tournaments (allow without login)
   const fetchTournaments = useCallback(async () => {
     try {
-      const tournamentsQuery = query(
-        collection(db, 'tournaments'),
-        where('isActive', '==', true),
-        orderBy('startDate', 'asc')
-      );
+      setLoading(true);
+      
+      // Try with orderBy first, if it fails (no index), fetch without orderBy
+      let querySnapshot;
+      try {
+        const tournamentsQuery = query(
+          collection(db, 'tournaments'),
+          where('isActive', '==', true),
+          orderBy('startDate', 'asc')
+        );
+        querySnapshot = await getDocs(tournamentsQuery);
+      } catch (orderByError: any) {
+        // If orderBy fails (likely missing index), fetch without orderBy
+        console.log('⚠️ orderBy failed, fetching without orderBy:', orderByError?.message);
+        const tournamentsQuery = query(
+          collection(db, 'tournaments'),
+          where('isActive', '==', true)
+        );
+        querySnapshot = await getDocs(tournamentsQuery);
+      }
 
-      const querySnapshot = await getDocs(tournamentsQuery);
-      const tournamentsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Tournament[];
+      const tournamentsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Ensure isActive is always a boolean (handle undefined/null cases from old data)
+          isActive: data.isActive === true
+        } as Tournament;
+      });
 
-      // Filter tournaments that are still accepting registrations
-      const availableTournaments = tournamentsData.filter(tournament => {
+      console.log(`📊 Total active tournaments from DB: ${tournamentsData.length}`);
+
+      // Sort by startDate on client side if orderBy failed
+      tournamentsData.sort((a, b) => {
+        const dateA = new Date(a.startDate).getTime();
+        const dateB = new Date(b.startDate).getTime();
+        return dateA - dateB;
+      });
+
+      // Show all active tournaments, but mark which ones are available for registration
+      const now = new Date();
+      const allActiveTournaments = tournamentsData.map(tournament => {
+        // Check registration deadline
         const registrationDeadline = new Date(tournament.registrationDeadline);
-        const now = new Date();
         const isWithinDeadline = registrationDeadline > now;
+        
+        // Check available spots
         const hasSpots = tournament.currentParticipants < tournament.maxParticipants;
         
-        // Filter based on tournament feeType and user profile type (only if logged in)
+        // Check if allowed for user type
         let isAllowedForUser = true;
         if (userProfile) {
-          // If tournament is for individuals only
-          if (tournament.feeType === 'individual') {
-            // Only allow individual users
-            isAllowedForUser = userProfile.type === 'individual';
-          } 
-          // If tournament is for clubs only
-          else if (tournament.feeType === 'club') {
-            // Allow clubs, academies, trainers, agents (but not individual users)
-            isAllowedForUser = ['club', 'academy', 'trainer', 'agent'].includes(userProfile.type);
+          const feeType = tournament.feeType?.toLowerCase() || '';
+          const userType = userProfile.type?.toLowerCase() || '';
+          
+          if (feeType === 'individual') {
+            // Individual tournaments: allow individuals, players, AND clubs/academies (to register their players)
+            isAllowedForUser = ['individual', 'player', 'club', 'academy', 'trainer', 'agent', 'marketer', 'parent'].includes(userType);
+          } else if (feeType === 'club') {
+            // Club tournaments: allow clubs, academies, trainers, agents (but not individual users)
+            isAllowedForUser = ['club', 'academy', 'trainer', 'agent', 'marketer'].includes(userType);
+          } else {
+            // If feeType is not set or unknown, allow all users
+            isAllowedForUser = true;
+          }
+          
+          // Debug logging
+          if (!isAllowedForUser) {
+            console.log(`🚫 Tournament "${tournament.name}" (feeType: ${tournament.feeType}) not allowed for user type: ${userProfile.type}`);
           }
         } else {
-          // If not logged in, show all tournaments (filtering will happen when trying to register)
+          // If not logged in, allow all tournaments (filtering happens when trying to register)
           isAllowedForUser = true;
         }
         
-        return isWithinDeadline && hasSpots && isAllowedForUser;
+        // Calculate registration status
+        const canRegister = isWithinDeadline && hasSpots && isAllowedForUser;
+        
+        return {
+          ...tournament,
+          canRegister,
+          isWithinDeadline,
+          hasSpots,
+          isAllowedForUser
+        };
       });
 
-      setTournaments(availableTournaments);
+      console.log(`✅ Loaded ${allActiveTournaments.length} active tournaments`);
+      console.log(`👤 Current user profile:`, userProfile ? {
+        type: userProfile.type,
+        name: userProfile.name
+      } : 'Not logged in');
+      console.log(`📋 Tournaments breakdown:`, {
+        total: allActiveTournaments.length,
+        canRegister: allActiveTournaments.filter(t => t.canRegister).length,
+        deadlinePassed: allActiveTournaments.filter(t => !t.isWithinDeadline).length,
+        noSpots: allActiveTournaments.filter(t => !t.hasSpots).length,
+        notAllowed: allActiveTournaments.filter(t => !t.isAllowedForUser).length
+      });
+      
+      // Log each tournament's status
+      allActiveTournaments.forEach(t => {
+        console.log(`🏆 Tournament: "${t.name}"`, {
+          feeType: t.feeType,
+          isWithinDeadline: (t as any).isWithinDeadline,
+          hasSpots: (t as any).hasSpots,
+          isAllowedForUser: (t as any).isAllowedForUser,
+          canRegister: (t as any).canRegister
+        });
+      });
+      
+      // Show all active tournaments (filtering by registration availability happens in UI)
+      setTournaments(allActiveTournaments);
     } catch (error) {
-      console.error('Error fetching tournaments:', error);
+      console.error('❌ Error fetching tournaments:', error);
       toast.error('فشل في تحميل البطولات');
     } finally {
       setLoading(false);
@@ -711,7 +793,7 @@ export default function UnifiedTournamentRegistrationPage() {
           <div class="payment-info">
             <div class="info-row">
               <span class="info-label">طريقة الدفع:</span>
-              <span class="info-value">${registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' : registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : 'دفع لاحقاً'}</span>
+              <span class="info-value">${registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' : registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'دفع لاحقاً'}</span>
             </div>
             ${registrationData.paymentMethod === 'mobile_wallet' && mobileWalletProvider ? `
               <div class="info-row">
@@ -925,26 +1007,65 @@ export default function UnifiedTournamentRegistrationPage() {
   };
 
   const validatePaymentTab = () => {
+    console.log('🔍 [validatePaymentTab] Starting validation:', {
+      paymentMethod: registrationData.paymentMethod,
+      mobileWalletProvider,
+      mobileWalletUploadSuccess,
+      geideaPaymentData: !!geideaPaymentData
+    });
+
     if (!registrationData.paymentMethod) {
+      console.log('❌ [validatePaymentTab] No payment method selected');
       toast.error('يرجى اختيار طريقة الدفع');
       return false;
     }
 
+    // التحقق من متطلبات كل طريقة دفع
     if (registrationData.paymentMethod === 'mobile_wallet') {
       if (!mobileWalletProvider) {
+        console.log('❌ [validatePaymentTab] Mobile wallet provider not selected');
         toast.error('يرجى اختيار مزود المحفظة الرقمية');
         return false;
       }
       // رقم المحفظة ثابت الآن (01017799580)، لا حاجة للتحقق منه
+      // Check if receipt is uploaded
+      if (!mobileWalletUploadSuccess) {
+        console.log('❌ [validatePaymentTab] Receipt not uploaded');
+        toast.error('يرجى رفع إيصال الدفع أولاً');
+        return false;
+      }
+      console.log('✅ [validatePaymentTab] Mobile wallet validation passed');
+    } else if (registrationData.paymentMethod === 'card') {
+      // للدفع بالكارت، يجب أن يكون الدفع قد تم بنجاح
+      if (!geideaPaymentData) {
+        console.log('❌ [validatePaymentTab] Card payment not completed');
+        toast.error('يرجى إتمام عملية الدفع بالكارت أولاً');
+        return false;
+      }
+      console.log('✅ [validatePaymentTab] Card payment validation passed');
+    } else if (registrationData.paymentMethod === 'office') {
+      // الدفع في المكتب لا يحتاج متطلبات إضافية
+      console.log('✅ [validatePaymentTab] Office payment - no additional requirements');
+      return true;
+    } else if (registrationData.paymentMethod === 'later') {
+      // الدفع لاحقاً لا يحتاج متطلبات إضافية
+      console.log('✅ [validatePaymentTab] Later payment - no additional requirements');
+      return true;
     }
 
+    console.log('✅ [validatePaymentTab] All validations passed');
     return true;
   };
 
   const validateReviewTab = () => {
+    // ملاحظات اختيارية - لا نطلبها كحقل إلزامي
+    // إذا كانت الملاحظات فارغة، نستخدم ملاحظة افتراضية
     if (!registrationData.notes || registrationData.notes.trim() === '') {
-      toast.error('يرجى إضافة ملاحظات التسجيل');
-      return false;
+      // تحديث الملاحظات بملاحظة افتراضية بدلاً من رفض التسجيل
+      setRegistrationData(prev => ({
+        ...prev,
+        notes: prev.notes || 'تسجيل في البطولة'
+      }));
     }
     return true;
   };
@@ -971,7 +1092,7 @@ export default function UnifiedTournamentRegistrationPage() {
   };
 
   // Payment handlers
-  const handlePaymentMethodChange = (method: 'mobile_wallet' | 'card' | 'later') => {
+  const handlePaymentMethodChange = (method: 'mobile_wallet' | 'card' | 'later' | 'office') => {
     setRegistrationData(prev => ({ ...prev, paymentMethod: method }));
 
     // التحقق من أن المبلغ أكبر من 0 قبل فتح نافذة الدفع
@@ -988,6 +1109,17 @@ export default function UnifiedTournamentRegistrationPage() {
       setShowMobileWalletModal(true);
     } else if (method === 'card') {
       setShowPaymentModal(true);
+    } else if (method === 'office') {
+      // Show message and auto-navigate to review tab
+      toast.info('يرجى ترك بياناتك للتواصل معك. سيتم التواصل معك قريباً.');
+      setRegistrationData(prev => ({
+        ...prev,
+        notes: prev.notes ? `${prev.notes}\nالدفع مباشرة في المكتب - يرجى التواصل معي` : 'الدفع مباشرة في المكتب - يرجى التواصل معي'
+      }));
+      // Auto-navigate to review tab after a short delay
+      setTimeout(() => {
+        setCurrentTab('review');
+      }, 1000);
     }
   };
 
@@ -1104,6 +1236,11 @@ export default function UnifiedTournamentRegistrationPage() {
       setMobileWalletUploadSuccess(true);
       setMobileWalletReceiptUrl(urlData?.publicUrl || '');
       toast.success('تم رفع إيصال المحفظة الإلكترونية بنجاح! سيتم التاكيد بعد 24 ساعة');
+      
+      // Auto-navigate to review tab after successful upload
+      setTimeout(() => {
+        setCurrentTab('review');
+      }, 1500);
 
       return {
         filePath,
@@ -1177,21 +1314,16 @@ export default function UnifiedTournamentRegistrationPage() {
     }
   };
 
-  // دالة إنشاء فاتورة التسجيل في البطولة
-  const generateTournamentInvoice = () => {
+  // دالة إنشاء HTML الفاتورة (لإعادة الاستخدام)
+  const generateInvoiceHTML = (invoiceNumber: string): string => {
     if (!selectedTournament || selectedPlayers.length === 0) {
-      toast.error('يرجى اختيار بطولة ولاعبين أولاً');
-      return;
+      return '';
     }
 
-    setGeneratingInvoice(true);
+    const currentDate = formatGregorianDate(new Date());
+    const totalAmount = calculateTotalAmount();
 
-    try {
-      const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
-      const currentDate = formatGregorianDate(new Date());
-      const totalAmount = calculateTotalAmount();
-
-      const invoiceContent = `
+    return `
         <!DOCTYPE html>
         <html dir="rtl">
           <head>
@@ -1270,7 +1402,7 @@ export default function UnifiedTournamentRegistrationPage() {
 
               <div class="section-title">💳 تفاصيل الدفع</div>
               <table class="details-table">
-                <tr><th>طريقة الدفع</th><td>${registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' : registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : 'دفع لاحقاً'}</td></tr>
+                <tr><th>طريقة الدفع</th><td>${registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' : registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'دفع لاحقاً'}</td></tr>
                 <tr><th>عدد اللاعبين</th><td>${selectedPlayers.length} لاعب</td></tr>
                 <tr><th>رسوم التسجيل للاعب الواحد</th><td>${selectedTournament.entryFee || 0} ${getCurrencySymbol(selectedTournament?.currency || 'EGP')}</td></tr>
                 <tr><th>المجموع الكلي</th><td><strong>${totalAmount} ${getCurrencySymbol(selectedTournament?.currency || 'EGP')}</strong></td></tr>
@@ -1318,6 +1450,20 @@ export default function UnifiedTournamentRegistrationPage() {
           </body>
         </html>
       `;
+  };
+
+  // دالة إنشاء فاتورة التسجيل في البطولة
+  const generateTournamentInvoice = () => {
+    if (!selectedTournament || selectedPlayers.length === 0) {
+      toast.error('يرجى اختيار بطولة ولاعبين أولاً');
+      return;
+    }
+
+    setGeneratingInvoice(true);
+
+    try {
+      const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
+      const invoiceContent = generateInvoiceHTML(invoiceNumber);
 
       // إنشاء blob من HTML
       const blob = new Blob([invoiceContent], { type: 'text/html' });
@@ -1343,6 +1489,131 @@ export default function UnifiedTournamentRegistrationPage() {
       toast.error('فشل في إنشاء الفاتورة');
     } finally {
       setGeneratingInvoice(false);
+    }
+  };
+
+  // دالة إرسال الفاتورة عبر الواتساب
+  const sendInvoiceViaWhatsApp = async () => {
+    if (!userProfile?.phone) {
+      toast.error('رقم الهاتف غير متوفر لإرسال الفاتورة');
+      return;
+    }
+
+    try {
+      const invoiceData = (window as any).lastInvoiceData;
+      if (!invoiceData) {
+        toast.error('لا توجد فاتورة لإرسالها');
+        return;
+      }
+
+      // إنشاء نص الفاتورة للواتساب
+      const paymentMethodText = 
+        registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
+        registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+        registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
+        'دفع لاحقاً';
+      
+      const playersList = registeredPlayers.length > 0 
+        ? registeredPlayers.map((player, index) => `${index + 1}. ${getPlayerDisplayName(player)}`).join('\n')
+        : selectedPlayers.map((player, index) => `${index + 1}. ${getPlayerDisplayName(player)}`).join('\n');
+      
+      const whatsappMessage = `🏆 *فاتورة تسجيل البطولة*
+
+📋 *رقم الفاتورة:* ${invoiceData.invoiceNumber}
+📅 *تاريخ التسجيل:* ${invoiceData.registrationDate}
+🏆 *اسم البطولة:* ${selectedTournament?.name || 'غير محدد'}
+👥 *عدد اللاعبين:* ${invoiceData.playersCount}
+💰 *المبلغ الإجمالي:* ${invoiceData.totalAmount} ${getCurrencySymbol(invoiceData.currency)}
+
+💳 *طريقة الدفع:* ${paymentMethodText}
+
+${playersList}
+
+📧 *البريد الإلكتروني:* ${userProfile?.email || 'غير محدد'}
+📱 *رقم الهاتف:* ${userProfile?.phone || 'غير محدد'}
+
+شكراً لاختيارك منصة الحلم! 🎉`;
+
+      // إرسال عبر API
+      const response = await fetch('/api/whatsapp/send-official', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientPhone: userProfile.phone,
+          message: whatsappMessage,
+          playerName: userProfile.name,
+          accountType: userData?.accountType
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('تم إرسال الفاتورة عبر الواتساب بنجاح!');
+      } else {
+        toast.error(result.error || 'فشل في إرسال الفاتورة عبر الواتساب');
+      }
+    } catch (error) {
+      console.error('❌ خطأ في إرسال الفاتورة عبر الواتساب:', error);
+      toast.error('فشل في إرسال الفاتورة عبر الواتساب');
+    }
+  };
+
+  // دالة إرسال الفاتورة عبر الإيميل
+  const sendInvoiceViaEmail = async () => {
+    if (!userProfile?.email) {
+      toast.error('البريد الإلكتروني غير متوفر لإرسال الفاتورة');
+      return;
+    }
+
+    try {
+      const invoiceData = (window as any).lastInvoiceData;
+      if (!invoiceData) {
+        toast.error('لا توجد فاتورة لإرسالها');
+        return;
+      }
+
+      // إرسال عبر EmailJS
+      const emailjs = (await import('@emailjs/browser')).default;
+      
+      const templateParams = {
+        to_email: userProfile.email,
+        user_name: userProfile.name,
+        invoice_number: invoiceData.invoiceNumber,
+        tournament_name: selectedTournament?.name || 'غير محدد',
+        total_amount: `${invoiceData.totalAmount} ${getCurrencySymbol(invoiceData.currency)}`,
+        players_count: invoiceData.playersCount.toString(),
+        registration_date: invoiceData.registrationDate,
+        invoice_html: invoiceData.html,
+        payment_method: registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' : registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'دفع لاحقاً'
+      };
+
+      const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
+      const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_invoice'; // يحتاج template جديد للفاتورة
+      const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+
+      if (!serviceId || !publicKey) {
+        // Fallback: استخدام mailto link
+        const subject = encodeURIComponent(`فاتورة تسجيل البطولة - ${selectedTournament?.name}`);
+        const body = encodeURIComponent(`فاتورة تسجيل البطولة\n\nرقم الفاتورة: ${invoiceData.invoiceNumber}\nاسم البطولة: ${selectedTournament?.name}\nالمبلغ: ${invoiceData.totalAmount} ${getCurrencySymbol(invoiceData.currency)}\nعدد اللاعبين: ${invoiceData.playersCount}`);
+        window.location.href = `mailto:${userProfile.email}?subject=${subject}&body=${body}`;
+        toast.info('تم فتح برنامج البريد الإلكتروني لإرسال الفاتورة');
+        return;
+      }
+
+      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      toast.success('تم إرسال الفاتورة عبر البريد الإلكتروني بنجاح!');
+
+    } catch (error: any) {
+      console.error('❌ خطأ في إرسال الفاتورة عبر الإيميل:', error);
+      
+      // Fallback: استخدام mailto link
+      const subject = encodeURIComponent(`فاتورة تسجيل البطولة - ${selectedTournament?.name}`);
+      const body = encodeURIComponent(`فاتورة تسجيل البطولة\n\nرقم الفاتورة: ${(window as any).lastInvoiceData?.invoiceNumber}\nاسم البطولة: ${selectedTournament?.name}\nالمبلغ: ${calculateTotalAmount()} ${getCurrencySymbol(selectedTournament?.currency || 'EGP')}\nعدد اللاعبين: ${selectedPlayers.length}`);
+      window.location.href = `mailto:${userProfile?.email}?subject=${subject}&body=${body}`;
+      toast.info('تم فتح برنامج البريد الإلكتروني لإرسال الفاتورة');
     }
   };
 
@@ -1494,13 +1765,23 @@ export default function UnifiedTournamentRegistrationPage() {
                     </div>
                   ) : (
                     tournaments
-                      .filter(tournament =>
-                        tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        tournament.location.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
+                      .filter(tournament => {
+                        // Search filter
+                        const matchesSearch = tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          tournament.location.toLowerCase().includes(searchTerm.toLowerCase());
+                        
+                        // Status filter
+                        if (statusFilter === 'available') {
+                          return matchesSearch && (tournament as any).canRegister;
+                        }
+                        
+                        return matchesSearch;
+                      })
                       .map((tournament) => {
                         const isSelected = selectedTournament?.id === tournament.id;
                         const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
+                        const tournamentWithStatus = tournament as Tournament & { canRegister?: boolean; isWithinDeadline?: boolean; hasSpots?: boolean; isAllowedForUser?: boolean };
+                        const canRegister = tournamentWithStatus.canRegister !== false;
 
                         return (
                           <Card
@@ -1508,11 +1789,24 @@ export default function UnifiedTournamentRegistrationPage() {
                             className={`cursor-pointer transition-all duration-200 ${
                               isSelected
                                 ? 'bg-yellow-50 ring-2 ring-yellow-500'
-                                : 'hover:shadow-md hover:bg-gray-50'
+                                : canRegister
+                                  ? 'hover:shadow-md hover:bg-gray-50'
+                                  : 'opacity-75 hover:bg-gray-50'
                             }`}
                             onClick={() => {
-                              setSelectedTournament(tournament);
-                              setRegistrationData(prev => ({ ...prev, tournamentId: tournament.id }));
+                              if (canRegister) {
+                                setSelectedTournament(tournament);
+                                setRegistrationData(prev => ({ ...prev, tournamentId: tournament.id }));
+                              } else {
+                                // Show warning if trying to select unavailable tournament
+                                if (!tournamentWithStatus.isWithinDeadline) {
+                                  toast.warning('انتهى موعد التسجيل في هذه البطولة');
+                                } else if (!tournamentWithStatus.hasSpots) {
+                                  toast.warning('لا توجد أماكن متاحة في هذه البطولة');
+                                } else if (!tournamentWithStatus.isAllowedForUser) {
+                                  toast.warning('هذه البطولة غير متاحة لنوع حسابك');
+                                }
+                              }
                             }}
                           >
                             <CardContent className="p-4">
@@ -1557,20 +1851,34 @@ export default function UnifiedTournamentRegistrationPage() {
                                     <Users className="w-3 h-3" />
                                     <span>{tournament.currentParticipants}/{tournament.maxParticipants}</span>
                                     <Badge variant="secondary" className="text-xs">
-                                      {spotsLeft} متبقي
+                                      {spotsLeft > 0 ? `${spotsLeft} متبقي` : 'ممتلئة'}
                                     </Badge>
                                   </div>
 
                                   {tournament.isPaid && (
                                     <div className="flex gap-2 items-center">
                                       <DollarSign className="w-3 h-3" />
-                                      <span>{tournament.entryFee} ${getCurrencySymbol(tournament.currency || 'EGP')} / لاعب</span>
+                                      <span>{tournament.entryFee} {getCurrencySymbol(tournament.currency || 'EGP')} / لاعب</span>
                                     </div>
                                   )}
                                 </div>
 
                                 <div className="flex flex-wrap gap-1">
-                                  <Badge className="text-xs text-green-800 bg-green-100">متاحة</Badge>
+                                  {canRegister ? (
+                                    <Badge className="text-xs text-green-800 bg-green-100">متاحة للتسجيل</Badge>
+                                  ) : (
+                                    <>
+                                      {!tournamentWithStatus.isWithinDeadline && (
+                                        <Badge className="text-xs text-red-800 bg-red-100">انتهى التسجيل</Badge>
+                                      )}
+                                      {!tournamentWithStatus.hasSpots && (
+                                        <Badge className="text-xs text-orange-800 bg-orange-100">ممتلئة</Badge>
+                                      )}
+                                      {!tournamentWithStatus.isAllowedForUser && (
+                                        <Badge className="text-xs text-gray-800 bg-gray-100">غير متاحة</Badge>
+                                      )}
+                                    </>
+                                  )}
                                   <Badge className={`text-xs ${
                                     tournament.feeType === 'individual' 
                                       ? 'bg-purple-100 text-purple-800' 
@@ -1578,7 +1886,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                   }`}>
                                     {tournament.feeType === 'individual' ? 'فردي' : 'نادي'}
                                   </Badge>
-                                  {tournament.categories.map(category => (
+                                  {tournament.categories?.map(category => (
                                     <Badge key={category} variant="outline" className="text-xs">
                                       {category}
                                     </Badge>
@@ -1892,7 +2200,8 @@ export default function UnifiedTournamentRegistrationPage() {
                                     <p className="text-lg font-bold text-violet-800">
                                       {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
                                        registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
-                                       registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' : 'غير محدد'}
+                                       registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                       registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'غير محدد'}
                                     </p>
                                   </div>
                                 </div>
@@ -1979,6 +2288,23 @@ export default function UnifiedTournamentRegistrationPage() {
                                   </div>
                                   <h4 className="mb-2 font-semibold text-gray-900">دفع بالكارت البنكي</h4>
                                   <p className="text-sm text-gray-600">فيزا، ماستركارد، جيديا</p>
+                                </CardContent>
+                              </Card>
+
+                              <Card
+                                className={`cursor-pointer transition-all duration-300 border-2 ${
+                                  registrationData.paymentMethod === 'office'
+                                    ? 'border-orange-500 bg-orange-50 shadow-lg'
+                                    : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
+                                } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('office')}
+                              >
+                                <CardContent className="p-6 text-center">
+                                  <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-orange-100 rounded-full">
+                                    <Building className="w-8 h-8 text-orange-600" />
+                                  </div>
+                                  <h4 className="mb-2 font-semibold text-gray-900">الدفع مباشرة في المكتب</h4>
+                                  <p className="text-sm text-gray-600">اترك بياناتك للتواصل معك</p>
                                 </CardContent>
                               </Card>
                             </div>
@@ -2169,12 +2495,14 @@ export default function UnifiedTournamentRegistrationPage() {
                                       registrationData.paymentMethod === 'later' ? 'bg-blue-100 text-blue-800' :
                                       registrationData.paymentMethod === 'mobile_wallet' ? 'bg-green-100 text-green-800' :
                                       registrationData.paymentMethod === 'card' ? 'bg-purple-100 text-purple-800' :
+                                      registrationData.paymentMethod === 'office' ? 'bg-orange-100 text-orange-800' :
                                       'bg-gray-100 text-gray-800'
                                     }`}
                                   >
                                     {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
                                      registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
                                      registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                     registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
                                      'غير محدد'}
                                   </Badge>
                                 </div>
@@ -2200,7 +2528,7 @@ export default function UnifiedTournamentRegistrationPage() {
                         </Card>
 
                         {/* Payment Information */}
-                        {registrationData.paymentMethod !== 'later' && (
+                        {registrationData.paymentMethod !== 'later' && registrationData.paymentMethod !== 'office' && (
                           <Card>
                             <CardHeader>
                               <CardTitle>معلومات الدفع</CardTitle>
@@ -2231,6 +2559,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                   <span className="font-medium">
                                     {registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
                                      registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                     registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
                                      registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' : 'غير محدد'}
                                   </span>
                                 </div>
@@ -2239,6 +2568,18 @@ export default function UnifiedTournamentRegistrationPage() {
                                   <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
                                     <p className="text-sm text-violet-800">
                                       ✅ تم الدفع بنجاح عبر الكارت البنكي
+                                    </p>
+                                  </div>
+                                )}
+
+                                {registrationData.paymentMethod === 'office' as any && (
+                                  <div className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                                    <div className="flex gap-2 items-center mb-2">
+                                      <Building className="w-5 h-5 text-orange-600" />
+                                      <p className="font-semibold text-orange-900">الدفع مباشرة في المكتب</p>
+                                    </div>
+                                    <p className="text-sm text-orange-800">
+                                      ✅ تم حفظ بياناتك. سيتم التواصل معك قريباً لإتمام عملية الدفع في المكتب.
                                     </p>
                                   </div>
                                 )}
@@ -2334,17 +2675,44 @@ export default function UnifiedTournamentRegistrationPage() {
                             className="flex-1 text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg transition-all duration-300 transform hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:scale-105"
                             disabled={submitting || selectedPlayers.length === 0 || calculateTotalAmount() <= 0}
                             onClick={async () => {
+                              console.log('🔵 [Submit] Button clicked - Starting registration process');
+                              
                               // Check if user is authenticated
                               if (!user || !userData) {
+                                console.log('❌ [Submit] User not authenticated');
                                 toast.error('يجب تسجيل الدخول أولاً لإكمال التسجيل');
                                 router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
                                 return;
                               }
 
+                              console.log('✅ [Submit] User authenticated:', { userId: user.uid, email: user.email });
+
                               // التحقق من جميع التبويبات قبل التسجيل
-                              if (!validatePlayersTab() || !validatePaymentTab() || !validateReviewTab()) {
+                              console.log('🔍 [Submit] Validating tabs...');
+                              const playersValid = validatePlayersTab();
+                              const paymentValid = validatePaymentTab();
+                              const reviewValid = validateReviewTab();
+                              
+                              console.log('📊 [Submit] Validation results:', {
+                                playersValid,
+                                paymentValid,
+                                reviewValid,
+                                selectedTournament: selectedTournament?.name,
+                                selectedPlayersCount: selectedPlayers.length,
+                                paymentMethod: registrationData.paymentMethod,
+                                notes: registrationData.notes,
+                                mobileWalletProvider,
+                                mobileWalletUploadSuccess,
+                                geideaPaymentData: !!geideaPaymentData,
+                                hasGeideaOrderId: !!geideaPaymentData?.orderId
+                              });
+
+                              if (!playersValid || !paymentValid || !reviewValid) {
+                                console.log('❌ [Submit] Validation failed - stopping registration');
                                 return;
                               }
+
+                              console.log('✅ [Submit] All validations passed - proceeding with registration');
 
                               // التحقق من أن الإجمالي ليس 0
                               const totalAmount = calculateTotalAmount();
@@ -2398,7 +2766,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                   receiptUrl: mobileWalletReceiptUrl || (mobileWalletUploadSuccess ? 'uploaded' : ''),
                                   receiptNumber: mobileWalletReceiptNumber,
                                   paymentAmount: calculateTotalAmount(),
-                                  paymentStatus: registrationData.paymentMethod === 'later' ? 'pending' : 'paid',
+                                  paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
                                   // Geidea payment data (if card payment)
                                   geideaOrderId: geideaPaymentData?.orderId || geideaPaymentData?.merchantReferenceId || null,
                                   geideaTransactionId: geideaPaymentData?.transactionId || null,
@@ -2413,7 +2781,17 @@ export default function UnifiedTournamentRegistrationPage() {
 
                                 // Save to tournamentRegistrations collection
                                 const registrationsRef = collection(db, 'tournamentRegistrations');
-                                await addDoc(registrationsRef, registrationToSave);
+                                const registrationDocRef = await addDoc(registrationsRef, registrationToSave);
+                                
+                                console.log('✅ Registration saved to tournamentRegistrations:', {
+                                  docId: registrationDocRef.id,
+                                  tournamentId: selectedTournament.id,
+                                  tournamentName: selectedTournament.name,
+                                  playersCount: selectedPlayers.length,
+                                  paymentMethod: registrationData.paymentMethod,
+                                  paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
+                                  receiptUrl: mobileWalletReceiptUrl || 'N/A'
+                                });
 
                                 // Also save individual player registrations for backward compatibility
                                 for (const player of selectedPlayers) {
@@ -2427,7 +2805,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     playerClub: player.club_id,
                                     playerPosition: player.primary_position || player.position,
                                     registrationDate: new Date(),
-                                    paymentStatus: registrationData.paymentMethod === 'later' ? 'pending' : 'paid',
+                                    paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
                                     paymentAmount: calculateTotalAmount(),
                                     notes: registrationData.notes,
                                     registrationType: userProfile?.type === 'individual' ? 'individual' : 'club',
@@ -2452,9 +2830,35 @@ export default function UnifiedTournamentRegistrationPage() {
                                   };
 
                                   const individualRegistrationsRef = collection(db, 'tournament_registrations');
-                                  await addDoc(individualRegistrationsRef, individualRegistration);
+                                  const individualDocRef = await addDoc(individualRegistrationsRef, individualRegistration);
+                                  
+                                  console.log('✅ Individual registration saved:', {
+                                    docId: individualDocRef.id,
+                                    playerName: getPlayerDisplayName(player),
+                                    tournamentId: selectedTournament.id
+                                  });
                                 }
 
+                                console.log('✅ All registrations saved successfully!');
+                                
+                                // Generate invoice HTML for sharing
+                                const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
+                                const invoiceHtml = generateInvoiceHTML(invoiceNumber);
+                                
+                                // Store invoice data for sharing
+                                const invoiceData = {
+                                  invoiceNumber,
+                                  tournamentName: selectedTournament.name,
+                                  totalAmount: calculateTotalAmount(),
+                                  currency: selectedTournament.currency || 'EGP',
+                                  playersCount: selectedPlayers.length,
+                                  registrationDate: new Date().toLocaleDateString('ar-EG'),
+                                  html: invoiceHtml
+                                };
+                                
+                                // Save invoice data to window for sharing functions
+                                (window as any).lastInvoiceData = invoiceData;
+                                
                                 toast.success('تم التسجيل بنجاح في البطولة!');
 
                                 // Set registered players and show success state
@@ -2726,6 +3130,46 @@ export default function UnifiedTournamentRegistrationPage() {
                 تم تسجيل {selectedPlayers.length} لاعب في البطولة بنجاح
               </CardDescription>
             </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700">
+                  يمكنك إرسال فاتورة التسجيل عبر الواتساب أو البريد الإلكتروني
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    onClick={sendInvoiceViaWhatsApp}
+                    className="flex-1 text-white bg-green-600 hover:bg-green-700"
+                    disabled={!userProfile?.phone}
+                  >
+                    <MessageSquare className="mr-2 w-4 h-4" />
+                    إرسال عبر الواتساب
+                  </Button>
+                  <Button
+                    onClick={sendInvoiceViaEmail}
+                    variant="outline"
+                    className="flex-1 text-blue-700 border-blue-300 hover:bg-blue-50"
+                    disabled={!userProfile?.email}
+                  >
+                    <Mail className="mr-2 w-4 h-4" />
+                    إرسال عبر الإيميل
+                  </Button>
+                  <Button
+                    onClick={generateTournamentInvoice}
+                    variant="outline"
+                    className="flex-1 text-gray-700 border-gray-300 hover:bg-gray-50"
+                  >
+                    <FileText className="mr-2 w-4 h-4" />
+                    تحميل الفاتورة
+                  </Button>
+                </div>
+                {(!userProfile?.phone || !userProfile?.email) && (
+                  <p className="text-xs text-gray-500">
+                    {!userProfile?.phone && '⚠️ رقم الهاتف غير متوفر لإرسال الواتساب. '}
+                    {!userProfile?.email && '⚠️ البريد الإلكتروني غير متوفر لإرسال الإيميل.'}
+                  </p>
+                )}
+              </div>
+            </CardContent>
           </Card>
         )}
 

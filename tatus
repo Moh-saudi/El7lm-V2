@@ -19,79 +19,25 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Search in multiple possible collection names
-    const possibleCollections = [
-      'careerApplications',
-      'careersApplications',
-      'careers',
-      'jobApplications',
-      'applications',
-      'career_applications',
-      'careers_applications'
-    ];
+    const applicationsRef = collection(db, 'careerApplications');
+    const q = query(applicationsRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
 
-    const allItems: any[] = [];
-
-    for (const collectionName of possibleCollections) {
-      try {
-        console.log(`🔍 [Careers API] Searching in collection: ${collectionName}`);
-        const applicationsRef = collection(db, collectionName);
-        
-        // Try with orderBy first, if it fails, try without
-        let snapshot;
-        try {
-          const q = query(applicationsRef, orderBy('createdAt', 'desc'));
-          snapshot = await getDocs(q);
-        } catch (orderByError) {
-          // If orderBy fails (no index or no createdAt field), get all docs
-          console.log(`⚠️ [Careers API] orderBy failed for ${collectionName}, fetching all docs`);
-          snapshot = await getDocs(applicationsRef);
-        }
-
-        const items = snapshot.docs.map(doc => {
-          const data = doc.data();
-          // Check if this looks like a career application
-          const hasCareerFields = data.fullName || data.email || data.phone || data.role || data.roles;
-          
-          if (hasCareerFields) {
-            return {
-              id: doc.id,
-              collection: collectionName, // Track which collection it came from
-              ...data,
-              // Convert Firestore Timestamp to JavaScript Date
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : 
-                        data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) :
-                        data.createdAt || new Date()
-            };
-          }
-          return null;
-        }).filter(item => item !== null);
-
-        if (items.length > 0) {
-          console.log(`✅ [Careers API] Found ${items.length} applications in ${collectionName}`);
-          allItems.push(...items);
-        }
-      } catch (error: any) {
-        // Collection might not exist, skip it
-        if (error?.code !== 'not-found') {
-          console.log(`⚠️ [Careers API] Error searching ${collectionName}:`, error.message);
-        }
-      }
-    }
-
-    // Sort all items by createdAt (newest first)
-    allItems.sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
-      return dateB - dateA;
+    const items = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Convert Firestore Timestamp to JavaScript Date
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+      };
     });
 
-    console.log(`✅ [Careers API] Total applications found: ${allItems.length}`);
+    console.log(`✅ [Careers API] Fetched ${items.length} applications`);
 
     return NextResponse.json({
       success: true,
-      items: allItems,
-      collectionsSearched: possibleCollections
+      items
     });
 
   } catch (error) {

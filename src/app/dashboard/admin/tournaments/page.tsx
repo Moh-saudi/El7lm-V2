@@ -334,13 +334,27 @@ const AdminTournamentsPage: React.FC = () => {
     try {
       const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      const tournamentsData: Tournament[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate?.() || new Date(),
-        registrations: doc.data().registrations || []
-      })) as Tournament[];
+      const tournamentsData: Tournament[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Ensure isActive is always a boolean (handle undefined/null cases)
+          isActive: data.isActive === true,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
+          registrations: data.registrations || [],
+          // Ensure other fields have default values
+          currency: data.currency || 'EGP',
+          paymentMethods: data.paymentMethods || ['credit_card', 'bank_transfer'],
+          ageGroups: data.ageGroups || [],
+          categories: data.categories || []
+        };
+      }) as Tournament[];
+      
+      console.log(`📊 Loaded ${tournamentsData.length} tournaments from admin page`);
+      console.log(`✅ Active tournaments: ${tournamentsData.filter(t => t.isActive).length}`);
+      
       setTournaments(tournamentsData);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -404,7 +418,15 @@ const AdminTournamentsPage: React.FC = () => {
         createdAt: editingTournament ? editingTournament.createdAt : new Date(),
         updatedAt: new Date(),
         currentParticipants: editingTournament?.currentParticipants || 0,
-        registrations: editingTournament?.registrations || []
+        registrations: editingTournament?.registrations || [],
+        // Ensure isActive is always a boolean (not undefined)
+        isActive: formData.isActive === true,
+        // Ensure currency has a default value
+        currency: formData.currency || 'EGP',
+        // Ensure all required fields have values
+        paymentMethods: formData.paymentMethods || ['credit_card', 'bank_transfer'],
+        ageGroups: formData.ageGroups || [],
+        categories: formData.categories || []
       };
 
       if (editingTournament) {
@@ -1690,18 +1712,81 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
     
     try {
       setLoading(true);
-      const registrationsQuery = query(
-        collection(db, 'tournament_registrations'),
-        where('tournamentId', '==', tournament.id)
-      );
       
-      const querySnapshot = await getDocs(registrationsQuery);
-      const registrationsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      // Fetch from both collections (new and old format)
+      const allRegistrations: any[] = [];
       
-      setRegistrations(registrationsData);
+      // Fetch from tournament_registrations (old format - individual registrations)
+      try {
+        const oldRegistrationsQuery = query(
+          collection(db, 'tournament_registrations'),
+          where('tournamentId', '==', tournament.id)
+        );
+        const oldSnapshot = await getDocs(oldRegistrationsQuery);
+        const oldRegistrations = oldSnapshot.docs.map(doc => ({
+          id: doc.id,
+          collection: 'tournament_registrations',
+          ...doc.data()
+        }));
+        allRegistrations.push(...oldRegistrations);
+        console.log(`📋 Loaded ${oldRegistrations.length} registrations from tournament_registrations`);
+      } catch (error) {
+        console.error('Error fetching from tournament_registrations:', error);
+      }
+      
+      // Fetch from tournamentRegistrations (new format - group registrations)
+      try {
+        const newRegistrationsQuery = query(
+          collection(db, 'tournamentRegistrations'),
+          where('tournamentId', '==', tournament.id)
+        );
+        const newSnapshot = await getDocs(newRegistrationsQuery);
+        const newRegistrations = newSnapshot.docs.map(doc => {
+          const data = doc.data();
+          // Expand group registrations to individual entries for display
+          const players = data.players || [];
+          return players.map((player: any, index: number) => ({
+            id: `${doc.id}_${index}`,
+            registrationId: doc.id,
+            collection: 'tournamentRegistrations',
+            tournamentId: data.tournamentId,
+            playerId: player.id,
+            playerName: player.name || player.full_name || 'غير محدد',
+            playerEmail: player.email || data.accountEmail || '',
+            playerPhone: player.phone || data.accountPhone || '',
+            playerBirthDate: player.birth_date || player.birthDate,
+            playerClub: player.club_id || data.clubName || data.organizationName || '',
+            playerPosition: player.position || player.primary_position || '',
+            registrationDate: data.registrationDate || data.createdAt || new Date(),
+            paymentStatus: data.paymentStatus || 'pending',
+            paymentAmount: data.paymentAmount || 0,
+            paymentMethod: data.paymentMethod,
+            mobileWalletProvider: data.mobileWalletProvider,
+            mobileWalletNumber: data.mobileWalletNumber,
+            receiptUrl: data.receiptUrl,
+            receiptNumber: data.receiptNumber,
+            geideaOrderId: data.geideaOrderId,
+            geideaTransactionId: data.geideaTransactionId,
+            notes: data.notes,
+            registrationType: data.registrationType,
+            accountType: data.accountType,
+            accountName: data.accountName,
+            accountEmail: data.accountEmail,
+            accountPhone: data.accountPhone,
+            organizationName: data.organizationName,
+            organizationType: data.organizationType,
+            clubName: data.clubName
+          }));
+        }).flat();
+        allRegistrations.push(...newRegistrations);
+        console.log(`📋 Loaded ${newRegistrations.length} registrations from tournamentRegistrations`);
+      } catch (error) {
+        console.error('Error fetching from tournamentRegistrations:', error);
+      }
+      
+      console.log(`✅ Total registrations loaded: ${allRegistrations.length} for tournament "${tournament.name}"`);
+      
+      setRegistrations(allRegistrations);
     } catch (error) {
       console.error('Error fetching registrations:', error);
       toast.error('فشل في تحميل بيانات المسجلين');

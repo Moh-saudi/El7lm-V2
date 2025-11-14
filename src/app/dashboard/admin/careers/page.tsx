@@ -37,8 +37,15 @@ export default function CareersAdminPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <div className="mb-4 text-sm text-gray-600">
-                  إجمالي الطلبات: <span className="font-semibold">{items.length}</span>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    إجمالي الطلبات: <span className="font-semibold">{items.length}</span>
+                  </div>
+                  {items.length > 0 && items[0]?.collection && (
+                    <div className="text-xs text-gray-500">
+                      البيانات من: <span className="font-mono">{items[0].collection}</span>
+                    </div>
+                  )}
                 </div>
                 <table className="min-w-full text-right border-collapse">
                   <thead>
