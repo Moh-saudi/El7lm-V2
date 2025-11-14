@@ -142,6 +142,7 @@ function validateImage(file: File, type: 'logo' | 'cover'): Promise<string | nul
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
+  // استخدام bucket clubavatar للصور الخاصة بالنادي
   const { data: { publicUrl } } = supabase.storage.from('clubavatar').getPublicUrl(path);
   return publicUrl || '';
 };
@@ -336,6 +337,7 @@ export default function ClubProfilePage() {
       const fileName = `${timestamp}.${fileExt}`;
       const filePath = `${user.uid}/${type}/${fileName}`;
       
+      // استخدام bucket clubavatar للصور الخاصة بالنادي
       const { data, error } = await supabase.storage
         .from('clubavatar')
         .upload(filePath, file, {

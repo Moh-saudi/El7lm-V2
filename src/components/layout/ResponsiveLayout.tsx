@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
+import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import {
     collection,
     doc,
@@ -199,6 +199,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
 
   const [activeItem, setActiveItem] = useState('dashboard');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['main']));
+  const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   // معلومات أنواع الحسابات
   const ACCOUNT_TYPE_INFO = {
@@ -1183,9 +1184,91 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const showText = useMemo(() => shouldShowText(), [isMobile, isTablet, isSidebarCollapsed]);
   const sidebarWidth = useMemo(() => getSidebarWidth(), [isMobile, isTablet, isSidebarCollapsed]);
 
+  // جلب صورة النادي من Firestore إذا كان accountType === 'club'
+  useEffect(() => {
+    console.log('🔄 ResponsiveSidebar: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
+    
+    if (accountType !== 'club' || !user?.uid) {
+      console.log('🔄 ResponsiveSidebar: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
+      return;
+    }
+
+    console.log('🔄 ResponsiveSidebar: Starting to fetch club logo for user:', user.uid);
+    const clubRef = doc(db, 'clubs', user.uid);
+    
+    // استخدام onSnapshot للاستماع للتحديثات الفورية
+    const unsubscribe = onSnapshot(
+      clubRef,
+      (clubDoc) => {
+        try {
+          console.log('🔄 ResponsiveSidebar: Club document snapshot received, exists:', clubDoc.exists());
+          if (clubDoc.exists()) {
+            const data = clubDoc.data();
+            console.log('🔄 ResponsiveSidebar: Club data:', { 
+              hasLogo: !!data.logo, 
+              logo: data.logo,
+              logoType: typeof data.logo,
+              logoStartsWithHttp: data.logo?.startsWith('http')
+            });
+            
+            if (data.logo) {
+              // إذا كان logo رابط كامل، استخدمه مباشرة
+              if (data.logo.startsWith('http')) {
+                console.log('✅ ResponsiveSidebar: Using logo as full URL:', data.logo);
+                setClubLogo(data.logo);
+              } else {
+                // إذا كان مسار، استخدم getSupabaseImageUrl مع bucket clubavatar (المخصص للنادي)
+                console.log('🔄 ResponsiveSidebar: Logo is a path, converting with clubavatar bucket:', data.logo);
+                const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
+                console.log('🔄 ResponsiveSidebar: Converted logo URL:', logoUrl);
+                if (logoUrl && logoUrl !== '') {
+                  setClubLogo(logoUrl);
+                } else {
+                  console.log('⚠️ ResponsiveSidebar: Logo URL is empty, setting to null');
+                  setClubLogo(null);
+                }
+              }
+            } else {
+              console.log('⚠️ ResponsiveSidebar: No logo field in club data');
+              setClubLogo(null);
+            }
+          } else {
+            console.log('⚠️ ResponsiveSidebar: Club document does not exist');
+            setClubLogo(null);
+          }
+        } catch (error) {
+          console.error('❌ ResponsiveSidebar: Error processing club logo:', error);
+          setClubLogo(null);
+        }
+      },
+      (error) => {
+        console.error('❌ ResponsiveSidebar: Error listening to club logo updates:', error);
+        setClubLogo(null);
+      }
+    );
+
+    // تنظيف المستمع عند إلغاء التثبيت
+    return () => {
+      console.log('🔄 ResponsiveSidebar: Unsubscribing from club logo updates');
+      unsubscribe();
+    };
+  }, [accountType, user?.uid]);
+
   const getUserAvatar = () => {
+    // إذا كان النوع نادي وكانت هناك صورة من Firestore، استخدمها
+    if (accountType === 'club' && clubLogo) {
+      console.log('✅ ResponsiveSidebar: Using club logo from Firestore:', clubLogo);
+      return clubLogo;
+    }
+    
+    if (accountType === 'club') {
+      console.log('⚠️ ResponsiveSidebar: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
+    }
+    
     // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
-    return getPlayerAvatarUrl(userData, user);
+    const avatarUrl = getPlayerAvatarUrl(userData, user);
+    console.log('🔄 ResponsiveSidebar: getPlayerAvatarUrl returned:', avatarUrl);
+    return avatarUrl;
   };
 
   const getUserDisplayName = () => {
@@ -1335,7 +1418,18 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           <div className="p-3 border-b border-white/20">
             <div className="flex gap-2 items-center">
               <Avatar className="w-10 h-10 ring-2 ring-white/30">
-                <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
+                <AvatarImage 
+                  key={getUserAvatar() || 'default'} 
+                  src={getUserAvatar() || undefined} 
+                  alt={getUserDisplayName()}
+                  onError={(e) => {
+                    console.error('❌ ResponsiveSidebar: Error loading avatar image:', getUserAvatar());
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ ResponsiveSidebar: Avatar image loaded successfully:', getUserAvatar());
+                  }}
+                />
                 <AvatarFallback className={`${accountInfo.bgColor} ${accountInfo.textColor} font-bold text-sm`}>
                   {getUserDisplayName().slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -1540,6 +1634,7 @@ const ResponsiveHeader: React.FC = () => {
   const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   const getUserDisplayName = () => {
     if (!userData) return 'مستخدم';
@@ -1562,8 +1657,20 @@ const ResponsiveHeader: React.FC = () => {
   };
 
   const getUserAvatar = () => {
+    // إذا كان النوع نادي وكانت هناك صورة من Firestore، استخدمها
+    if (accountType === 'club' && clubLogo) {
+      console.log('✅ ResponsiveHeader: Using club logo from Firestore:', clubLogo);
+      return clubLogo;
+    }
+    
+    if (accountType === 'club') {
+      console.log('⚠️ ResponsiveHeader: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
+    }
+    
     // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
-    return getPlayerAvatarUrl(userData, user);
+    const avatarUrl = getPlayerAvatarUrl(userData, user);
+    console.log('🔄 ResponsiveHeader: getPlayerAvatarUrl returned:', avatarUrl);
+    return avatarUrl;
   };
 
   // تحديد margin للهيدر ليتناسق مع السايدبار - أحجام مصغرة
@@ -1588,6 +1695,76 @@ const ResponsiveHeader: React.FC = () => {
   };
 
   const accountType = getAccountTypeFromPath();
+
+  // جلب صورة النادي من Firestore إذا كان accountType === 'club'
+  useEffect(() => {
+    console.log('🔄 ResponsiveHeader: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
+    
+    if (accountType !== 'club' || !user?.uid) {
+      console.log('🔄 ResponsiveHeader: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
+      return;
+    }
+
+    console.log('🔄 ResponsiveHeader: Starting to fetch club logo for user:', user.uid);
+    const clubRef = doc(db, 'clubs', user.uid);
+    
+    // استخدام onSnapshot للاستماع للتحديثات الفورية
+    const unsubscribe = onSnapshot(
+      clubRef,
+      (clubDoc) => {
+        try {
+          console.log('🔄 ResponsiveHeader: Club document snapshot received, exists:', clubDoc.exists());
+          if (clubDoc.exists()) {
+            const data = clubDoc.data();
+            console.log('🔄 ResponsiveHeader: Club data:', { 
+              hasLogo: !!data.logo, 
+              logo: data.logo,
+              logoType: typeof data.logo,
+              logoStartsWithHttp: data.logo?.startsWith('http')
+            });
+            
+            if (data.logo) {
+              // إذا كان logo رابط كامل، استخدمه مباشرة
+              if (data.logo.startsWith('http')) {
+                console.log('✅ ResponsiveHeader: Using logo as full URL:', data.logo);
+                setClubLogo(data.logo);
+              } else {
+                // إذا كان مسار، استخدم getSupabaseImageUrl مع bucket clubavatar (المخصص للنادي)
+                console.log('🔄 ResponsiveHeader: Logo is a path, converting with clubavatar bucket:', data.logo);
+                const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
+                console.log('🔄 ResponsiveHeader: Converted logo URL:', logoUrl);
+                if (logoUrl && logoUrl !== '') {
+                  setClubLogo(logoUrl);
+                } else {
+                  console.log('⚠️ ResponsiveHeader: Logo URL is empty, setting to null');
+                  setClubLogo(null);
+                }
+              }
+            } else {
+              console.log('⚠️ ResponsiveHeader: No logo field in club data');
+              setClubLogo(null);
+            }
+          } else {
+            console.log('⚠️ ResponsiveHeader: Club document does not exist');
+            setClubLogo(null);
+          }
+        } catch (error) {
+          console.error('❌ ResponsiveHeader: Error processing club logo:', error);
+          setClubLogo(null);
+        }
+      },
+      (error) => {
+        console.error('❌ ResponsiveHeader: Error listening to club logo updates:', error);
+        setClubLogo(null);
+      }
+    );
+
+    // تنظيف المستمع عند إلغاء التثبيت
+    return () => {
+      console.log('🔄 ResponsiveHeader: Unsubscribing from club logo updates');
+      unsubscribe();
+    };
+  }, [accountType, user?.uid]);
 
   // دالة لتنسيق الوقت
   const formatTime = (date: Date) => {
@@ -2097,7 +2274,18 @@ const ResponsiveHeader: React.FC = () => {
           {/* صورة المستخدم */}
           <div className="flex gap-2 items-center">
             <Avatar className="w-8 h-8 transition-transform duration-500 ease-out cursor-pointer hover:scale-105">
-            <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
+            <AvatarImage 
+              key={getUserAvatar() || 'default'} 
+              src={getUserAvatar() || undefined} 
+              alt={getUserDisplayName()}
+              onError={(e) => {
+                console.error('❌ ResponsiveHeader: Error loading avatar image:', getUserAvatar());
+                e.currentTarget.style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('✅ ResponsiveHeader: Avatar image loaded successfully:', getUserAvatar());
+              }}
+            />
             <AvatarFallback className="font-bold text-blue-600 bg-blue-100">
               {getUserDisplayName().slice(0, 2).toUpperCase()}
             </AvatarFallback>

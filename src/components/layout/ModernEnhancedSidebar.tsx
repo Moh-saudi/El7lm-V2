@@ -4,8 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
+import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { AnimatePresence, motion } from 'framer-motion';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 import {
     BarChart3,
     Bell,
@@ -32,7 +34,7 @@ import {
     Zap
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 interface ModernEnhancedSidebarProps {
   accountType: string;
@@ -51,6 +53,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [activeItem, setActiveItem] = useState('');
+  const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   // Update active item based on current path
   useEffect(() => {
@@ -64,6 +67,76 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       setActiveItem(currentPath);
     }
   }, [pathname, accountType]);
+
+  // جلب صورة النادي من Firestore إذا كان accountType === 'club'
+  useEffect(() => {
+    console.log('🔄 Sidebar: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
+    
+    if (accountType !== 'club' || !user?.uid) {
+      console.log('🔄 Sidebar: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
+      return;
+    }
+
+    console.log('🔄 Sidebar: Starting to fetch club logo for user:', user.uid);
+    const clubRef = doc(db, 'clubs', user.uid);
+    
+    // استخدام onSnapshot للاستماع للتحديثات الفورية
+    const unsubscribe = onSnapshot(
+      clubRef,
+      (clubDoc) => {
+        try {
+          console.log('🔄 Sidebar: Club document snapshot received, exists:', clubDoc.exists());
+          if (clubDoc.exists()) {
+            const data = clubDoc.data();
+            console.log('🔄 Sidebar: Club data:', { 
+              hasLogo: !!data.logo, 
+              logo: data.logo,
+              logoType: typeof data.logo,
+              logoStartsWithHttp: data.logo?.startsWith('http')
+            });
+            
+            if (data.logo) {
+              // إذا كان logo رابط كامل، استخدمه مباشرة
+              if (data.logo.startsWith('http')) {
+                console.log('✅ Sidebar: Using logo as full URL:', data.logo);
+                setClubLogo(data.logo);
+              } else {
+                // إذا كان مسار، استخدم getSupabaseImageUrl مع bucket clubavatar (المخصص للنادي)
+                console.log('🔄 Sidebar: Logo is a path, converting with clubavatar bucket:', data.logo);
+                const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
+                console.log('🔄 Sidebar: Converted logo URL:', logoUrl);
+                if (logoUrl && logoUrl !== '') {
+                  setClubLogo(logoUrl);
+                } else {
+                  console.log('⚠️ Sidebar: Logo URL is empty, setting to null');
+                  setClubLogo(null);
+                }
+              }
+            } else {
+              console.log('⚠️ Sidebar: No logo field in club data');
+              setClubLogo(null);
+            }
+          } else {
+            console.log('⚠️ Sidebar: Club document does not exist');
+            setClubLogo(null);
+          }
+        } catch (error) {
+          console.error('❌ Sidebar: Error processing club logo:', error);
+          setClubLogo(null);
+        }
+      },
+      (error) => {
+        console.error('❌ Sidebar: Error listening to club logo updates:', error);
+        setClubLogo(null);
+      }
+    );
+
+    // تنظيف المستمع عند إلغاء التثبيت
+    return () => {
+      console.log('🔄 Sidebar: Unsubscribing from club logo updates');
+      unsubscribe();
+    };
+  }, [accountType, user?.uid]);
 
   // Get user display info
   const getUserDisplayName = () => {
@@ -118,10 +191,22 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
     }
   };
 
-  const getUserAvatar = () => {
+  const getUserAvatar = useMemo(() => {
+    // إذا كان النوع نادي وكانت هناك صورة من Firestore، استخدمها
+    if (accountType === 'club' && clubLogo) {
+      console.log('✅ Sidebar: Using club logo from Firestore:', clubLogo);
+      return clubLogo;
+    }
+    
+    if (accountType === 'club') {
+      console.log('⚠️ Sidebar: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
+    }
+    
     // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
-    return getPlayerAvatarUrl(userData, user);
-  };
+    const avatarUrl = getPlayerAvatarUrl(userData, user);
+    console.log('🔄 Sidebar: getPlayerAvatarUrl returned:', avatarUrl);
+    return avatarUrl;
+  }, [accountType, clubLogo, userData, user]);
 
   // Get account type info with beautiful styling
   const getAccountTypeInfo = () => {
@@ -352,7 +437,18 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
-              <AvatarImage src={getUserAvatar() || undefined} alt={getUserDisplayName()} />
+              <AvatarImage 
+                key={getUserAvatar() || 'default'} 
+                src={getUserAvatar() || undefined} 
+                alt={getUserDisplayName()}
+                onError={(e) => {
+                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar());
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar());
+                }}
+              />
               <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
                 {getUserDisplayName().slice(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -725,7 +821,17 @@ export default ModernEnhancedSidebar;
 
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
 
-              <AvatarImage src={getUserAvatar() || '/default-avatar.png'} alt={getUserDisplayName()} />
+              <AvatarImage 
+                src={getUserAvatar() || '/default-avatar.png'} 
+                alt={getUserDisplayName()}
+                onError={(e) => {
+                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar());
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar());
+                }}
+              />
 
               <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
 
@@ -1227,7 +1333,17 @@ export default ModernEnhancedSidebar;
 
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
 
-              <AvatarImage src={getUserAvatar() || '/default-avatar.png'} alt={getUserDisplayName()} />
+              <AvatarImage 
+                src={getUserAvatar() || '/default-avatar.png'} 
+                alt={getUserDisplayName()}
+                onError={(e) => {
+                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar());
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar());
+                }}
+              />
 
               <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
 

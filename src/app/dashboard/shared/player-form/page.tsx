@@ -223,11 +223,8 @@ const POSITIONS = [
   'مهاجم ثاني'
 ];
 
-const NATIONALITIES = [
-  "سعودي", "مصري", "أردني", "سوري", "مغربي", "جزائري", "تونسي", "ليبي",
-  "فلسطيني", "يمني", "سوداني", "إماراتي", "قطري", "بحريني", "كويتي", "عماني",
-  "لبناني", "عراقي"
-];
+// استخدام أسماء الدول من SUPPORTED_COUNTRIES كجنسيات
+const NATIONALITIES = SUPPORTED_COUNTRIES.map(country => country.name).sort();
 
 const COUNTRIES = SUPPORTED_COUNTRIES;
 
