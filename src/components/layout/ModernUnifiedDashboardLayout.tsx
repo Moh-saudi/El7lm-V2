@@ -11,6 +11,7 @@ import FloatingChatWidget from '@/components/support/FloatingChatWidget';
 import EnhancedNotifications from '@/components/ui/EnhancedNotifications';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { auth } from '@/lib/firebase/config';
 
 interface ModernUnifiedDashboardLayoutProps {
   children: React.ReactNode;
@@ -39,6 +40,29 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
   const [collapsed, setCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(true);
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
+
+  // Give AuthProvider time to sync after login/logout
+  useEffect(() => {
+    if (loading) {
+      setAuthCheckComplete(false);
+      return;
+    }
+
+    const currentFirebaseUser = typeof window !== 'undefined' ? auth.currentUser : null;
+
+    if (user || currentFirebaseUser) {
+      setAuthCheckComplete(true);
+      return;
+    }
+
+    // If no user detected yet, wait a bit for auth state to sync (in case of recent login)
+    const timer = setTimeout(() => {
+      setAuthCheckComplete(true);
+    }, 2000); // 2 second delay to allow auth state to sync after login/refresh
+
+    return () => clearTimeout(timer);
+  }, [loading, user]);
 
   // صفحات مخفية (تحتاج layout مخصص) - فقط للاعبين
   const isPlayerProfilePage = pathname.includes('/player/profile');
@@ -67,8 +91,8 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
     } catch {}
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - wait for auth to complete
+  if (loading || !authCheckComplete) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="text-center">
@@ -79,15 +103,15 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
     );
   }
 
-  // Authentication check
-  if (!user) {
+  // Authentication check - only show error after loading and auth check are complete
+  if (!user && !loading && authCheckComplete) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="text-center">
           <div className="p-8 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg">
             <p className="text-slate-600 mb-4">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
             <button 
-              onClick={() => window.location.href = '/auth/login'}
+              onClick={() => router.push('/auth/login')}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               تسجيل الدخول

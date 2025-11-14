@@ -22,6 +22,7 @@ interface GeideaPaymentModalProps {
   returnUrl?: string;
   customerEmail: string;
   merchantReferenceId?: string;
+  skipRedirect?: boolean; // إذا كان true، لن يتم التوجيه التلقائي بعد نجاح الدفع
 }
 
 interface PaymentModalState {
@@ -43,7 +44,8 @@ export default function GeideaPaymentModal({
   callbackUrl,
   returnUrl,
   customerEmail,
-  merchantReferenceId
+  merchantReferenceId,
+  skipRedirect = false
 }: GeideaPaymentModalProps) {
   const [state, setState] = useState<PaymentModalState>({
     loading: false,
@@ -131,8 +133,6 @@ export default function GeideaPaymentModal({
 
   // تعريف callback functions لـ Geidea Checkout حسب الوثائق الرسمية
   const onSuccess = (response: any) => {
-    console.log('✅ [Geidea] Payment successful:', response);
-
     // حذف بيانات الدفع عند النجاح
     localStorage.removeItem('geidea_session_id');
     localStorage.removeItem('geidea_payment_data');
@@ -151,20 +151,22 @@ export default function GeideaPaymentModal({
     // إغلاق المودال
     onRequestClose();
 
-    // إغلاق المودال
-    onRequestClose();
-
-    // توجيه المستخدم لصفحة الدفع الجماعي في نفس التبويب
-    setTimeout(() => {
-      window.location.href = '/dashboard/shared/bulk-payment?status=success';
-    }, 800);
-
+    // استدعاء callback النجاح أولاً
     onPaymentSuccess(response);
+
+    // توجيه المستخدم فقط إذا لم يتم تخطي التوجيه
+    if (!skipRedirect) {
+      setTimeout(() => {
+        if (returnUrl) {
+          window.location.href = returnUrl;
+        } else {
+          window.location.href = '/dashboard/shared/bulk-payment?status=success';
+        }
+      }, 800);
+    }
   };
 
   const onError = (error: any) => {
-    console.log('❌ [Geidea] Payment failed:', error);
-
     // حذف بيانات الدفع عند الفشل
     localStorage.removeItem('geidea_session_id');
     localStorage.removeItem('geidea_payment_data');
@@ -190,8 +192,6 @@ export default function GeideaPaymentModal({
   };
 
   const onCancel = (response: any) => {
-    console.log('🚫 [Geidea] Payment cancelled:', response);
-
     // حذف بيانات الدفع عند الإلغاء
     localStorage.removeItem('geidea_session_id');
     localStorage.removeItem('geidea_payment_data');
@@ -247,7 +247,6 @@ export default function GeideaPaymentModal({
     return new Promise((resolve, reject) => {
       // التحقق من وجود المكتبة مسبقاً
       if (typeof window !== 'undefined' && window.GeideaCheckout) {
-        console.log('✅ Geidea script already loaded');
         resolve();
         return;
       }
@@ -255,7 +254,6 @@ export default function GeideaPaymentModal({
       // التحقق من وجود script tag مسبقاً
       const existingScript = document.querySelector('script[src*="geideaCheckout.min.js"]');
       if (existingScript) {
-        console.log('✅ Geidea script tag exists, waiting for load...');
         // إذا كان الـ script موجود ولكن المكتبة غير متاحة، انتظر قليلاً
         const checkInterval = setInterval(() => {
           if (typeof window !== 'undefined' && window.GeideaCheckout) {
@@ -273,9 +271,6 @@ export default function GeideaPaymentModal({
       }
 
       // إنشاء script tag وتحميل المكتبة حسب الوثائق الرسمية
-      console.log('📥 Loading Geidea script dynamically...');
-      console.log('🔍 Current CSP check - attempting to load:', 'https://www.merchant.geidea.net/hpp/geideaCheckout.min.js');
-
       const script = document.createElement('script');
       // استخدام الرابط الصحيح حسب الوثائق الرسمية - بيئة مصر
       script.src = 'https://www.merchant.geidea.net/hpp/geideaCheckout.min.js';
@@ -285,12 +280,9 @@ export default function GeideaPaymentModal({
 
       // إضافة معالجة أخطاء محسنة
       script.onload = () => {
-        console.log('✅ Geidea script loaded successfully');
-
         // التحقق من تحميل المكتبة بشكل صحيح
         setTimeout(() => {
           if (typeof window !== 'undefined' && window.GeideaCheckout) {
-            console.log('✅ Geidea library available after script load');
             resolve();
           } else {
             console.error('❌ Geidea library not available after script load');
@@ -335,14 +327,21 @@ export default function GeideaPaymentModal({
       }
 
       const orderId = merchantReferenceId || `EL7LM_${Date.now()}`;
-      const payload = {
+      const payload: any = {
         amount: amount,
         currency: currency,
         orderId: orderId,
         customerEmail: customerEmail,
         customerName: 'Customer'
       };
-      console.log('🚀 [Geidea] Sending payment payload:', payload);
+      
+      // إضافة returnUrl و callbackUrl إذا كانا متوفرين
+      if (returnUrl) {
+        payload.returnUrl = returnUrl;
+      }
+      if (callbackUrl) {
+        payload.callbackUrl = callbackUrl;
+      }
 
       const response = await fetch('/api/geidea/create-session', {
         method: 'POST',
@@ -353,11 +352,27 @@ export default function GeideaPaymentModal({
       });
 
       const data = await response.json();
-      console.log('🌍 [Geidea] API response:', data);
+
+      // التحقق من وجود خطأ في الاستجابة
+      if (!response.ok || data.error) {
+        const errorDetails = data.details || data.message || data.error || 'فشل في إنشاء جلسة الدفع';
+        const troubleshooting = data.troubleshooting || [];
+        
+        // بناء رسالة خطأ مفصلة
+        let errorMessage = errorDetails;
+        if (data.responseCode || data.detailedResponseCode) {
+          errorMessage += ` (كود الخطأ: ${data.responseCode || 'غير معروف'}${data.detailedResponseCode ? `-${data.detailedResponseCode}` : ''})`;
+        }
+        
+        if (troubleshooting.length > 0) {
+          errorMessage += '\n\nنصائح لحل المشكلة:\n' + troubleshooting.map((tip: string, idx: number) => `${idx + 1}. ${tip}`).join('\n');
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       // معالجة نجاح الدفع
       if (data.success && data.sessionId) {
-        console.log('✅ [Geidea] Payment session created successfully:', data);
 
         // حفظ بيانات الدفع في localStorage للاستخدام لاحقاً
         const paymentData = {
@@ -373,143 +388,98 @@ export default function GeideaPaymentModal({
 
         // تحديث الحالة لنجاح إنشاء الجلسة
         setState({ loading: false, error: null, isTestMode: false, sessionCreated: true });
-
-        // إضافة رسالة تأكيد للمستخدم
-        console.log('🎉 [Geidea] Payment session created successfully!');
-        console.log('📋 [Geidea] Session ID:', data.sessionId);
-        const computedRedirectUrl = (data as any)?.redirectUrl || (data as any)?.fullResponse?.session?.redirectUrl || `https://pay.geidea.net/pay/${data.sessionId}`;
-        console.log('🔗 [Geidea] Payment URL:', computedRedirectUrl);
-
-        // إضافة زر يدوي لفتح صفحة الدفع
-        const openPaymentPage = () => {
-          const stored = localStorage.getItem('geidea_payment_url');
-          const url = stored || computedRedirectUrl;
-          window.open(url, '_blank', 'noopener,noreferrer');
-        };
-
-        // إضافة زر في الصفحة لفتح صفحة الدفع
-        const paymentButton = document.createElement('button');
-        paymentButton.innerHTML = '💳 فتح صفحة الدفع';
-        paymentButton.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          z-index: 9999;
-          background: #3B82F6;
-          color: white;
-          border: none;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        `;
-        paymentButton.onclick = openPaymentPage;
-        document.body.appendChild(paymentButton);
-
-        // إزالة الزر بعد 30 ثانية
-        setTimeout(() => {
-          if (document.body.contains(paymentButton)) {
-            document.body.removeChild(paymentButton);
-          }
-        }, 30000);
-
-        // إغلاق المودال فوراً بعد إضافة الزر
-        onRequestClose();
+        
+        // الحصول على URL الصحيح من API response
+        const computedRedirectUrl = data.redirectUrl || 
+                                   (data as any)?.fullResponse?.session?.redirectUrl || 
+                                   (data as any)?.session?.redirectUrl ||
+                                   `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
+        
+        // حفظ URL و session ID في localStorage للاستخدام لاحقاً
+        localStorage.setItem('geidea_payment_url', computedRedirectUrl);
+        localStorage.setItem('geidea_session_id', data.sessionId);
 
         // تحديث الحالة لنجاح إنشاء الجلسة
         setState({ loading: false, error: null, isTestMode: false, sessionCreated: true });
 
-        // استخدام GeideaCheckout library حسب الوثائق الرسمية
-        if (data.sessionId) {
-          console.log('🌍 [Geidea] Using GeideaCheckout library for popup mode');
-          console.log('🔗 Session ID:', data.sessionId);
-
-          // حفظ session ID في localStorage
-          localStorage.setItem('geidea_session_id', data.sessionId);
-
-          // التحقق من وجود GeideaCheckout library
+        // فتح صفحة الدفع مباشرة باستخدام redirectUrl من API
+        if (computedRedirectUrl && computedRedirectUrl.includes('http')) {
+          try {
+            // حساب موضع النافذة في وسط الشاشة
+            const width = 900;
+            const height = 700;
+            const left = (window.screen.width / 2) - (width / 2);
+            const top = (window.screen.height / 2) - (height / 2);
+            
+            // محاولة فتح صفحة الدفع في popup window
+            const paymentWindow = window.open(
+              computedRedirectUrl, 
+              'geidea_payment_popup', 
+              `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=no,status=no`
+            );
+            
+            if (paymentWindow && !paymentWindow.closed) {
+              // التركيز على النافذة المنبثقة
+              paymentWindow.focus();
+              
+              // مراقبة إغلاق النافذة
+              const checkClosed = setInterval(() => {
+                if (paymentWindow.closed) {
+                  clearInterval(checkClosed);
+                  // إغلاق المودال بعد إغلاق نافذة الدفع
+                  onRequestClose();
+                }
+              }, 1000);
+              
+              // إغلاق المودال بعد فتح صفحة الدفع
+              setTimeout(() => {
+                onRequestClose();
+              }, 500);
+            } else {
+              // إذا تم حظر popup، استخدم redirect مباشر
+              window.location.href = computedRedirectUrl;
+            }
+          } catch (error) {
+            console.error('❌ [Geidea] Error opening payment window:', error);
+            // Fallback: استخدام redirect مباشر
+            window.location.href = computedRedirectUrl;
+          }
+        } else {
+          // إذا لم يكن هناك redirectUrl، استخدم GeideaCheckout library
           if (typeof window !== 'undefined' && window.GeideaCheckout) {
-            console.log('✅ [Geidea] GeideaCheckout library available, starting payment...');
-
             try {
-              // إنشاء instance من GeideaCheckout حسب الوثائق الرسمية
               const payment = new window.GeideaCheckout(onSuccess, onError, onCancel);
-
-              // بدء الدفع باستخدام Popup Mode (Modal Overlay)
               payment.startPayment(data.sessionId);
-
-              console.log('✅ [Geidea] Payment started successfully with GeideaCheckout');
-
               // إغلاق المودال بعد بدء الدفع
-              onRequestClose();
-
+              setTimeout(() => {
+                onRequestClose();
+              }, 500);
             } catch (error) {
               console.error('❌ [Geidea] Error starting payment with GeideaCheckout:', error);
-
-              // Fallback: استخدام window.open إذا فشل GeideaCheckout
-              console.log('🔄 [Geidea] Falling back to window.open method...');
-              const redirectUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
-
-              try {
-                const paymentWindow = window.open(redirectUrl, '_blank', 'noopener,noreferrer,width=800,height=600,scrollbars=yes,resizable=yes');
-
-                if (paymentWindow && !paymentWindow.closed) {
-                  console.log('✅ [Geidea] Payment window opened successfully (fallback)');
-                  onRequestClose();
-                } else {
-                  console.log('⚠️ [Geidea] Popup blocked, trying direct redirect (fallback)');
-                  window.location.href = redirectUrl;
-                }
-              } catch (fallbackError) {
-                console.error('❌ [Geidea] Fallback method also failed:', fallbackError);
-                window.location.href = redirectUrl;
-              }
+              // Fallback: استخدام URL افتراضي
+              const fallbackUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
+              window.location.href = fallbackUrl;
             }
           } else {
-            console.log('⚠️ [Geidea] GeideaCheckout library not available, using window.open fallback');
-
-            // Fallback: استخدام window.open
-            const redirectUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
-
-            try {
-              const paymentWindow = window.open(redirectUrl, '_blank', 'noopener,noreferrer,width=800,height=600,scrollbars=yes,resizable=yes');
-
-              if (paymentWindow && !paymentWindow.closed) {
-                console.log('✅ [Geidea] Payment window opened successfully (fallback)');
-
-                // مراقبة إغلاق النافذة
-                const checkClosed = setInterval(() => {
-                  if (paymentWindow && !paymentWindow.closed) {
-                    // النافذة لا تزال مفتوحة
-                    return;
-                  }
-
-                  console.log('🔒 [Geidea] Payment window closed');
-                  clearInterval(checkClosed);
-
-                  // حذف بيانات الدفع عند إغلاق نافذة الدفع
-                  localStorage.removeItem('geidea_session_id');
-                  localStorage.removeItem('geidea_payment_data');
-                  localStorage.removeItem('geidea_payment_url');
-                  setState({ loading: false, error: null, isTestMode: false, sessionCreated: false });
-                  onRequestClose();
-                }, 1000);
-
-                onRequestClose();
-              } else {
-                console.log('⚠️ [Geidea] Popup blocked, trying direct redirect (fallback)');
-                window.location.href = redirectUrl;
-              }
-            } catch (error) {
-              console.error('❌ [Geidea] Fallback method failed:', error);
-              window.location.href = redirectUrl;
-            }
+            const fallbackUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
+            window.location.href = fallbackUrl;
           }
         }
       } else {
-        throw new Error(data.message || 'فشل في إنشاء جلسة الدفع');
+        // إذا لم يكن هناك success أو sessionId، فهذا خطأ
+        const errorDetails = data.details || data.message || data.error || 'فشل في إنشاء جلسة الدفع';
+        const troubleshooting = data.troubleshooting || [];
+        
+        let errorMessage = errorDetails;
+        if (data.responseCode || data.detailedResponseCode) {
+          errorMessage += ` (كود الخطأ: ${data.responseCode || 'غير معروف'}${data.detailedResponseCode ? `-${data.detailedResponseCode}` : ''})`;
+        }
+        
+        if (troubleshooting.length > 0) {
+          errorMessage += '\n\nنصائح لحل المشكلة:\n' + troubleshooting.map((tip: string, idx: number) => `${idx + 1}. ${tip}`).join('\n');
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('❌ [Geidea] Payment session creation failed:', error);
@@ -560,7 +530,9 @@ export default function GeideaPaymentModal({
             <div>
               <div className="text-red-500 text-6xl mb-4">❌</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">خطأ في الدفع</h3>
-              <p className="text-gray-600 mb-4 text-sm">{state.error}</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-right">
+                <p className="text-gray-800 text-sm whitespace-pre-line">{state.error}</p>
+              </div>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => {

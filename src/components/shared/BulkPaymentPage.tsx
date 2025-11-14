@@ -2534,17 +2534,19 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
 
       {/* Modal الدفع عبر جيديا */}
-              <GeideaPaymentModal
-          visible={showGeideaModal}
-          onRequestClose={() => setShowGeideaModal(false)}
-          onPaymentSuccess={handlePaymentSuccess}
-          onPaymentFailure={handlePaymentFailure}
-          amount={typeof window !== 'undefined' && window.convertedAmountForGeidea ? window.convertedAmountForGeidea : Math.round(finalPrice)} // استخدام المبلغ المحول الصحيح
-                  currency="EGP"
-          title="اشتراكات اللاعبين"
-          description={`تجديد اشتراكات ${selectedCount} لاعب بإجمالي ${finalPrice.toLocaleString()} ${currency.symbol}`}
+      <GeideaPaymentModal
+        visible={showGeideaModal}
+        onRequestClose={() => setShowGeideaModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentFailure={handlePaymentFailure}
+        amount={typeof window !== 'undefined' && window.convertedAmountForGeidea ? window.convertedAmountForGeidea : Math.round(finalPrice)}
+        currency="EGP"
+        title="اشتراكات اللاعبين"
+        description={`تجديد اشتراكات ${selectedCount} لاعب بإجمالي ${finalPrice.toLocaleString()} ${currency.symbol}`}
         customerEmail={user?.email || 'customer@example.com'}
         merchantReferenceId={`BULK${user?.uid || 'unknown'}_${Date.now()}`}
+        returnUrl={undefined}
+        callbackUrl={undefined}
       />
     </div>
   );

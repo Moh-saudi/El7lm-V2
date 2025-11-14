@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,46 +14,50 @@ import {
   Edit, 
   Trash2, 
   Eye, 
-  EyeOff, 
   Trophy,
   Calendar,
   Users,
   MapPin,
   DollarSign,
-  Clock,
-  Target,
-  BarChart3,
   Save,
   X,
-  AlertCircle,
-  CheckCircle,
-  Info,
   UserPlus,
-  FileText,
-  Settings,
   Link,
   Download,
-  Printer
+  Info,
+  CreditCard,
+  FileText,
+  Settings,
+  Image as ImageIcon,
+  Upload,
+  Navigation,
+  Copy,
+  Check,
+  Calendar as CalendarIcon,
+  CreditCard as CreditCardIcon
 } from 'lucide-react';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import PaymentManagementModal from '@/components/payments/PaymentManagementModal';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/config';
 
 interface Tournament {
   id?: string;
   name: string;
   description: string;
   location: string;
+  locationUrl?: string;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
   maxParticipants: number;
   currentParticipants: number;
   entryFee: number;
+  currency: string;
   isPaid: boolean;
   isActive: boolean;
   ageGroups: string[];
@@ -61,15 +65,15 @@ interface Tournament {
   rules: string;
   prizes: string;
   contactInfo: string;
-  // Logo field
   logo?: string;
-  // Payment fields
   paymentMethods: string[];
   paymentDeadline: string;
   refundPolicy: string;
-  // Fee type fields
   feeType: 'individual' | 'club';
   maxPlayersPerClub?: number;
+  allowInstallments?: boolean;
+  installmentsCount?: number;
+  installmentsDetails?: string;
   createdAt: Date;
   updatedAt: Date;
   registrations: TournamentRegistration[];
@@ -91,7 +95,6 @@ interface TournamentRegistration {
   registrationType?: 'individual' | 'club';
   clubName?: string;
   clubContact?: string;
-  // New fields for account type and additional info
   accountType?: 'player' | 'club' | 'coach' | 'academy' | 'agent' | 'marketer' | 'parent';
   accountName?: string;
   accountEmail?: string;
@@ -105,7 +108,7 @@ interface TournamentRegistration {
   receiptNumber?: string;
 }
 
-export default function AdminTournamentsPage() {
+const AdminTournamentsPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -116,21 +119,23 @@ export default function AdminTournamentsPage() {
   const [showPaymentManagement, setShowPaymentManagement] = useState(false);
   const [selectedTournamentForPayments, setSelectedTournamentForPayments] = useState<Tournament | null>(null);
   
-  // Logo upload states
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('basic');
   
   const [formData, setFormData] = useState<Partial<Tournament>>({
     name: '',
     description: '',
     location: '',
+    locationUrl: '',
     startDate: '',
     endDate: '',
     registrationDeadline: '',
     maxParticipants: 100,
     currentParticipants: 0,
     entryFee: 0,
+    currency: 'EGP',
     isPaid: false,
     isActive: true,
     ageGroups: [],
@@ -138,15 +143,15 @@ export default function AdminTournamentsPage() {
     rules: '',
     prizes: '',
     contactInfo: '',
-    // Logo field
     logo: '',
-    // Payment fields
     paymentMethods: ['credit_card', 'bank_transfer'],
     paymentDeadline: '',
     refundPolicy: '',
-    // Fee type fields
     feeType: 'individual',
     maxPlayersPerClub: 1,
+    allowInstallments: false,
+    installmentsCount: 2,
+    installmentsDetails: '',
     registrations: []
   });
 
@@ -174,23 +179,87 @@ export default function AdminTournamentsPage() {
     { id: 'cash', name: 'نقداً', icon: '💵' }
   ];
 
-  // Supabase client for file uploads
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const getCurrencySymbol = (currency: string): string => {
+    const currencySymbols: Record<string, string> = {
+      'USD': '$',
+      'EGP': 'ج.م',
+      'EUR': '€',
+      'GBP': '£',
+      'SAR': 'ر.س',
+      'AED': 'د.إ',
+      'KWD': 'د.ك',
+      'QAR': 'ر.ق',
+      'BHD': 'د.ب',
+      'OMR': 'ر.ع',
+      'JOD': 'د.أ',
+      'LBP': 'ل.ل',
+      'TND': 'د.ت',
+      'DZD': 'د.ج',
+      'MAD': 'د.م',
+      'LYD': 'د.ل',
+      'TRY': '₺',
+      'RUB': '₽',
+      'CNY': '¥',
+      'JPY': '¥',
+      'INR': '₹',
+      'AUD': 'A$',
+      'CAD': 'C$',
+      'CHF': 'CHF',
+      'NZD': 'NZ$',
+      'ZAR': 'R',
+      'BRL': 'R$',
+      'MXN': '$',
+      'SGD': 'S$',
+      'HKD': 'HK$',
+      'SEK': 'kr',
+      'NOK': 'kr',
+      'DKK': 'kr',
+      'PLN': 'zł',
+      'ILS': '₪',
+      'THB': '฿',
+      'MYR': 'RM'
+    };
+    return currencySymbols[currency] || currency;
+  };
 
-  // Handle logo file selection
+  // دالة لتنسيق التاريخ بصيغة DD/MM/YYYY (ميلادي فقط)
+  const formatDate = (date: any) => {
+    if (!date) return 'غير محدد';
+    try {
+      let d: Date;
+      if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
+        d = date.toDate();
+      } else if (date instanceof Date) {
+        d = date;
+      } else {
+        d = new Date(date);
+      }
+      
+      if (isNaN(d.getTime())) {
+        return 'غير محدد';
+      }
+      
+      // صيغة DD/MM/YYYY (ميلادي فقط)
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      return 'غير محدد';
+    }
+  };
+
+  const supabase = getSupabaseClient();
+
   const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('يرجى اختيار ملف صورة صالح');
         return;
       }
       
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('حجم الملف يجب أن يكون أقل من 5 ميجابايت');
         return;
@@ -198,7 +267,6 @@ export default function AdminTournamentsPage() {
       
       setLogoFile(file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setLogoPreview(e.target?.result as string);
@@ -207,9 +275,12 @@ export default function AdminTournamentsPage() {
     }
   };
 
-  // Upload logo to Supabase
   const uploadLogo = async (): Promise<string | null> => {
     if (!logoFile) return null;
+    if (!supabase) {
+      toast.error('إعدادات التخزين غير متاحة حالياً. يرجى التحقق من إعدادات Supabase.');
+      return null;
+    }
     
     try {
       setLogoUploading(true);
@@ -217,7 +288,6 @@ export default function AdminTournamentsPage() {
       const fileExt = logoFile.name.split('.').pop();
       const fileName = `tournament-logo-${Date.now()}.${fileExt}`;
       
-      // Try different buckets in order of preference
       const buckets = ['profile-images', 'avatars', 'additional-images'];
       let uploadSuccess = false;
       let publicUrl = '';
@@ -229,27 +299,23 @@ export default function AdminTournamentsPage() {
             .upload(fileName, logoFile);
           
           if (error) {
-            console.warn(`Failed to upload to ${bucket}:`, error.message);
             continue;
           }
           
-          // Get public URL
           const { data: { publicUrl: url } } = supabase.storage
             .from(bucket)
             .getPublicUrl(fileName);
           
           publicUrl = url;
           uploadSuccess = true;
-          console.log(`✅ Logo uploaded successfully to ${bucket}`);
           break;
         } catch (bucketError) {
-          console.warn(`Error with bucket ${bucket}:`, bucketError);
           continue;
         }
       }
       
       if (!uploadSuccess) {
-        toast.error('فشل في رفع اللوجو - جميع buckets غير متاحة');
+        toast.error('فشل في رفع اللوجو');
         return null;
       }
       
@@ -263,37 +329,6 @@ export default function AdminTournamentsPage() {
       setLogoUploading(false);
     }
   };
-
-  const stats = [
-    {
-      title: "إجمالي البطولات",
-      value: tournaments.length.toString(),
-      icon: Trophy,
-      color: "text-yellow-600"
-    },
-    {
-      title: "البطولات النشطة",
-      value: tournaments.filter(t => t.isActive).length.toString(),
-      icon: Eye,
-      color: "text-green-600"
-    },
-    {
-      title: "إجمالي المسجلين",
-      value: tournaments.reduce((sum, t) => sum + t.currentParticipants, 0).toString(),
-      icon: Users,
-      color: "text-blue-600"
-    },
-    {
-      title: "البطولات المدفوعة",
-      value: tournaments.filter(t => t.isPaid).length.toString(),
-      icon: DollarSign,
-      color: "text-purple-600"
-    }
-  ];
-
-  useEffect(() => {
-    fetchTournaments();
-  }, []);
 
   const fetchTournaments = async () => {
     try {
@@ -314,12 +349,47 @@ export default function AdminTournamentsPage() {
     }
   };
 
+  const stats = [
+    {
+      title: "إجمالي البطولات",
+      value: tournaments.length.toString(),
+      icon: Trophy,
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-50"
+    },
+    {
+      title: "البطولات النشطة",
+      value: tournaments.filter(t => t.isActive).length.toString(),
+      icon: Eye,
+      color: "text-green-600",
+      bgColor: "bg-green-50"
+    },
+    {
+      title: "إجمالي المسجلين",
+      value: tournaments.reduce((sum, t) => sum + t.currentParticipants, 0).toString(),
+      icon: Users,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50"
+    },
+    {
+      title: "البطولات المدفوعة",
+      value: tournaments.filter(t => t.isPaid).length.toString(),
+      icon: DollarSign,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50"
+    }
+  ];
+
+  useEffect(() => {
+    fetchTournaments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       let logoUrl = formData.logo;
       
-      // Upload logo if file is selected
       if (logoFile) {
         logoUrl = await uploadLogo();
         if (!logoUrl) {
@@ -366,9 +436,12 @@ export default function AdminTournamentsPage() {
       isActive: tournament.isActive === true,
       paymentMethods: tournament.paymentMethods || ['credit_card', 'bank_transfer'],
       refundPolicy: tournament.refundPolicy || '',
-      // Fee type fields
       feeType: tournament.feeType || 'individual',
-      maxPlayersPerClub: tournament.maxPlayersPerClub || 1
+      maxPlayersPerClub: tournament.maxPlayersPerClub || 1,
+      allowInstallments: tournament.allowInstallments || false,
+      installmentsCount: tournament.installmentsCount || 2,
+      installmentsDetails: tournament.installmentsDetails || '',
+      locationUrl: tournament.locationUrl || ''
     });
     setShowAddDialog(true);
   };
@@ -387,10 +460,12 @@ export default function AdminTournamentsPage() {
   };
 
   const resetForm = () => {
+    setActiveTab('basic');
     setFormData({
       name: '',
       description: '',
       location: '',
+      locationUrl: '',
       startDate: '',
       endDate: '',
       registrationDeadline: '',
@@ -405,19 +480,66 @@ export default function AdminTournamentsPage() {
       prizes: '',
       contactInfo: '',
       logo: '',
-      // Payment fields
       paymentMethods: ['credit_card', 'bank_transfer'],
       paymentDeadline: '',
       refundPolicy: '',
-      // Fee type fields
       feeType: 'individual',
       maxPlayersPerClub: 1,
+      allowInstallments: false,
+      installmentsCount: 2,
+      installmentsDetails: '',
       registrations: []
     });
     
-    // Reset logo upload states
     setLogoFile(null);
     setLogoPreview('');
+  };
+
+  const openMapLocation = () => {
+    const location = formData.location || '';
+    if (!location) {
+      toast.info('يرجى إدخال اسم المكان أولاً');
+      return;
+    }
+
+    try {
+      // ترميز اسم المكان للبحث
+      const encodedLocation = encodeURIComponent(location);
+      
+      // فتح Google Maps في تبويب جديد
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
+      window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Error opening maps:', error);
+      toast.error('فشل في فتح الخريطة. يرجى التحقق من إعدادات المتصفح للسماح بالنوافذ المنبثقة');
+    }
+  };
+
+  const handleLocationUrlPaste = async () => {
+    try {
+      // التحقق من دعم Clipboard API
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        toast.error('المتصفح لا يدعم قراءة الحافظة. يرجى نسخ الرابط يدوياً');
+        return;
+      }
+
+      const text = await navigator.clipboard.readText();
+      
+      // التحقق من أن الرابط صحيح من Google Maps
+      if (text.includes('maps.google.com') || 
+          text.includes('goo.gl/maps') || 
+          text.includes('maps.app.goo.gl') ||
+          text.startsWith('https://maps.google.com') ||
+          text.startsWith('http://maps.google.com')) {
+        setFormData(prev => ({...prev, locationUrl: text}));
+        toast.success('تم لصق رابط الموقع بنجاح');
+      } else {
+        toast.error('الرجاء لصق رابط صحيح من Google Maps');
+      }
+    } catch (error) {
+      console.error('Error reading clipboard:', error);
+      toast.error('فشل في قراءة الحافظة. يرجى نسخ الرابط يدوياً');
+    }
   };
 
   const getStatusColor = (tournament: Tournament) => {
@@ -447,829 +569,1018 @@ export default function AdminTournamentsPage() {
   if (loading) {
     return (
       <AccountTypeProtection allowedTypes={['admin']}>
-        <div className="p-8 text-center text-gray-500">جاري تحميل البطولات...</div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">جاري تحميل البطولات...</p>
+          </div>
+        </div>
       </AccountTypeProtection>
     );
   }
 
   return (
     <AccountTypeProtection allowedTypes={['admin']}>
-      <div className="p-4 lg:p-8 space-y-6 lg:space-y-8">
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
-          <div className="flex-1">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">إدارة البطولات</h1>
-            <p className="text-gray-600 text-sm lg:text-base">إدارة البطولات وتسجيل اللاعبين</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
-            <Button 
-              onClick={() => {
-                setEditingTournament(null);
-                resetForm();
-                setShowAddDialog(true);
-              }}
-              className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white hover:from-yellow-600 hover:to-orange-700 px-4 lg:px-8 py-2 lg:py-3 h-10 lg:h-12 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-sm lg:text-base font-semibold w-full sm:w-auto"
-              style={{ display: 'block', visibility: 'visible' }}
-            >
-              <Plus className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
-              إضافة بطولة جديدة
-            </Button>
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-yellow-100 rounded-xl">
+                  <Trophy className="h-8 w-8 text-yellow-600" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">إدارة البطولات</h1>
+                  <p className="text-gray-600 mt-1">إدارة شاملة لجميع البطولات والتسجيلات</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setEditingTournament(null);
+                  resetForm();
+                  setShowAddDialog(true);
+                }}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 h-auto"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                إضافة بطولة جديدة
+              </Button>
+            </div>
           </div>
         </div>
 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <Card key={index} className="border border-gray-200 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">{stat.title}</p>
+                      <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 ${stat.bgColor} rounded-lg`}>
+                      <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index} className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0">
-              <CardContent className="p-4 lg:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm lg:text-base font-medium text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-2xl lg:text-3xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-full ${stat.color.replace('text-', 'bg-').replace('-600', '-100')}`}>
-                    <stat.icon className={`h-6 w-6 lg:h-8 lg:w-8 ${stat.color}`} />
-                  </div>
+          {/* Tournaments Grid */}
+          {tournaments.length === 0 ? (
+            <Card className="border border-gray-200 shadow-sm">
+              <CardContent className="p-12 text-center">
+                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="h-10 w-10 text-yellow-600" />
                 </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">لا توجد بطولات</h3>
+                <p className="text-gray-600 mb-6">ابدأ بإنشاء بطولة جديدة</p>
+                <Button 
+                  onClick={() => {
+                    setEditingTournament(null);
+                    resetForm();
+                    setShowAddDialog(true);
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  إضافة بطولة جديدة
+                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-
-        {/* Tournaments List */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
-          {tournaments.map((tournament) => (
-            <Card key={tournament.id} className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 overflow-hidden min-h-[400px]">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-3">
-                      {tournament.logo ? (
-                        <div className="flex-shrink-0">
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-6">
+              {tournaments.map((tournament) => (
+                <Card key={tournament.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        {tournament.logo ? (
                           <img 
                             src={tournament.logo} 
-                            alt={`${tournament.name} logo`}
-                            className="w-16 h-16 lg:w-20 lg:h-20 rounded-xl object-cover border-2 border-gray-200 shadow-md"
+                            alt={tournament.name}
+                            className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                             }}
                           />
-                        </div>
-                      ) : (
-                        <div className="flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                          <Trophy className="h-8 w-8 lg:h-10 lg:w-10 text-white" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <CardTitle className="text-xl lg:text-2xl font-bold text-gray-900 line-clamp-2 mb-2">
-                      {tournament.name}
-                    </CardTitle>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`${getStatusColor(tournament)} text-white text-sm px-3 py-1`}>
-                        {getStatusText(tournament)}
-                      </Badge>
-                      {tournament.isPaid && (
-                            <Badge className="bg-green-500 text-white text-sm px-3 py-1">
-                          مدفوعة
-                        </Badge>
-                      )}
+                        ) : (
+                          <div className="w-16 h-16 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Trophy className="h-8 w-8 text-yellow-600" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
+                            {tournament.name}
+                          </CardTitle>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={`${getStatusColor(tournament)} text-white text-xs`}>
+                              {getStatusText(tournament)}
+                            </Badge>
+                            {tournament.isPaid && (
+                              <Badge className="bg-green-500 text-white text-xs">
+                                مدفوعة
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewingRegistrations(tournament)}
+                          className="h-9 w-9 p-0"
+                          title="عرض التسجيلات"
+                        >
+                          <Users className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(tournament)}
+                          className="h-9 w-9 p-0"
+                          title="تعديل البطولة"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(tournament.id!)}
+                          className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="حذف البطولة"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setViewingRegistrations(tournament)}
-                      className="h-9 w-9 p-0 hover:bg-blue-100"
-                      title="عرض التسجيلات"
-                    >
-                      <Users className="h-5 w-5 text-blue-600" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(tournament)}
-                      className="h-9 w-9 p-0 hover:bg-green-100"
-                      style={{ display: 'block', visibility: 'visible' }}
-                      title="تعديل البطولة"
-                    >
-                      <Edit className="h-5 w-5 text-green-600" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(tournament.id!)}
-                      className="h-9 w-9 p-0 hover:bg-red-100"
-                      title="حذف البطولة"
-                    >
-                      <Trash2 className="h-5 w-5 text-red-600" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 text-base text-gray-700">
-                    <MapPin className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">{tournament.location}</span>
-                  </div>
+                  </CardHeader>
                   
-                  <div className="flex items-center gap-3 text-base text-gray-700">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">{new Date(tournament.startDate).toLocaleDateString('ar-SA')}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 text-base text-gray-700">
-                    <Users className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">{tournament.currentParticipants}/{tournament.maxParticipants} لاعب</span>
-                  </div>
-                  
-                  {tournament.isPaid && (
-                    <div className="flex items-center gap-3 text-base text-gray-700">
-                      <DollarSign className="h-5 w-5 text-gray-500" />
-                      <span className="font-medium">
-                        {tournament.entryFee} ج.م 
-                        {tournament.feeType === 'individual' ? ' (للاعب الواحد)' : 
-                         tournament.feeType === 'club' ? ` (للنادي - ${tournament.maxPlayersPerClub || 1} لاعب)` : ''}
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-3 text-base text-gray-700">
-                    <Clock className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">آخر موعد: {new Date(tournament.registrationDeadline).toLocaleDateString('ar-SA')}</span>
-                  </div>
-                </div>
-                
-                {tournament.description && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 line-clamp-3">{tournament.description}</p>
-                  </div>
-                )}
-                
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center gap-3">
-                      <Switch
-                        checked={tournament.isActive === true}
-                        onCheckedChange={async (checked) => {
-                          try {
-                            await updateDoc(doc(db, 'tournaments', tournament.id!), {
-                              isActive: checked,
-                              updatedAt: new Date()
-                            });
-                            toast.success(checked ? 'تم تفعيل البطولة' : 'تم إلغاء تفعيل البطولة');
-                            fetchTournaments();
-                          } catch (error) {
-                            console.error('Error updating tournament status:', error);
-                            toast.error('فشل في تحديث حالة البطولة');
-                          }
-                        }}
-                        className="data-[state=checked]:bg-green-500"
-                      />
-                        <span className={`text-base font-medium ${tournament.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                        {tournament.isActive ? 'نشطة' : 'غير نشطة'}
-                      </span>
+                        <MapPin className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500">المكان</p>
+                          <p className="text-sm font-medium text-gray-900">{tournament.location}</p>
+                        </div>
                       </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500">تاريخ البداية</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatDate(tournament.startDate)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-500">المشاركون</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {tournament.currentParticipants}/{tournament.maxParticipants}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {tournament.isPaid && (
+                        <div className="flex items-center gap-3">
+                          <DollarSign className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-xs text-gray-500">الرسوم</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {tournament.entryFee} {getCurrencySymbol(tournament.currency || 'EGP')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex flex-wrap gap-3 justify-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const registrationUrl = `${window.location.origin}/tournaments/register/${tournament.id}`;
-                          navigator.clipboard.writeText(registrationUrl);
-                          toast.success('تم نسخ رابط التسجيل');
-                        }}
-                        className="text-green-600 border-green-200 hover:bg-green-50 h-10"
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        رابط التسجيل
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTournamentForRegistrations(tournament);
-                          setShowProfessionalRegistrations(true);
-                        }}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50 h-10"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        المسجلين
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open('/dashboard/admin/tournaments/registrations', '_blank')}
-                        className="text-purple-600 border-purple-200 hover:bg-purple-50 h-10"
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        جميع التسجيلات
-                      </Button>
-                      {tournament.isPaid && (
+                    {tournament.description && (
+                      <p className="text-sm text-gray-600 line-clamp-2">{tournament.description}</p>
+                    )}
+                    
+                    <div className="pt-4 border-t border-gray-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={tournament.isActive === true}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                await updateDoc(doc(db, 'tournaments', tournament.id!), {
+                                  isActive: checked,
+                                  updatedAt: new Date()
+                                });
+                                toast.success(checked ? 'تم تفعيل البطولة' : 'تم إلغاء تفعيل البطولة');
+                                fetchTournaments();
+                              } catch (error) {
+                                console.error('Error updating tournament status:', error);
+                                toast.error('فشل في تحديث حالة البطولة');
+                              }
+                            }}
+                          />
+                          <span className={`text-sm font-medium ${tournament.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                            {tournament.isActive ? 'نشطة' : 'غير نشطة'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setSelectedTournamentForPayments(tournament);
-                            setShowPaymentManagement(true);
+                            if (typeof window !== 'undefined') {
+                              const registrationUrl = `${window.location.origin}/tournaments/unified-registration?tournamentId=${tournament.id}`;
+                              navigator.clipboard.writeText(registrationUrl);
+                              toast.success('تم نسخ رابط التسجيل');
+                            }
                           }}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
+                          className="text-xs"
                         >
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          المدفوعات
+                          <Link className="h-3 w-3 mr-1" />
+                          رابط التسجيل
                         </Button>
-                      )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTournamentForRegistrations(tournament);
+                            setShowProfessionalRegistrations(true);
+                          }}
+                          className="text-xs"
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" />
+                          المسجلين
+                        </Button>
+                        {tournament.isPaid && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTournamentForPayments(tournament);
+                              setShowPaymentManagement(true);
+                            }}
+                            className="text-xs col-span-2"
+                          >
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            إدارة المدفوعات
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
-        {tournaments.length === 0 && (
-          <div className="text-center py-12">
-            <Trophy className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد بطولات</h3>
-            <p className="text-gray-500 mb-6">ابدأ بإنشاء بطولة جديدة</p>
-            <Button 
-              onClick={() => {
-                setEditingTournament(null);
-                resetForm();
-                setShowAddDialog(true);
-              }}
-              className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white hover:from-yellow-600 hover:to-orange-700"
-              style={{ display: 'block', visibility: 'visible' }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              إضافة بطولة جديدة
-            </Button>
-          </div>
-        )}
-
-        {/* Add/Edit Tournament Dialog */}
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-gray-900">
-                {editingTournament ? 'تعديل البطولة' : 'إضافة بطولة جديدة'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingTournament ? 'قم بتعديل بيانات البطولة' : 'أدخل بيانات البطولة الجديدة'}
-              </DialogDescription>
+        {/* Add/Edit Dialog - Redesigned */}
+        <Dialog open={showAddDialog} onOpenChange={(open) => {
+          setShowAddDialog(open);
+          if (!open) {
+            setEditingTournament(null);
+            resetForm();
+            setActiveTab('basic');
+          }
+        }}>
+          <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <Trophy className="h-6 w-6 text-yellow-600" />
+                    {editingTournament ? 'تعديل البطولة' : 'إضافة بطولة جديدة'}
+                  </DialogTitle>
+                  <DialogDescription className="mt-1 text-gray-600">
+                    {editingTournament ? 'قم بتعديل بيانات البطولة' : 'أدخل بيانات البطولة الجديدة'}
+                  </DialogDescription>
+                </div>
+                {editingTournament && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        const registrationUrl = `${window.location.origin}/tournaments/unified-registration?tournamentId=${editingTournament.id}`;
+                        navigator.clipboard.writeText(registrationUrl);
+                        toast.success('تم نسخ رابط التسجيل');
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Link className="h-4 w-4" />
+                    نسخ رابط التسجيل
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    المعلومات الأساسية
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                      اسم البطولة *
-                    </Label>
-                    <Input
-                      id="name"
-                      value={formData.name || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-                      placeholder="مثال: بطولة العلمين الدولية"
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                      وصف البطولة *
-                    </Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
-                      placeholder="وصف مفصل عن البطولة..."
-                      className="min-h-[80px] border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium text-gray-700">
-                      لوجو البطولة
-                    </Label>
-                    
-                    {/* Logo Preview */}
-                    {(logoPreview || formData.logo) && (
-                      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border">
-                        <img 
-                          src={logoPreview || formData.logo} 
-                          alt="Logo preview"
-                          className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">معاينة اللوجو</p>
-                          <p className="text-xs text-gray-500">سيتم عرض هذا اللوجو في البطولة</p>
+            <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                <TabsList className="mx-6 mt-4 mb-0 grid w-auto grid-cols-5 h-auto bg-gray-100 p-1">
+                  <TabsTrigger value="basic" className="flex items-center gap-2 data-[state=active]:bg-white">
+                    <Info className="h-4 w-4" />
+                    <span className="hidden sm:inline">معلومات أساسية</span>
+                    <span className="sm:hidden">أساسية</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="dates" className="flex items-center gap-2 data-[state=active]:bg-white">
+                    <Calendar className="h-4 w-4" />
+                    <span className="hidden sm:inline">التواريخ</span>
+                    <span className="sm:hidden">التواريخ</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="fees" className="flex items-center gap-2 data-[state=active]:bg-white">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="hidden sm:inline">الرسوم</span>
+                    <span className="sm:hidden">الرسوم</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="categories" className="flex items-center gap-2 data-[state=active]:bg-white">
+                    <Users className="h-4 w-4" />
+                    <span className="hidden sm:inline">الفئات</span>
+                    <span className="sm:hidden">الفئات</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="additional" className="flex items-center gap-2 data-[state=active]:bg-white">
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">إضافية</span>
+                    <span className="sm:hidden">إضافية</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                <div className="flex-1 overflow-y-auto px-6 py-4">
+                  {/* Tab 1: Basic Information */}
+                  <TabsContent value="basic" className="mt-4 space-y-6">
+                    <Card className="border-2 border-blue-100">
+                      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Info className="h-5 w-5 text-blue-600" />
+                          المعلومات الأساسية
+                        </CardTitle>
+                        <CardDescription>البيانات الأساسية للبطولة</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="name" className="text-sm font-semibold flex items-center gap-2">
+                              <Trophy className="h-4 w-4 text-yellow-600" />
+                              اسم البطولة *
+                            </Label>
+                            <Input
+                              id="name"
+                              value={formData.name || ''}
+                              onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                              placeholder="مثال: بطولة العلمين الدولية"
+                              required
+                              className="h-11"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="description" className="text-sm font-semibold">وصف البطولة *</Label>
+                            <Textarea
+                              id="description"
+                              value={formData.description || ''}
+                              onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
+                              placeholder="وصف مفصل عن البطولة..."
+                              required
+                              rows={4}
+                              className="resize-none"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="location" className="text-sm font-semibold flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-red-500" />
+                              مكان البطولة *
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="location"
+                                value={formData.location || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))}
+                                placeholder="مثال: ملعب العلمين الرياضي"
+                                required
+                                className="flex-1 h-11"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openMapLocation();
+                                }}
+                                className="h-11 px-4 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                title="فتح الخريطة على Google Maps"
+                              >
+                                <Navigation className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="locationUrl" className="text-xs text-gray-600 flex items-center gap-2">
+                                <Link className="h-3 w-3" />
+                                رابط الموقع (اختياري)
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="locationUrl"
+                                  type="url"
+                                  value={formData.locationUrl || ''}
+                                  onChange={(e) => setFormData(prev => ({...prev, locationUrl: e.target.value}))}
+                                  placeholder="https://maps.google.com/..."
+                                  className="flex-1 h-10 text-sm"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleLocationUrlPaste}
+                                  className="h-10 px-3"
+                                  title="لصق من الحافظة"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                💡 يمكنك نسخ رابط الموقع من Google Maps ولصقه هنا
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="maxParticipants" className="text-sm font-semibold flex items-center gap-2">
+                              <Users className="h-4 w-4 text-green-600" />
+                              الحد الأقصى للمشاركين *
+                            </Label>
+                            <Input
+                              id="maxParticipants"
+                              type="number"
+                              min="1"
+                              value={formData.maxParticipants || 100}
+                              onChange={(e) => setFormData(prev => ({...prev, maxParticipants: parseInt(e.target.value) || 100}))}
+                              required
+                              className="h-11"
+                            />
+                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setLogoFile(null);
-                            setLogoPreview('');
-                            setFormData(prev => ({...prev, logo: ''}));
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {/* File Upload */}
-                    <div className="space-y-2">
-                      <Label htmlFor="logo-file" className="text-sm font-medium text-gray-700">
-                        رفع ملف اللوجو
-                      </Label>
-                      <Input
-                        id="logo-file"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoFileChange}
-                        className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                        disabled={logoUploading}
-                      />
-                      <p className="text-xs text-gray-500">
-                        اختر ملف صورة (JPG, PNG, GIF) - الحد الأقصى 5 ميجابايت
-                      </p>
-                    </div>
-                    
-                    {/* URL Input */}
-                    <div className="space-y-2">
-                      <Label htmlFor="logo-url" className="text-sm font-medium text-gray-700">
-                        أو رابط اللوجو
-                      </Label>
-                      <Input
-                        id="logo-url"
-                        type="url"
-                        value={formData.logo || ''}
-                        onChange={(e) => setFormData(prev => ({...prev, logo: e.target.value}))}
-                        placeholder="https://example.com/logo.png"
-                        className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      />
-                      <p className="text-xs text-gray-500">
-                        أدخل رابط صورة اللوجو (اختياري) - يُفضل أن تكون الصورة مربعة الشكل
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                      مكان البطولة *
-                    </Label>
-                    <Input
-                      id="location"
-                      value={formData.location || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))}
-                      placeholder="مثال: ملعب العلمين الرياضي"
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Dates and Participants */}
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <Calendar className="h-4 w-4 text-green-600" />
-                    التواريخ والمشاركين
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate" className="text-sm font-medium text-gray-700">
-                      تاريخ البداية *
-                    </Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={formData.startDate || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate" className="text-sm font-medium text-gray-700">
-                      تاريخ النهاية *
-                    </Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={formData.endDate || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="registrationDeadline" className="text-sm font-medium text-gray-700">
-                      آخر موعد للتسجيل *
-                    </Label>
-                    <Input
-                      id="registrationDeadline"
-                      type="date"
-                      value={formData.registrationDeadline || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, registrationDeadline: e.target.value}))}
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="maxParticipants" className="text-sm font-medium text-gray-700">
-                      الحد الأقصى للمشاركين *
-                    </Label>
-                    <Input
-                      id="maxParticipants"
-                      type="number"
-                      value={formData.maxParticipants || 100}
-                      onChange={(e) => setFormData(prev => ({...prev, maxParticipants: parseInt(e.target.value)}))}
-                      className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment and Categories */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <DollarSign className="h-4 w-4 text-purple-600" />
-                    الرسوم والفئات
-                  </h3>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="isPaid"
-                      checked={formData.isPaid || false}
-                      onCheckedChange={(checked) => setFormData(prev => ({...prev, isPaid: checked}))}
-                      className="data-[state=checked]:bg-green-500"
-                    />
-                    <Label htmlFor="isPaid" className="text-sm font-semibold text-gray-700">
-                      بطولة مدفوعة
-                    </Label>
-                  </div>
-                  
-                  {/* Entry Fee Field - Always Visible */}
-                  <div className="space-y-3">
-                      <div className="space-y-2">
-                      <Label htmlFor="entryFee" className="text-sm font-medium text-gray-700">
-                          رسوم المشاركة (ج.م) *
-                        </Label>
-                        <Input
-                          id="entryFee"
-                          type="number"
-                        min="0"
-                        step="0.01"
-                          value={formData.entryFee || 0}
-                        onChange={(e) => setFormData(prev => ({...prev, entryFee: parseFloat(e.target.value) || 0}))}
-                        className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                        placeholder="أدخل رسوم المشاركة"
-                      />
-                      <p className="text-xs text-gray-500">أدخل 0 للبطولات المجانية</p>
-                      </div>
-                      
-                    {/* Fee Type Selection */}
-                      <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        نوع الرسوم *
-                      </Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50">
-                          <input
-                            type="radio"
-                            id="feeType-individual"
-                            name="feeType"
-                            value="individual"
-                            checked={formData.feeType === 'individual'}
-                            onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
-                            className="h-3 w-3 text-yellow-600 focus:ring-yellow-500"
-                            aria-label="نوع الرسوم للاعب الواحد"
-                          />
-                          <Label htmlFor="feeType-individual" className="text-xs text-gray-700 cursor-pointer">
-                            للاعب الواحد
+                        
+                        <div className="space-y-3 pt-4 border-t border-gray-200">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4 text-purple-600" />
+                            لوجو البطولة
                           </Label>
+                          {(logoPreview || formData.logo) && (
+                            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+                              <img 
+                                src={logoPreview || formData.logo} 
+                                alt="Logo preview"
+                                className="w-16 h-16 object-cover rounded-lg border-2 border-purple-300 shadow-sm"
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">معاينة اللوجو</p>
+                                <p className="text-xs text-gray-500">تم تحميل اللوجو بنجاح</p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setLogoFile(null);
+                                  setLogoPreview('');
+                                  setFormData(prev => ({...prev, logo: ''}));
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-600 flex items-center gap-2">
+                                <Upload className="h-3 w-3" />
+                                رفع ملف
+                              </Label>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLogoFileChange}
+                                disabled={logoUploading}
+                                className="h-10 cursor-pointer"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-600">أو رابط اللوجو</Label>
+                              <Input
+                                type="url"
+                                value={formData.logo || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, logo: e.target.value}))}
+                                placeholder="https://example.com/logo.png"
+                                className="h-10"
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50">
-                          <input
-                            type="radio"
-                            id="feeType-club"
-                            name="feeType"
-                            value="club"
-                            checked={formData.feeType === 'club'}
-                            onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
-                            className="h-3 w-3 text-yellow-600 focus:ring-yellow-500"
-                            aria-label="نوع الرسوم للنادي"
-                          />
-                          <Label htmlFor="feeType-club" className="text-xs text-gray-700 cursor-pointer">
-                            للنادي (عدد لاعبين)
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 2: Dates */}
+                  <TabsContent value="dates" className="mt-4 space-y-6">
+                    <Card className="border-2 border-green-100">
+                      <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Calendar className="h-5 w-5 text-green-600" />
+                          التواريخ والمواعيد
+                        </CardTitle>
+                        <CardDescription>تواريخ البطولة ومواعيد التسجيل</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="startDate" className="text-sm font-semibold">تاريخ البداية *</Label>
+                            <Input
+                              id="startDate"
+                              type="date"
+                              value={formData.startDate || ''}
+                              onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
+                              required
+                              className="h-11"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="endDate" className="text-sm font-semibold">تاريخ النهاية *</Label>
+                            <Input
+                              id="endDate"
+                              type="date"
+                              value={formData.endDate || ''}
+                              onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
+                              required
+                              className="h-11"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="registrationDeadline" className="text-sm font-semibold">آخر موعد للتسجيل *</Label>
+                            <Input
+                              id="registrationDeadline"
+                              type="date"
+                              value={formData.registrationDeadline || ''}
+                              onChange={(e) => setFormData(prev => ({...prev, registrationDeadline: e.target.value}))}
+                              required
+                              className="h-11"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 3: Fees */}
+                  <TabsContent value="fees" className="mt-4 space-y-6">
+                    <Card className="border-2 border-yellow-100">
+                      <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <DollarSign className="h-5 w-5 text-yellow-600" />
+                          الرسوم وطرق الدفع
+                        </CardTitle>
+                        <CardDescription>إعدادات الرسوم وطرق الدفع المتاحة</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id="isPaid"
+                              checked={formData.isPaid || false}
+                              onCheckedChange={(checked) => setFormData(prev => ({...prev, isPaid: checked}))}
+                            />
+                            <Label htmlFor="isPaid" className="text-base font-semibold cursor-pointer">
+                              بطولة مدفوعة
+                            </Label>
+                          </div>
+                          <Badge variant={formData.isPaid ? "default" : "secondary"}>
+                            {formData.isPaid ? 'مدفوعة' : 'مجانية'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="entryFee" className="text-sm font-semibold flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              رسوم المشاركة *
+                            </Label>
+                            <div className="flex gap-3">
+                              <Input
+                                id="entryFee"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={formData.entryFee || 0}
+                                onChange={(e) => setFormData(prev => ({...prev, entryFee: parseFloat(e.target.value) || 0}))}
+                                placeholder="0.00"
+                                className="flex-[2] min-w-[200px] h-16 text-2xl font-bold text-center"
+                                disabled={!formData.isPaid}
+                              />
+                              <Select
+                                value={formData.currency || 'EGP'}
+                                onValueChange={(value) => setFormData(prev => ({...prev, currency: value}))}
+                                disabled={!formData.isPaid}
+                              >
+                                <SelectTrigger className="w-36 h-16 text-base font-medium">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="EGP">ج.م (EGP)</SelectItem>
+                                  <SelectItem value="USD">$ (USD)</SelectItem>
+                                  <SelectItem value="EUR">€ (EUR)</SelectItem>
+                                  <SelectItem value="SAR">ر.س (SAR)</SelectItem>
+                                  <SelectItem value="AED">د.إ (AED)</SelectItem>
+                                  <SelectItem value="KWD">د.ك (KWD)</SelectItem>
+                                  <SelectItem value="QAR">ر.ق (QAR)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold">نوع الرسوم *</Label>
+                            <div className="flex gap-4 p-3 bg-gray-50 rounded-lg border">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  id="feeType-individual"
+                                  name="feeType"
+                                  value="individual"
+                                  checked={formData.feeType === 'individual'}
+                                  onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
+                                  className="h-4 w-4 text-blue-600"
+                                />
+                                <Label htmlFor="feeType-individual" className="cursor-pointer">للاعب الواحد</Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  id="feeType-club"
+                                  name="feeType"
+                                  value="club"
+                                  checked={formData.feeType === 'club'}
+                                  onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
+                                  className="h-4 w-4 text-blue-600"
+                                />
+                                <Label htmlFor="feeType-club" className="cursor-pointer">للنادي</Label>
+                              </div>
+                            </div>
+                            {formData.feeType === 'club' && (
+                              <Input
+                                type="number"
+                                min="1"
+                                value={formData.maxPlayersPerClub || 1}
+                                onChange={(e) => setFormData(prev => ({...prev, maxPlayersPerClub: parseInt(e.target.value) || 1}))}
+                                placeholder="عدد اللاعبين الأقصى للنادي"
+                                className="h-11"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id="allowInstallments"
+                              checked={formData.allowInstallments || false}
+                              onCheckedChange={(checked) => setFormData(prev => ({...prev, allowInstallments: checked}))}
+                            />
+                            <Label htmlFor="allowInstallments" className="text-base font-semibold cursor-pointer">
+                              السماح بالدفع بالتقسيط
+                            </Label>
+                          </div>
+                          <Badge variant={formData.allowInstallments ? "default" : "secondary"}>
+                            {formData.allowInstallments ? 'مفعل' : 'معطل'}
+                          </Badge>
+                        </div>
+
+                        {formData.allowInstallments && (
+                          <div className="space-y-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
+                            <h4 className="font-semibold text-indigo-900 flex items-center gap-2">
+                              <CreditCardIcon className="h-5 w-5" />
+                              إعدادات التقسيط
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="installmentsCount" className="text-sm font-semibold">عدد الأقساط *</Label>
+                                <Input
+                                  id="installmentsCount"
+                                  type="number"
+                                  min="2"
+                                  max="12"
+                                  value={formData.installmentsCount || 2}
+                                  onChange={(e) => setFormData(prev => ({...prev, installmentsCount: parseInt(e.target.value) || 2}))}
+                                  className="h-11"
+                                />
+                                <p className="text-xs text-gray-500">عدد الأقساط المتاحة (من 2 إلى 12)</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="installmentsDetails" className="text-sm font-semibold">تفاصيل التقسيط</Label>
+                                <Textarea
+                                  id="installmentsDetails"
+                                  value={formData.installmentsDetails || ''}
+                                  onChange={(e) => setFormData(prev => ({...prev, installmentsDetails: e.target.value}))}
+                                  placeholder="مثال: يمكن تقسيم المبلغ على 3 أقساط، القسط الأول عند التسجيل..."
+                                  rows={3}
+                                  className="resize-none"
+                                />
+                              </div>
+                            </div>
+                            
+                            {formData.installmentsCount && formData.entryFee && (
+                              <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-200">
+                                <p className="text-sm font-semibold text-indigo-900 mb-2">مثال على الأقساط:</p>
+                                <div className="space-y-1">
+                                  {Array.from({ length: formData.installmentsCount }, (_, i) => {
+                                    const installmentAmount = (formData.entryFee || 0) / (formData.installmentsCount || 2);
+                                    return (
+                                      <div key={i} className="flex justify-between text-sm">
+                                        <span className="text-gray-600">القسط {i + 1}:</span>
+                                        <span className="font-semibold text-indigo-700">
+                                          {installmentAmount.toFixed(2)} {getCurrencySymbol(formData.currency || 'EGP')}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {formData.isPaid && (
+                          <div className="space-y-4 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border-2 border-emerald-200">
+                            <h4 className="font-semibold text-emerald-900 flex items-center gap-2">
+                              <CreditCard className="h-5 w-5" />
+                              إعدادات الدفع
+                            </h4>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="paymentDeadline" className="text-sm font-semibold">آخر موعد للدفع</Label>
+                              <Input
+                                id="paymentDeadline"
+                                type="date"
+                                value={formData.paymentDeadline || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, paymentDeadline: e.target.value}))}
+                                className="h-11"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">طرق الدفع المتاحة *</Label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {paymentMethods.map((method) => (
+                                  <div 
+                                    key={method.id} 
+                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                      formData.paymentMethods?.includes(method.id) 
+                                        ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                        : 'bg-white border-gray-200 hover:border-gray-300'
+                                    }`}
+                                    onClick={() => {
+                                      const currentMethods = formData.paymentMethods || [];
+                                      if (currentMethods.includes(method.id)) {
+                                        setFormData(prev => ({...prev, paymentMethods: currentMethods.filter(m => m !== method.id)}));
+                                      } else {
+                                        setFormData(prev => ({...prev, paymentMethods: [...currentMethods, method.id]}));
+                                      }
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      id={`paymentMethod-${method.id}`}
+                                      checked={formData.paymentMethods?.includes(method.id) || false}
+                                      onChange={() => {}}
+                                      className="h-4 w-4"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <Label htmlFor={`paymentMethod-${method.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
+                                      <span className="text-lg">{method.icon}</span>
+                                      <span className="text-sm">{method.name}</span>
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="refundPolicy" className="text-sm font-semibold">سياسة الاسترداد</Label>
+                              <Textarea
+                                id="refundPolicy"
+                                value={formData.refundPolicy || ''}
+                                onChange={(e) => setFormData(prev => ({...prev, refundPolicy: e.target.value}))}
+                                placeholder="سياسة استرداد الرسوم في حالة الإلغاء..."
+                                rows={3}
+                                className="resize-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 4: Categories */}
+                  <TabsContent value="categories" className="mt-4 space-y-6">
+                    <Card className="border-2 border-purple-100">
+                      <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Users className="h-5 w-5 text-purple-600" />
+                          الفئات العمرية والجنس
+                        </CardTitle>
+                        <CardDescription>اختر الفئات العمرية والجنس المناسبة للبطولة</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-6">
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <Users className="h-4 w-4 text-blue-600" />
+                            الفئات العمرية *
                           </Label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Number of Players for Club Fee */}
-                    {formData.feeType === 'club' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="maxPlayersPerClub" className="text-sm font-medium text-gray-700">
-                          عدد اللاعبين المسموح للنادي *
-                        </Label>
-                        <Input
-                          id="maxPlayersPerClub"
-                          type="number"
-                          min="1"
-                          max="50"
-                          value={formData.maxPlayersPerClub || 1}
-                          onChange={(e) => setFormData(prev => ({...prev, maxPlayersPerClub: parseInt(e.target.value) || 1}))}
-                          className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                          placeholder="أدخل عدد اللاعبين"
-                        />
-                        <p className="text-xs text-gray-500">عدد اللاعبين المسموح لكل نادي في البطولة</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {formData.isPaid && (
-                    <div className="space-y-3">
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentDeadline" className="text-sm font-medium text-gray-700">
-                          آخر موعد للدفع
-                        </Label>
-                        <Input
-                          id="paymentDeadline"
-                          type="date"
-                          value={formData.paymentDeadline || ''}
-                          onChange={(e) => setFormData(prev => ({...prev, paymentDeadline: e.target.value}))}
-                          className="h-10 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                          placeholder="اختر آخر موعد للدفع"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">
-                          طرق الدفع المتاحة *
-                        </Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {paymentMethods.map((method, index) => (
-                            <div key={method.id} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50">
-                              <input
-                                type="checkbox"
-                                id={`paymentMethod-${index}-${method.id}`}
-                                title={`اختيار طريقة ${method.name}`}
-                                checked={formData.paymentMethods?.includes(method.id) || false}
-                                onChange={(e) => {
-                                  const currentMethods = formData.paymentMethods || [];
-                                  if (e.target.checked) {
-                                    setFormData(prev => ({...prev, paymentMethods: [...currentMethods, method.id]}));
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {ageGroups.map((ageGroup) => (
+                              <div 
+                                key={ageGroup}
+                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                  formData.ageGroups?.includes(ageGroup)
+                                    ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => {
+                                  const currentGroups = formData.ageGroups || [];
+                                  if (currentGroups.includes(ageGroup)) {
+                                    setFormData(prev => ({...prev, ageGroups: currentGroups.filter(g => g !== ageGroup)}));
                                   } else {
-                                    setFormData(prev => ({...prev, paymentMethods: currentMethods.filter(m => m !== method.id)}));
+                                    setFormData(prev => ({...prev, ageGroups: [...currentGroups, ageGroup]}));
                                   }
                                 }}
-                                className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-3 w-3"
-                              />
-                              <Label htmlFor={`paymentMethod-${index}-${method.id}`} className="text-xs text-gray-700 flex items-center gap-1 cursor-pointer">
-                                <span className="text-sm">{method.icon}</span>
-                                <span>{method.name}</span>
-                              </Label>
-                            </div>
-                          ))}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={`ageGroup-${ageGroup}`}
+                                  checked={formData.ageGroups?.includes(ageGroup) || false}
+                                  onChange={() => {}}
+                                  className="h-4 w-4"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <Label htmlFor={`ageGroup-${ageGroup}`} className="cursor-pointer flex-1 text-sm">
+                                  {ageGroup}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="refundPolicy" className="text-sm font-medium text-gray-700">
-                          سياسة الاسترداد
-                        </Label>
-                        <Textarea
-                          id="refundPolicy"
-                          value={formData.refundPolicy || ''}
-                          onChange={(e) => setFormData(prev => ({...prev, refundPolicy: e.target.value}))}
-                          placeholder="سياسة استرداد الرسوم في حالة الإلغاء..."
-                          className="min-h-[80px] border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                          rows={3}
-                        />
-                        <p className="text-xs text-gray-500">حدد شروط استرداد الرسوم في حالة إلغاء البطولة</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      الفئات العمرية *
-                    </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {ageGroups.map((ageGroup, index) => (
-                        <div key={ageGroup} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            id={`ageGroup-${index}-${ageGroup}`}
-                            title={`اختيار فئة ${ageGroup}`}
-                            checked={formData.ageGroups?.includes(ageGroup) || false}
-                            onChange={(e) => {
-                              const currentGroups = formData.ageGroups || [];
-                              if (e.target.checked) {
-                                setFormData(prev => ({...prev, ageGroups: [...currentGroups, ageGroup]}));
-                              } else {
-                                setFormData(prev => ({...prev, ageGroups: currentGroups.filter(g => g !== ageGroup)}));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-3 w-3"
-                          />
-                          <Label htmlFor={`ageGroup-${index}-${ageGroup}`} className="text-xs text-gray-700 cursor-pointer">
-                            {ageGroup}
+                        
+                        <div className="space-y-3 pt-4 border-t border-gray-200">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <Users className="h-4 w-4 text-pink-600" />
+                            الفئات *
                           </Label>
+                          <div className="flex flex-wrap gap-3">
+                            {categories.map((category) => (
+                              <div 
+                                key={category}
+                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all min-w-[120px] ${
+                                  formData.categories?.includes(category)
+                                    ? 'bg-pink-50 border-pink-300 shadow-sm' 
+                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => {
+                                  const currentCategories = formData.categories || [];
+                                  if (currentCategories.includes(category)) {
+                                    setFormData(prev => ({...prev, categories: currentCategories.filter(c => c !== category)}));
+                                  } else {
+                                    setFormData(prev => ({...prev, categories: [...currentCategories, category]}));
+                                  }
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={`category-${category}`}
+                                  checked={formData.categories?.includes(category) || false}
+                                  onChange={() => {}}
+                                  className="h-4 w-4"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <Label htmlFor={`category-${category}`} className="cursor-pointer flex-1 text-sm">
+                                  {category}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500">اختر الفئات العمرية المناسبة للبطولة</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      الفئات *
-                    </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {categories.map((category, index) => (
-                        <div key={category} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-md hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            id={`category-${index}-${category}`}
-                            title={`اختيار فئة ${category}`}
-                            checked={formData.categories?.includes(category) || false}
-                            onChange={(e) => {
-                              const currentCategories = formData.categories || [];
-                              if (e.target.checked) {
-                                setFormData(prev => ({...prev, categories: [...currentCategories, category]}));
-                              } else {
-                                setFormData(prev => ({...prev, categories: currentCategories.filter(c => c !== category)}));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-3 w-3"
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 5: Additional Information */}
+                  <TabsContent value="additional" className="mt-4 space-y-6">
+                    <Card className="border-2 border-indigo-100">
+                      <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <FileText className="h-5 w-5 text-indigo-600" />
+                          التفاصيل الإضافية
+                        </CardTitle>
+                        <CardDescription>قوانين البطولة، الجوائز، ومعلومات الاتصال</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="rules" className="text-sm font-semibold">قوانين البطولة</Label>
+                          <Textarea
+                            id="rules"
+                            value={formData.rules || ''}
+                            onChange={(e) => setFormData(prev => ({...prev, rules: e.target.value}))}
+                            placeholder="قوانين ولوائح البطولة..."
+                            rows={4}
+                            className="resize-none"
                           />
-                          <Label htmlFor={`category-${index}-${category}`} className="text-xs text-gray-700 cursor-pointer">
-                            {category}
-                          </Label>
                         </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500">اختر الفئات المناسبة للبطولة</p>
-                  </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="prizes" className="text-sm font-semibold">الجوائز</Label>
+                          <Textarea
+                            id="prizes"
+                            value={formData.prizes || ''}
+                            onChange={(e) => setFormData(prev => ({...prev, prizes: e.target.value}))}
+                            placeholder="تفاصيل الجوائز والمكافآت..."
+                            rows={4}
+                            className="resize-none"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="contactInfo" className="text-sm font-semibold">معلومات الاتصال</Label>
+                          <Textarea
+                            id="contactInfo"
+                            value={formData.contactInfo || ''}
+                            onChange={(e) => setFormData(prev => ({...prev, contactInfo: e.target.value}))}
+                            placeholder="رقم الهاتف، البريد الإلكتروني..."
+                            rows={3}
+                            className="resize-none"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <FileText className="h-4 w-4 text-indigo-600" />
-                    التفاصيل الإضافية
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="rules" className="text-sm font-medium text-gray-700">
-                      قوانين البطولة
-                    </Label>
-                    <Textarea
-                      id="rules"
-                      value={formData.rules || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, rules: e.target.value}))}
-                      placeholder="قوانين ولوائح البطولة..."
-                      className="min-h-[80px] border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="prizes" className="text-sm font-medium text-gray-700">
-                      الجوائز
-                    </Label>
-                    <Textarea
-                      id="prizes"
-                      value={formData.prizes || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, prizes: e.target.value}))}
-                      placeholder="تفاصيل الجوائز والمكافآت..."
-                      className="min-h-[80px] border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="contactInfo" className="text-sm font-medium text-gray-700">
-                      معلومات الاتصال
-                    </Label>
-                    <Textarea
-                      id="contactInfo"
-                      value={formData.contactInfo || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, contactInfo: e.target.value}))}
-                      placeholder="رقم الهاتف، البريد الإلكتروني، إلخ..."
-                      className="min-h-[80px] border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 text-sm"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Status and Registration Link */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
+                {/* Footer with Status and Submit */}
+                <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
                     <Switch
                       id="isActive"
                       checked={formData.isActive === true}
                       onCheckedChange={(checked) => setFormData(prev => ({...prev, isActive: checked}))}
-                      className="data-[state=checked]:bg-green-500"
                     />
-                    <Label htmlFor="isActive" className={`text-sm font-semibold ${formData.isActive ? 'text-green-700' : 'text-gray-700'}`}>
+                    <Label htmlFor="isActive" className="text-sm font-semibold cursor-pointer">
                       البطولة نشطة
                     </Label>
+                    <Badge variant={formData.isActive ? "default" : "secondary"}>
+                      {formData.isActive ? 'نشطة' : 'غير نشطة'}
+                    </Badge>
                   </div>
                   
-                  {editingTournament && (
-                    <div className="flex items-center gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const registrationUrl = `${window.location.origin}/tournaments/register/${editingTournament.id}`;
-                          navigator.clipboard.writeText(registrationUrl);
-                          toast.success('تم نسخ رابط التسجيل');
-                        }}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        نسخ رابط التسجيل
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                
-                {editingTournament && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Link className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-blue-900 mb-2">رابط تسجيل اللاعبين</h4>
-                        <p className="text-sm text-blue-700 mb-3">
-                          شارك هذا الرابط مع اللاعبين الذين يريدون التسجيل في البطولة
-                        </p>
-                        <div className="bg-white border border-blue-200 rounded-md p-3">
-                          <code className="text-sm text-gray-800 break-all">
-                            {`${window.location.origin}/tournaments/register/${editingTournament.id}`}
-                          </code>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddDialog(false);
+                        setEditingTournament(null);
+                        resetForm();
+                        setActiveTab('basic');
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      إلغاء
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-white flex items-center gap-2 shadow-lg"
+                    >
+                      <Save className="h-4 w-4" />
+                      {editingTournament ? 'تحديث البطولة' : 'إنشاء البطولة'}
+                    </Button>
                   </div>
-                )}
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowAddDialog(false);
-                    setEditingTournament(null);
-                    resetForm();
-                  }}
-                  className="px-6 py-2"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  إلغاء
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white hover:from-yellow-600 hover:to-orange-700 px-6 py-2"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {editingTournament ? 'تحديث البطولة' : 'إنشاء البطولة'}
-                </Button>
-              </div>
+                </div>
+              </Tabs>
             </form>
           </DialogContent>
         </Dialog>
@@ -1278,12 +1589,8 @@ export default function AdminTournamentsPage() {
         <Dialog open={!!viewingRegistrations} onOpenChange={() => setViewingRegistrations(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-gray-900">
-                المسجلين في بطولة: {viewingRegistrations?.name}
-              </DialogTitle>
-              <DialogDescription>
-                قائمة اللاعبين المسجلين في البطولة
-              </DialogDescription>
+              <DialogTitle>المسجلين في بطولة: {viewingRegistrations?.name}</DialogTitle>
+              <DialogDescription>قائمة اللاعبين المسجلين في البطولة</DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -1296,51 +1603,34 @@ export default function AdminTournamentsPage() {
               ) : (
                 <div className="space-y-3">
                   {viewingRegistrations?.registrations?.map((registration, index) => (
-                    <Card key={registration.id || index} className="bg-white shadow-sm border border-gray-200">
+                    <Card key={registration.id || index}>
                       <CardContent className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <h4 className="font-semibold text-gray-900">{registration.playerName}</h4>
                             <p className="text-sm text-gray-600">{registration.playerEmail}</p>
                             <p className="text-sm text-gray-600">{registration.playerPhone}</p>
-                            {registration.accountName && (
-                              <p className="text-sm text-blue-600 font-medium">
-                                <strong>الحساب التابع:</strong> {registration.accountName}
-                              </p>
-                            )}
                           </div>
                           <div>
                             <p className="text-sm text-gray-600">العمر: {registration.playerAge} سنة</p>
                             <p className="text-sm text-gray-600">النادي: {registration.playerClub}</p>
                             <p className="text-sm text-gray-600">المركز: {registration.playerPosition}</p>
                           </div>
-                          <div className="flex flex-col justify-between">
-                            <div>
-                              <Badge className={
-                                registration.paymentStatus === 'paid' ? 'bg-green-500' :
-                                registration.paymentStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
-                              }>
-                                {registration.paymentStatus === 'paid' ? 'مدفوع' :
-                                 registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
-                              </Badge>
-                              {registration.paymentAmount > 0 && (
-                                <p className="text-sm text-green-600 font-bold mt-1">
-                                  <strong>قيمة الاشتراك:</strong> {registration.paymentAmount} ج.م
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {new Date(registration.registrationDate).toLocaleDateString('ar-SA')}
-                            </p>
+                          <div>
+                            <Badge className={
+                              registration.paymentStatus === 'paid' ? 'bg-green-500' :
+                              registration.paymentStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                            }>
+                              {registration.paymentStatus === 'paid' ? 'مدفوع' :
+                               registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
+                            </Badge>
+                            {registration.paymentAmount > 0 && (
+                              <p className="text-sm text-green-600 font-bold mt-1">
+                                {registration.paymentAmount} {getCurrencySymbol(viewingRegistrations?.currency || 'EGP')}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {registration.notes && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-sm text-gray-600">
-                              <strong>ملاحظات:</strong> {registration.notes}
-                            </p>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -1354,11 +1644,10 @@ export default function AdminTournamentsPage() {
         <Dialog open={showProfessionalRegistrations} onOpenChange={setShowProfessionalRegistrations}>
           <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center text-blue-600 flex items-center justify-center gap-2">
-                <Trophy className="h-8 w-8" />
+              <DialogTitle className="text-2xl font-bold text-center">
                 بيانات المسجلين - {selectedTournamentForRegistrations?.name}
               </DialogTitle>
-              <DialogDescription className="text-center text-gray-600">
+              <DialogDescription className="text-center">
                 عرض شامل لجميع بيانات المسجلين في البطولة مع إمكانية التصدير
               </DialogDescription>
             </DialogHeader>
@@ -1396,12 +1685,6 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (tournament) {
-      fetchRegistrations();
-    }
-  }, [tournament]);
-
   const fetchRegistrations = async () => {
     if (!tournament) return;
     
@@ -1427,6 +1710,56 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
     }
   };
 
+  useEffect(() => {
+    if (tournament) {
+      fetchRegistrations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournament]);
+
+  const getCurrencySymbol = (currency: string): string => {
+    const currencySymbols: Record<string, string> = {
+      'USD': '$',
+      'EGP': 'ج.م',
+      'EUR': '€',
+      'GBP': '£',
+      'SAR': 'ر.س',
+      'AED': 'د.إ',
+      'KWD': 'د.ك',
+      'QAR': 'ر.ق',
+      'BHD': 'د.ب',
+      'OMR': 'ر.ع',
+      'JOD': 'د.أ',
+      'LBP': 'ل.ل',
+      'TND': 'د.ت',
+      'DZD': 'د.ج',
+      'MAD': 'د.م',
+      'LYD': 'د.ل',
+      'TRY': '₺',
+      'RUB': '₽',
+      'CNY': '¥',
+      'JPY': '¥',
+      'INR': '₹',
+      'AUD': 'A$',
+      'CAD': 'C$',
+      'CHF': 'CHF',
+      'NZD': 'NZ$',
+      'ZAR': 'R',
+      'BRL': 'R$',
+      'MXN': '$',
+      'SGD': 'S$',
+      'HKD': 'HK$',
+      'SEK': 'kr',
+      'NOK': 'kr',
+      'DKK': 'kr',
+      'PLN': 'zł',
+      'ILS': '₪',
+      'THB': '฿',
+      'MYR': 'RM'
+    };
+    return currencySymbols[currency] || currency;
+  };
+
   const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
     try {
@@ -1443,7 +1776,12 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
         return 'غير محدد';
       }
       
-      return d.toLocaleDateString('en-GB');
+      // صيغة DD/MM/YYYY (ميلادي فقط)
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      
+      return `${day}/${month}/${year}`;
     } catch (error) {
       return 'غير محدد';
     }
@@ -1451,27 +1789,10 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
 
   const exportToExcel = () => {
     const headers = [
-      'اسم المسجل',
-      'البريد الإلكتروني',
-      'رقم الهاتف',
-      'العمر',
-      'النادي',
-      'المركز',
-      'نوع التسجيل',
-      'نوع الحساب',
-      'اسم الحساب',
-      'اسم المنظمة',
-      'نوع المنظمة',
-      'اسم النادي',
-      'جهة الاتصال',
-      'طريقة الدفع',
-      'مزود المحفظة',
-      'رقم المحفظة',
-      'رقم الإيصال',
-      'تاريخ التسجيل',
-      'حالة الدفع',
-      'المبلغ',
-      'الملاحظات'
+      'اسم المسجل', 'البريد الإلكتروني', 'رقم الهاتف', 'العمر', 'النادي', 'المركز',
+      'نوع التسجيل', 'نوع الحساب', 'اسم الحساب', 'اسم النادي', 'جهة الاتصال',
+      'طريقة الدفع', 'مزود المحفظة', 'رقم المحفظة', 'رقم الإيصال',
+      'تاريخ التسجيل', 'حالة الدفع', 'المبلغ', 'الملاحظات'
     ];
 
     const csvContent = [
@@ -1486,8 +1807,6 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
         reg.registrationType || '',
         reg.accountType || '',
         reg.accountName || '',
-        reg.organizationName || '',
-        reg.organizationType || '',
         reg.clubName || '',
         reg.clubContact || '',
         reg.paymentMethod || '',
@@ -1514,212 +1833,6 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
     toast.success('تم تصدير البيانات إلى Excel بنجاح');
   };
 
-  const exportToPDF = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>بيانات المسجلين - ${tournament?.name}</title>
-        <style>
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body {
-            font-family: 'Arial', sans-serif;
-            direction: rtl;
-            text-align: right;
-            line-height: 1.6;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 3px solid #3b82f6;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .header h1 {
-            color: #3b82f6;
-            font-size: 28px;
-            margin: 0;
-          }
-          .header h2 {
-            color: #6b7280;
-            font-size: 20px;
-            margin: 10px 0;
-          }
-          .tournament-info {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            border-right: 4px solid #3b82f6;
-          }
-          .tournament-info h3 {
-            color: #3b82f6;
-            margin-top: 0;
-          }
-          .stats {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            padding: 20px;
-            background: #f1f5f9;
-            border-radius: 8px;
-          }
-          .stat-item {
-            text-align: center;
-          }
-          .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #3b82f6;
-          }
-          .stat-label {
-            color: #6b7280;
-            font-size: 14px;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 12px;
-          }
-          th, td {
-            border: 1px solid #d1d5db;
-            padding: 8px;
-            text-align: right;
-          }
-          th {
-            background: #3b82f6;
-            color: white;
-            font-weight: bold;
-          }
-          tr:nth-child(even) {
-            background: #f9fafb;
-          }
-          .footer {
-            margin-top: 40px;
-            text-align: center;
-            border-top: 2px solid #3b82f6;
-            padding-top: 20px;
-            color: #6b7280;
-          }
-          .footer h3 {
-            color: #3b82f6;
-            margin: 0;
-          }
-          .footer p {
-            margin: 5px 0;
-          }
-          @media print {
-            body { margin: 0; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>🏆 منصة الحلم</h1>
-          <h2>بيانات المسجلين في البطولة</h2>
-        </div>
-
-        <div class="tournament-info">
-          <h3>📋 معلومات البطولة</h3>
-          <p><strong>اسم البطولة:</strong> ${tournament?.name}</p>
-          <p><strong>الوصف:</strong> ${tournament?.description}</p>
-          <p><strong>المكان:</strong> ${tournament?.location}</p>
-          <p><strong>تاريخ البداية:</strong> ${formatDate(tournament?.startDate)}</p>
-          <p><strong>تاريخ النهاية:</strong> ${formatDate(tournament?.endDate)}</p>
-          <p><strong>آخر موعد للتسجيل:</strong> ${formatDate(tournament?.registrationDeadline)}</p>
-        </div>
-
-        <div class="stats">
-          <div class="stat-item">
-            <div class="stat-number">${registrations.length}</div>
-            <div class="stat-label">إجمالي المسجلين</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-number">${registrations.filter(r => r.paymentStatus === 'paid').length}</div>
-            <div class="stat-label">المدفوعات</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-number">${registrations.filter(r => r.paymentStatus === 'pending').length}</div>
-            <div class="stat-label">في الانتظار</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-number">${registrations.filter(r => r.registrationType === 'club').length}</div>
-            <div class="stat-label">تسجيلات النوادي</div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>اسم المسجل</th>
-              <th>البريد الإلكتروني</th>
-              <th>رقم الهاتف</th>
-              <th>العمر</th>
-              <th>النادي</th>
-              <th>المركز</th>
-              <th>نوع التسجيل</th>
-              <th>اسم النادي</th>
-              <th>جهة الاتصال</th>
-              <th>تاريخ التسجيل</th>
-              <th>حالة الدفع</th>
-              <th>المبلغ</th>
-              <th>الملاحظات</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${registrations.map((reg, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${reg.playerName || ''}</td>
-                <td>${reg.playerEmail || ''}</td>
-                <td>${reg.playerPhone || ''}</td>
-                <td>${reg.playerAge || ''}</td>
-                <td>${reg.playerClub || ''}</td>
-                <td>${reg.playerPosition || ''}</td>
-                <td>${reg.registrationType === 'individual' ? 'فردي' : 'نادي'}</td>
-                <td>${reg.clubName || ''}</td>
-                <td>${reg.clubContact || ''}</td>
-                <td>${formatDate(reg.registrationDate)}</td>
-                <td>${reg.paymentStatus === 'paid' ? 'مدفوع' : reg.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}</td>
-                <td>${reg.paymentAmount || 0} ج.م</td>
-                <td>${reg.notes || ''}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <h3>🏆 منصة الحلم</h3>
-          <p>منصة إدارة البطولات الرياضية</p>
-          <p>تاريخ التقرير: ${new Date().toLocaleDateString('en-GB')}</p>
-          <p>إجمالي المسجلين: ${registrations.length} مسجل</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
-    
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 1000);
-
-    toast.success('تم تحضير التقرير للطباعة');
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -1733,29 +1846,28 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
 
   return (
     <div className="space-y-6">
-      {/* Tournament Info */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+      <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">معلومات البطولة</h3>
-              <div className="space-y-2 text-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">معلومات البطولة</h3>
+              <div className="space-y-1 text-sm">
                 <p><strong>الاسم:</strong> {tournament?.name}</p>
                 <p><strong>المكان:</strong> {tournament?.location}</p>
                 <p><strong>تاريخ البداية:</strong> {formatDate(tournament?.startDate)}</p>
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">التفاصيل</h3>
-              <div className="space-y-2 text-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">التفاصيل</h3>
+              <div className="space-y-1 text-sm">
                 <p><strong>تاريخ النهاية:</strong> {formatDate(tournament?.endDate)}</p>
                 <p><strong>آخر موعد:</strong> {formatDate(tournament?.registrationDeadline)}</p>
-                <p><strong>الرسوم:</strong> {tournament?.entryFee} ج.م</p>
+                <p><strong>الرسوم:</strong> {tournament?.entryFee} {getCurrencySymbol(tournament?.currency || 'EGP')}</p>
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">الإحصائيات</h3>
-              <div className="space-y-2 text-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">الإحصائيات</h3>
+              <div className="space-y-1 text-sm">
                 <p><strong>إجمالي المسجلين:</strong> {registrations.length}</p>
                 <p><strong>المدفوعات:</strong> {registrations.filter(r => r.paymentStatus === 'paid').length}</p>
                 <p><strong>في الانتظار:</strong> {registrations.filter(r => r.paymentStatus === 'pending').length}</p>
@@ -1765,25 +1877,16 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
         </CardContent>
       </Card>
 
-      {/* Export Buttons */}
       <div className="flex justify-center gap-4">
         <Button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700">
           <Download className="h-4 w-4 mr-2" />
           تصدير إلى Excel
         </Button>
-        <Button onClick={exportToPDF} className="bg-red-600 hover:bg-red-700">
-          <Printer className="h-4 w-4 mr-2" />
-          طباعة PDF
-        </Button>
       </div>
 
-      {/* Registrations Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            قائمة المسجلين ({registrations.length})
-          </CardTitle>
+          <CardTitle>قائمة المسجلين ({registrations.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {registrations.length === 0 ? (
@@ -1796,7 +1899,7 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
             <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
                 <thead>
-                  <tr className="bg-blue-50">
+                  <tr className="bg-gray-50">
                     <th className="border border-gray-300 p-3 text-right font-semibold">#</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">اسم المسجل</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">البريد الإلكتروني</th>
@@ -1804,14 +1907,9 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
                     <th className="border border-gray-300 p-3 text-right font-semibold">العمر</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">النادي</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">المركز</th>
-                    <th className="border border-gray-300 p-3 text-right font-semibold">نوع التسجيل</th>
-                    <th className="border border-gray-300 p-3 text-right font-semibold">الحساب التابع</th>
-                    <th className="border border-gray-300 p-3 text-right font-semibold">اسم النادي</th>
-                    <th className="border border-gray-300 p-3 text-right font-semibold">جهة الاتصال</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">تاريخ التسجيل</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">حالة الدفع</th>
                     <th className="border border-gray-300 p-3 text-right font-semibold">المبلغ</th>
-                    <th className="border border-gray-300 p-3 text-right font-semibold">الملاحظات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1824,14 +1922,6 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
                       <td className="border border-gray-300 p-3 text-center">{registration.playerAge || ''}</td>
                       <td className="border border-gray-300 p-3">{registration.playerClub || ''}</td>
                       <td className="border border-gray-300 p-3">{registration.playerPosition || ''}</td>
-                      <td className="border border-gray-300 p-3 text-center">
-                        <Badge className={registration.registrationType === 'individual' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800'}>
-                          {registration.registrationType === 'individual' ? 'فردي' : 'نادي'}
-                        </Badge>
-                      </td>
-                      <td className="border border-gray-300 p-3">{registration.accountName || ''}</td>
-                      <td className="border border-gray-300 p-3">{registration.clubName || ''}</td>
-                      <td className="border border-gray-300 p-3">{registration.clubContact || ''}</td>
                       <td className="border border-gray-300 p-3">{formatDate(registration.registrationDate)}</td>
                       <td className="border border-gray-300 p-3 text-center">
                         <Badge className={
@@ -1844,9 +1934,8 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
                         </Badge>
                       </td>
                       <td className="border border-gray-300 p-3 text-center font-bold text-green-600">
-                        {registration.paymentAmount > 0 ? `${registration.paymentAmount} ج.م` : 'مجاني'}
+                        {registration.paymentAmount > 0 ? `${registration.paymentAmount} ${getCurrencySymbol(tournament?.currency || 'EGP')}` : 'مجاني'}
                       </td>
-                      <td className="border border-gray-300 p-3">{registration.notes || ''}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1859,3 +1948,4 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
   );
 }
 
+export default AdminTournamentsPage;

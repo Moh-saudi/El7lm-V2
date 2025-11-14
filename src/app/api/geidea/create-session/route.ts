@@ -9,15 +9,7 @@ export const revalidate = 0;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { amount, currency, orderId, customerEmail, customerName } = body;
-
-    console.log('🚀 [Geidea API] Creating payment session:', {
-      amount,
-      currency,
-      orderId,
-      customerEmail,
-      customerName
-    });
+    const { amount, currency, orderId, customerEmail, customerName, returnUrl: requestReturnUrl, callbackUrl: requestCallbackUrl } = body;
 
     // التحقق من البيانات المطلوبة (لا نلزم orderId القادم من العميل؛ سنُولِّده داخليًا)
     if (!amount || !currency || !customerEmail) {
@@ -40,10 +32,6 @@ export async function POST(request: NextRequest) {
 
     // التحقق من وجود الإعدادات المطلوبة
     if (!geideaConfig.merchantPublicKey || !geideaConfig.apiPassword) {
-      console.error('❌ [Geidea API] Missing required configuration:', {
-        hasMerchantPublicKey: !!geideaConfig.merchantPublicKey,
-        hasApiPassword: !!geideaConfig.apiPassword
-      });
 
       return NextResponse.json(
         {
@@ -59,12 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔧 [Geidea API] Configuration loaded:', {
-      hasMerchantPublicKey: !!geideaConfig.merchantPublicKey,
-      hasApiPassword: !!geideaConfig.apiPassword,
-      environment: geideaConfig.environment,
-      baseUrl: geideaConfig.baseUrl
-    });
 
     // تطبيع العملة وإنشاء timestamp للتوقيع حسب الوثيقة الرسمية (Y/m/d H:i:s)
     const now = new Date();
@@ -85,6 +67,69 @@ export async function POST(request: NextRequest) {
       timestamp
     );
 
+    // استخدام returnUrl و callbackUrl من الطلب إذا كانا متوفرين، وإلا استخدم القيم الافتراضية
+    // التأكد من استخدام URL مطلق وصحيح
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    
+    // إذا لم يكن baseUrl محدداً في البيئة، استخدم origin من الطلب
+    if (!baseUrl) {
+      const requestOrigin = request.headers.get('origin') || request.headers.get('referer')?.split('/').slice(0, 3).join('/');
+      baseUrl = requestOrigin || 'https://el7lm-backup.vercel.app';
+    }
+    
+    // التأكد من أن baseUrl يبدأ بـ http:// أو https://
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    // إزالة أي مسافات أو أحرف غير صالحة
+    baseUrl = baseUrl.trim();
+    
+    // التأكد من عدم وجود مسار في baseUrl
+    try {
+      const url = new URL(baseUrl);
+      baseUrl = `${url.protocol}//${url.host}`;
+      
+      // إذا كان localhost، استخدم URL الإنتاج الافتراضي بدلاً منه
+      // لأن Geidea لا يقبل localhost URLs
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('localhost')) {
+        baseUrl = 'https://el7lm-backup.vercel.app';
+      }
+    } catch (e) {
+      // إذا فشل parsing، استخدم القيمة الافتراضية
+      baseUrl = 'https://el7lm-backup.vercel.app';
+    }
+    
+    const defaultCallbackUrl = `${baseUrl}/api/geidea/callback`;
+    
+    // تحديد returnUrl افتراضي بناءً على orderId
+    let defaultReturnUrl = `${baseUrl}/dashboard/shared/bulk-payment?status=success`;
+    if (orderId && orderId.includes('TOURNAMENT')) {
+      // إذا كان orderId يحتوي على "TOURNAMENT"، استخدم returnUrl للتسجيل في البطولة
+      defaultReturnUrl = `${baseUrl}/tournaments/unified-registration?payment=success`;
+    }
+    
+    // معالجة requestReturnUrl وتحويله إلى URL مطلق إذا لزم الأمر
+    let finalReturnUrl = defaultReturnUrl;
+    if (requestReturnUrl) {
+      if (requestReturnUrl.startsWith('/')) {
+        // إذا كان نسبي (يبدأ بـ /)، أضفه إلى baseUrl
+        finalReturnUrl = `${baseUrl}${requestReturnUrl}`;
+      } else if (requestReturnUrl.startsWith('http://') || requestReturnUrl.startsWith('https://')) {
+        // إذا كان مطلق، استخدمه مباشرة
+        finalReturnUrl = requestReturnUrl;
+      } else {
+        // إذا كان بدون /، أضفه
+        finalReturnUrl = `${baseUrl}/${requestReturnUrl}`;
+      }
+    }
+    
+    // معالجة requestCallbackUrl
+    let finalCallbackUrl = requestCallbackUrl || defaultCallbackUrl;
+    if (requestCallbackUrl && requestCallbackUrl.startsWith('/') && !requestCallbackUrl.startsWith('http')) {
+      finalCallbackUrl = `${baseUrl}${requestCallbackUrl}`;
+    }
+    
     // إنشاء payload للدفع حسب وثائق Geidea HPP Checkout v2
     const paymentPayload = {
       amount: amount,
@@ -92,9 +137,9 @@ export async function POST(request: NextRequest) {
       merchantReferenceId: finalOrderId,
       timestamp: timestamp,
       signature: signature,
-      callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/api/geidea/callback`,
+      callbackUrl: defaultCallbackUrl, // سيتم تحديثه لاحقاً بعد التحقق النهائي
       language: 'ar',
-      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://el7lm-backup.vercel.app'}/dashboard/shared/bulk-payment?status=success`,
+      returnUrl: defaultReturnUrl, // سيتم تحديثه لاحقاً بعد التحقق النهائي
       customer: {
         email: customerEmail,
         firstName: customerName.split(' ')[0] || 'Customer',
@@ -104,17 +149,26 @@ export async function POST(request: NextRequest) {
 
     // تحديد API endpoint الصحيح حسب وثائق Geidea
     const apiEndpoint = `${geideaConfig.baseUrl}/payment-intent/api/v2/direct/session`;
-
-    console.log('📤 [Geidea API] Sending request to Geidea:', {
-      url: apiEndpoint,
-      merchantPublicKey: geideaConfig.merchantPublicKey,
-      originalOrderId: orderId,
-      finalOrderId: finalOrderId,
-      amount: amount,
-      currency: currencyCode,
-      environment: geideaConfig.environment,
-      payload: paymentPayload
-    });
+    
+    // التأكد من أن URLs مطلقة وصحيحة ولا تحتوي على localhost
+    if (!finalCallbackUrl.startsWith('http://') && !finalCallbackUrl.startsWith('https://')) {
+      throw new Error(`Invalid callbackUrl: ${finalCallbackUrl} - must be absolute URL`);
+    }
+    if (!finalReturnUrl.startsWith('http://') && !finalReturnUrl.startsWith('https://')) {
+      throw new Error(`Invalid returnUrl: ${finalReturnUrl} - must be absolute URL`);
+    }
+    
+    // التأكد من عدم وجود localhost في URLs (Geidea لا يقبل localhost)
+    if (finalCallbackUrl.includes('localhost') || finalCallbackUrl.includes('127.0.0.1')) {
+      finalCallbackUrl = defaultCallbackUrl;
+    }
+    if (finalReturnUrl.includes('localhost') || finalReturnUrl.includes('127.0.0.1')) {
+      finalReturnUrl = defaultReturnUrl;
+    }
+    
+    // تحديث payload بالـ URLs النهائية
+    paymentPayload.callbackUrl = finalCallbackUrl;
+    paymentPayload.returnUrl = finalReturnUrl;
 
     try {
       // إرسال الطلب إلى Geidea مع Basic Authentication حسب الوثائق
@@ -130,21 +184,23 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(paymentPayload)
       });
 
-      console.log('📥 [Geidea API] Response status:', geideaResponse.status);
-
       if (!geideaResponse.ok) {
         const errorText = await geideaResponse.text();
-        console.error('❌ [Geidea API] Error response:', {
-          status: geideaResponse.status,
-          statusText: geideaResponse.statusText,
-          body: errorText
-        });
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
 
         return NextResponse.json(
           {
             error: 'Geidea API error',
-            details: errorText,
-            status: geideaResponse.status
+            details: errorData.detailedResponseMessage || errorData.responseMessage || errorText,
+            responseCode: errorData.responseCode,
+            detailedResponseCode: errorData.detailedResponseCode,
+            status: geideaResponse.status,
+            troubleshooting: getTroubleshootingTips(errorData.responseCode, errorData.detailedResponseCode)
           },
           { status: geideaResponse.status }
         );
@@ -152,22 +208,8 @@ export async function POST(request: NextRequest) {
 
       const geideaData = await geideaResponse.json();
 
-      console.log('✅ [Geidea API] Payment session created successfully:', {
-        orderId: finalOrderId,
-        sessionId: geideaData.session?.id,
-        responseCode: geideaData.responseCode,
-        responseMessage: geideaData.responseMessage
-      });
-
       // التحقق من نجاح الاستجابة
       if (geideaData.responseCode !== "000" || geideaData.detailedResponseCode !== "000") {
-        console.error('❌ [Geidea API] Error in response:', {
-          responseCode: geideaData.responseCode,
-          detailedResponseCode: geideaData.detailedResponseCode,
-          responseMessage: geideaData.responseMessage,
-          detailedResponseMessage: geideaData.detailedResponseMessage,
-          fullResponse: geideaData
-        });
 
         return NextResponse.json(
           {
@@ -197,8 +239,6 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (fetchError) {
-      console.error('❌ [Geidea API] Fetch error:', fetchError);
-
       return NextResponse.json(
         {
           error: 'Geidea API connection failed',
@@ -214,8 +254,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('❌ [Geidea API] Unexpected error:', error);
-
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -253,6 +291,13 @@ function getTroubleshootingTips(responseCode: string, detailedResponseCode: stri
 
   if (responseCode === "110") {
     tips.push("خطأ في معاملات الطلب");
+
+    if (detailedResponseCode === "009") {
+      tips.push("callbackUrl غير صحيح - يجب أن يكون URL مطلق (يبدأ بـ http:// أو https://)");
+      tips.push("تأكد من أن callbackUrl مسجل في لوحة تحكم Geidea");
+      tips.push("تأكد من أن callbackUrl لا يحتوي على localhost في بيئة الإنتاج");
+      tips.push("callbackUrl يجب أن يكون: https://yourdomain.com/api/geidea/callback");
+    }
 
     if (detailedResponseCode === "031") {
       tips.push("merchantReferenceId غير صحيح - يجب أن يحتوي على أحرف وأرقام وشرطات فقط");

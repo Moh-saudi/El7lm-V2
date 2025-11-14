@@ -20,7 +20,14 @@ import {
   Filter,
   Eye,
   Download,
-  RefreshCw
+  RefreshCw,
+  CreditCard,
+  Smartphone,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink,
+  Check,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc } from 'firebase/firestore';
@@ -46,12 +53,19 @@ interface PaymentRecord {
   amount: number;
   playerCount: number;
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
-  paymentMethod?: string;
+  paymentMethod?: 'mobile_wallet' | 'card' | 'geidea' | 'later';
   paymentType?: 'immediate' | 'deferred';
   registrationDate: Date;
   paymentDate?: Date;
   notes?: string;
   receiptUrl?: string;
+  receiptNumber?: string;
+  mobileWalletProvider?: string;
+  mobileWalletNumber?: string;
+  geideaOrderId?: string;
+  geideaTransactionId?: string;
+  geideaPaymentData?: string;
+  players?: Array<{ id: string; name: string; }>;
 }
 
 export default function PaymentManagementModal({ 
@@ -64,6 +78,8 @@ export default function PaymentManagementModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [filteredPayments, setFilteredPayments] = useState<PaymentRecord[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -85,12 +101,32 @@ export default function PaymentManagementModal({
       );
       
       const querySnapshot = await getDocs(paymentsQuery);
-      const paymentsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        registrationDate: doc.data().registrationDate?.toDate?.() || new Date(),
-        paymentDate: doc.data().paymentDate?.toDate?.() || null
-      })) as PaymentRecord[];
+      const paymentsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          registrationId: data.registrationId || doc.id,
+          playerName: data.accountName || data.playerName || 'غير محدد',
+          playerEmail: data.accountEmail || data.playerEmail || '',
+          playerPhone: data.accountPhone || data.playerPhone || '',
+          amount: data.paymentAmount || data.amount || 0,
+          playerCount: data.players?.length || data.playerCount || 1,
+          paymentStatus: data.paymentStatus || 'pending',
+          paymentMethod: data.paymentMethod,
+          paymentType: data.paymentType,
+          registrationDate: data.registrationDate?.toDate?.() || new Date(),
+          paymentDate: data.paymentDate?.toDate?.() || null,
+          notes: data.notes || '',
+          receiptUrl: data.receiptUrl || '',
+          receiptNumber: data.receiptNumber || '',
+          mobileWalletProvider: data.mobileWalletProvider || '',
+          mobileWalletNumber: data.mobileWalletNumber || '',
+          geideaOrderId: data.geideaOrderId || '',
+          geideaTransactionId: data.geideaTransactionId || '',
+          geideaPaymentData: data.geideaPaymentData || '',
+          players: data.players || []
+        } as PaymentRecord;
+      });
       
       setPayments(paymentsData);
     } catch (error) {
@@ -154,6 +190,76 @@ export default function PaymentManagementModal({
       case 'failed': return 'فشل';
       case 'refunded': return 'مسترد';
       default: return 'غير محدد';
+    }
+  };
+
+  const getPaymentMethodText = (method?: string) => {
+    switch (method) {
+      case 'mobile_wallet': return 'محفظة إلكترونية';
+      case 'card':
+      case 'geidea': return 'كارت بنكي (جيديا)';
+      case 'later': return 'دفع لاحقاً';
+      default: return 'غير محدد';
+    }
+  };
+
+  const getPaymentMethodIcon = (method?: string) => {
+    switch (method) {
+      case 'mobile_wallet': return Smartphone;
+      case 'card':
+      case 'geidea': return CreditCard;
+      case 'later': return Clock;
+      default: return DollarSign;
+    }
+  };
+
+  const getPaymentMethodColor = (method?: string) => {
+    switch (method) {
+      case 'mobile_wallet': return 'bg-green-100 text-green-800 border-green-300';
+      case 'card':
+      case 'geidea': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'later': return 'bg-blue-100 text-blue-800 border-blue-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const handleViewReceipt = (payment: PaymentRecord) => {
+    setSelectedPayment(payment);
+    setShowReceiptModal(true);
+  };
+
+  const handleApprovePayment = async (paymentId: string) => {
+    try {
+      await updateDoc(doc(db, 'tournament_registrations', paymentId), {
+        paymentStatus: 'paid',
+        paymentDate: new Date(),
+        updatedAt: new Date()
+      });
+      
+      toast.success('تم الموافقة على الدفع بنجاح');
+      fetchPayments();
+      setShowReceiptModal(false);
+      setSelectedPayment(null);
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast.error('فشل في الموافقة على الدفع');
+    }
+  };
+
+  const handleRejectPayment = async (paymentId: string) => {
+    try {
+      await updateDoc(doc(db, 'tournament_registrations', paymentId), {
+        paymentStatus: 'failed',
+        updatedAt: new Date()
+      });
+      
+      toast.success('تم رفض الدفع');
+      fetchPayments();
+      setShowReceiptModal(false);
+      setSelectedPayment(null);
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      toast.error('فشل في رفض الدفع');
     }
   };
 
@@ -317,13 +423,30 @@ export default function PaymentManagementModal({
                             <p className="text-sm text-gray-600">{payment.playerCount} لاعب</p>
                           </div>
                           
-                          <div>
+                          <div className="space-y-2">
                             <Badge className={getStatusColor(payment.paymentStatus)}>
                               {getStatusText(payment.paymentStatus)}
                             </Badge>
                             {payment.paymentMethod && (
-                              <p className="text-xs text-gray-500 mt-1">{payment.paymentMethod}</p>
+                              <Badge variant="outline" className={`${getPaymentMethodColor(payment.paymentMethod)} flex items-center gap-1 w-fit`}>
+                                {React.createElement(getPaymentMethodIcon(payment.paymentMethod), { className: 'h-3 w-3' })}
+                                <span className="text-xs">{getPaymentMethodText(payment.paymentMethod)}</span>
+                              </Badge>
                             )}
+                            {payment.paymentMethod === 'mobile_wallet' && payment.mobileWalletProvider && (
+                              <p className="text-xs text-gray-500">
+                                {payment.mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
+                                 payment.mobileWalletProvider === 'orange' ? 'أورنج' :
+                                 payment.mobileWalletProvider === 'etisalat' ? 'اتصالات' :
+                                 payment.mobileWalletProvider === 'instapay' ? 'انستا باي' :
+                                 payment.mobileWalletProvider}
+                              </p>
+                            )}
+                            {payment.paymentMethod === 'card' || payment.paymentMethod === 'geidea' ? (
+                              <p className="text-xs text-green-600 font-medium">
+                                ✓ دفع آلي
+                              </p>
+                            ) : null}
                           </div>
                           
                           <div>
@@ -343,33 +466,53 @@ export default function PaymentManagementModal({
                             </p>
                           </div>
                           
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2">
                             {payment.paymentStatus === 'pending' && (
-                              <>
+                              <div className="flex gap-2">
                                 <Button
                                   size="sm"
-                                  onClick={() => updatePaymentStatus(payment.id, 'paid')}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => {
+                                    if (payment.paymentMethod === 'mobile_wallet' && payment.receiptUrl) {
+                                      handleViewReceipt(payment);
+                                    } else {
+                                      handleApprovePayment(payment.id);
+                                    }
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                                  title="موافقة"
                                 >
-                                  <CheckCircle className="h-4 w-4" />
+                                  <Check className="h-4 w-4" />
+                                  <span className="mr-1 text-xs">موافقة</span>
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => updatePaymentStatus(payment.id, 'failed')}
+                                  onClick={() => handleRejectPayment(payment.id)}
                                   className="border-red-300 text-red-600 hover:bg-red-50"
+                                  title="رفض"
                                 >
-                                  <X className="h-4 w-4" />
+                                  <XCircle className="h-4 w-4" />
                                 </Button>
-                              </>
+                              </div>
                             )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            {payment.receiptUrl && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewReceipt(payment)}
+                                className="border-blue-300 text-blue-600 hover:bg-blue-50 w-full"
+                                title="عرض الإيصال"
+                              >
+                                <FileText className="h-4 w-4 mr-1" />
+                                <span className="text-xs">عرض الإيصال</span>
+                              </Button>
+                            )}
+                            {payment.paymentStatus === 'paid' && (
+                              <Badge className="bg-green-100 text-green-800 w-fit">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                تم الدفع
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -403,6 +546,232 @@ export default function PaymentManagementModal({
           </div>
         </div>
       </DialogContent>
+
+      {/* Receipt View Modal */}
+      <Dialog open={showReceiptModal} onOpenChange={setShowReceiptModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              تفاصيل الدفع والإيصال
+            </DialogTitle>
+            <DialogDescription>
+              مراجعة تفاصيل الدفع والإيصال المرفوع
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPayment && (
+            <div className="space-y-6">
+              {/* Payment Details */}
+              <Card className="border-2 border-blue-100">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-blue-600" />
+                    معلومات الدفع
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-gray-600">اسم المسجل</Label>
+                      <p className="font-semibold text-gray-900">{selectedPayment.playerName}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">البريد الإلكتروني</Label>
+                      <p className="font-semibold text-gray-900">{selectedPayment.playerEmail}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">رقم الهاتف</Label>
+                      <p className="font-semibold text-gray-900">{selectedPayment.playerPhone}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">عدد اللاعبين</Label>
+                      <p className="font-semibold text-gray-900">{selectedPayment.playerCount} لاعب</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">المبلغ</Label>
+                      <p className="text-xl font-bold text-green-600">{selectedPayment.amount} ج.م</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">طريقة الدفع</Label>
+                      <Badge className={`${getPaymentMethodColor(selectedPayment.paymentMethod)} flex items-center gap-1 w-fit mt-1`}>
+                        {React.createElement(getPaymentMethodIcon(selectedPayment.paymentMethod), { className: 'h-3 w-3' })}
+                        <span>{getPaymentMethodText(selectedPayment.paymentMethod)}</span>
+                      </Badge>
+                    </div>
+                    {selectedPayment.paymentMethod === 'mobile_wallet' && (
+                      <>
+                        {selectedPayment.mobileWalletProvider && (
+                          <div>
+                            <Label className="text-sm text-gray-600">مزود المحفظة</Label>
+                            <p className="font-semibold text-gray-900">
+                              {selectedPayment.mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
+                               selectedPayment.mobileWalletProvider === 'orange' ? 'أورنج' :
+                               selectedPayment.mobileWalletProvider === 'etisalat' ? 'اتصالات' :
+                               selectedPayment.mobileWalletProvider === 'instapay' ? 'انستا باي' :
+                               selectedPayment.mobileWalletProvider}
+                            </p>
+                          </div>
+                        )}
+                        {selectedPayment.mobileWalletNumber && (
+                          <div>
+                            <Label className="text-sm text-gray-600">رقم المحفظة</Label>
+                            <p className="font-semibold text-gray-900">{selectedPayment.mobileWalletNumber}</p>
+                          </div>
+                        )}
+                        {selectedPayment.receiptNumber && (
+                          <div>
+                            <Label className="text-sm text-gray-600">رقم الإيصال</Label>
+                            <p className="font-semibold text-gray-900">{selectedPayment.receiptNumber}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {(selectedPayment.paymentMethod === 'card' || selectedPayment.paymentMethod === 'geidea') && (
+                      <>
+                        {selectedPayment.geideaOrderId && (
+                          <div>
+                            <Label className="text-sm text-gray-600">رقم الطلب (جيديا)</Label>
+                            <p className="font-semibold text-gray-900">{selectedPayment.geideaOrderId}</p>
+                          </div>
+                        )}
+                        {selectedPayment.geideaTransactionId && (
+                          <div>
+                            <Label className="text-sm text-gray-600">رقم المعاملة</Label>
+                            <p className="font-semibold text-gray-900">{selectedPayment.geideaTransactionId}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div>
+                      <Label className="text-sm text-gray-600">تاريخ التسجيل</Label>
+                      <p className="font-semibold text-gray-900">
+                        {new Date(selectedPayment.registrationDate).toLocaleDateString('ar-EG', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-gray-600">حالة الدفع</Label>
+                      <Badge className={getStatusColor(selectedPayment.paymentStatus)}>
+                        {getStatusText(selectedPayment.paymentStatus)}
+                      </Badge>
+                    </div>
+                  </div>
+                  {selectedPayment.notes && (
+                    <div className="mt-4 pt-4 border-t">
+                      <Label className="text-sm text-gray-600">ملاحظات</Label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg mt-1">{selectedPayment.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Receipt Image */}
+              {selectedPayment.receiptUrl && (
+                <Card className="border-2 border-green-100">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <ImageIcon className="h-5 w-5 text-green-600" />
+                      إيصال الدفع
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div className="relative bg-gray-100 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                        {selectedPayment.receiptUrl.startsWith('http') ? (
+                          <img 
+                            src={selectedPayment.receiptUrl} 
+                            alt="Receipt"
+                            className="w-full h-auto rounded-lg shadow-lg max-h-[600px] object-contain mx-auto"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'text-center py-8 text-gray-500';
+                              errorDiv.textContent = 'فشل في تحميل الصورة';
+                              e.currentTarget.parentElement?.appendChild(errorDiv);
+                            }}
+                          />
+                        ) : (
+                          <div className="text-center py-8">
+                            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-600">الإيصال: {selectedPayment.receiptUrl}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (selectedPayment.receiptUrl?.startsWith('http')) {
+                              window.open(selectedPayment.receiptUrl, '_blank');
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          فتح في نافذة جديدة
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (selectedPayment.receiptUrl?.startsWith('http')) {
+                              const link = document.createElement('a');
+                              link.href = selectedPayment.receiptUrl;
+                              link.download = `receipt_${selectedPayment.receiptNumber || selectedPayment.id}.jpg`;
+                              link.click();
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          تحميل الإيصال
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Action Buttons */}
+              {selectedPayment.paymentStatus === 'pending' && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    onClick={() => handleApprovePayment(selectedPayment.id)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    الموافقة على الدفع
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleRejectPayment(selectedPayment.id)}
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    رفض الدفع
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowReceiptModal(false);
+                    setSelectedPayment(null);
+                  }}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  إغلاق
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -83,7 +83,7 @@ const initializeFirestoreWithSettings = async () => {
       try {
         // Use the new FirestoreSettings.cache instead of enableIndexedDbPersistence
         // This is the recommended approach for Firebase v9+
-        console.log('✅ Firestore initialized with modern settings');
+        // Firestore initialized with modern settings
       } catch (err: any) {
         if (err.code === 'failed-precondition') {
           console.warn('Multiple tabs open, persistence disabled');
@@ -148,17 +148,13 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
   // Initialize Firebase only once
   useEffect(() => {
-    console.log('🚀 FirebaseAuthProvider: Starting initialization...');
-    console.log('🚀 FirebaseAuthProvider: State initialized, checking Firebase config...');
+    // Initialization logs removed for cleaner console
   }, []); // Empty dependency array - run only once
 
   // التحقق من تكوين Firebase
   useEffect(() => {
     try {
-      console.log('🔧 FirebaseAuthProvider: Firebase config check:', {
-        hasAuth: !!auth,
-        hasDb: !!db
-      });
+      // Config check logs removed for cleaner console
     } catch (configError) {
       console.error('❌ FirebaseAuthProvider: Firebase config error:', configError);
       setError('Firebase configuration error');
@@ -305,8 +301,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
               let foundData = null;
               let foundCollection = null;
 
-              console.log('🔍 AuthProvider - Searching in role-specific collections first...');
-
               // Use Promise.all for parallel queries
               const queries = accountTypes.map(collection =>
                 getDoc(doc(db, collection, user.uid))
@@ -319,14 +313,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                   foundData = results[i].data();
                   foundCollection = accountTypes[i];
                   userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-                  console.log(`✅ AuthProvider - Found user data in ${accountTypes[i]} collection (PRIORITY):`, {
-                    uid: user.uid,
-                    accountType: userAccountType,
-                    collection: accountTypes[i],
-                    full_name: foundData.full_name || foundData.name,
-                    email: foundData.email,
-                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url
-                  });
                   break; // Use first found collection as source of truth
                 }
               }
@@ -334,15 +320,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
               if (isSubscribed) {
                 if (foundData && foundCollection) {
                   // Use data from role-specific collection (source of truth)
-                  console.log('🔍 AuthProvider - Using data from role collection:', {
-                    collection: foundCollection,
-                    userAccountType,
-                    academy_name: foundData.academy_name,
-                    club_name: foundData.club_name,
-                    name: foundData.name,
-                    full_name: foundData.full_name,
-                    allFields: Object.keys(foundData)
-                  });
 
                   const userData: UserData = {
                     uid: user.uid,
@@ -364,14 +341,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                     ...foundData
                   };
 
-                  console.log('✅ AuthProvider - User data created from role collection:', {
-                    accountType: userData.accountType,
-                    collection: foundCollection,
-                    full_name: userData.full_name,
-                    club_name: userData.club_name,
-                    academy_name: userData.academy_name
-                  });
-
                   // Update users collection to sync with role collection
                   const userRef = doc(db, 'users', user.uid);
                   try {
@@ -379,14 +348,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                       ...userData,
                       updated_at: new Date()
                     }, { merge: true });
-                    console.log('✅ AuthProvider - Synced users collection with role collection');
                   } catch (syncError) {
-                    console.warn('⚠️ AuthProvider - Failed to sync users collection:', syncError);
                     // Continue anyway - this is not critical
                   }
 
                   setUserData(userData);
-                  console.log('✅ AuthProvider - User data set from role collection successfully');
                 } else {
                   // Fallback: Check users collection if no role-specific data found
                   console.log('⚠️ AuthProvider - No data in role collections, checking users collection...');

@@ -176,15 +176,7 @@ if (!getApps().length) {
         throw new Error('Firebase configuration is required for development');
       }
     } else {
-    console.log('🔧 Initializing Firebase with config:', {
-      apiKey: firebaseConfig.apiKey ? '✅ Set' : '❌ Missing',
-      authDomain: firebaseConfig.authDomain ? '✅ Set' : '❌ Missing',
-      projectId: firebaseConfig.projectId ? '✅ Set' : '❌ Missing',
-      storageBucket: firebaseConfig.storageBucket ? '✅ Set' : '❌ Missing',
-      messagingSenderId: firebaseConfig.messagingSenderId ? '✅ Set' : '❌ Missing',
-      appId: firebaseConfig.appId ? '✅ Set' : '❌ Missing',
-      measurementId: firebaseConfig.measurementId ? '✅ Set' : '❌ Missing'
-    });
+    // Firebase initialization logs removed for cleaner console
 
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -217,7 +209,7 @@ if (!getApps().length) {
       }
     }
 
-    console.log('✅ Firebase initialized successfully');
+    // Firebase initialized successfully
 
     // إضافة error handling للـ Firestore
     if (db) {
@@ -387,9 +379,7 @@ export const retryOperation = async <T>(
 
 // التحقق من تكوين Geidea
 const hasValidGeideaConfig = validateGeideaConfig();
-if (process.env.NODE_ENV === 'development') {
-  console.log('✅ Geidea configuration validated with TEST credentials');
-}
+// Geidea configuration validated
 
 // تصدير الخدمات المهيأة
 export { analytics, app, auth, db, storage };

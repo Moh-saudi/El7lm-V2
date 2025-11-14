@@ -179,12 +179,19 @@ export default function AdminPaymentsPage() {
     });
 
     setFilteredPayments(filtered);
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage));
+    if (itemsPerPage === -1) {
+      setTotalPages(1);
+    } else {
+      setTotalPages(Math.ceil(filtered.length / itemsPerPage));
+    }
     setCurrentPage(1);
   };
 
   // الحصول على البيانات للصفحة الحالية
   const getCurrentPageData = () => {
+    if (itemsPerPage === -1) {
+      return filteredPayments;
+    }
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredPayments.slice(startIndex, endIndex);
@@ -2015,8 +2022,16 @@ export default function AdminPaymentsPage() {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">عناصر في الصفحة:</label>
               <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                value={itemsPerPage === -1 ? 'all' : itemsPerPage}
+                onChange={(e) => {
+                  if (e.target.value === 'all') {
+                    setItemsPerPage(-1);
+                    setCurrentPage(1);
+                  } else {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }
+                }}
                 title="اختر عدد العناصر في الصفحة"
                 className="border border-gray-300 rounded px-2 py-1 text-sm"
               >
@@ -2024,6 +2039,7 @@ export default function AdminPaymentsPage() {
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value="all">عرض الكل</option>
               </select>
             </div>
           </div>
@@ -2438,7 +2454,7 @@ export default function AdminPaymentsPage() {
         )}
 
         {/* نظام الصفحات */}
-        {totalPages > 1 && (
+        {itemsPerPage !== -1 && totalPages > 1 && (
           <div className="flex items-center justify-between bg-white rounded-xl shadow-lg p-4 mt-6">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
@@ -2498,6 +2514,13 @@ export default function AdminPaymentsPage() {
                 الأخيرة ⏭️
               </button>
             </div>
+          </div>
+        )}
+        {itemsPerPage === -1 && (
+          <div className="flex items-center justify-center bg-white rounded-xl shadow-lg p-4 mt-6">
+            <span className="text-sm text-gray-600">
+              عرض جميع {filteredPayments.length} دفعة
+            </span>
           </div>
         )}
 

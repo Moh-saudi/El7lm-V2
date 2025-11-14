@@ -31,7 +31,8 @@ import {
     Shield,
     Smartphone,
     TrendingUp,
-    Users
+    Users,
+    XCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -192,20 +193,27 @@ export default function AdminLoginPage() {
       });
 
       // Handle remember me
-      if (rememberMe) {
-        localStorage.setItem('adminRememberMe', 'true');
-        localStorage.setItem('adminEmail', email);
-      } else {
-        localStorage.removeItem('adminRememberMe');
-        localStorage.removeItem('adminEmail');
+      try {
+        if (rememberMe) {
+          localStorage.setItem('adminRememberMe', 'true');
+          localStorage.setItem('adminEmail', email);
+        } else {
+          localStorage.removeItem('adminRememberMe');
+          localStorage.removeItem('adminEmail');
+        }
+      } catch (error) {
+        console.error('Error saving remember me preference:', error);
+        // Continue even if localStorage fails
       }
 
-      setSuccess('Login successful! Redirecting to admin dashboard...');
+      setSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
 
-      // Redirect with slight delay to show success message
+      // Wait for AuthProvider to sync before redirecting
+      // This ensures user data is loaded before navigation
       setTimeout(() => {
-        router.push('/dashboard/admin');
-      }, 1500);
+        // Use replace instead of push to avoid back button issues
+        router.replace('/dashboard/admin');
+      }, 2000); // Increased delay to allow auth state to sync
 
     } catch (error: any) {
       console.error('Login error:', error);
@@ -239,12 +247,19 @@ export default function AdminLoginPage() {
 
   // Load remembered email on component mount
   useEffect(() => {
-    const remembered = localStorage.getItem('adminRememberMe');
-    const savedEmail = localStorage.getItem('adminEmail');
+    try {
+      const remembered = localStorage.getItem('adminRememberMe');
+      const savedEmail = localStorage.getItem('adminEmail');
 
-    if (remembered === 'true' && savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
+      if (remembered === 'true' && savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.error('Error loading remembered email:', error);
+      // Clear invalid data
+      localStorage.removeItem('adminRememberMe');
+      localStorage.removeItem('adminEmail');
     }
   }, []);
 
@@ -264,303 +279,373 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-      {/* Animated background pattern */}
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950">
+      {/* Enhanced Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -inset-[10px] opacity-50">
-          <div className="absolute top-0 left-1/4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute top-0 right-1/4 w-72 h-72 bg-yellow-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
+        {/* Animated gradient orbs - Smaller on mobile */}
+        <div className="absolute top-0 -left-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-1/2 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-pink-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-4000"></div>
+        
+        {/* Grid pattern overlay - Smaller on mobile */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] sm:bg-[size:24px_24px]"></div>
+        
+        {/* Shine effect */}
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
       </div>
 
       <div className="relative z-10 flex min-h-screen">
-        {/* Left Panel - System Info */}
-        <div className="hidden lg:flex lg:w-1/3 flex-col justify-center p-8">
-          <div className="space-y-6">
-            {/* System Stats */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
+        {/* Left Panel - System Info (Enhanced) */}
+        <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col justify-center p-8 lg:p-12">
+          <div className="space-y-6 animate-fade-in">
+            {/* Brand/Logo Section */}
+            <div className="mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl shadow-lg">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">لوحة التحكم الإدارية</h1>
+              <p className="text-indigo-200 text-sm">نظام إدارة آمن ومتقدم</p>
+            </div>
+
+            {/* System Stats - Enhanced */}
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  System Overview
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <BarChart3 className="w-5 h-5 text-indigo-300" />
+                  <span>نظرة عامة على النظام</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {systemStats && (
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-blue-400" />
-                        <span className="text-sm">Total Users</span>
+                        <span className="text-xs text-indigo-200">إجمالي المستخدمين</span>
                       </div>
-                      <div className="text-xl font-bold text-blue-400">{systemStats.totalUsers}</div>
+                      <div className="text-2xl font-bold text-blue-400">{systemStats.totalUsers.toLocaleString()}</div>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
                       <div className="flex items-center gap-2">
                         <Activity className="w-4 h-4 text-green-400" />
-                        <span className="text-sm">Active Today</span>
+                        <span className="text-xs text-indigo-200">نشط اليوم</span>
                       </div>
-                      <div className="text-xl font-bold text-green-400">{systemStats.activeToday}</div>
+                      <div className="text-2xl font-bold text-green-400">{systemStats.activeToday}</div>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-yellow-400" />
-                        <span className="text-sm">System Load</span>
+                        <span className="text-xs text-indigo-200">حمل النظام</span>
                       </div>
-                      <div className="text-xl font-bold text-yellow-400">{systemStats.systemLoad}%</div>
+                      <div className="text-2xl font-bold text-yellow-400">{systemStats.systemLoad}%</div>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span className="text-sm">Uptime</span>
+                        <span className="text-xs text-indigo-200">وقت التشغيل</span>
                       </div>
-                      <div className="text-xl font-bold text-emerald-400">{systemStats.uptime}</div>
+                      <div className="text-2xl font-bold text-emerald-400">{systemStats.uptime}</div>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Security Info */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
+            {/* Security Info - Enhanced */}
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Security Information
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Shield className="w-5 h-5 text-indigo-300" />
+                  <span>معلومات الأمان</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {securityInfo && (
                   <>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
                       {getDeviceIcon()}
-                      <span>Device Type: {navigator.platform}</span>
+                      <span className="text-sm text-indigo-100">نوع الجهاز: {navigator.platform}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Globe className="w-4 h-4" />
-                      <span>Location: {securityInfo.timezone}</span>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                      <Globe className="w-4 h-4 text-indigo-300" />
+                      <span className="text-sm text-indigo-100">الموقع: {securityInfo.timezone}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="w-4 h-4" />
-                      <span>Current Time: {currentTime.toLocaleTimeString()}</span>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                      <Clock className="w-4 h-4 text-indigo-300" />
+                      <span className="text-sm text-indigo-100">الوقت الحالي: {currentTime.toLocaleTimeString('ar-SA')}</span>
                     </div>
                   </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Quick Links */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
+            {/* Quick Links - Enhanced */}
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Quick Access
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Settings className="w-5 h-5 text-indigo-300" />
+                  <span>وصول سريع</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start text-white hover:bg-white/10"
+                  className="w-full justify-start text-white hover:bg-white/20 transition-all"
                   onClick={() => router.push('/admin/login-advanced')}
                 >
-                  <Info className="w-4 h-4 mr-2" />
-                  Advanced Login
+                  <Info className="w-4 h-4 ml-2" />
+                  تسجيل دخول متقدم
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start text-white hover:bg-white/10"
+                  className="w-full justify-start text-white hover:bg-white/20 transition-all"
                   onClick={() => router.push('/')}
                 >
-                  <Globe className="w-4 h-4 mr-2" />
-                  Main Website
+                  <Globe className="w-4 h-4 ml-2" />
+                  الموقع الرئيسي
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Right Panel - Login Form */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-white/95 backdrop-blur-md shadow-2xl border-white/20">
-            <CardHeader className="space-y-4 text-center">
-              <div className="mx-auto mb-4 w-20 h-20 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                <Shield className="w-10 h-10 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                  Admin Control Panel
-                </CardTitle>
-                <CardDescription className="text-gray-600 mt-2">
-                  Secure administrative access portal
-                </CardDescription>
-              </div>
-
-              {/* Status badges */}
-              <div className="flex justify-center gap-2">
-                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  System Online
-                </Badge>
-                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                  <Shield className="w-3 h-3 mr-1" />
-                  SSL Secured
-                </Badge>
-              </div>
-            </CardHeader>
-
-            <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                {error && (
-                  <Alert variant="destructive" className="border-red-200">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {success && (
-                  <Alert className="border-green-200 bg-green-50 text-green-800">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription>{success}</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 font-medium">
-                    Email Address
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="admin@el7lm.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoComplete="email"
-                      className="pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
-                      dir="ltr"
-                    />
-                  </div>
+        {/* Right Panel - Login Form (Enhanced) */}
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+          <div className="w-full max-w-md">
+            <Card className="bg-white/95 backdrop-blur-2xl shadow-2xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
+              {/* Gradient top border */}
+              <div className="h-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
+              
+              <CardHeader className="space-y-4 sm:space-y-6 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6">
+                {/* Icon */}
+                <div className="mx-auto mb-3 sm:mb-4 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105">
+                  <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
+                </div>
+                
+                <div>
+                  <CardTitle className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 sm:mb-2">
+                    لوحة التحكم الإدارية
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-sm sm:text-base">
+                    بوابة الوصول الآمنة للإدارة
+                  </CardDescription>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-700 font-medium">
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      autoComplete="current-password"
-                      className="pr-20 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
-                      dir="ltr"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute left-2 top-1 h-8 w-8 p-0 hover:bg-gray-100"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                {/* Status badges - Enhanced */}
+                <div className="flex justify-center gap-2 sm:gap-3 flex-wrap">
+                  <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50/80 px-2.5 sm:px-3 py-1 text-xs sm:text-sm">
+                    <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1" />
+                    النظام متصل
+                  </Badge>
+                  <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50/80 px-2.5 sm:px-3 py-1 text-xs sm:text-sm">
+                    <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1" />
+                    آمن SSL
+                  </Badge>
                 </div>
+              </CardHeader>
 
-                <div className="flex items-center space-x-2 space-x-reverse">
-                  <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={setRememberMe}
-                    className="border-gray-300"
-                  />
-                  <Label
-                    htmlFor="remember"
-                    className="text-sm text-gray-600 cursor-pointer"
-                  >
-                    Remember me for future logins
-                  </Label>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white font-medium py-2.5 transition-all duration-200 shadow-lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                      Authenticating...
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="ml-2 h-4 w-4" />
-                      Sign In to Admin Panel
-                    </>
+              <CardContent className="px-4 sm:px-6 md:px-8 pb-6 sm:pb-8">
+                <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
+                  {error && (
+                    <div className="relative overflow-hidden rounded-xl border border-red-200/80 bg-gradient-to-r from-red-50 via-red-50/95 to-red-50 shadow-lg backdrop-blur-sm animate-fade-in">
+                      {/* Gradient accent border */}
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 via-red-400 to-red-500"></div>
+                      
+                      <div className="flex items-start gap-3 p-4 sm:p-4">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-red-100/80 backdrop-blur-sm">
+                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-sm sm:text-base font-semibold text-red-900">خطأ في تسجيل الدخول</h4>
+                          </div>
+                          <p className="text-xs sm:text-sm text-red-800 leading-relaxed">{error}</p>
+                        </div>
+                        <button
+                          onClick={() => setError('')}
+                          className="flex-shrink-0 p-1 text-red-400 hover:text-red-600 hover:bg-red-100/50 rounded-lg transition-colors"
+                          aria-label="إغلاق"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </form>
 
-              <div className="mt-6 space-y-4">
-                {/* Security Notice */}
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-amber-800">
-                      <p className="font-medium">Security Notice</p>
-                      <p className="text-xs mt-1">This is a restricted admin area. All login attempts are monitored and logged.</p>
+                  {success && (
+                    <div className="relative overflow-hidden rounded-xl border border-green-200/80 bg-gradient-to-r from-green-50 via-emerald-50/95 to-green-50 shadow-lg backdrop-blur-sm animate-fade-in">
+                      {/* Gradient accent border */}
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500"></div>
+                      
+                      <div className="flex items-start gap-3 p-4 sm:p-4">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-green-100/80 backdrop-blur-sm">
+                            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-sm sm:text-base font-semibold text-green-900">تم بنجاح!</h4>
+                          </div>
+                          <p className="text-xs sm:text-sm text-green-800 leading-relaxed">{success}</p>
+                        </div>
+                        <button
+                          onClick={() => setSuccess('')}
+                          className="flex-shrink-0 p-1 text-green-400 hover:text-green-600 hover:bg-green-100/50 rounded-lg transition-colors"
+                          aria-label="إغلاق"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-gray-700 font-semibold text-xs sm:text-sm">
+                      البريد الإلكتروني
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="admin@el7lm.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        autoComplete="email"
+                        className="pr-9 sm:pr-10 h-11 sm:h-12 text-sm sm:text-base border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-gray-700 font-semibold text-xs sm:text-sm">
+                      كلمة المرور
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="أدخل كلمة المرور"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                        className="pr-9 sm:pr-10 pl-10 sm:pl-12 h-11 sm:h-12 text-sm sm:text-base border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl"
+                        dir="ltr"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-100 text-gray-500"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <Checkbox
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={setRememberMe}
+                      className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 h-4 w-4 sm:h-5 sm:w-5"
+                    />
+                    <Label
+                      htmlFor="remember"
+                      className="text-xs sm:text-sm text-gray-600 cursor-pointer font-medium"
+                    >
+                      تذكرني في المستقبل
+                    </Label>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 sm:h-12 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-xl rounded-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none active:scale-[0.98]"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="ml-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                        <span className="text-xs sm:text-sm">جاري التحقق...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="text-xs sm:text-sm">تسجيل الدخول</span>
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+                  {/* Security Notice - Enhanced */}
+                  <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg sm:rounded-xl">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs sm:text-sm text-amber-900">
+                        <p className="font-semibold mb-1 text-xs sm:text-sm">إشعار الأمان</p>
+                        <p className="text-[10px] sm:text-xs leading-relaxed">هذه منطقة إدارية مقيدة. يتم مراقبة وتسجيل جميع محاولات تسجيل الدخول.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Links - Enhanced */}
+                  <div className="text-center text-xs sm:text-sm text-gray-600 space-y-2 sm:space-y-3">
+                    <p className="leading-relaxed text-xs sm:text-sm">
+                      للمستخدمين العاديين، يرجى استخدام{' '}
+                      <a href="/auth/login" className="text-indigo-600 hover:text-indigo-700 font-semibold hover:underline transition-colors break-words">
+                        صفحة تسجيل الدخول العادية
+                      </a>
+                    </p>
+                    <div className="flex justify-center items-center gap-2 sm:gap-3 pt-2 flex-wrap">
+                      <a href="/admin/login-advanced" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline transition-colors text-xs sm:text-sm">
+                        تسجيل دخول متقدم
+                      </a>
+                      <span className="text-gray-400">•</span>
+                      <a href="/" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline transition-colors text-xs sm:text-sm">
+                        الموقع الرئيسي
+                      </a>
                     </div>
                   </div>
                 </div>
-
-                {/* Links */}
-                <div className="text-center text-sm text-gray-600 space-y-2">
-                  <p>For regular users, please use the
-                    <a href="/auth/login" className="text-blue-600 hover:underline mx-1">
-                      standard login page
-                    </a>
-                  </p>
-                  <div className="flex justify-center space-x-4 space-x-reverse">
-                    <a href="/admin/login-advanced" className="text-blue-600 hover:underline">
-                      Advanced Login
-                    </a>
-                    <span className="text-gray-400">•</span>
-                    <a href="/" className="text-blue-600 hover:underline">
-                      Main Site
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
       {/* Custom styles for animations */}
       <style jsx>{`
         @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
           33% { transform: translate(30px, -50px) scale(1.1); }
           66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob {
-          animation: blob 7s infinite;
+          animation: blob 8s ease-in-out infinite;
         }
         .animation-delay-2000 {
           animation-delay: 2s;
         }
         .animation-delay-4000 {
           animation-delay: 4s;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
         }
       `}</style>
 
@@ -573,7 +658,7 @@ export default function AdminLoginPage() {
         onClose={() => setShowEmailVerification(false)}
         title="التحقق من هوية المشرف"
         subtitle="تم إرسال رمز التحقق إلى بريد المشرف"
-        otpExpirySeconds={30} // 30 ثانية للأدمن
+        otpExpirySeconds={30}
       />
     </div>
   );

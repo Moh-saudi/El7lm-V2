@@ -3,13 +3,18 @@ export interface Tournament {
   name: string;
   description: string;
   location: string;
+  locationUrl?: string;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
   maxParticipants: number;
   currentParticipants: number;
   entryFee: number;
+  currency?: string;
   isPaid: boolean;
+  allowInstallments?: boolean;
+  installmentsCount?: number;
+  installmentsDetails?: string;
   isActive: boolean;
   feeType: 'individual' | 'club';
   maxPlayersPerClub?: number;

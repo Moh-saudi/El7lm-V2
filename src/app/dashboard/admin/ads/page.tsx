@@ -690,10 +690,10 @@ export default function AdminAdsPage() {
           console.log('Dialog state changing to:', open);
           setShowAddDialog(open);
         }}>
-          <DialogContent className="max-w-[98vw] lg:max-w-7xl max-h-[96vh] overflow-hidden p-0 bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-0">
-            <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          <DialogContent className="max-w-[90vw] lg:max-w-5xl max-h-[90vh] overflow-hidden p-0 bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-0 flex flex-col">
+            <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
               {/* Premium Header with Glass Effect */}
-              <div className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-8 py-5 overflow-hidden">
+              <div className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-6 py-4 overflow-hidden flex-shrink-0">
                 {/* Animated Background Pattern */}
                 <div className="absolute inset-0 opacity-30">
                   <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
@@ -714,10 +714,10 @@ export default function AdminAdsPage() {
                       </div>
                     </div>
                     <div>
-                      <DialogTitle className="text-2xl font-extrabold text-white mb-1 drop-shadow-lg tracking-tight">
+                      <DialogTitle className="text-xl font-extrabold text-white mb-1 drop-shadow-lg tracking-tight">
                         {editingAd ? '✏️ تعديل الإعلان' : '✨ إنشاء إعلان جديد'}
                       </DialogTitle>
-                      <DialogDescription className="text-white/80 text-sm font-medium">
+                      <DialogDescription className="text-white/80 text-xs font-medium">
                         صمم إعلانك الاحترافي بخطوات بسيطة
                       </DialogDescription>
                     </div>
@@ -740,79 +740,79 @@ export default function AdminAdsPage() {
               </div>
 
               {/* Main Content - Split Layout */}
-              <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+              <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30 min-h-0 flex-shrink">
                 {/* Left Side - Form */}
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-8">
-                    <Tabs defaultValue="basic" className="space-y-6">
+                <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 pr-2">
+                  <div className="p-5">
+                    <Tabs defaultValue="basic" className="space-y-4">
                       {/* Premium Tabs Navigation */}
-                      <div className="flex gap-3 border-b-2 border-gray-200/50 pb-3">
-                        <TabsList className="bg-gradient-to-r from-gray-100 to-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/50">
+                      <div className="flex gap-2 border-b-2 border-gray-200/50 pb-2">
+                        <TabsList className="bg-gradient-to-r from-gray-100 to-gray-50 p-1 rounded-xl shadow-inner border border-gray-200/50">
                           <TabsTrigger 
                             value="basic" 
-                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg px-4 py-2 rounded-lg font-semibold text-xs transition-all duration-300"
                           >
-                            <FileText className="h-4 w-4 ml-2" />
-                            المعلومات الأساسية
+                            <FileText className="h-3 w-3 ml-1.5" />
+                            الأساسية
                           </TabsTrigger>
                           <TabsTrigger 
                             value="media" 
-                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg px-4 py-2 rounded-lg font-semibold text-xs transition-all duration-300"
                           >
-                            <Image className="h-4 w-4 ml-2" />
+                            <Image className="h-3 w-3 ml-1.5" />
                             الوسائط
                           </TabsTrigger>
                           <TabsTrigger 
                             value="settings" 
-                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 data-[state=active]:scale-105"
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg px-4 py-2 rounded-lg font-semibold text-xs transition-all duration-300"
                           >
-                            <Settings className="h-4 w-4 ml-2" />
+                            <Settings className="h-3 w-3 ml-1.5" />
                             الإعدادات
                           </TabsTrigger>
                         </TabsList>
                       </div>
 
                       {/* Tab Content - Basic */}
-                      <TabsContent value="basic" className="mt-6">
-                      <div className="grid grid-cols-2 gap-6">
+                      <TabsContent value="basic" className="mt-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {/* Right Column - Title, Type, Description */}
-                        <div className="space-y-5">
+                        <div className="space-y-4 w-full">
                           {/* Title & Type - Premium Card */}
-                          <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                          <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 rounded-xl border-2 border-blue-200/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"></div>
                             <div className="relative">
-                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                                  <Zap className="h-4 w-4 text-white" />
+                              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                                  <Zap className="h-3 w-3 text-white" />
                                 </div>
                                 معلومات أساسية
                               </h3>
                               
-                              <div className="space-y-4">
+                              <div className="space-y-3">
                                 <div>
-                                  <Label htmlFor="title" className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5 block">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    عنوان الإعلان
+                                  <Label htmlFor="title" className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5 block">
+                                    <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                                    عنوان الإعلان *
                                   </Label>
                                   <Input
                                     id="title"
                                     value={formData.title}
                                     onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))}
-                                    placeholder="عنوان جذاب ومميز للإعلان..."
+                                    placeholder="عنوان جذاب ومميز..."
                                     required
-                                    className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                    className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-lg shadow-sm focus:shadow-md transition-all bg-white"
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="type" className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-1.5 block">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    نوع الإعلان
+                                  <Label htmlFor="type" className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5 block">
+                                    <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                                    نوع الإعلان *
                                   </Label>
                                   <Select 
                                     value={formData.type} 
                                     onValueChange={(value) => setFormData(prev => ({...prev, type: value as any}))}
                                   >
-                                    <SelectTrigger className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-xl shadow-sm focus:shadow-md bg-white">
+                                    <SelectTrigger className="h-11 text-sm border-2 border-blue-200 focus:border-indigo-500 rounded-lg shadow-sm focus:shadow-md bg-white">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -827,63 +827,63 @@ export default function AdminAdsPage() {
                           </div>
 
                           {/* Description - Premium Card */}
-                          <div className="relative bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-purple-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                          <div className="relative bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 p-4 rounded-xl border-2 border-purple-200/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
                             <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-purple-200/20 to-pink-200/20 rounded-full blur-2xl"></div>
                             <div className="relative">
-                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-                                  <FileText className="h-4 w-4 text-white" />
+                              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                <div className="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                                  <FileText className="h-3 w-3 text-white" />
                                 </div>
-                                وصف الإعلان
+                                وصف الإعلان *
                               </h3>
                               
                               <Textarea
                                 id="description"
                                 value={formData.description}
                                 onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
-                                placeholder="اكتب وصفاً مفصلاً وجذاباً يشرح مزايا الإعلان..."
-                                rows={6}
+                                placeholder="اكتب وصفاً مفصلاً وجذاباً..."
+                                rows={5}
                                 required
-                                className="text-sm resize-none border-2 border-purple-200 focus:border-purple-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                className="text-sm resize-none border-2 border-purple-200 focus:border-purple-500 rounded-lg shadow-sm focus:shadow-md transition-all bg-white min-h-[120px]"
                               />
                             </div>
                           </div>
                         </div>
 
                         {/* Left Column - CTA */}
-                        <div className="space-y-5">
-                          <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-6 rounded-2xl border-2 border-emerald-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                        <div className="space-y-4 w-full">
+                          <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-4 rounded-xl border-2 border-emerald-200/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
                             <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-emerald-200/20 to-teal-200/20 rounded-full blur-2xl"></div>
                             <div className="relative">
-                              <h3 className="text-base font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
-                                  <Target className="h-4 w-4 text-white" />
+                              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                <div className="p-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                                  <Target className="h-3 w-3 text-white" />
                                 </div>
                                 زر الإجراء (CTA)
                               </h3>
                               
-                              <div className="space-y-4">
+                              <div className="space-y-3">
                                 <div>
-                                  <Label htmlFor="ctaText" className="text-sm font-bold text-gray-800 mb-2 block">
+                                  <Label htmlFor="ctaText" className="text-xs font-semibold text-gray-700 mb-1.5 block">
                                     نص الزر
                                   </Label>
                                   <Input
                                     id="ctaText"
                                     value={formData.ctaText}
                                     onChange={(e) => setFormData(prev => ({...prev, ctaText: e.target.value}))}
-                                    placeholder="مثال: اشترك الآن، احصل على خصم..."
-                                    className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                    placeholder="مثال: اشترك الآن..."
+                                    className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-lg shadow-sm focus:shadow-md transition-all bg-white"
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="ctaUrl" className="text-sm font-bold text-gray-800 mb-2 block">
+                                  <Label htmlFor="ctaUrl" className="text-xs font-semibold text-gray-700 mb-1.5 block">
                                     وجهة الزر
                                   </Label>
                                   <Select 
                                     value={formData.ctaUrl} 
                                     onValueChange={(value) => setFormData(prev => ({...prev, ctaUrl: value}))}
                                   >
-                                    <SelectTrigger className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md bg-white">
+                                    <SelectTrigger className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-lg shadow-sm focus:shadow-md bg-white">
                                       <SelectValue placeholder="اختر الوجهة" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -903,7 +903,7 @@ export default function AdminAdsPage() {
                                 
                                 {formData.ctaUrl === 'custom' && (
                                   <div>
-                                    <Label htmlFor="customUrl" className="text-sm font-bold text-gray-800 mb-2 block">
+                                    <Label htmlFor="customUrl" className="text-xs font-semibold text-gray-700 mb-1.5 block">
                                       الرابط المخصص
                                     </Label>
                                     <Input
@@ -911,7 +911,7 @@ export default function AdminAdsPage() {
                                       value={formData.customUrl || ''}
                                       onChange={(e) => setFormData(prev => ({...prev, customUrl: e.target.value}))}
                                       placeholder="https://example.com"
-                                      className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-xl shadow-sm focus:shadow-md transition-all bg-white"
+                                      className="h-11 text-sm border-2 border-emerald-200 focus:border-emerald-500 rounded-lg shadow-sm focus:shadow-md transition-all bg-white"
                                     />
                                   </div>
                                 )}
@@ -920,31 +920,26 @@ export default function AdminAdsPage() {
                           </div>
 
                           {/* Premium Tips Card */}
-                          <div className="relative bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 p-6 rounded-2xl border-2 border-amber-200/50 shadow-xl overflow-hidden">
-                            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-200/30 to-orange-200/30 rounded-full blur-3xl"></div>
+                          <div className="relative bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 p-4 rounded-xl border-2 border-amber-200/50 shadow-lg overflow-hidden">
                             <div className="relative">
-                              <div className="flex items-start gap-3 mb-3">
-                                <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg">
-                                  <Gift className="h-5 w-5 text-white" />
+                              <div className="flex items-start gap-2 mb-2">
+                                <div className="p-1.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg shadow-md">
+                                  <Gift className="h-3 w-3 text-white" />
                                 </div>
                                 <div className="flex-1">
-                                  <h3 className="text-sm font-extrabold text-gray-900 mb-2">💡 نصائح لإعلان ناجح</h3>
-                                  <ul className="text-xs text-gray-700 space-y-1.5 font-medium">
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-amber-600 mt-0.5">✓</span>
-                                      <span>استخدم عنواناً جذاباً ومباشراً</span>
+                                  <h3 className="text-xs font-bold text-gray-900 mb-1.5">💡 نصائح لإعلان ناجح</h3>
+                                  <ul className="text-[10px] text-gray-700 space-y-1 font-medium">
+                                    <li className="flex items-start gap-1.5">
+                                      <span className="text-amber-600 mt-0.5 text-xs">✓</span>
+                                      <span>عنوان جذاب ومباشر</span>
                                     </li>
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-amber-600 mt-0.5">✓</span>
-                                      <span>اجعل الوصف واضحاً ومختصراً</span>
+                                    <li className="flex items-start gap-1.5">
+                                      <span className="text-amber-600 mt-0.5 text-xs">✓</span>
+                                      <span>وصف واضح ومختصر</span>
                                     </li>
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-amber-600 mt-0.5">✓</span>
-                                      <span>اختر CTA قوي ومحفز للنقر</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                      <span className="text-amber-600 mt-0.5">✓</span>
-                                      <span>راجع المعاينة الحية على اليمين ⬅️</span>
+                                    <li className="flex items-start gap-1.5">
+                                      <span className="text-amber-600 mt-0.5 text-xs">✓</span>
+                                      <span>CTA قوي ومحفز</span>
                                     </li>
                                   </ul>
                                 </div>
@@ -958,7 +953,7 @@ export default function AdminAdsPage() {
                     {/* Tab Content - Media */}
                     <TabsContent value="media" className="mt-0">
                       {(formData.type === 'image' || formData.type === 'video') ? (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                           {/* Upload Section */}
                           <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                             <h3 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
@@ -995,7 +990,7 @@ export default function AdminAdsPage() {
                                 value={formData.mediaUrl}
                                 onChange={(e) => setFormData(prev => ({...prev, mediaUrl: e.target.value}))}
                                 placeholder={`https://example.com/${formData.type === 'image' ? 'image.jpg' : 'video.mp4'}`}
-                                className="h-9 text-sm"
+                                className="h-11 text-sm"
                               />
                             </div>
 
@@ -1027,7 +1022,7 @@ export default function AdminAdsPage() {
 
                     {/* Tab Content - Settings */}
                     <TabsContent value="settings" className="mt-0">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {/* Right Column - Basic Settings */}
                         <div className="space-y-4">
                           {/* Basic Settings */}
@@ -1037,7 +1032,7 @@ export default function AdminAdsPage() {
                               إعدادات أساسية
                             </h3>
                             
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <Label htmlFor="priority" className="text-xs font-semibold mb-1.5 block">
                                   الأولوية
@@ -1049,10 +1044,10 @@ export default function AdminAdsPage() {
                                   onChange={(e) => setFormData(prev => ({...prev, priority: parseInt(e.target.value)}))}
                                   min="1"
                                   max="10"
-                                  className="h-9 text-sm"
+                                  className="h-11 text-sm w-full"
                                 />
                               </div>
-                              <div className="col-span-2">
+                              <div>
                                 <Label htmlFor="targetAudience" className="text-xs font-semibold mb-1.5 block">
                                   الجمهور
                                 </Label>
@@ -1060,7 +1055,7 @@ export default function AdminAdsPage() {
                                   value={formData.targetAudience} 
                                   onValueChange={(value) => setFormData(prev => ({...prev, targetAudience: value as any}))}
                                 >
-                                  <SelectTrigger className="h-9 text-sm">
+                                  <SelectTrigger className="h-11 text-sm w-full">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1080,7 +1075,7 @@ export default function AdminAdsPage() {
                                 value={formData.displayLocation || 'all'} 
                                 onValueChange={(value) => setFormData(prev => ({...prev, displayLocation: value as any}))}
                               >
-                                <SelectTrigger className="h-9 text-sm">
+                                <SelectTrigger className="h-11 text-sm w-full">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1123,8 +1118,8 @@ export default function AdminAdsPage() {
                               جدولة العرض
                             </h3>
                             
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="md:col-span-1">
                                 <Label htmlFor="startDate" className="text-xs font-semibold mb-1.5 block">
                                   تاريخ البداية
                                 </Label>
@@ -1133,10 +1128,10 @@ export default function AdminAdsPage() {
                                   type="date"
                                   value={formData.startDate}
                                   onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
-                                  className="h-9 text-sm"
+                                  className="h-11 text-sm w-full"
                                 />
                               </div>
-                              <div>
+                              <div className="md:col-span-1">
                                 <Label htmlFor="endDate" className="text-xs font-semibold mb-1.5 block">
                                   تاريخ النهاية
                                 </Label>
@@ -1145,7 +1140,7 @@ export default function AdminAdsPage() {
                                   type="date"
                                   value={formData.endDate}
                                   onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
-                                  className="h-9 text-sm"
+                                  className="h-11 text-sm w-full"
                                 />
                               </div>
                             </div>
@@ -1153,22 +1148,22 @@ export default function AdminAdsPage() {
                         </div>
 
                         {/* Left Column - Popup Settings */}
-                        <div className="bg-rose-50 p-4 rounded-lg border border-rose-200">
-                          <h3 className="text-sm font-bold text-rose-900 mb-3 flex items-center gap-2">
-                            <Zap className="h-4 w-4" />
+                        <div className="bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-4 rounded-lg border-2 border-violet-200 shadow-lg">
+                          <h3 className="text-sm font-bold text-violet-900 mb-3 flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-violet-600" />
                             إعدادات النافذة المنبثقة
                           </h3>
                           
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                              <Label htmlFor="popupType" className="text-xs font-semibold mb-1.5 block">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="popupType" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 النوع
                               </Label>
                               <Select 
                                 value={formData.popupType} 
                                 onValueChange={(value) => setFormData(prev => ({...prev, popupType: value as any}))}
                               >
-                                <SelectTrigger className="h-9 text-sm">
+                                <SelectTrigger className="h-11 text-sm w-full">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1179,8 +1174,8 @@ export default function AdminAdsPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div>
-                              <Label htmlFor="displayDelay" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="displayDelay" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 التأخير (ث)
                               </Label>
                               <Input
@@ -1190,18 +1185,18 @@ export default function AdminAdsPage() {
                                 onChange={(e) => setFormData(prev => ({...prev, displayDelay: parseInt(e.target.value)}))}
                                 min="0"
                                 max="60"
-                                className="h-9 text-sm"
+                                className="h-11 text-sm w-full"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="displayFrequency" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="displayFrequency" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 التكرار
                               </Label>
                               <Select 
                                 value={formData.displayFrequency} 
                                 onValueChange={(value) => setFormData(prev => ({...prev, displayFrequency: value as any}))}
                               >
-                                <SelectTrigger className="h-9 text-sm">
+                                <SelectTrigger className="h-11 text-sm w-full">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1212,8 +1207,8 @@ export default function AdminAdsPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div>
-                              <Label htmlFor="maxDisplays" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="maxDisplays" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 الحد الأقصى
                               </Label>
                               <Input
@@ -1223,11 +1218,11 @@ export default function AdminAdsPage() {
                                 onChange={(e) => setFormData(prev => ({...prev, maxDisplays: parseInt(e.target.value)}))}
                                 min="1"
                                 max="100"
-                                className="h-9 text-sm"
+                                className="h-11 text-sm w-full"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="autoClose" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="autoClose" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 إغلاق تلقائي (ث)
                               </Label>
                               <Input
@@ -1238,18 +1233,18 @@ export default function AdminAdsPage() {
                                 min="0"
                                 max="300"
                                 placeholder="0 = بدون إغلاق"
-                                className="h-9 text-sm"
+                                className="h-11 text-sm w-full"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="urgency" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="urgency" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 مستوى الأهمية
                               </Label>
                               <Select 
                                 value={formData.urgency || 'medium'} 
                                 onValueChange={(value) => setFormData(prev => ({...prev, urgency: value as any}))}
                               >
-                                <SelectTrigger className="h-9 text-sm">
+                                <SelectTrigger className="h-11 text-sm w-full">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1262,35 +1257,35 @@ export default function AdminAdsPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="flex items-center gap-2 p-2 bg-white rounded border">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div className="flex items-center gap-2 p-3 bg-white rounded-lg border-2 border-violet-200 shadow-sm">
                               <Switch
                                 id="showCloseButton"
                                 checked={formData.showCloseButton}
                                 onCheckedChange={(checked) => setFormData(prev => ({...prev, showCloseButton: checked}))}
-                                className={formData.showCloseButton ? 'bg-blue-600' : 'bg-gray-300'}
+                                className={formData.showCloseButton ? 'bg-violet-600' : 'bg-gray-300'}
                               />
-                              <Label htmlFor="showCloseButton" className="text-xs font-semibold">
+                              <Label htmlFor="showCloseButton" className="text-xs font-semibold text-violet-700">
                                 زر إغلاق
                               </Label>
                             </div>
-                            <div className="flex items-center gap-2 p-2 bg-white rounded border">
+                            <div className="flex items-center gap-2 p-3 bg-white rounded-lg border-2 border-violet-200 shadow-sm">
                               <Switch
                                 id="showProgressBar"
                                 checked={formData.showProgressBar}
                                 onCheckedChange={(checked) => setFormData(prev => ({...prev, showProgressBar: checked}))}
-                                className={formData.showProgressBar ? 'bg-purple-600' : 'bg-gray-300'}
+                                className={formData.showProgressBar ? 'bg-fuchsia-600' : 'bg-gray-300'}
                               />
-                              <Label htmlFor="showProgressBar" className="text-xs font-semibold">
+                              <Label htmlFor="showProgressBar" className="text-xs font-semibold text-violet-700">
                                 شريط تقدم
                               </Label>
                             </div>
                           </div>
 
                           {/* Additional Fields */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label htmlFor="discount" className="text-xs font-semibold mb-1.5 block">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="discount" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 خصم (اختياري)
                               </Label>
                               <Input
@@ -1298,11 +1293,11 @@ export default function AdminAdsPage() {
                                 value={formData.discount || ''}
                                 onChange={(e) => setFormData(prev => ({...prev, discount: e.target.value}))}
                                 placeholder="مثال: 50%"
-                                className="h-9 text-sm"
+                                className="h-11 text-sm border-2 border-violet-200 focus:border-violet-500 rounded-lg w-full"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="countdown" className="text-xs font-semibold mb-1.5 block">
+                            <div className="md:col-span-1">
+                              <Label htmlFor="countdown" className="text-xs font-semibold mb-1.5 block text-violet-700">
                                 عد تنازلي (اختياري)
                               </Label>
                               <Input
@@ -1310,7 +1305,7 @@ export default function AdminAdsPage() {
                                 value={formData.countdown || ''}
                                 onChange={(e) => setFormData(prev => ({...prev, countdown: e.target.value}))}
                                 placeholder="مثال: 24:00:00"
-                                className="h-9 text-sm"
+                                className="h-11 text-sm border-2 border-violet-200 focus:border-violet-500 rounded-lg w-full"
                               />
                             </div>
                           </div>
@@ -1322,7 +1317,7 @@ export default function AdminAdsPage() {
                 </div>
 
                 {/* Right Side - Premium Live Preview */}
-                <div className="w-[420px] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6 flex flex-col border-l-4 border-purple-400 shadow-2xl relative overflow-hidden">
+                <div className="w-[280px] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 flex flex-col border-l-4 border-purple-400 shadow-2xl relative overflow-hidden min-h-0 flex-shrink-0">
                   {/* Animated Background */}
                   <div className="absolute inset-0 opacity-20">
                     <div className="absolute top-10 right-10 w-40 h-40 bg-purple-500 rounded-full mix-blend-screen filter blur-2xl animate-pulse"></div>
@@ -1336,38 +1331,38 @@ export default function AdminAdsPage() {
                         <Eye className="h-6 w-6 text-white drop-shadow-lg relative z-10" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-extrabold text-white drop-shadow-lg">المعاينة الحية</h3>
+                        <h3 className="text-lg font-extrabold text-white drop-shadow-lg">المعاينة الحية</h3>
                         <p className="text-xs text-white/80 font-medium">شاهد إعلانك كما سيظهر للمستخدمين</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Premium Live Preview Card */}
-                  <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-6 border-2 border-white/20 shadow-2xl overflow-y-auto">
+                  <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-xl p-4 border-2 border-white/20 shadow-xl overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-purple-200/30">
                     {formData.title ? (
-                      <div className="bg-white rounded-2xl p-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02]">
-                        <div className="text-center mb-5">
-                          <h3 className="font-extrabold text-gray-900 text-lg mb-3 line-clamp-2 leading-tight">
+                      <div className="bg-white rounded-xl p-4 shadow-xl transform transition-all duration-300">
+                        <div className="text-center mb-3">
+                          <h3 className="font-bold text-gray-900 text-base mb-2 line-clamp-2 leading-tight">
                             {formData.title}
                           </h3>
                           {formData.description && (
-                            <p className="text-sm text-gray-600 mb-5 line-clamp-4 leading-relaxed">
+                            <p className="text-xs text-gray-600 mb-3 line-clamp-3 leading-relaxed">
                               {formData.description}
                             </p>
                           )}
                         </div>
 
                         {formData.mediaUrl && (
-                          <div className="my-5">
+                          <div className="my-3">
                             {formData.type === 'image' ? (
                               <img 
                                 src={formData.mediaUrl} 
                                 alt="Preview"
-                                className="w-full h-48 object-cover rounded-2xl shadow-xl"
+                                className="w-full h-32 object-cover rounded-lg shadow-lg"
                               />
                             ) : formData.type === 'video' ? (
-                              <div className="w-full h-48 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 rounded-2xl flex items-center justify-center shadow-xl">
-                                <Video className="h-20 w-20 text-gray-600" />
+                              <div className="w-full h-32 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 rounded-lg flex items-center justify-center shadow-lg">
+                                <Video className="h-12 w-12 text-gray-600" />
                               </div>
                             ) : null}
                           </div>
@@ -1377,18 +1372,18 @@ export default function AdminAdsPage() {
                           <Button 
                             type="button"
                             size="sm" 
-                            className="w-full h-12 text-sm bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 font-extrabold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
+                            className="w-full h-9 text-xs bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 font-bold shadow-lg hover:shadow-xl transition-all"
                           >
                             {formData.ctaText}
                           </Button>
                         )}
                       </div>
                     ) : (
-                      <div className="bg-white/5 rounded-2xl p-10 text-center border-2 border-dashed border-white/30">
-                        <div className="p-4 bg-white/10 rounded-2xl inline-block mb-4">
-                          <FileText className="h-20 w-20 text-white/40" />
+                      <div className="bg-white/5 rounded-xl p-6 text-center border-2 border-dashed border-white/30">
+                        <div className="p-3 bg-white/10 rounded-xl inline-block mb-3">
+                          <FileText className="h-12 w-12 text-white/40" />
                         </div>
-                        <p className="text-sm text-white/80 leading-relaxed font-medium">
+                        <p className="text-xs text-white/80 leading-relaxed font-medium">
                           ابدأ بإدخال البيانات<br />لرؤية المعاينة الحية
                         </p>
                       </div>
@@ -1396,40 +1391,31 @@ export default function AdminAdsPage() {
                   </div>
 
                   {/* Premium Quick Stats */}
-                  <div className="mt-5 grid grid-cols-3 gap-3">
-                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-blue-400/20 rounded-full blur-xl"></div>
-                      <div className="relative">
-                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
-                          {formData.priority || 1}
-                        </div>
-                        <div className="text-xs text-white/90 font-bold">الأولوية</div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 flex-shrink-0">
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-lg p-2.5 text-center border border-white/20 shadow-lg overflow-hidden">
+                      <div className="text-lg font-black text-white mb-0.5 drop-shadow-lg">
+                        {formData.priority || 1}
                       </div>
+                      <div className="text-[10px] text-white/90 font-semibold">الأولوية</div>
                     </div>
-                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-green-400/20 rounded-full blur-xl"></div>
-                      <div className="relative">
-                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
-                          {formData.isActive ? '✓' : '✗'}
-                        </div>
-                        <div className="text-xs text-white/90 font-bold">الحالة</div>
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-lg p-2.5 text-center border border-white/20 shadow-lg overflow-hidden">
+                      <div className="text-lg font-black text-white mb-0.5 drop-shadow-lg">
+                        {formData.isActive ? '✓' : '✗'}
                       </div>
+                      <div className="text-[10px] text-white/90 font-semibold">الحالة</div>
                     </div>
-                    <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-4 text-center border border-white/20 shadow-xl overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-purple-400/20 rounded-full blur-xl"></div>
-                      <div className="relative">
-                        <div className="text-2xl font-black text-white mb-1 drop-shadow-lg">
-                          {formData.type === 'video' ? '🎥' : formData.type === 'image' ? '🖼️' : '📝'}
-                        </div>
-                        <div className="text-xs text-white/90 font-bold">النوع</div>
+                    <div className="relative bg-white/15 backdrop-blur-xl rounded-lg p-2.5 text-center border border-white/20 shadow-lg overflow-hidden">
+                      <div className="text-lg font-black text-white mb-0.5 drop-shadow-lg">
+                        {formData.type === 'video' ? '🎥' : formData.type === 'image' ? '🖼️' : '📝'}
                       </div>
+                      <div className="text-[10px] text-white/90 font-semibold">النوع</div>
                     </div>
                   </div>
                 </div>
               </div>
                 
               {/* Premium Footer */}
-              <div className="relative px-8 py-5 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 border-t-4 border-purple-400 overflow-hidden">
+              <div className="relative px-6 py-4 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 border-t-4 border-purple-400 overflow-hidden flex-shrink-0">
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -1443,22 +1429,22 @@ export default function AdminAdsPage() {
                     </span>
                   </div>
 
-                  <div className="flex gap-4">
+                  <div className="flex gap-3">
                     <Button 
                       type="button" 
                       variant="outline"
                       onClick={() => setShowAddDialog(false)}
-                      className="h-12 px-8 border-2 border-white/30 bg-white/10 backdrop-blur-md hover:bg-red-500/20 hover:border-red-400 hover:text-white transition-all font-extrabold text-white shadow-xl"
+                      className="h-10 px-6 border-2 border-white/30 bg-white/10 backdrop-blur-md hover:bg-red-500/20 hover:border-red-400 hover:text-white transition-all font-bold text-white shadow-xl text-sm"
                     >
-                      <X className="h-5 w-5 mr-2" />
+                      <X className="h-4 w-4 mr-2" />
                       إلغاء
                     </Button>
                     <Button 
                       type="submit"
-                      className="h-12 px-12 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white font-black shadow-2xl hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all transform hover:scale-105"
+                      className="h-10 px-8 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white font-black shadow-2xl hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all transform hover:scale-105 text-sm"
                     >
-                      <Save className="h-5 w-5 mr-2" />
-                      {editingAd ? '💾 تحديث الإعلان' : '🚀 نشر الإعلان'}
+                      <Save className="h-4 w-4 mr-2" />
+                      {editingAd ? '💾 تحديث' : '🚀 نشر'}
                     </Button>
                   </div>
                 </div>
