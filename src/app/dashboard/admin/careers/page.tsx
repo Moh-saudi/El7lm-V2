@@ -30,46 +30,95 @@ export default function CareersAdminPage() {
         {loading && <p>جاري التحميل...</p>}
         {error && <p className="text-red-600">{error}</p>}
         {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-right">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-3">الوظيفة/الوظائف</th>
-                  <th className="py-2 px-3">الاسم</th>
-                  <th className="py-2 px-3">البريد</th>
-                  <th className="py-2 px-3">الهاتف</th>
-                  <th className="py-2 px-3">الدولة</th>
-                  <th className="py-2 px-3">المحافظة</th>
-                  <th className="py-2 px-3">الخبرات</th>
-                  <th className="py-2 px-3">لينكدإن</th>
-                  <th className="py-2 px-3">فيسبوك</th>
-                  <th className="py-2 px-3">تاريخ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-3">
-                      {Array.isArray(it.roles) ? (it.roles.join('، ') || '-') : (it.role || '-')}
-                    </td>
-                    <td className="py-2 px-3">{it.fullName}</td>
-                    <td className="py-2 px-3">{it.email}</td>
-                    <td className="py-2 px-3">{it.phone}</td>
-                    <td className="py-2 px-3">{it.country || '-'}</td>
-                    <td className="py-2 px-3">{it.governorate || '-'}</td>
-                    <td className="py-2 px-3 max-w-md truncate" title={it.experience}>{it.experience}</td>
-                    <td className="py-2 px-3">
-                      {it.linkedin ? <a className="text-blue-600" href={it.linkedin} target="_blank">رابط</a> : '-'}
-                    </td>
-                    <td className="py-2 px-3">
-                      {it.facebook ? <a className="text-blue-600" href={it.facebook} target="_blank">رابط</a> : '-'}
-                    </td>
-                    <td className="py-2 px-3">{it.createdAt?.seconds ? new Date(it.createdAt.seconds * 1000).toLocaleString('ar-EG') : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {items.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-lg">لا توجد طلبات توظيف حالياً</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="mb-4 text-sm text-gray-600">
+                  إجمالي الطلبات: <span className="font-semibold">{items.length}</span>
+                </div>
+                <table className="min-w-full text-right border-collapse">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="py-3 px-4 font-semibold">الوظيفة/الوظائف</th>
+                      <th className="py-3 px-4 font-semibold">الاسم</th>
+                      <th className="py-3 px-4 font-semibold">البريد</th>
+                      <th className="py-3 px-4 font-semibold">الهاتف</th>
+                      <th className="py-3 px-4 font-semibold">الدولة</th>
+                      <th className="py-3 px-4 font-semibold">المحافظة</th>
+                      <th className="py-3 px-4 font-semibold">الخبرات</th>
+                      <th className="py-3 px-4 font-semibold">لينكدإن</th>
+                      <th className="py-3 px-4 font-semibold">فيسبوك</th>
+                      <th className="py-3 px-4 font-semibold">تاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it) => (
+                      <tr key={it.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4">
+                          {Array.isArray(it.roles) && it.roles.length > 0 
+                            ? it.roles.join('، ') 
+                            : (it.role || '-')}
+                        </td>
+                        <td className="py-3 px-4 font-medium">{it.fullName}</td>
+                        <td className="py-3 px-4">
+                          <a href={`mailto:${it.email}`} className="text-blue-600 hover:underline">
+                            {it.email}
+                          </a>
+                        </td>
+                        <td className="py-3 px-4">
+                          <a href={`tel:${it.phone}`} className="text-blue-600 hover:underline">
+                            {it.phone}
+                          </a>
+                        </td>
+                        <td className="py-3 px-4">{it.country || '-'}</td>
+                        <td className="py-3 px-4">{it.governorate || '-'}</td>
+                        <td className="py-3 px-4 max-w-md truncate" title={it.experience || ''}>
+                          {it.experience || '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {it.linkedin ? (
+                            <a 
+                              className="text-blue-600 hover:underline" 
+                              href={it.linkedin} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              رابط
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {it.facebook ? (
+                            <a 
+                              className="text-blue-600 hover:underline" 
+                              href={it.facebook} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              رابط
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {it.createdAt 
+                            ? (it.createdAt instanceof Date 
+                                ? it.createdAt.toLocaleString('ar-EG')
+                                : it.createdAt?.seconds 
+                                  ? new Date(it.createdAt.seconds * 1000).toLocaleString('ar-EG')
+                                  : new Date(it.createdAt).toLocaleString('ar-EG'))
+                            : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

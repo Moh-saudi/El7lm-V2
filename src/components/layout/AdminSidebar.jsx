@@ -143,7 +143,8 @@ const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
         { title: 'إدارة الإشعارات', href: '/dashboard/admin/notifications', icon: MessageCircle },
         { title: 'إدارة Baba Service', href: '/dashboard/admin/beon-v3', icon: MessageSquare },
         { title: 'الدعم الفني', href: '/dashboard/admin/support', icon: Headphones },
-        { title: 'إدارة العملاء', href: '/dashboard/admin/customer-management', icon: UserPlus }
+        { title: 'إدارة العملاء', href: '/dashboard/admin/customer-management', icon: UserPlus },
+        { title: 'إدارة الواتساب', href: '/dashboard/admin/whatsapp', icon: MessageSquare }
       ]
     },
     {

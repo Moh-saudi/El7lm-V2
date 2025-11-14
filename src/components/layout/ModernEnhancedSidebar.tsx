@@ -271,6 +271,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'payments', label: 'المدفوعات', icon: Target, href: `/dashboard/admin/payments`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'subscriptions', label: 'الاشتراكات', icon: Star, href: `/dashboard/admin/subscriptions`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'support', label: 'الدعم الفني', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'system', label: 'النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
         { id: 'beon-v3', label: 'إدارة BeOn V3', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'whatsapp-test', label: 'اختبار WhatsApp API', icon: MessageSquare, href: `/dashboard/admin/whatsapp-test`, color: 'text-green-600', bgColor: 'bg-green-50' },
@@ -563,6 +564,8 @@ export default ModernEnhancedSidebar;
         { id: 'subscriptions', label: 'الاشتراكات', icon: Star, href: `/dashboard/admin/subscriptions`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
 
         { id: 'support', label: 'الدعم الفني', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
+
+        { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
 
         { id: 'system', label: 'النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
 
@@ -1063,6 +1066,8 @@ export default ModernEnhancedSidebar;
         { id: 'subscriptions', label: 'الاشتراكات', icon: Star, href: `/dashboard/admin/subscriptions`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
 
         { id: 'support', label: 'الدعم الفني', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
+
+        { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
 
         { id: 'system', label: 'النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
 

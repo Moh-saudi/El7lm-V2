@@ -31,7 +31,7 @@ export default function CareersPage() {
           location: 'القاهرة، مصر / الدوحة، قطر',
           type: 'دوام كامل',
           experience: '2-4 سنوات',
-          salary: '8,000 - 15,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'nextjsDevelopers'
         },
         {
@@ -39,7 +39,7 @@ export default function CareersPage() {
           location: 'الدوحة، قطر',
           type: 'دوام كامل', 
           experience: '3-5 سنوات',
-          salary: '10,000 - 18,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'performanceAnalysts'
         }
       ]
@@ -54,7 +54,7 @@ export default function CareersPage() {
           location: 'الخليج العربي',
           type: 'دوام كامل',
           experience: '5+ سنوات',
-          salary: '12,000 - 25,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'clubManagement'
         },
         {
@@ -62,7 +62,7 @@ export default function CareersPage() {
           location: 'قطر / الإمارات',
           type: 'دوام كامل',
           experience: '4-7 سنوات', 
-          salary: '15,000 - 30,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'academyManagement'
         },
         {
@@ -70,7 +70,7 @@ export default function CareersPage() {
           location: 'مصر / قطر',
           type: 'دوام كامل',
           experience: '1-3 سنوات',
-          salary: '5,000 - 12,000 ريال + عمولة',
+          salary: 'يحدد لاحقاً',
           key: 'sales'
         }
       ]
@@ -85,7 +85,7 @@ export default function CareersPage() {
           location: 'الخليج وأوروبا',
           type: 'دوام كامل',
           experience: '5+ سنوات',
-          salary: '15,000 - 28,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'scoutsManagement'
         },
         {
@@ -93,7 +93,7 @@ export default function CareersPage() {
           location: 'قطر / تركيا',
           type: 'دوام كامل',
           experience: '3-6 سنوات',
-          salary: '10,000 - 20,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'tournamentsManagement'
         },
         {
@@ -101,7 +101,7 @@ export default function CareersPage() {
           location: 'متعدد الدول',
           type: 'دوام كامل',
           experience: '4+ سنوات',
-          salary: '12,000 - 22,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'trialsManagement'
         }
       ]
@@ -116,7 +116,7 @@ export default function CareersPage() {
           location: 'الدوحة، قطر',
           type: 'دوام كامل',
           experience: '2-4 سنوات',
-          salary: '6,000 - 12,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'customerRelations'
         },
         {
@@ -124,7 +124,7 @@ export default function CareersPage() {
           location: 'القاهرة، مصر',
           type: 'دوام كامل',
           experience: '1-2 سنوات',
-          salary: '4,000 - 8,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'callCenter'
         },
         {
@@ -132,7 +132,7 @@ export default function CareersPage() {
           location: 'عن بُعد',
           type: 'دوام جزئي',
           experience: '1+ سنوات',
-          salary: '3,000 - 6,000 ريال',
+          salary: 'يحدد لاحقاً',
           key: 'directCustomerCare'
         }
       ]
@@ -426,7 +426,7 @@ export default function CareersPage() {
               <Button 
                 onClick={() => window.location.href = '/contact'}
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-full text-lg font-semibold"
+                className="border-black text-black hover:bg-black hover:text-white px-8 py-4 rounded-full text-lg font-semibold"
               >
                 تواصل معنا
               </Button>

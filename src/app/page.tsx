@@ -85,8 +85,8 @@ const translations = {
     },
     // Hero Section
     hero: {
-      title: 'منصة الحلم لاكتشاف المواهب الكروية',
-      subtitle: 'شركة ميسك القطرية - نربط اللاعبين المستقلين بالأندية في الخليج وتركيا وأوروبا وتايلاند وآسيا',
+      title: 'منصة الحلم اول متجر الكتروني لتسويق وبيع اللاعبين في الشرق الاوسط',
+      subtitle: 'متخصصين في حوكمة الاندية الرياضية - من شركة ميسك القطرية',
 
       learnMore: 'تعرف علينا',
       startJourney: 'ابدأ رحلتك',
@@ -160,7 +160,7 @@ const translations = {
     },
     // Footer
     footer: {
-      description: 'شركة ميسك القطرية - منصة الحلم لاكتشاف المواهب الكروية وربط اللاعبين المستقلين بالأندية',
+      description: 'منصة الحلم اول متجر الكتروني لتسويق وبيع اللاعبين في الشرق الاوسط - متخصصين في حوكمة الاندية الرياضية',
       services: 'الخدمات',
       company: 'الشركة',
       support: 'الدعم',
@@ -1041,7 +1041,7 @@ export default function AdvancedLandingPage() {
   )}
 
       {/* Hero Section */}
-      <section ref={heroRef} className="relative overflow-hidden py-20 px-4">
+      <section ref={heroRef} className="relative overflow-hidden py-12 sm:py-16 md:py-20 px-4">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
@@ -1191,7 +1191,7 @@ export default function AdvancedLandingPage() {
             {/* Main Content */}
             <motion.div variants={itemVariants} className="mb-8">
               <motion.h1
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 leading-tight"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 leading-tight"
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.8, type: "spring" }}
@@ -1212,7 +1212,7 @@ export default function AdvancedLandingPage() {
               </motion.h1>
               <motion.p
                 variants={itemVariants}
-                className={`text-base sm:text-lg md:text-xl lg:text-2xl ${
+                className={`text-sm sm:text-base md:text-lg lg:text-xl ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-600'
                 } max-w-4xl mx-auto leading-relaxed px-4 sm:px-0`}
               >
@@ -1223,18 +1223,18 @@ export default function AdvancedLandingPage() {
             {/* Target Audience Badges */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-wrap justify-center gap-4 mb-12"
+              className="flex flex-wrap justify-center gap-3 mb-8"
             >
               {[
-                { icon: <UserCheck className="w-5 h-5" />, text: t.hero.forPlayers, color: 'bg-blue-500' },
-                { icon: <Heart className="w-5 h-5" />, text: t.hero.forParents, color: 'bg-green-500' },
-                { icon: <Trophy className="w-5 h-5" />, text: t.hero.forClubs, color: 'bg-purple-500' }
+                { icon: <UserCheck className="w-4 h-4" />, text: t.hero.forPlayers, color: 'bg-blue-500' },
+                { icon: <Heart className="w-4 h-4" />, text: t.hero.forParents, color: 'bg-green-500' },
+                { icon: <Trophy className="w-4 h-4" />, text: t.hero.forClubs, color: 'bg-purple-500' }
               ].map((badge, index) => (
                 <motion.div
                   key={index}
                   whileHover={{ scale: 1.02, y: -2 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className={`flex items-center space-x-2 space-x-reverse ${badge.color} text-white px-6 py-3 rounded-full shadow-lg`}
+                  className={`flex items-center space-x-2 space-x-reverse ${badge.color} text-white px-4 py-2 rounded-full shadow-lg text-sm`}
                 >
                   {badge.icon}
                   <span className="font-medium">{badge.text}</span>
@@ -1245,9 +1245,9 @@ export default function AdvancedLandingPage() {
             {/* Animated Features Text */}
             <motion.div
               variants={itemVariants}
-              className="max-w-4xl mx-auto mb-12"
+              className="max-w-4xl mx-auto mb-8"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-center">
                 {[
                   { icon: '🗄️', text: 'قاعدة بيانات مركزية للمواهب' },
                   { icon: '📄', text: 'سيرة ذاتية مهنية للاعبين' },
@@ -1268,7 +1268,7 @@ export default function AdvancedLandingPage() {
                     transition={{ duration: 0.5, ease: "easeOut" }}
                     className={`${
                       isDarkMode ? 'bg-gray-800/80' : 'bg-white/80'
-                    } backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-lg border border-blue-200/50`}
+                    } backdrop-blur-sm rounded-lg p-2 sm:p-3 shadow-lg border border-blue-200/50`}
                   >
                     <motion.span
                       animate={{
@@ -1280,11 +1280,11 @@ export default function AdvancedLandingPage() {
                         repeat: Infinity,
                         delay: index * 0.5
                       }}
-                      className="text-2xl inline-block mb-2"
+                      className="text-xl inline-block mb-1"
                     >
                       {feature.icon}
                     </motion.span>
-                    <p className="text-xs sm:text-sm font-medium">{feature.text}</p>
+                    <p className="text-xs font-medium">{feature.text}</p>
                   </motion.div>
                 ))}
               </div>
@@ -1295,7 +1295,7 @@ export default function AdvancedLandingPage() {
               variants={itemVariants}
               className="
                 cta-container
-                flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6
+                flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4
                 justify-center items-center
                 px-4 sm:px-6 md:px-0
                 max-w-2xl mx-auto
@@ -1411,6 +1411,13 @@ export default function AdvancedLandingPage() {
               </motion.button>
             </motion.div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Ads Section - Display ads at the top of landing page (right after Hero) */}
+      <section className="py-8 bg-gradient-to-br from-gray-50 to-blue-50 border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AdBanner location="landing" maxAds={3} className="mb-4" />
         </div>
       </section>
 
@@ -1821,7 +1828,7 @@ export default function AdvancedLandingPage() {
             <p className={`text-xl ${
               isDarkMode ? 'text-gray-300' : 'text-gray-600'
             } max-w-4xl mx-auto leading-relaxed`}>
-              شركة ميسك القطرية - رواد في مجال اكتشاف المواهب الكروية
+              منصة الحلم اول متجر الكتروني لتسويق وبيع اللاعبين في الشرق الاوسط - متخصصين في حوكمة الاندية الرياضية
             </p>
           </motion.div>
 
@@ -1839,7 +1846,7 @@ export default function AdvancedLandingPage() {
                   {
                     icon: '🇶🇦',
                     title: 'شركة قطرية رائدة',
-                    content: 'شركة ميسك القطرية صاحبة منصة الحلم لاكتشاف المواهب الكروية وربط اللاعبين المستقلين بالأندية المحترفة. نعمل على تطوير القطاع الرياضي في المنطقة من خلال حلول تقنية متقدمة.',
+                    content: 'منصة الحلم اول متجر الكتروني لتسويق وبيع اللاعبين في الشرق الاوسط. متخصصين في حوكمة الاندية الرياضية ونعمل على تطوير القطاع الرياضي في المنطقة من خلال حلول تقنية متقدمة.',
                     color: 'from-blue-500 to-indigo-600'
                   },
                   {
@@ -2555,13 +2562,6 @@ export default function AdvancedLandingPage() {
               </motion.div>
             </motion.button>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Ads Section - Display ads for landing page */}
-      <section className="py-12 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AdBanner location="landing" maxAds={3} className="mb-8" />
         </div>
       </section>
 
