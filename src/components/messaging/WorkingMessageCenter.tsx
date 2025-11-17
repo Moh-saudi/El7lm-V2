@@ -847,6 +847,21 @@ const WorkingMessageCenter: React.FC = () => {
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] min-h-[600px] bg-gray-50">
+      {selectedConversation && (
+        <div className="lg:hidden w-full bg-white border-b px-4 py-3 flex justify-between items-center gap-3">
+          <div className="text-sm font-medium text-gray-700">
+            {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+          </div>
+          <Button
+            onClick={closeConversation}
+            className="inline-flex items-center gap-2 text-sm"
+            variant="outline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            العودة للرسائل
+          </Button>
+        </div>
+      )}
       {/* عمود المحادثات */}
       <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} flex-col w-full lg:w-1/3 bg-white shadow-lg lg:rounded-l-lg overflow-hidden border-r-0 lg:border-r border-gray-200`}>
         {/* Header */}
@@ -1023,14 +1038,16 @@ const WorkingMessageCenter: React.FC = () => {
             {/* رأس المحادثة */}
             <div className="p-4 lg:p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white">
               <div className="flex items-center gap-4">
-                <Button
-                  onClick={closeConversation}
-                  className="lg:hidden text-white hover:bg-white/20 bg-transparent border-none p-2 rounded-full"
-                >
-                  <ArrowLeft className="h-6 w-6" />
-                </Button>
-                
-                <div className="relative">
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={closeConversation}
+                    className="lg:hidden text-white hover:bg-white/20 bg-transparent border-none p-2 rounded-full"
+                    title="العودة إلى الرسائل"
+                  >
+                    <ArrowLeft className="h-6 w-6" />
+                  </Button>
+                  
+                  <div className="relative">
                   <Avatar className="h-12 w-12 lg:h-14 lg:w-14 ring-2 ring-white shadow-sm">
                     <AvatarImage 
                       src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.uid) || ''] || ''}
@@ -1044,9 +1061,9 @@ const WorkingMessageCenter: React.FC = () => {
                   {selectedConversation.isActive && (
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                   )}
-                </div>
-                
-                <div className="flex-1">
+                  </div>
+                  
+                  <div className="flex-1">
                   <h3 className="font-bold text-lg lg:text-xl">
                     {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
                   </h3>
@@ -1057,6 +1074,14 @@ const WorkingMessageCenter: React.FC = () => {
                     <span className="text-xs text-blue-100">متصل الآن</span>
                   </div>
                 </div>
+                </div>
+                <Button
+                  onClick={closeConversation}
+                  className="hidden lg:inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all duration-200"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  العودة إلى الرسائل
+                </Button>
               </div>
             </div>
 

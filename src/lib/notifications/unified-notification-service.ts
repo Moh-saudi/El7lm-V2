@@ -1,4 +1,5 @@
 import { db } from '@/lib/firebase/config';
+import { normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
 import { 
   collection, 
   addDoc, 
@@ -49,8 +50,9 @@ export class UnifiedNotificationService {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
+      const finalPayload = normalizeNotificationPayload(notificationData);
 
-      const docRef = await addDoc(collection(db, 'notifications'), notificationData);
+      const docRef = await addDoc(collection(db, 'notifications'), finalPayload);
       return docRef.id;
     } catch (error) {
       console.error('خطأ في إنشاء الإشعار:', error);

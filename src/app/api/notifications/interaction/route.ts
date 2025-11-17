@@ -51,7 +51,13 @@ export async function POST(request: NextRequest) {
       videoId: body.videoId,
       message: body.message || getDefaultMessage(body.type, body.viewerName),
       actionUrl: body.actionUrl || getDefaultActionUrl(body.type, body.profileOwnerId, body.videoId),
-      metadata: body.metadata || {},
+      metadata: {
+        ...(body.metadata || {}),
+        // إضافة profileType من metadata أو من body مباشرة
+        profileType: body.metadata?.profileType || (body as any).profileType || 'player',
+        profileOwnerId: body.profileOwnerId,
+        viewerId: body.viewerId
+      },
       isRead: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()

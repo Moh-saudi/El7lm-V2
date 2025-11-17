@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale/ar';
+import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
 
 interface SupportMessage {
   id: string;
@@ -460,6 +461,13 @@ const FloatingChatWidget: React.FC = () => {
   // دالة إرسال إشعار للأدمن
   const sendAdminNotification = async (messageData: any) => {
     try {
+      const senderInfo = buildSenderInfo({
+        user,
+        userData,
+        fallbackName: messageData.senderName,
+        fallbackAccountType: messageData.senderType
+      });
+
       const notificationData = {
         userId: 'system', // إشعار للنظام
         title: 'رسالة دعم فني جديدة',
@@ -474,10 +482,19 @@ const FloatingChatWidget: React.FC = () => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         priority: conversation?.priority || 'medium',
-        category: conversation?.category || 'general'
+        category: conversation?.category || 'general',
+        metadata: {
+          senderId: senderInfo.senderId || messageData.senderId,
+          senderName: senderInfo.senderName || messageData.senderName,
+          senderAccountType: senderInfo.senderAccountType || messageData.senderType,
+          senderAvatar: senderInfo.senderAvatar,
+          senderBucket: senderInfo.senderBucket
+        }
       };
 
-      await addDoc(collection(db, 'notifications'), notificationData);
+      const normalizedNotification = normalizeNotificationPayload(notificationData, senderInfo);
+
+      await addDoc(collection(db, 'notifications'), normalizedNotification);
       console.log('✅ تم إرسال إشعار للأدمن');
     } catch (error) {
       console.error('❌ خطأ في إرسال إشعار الأدمن:', error);

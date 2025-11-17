@@ -24,11 +24,13 @@ import {
   Info,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import NotificationItem from './NotificationItem';
 import NotificationDetailsModal from './NotificationDetailsModal';
+import SoundSettingsModal from './SoundSettingsModal';
 
 interface Notification {
   id: string;
@@ -55,7 +57,7 @@ interface NotificationsListProps {
   loading: boolean;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
-  onNavigateToSender?: (senderId: string) => void;
+  onNavigateToSender?: (senderId: string) => void | Promise<void>;
   onNavigateToAction?: (notification: Notification) => void;
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -98,6 +100,7 @@ export default function NotificationsList({
   const [filterActionType, setFilterActionType] = useState<string>('all');
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSoundSettingsOpen, setIsSoundSettingsOpen] = useState(false);
 
   // فتح موديل التفاصيل
   const openNotificationDetails = (notification: Notification) => {
@@ -384,6 +387,15 @@ export default function NotificationsList({
                 <Check className="w-4 h-4" />
                 تحديد الكل كمقروء
               </Button>
+              
+              <Button 
+                onClick={() => setIsSoundSettingsOpen(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                إعدادات الصوت
+              </Button>
 
               {showTestButtons && onCreateTestNotifications && (
                 <Button 
@@ -493,6 +505,12 @@ export default function NotificationsList({
         onDelete={onDelete}
         onReply={onReply}
         onForward={onForward}
+      />
+
+      {/* موديل إعدادات الصوت */}
+      <SoundSettingsModal
+        isOpen={isSoundSettingsOpen}
+        onClose={() => setIsSoundSettingsOpen(false)}
       />
     </div>
   );

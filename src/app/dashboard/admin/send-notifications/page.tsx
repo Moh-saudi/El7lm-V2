@@ -30,6 +30,7 @@ import {
     serverTimestamp,
     where
 } from 'firebase/firestore';
+import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
 import {
     AlertCircle,
     Bell,
@@ -475,6 +476,12 @@ export default function SendNotificationsPage() {
     setLoading(true);
     try {
       console.log('✅ بدء عملية الإرسال...');
+      const senderInfo = buildSenderInfo({
+        user,
+        fallbackName: user?.displayName || 'الإدارة',
+        fallbackAccountType: 'admin'
+      });
+
       const notificationData = {
       title: form.title,
       message: form.message,
@@ -485,8 +492,11 @@ export default function SendNotificationsPage() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       metadata: {
-        senderId: user?.uid,
-        senderName: 'الإدارة',
+        senderId: senderInfo.senderId || user?.uid,
+        senderName: senderInfo.senderName || 'الإدارة',
+        senderAccountType: senderInfo.senderAccountType || 'admin',
+        senderAvatar: senderInfo.senderAvatar,
+        senderBucket: senderInfo.senderBucket,
         targetType: form.targetType,
         accountTypes: form.accountTypes,
         sendMethods: form.sendMethods,
@@ -502,14 +512,14 @@ export default function SendNotificationsPage() {
         const personalizedMessage = replaceMessageVariables(form.message, targetUser);
         const personalizedTitle = replaceMessageVariables(form.title, targetUser);
         
-        const notification = {
+        const notification = normalizeNotificationPayload({
           ...notificationData,
           title: personalizedTitle,
           message: personalizedMessage,
           userId: targetUser.id,
           userEmail: targetUser.email,
           userPhone: targetUser.phone
-        };
+        }, senderInfo);
         return addDoc(collection(db, 'notifications'), notification);
       });
 

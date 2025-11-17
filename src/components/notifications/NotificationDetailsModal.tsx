@@ -71,7 +71,7 @@ interface NotificationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMarkAsRead: (id: string) => void;
-  onNavigateToSender?: (senderId: string) => void;
+  onNavigateToSender?: (senderId: string) => void | Promise<void>;
   onNavigateToAction?: (notification: Notification) => void;
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -336,24 +336,43 @@ export default function NotificationDetailsModal({
                       </span>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleAction('navigateToSender')}
-                    disabled={isLoading}
-                    className="border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-600"
-                  >
-                    {isAdminSender(notification.senderAccountType) ? (
-                      <>
-                        <MessageSquare className="w-4 h-4 ml-2" />
-                        رسالة الدعم الفني
-                      </>
-                    ) : (
-                      <>
-                        <User className="w-4 h-4 ml-2" />
-                        عرض الملف الشخصي
-                      </>
-                    )}
-                  </Button>
+                  {/* زر عرض ملف صاحب الملف الشخصي (في حالة profile_view) */}
+                  {notification.actionType === 'profile_view' && 
+                   notification.metadata?.profileOwnerId && 
+                   onNavigateToSender ? (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        if (onNavigateToSender) {
+                          onNavigateToSender(notification.metadata.profileOwnerId);
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+                    >
+                      <Eye className="w-4 h-4 ml-2" />
+                      عرض الملف الشخصي
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleAction('navigateToSender')}
+                      disabled={isLoading}
+                      className="border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-600"
+                    >
+                      {isAdminSender(notification.senderAccountType) ? (
+                        <>
+                          <MessageSquare className="w-4 h-4 ml-2" />
+                          رسالة الدعم الفني
+                        </>
+                      ) : (
+                        <>
+                          <User className="w-4 h-4 ml-2" />
+                          عرض ملف المرسل
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

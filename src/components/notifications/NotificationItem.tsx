@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import {
   Shield
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { resolveAvatarUrl } from '@/lib/notifications/sender-utils';
 
 interface Notification {
   id: string;
@@ -48,7 +49,7 @@ interface Notification {
 interface NotificationItemProps {
   notification: Notification;
   onMarkAsRead: (id: string) => void;
-  onNavigateToSender?: (senderId: string) => void;
+  onNavigateToSender?: (senderId: string) => void | Promise<void>;
   onNavigateToAction?: (notification: Notification) => void;
   showSenderInfo?: boolean;
 }
@@ -60,6 +61,54 @@ export default function NotificationItem({
   onNavigateToAction,
   showSenderInfo = true
 }: NotificationItemProps) {
+  const metadata = notification.metadata || {};
+  const primarySenderId =
+    notification.senderId ||
+    metadata.senderId ||
+    metadata.viewerId ||
+    metadata.profileOwnerId ||
+    metadata.userId ||
+    null;
+
+  const derivedSenderName =
+    notification.senderName ||
+    metadata.senderName ||
+    metadata.viewerName ||
+    metadata.profileOwnerName ||
+    metadata.userName ||
+    metadata.title ||
+    'مستخدم';
+
+  const derivedSenderAvatar =
+    notification.senderAvatar ||
+    metadata.senderAvatar ||
+    metadata.viewerAvatar ||
+    metadata.profileImage ||
+    metadata.userAvatar ||
+    null;
+
+  const derivedAccountType =
+    notification.senderAccountType ||
+    metadata.senderAccountType ||
+    metadata.viewerAccountType ||
+    metadata.profileType ||
+    undefined;
+
+  const resolvedSenderAvatar = useMemo(
+    () =>
+      resolveAvatarUrl(derivedSenderAvatar, {
+        senderAccountType: derivedAccountType,
+        metadata
+      }) || undefined,
+    [
+      derivedSenderAvatar,
+      derivedAccountType,
+      metadata.senderBucket,
+      metadata.avatarBucket,
+      metadata.bucket,
+      metadata.senderAccountType
+    ]
+  );
 
   // الحصول على أيقونة الإشعار
   const getNotificationIcon = (type: string, actionType?: string) => {
@@ -214,15 +263,19 @@ export default function NotificationItem({
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           {/* صورة المرسل */}
-          {showSenderInfo && notification.senderId && (
+          {showSenderInfo && (
             <div className="flex-shrink-0">
               <Avatar 
                 className="w-12 h-12 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-                onClick={() => onNavigateToSender?.(notification.senderId!)}
+                onClick={() => {
+                  if (primarySenderId && onNavigateToSender) {
+                    onNavigateToSender(primarySenderId);
+                  }
+                }}
               >
-                <AvatarImage src={notification.senderAvatar} alt={notification.senderName} />
+                <AvatarImage src={resolvedSenderAvatar} alt={derivedSenderName} />
                 <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                  {getInitials(notification.senderName)}
+                  {getInitials(derivedSenderName)}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -238,21 +291,43 @@ export default function NotificationItem({
                 </h4>
 
                 {/* معلومات المرسل */}
-                {showSenderInfo && notification.senderName && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span 
-                      className="font-medium text-blue-600 cursor-pointer hover:underline"
-                      onClick={() => onNavigateToSender?.(notification.senderId!)}
-                    >
-                      {notification.senderName}
-                    </span>
-                    {notification.senderAccountType && (
+                {showSenderInfo && derivedSenderName && (
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {notification.actionType === 'profile_view' ? (
+                      <>
+                        <span className="text-sm text-gray-600">شاهد ملفك:</span>
+                        <span 
+                          className="font-medium text-blue-600 cursor-pointer hover:underline"
+                          onClick={() => {
+                            if (primarySenderId && onNavigateToSender) {
+                              onNavigateToSender(primarySenderId);
+                            }
+                          }}
+                        >
+                          {derivedSenderName}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span 
+                          className="font-medium text-blue-600 cursor-pointer hover:underline"
+                          onClick={() => {
+                            if (primarySenderId && onNavigateToSender) {
+                              onNavigateToSender(primarySenderId);
+                            }
+                          }}
+                        >
+                          {derivedSenderName}
+                        </span>
+                      </>
+                    )}
+                    {derivedAccountType && (
                       <>
                         <span className="text-gray-400">•</span>
                         <div className="flex items-center gap-1">
-                          {getAccountTypeIcon(notification.senderAccountType)}
+                          {getAccountTypeIcon(derivedAccountType)}
                           <span className="text-sm text-gray-600">
-                            {getAccountTypeLabel(notification.senderAccountType)}
+                            {getAccountTypeLabel(derivedAccountType)}
                           </span>
                         </div>
                       </>
@@ -290,7 +365,7 @@ export default function NotificationItem({
                 <span>{formatNotificationTime(notification.createdAt)}</span>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {!notification.isRead && (
                   <Button
                     size="sm"
@@ -303,15 +378,33 @@ export default function NotificationItem({
                   </Button>
                 )}
                 
-                {notification.senderId && onNavigateToSender && (
+                {/* زر عرض ملف صاحب الملف الشخصي (في حالة profile_view) */}
+                {notification.actionType === 'profile_view' && 
+                 primarySenderId && 
+                 onNavigateToSender && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => onNavigateToSender(primarySenderId)}
+                    className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Eye className="w-3 h-3" />
+                    عرض الملف الشخصي
+                  </Button>
+                )}
+                
+                {/* زر عرض ملف المرسل (في الحالات الأخرى) */}
+                {notification.actionType !== 'profile_view' && 
+                 primarySenderId && 
+                 onNavigateToSender && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onNavigateToSender(notification.senderId!)}
+                    onClick={() => onNavigateToSender(primarySenderId)}
                     className="flex items-center gap-1 text-xs"
                   >
                     <User className="w-3 h-3" />
-                    عرض الملف الشخصي
+                    عرض ملف المرسل
                   </Button>
                 )}
 
