@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 import { Player } from '@/types/player';
 import { Tournament } from '@/types/tournament';
+import { cn } from "@/lib/utils";
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 import {
     AlertTriangle,
@@ -60,6 +61,17 @@ const POSITIONS = [
   'مهاجم',
   'مهاجم وسط'
 ];
+
+const buttonStyles = {
+  primary: "bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-500 text-white shadow-md shadow-blue-200/60 hover:from-indigo-700 hover:via-blue-700 hover:to-sky-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-200",
+  success: "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md shadow-emerald-200/60 hover:from-emerald-600 hover:to-green-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-200",
+  accent: "bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white shadow-md shadow-rose-200/60 hover:from-fuchsia-600 hover:to-rose-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-200",
+  warning: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200/60 hover:from-amber-600 hover:to-orange-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-amber-200",
+  outline: "border border-slate-200 text-slate-700 bg-white/80 hover:bg-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-200",
+  ghost: "text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-200",
+  subtle: "bg-white/70 text-slate-700 border border-white/60 shadow-sm hover:bg-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-200",
+  danger: "bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-md shadow-rose-200/50 hover:from-rose-600 hover:to-red-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-200"
+};
 
 // دالة لحساب العمر من تاريخ الميلاد
 const calculateAge = (birthDate: string | Date | null): number | null => {
@@ -1653,7 +1665,7 @@ ${playersList}
                 <Button
                   variant="ghost"
                   onClick={() => router.back()}
-                  className="flex gap-2 items-center text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                  className={cn(buttonStyles.ghost, "gap-2 text-indigo-600 hover:text-indigo-700")}
                 >
                   <ArrowLeft className="w-4 h-4" />
                   العودة
@@ -1690,7 +1702,7 @@ ${playersList}
                 ) : (
                   <Button
                     onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
-                    className="text-white bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700"
+                    className={cn(buttonStyles.accent, "gap-2 shadow-lg")}
                   >
                     <User className="mr-2 w-4 h-4" />
                     تسجيل الدخول
@@ -1734,7 +1746,12 @@ ${playersList}
                       variant={statusFilter === 'available' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setStatusFilter('available')}
-                      className={`flex-1 ${statusFilter === 'available' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'}`}
+                      className={cn(
+                        "flex-1 text-sm",
+                        statusFilter === 'available'
+                          ? buttonStyles.success
+                          : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
+                      )}
                     >
                       متاحة
                     </Button>
@@ -1742,7 +1759,12 @@ ${playersList}
                       variant={statusFilter === 'all' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setStatusFilter('all')}
-                      className={`flex-1 ${statusFilter === 'all' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'}`}
+                      className={cn(
+                        "flex-1 text-sm",
+                        statusFilter === 'all'
+                          ? buttonStyles.primary
+                          : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
+                      )}
                     >
                       الكل
                     </Button>
@@ -2032,7 +2054,7 @@ ${playersList}
                               <div className="flex gap-3 justify-center">
                                 <Button
                                   onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
-                                  className="text-white bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700"
+                                  className={cn(buttonStyles.accent, "gap-2 shadow-md")}
                                 >
                                   <User className="mr-2 w-4 h-4" />
                                   تسجيل الدخول
@@ -2040,7 +2062,7 @@ ${playersList}
                                 <Button
                                   onClick={() => router.push(`/auth/register?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
                                   variant="outline"
-                                  className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+                                  className={cn(buttonStyles.outline, "border-amber-300 text-amber-700 hover:text-amber-800 hover:border-amber-400")}
                                 >
                                   إنشاء حساب جديد
                                 </Button>
@@ -2057,7 +2079,7 @@ ${playersList}
                               </p>
                               <Button
                                 onClick={() => router.push('/dashboard/players')}
-                                className="text-white bg-gradient-to-r from-cyan-500 to-blue-500 shadow-lg transition-all duration-300 hover:from-cyan-600 hover:to-blue-600 hover:shadow-xl"
+                                className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
                               >
                                 <Plus className="mr-2 w-4 h-4" />
                                 إضافة لاعبين
@@ -2143,7 +2165,7 @@ ${playersList}
                         <div></div>
                         <Button
                           onClick={goToNextTab}
-                          className="text-white bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg transition-all duration-300 hover:from-blue-600 hover:to-purple-600 hover:shadow-xl"
+                          className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
                         >
                           التالي
                           <ArrowRight className="mr-2 w-4 h-4" />
@@ -2323,14 +2345,14 @@ ${playersList}
                         <Button
                           onClick={goToPreviousTab}
                           variant="outline"
-                          className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                          className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
                         >
                           <ArrowLeft className="ml-2 w-4 h-4" />
                           السابق
                         </Button>
                         <Button
                           onClick={goToNextTab}
-                          className="text-white bg-gradient-to-r from-emerald-500 to-green-500 shadow-lg transition-all duration-300 hover:from-emerald-600 hover:to-green-600 hover:shadow-xl"
+                          className={cn(buttonStyles.success, "gap-2 shadow-lg")}
                         >
                           التالي
                           <ArrowRight className="mr-2 w-4 h-4" />
@@ -2636,7 +2658,11 @@ ${playersList}
                             variant="outline"
                             onClick={generateTournamentInvoice}
                             disabled={generatingInvoice || !selectedTournament || selectedPlayers.length === 0}
-                            className="w-full text-blue-600 border-blue-300 transition-all duration-300 hover:bg-blue-50 hover:border-blue-400"
+                            className={cn(
+                              "w-full",
+                              buttonStyles.outline,
+                              "border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
+                            )}
                           >
                             {generatingInvoice ? (
                               <>
@@ -2656,7 +2682,11 @@ ${playersList}
                         <div className="flex flex-col gap-4 sm:flex-row">
                           <Button
                             variant="outline"
-                            className="flex-1 text-red-600 border-red-300 transition-all duration-300 hover:bg-red-50 hover:border-red-400"
+                            className={cn(
+                              "flex-1",
+                              buttonStyles.outline,
+                              "border-rose-200 text-rose-700 hover:text-rose-800 hover:border-rose-300"
+                            )}
                             onClick={() => {
                               setSelectedPlayers([]);
                               setSelectedTournament(null);
@@ -2672,7 +2702,11 @@ ${playersList}
                           </Button>
 
                           <Button
-                            className="flex-1 text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg transition-all duration-300 transform hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:scale-105"
+                            className={cn(
+                              "flex-1 shadow-lg transition-transform duration-200",
+                              buttonStyles.accent,
+                              "hover:scale-[1.02]"
+                            )}
                             disabled={submitting || selectedPlayers.length === 0 || calculateTotalAmount() <= 0}
                             onClick={async () => {
                               console.log('🔵 [Submit] Button clicked - Starting registration process');
@@ -2893,7 +2927,7 @@ ${playersList}
                         <Button
                           onClick={goToPreviousTab}
                           variant="outline"
-                          className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                          className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
                         >
                           <ArrowLeft className="ml-2 w-4 h-4" />
                           السابق
@@ -3072,7 +3106,10 @@ ${playersList}
                   <Button
                     onClick={handleMobileWalletReceiptUpload}
                     disabled={!mobileWalletProvider || !mobileWalletReceipt || !mobileWalletReceiptNumber.trim() || mobileWalletUploading}
-                    className="flex-1 text-white bg-gradient-to-r from-emerald-600 to-green-600 shadow-lg transition-all duration-300 hover:from-emerald-700 hover:to-green-700 hover:shadow-xl disabled:opacity-50"
+                    className={cn(
+                      buttonStyles.success,
+                      "flex-1 shadow-lg disabled:opacity-50"
+                    )}
                   >
                     {mobileWalletUploading ? 'جاري الرفع...' : 'رفع الإيصال'}
                   </Button>
@@ -3089,7 +3126,7 @@ ${playersList}
                       setMobileWalletReceiptUrl('');
                       setMobileWalletUploadSuccess(false);
                     }}
-                    className="flex-1 text-gray-600 border-gray-300 transition-all duration-300 hover:bg-gray-50 hover:border-gray-400"
+                    className={cn(buttonStyles.outline, "flex-1 text-slate-600")}
                   >
                     إلغاء
                   </Button>
@@ -3105,7 +3142,7 @@ ${playersList}
                     setMobileWalletReceiptNumber('');
                     setMobileWalletUploadSuccess(false);
                   }}
-                  className="w-full text-white bg-gradient-to-r from-emerald-600 to-green-600 shadow-lg transition-all duration-300 hover:from-emerald-700 hover:to-green-700 hover:shadow-xl"
+                  className={cn(buttonStyles.success, "w-full shadow-lg")}
                 >
                   إغلاق
                 </Button>
@@ -3138,7 +3175,7 @@ ${playersList}
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button
                     onClick={sendInvoiceViaWhatsApp}
-                    className="flex-1 text-white bg-green-600 hover:bg-green-700"
+                    className={cn(buttonStyles.success, "flex-1 gap-2")}
                     disabled={!userProfile?.phone}
                   >
                     <MessageSquare className="mr-2 w-4 h-4" />
@@ -3147,7 +3184,10 @@ ${playersList}
                   <Button
                     onClick={sendInvoiceViaEmail}
                     variant="outline"
-                    className="flex-1 text-blue-700 border-blue-300 hover:bg-blue-50"
+                    className={cn(
+                      buttonStyles.outline,
+                      "flex-1 gap-2 border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
+                    )}
                     disabled={!userProfile?.email}
                   >
                     <Mail className="mr-2 w-4 h-4" />
@@ -3156,7 +3196,7 @@ ${playersList}
                   <Button
                     onClick={generateTournamentInvoice}
                     variant="outline"
-                    className="flex-1 text-gray-700 border-gray-300 hover:bg-gray-50"
+                    className={cn(buttonStyles.outline, "flex-1 gap-2 text-slate-700")}
                   >
                     <FileText className="mr-2 w-4 h-4" />
                     تحميل الفاتورة
@@ -3184,7 +3224,7 @@ ${playersList}
                 <Button
                   onClick={printRegisteredPlayers}
                   variant="outline"
-                  className="flex gap-2 items-center"
+                  className={cn(buttonStyles.outline, "flex gap-2 items-center text-slate-700")}
                 >
                   <Printer className="w-4 h-4" />
                   طباعة التقرير
@@ -3204,7 +3244,10 @@ ${playersList}
                       });
                     }}
                     variant="outline"
-                    className="flex gap-2 items-center"
+                    className={cn(
+                      buttonStyles.outline,
+                      "flex gap-2 items-center border-purple-200 text-purple-700 hover:text-purple-800 hover:border-purple-300"
+                    )}
                   >
                     <Plus className="w-4 h-4" />
                     تسجيل جديد
@@ -3260,7 +3303,10 @@ ${playersList}
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditPlayer(player)}
-                            className="p-0 w-6 h-6 sm:h-8 sm:w-8 hover:bg-blue-100"
+                            className={cn(
+                              buttonStyles.outline,
+                              "p-0 w-6 h-6 sm:h-8 sm:w-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                            )}
                           >
                             <Edit className="w-3 h-3 text-blue-600 sm:h-4 sm:w-4" />
                           </Button>
@@ -3268,7 +3314,10 @@ ${playersList}
                             variant="outline"
                             size="sm"
                             onClick={() => togglePlayerSelection(player)}
-                            className="p-0 w-6 h-6 sm:h-8 sm:w-8 hover:bg-red-100"
+                            className={cn(
+                              buttonStyles.outline,
+                              "p-0 w-6 h-6 sm:h-8 sm:w-8 border-rose-200 text-rose-600 hover:bg-rose-50"
+                            )}
                           >
                             <span className="text-xs text-red-600">×</span>
                           </Button>
@@ -3404,6 +3453,7 @@ ${playersList}
                   setShowEditModal(false);
                   setEditingPlayer(null);
                 }}
+              className={cn(buttonStyles.outline, "text-slate-600")}
               >
                 إلغاء
               </Button>
@@ -3413,7 +3463,7 @@ ${playersList}
                     updateRegisteredPlayer(editingPlayer);
                   }
                 }}
-                className="bg-blue-600 hover:bg-blue-700"
+              className={cn(buttonStyles.primary, "shadow-md")}
               >
                 حفظ التغييرات
               </Button>
@@ -3481,7 +3531,7 @@ ${playersList}
             <Button
               variant="outline"
               onClick={() => setShowDuplicateWarning(false)}
-              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              className={cn(buttonStyles.outline, "text-slate-600")}
             >
               إغلاق
             </Button>
@@ -3493,7 +3543,7 @@ ${playersList}
                 setShowDuplicateWarning(false);
                 toast.success('تم إزالة اللاعبين المكررين من القائمة');
               }}
-              className="text-white bg-red-600 hover:bg-red-700"
+              className={cn(buttonStyles.danger, "shadow-md")}
             >
               إزالة من القائمة
             </Button>
