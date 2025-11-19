@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     // تسجيل تفصيلي للحالة والرسائل
     console.log(`📊 [Geidea Callback] Payment details:`, {
       orderId,
+      reference,
       responseCode,
       detailedResponseCode,
       responseMessage,
@@ -84,17 +85,32 @@ export async function POST(request: NextRequest) {
       statusSource: derivedStatus.source,
       amount,
       currency,
+      customerEmail,
+      customerName,
     });
 
-    // تسجيل خاص للمدفوعات الفاشلة
+    // تسجيل خاص للمدفوعات الفاشلة (مثل Insufficient funds)
     if (derivedStatus.status === 'failed') {
       console.warn(`⚠️ [Geidea Callback] Failed payment detected:`, {
         orderId,
+        merchantReferenceId: reference,
         responseCode,
         detailedResponseCode,
         responseMessage,
         detailedResponseMessage,
         reason: 'Payment failed - will be saved with failed status',
+        willBeSavedAs: 'failed',
+      });
+    }
+
+    // تسجيل خاص لـ Insufficient funds
+    const errorMessage = responseMessage || detailedResponseMessage || '';
+    if (errorMessage.toLowerCase().includes('insufficient') || errorMessage.toLowerCase().includes('funds') || errorMessage.toLowerCase().includes('رصيد')) {
+      console.error(`💳 [Geidea Callback] Insufficient funds detected:`, {
+        orderId,
+        merchantReferenceId: reference,
+        errorMessage,
+        willBeSaved: true,
       });
     }
 
@@ -107,12 +123,20 @@ export async function POST(request: NextRequest) {
 
     const profile = await findRelatedProfile(customerEmail, guessedUserId);
 
-    const geideaDocRef = adminDb.collection('geidea_payments').doc(orderId);
+    // استخدام orderId من جيديا كـ document ID (الأولوية)
+    // إذا لم يكن موجوداً، نستخدم merchantReferenceId
+    const documentId = orderId || reference || 'unknown';
+    
+    console.log(`💾 [Geidea Callback] Saving payment with documentId: ${documentId}, orderId: ${orderId}, merchantReferenceId: ${reference}`);
+
+    const geideaDocRef = adminDb.collection('geidea_payments').doc(documentId);
     const existingDoc = await geideaDocRef.get();
 
     const docData = cleanUndefined({
-      orderId,
-      merchantReferenceId: reference || orderId,
+      orderId: orderId || reference, // orderId من جيديا (الأولوية)
+      merchantReferenceId: reference || orderId, // merchantReferenceId الذي أرسلناه
+      geideaOrderId: orderId, // orderId من جيديا (للتوضيح)
+      ourMerchantReferenceId: reference, // merchantReferenceId الذي أرسلناه (للتوضيح)
       transactionId: transactionId || null,
       responseCode: responseCode || null,
       detailedResponseCode: detailedResponseCode || null,
@@ -197,9 +221,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
+    const merchantReferenceId = searchParams.get('merchantReferenceId');
 
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400, headers: corsHeaders });
+    if (!orderId && !merchantReferenceId) {
+      return NextResponse.json(
+        { error: 'Order ID or Merchant Reference ID is required' },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     if (!adminDb) {
@@ -207,27 +235,76 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database is not available' }, { status: 503, headers: corsHeaders });
     }
 
-    const docSnap = await adminDb.collection('geidea_payments').doc(orderId).get();
-
-    if (!docSnap.exists) {
-      return NextResponse.json(
-        {
-          success: false,
-          orderId,
-          status: 'not_found',
-        },
-        { status: 404, headers: corsHeaders }
-      );
+    // البحث باستخدام orderId أولاً
+    if (orderId) {
+      const docSnap = await adminDb.collection('geidea_payments').doc(orderId).get();
+      if (docSnap.exists) {
+        return NextResponse.json(
+          {
+            success: true,
+            orderId,
+            status: docSnap.get('status') || 'pending',
+            data: docSnap.data(),
+          },
+          { headers: corsHeaders }
+        );
+      }
     }
 
+    // إذا لم نجد باستخدام orderId، نبحث باستخدام merchantReferenceId
+    if (merchantReferenceId) {
+      const querySnapshot = await adminDb
+        .collection('geidea_payments')
+        .where('merchantReferenceId', '==', merchantReferenceId)
+        .limit(1)
+        .get();
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return NextResponse.json(
+          {
+            success: true,
+            orderId: doc.id,
+            merchantReferenceId,
+            status: doc.get('status') || 'pending',
+            data: doc.data(),
+          },
+          { headers: corsHeaders }
+        );
+      }
+
+      // البحث أيضاً في حقل ourMerchantReferenceId
+      const querySnapshot2 = await adminDb
+        .collection('geidea_payments')
+        .where('ourMerchantReferenceId', '==', merchantReferenceId)
+        .limit(1)
+        .get();
+
+      if (!querySnapshot2.empty) {
+        const doc = querySnapshot2.docs[0];
+        return NextResponse.json(
+          {
+            success: true,
+            orderId: doc.id,
+            merchantReferenceId,
+            status: doc.get('status') || 'pending',
+            data: doc.data(),
+          },
+          { headers: corsHeaders }
+        );
+      }
+    }
+
+    // إذا لم نجد في أي مكان
     return NextResponse.json(
       {
-        success: true,
-        orderId,
-        status: docSnap.get('status') || 'pending',
-        data: docSnap.data(),
+        success: false,
+        orderId: orderId || null,
+        merchantReferenceId: merchantReferenceId || null,
+        status: 'not_found',
+        message: 'Payment not found in database. Callback may not have been received yet.',
       },
-      { headers: corsHeaders }
+      { status: 404, headers: corsHeaders }
     );
   } catch (error) {
     console.error('❌ [Geidea Callback] Error checking payment status:', error);
@@ -317,9 +394,37 @@ function extractNumber(data: BodyData, keys: string[]): number | null {
 }
 
 function deriveOrderId(data: BodyData): string | null {
-  return (
-    extractString(data, ['orderId', 'order_id', 'merchantReferenceId', 'merchant_reference_id']) || null
+  // البحث عن orderId من جيديا (الأولوية)
+  const orderId = extractString(data, ['orderId', 'order_id', 'id']);
+  if (orderId) {
+    console.log(`✅ [Geidea Callback] Found orderId: ${orderId}`);
+    return orderId;
+  }
+
+  // إذا لم نجد orderId، نبحث عن merchantReferenceId
+  const merchantRef = extractString(data, ['merchantReferenceId', 'merchant_reference_id', 'reference', 'merchantRef']);
+  if (merchantRef) {
+    console.log(`⚠️ [Geidea Callback] No orderId found, using merchantReferenceId: ${merchantRef}`);
+    return merchantRef;
+  }
+
+  // البحث في جميع الحقول المحتملة
+  const possibleKeys = Object.keys(data).filter(key => 
+    key.toLowerCase().includes('order') || 
+    key.toLowerCase().includes('reference') ||
+    key.toLowerCase().includes('id')
   );
+
+  for (const key of possibleKeys) {
+    const value = data[key];
+    if (value && typeof value === 'string' && value.trim()) {
+      console.log(`⚠️ [Geidea Callback] Found potential orderId in field '${key}': ${value}`);
+      return value.trim();
+    }
+  }
+
+  console.error('❌ [Geidea Callback] Could not find orderId in payload:', Object.keys(data));
+  return null;
 }
 
 function guessUserIdFromOrder(orderId: string): string | null {

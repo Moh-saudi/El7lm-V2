@@ -1507,6 +1507,10 @@ export default function AdminPaymentsPage() {
               errorMessage = data.responseMessage || data.detailedResponseMessage || data.errorMessage || null;
             }
 
+            // استخراج orderId و merchantReferenceId لمدفوعات جيديا
+            const geideaOrderId = data.orderId || data.geideaOrderId || null;
+            const merchantRefId = data.merchantReferenceId || data.ourMerchantReferenceId || null;
+
             allPayments.push({
               id: doc.id,
               collection: collectionName,
@@ -1529,7 +1533,9 @@ export default function AdminPaymentsPage() {
               // بيانات إضافية من البيانات الأصلية
               packageType: data.packageType || data.package_type || null,
               // بيانات إضافية لمدفوعات جيديا
-              orderId: data.orderId || data.merchantReferenceId || null,
+              orderId: geideaOrderId || merchantRefId || doc.id, // orderId من جيديا أو merchantReferenceId
+              geideaOrderId: geideaOrderId, // orderId من جيديا (للتوضيح)
+              merchantReferenceId: merchantRefId, // merchantReferenceId الذي أرسلناه
               responseCode: data.responseCode || null,
               detailedResponseCode: data.detailedResponseCode || null,
               responseMessage: errorMessage,
