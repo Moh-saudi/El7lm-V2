@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { db } from '@/lib/firebase/config';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
@@ -133,9 +134,26 @@ export default function AdminPaymentsPage() {
 
     // فلتر طريقة الدفع
     if (filters.paymentMethod !== 'all') {
-      filtered = filtered.filter(payment =>
-        payment.paymentMethod.toLowerCase().includes(filters.paymentMethod.toLowerCase())
-      );
+      const beforeFilterCount = filtered.length;
+      filtered = filtered.filter(payment => {
+        const matches = payment.paymentMethod && payment.paymentMethod.toLowerCase().includes(filters.paymentMethod.toLowerCase());
+        // تسجيل خاص لفلتر جيديا
+        if (filters.paymentMethod.toLowerCase() === 'geidea') {
+          if (matches) {
+            console.log(`✅ [Geidea Filter] Payment matches filter:`, {
+              id: payment.id,
+              paymentMethod: payment.paymentMethod,
+              amount: payment.amount,
+              playerName: payment.playerName
+            });
+          }
+        }
+        return matches;
+      });
+      const afterFilterCount = filtered.length;
+      if (filters.paymentMethod.toLowerCase() === 'geidea') {
+        console.log(`🔍 [Geidea Filter] Filtered ${beforeFilterCount} payments, found ${afterFilterCount} Geidea payments`);
+      }
     }
 
     // فلتر التاريخ
@@ -830,7 +848,8 @@ export default function AdminPaymentsPage() {
         'wallet', 'instapay', 'fawry', 'vodafone_cash',
         'orange_money', 'etisalat_wallet', 'paymob',
         'paypal_transactions', 'stripe_payments',
-        'bulkPayments', 'bulk_payments', 'payment_action_logs', 'payment_results'
+        'bulkPayments', 'bulk_payments', 'payment_action_logs', 'payment_results',
+        'tournament_payments', 'geidea_payments', 'geidea'
       ];
 
       let allPayments = [];
@@ -845,6 +864,17 @@ export default function AdminPaymentsPage() {
             const data = doc.data();
 
             console.log(`Collection: ${collectionName}, Data:`, data);
+            
+            // تسجيل خاص لمدفوعات جيديا
+            if (data.paymentMethod === 'geidea' || collectionName === 'bulkPayments' || collectionName === 'bulk_payments') {
+              console.log(`🔍 [Geidea Payment] Found in ${collectionName}:`, {
+                id: doc.id,
+                paymentMethod: data.paymentMethod,
+                amount: data.amount,
+                status: data.status,
+                userId: data.userId
+              });
+            }
 
             // البحث عن معرف اللاعب
             let playerId = null;
@@ -1441,6 +1471,21 @@ export default function AdminPaymentsPage() {
             const playersCount = isBulkPayment && data.players && Array.isArray(data.players) ? data.players.length : null;
             const playersData = isBulkPayment && data.players && Array.isArray(data.players) ? data.players : null;
 
+            // استخراج طريقة الدفع
+            const extractedPaymentMethod = data.paymentMethod || data.method || data.gateway || data.paymentType || collectionName;
+            
+            // تسجيل خاص لمدفوعات جيديا بعد الاستخراج
+            if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea') {
+              console.log(`✅ [Geidea Payment] Extracted paymentMethod:`, {
+                collection: collectionName,
+                docId: doc.id,
+                extractedPaymentMethod: extractedPaymentMethod,
+                originalPaymentMethod: data.paymentMethod,
+                amount: data.amount,
+                playerName: playerName
+              });
+            }
+
             allPayments.push({
               id: doc.id,
               collection: collectionName,
@@ -1452,7 +1497,7 @@ export default function AdminPaymentsPage() {
               amount: data.amount || data.total || data.value || data.price || data.cost || data.fee || 0,
               currency: data.currency || data.currencyCode || data.currencySymbol || 'EGP',
               status: data.status || data.paymentStatus || data.transactionStatus || 'pending',
-              paymentMethod: data.paymentMethod || data.method || data.gateway || data.paymentType || collectionName,
+              paymentMethod: extractedPaymentMethod,
               createdAt: data.createdAt || data.timestamp || data.date || data.paymentDate || data.transactionDate || new Date(),
               receiptImage: data.receiptImage || data.receiptUrl || data.image || data.photo || data.picture || null,
               receiptUrl: data.receiptUrl || data.receiptImage || data.image || data.photo || data.picture || null,
@@ -1787,6 +1832,59 @@ export default function AdminPaymentsPage() {
             >
               🧪 اختبار WhatsApp
             </button>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <Link
+                href="/dashboard/admin/invoices"
+                className="inline-flex items-center gap-2 bg-white text-blue-600 px-5 py-2 rounded-lg font-semibold shadow hover:shadow-md transition"
+                title="الانتقال إلى إدارة الفواتير"
+              >
+                📄 الانتقال إلى صفحة الفواتير
+              </Link>
+              <p className="text-sm text-gray-600">
+                هذه الصفحة مربوطة بالكامل مع صفحة الفواتير لتتبع إصدار الفواتير ومتابعة المدفوعات.
+              </p>
+            </div>
+          </div>
+
+          {/* معلومات رابط Callback من جيديا */}
+          <div className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">🔗</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">رابط Callback من جيديا</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  استخدم هذا الرابط في إعدادات جيديا (Geidea Dashboard) كـ Callback URL:
+                </p>
+                <div className="bg-white rounded-lg p-4 border-2 border-purple-300 shadow-sm">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <code className="flex-1 text-sm font-mono text-purple-700 bg-purple-50 px-3 py-2 rounded border border-purple-200 break-all">
+                      {typeof window !== 'undefined' 
+                        ? `${window.location.origin}/api/geidea/callback`
+                        : 'https://el7lm-backup.vercel.app/api/geidea/callback'}
+                    </code>
+                    <button
+                      onClick={() => {
+                        const callbackUrl = typeof window !== 'undefined' 
+                          ? `${window.location.origin}/api/geidea/callback`
+                          : 'https://el7lm-backup.vercel.app/api/geidea/callback';
+                        navigator.clipboard.writeText(callbackUrl);
+                        toast.success('تم نسخ رابط Callback إلى الحافظة');
+                      }}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm whitespace-nowrap"
+                      title="نسخ الرابط"
+                    >
+                      📋 نسخ الرابط
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <strong>💡 ملاحظة:</strong> تأكد من إضافة هذا الرابط في لوحة تحكم جيديا (Geidea Merchant Dashboard) 
+                    في قسم Webhook/Callback Settings. هذا الرابط يستقبل إشعارات الدفع تلقائياً من جيديا.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1946,6 +2044,7 @@ export default function AdminPaymentsPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="all">جميع الطرق</option>
+                <option value="geidea">جيديا</option>
                 <option value="fawry">فوري</option>
                 <option value="vodafone">فودافون كاش</option>
                 <option value="orange">أورنج موني</option>
