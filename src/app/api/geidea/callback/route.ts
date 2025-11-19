@@ -38,13 +38,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await parseRequestBody(request);
-    console.log('🔄 [Geidea Callback] Received payment callback:', payload);
+    console.log('🔄 [Geidea Callback] Received payment callback:', JSON.stringify(payload, null, 2));
 
     const orderId = deriveOrderId(payload);
     if (!orderId) {
-      console.error('❌ [Geidea Callback] Missing orderId in payload:', payload);
+      console.error('❌ [Geidea Callback] Missing orderId in payload:', JSON.stringify(payload, null, 2));
       return NextResponse.json({ error: 'orderId is required' }, { status: 400, headers: corsHeaders });
     }
+
+    console.log(`📋 [Geidea Callback] Processing orderId: ${orderId}`);
 
     const responseCode = extractString(payload, ['responseCode', 'response_code', 'code']);
     const detailedResponseCode = extractString(payload, ['detailedResponseCode', 'detailed_response_code']);
@@ -70,6 +72,31 @@ export async function POST(request: NextRequest) {
     const amount = extractNumber(payload, ['amount', 'orderAmount', 'order_amount', 'totalAmount', 'total_amount']);
     const currency = extractString(payload, ['currency', 'currencyCode', 'orderCurrency']) || 'EGP';
     const derivedStatus = determineStatus(payload, responseCode, detailedResponseCode);
+
+    // تسجيل تفصيلي للحالة والرسائل
+    console.log(`📊 [Geidea Callback] Payment details:`, {
+      orderId,
+      responseCode,
+      detailedResponseCode,
+      responseMessage,
+      detailedResponseMessage,
+      derivedStatus: derivedStatus.status,
+      statusSource: derivedStatus.source,
+      amount,
+      currency,
+    });
+
+    // تسجيل خاص للمدفوعات الفاشلة
+    if (derivedStatus.status === 'failed') {
+      console.warn(`⚠️ [Geidea Callback] Failed payment detected:`, {
+        orderId,
+        responseCode,
+        detailedResponseCode,
+        responseMessage,
+        detailedResponseMessage,
+        reason: 'Payment failed - will be saved with failed status',
+      });
+    }
 
     const guessedUserId = guessUserIdFromOrder(orderId);
 
@@ -120,9 +147,24 @@ export async function POST(request: NextRequest) {
     console.log('💾 [Geidea Callback] Payment stored in geidea_payments:', {
       orderId,
       status: derivedStatus.status,
+      statusSource: derivedStatus.source,
       amount,
       currency,
+      responseCode,
+      detailedResponseCode,
+      responseMessage: responseMessage || detailedResponseMessage,
+      savedAt: new Date().toISOString(),
     });
+
+    // تسجيل خاص للمدفوعات الفاشلة
+    if (derivedStatus.status === 'failed') {
+      console.warn(`⚠️ [Geidea Callback] Failed payment saved successfully:`, {
+        orderId,
+        status: 'failed',
+        reason: responseMessage || detailedResponseMessage || 'Unknown error',
+        willAppearInDashboard: true,
+      });
+    }
 
     return NextResponse.json(
       {
@@ -290,12 +332,20 @@ function guessUserIdFromOrder(orderId: string): string | null {
 
 function determineStatus(data: BodyData, responseCode?: string | null, detailedCode?: string | null) {
   const statusField = extractString(data, ['status', 'paymentStatus', 'transactionStatus'])?.toLowerCase();
+  const responseMessage = extractString(data, ['responseMessage', 'response_message', 'detailedResponseMessage', 'detailed_response_message'])?.toLowerCase() || '';
+
+  // التحقق من رسائل الخطأ الشائعة (مثل رصيد غير كافي)
+  const errorMessages = [
+    'insufficient', 'balance', 'funds', 'رصيد', 'غير كافي', 'insufficient balance',
+    'declined', 'rejected', 'failed', 'error', 'خطأ', 'فشل', 'مرفوض'
+  ];
+  const hasErrorMessage = errorMessages.some(msg => responseMessage.includes(msg));
 
   if (statusField) {
     if (['success', 'completed', 'paid'].includes(statusField)) {
       return { status: 'success', source: 'status_field' };
     }
-    if (['failed', 'error', 'declined', 'rejected'].includes(statusField)) {
+    if (['failed', 'error', 'declined', 'rejected'].includes(statusField) || hasErrorMessage) {
       return { status: 'failed', source: 'status_field' };
     }
     if (['cancelled', 'canceled', 'void'].includes(statusField)) {
@@ -304,6 +354,11 @@ function determineStatus(data: BodyData, responseCode?: string | null, detailedC
     if (['pending', 'processing', 'initiated'].includes(statusField)) {
       return { status: 'pending', source: 'status_field' };
     }
+  }
+
+  // إذا كان هناك رسالة خطأ واضحة، نعتبرها فاشلة
+  if (hasErrorMessage && !statusField) {
+    return { status: 'failed', source: 'error_message' };
   }
 
   if (responseCode) {

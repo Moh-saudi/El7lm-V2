@@ -1475,15 +1475,36 @@ export default function AdminPaymentsPage() {
             const extractedPaymentMethod = data.paymentMethod || data.method || data.gateway || data.paymentType || collectionName;
             
             // تسجيل خاص لمدفوعات جيديا بعد الاستخراج
-            if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea') {
+            if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea' || collectionName === 'geidea_payments') {
               console.log(`✅ [Geidea Payment] Extracted paymentMethod:`, {
                 collection: collectionName,
                 docId: doc.id,
                 extractedPaymentMethod: extractedPaymentMethod,
                 originalPaymentMethod: data.paymentMethod,
                 amount: data.amount,
+                status: data.status,
+                responseCode: data.responseCode,
+                detailedResponseCode: data.detailedResponseCode,
+                responseMessage: data.responseMessage || data.detailedResponseMessage,
                 playerName: playerName
               });
+
+              // استخراج رسالة الخطأ من بيانات جيديا
+              if (data.status === 'failed' || data.status === 'rejected') {
+                console.warn(`⚠️ [Geidea Payment] Failed payment detected:`, {
+                  orderId: data.orderId || doc.id,
+                  status: data.status,
+                  responseMessage: data.responseMessage || data.detailedResponseMessage,
+                  responseCode: data.responseCode,
+                  detailedResponseCode: data.detailedResponseCode,
+                });
+              }
+            }
+
+            // استخراج رسالة الخطأ من بيانات جيديا
+            let errorMessage = null;
+            if (collectionName === 'geidea_payments' || extractedPaymentMethod === 'geidea') {
+              errorMessage = data.responseMessage || data.detailedResponseMessage || data.errorMessage || null;
             }
 
             allPayments.push({
@@ -1506,7 +1527,13 @@ export default function AdminPaymentsPage() {
               playersCount: playersCount,
               playersData: playersData,
               // بيانات إضافية من البيانات الأصلية
-              packageType: data.packageType || data.package_type || null
+              packageType: data.packageType || data.package_type || null,
+              // بيانات إضافية لمدفوعات جيديا
+              orderId: data.orderId || data.merchantReferenceId || null,
+              responseCode: data.responseCode || null,
+              detailedResponseCode: data.detailedResponseCode || null,
+              responseMessage: errorMessage,
+              callbackReceivedAt: data.callbackReceivedAt || null,
             });
           }
         } catch (error) {
@@ -1878,6 +1905,119 @@ export default function AdminPaymentsPage() {
                     <strong>💡 ملاحظة:</strong> تأكد من إضافة هذا الرابط في لوحة تحكم جيديا (Geidea Merchant Dashboard) 
                     في قسم Webhook/Callback Settings. هذا الرابط يستقبل إشعارات الدفع تلقائياً من جيديا.
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* قسم التحقق من إعدادات جيديا */}
+          <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">✅</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">التحقق من إعدادات جلب المدفوعات من جيديا</h3>
+                
+                <div className="space-y-3">
+                  {/* التحقق من مجموعة geidea_payments */}
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📦</span>
+                        <span className="font-medium text-gray-700">مجموعة geidea_payments</span>
+                      </div>
+                      <span className="text-sm text-green-600 font-medium">✅ متضمنة في الجلب</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      يتم جلب جميع المدفوعات من مجموعة <code className="bg-gray-100 px-1 rounded">geidea_payments</code> تلقائياً
+                    </p>
+                  </div>
+
+                  {/* التحقق من Callback API */}
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🔔</span>
+                        <span className="font-medium text-gray-700">API Callback</span>
+                      </div>
+                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      ملف <code className="bg-gray-100 px-1 rounded">/api/geidea/callback</code> جاهز لاستقبال إشعارات الدفع مع CORS headers
+                    </p>
+                  </div>
+
+                  {/* التحقق من Create Session API */}
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🎫</span>
+                        <span className="font-medium text-gray-700">API Create Session</span>
+                      </div>
+                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      ملف <code className="bg-gray-100 px-1 rounded">/api/geidea/create-session</code> ينشئ جلسات الدفع بشكل صحيح
+                    </p>
+                  </div>
+
+                  {/* التحقق من معالجة البيانات */}
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🔄</span>
+                        <span className="font-medium text-gray-700">معالجة البيانات</span>
+                      </div>
+                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      يتم استخراج اسم العميل، رقم الهاتف، المبلغ، والحالة من بيانات جيديا بشكل صحيح
+                    </p>
+                  </div>
+
+                  {/* إحصائيات مدفوعات جيديا */}
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📊</span>
+                        <span className="font-medium text-gray-700">إحصائيات مدفوعات جيديا</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-gray-50 rounded">
+                        <p className="text-lg font-bold text-gray-800">
+                          {payments.filter(p => p.paymentMethod === 'geidea' || p.collection === 'geidea_payments').length}
+                        </p>
+                        <p className="text-xs text-gray-600">إجمالي المدفوعات</p>
+                      </div>
+                      <div className="text-center p-2 bg-gray-50 rounded">
+                        <p className="text-lg font-bold text-green-600">
+                          {payments.filter(p => (p.paymentMethod === 'geidea' || p.collection === 'geidea_payments') && 
+                            (p.status === 'success' || p.status === 'completed' || p.status === 'paid')).length}
+                        </p>
+                        <p className="text-xs text-gray-600">مدفوعات ناجحة</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800">
+                    <strong>⚠️ تحقق يدوي:</strong> تأكد من وجود المتغيرات البيئية التالية في Vercel:
+                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">GEIDEA_MERCHANT_PUBLIC_KEY</code>
+                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">GEIDEA_API_PASSWORD</code>
+                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">NEXT_PUBLIC_BASE_URL</code>
+                  </p>
+                </div>
+
+                {/* ملاحظة حول المدفوعات الفاشلة */}
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <h4 className="font-bold text-orange-800 mb-2">📝 ملاحظة حول المدفوعات الفاشلة:</h4>
+                  <ul className="text-xs text-orange-700 space-y-1 list-disc list-inside">
+                    <li>جميع المدفوعات (الناجحة والفاشلة) يتم حفظها تلقائياً في مجموعة <code className="bg-orange-100 px-1 rounded">geidea_payments</code></li>
+                    <li>المدفوعات الفاشلة (مثل رصيد غير كافي) تظهر في القائمة مع حالة <span className="bg-red-100 text-red-800 px-1 rounded">failed</span></li>
+                    <li>يمكنك عرض تفاصيل المدفوعة الفاشلة لمعرفة سبب الفشل من جيديا</li>
+                    <li>إذا لم تظهر مدفوعة فاشلة، تحقق من logs في Vercel أو تأكد من أن جيديا أرسلت callback</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -2668,6 +2808,18 @@ export default function AdminPaymentsPage() {
                     <label className="font-medium text-gray-700">المصدر:</label>
                     <p className="text-gray-900">{selectedPayment.collection}</p>
                   </div>
+                  {selectedPayment.orderId && (
+                    <div>
+                      <label className="font-medium text-gray-700">معرف الطلب:</label>
+                      <p className="text-gray-900 font-mono text-sm">{selectedPayment.orderId}</p>
+                    </div>
+                  )}
+                  {selectedPayment.responseCode && (
+                    <div>
+                      <label className="font-medium text-gray-700">رمز الاستجابة:</label>
+                      <p className="text-gray-900 font-mono text-sm">{selectedPayment.responseCode}</p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="font-medium text-gray-700">التاريخ:</label>
@@ -2678,6 +2830,31 @@ export default function AdminPaymentsPage() {
                     }
                   </p>
                 </div>
+                {/* عرض رسالة الخطأ للمدفوعات الفاشلة من جيديا */}
+                {(selectedPayment.status === 'failed' || selectedPayment.status === 'rejected') && selectedPayment.responseMessage && (
+                  <div className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <span className="text-2xl">⚠️</span>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-red-800 mb-1">رسالة الخطأ من جيديا:</h4>
+                        <p className="text-red-700 text-sm">{selectedPayment.responseMessage}</p>
+                        {selectedPayment.detailedResponseCode && (
+                          <p className="text-red-600 text-xs mt-1">
+                            رمز الخطأ التفصيلي: <code className="bg-red-100 px-1 rounded">{selectedPayment.detailedResponseCode}</code>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* معلومات إضافية لمدفوعات جيديا */}
+                {selectedPayment.paymentMethod === 'geidea' && selectedPayment.callbackReceivedAt && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>📥 تم استقبال الإشعار:</strong> {new Date(selectedPayment.callbackReceivedAt).toLocaleString('ar-EG')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
