@@ -556,14 +556,30 @@ const formatDate = (value?: Date | null) => {
 
 const buildShareMessage = (record: InvoiceRecord) => {
   const statusLabel = STATUS_LABELS[record.status]?.label || record.status;
-  return [
+  const lines = [
     `مرحباً ${record.customerName || 'صديقنا العزيز'} 🌟`,
     'يسعد فريق منصة الحلم أن يشاركك تفاصيل فاتورتك الأخيرة ونؤكد أننا معك في كل خطوة نحو نجاحك الرياضي.',
     `رقم الفاتورة: ${record.invoiceNumber}`,
     `المبلغ المستحق: ${formatCurrency(record.amount, record.currency)}`,
+  ];
+  
+  if (record.packageDuration && record.packageDuration !== 'غير محدد') {
+    lines.push(`مدة الاشتراك: ${record.packageDuration}`);
+  }
+  
+  if (record.expiryDate) {
+    const expiryText = record.expiryDate < new Date() 
+      ? `تاريخ الانتهاء: ${formatDate(record.expiryDate)} (منتهي)`
+      : `تاريخ الانتهاء: ${formatDate(record.expiryDate)}`;
+    lines.push(expiryText);
+  }
+  
+  lines.push(
     `الحالة الحالية: ${statusLabel}`,
-    'إذا احتجت أي مساعدة أو استفسار فنحن جاهزون فوراً لدعمك ومواصلة العمل على نجاحاتنا المشتركة 💪.',
-  ].join('\n');
+    'إذا احتجت أي مساعدة أو استفسار فنحن جاهزون فوراً لدعمك ومواصلة العمل على نجاحاتنا المشتركة 💪.'
+  );
+  
+  return lines.join('\n');
 };
 
 const generateInvoiceHTML = (record: InvoiceRecord) => `
