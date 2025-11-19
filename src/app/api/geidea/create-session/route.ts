@@ -93,11 +93,11 @@ export async function POST(request: NextRequest) {
       // إذا كان localhost، استخدم URL الإنتاج الافتراضي بدلاً منه
       // لأن Geidea لا يقبل localhost URLs
       if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('localhost')) {
-        baseUrl = 'https://el7lm-backup.vercel.app';
+        baseUrl = 'https://www.el7lm.com';
       }
     } catch (e) {
       // إذا فشل parsing، استخدم القيمة الافتراضية
-      baseUrl = 'https://el7lm-backup.vercel.app';
+      baseUrl = 'https://www.el7lm.com';
     }
     
     const defaultCallbackUrl = `${baseUrl}/api/geidea/callback`;

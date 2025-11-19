@@ -1858,15 +1858,11 @@ export default function AdminPaymentsPage() {
                 <div className="bg-white rounded-lg p-4 border-2 border-purple-300 shadow-sm">
                   <div className="flex items-center gap-3 flex-wrap">
                     <code className="flex-1 text-sm font-mono text-purple-700 bg-purple-50 px-3 py-2 rounded border border-purple-200 break-all">
-                      {typeof window !== 'undefined' 
-                        ? `${window.location.origin}/api/geidea/callback`
-                        : 'https://el7lm-backup.vercel.app/api/geidea/callback'}
+                      https://www.el7lm.com/api/geidea/callback
                     </code>
                     <button
                       onClick={() => {
-                        const callbackUrl = typeof window !== 'undefined' 
-                          ? `${window.location.origin}/api/geidea/callback`
-                          : 'https://el7lm-backup.vercel.app/api/geidea/callback';
+                        const callbackUrl = 'https://www.el7lm.com/api/geidea/callback';
                         navigator.clipboard.writeText(callbackUrl);
                         toast.success('تم نسخ رابط Callback إلى الحافظة');
                       }}
