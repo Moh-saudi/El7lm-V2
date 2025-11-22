@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const merchantReferenceIds = body.merchantReferenceIds || []; // قائمة merchantReferenceId
     const limit = body.limit || 10;
-    const shouldSave = body.save === true; // افتراضياً: false لتجنب Quota
+    let shouldSave = body.save === true; // افتراضياً: false لتجنب Quota
 
     // الحصول على إعدادات Geidea
     const mode = await getGeideaMode();
