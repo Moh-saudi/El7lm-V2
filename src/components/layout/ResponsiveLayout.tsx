@@ -855,6 +855,22 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             bgColor: 'bg-purple-50'
           },
           {
+            id: 'admin-geidea-transactions',
+            label: 'معاملات جيديا',
+            icon: CreditCard,
+            href: `/dashboard/admin/geidea-transactions`,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50'
+          },
+          {
+            id: 'admin-geidea-settings',
+            label: 'إعدادات جيديا',
+            icon: Settings,
+            href: `/dashboard/admin/geidea-settings`,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50'
+          },
+          {
             id: 'admin-subscriptions',
             label: 'الاشتراكات',
             icon: Star,
@@ -2072,7 +2088,7 @@ const ResponsiveHeader: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex overflow-visible gap-2 lg:gap-3 items-center">
+        <div className="flex overflow-visible gap-2 items-center lg:gap-3">
           {/* أيقونة الرسائل مع القائمة المنسدلة */}
           <div className="inline-block relative messages-dropdown">
           <Button
@@ -2086,7 +2102,7 @@ const ResponsiveHeader: React.FC = () => {
               }`}
               title={`الرسائل${newMessagesCount > 0 ? ` (${newMessagesCount} جديدة)` : ''}`}
             >
-              <MessageSquare className="w-5 h-5 lg:w-6 lg:h-6 transition-transform duration-300 ease-out group-hover:scale-105" />
+              <MessageSquare className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
             {/* مؤشر الرسائل الجديدة */}
               {newMessagesCount > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-red-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
@@ -2103,15 +2119,15 @@ const ResponsiveHeader: React.FC = () => {
 
             {/* قائمة الرسائل المنسدلة */}
             {showMessagesDropdown && (
-              <div className="absolute left-0 lg:left-auto lg:right-0 top-full z-50 mt-2 w-72 sm:w-80 lg:w-96 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right bg-white/98">
-                <div className="p-4 lg:p-6 border-b border-gray-100">
+              <div className="absolute left-0 top-full z-50 mt-2 w-72 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right lg:left-auto lg:right-0 sm:w-80 lg:w-96 bg-white/98">
+                <div className="p-4 border-b border-gray-100 lg:p-6">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-base lg:text-lg font-bold text-gray-900">الرسائل الأخيرة</h3>
+                    <h3 className="text-base font-bold text-gray-900 lg:text-lg">الرسائل الأخيرة</h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={navigateToMessages}
-                      className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 px-2 py-1 lg:px-3 lg:py-2 rounded-lg hover:bg-blue-50"
+                      className="px-2 py-1 text-xs text-blue-600 rounded-lg lg:text-sm hover:text-blue-700 lg:px-3 lg:py-2 hover:bg-blue-50"
                     >
                       عرض الكل
                     </Button>
@@ -2120,7 +2136,7 @@ const ResponsiveHeader: React.FC = () => {
 
                 <div className="overflow-y-auto max-w-full max-h-64 lg:max-h-80">
                   {messagesLoading ? (
-                    <div className="p-4 lg:p-6 text-center text-gray-500">
+                    <div className="p-4 text-center text-gray-500 lg:p-6">
                       <div className="mx-auto mb-3 w-8 h-8 rounded-full border-b-2 border-blue-600 animate-spin"></div>
                       <p className="text-sm lg:text-base">جاري تحميل الرسائل...</p>
                     </div>
@@ -2133,20 +2149,20 @@ const ResponsiveHeader: React.FC = () => {
                           message.unread ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
                         }`}
                       >
-                        <div className="flex justify-between items-start gap-3">
+                        <div className="flex gap-3 justify-between items-start">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm lg:text-base font-semibold text-gray-900 truncate">
+                            <div className="flex gap-2 items-center mb-1">
+                              <p className="text-sm font-semibold text-gray-900 truncate lg:text-base">
                                 {message.sender}
                               </p>
                               {message.unread && (
                                 <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                               )}
                             </div>
-                            <p className="text-sm lg:text-base text-gray-600 truncate leading-relaxed">
+                            <p className="text-sm leading-relaxed text-gray-600 truncate lg:text-base">
                               {message.message}
                             </p>
-                            <p className="mt-2 text-xs lg:text-sm text-gray-400 font-medium">
+                            <p className="mt-2 text-xs font-medium text-gray-400 lg:text-sm">
                               {formatTime(message.time)}
                             </p>
                           </div>
@@ -2154,12 +2170,12 @@ const ResponsiveHeader: React.FC = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="p-6 lg:p-8 text-center text-gray-500">
-                      <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                        <MessageSquare className="w-8 h-8 lg:w-10 lg:h-10 text-gray-300" />
+                    <div className="p-6 text-center text-gray-500 lg:p-8">
+                      <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full lg:w-20 lg:h-20">
+                        <MessageSquare className="w-8 h-8 text-gray-300 lg:w-10 lg:h-10" />
                       </div>
-                      <p className="text-sm lg:text-base font-medium text-gray-600">لا توجد رسائل جديدة</p>
-                      <p className="text-xs lg:text-sm text-gray-400 mt-1">ستظهر الرسائل الجديدة هنا</p>
+                      <p className="text-sm font-medium text-gray-600 lg:text-base">لا توجد رسائل جديدة</p>
+                      <p className="mt-1 text-xs text-gray-400 lg:text-sm">ستظهر الرسائل الجديدة هنا</p>
                     </div>
                   )}
                 </div>
@@ -2180,7 +2196,7 @@ const ResponsiveHeader: React.FC = () => {
               }`}
               title={`الإشعارات${newNotificationsCount > 0 ? ` (${newNotificationsCount} جديدة)` : ''}`}
             >
-              <Bell className="w-5 h-5 lg:w-6 lg:h-6 transition-transform duration-300 ease-out group-hover:scale-105" />
+              <Bell className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
             {/* مؤشر الإشعارات الجديدة */}
               {newNotificationsCount > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-orange-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
@@ -2197,15 +2213,15 @@ const ResponsiveHeader: React.FC = () => {
 
             {/* قائمة الإشعارات المنسدلة */}
             {showNotificationsDropdown && (
-              <div className="absolute left-0 lg:left-auto lg:right-0 top-full z-50 mt-2 w-72 sm:w-80 lg:w-96 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right bg-white/98">
-                <div className="p-4 lg:p-6 border-b border-gray-100">
+              <div className="absolute left-0 top-full z-50 mt-2 w-72 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right lg:left-auto lg:right-0 sm:w-80 lg:w-96 bg-white/98">
+                <div className="p-4 border-b border-gray-100 lg:p-6">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-base lg:text-lg font-bold text-gray-900">الإشعارات الأخيرة</h3>
+                    <h3 className="text-base font-bold text-gray-900 lg:text-lg">الإشعارات الأخيرة</h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={navigateToNotifications}
-                      className="text-xs lg:text-sm text-orange-600 hover:text-orange-700 px-2 py-1 lg:px-3 lg:py-2 rounded-lg hover:bg-orange-50"
+                      className="px-2 py-1 text-xs text-orange-600 rounded-lg lg:text-sm hover:text-orange-700 lg:px-3 lg:py-2 hover:bg-orange-50"
                     >
                       عرض الكل
                     </Button>
@@ -2214,7 +2230,7 @@ const ResponsiveHeader: React.FC = () => {
 
                 <div className="overflow-y-auto max-w-full max-h-64 lg:max-h-80">
                   {notificationsLoading ? (
-                    <div className="p-4 lg:p-6 text-center text-gray-500">
+                    <div className="p-4 text-center text-gray-500 lg:p-6">
                       <div className="mx-auto mb-3 w-8 h-8 rounded-full border-b-2 border-orange-600 animate-spin"></div>
                       <p className="text-sm lg:text-base">جاري تحميل الإشعارات...</p>
                     </div>
@@ -2236,18 +2252,18 @@ const ResponsiveHeader: React.FC = () => {
                             'bg-orange-500'
                           }`}></div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm lg:text-base font-semibold text-gray-900">
+                            <div className="flex gap-2 items-center mb-1">
+                              <p className="text-sm font-semibold text-gray-900 lg:text-base">
                                 {notification.title}
                               </p>
                               {!notification.read && (
                                 <div className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                               )}
                             </div>
-                            <p className="text-sm lg:text-base text-gray-600 truncate leading-relaxed">
+                            <p className="text-sm leading-relaxed text-gray-600 truncate lg:text-base">
                               {notification.message}
                             </p>
-                            <p className="mt-2 text-xs lg:text-sm text-gray-400 font-medium">
+                            <p className="mt-2 text-xs font-medium text-gray-400 lg:text-sm">
                               {formatTime(notification.time)}
                             </p>
                           </div>
@@ -2255,12 +2271,12 @@ const ResponsiveHeader: React.FC = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="p-6 lg:p-8 text-center text-gray-500">
-                      <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Bell className="w-8 h-8 lg:w-10 lg:h-10 text-gray-300" />
+                    <div className="p-6 text-center text-gray-500 lg:p-8">
+                      <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full lg:w-20 lg:h-20">
+                        <Bell className="w-8 h-8 text-gray-300 lg:w-10 lg:h-10" />
                       </div>
-                      <p className="text-sm lg:text-base font-medium text-gray-600">لا توجد إشعارات جديدة</p>
-                      <p className="text-xs lg:text-sm text-gray-400 mt-1">ستظهر الإشعارات الجديدة هنا</p>
+                      <p className="text-sm font-medium text-gray-600 lg:text-base">لا توجد إشعارات جديدة</p>
+                      <p className="mt-1 text-xs text-gray-400 lg:text-sm">ستظهر الإشعارات الجديدة هنا</p>
                     </div>
                   )}
                 </div>

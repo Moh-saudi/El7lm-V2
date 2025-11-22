@@ -19,6 +19,12 @@ import {
   MessageCircle,
   FileDown,
   X,
+  Eye,
+  Info,
+  Download,
+  Send,
+  MessageSquare,
+  Share2,
 } from 'lucide-react';
 
 import { db } from '@/lib/firebase/config';
@@ -26,6 +32,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { formatPhoneNumber as formatWhatsAppPhone } from '@/lib/whatsapp/babaservice-config';
 
 type InvoiceStatus = 'paid' | 'pending' | 'cancelled' | 'overdue' | string;
 
@@ -554,7 +561,26 @@ const formatDate = (value?: Date | null) => {
   });
 };
 
-const buildShareMessage = (record: InvoiceRecord) => {
+const getInvoiceDownloadUrl = (record: InvoiceRecord): string => {
+  // في وضع التطوير: window.location.origin = "http://localhost:3000"
+  // في الإنتاج: window.location.origin = "https://www.el7lm.com" (تلقائياً من النطاق الفعلي)
+  // fallback: استخدام NEXT_PUBLIC_BASE_URL من البيئة أو القيمة الافتراضية
+  const baseUrl = typeof window !== 'undefined' 
+    ? window.location.origin  // ✅ في الإنتاج سيأخذ النطاق الفعلي تلقائياً
+    : process.env.NEXT_PUBLIC_BASE_URL || 'https://www.el7lm.com';
+  
+  // استخدام ID الفاتورة أو invoiceNumber أو orderId أو merchantReferenceId
+  const invoiceId = record.id || record.invoiceNumber || record.reference.orderId || record.reference.merchantReferenceId;
+  
+  if (!invoiceId) return '';
+  
+  // رابط صفحة الفاتورة العامة للعميل (ليست في لوحة الإدارة)
+  // في التطوير: http://localhost:3000/invoice/[id]
+  // في الإنتاج: https://www.el7lm.com/invoice/[id]
+  return `${baseUrl}/invoice/${encodeURIComponent(invoiceId)}`;
+};
+
+const buildShareMessage = (record: InvoiceRecord, includeDownloadLink: boolean = true) => {
   const statusLabel = STATUS_LABELS[record.status]?.label || record.status;
   const lines = [
     `مرحباً ${record.customerName || 'صديقنا العزيز'} 🌟`,
@@ -574,12 +600,31 @@ const buildShareMessage = (record: InvoiceRecord) => {
     lines.push(expiryText);
   }
   
-  lines.push(
-    `الحالة الحالية: ${statusLabel}`,
-    'إذا احتجت أي مساعدة أو استفسار فنحن جاهزون فوراً لدعمك ومواصلة العمل على نجاحاتنا المشتركة 💪.'
-  );
+  lines.push(`الحالة الحالية: ${statusLabel}`);
+  
+  if (includeDownloadLink) {
+    const baseUrl = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : process.env.NEXT_PUBLIC_BASE_URL || 'https://www.el7lm.com';
+    const subscriptionStatusUrl = `${baseUrl}/dashboard/shared/subscription-status`;
+    
+    lines.push('');
+    lines.push('يمكنك الآن الوصول إلى الفاتورة عبر صفحة حالة الاشتراك:');
+    lines.push(subscriptionStatusUrl);
+    lines.push('');
+    lines.push('يمكنك فتح وطباعة الفاتورة أو حفظها كملف PDF من المتصفح.');
+  }
+  
+  lines.push('');
+  lines.push('إذا احتجت أي مساعدة أو استفسار فنحن جاهزون فوراً لدعمك ومواصلة العمل على نجاحاتنا المشتركة 💪.');
   
   return lines.join('\n');
+};
+
+const formatPhoneForApi = (phone?: string | null) => {
+  if (!phone) return '';
+  const formatted = formatWhatsAppPhone(phone);
+  return formatted?.trim() || '';
 };
 
 const generateInvoiceHTML = (record: InvoiceRecord) => `
@@ -729,6 +774,12 @@ export default function AdminInvoicesListPage() {
     dateTo: '',
   });
   const [selected, setSelected] = useState<InvoiceRecord | null>(null);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
+  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
+  const [selectedRecordForWhatsApp, setSelectedRecordForWhatsApp] = useState<InvoiceRecord | null>(null);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [previewInvoiceRecord, setPreviewInvoiceRecord] = useState<InvoiceRecord | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -851,6 +902,11 @@ export default function AdminInvoicesListPage() {
     );
   };
 
+  const handlePreviewInvoice = (record: InvoiceRecord) => {
+    setPreviewInvoiceRecord(record);
+    setShowInvoicePreview(true);
+  };
+
   const handlePrintInvoice = (record: InvoiceRecord) => {
     if (typeof window === 'undefined') return;
     const html = generateInvoiceHTML(record);
@@ -867,6 +923,11 @@ export default function AdminInvoicesListPage() {
     }, 300);
   };
 
+  const handlePrintFromPreview = () => {
+    if (!previewInvoiceRecord) return;
+    handlePrintInvoice(previewInvoiceRecord);
+  };
+
   const handleSendEmail = (record: InvoiceRecord) => {
     if (!record.customerEmail) {
       toast.error('لا يوجد بريد إلكتروني محدث لهذا العميل');
@@ -874,14 +935,13 @@ export default function AdminInvoicesListPage() {
     }
     const subject = `فاتورة ${record.invoiceNumber} - منصة الحلم`;
     const bodyLines = [
-      buildShareMessage(record),
+      buildShareMessage(record, true), // يتضمن رابط تحميل الفاتورة
       '',
-      `رابط الفاتورة: ${record.invoiceUrl || 'غير متوفر حالياً'}`,
-      `رابط الإيصال: ${record.receiptUrl || 'غير متوفر'}`,
+      record.receiptUrl ? `رابط الإيصال: ${record.receiptUrl}` : '',
       '',
       'مع خالص التقدير،',
       'فريق منصة الحلم 🤝',
-    ];
+    ].filter(Boolean);
     const mailtoUrl = `mailto:${record.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
     window.open(mailtoUrl, '_blank');
     toast.success('تم فتح البريد الإلكتروني لإرسال الفاتورة');
@@ -894,14 +954,98 @@ export default function AdminInvoicesListPage() {
       return;
     }
     const shareLines = [
-      buildShareMessage(record),
+      buildShareMessage(record, true), // يتضمن رابط تحميل الفاتورة
       '',
-      `رابط الفاتورة: ${record.invoiceUrl || 'غير متوفر حالياً'}`,
       record.receiptUrl ? `رابط الإيصال: ${record.receiptUrl}` : '',
     ].filter(Boolean);
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(shareLines.join('\n'))}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     toast.success('تم فتح WhatsApp مع الرسالة المحددة');
+  };
+
+  const buildWhatsAppMessage = (record: InvoiceRecord): string => {
+    const shareLines = [
+      buildShareMessage(record, true), // يتضمن رابط التحميل
+      '',
+      record.receiptUrl ? `رابط الإيصال: ${record.receiptUrl}` : '',
+    ].filter(Boolean);
+    return shareLines.join('\n');
+  };
+
+  const handleSendWhatsAppApi = (record: InvoiceRecord) => {
+    if (sendingWhatsAppId) return;
+    const phone = formatPhoneForApi(record.customerPhone);
+    if (!phone || phone.length < 7) {
+      toast.error('لا يوجد رقم هاتف دولي صالح لإرسال رسالة رسمية');
+      return;
+    }
+
+    const message = buildWhatsAppMessage(record);
+    setSelectedRecordForWhatsApp(record);
+    setPreviewMessage(message);
+    setShowMessagePreview(true);
+  };
+
+  const sendWhatsAppApiConfirmed = async () => {
+    if (!selectedRecordForWhatsApp || !previewMessage.trim()) {
+      toast.error('الرسالة فارغة');
+      return;
+    }
+
+    const phone = formatPhoneForApi(selectedRecordForWhatsApp.customerPhone);
+    if (!phone || phone.length < 7) {
+      toast.error('لا يوجد رقم هاتف دولي صالح');
+      return;
+    }
+
+    setSendingWhatsAppId(selectedRecordForWhatsApp.id);
+    setShowMessagePreview(false);
+    
+    try {
+      const response = await fetch('/api/whatsapp/send-official', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: phone,
+          message: previewMessage.trim(),
+          playerName: selectedRecordForWhatsApp.customerName || undefined,
+          organizationName: 'منصة الحلم - الفواتير',
+          accountType: 'admin',
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        const errorMsg = result?.error || result?.details || 'فشل إرسال رسالة الواتساب الرسمية';
+        console.error('❌ [Invoices] WhatsApp API send failed:', {
+          status: response.status,
+          error: errorMsg,
+          result
+        });
+        toast.error(`فشل الإرسال: ${errorMsg}`, {
+          duration: 5000,
+        });
+        return;
+      }
+
+      console.log('✅ [Invoices] WhatsApp API send success:', result);
+      toast.success('✅ تم إرسال رسالة واتساب الرسمية بنجاح', {
+        duration: 4000,
+        description: `تم الإرسال إلى ${phone}`,
+      });
+    } catch (error: any) {
+      console.error('❌ [Invoices] WhatsApp API send exception:', error);
+      toast.error(`خطأ في الإرسال: ${error?.message || 'حدث خطأ غير متوقع'}`, {
+        duration: 5000,
+      });
+    } finally {
+      setSendingWhatsAppId(null);
+      setSelectedRecordForWhatsApp(null);
+      setPreviewMessage('');
+    }
   };
 
   return (
@@ -1034,6 +1178,7 @@ export default function AdminInvoicesListPage() {
             <table className="w-full text-sm text-right">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
+                  <th className="px-3 py-3 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[200px] border-r border-gray-200">إجراءات</th>
                   <th className="px-4 py-3 font-semibold">الفاتورة</th>
                   <th className="px-4 py-3 font-semibold">العميل</th>
                   <th className="px-4 py-3 font-semibold">الخدمة / الباقة</th>
@@ -1042,7 +1187,6 @@ export default function AdminInvoicesListPage() {
                   <th className="px-4 py-3 font-semibold">التاريخ</th>
                   <th className="px-4 py-3 font-semibold">تاريخ الانتهاء</th>
                   <th className="px-4 py-3 font-semibold">الحالة</th>
-                  <th className="px-4 py-3 font-semibold">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1055,6 +1199,91 @@ export default function AdminInvoicesListPage() {
                 ) : (
                   filtered.map((record) => (
                     <tr key={`${record.source}-${record.id}`} className="hover:bg-gray-50 transition">
+                      <td className="px-3 py-3 sticky left-0 bg-white z-10 border-r border-gray-200 shadow-sm">
+                        <div className="flex flex-row gap-1.5 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
+                            onClick={() => setSelected(record)}
+                            title="عرض التفاصيل"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-400"
+                            onClick={() => handlePreviewInvoice(record)}
+                            title="معاينة الفاتورة"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-green-300 text-green-600 hover:bg-green-50 hover:border-green-400"
+                            onClick={() => handlePrintInvoice(record)}
+                            title="طباعة PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                            onClick={() => handleSendEmail(record)}
+                            title="إرسال بريد إلكتروني"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400"
+                            onClick={() => handleSendWhatsApp(record)}
+                            title="إرسال واتساب"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-7 border-teal-300 text-teal-600 hover:bg-teal-50 hover:border-teal-400 disabled:opacity-50"
+                            disabled={sendingWhatsAppId === record.id}
+                            onClick={() => handleSendWhatsAppApi(record)}
+                            title="إرسال واتساب API"
+                          >
+                            {sendingWhatsAppId === record.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+                          {record.receiptUrl && (
+                            <a
+                              href={record.receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded border border-cyan-300 bg-cyan-50 px-2 py-1 h-7 text-xs text-cyan-700 hover:bg-cyan-100 hover:border-cyan-400 transition"
+                              title="عرض الإيصال"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {record.invoiceUrl && (
+                            <a
+                              href={record.invoiceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded border border-indigo-300 bg-indigo-50 px-2 py-1 h-7 text-xs text-indigo-700 hover:bg-indigo-100 hover:border-indigo-400 transition"
+                              title="عرض الفاتورة"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-gray-900">{record.invoiceNumber}</div>
                         <div className="text-xs text-gray-500">المصدر: {record.source}</div>
@@ -1094,67 +1323,6 @@ export default function AdminInvoicesListPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">{statusDisplay(record.status)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs"
-                            onClick={() => setSelected(record)}
-                          >
-                            التفاصيل
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs gap-1"
-                            onClick={() => handlePrintInvoice(record)}
-                          >
-                            <FileDown className="w-3.5 h-3.5" />
-                            PDF
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs gap-1"
-                            onClick={() => handleSendEmail(record)}
-                          >
-                            <Mail className="w-3.5 h-3.5" />
-                            بريد
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs gap-1"
-                            onClick={() => handleSendWhatsApp(record)}
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            واتساب
-                          </Button>
-                          {record.receiptUrl && (
-                            <a
-                              href={record.receiptUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-                            >
-                              <Receipt className="w-3.5 h-3.5" />
-                              إيصال
-                            </a>
-                          )}
-                          {record.invoiceUrl && (
-                            <a
-                              href={record.invoiceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs text-purple-600 hover:bg-purple-50"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              عرض الفاتورة
-                            </a>
-                          )}
-                        </div>
-                      </td>
                     </tr>
                   ))
                 )}
@@ -1227,6 +1395,13 @@ export default function AdminInvoicesListPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
+                onClick={() => handlePreviewInvoice(selected)}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold"
+              >
+                <FileText className="w-4 h-4" />
+                معاينة الفاتورة
+              </Button>
+              <Button
                 onClick={() => handlePrintInvoice(selected)}
                 className="inline-flex items-center gap-2 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-semibold"
               >
@@ -1249,6 +1424,19 @@ export default function AdminInvoicesListPage() {
                 <MessageCircle className="w-4 h-4" />
                 إرسال واتساب
               </Button>
+              <Button
+                variant="outline"
+                className="inline-flex items-center gap-2 text-sm font-semibold"
+                disabled={sendingWhatsAppId === selected.id}
+                onClick={() => handleSendWhatsAppApi(selected)}
+              >
+                {sendingWhatsAppId === selected.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-4 h-4" />
+                )}
+                واتساب API
+              </Button>
               <Link
                 href="/dashboard/admin/payments"
                 className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700"
@@ -1266,6 +1454,183 @@ export default function AdminInvoicesListPage() {
                   فتح الإيصال
                 </a>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal معاينة وتعديل رسالة الواتساب */}
+      {showMessagePreview && selectedRecordForWhatsApp && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 relative">
+            <button
+              className="absolute left-4 top-4 text-gray-500 hover:text-gray-700"
+              onClick={() => {
+                setShowMessagePreview(false);
+                setSelectedRecordForWhatsApp(null);
+                setPreviewMessage('');
+              }}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">معاينة رسالة الواتساب</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                يمكنك مراجعة وتعديل الرسالة قبل الإرسال
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                المستلم: {selectedRecordForWhatsApp.customerName || 'غير محدد'}
+              </label>
+              <label className="block text-sm font-semibold text-gray-700">
+                رقم الهاتف: {formatPhoneForApi(selectedRecordForWhatsApp.customerPhone) || 'غير متوفر'}
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                محتوى الرسالة:
+              </label>
+              <textarea
+                value={previewMessage}
+                onChange={(e) => setPreviewMessage(e.target.value)}
+                className="w-full min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-y font-sans text-sm"
+                placeholder="أدخل نص الرسالة..."
+                dir="rtl"
+              />
+              <p className="text-xs text-gray-500">
+                عدد الأحرف: {previewMessage.length} | عدد الأسطر: {previewMessage.split('\n').length}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-4 border-t">
+              <Button
+                onClick={sendWhatsAppApiConfirmed}
+                disabled={!previewMessage.trim() || sendingWhatsAppId === selectedRecordForWhatsApp.id}
+                className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white"
+              >
+                {sendingWhatsAppId === selectedRecordForWhatsApp.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    جاري الإرسال...
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    إرسال الرسالة
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowMessagePreview(false);
+                  setSelectedRecordForWhatsApp(null);
+                  setPreviewMessage('');
+                }}
+                disabled={sendingWhatsAppId === selectedRecordForWhatsApp.id}
+                className="flex-1 min-w-[120px]"
+              >
+                إلغاء
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const originalMessage = buildWhatsAppMessage(selectedRecordForWhatsApp);
+                  setPreviewMessage(originalMessage);
+                  toast.success('تم استعادة الرسالة الأصلية');
+                }}
+                disabled={sendingWhatsAppId === selectedRecordForWhatsApp.id}
+                className="text-xs"
+              >
+                استعادة الأصلية
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal معاينة الفاتورة */}
+      {showInvoicePreview && previewInvoiceRecord && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">معاينة الفاتورة</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  رقم الفاتورة: {previewInvoiceRecord.invoiceNumber}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handlePrintFromPreview}
+                  className="gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  طباعة
+                </Button>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => {
+                    setShowInvoicePreview(false);
+                    setPreviewInvoiceRecord(null);
+                  }}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Invoice Content */}
+            <div className="flex-1 overflow-auto p-6 bg-gray-50">
+              <iframe
+                srcDoc={generateInvoiceHTML(previewInvoiceRecord)}
+                className="w-full h-full min-h-[600px] border-0 rounded-lg bg-white shadow-sm"
+                title={`معاينة فاتورة ${previewInvoiceRecord.invoiceNumber}`}
+              />
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-white">
+              <div className="text-sm text-gray-600">
+                <p>المصدر: {previewInvoiceRecord.source}</p>
+                <p>الحالة: {STATUS_LABELS[previewInvoiceRecord.status]?.label || previewInvoiceRecord.status}</p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowInvoicePreview(false);
+                    setPreviewInvoiceRecord(null);
+                  }}
+                >
+                  إغلاق
+                </Button>
+                <Button
+                  onClick={handlePrintFromPreview}
+                  className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  طباعة PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowInvoicePreview(false);
+                    setSelected(previewInvoiceRecord);
+                    setPreviewInvoiceRecord(null);
+                  }}
+                  className="gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  عرض التفاصيل
+                </Button>
+              </div>
             </div>
           </div>
         </div>

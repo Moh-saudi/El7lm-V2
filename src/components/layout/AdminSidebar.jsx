@@ -109,6 +109,8 @@ const AdminSidebar = ({ isOpen, adminData, onToggle, isMobile }) => {
       color: 'text-purple-600',
       subItems: [
         { title: 'جميع المعاملات', href: '/dashboard/admin/payments', icon: DollarSign },
+        { title: 'معاملات جيديا', href: '/dashboard/admin/geidea-transactions', icon: CreditCard },
+        { title: 'إعدادات جيديا', href: '/dashboard/admin/geidea-settings', icon: Settings },
         { title: 'الدفعات الجماعية', href: '/dashboard/admin/payments/bulk', icon: CreditCard },
         { title: 'الاشتراكات', href: '/dashboard/admin/subscriptions', icon: FileText },
         { title: 'الفواتير', href: '/dashboard/admin/invoices', icon: FileText }

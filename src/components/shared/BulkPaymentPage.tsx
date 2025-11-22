@@ -1370,7 +1370,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         await addDoc(bulkPaymentsRef, {
           userId: user?.uid || 'unknown',
           sessionId: paymentData.sessionId || paymentData.transactionId,
-          merchantReferenceId: paymentData.orderId || `BULK${user?.uid || 'unknown'}_${Date.now()}`,
+          merchantReferenceId: paymentData.orderId || paymentData.merchantReferenceId || (() => {
+            const timestamp = Date.now().toString();
+            const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+            return `EL7LM${timestamp}${random}`.slice(0, 30);
+          })(),
           status: 'completed',
           amount: finalPrice,
           currency: currentCurrency,
@@ -1403,7 +1407,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             customerPhone: userData?.phone || user?.phoneNumber || '',
             paymentStatus: 'success',
             statusMessage: 'تم الدفع بنجاح',
-            merchantReferenceId: paymentData.orderId || `BULK${user?.uid || 'unknown'}_${Date.now()}`,
+            merchantReferenceId: paymentData.orderId || paymentData.merchantReferenceId || (() => {
+            const timestamp = Date.now().toString();
+            const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+            return `EL7LM${timestamp}${random}`.slice(0, 30);
+          })(),
             accountType: accountType, // إضافة نوع الحساب
             players: selectedPlayers.map(p => ({
               userId: p.id,
@@ -1451,7 +1459,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         const paymentRecord = {
           userId: user?.uid || 'unknown',
           sessionId: paymentData.sessionId || paymentData.transactionId,
-          merchantReferenceId: paymentData.orderId || `BULK${user?.uid || 'unknown'}_${Date.now()}`,
+          merchantReferenceId: paymentData.orderId || paymentData.merchantReferenceId || (() => {
+            const timestamp = Date.now().toString();
+            const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+            return `EL7LM${timestamp}${random}`.slice(0, 30);
+          })(),
           status: 'completed',
           amount: finalPrice,
           currency: currentCurrency,
@@ -1480,7 +1492,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           const simpleBulkPaymentData = {
             userId: user?.uid || 'unknown',
             sessionId: paymentData.sessionId || paymentData.transactionId,
-            merchantReferenceId: paymentData.orderId || `BULK${user?.uid || 'unknown'}_${Date.now()}`,
+            merchantReferenceId: paymentData.orderId || paymentData.merchantReferenceId || (() => {
+            const timestamp = Date.now().toString();
+            const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+            return `EL7LM${timestamp}${random}`.slice(0, 30);
+          })(),
             status: 'completed',
             amount: finalPrice,
             currency: currentCurrency,
@@ -2544,8 +2560,12 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         title="اشتراكات اللاعبين"
         description={`تجديد اشتراكات ${selectedCount} لاعب بإجمالي ${finalPrice.toLocaleString()} ${currency.symbol}`}
         customerEmail={user?.email || 'customer@example.com'}
-        merchantReferenceId={`BULK${user?.uid || 'unknown'}_${Date.now()}`}
-        returnUrl={undefined}
+        merchantReferenceId={(() => {
+          const timestamp = Date.now().toString();
+          const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+          return `EL7LM${timestamp}${random}`.slice(0, 30);
+        })()}
+        returnUrl={typeof window !== 'undefined' ? window.location.href : undefined}
         callbackUrl={undefined}
       />
     </div>

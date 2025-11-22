@@ -48,7 +48,7 @@ import {
   TabsTrigger
 } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils/index'
 
 type CareerApplication = {
   id: string

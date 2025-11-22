@@ -853,14 +853,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           {/* Search Bar */}
           <div className="mb-4">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-md blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4 z-10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-md blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4 z-10 pointer-events-none" />
               <Input
                 type="text"
                 placeholder="ابحث عن اللاعبين بالاسم، المركز، الجنسية، أو النادي..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-3 py-2 w-full border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 bg-white text-sm"
+                className="pl-10 pr-3 py-2 w-full border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 bg-white text-sm relative z-20"
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import {
     AlertCircle,
     ArrowLeft,
@@ -417,8 +417,90 @@ function SubscriptionStatusContent() {
       console.log('📧 البريد الإلكتروني:', user.email);
       console.log('📱 رقم الهاتف:', user.phone);
 
-      // البحث في مجموعة bulkPayments أولاً (المدفوعات الحقيقية من جيديا)
-      console.log('1️⃣ البحث في مجموعة bulkPayments...');
+      // البحث في مجموعة geidea_payments أولاً (البيانات الحقيقية من Geidea callbacks)
+      console.log('1️⃣ البحث في مجموعة geidea_payments (البيانات الحقيقية من Geidea callbacks)...');
+      try {
+        const geideaPaymentsRef = collection(db, 'geidea_payments');
+        // البحث باستخدام customerEmail (الأكثر شيوعاً في Geidea callbacks)
+        const geideaPaymentsQuery = query(
+          geideaPaymentsRef,
+          where('customerEmail', '==', user.email || ''),
+          orderBy('callbackReceivedAt', 'desc'),
+          limit(1)
+        );
+        
+        let geideaPaymentsSnapshot;
+        try {
+          geideaPaymentsSnapshot = await getDocs(geideaPaymentsQuery);
+        } catch (orderByError) {
+          // إذا فشل orderBy (لا يوجد index)، نجلب بدون ترتيب
+          console.warn('⚠️ orderBy failed for geidea_payments, fetching without order');
+          const geideaPaymentsQueryNoOrder = query(
+            geideaPaymentsRef,
+            where('customerEmail', '==', user.email || ''),
+            limit(1)
+          );
+          geideaPaymentsSnapshot = await getDocs(geideaPaymentsQueryNoOrder);
+        }
+
+        if (!geideaPaymentsSnapshot.empty) {
+          console.log('✅ تم العثور على مدفوعات حقيقية من Geidea callbacks');
+          console.log('📊 عدد المدفوعات:', geideaPaymentsSnapshot.docs.length);
+          const paymentData = geideaPaymentsSnapshot.docs[0].data();
+          console.log('📊 بيانات الدفع من Geidea:', paymentData);
+
+          // فقط المدفوعات الناجحة
+          if (paymentData.status === 'success') {
+            // حساب تاريخ انتهاء الاشتراك (3 أشهر من تاريخ الدفع)
+            const paymentDate = paymentData.paidAt 
+              ? new Date(paymentData.paidAt) 
+              : paymentData.callbackReceivedAt 
+                ? new Date(paymentData.callbackReceivedAt)
+                : paymentData.createdAt?.toDate?.() || new Date(paymentData.createdAt || Date.now());
+            
+            const endDate = new Date(paymentDate);
+            endDate.setMonth(endDate.getMonth() + 3);
+
+            const subscriptionData: SubscriptionStatus = {
+              plan_name: 'اشتراك جيديا',
+              start_date: paymentDate.toISOString(),
+              end_date: endDate.toISOString(),
+              status: 'active',
+              payment_method: 'بطاقة بنكية (جيديا)',
+              amount: paymentData.amount || 0,
+              currency: paymentData.currency || 'EGP',
+              currencySymbol: paymentData.currency === 'EGP' ? 'ج.م' :
+                             paymentData.currency === 'USD' ? '$' :
+                             paymentData.currency === 'SAR' ? 'ر.س' : 'ج.م',
+              receipt_url: undefined,
+              autoRenew: false,
+              transaction_id: paymentData.orderId || paymentData.transactionId || paymentData.merchantReferenceId || 'N/A',
+              invoice_number: paymentData.merchantReferenceId || paymentData.orderId || `INV-${Date.now()}`,
+              customer_name: paymentData.customerName || user.displayName || 'مستخدم',
+              customer_email: paymentData.customerEmail || user.email || '',
+              customer_phone: paymentData.customerPhone || '',
+              payment_date: paymentDate.toISOString(),
+              accountType: 'player',
+              packageType: 'geidea_subscription',
+              selectedPackage: 'اشتراك جيديا'
+            };
+
+            console.log('📊 بيانات الاشتراك المحملة من Geidea:', subscriptionData);
+            setSubscription(subscriptionData);
+            return;
+          } else {
+            console.log('⚠️ المدفوعة من Geidea ليست ناجحة، الحالة:', paymentData.status);
+          }
+        } else {
+          console.log('ℹ️ لم يتم العثور على مدفوعات في geidea_payments');
+        }
+      } catch (error) {
+        console.log('⚠️ خطأ في البحث في مجموعة geidea_payments:', error);
+        console.log('🔄 الانتقال للبحث في المصادر الأخرى...');
+      }
+
+      // البحث في مجموعة bulkPayments (fallback)
+      console.log('2️⃣ البحث في مجموعة bulkPayments...');
       try {
         const bulkPaymentsRef = collection(db, 'bulkPayments');
         const bulkPaymentsQuery = query(
@@ -429,7 +511,7 @@ function SubscriptionStatusContent() {
         const bulkPaymentsSnapshot = await getDocs(bulkPaymentsQuery);
 
         if (!bulkPaymentsSnapshot.empty) {
-          console.log('✅ تم العثور على مدفوعات حقيقية من جيديا');
+          console.log('✅ تم العثور على مدفوعات في bulkPayments');
           console.log('📊 عدد المدفوعات:', bulkPaymentsSnapshot.docs.length);
           const paymentData = bulkPaymentsSnapshot.docs[0].data();
           console.log('📊 بيانات الدفع:', paymentData);
@@ -478,7 +560,7 @@ function SubscriptionStatusContent() {
       }
 
       // البحث في مجموعة subscriptions (إذا وجدت)
-      console.log('2️⃣ البحث في مجموعة subscriptions...');
+      console.log('3️⃣ البحث في مجموعة subscriptions...');
       try {
         const subscriptionRef = doc(db, 'subscriptions', user.uid);
         const subscriptionDoc = await getDoc(subscriptionRef);
@@ -509,7 +591,7 @@ function SubscriptionStatusContent() {
       }
 
       // البحث في مجموعة bulk_payments (Supabase fallback)
-      console.log('3️⃣ البحث في مجموعة bulk_payments...');
+      console.log('4️⃣ البحث في مجموعة bulk_payments...');
       try {
         const paymentsRef = collection(db, 'bulk_payments');
         const paymentsQuery = query(paymentsRef, where('user_id', '==', user.uid));
@@ -548,7 +630,7 @@ function SubscriptionStatusContent() {
       }
 
       // البحث في جميع المجموعات للعثور على المستخدم
-      console.log('4️⃣ البحث في جميع المجموعات للعثور على المستخدم...');
+      console.log('5️⃣ البحث في جميع المجموعات للعثور على المستخدم...');
       const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
       let foundUser = null;
       let foundCollection = '';

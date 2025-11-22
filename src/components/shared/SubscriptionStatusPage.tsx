@@ -33,6 +33,7 @@ interface PaymentRecord {
   customer_name?: string;
   customer_email?: string;
   receiptUrl?: string;
+  source?: string; // مصدر البيانات: 'bulkPayments', 'geidea_payments', 'bulk_payments'
 }
 
 interface SubscriptionInfo {
@@ -327,7 +328,52 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           });
         });
 
-        // 3. البحث في bulk_payments (fallback)
+        // 3. البحث في geidea_payments (البيانات الحقيقية من Geidea callbacks)
+        if (paymentData.length === 0) {
+          console.log('🔍 البحث في geidea_payments collection (بيانات Geidea الحقيقية)...');
+          try {
+            // البحث باستخدام customerEmail (الأكثر شيوعاً)
+            const geideaPaymentsQueryByEmail = query(
+              collection(db, 'geidea_payments'),
+              where('customerEmail', '==', user?.email || ''),
+              orderBy('callbackReceivedAt', 'desc'),
+              limit(20)
+            );
+            
+            const geideaPaymentsSnapshot = await getDocs(geideaPaymentsQueryByEmail);
+            geideaPaymentsSnapshot.forEach((doc) => {
+              const data = doc.data();
+              // فقط المدفوعات الناجحة أو المعلقة
+              if (data.status === 'success' || data.status === 'pending') {
+                paymentData.push({
+                  id: doc.id,
+                  amount: data.amount || 0,
+                  currency: data.currency || 'EGP',
+                  status: data.status === 'success' ? 'completed' : 'pending',
+                  payment_date: data.paidAt || data.callbackReceivedAt || data.createdAt,
+                  createdAt: data.callbackReceivedAt || data.createdAt,
+                  package_name: 'اشتراك جيديا',
+                  packageType: 'geidea_subscription',
+                  transaction_id: data.orderId || data.transactionId || data.merchantReferenceId || doc.id,
+                  customer_name: data.customerName || userData?.name,
+                  customer_email: data.customerEmail || user?.email,
+                  receiptUrl: undefined,
+                  source: 'geidea_payments'
+                });
+              }
+            });
+            
+            if (geideaPaymentsSnapshot.empty) {
+              console.log('ℹ️ لم يتم العثور على مدفوعات في geidea_payments باستخدام email');
+            } else {
+              console.log('✅ تم العثور على', geideaPaymentsSnapshot.docs.length, 'مدفوعة من geidea_payments');
+            }
+          } catch (geideaError) {
+            console.warn('⚠️ خطأ في جلب البيانات من geidea_payments:', geideaError);
+          }
+        }
+
+        // 4. البحث في bulk_payments (fallback)
         if (paymentData.length === 0) {
           console.log('🔍 البحث في bulk_payments collection...');
           const oldPaymentsQuery = query(

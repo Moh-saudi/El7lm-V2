@@ -155,14 +155,25 @@ export default function GeideaPaymentModal({
     onPaymentSuccess(response);
 
     // توجيه المستخدم فقط إذا لم يتم تخطي التوجيه
-    if (!skipRedirect) {
-      setTimeout(() => {
-        if (returnUrl) {
-          window.location.href = returnUrl;
-        } else {
-          window.location.href = '/dashboard/shared/bulk-payment?status=success';
-        }
-      }, 800);
+    // ملاحظة: Geidea يعيد المستخدم تلقائياً إلى returnUrl، لذا لا نحتاج لإعادة توجيه إضافية
+    // فقط نضيف status=success إذا لم يكن موجوداً في URL الحالي
+    if (!skipRedirect && typeof window !== 'undefined') {
+      const currentUrl = window.location.href;
+      const url = new URL(currentUrl);
+      
+      // إضافة status=success إذا لم يكن موجوداً
+      if (!url.searchParams.has('status')) {
+        url.searchParams.set('status', 'success');
+      }
+      if (!url.searchParams.has('payment')) {
+        url.searchParams.set('payment', 'success');
+      }
+      
+      // تحديث URL بدون إعادة تحميل الصفحة (لأن Geidea قد أعاد المستخدم بالفعل)
+      // فقط إذا كان URL مختلفاً
+      if (url.toString() !== currentUrl) {
+        window.history.replaceState({}, '', url.toString());
+      }
     }
   };
 
@@ -192,6 +203,8 @@ export default function GeideaPaymentModal({
   };
 
   const onCancel = (response: any) => {
+    console.log('🔄 [Geidea] Payment cancelled by user:', response);
+    
     // حذف بيانات الدفع عند الإلغاء
     localStorage.removeItem('geidea_session_id');
     localStorage.removeItem('geidea_payment_data');
@@ -210,7 +223,42 @@ export default function GeideaPaymentModal({
     // إغلاق المودال
     onRequestClose();
 
-    onRequestClose();
+    // استدعاء callback الفشل (لأن الإلغاء يعتبر فشل)
+    onPaymentFailure(response);
+
+    // توجيه المستخدم إلى returnUrl أو الصفحة الحالية
+    // ملاحظة: Geidea قد لا يعيد المستخدم تلقائياً عند الإلغاء، لذا نضيف توجيه صريح
+    if (!skipRedirect && typeof window !== 'undefined') {
+      // استخدام returnUrl الممرر أو الصفحة الحالية
+      if (returnUrl) {
+        // إذا كان returnUrl موجوداً، استخدمه
+        const cancelUrl = new URL(returnUrl);
+        cancelUrl.searchParams.set('status', 'cancelled');
+        cancelUrl.searchParams.set('payment', 'cancelled');
+        console.log('🔄 [Geidea] Redirecting to returnUrl after cancellation:', cancelUrl.toString());
+        window.location.href = cancelUrl.toString();
+      } else {
+        // إذا لم يكن هناك returnUrl، استخدم الصفحة الحالية
+        const currentUrl = window.location.href;
+        const url = new URL(currentUrl);
+        
+        // إزالة query parameters السابقة المتعلقة بالدفع
+        url.searchParams.delete('status');
+        url.searchParams.delete('payment');
+        url.searchParams.delete('orderId');
+        url.searchParams.delete('responseCode');
+        url.searchParams.delete('responseMessage');
+        url.searchParams.delete('sessionId');
+        
+        // إضافة status=cancelled
+        url.searchParams.set('status', 'cancelled');
+        url.searchParams.set('payment', 'cancelled');
+        
+        console.log('🔄 [Geidea] Updating current URL after cancellation:', url.toString());
+        // تحديث URL بدون إعادة تحميل الصفحة
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
   };
 
   // تحميل مكتبة Geidea وإنشاء جلسة الدفع عند فتح المودال
@@ -326,22 +374,32 @@ export default function GeideaPaymentModal({
         throw new Error('البريد الإلكتروني مطلوب');
       }
 
-      const orderId = merchantReferenceId || `EL7LM_${Date.now()}`;
-      const payload: any = {
+
+      // استخدام API الجديد مع المكتبة المركزية
+      // استخدام returnUrl الممرر أو الصفحة الحالية (بدون query parameters)
+      let currentReturnUrl = returnUrl;
+      
+      if (!currentReturnUrl && typeof window !== 'undefined') {
+        // استخدام الصفحة الحالية ولكن بدون query parameters
+        const currentUrl = new URL(window.location.href);
+        currentUrl.search = ''; // إزالة جميع query parameters
+        currentUrl.hash = ''; // إزالة hash
+        currentReturnUrl = currentUrl.toString();
+      }
+      
+      console.log('🔄 [Geidea Payment Modal] Using returnUrl:', currentReturnUrl);
+      console.log('🔄 [Geidea Payment Modal] Original returnUrl prop:', returnUrl);
+      console.log('🔄 [Geidea Payment Modal] Current window.location.href:', typeof window !== 'undefined' ? window.location.href : 'N/A');
+      
+      const payload = {
         amount: amount,
         currency: currency,
-        orderId: orderId,
         customerEmail: customerEmail,
-        customerName: 'Customer'
+        customerName: customerEmail.split('@')[0] || 'Customer',
+        merchantReferenceId: merchantReferenceId,
+        returnUrl: currentReturnUrl,
+        callbackUrl: callbackUrl,
       };
-      
-      // إضافة returnUrl و callbackUrl إذا كانا متوفرين
-      if (returnUrl) {
-        payload.returnUrl = returnUrl;
-      }
-      if (callbackUrl) {
-        payload.callbackUrl = callbackUrl;
-      }
 
       const response = await fetch('/api/geidea/create-session', {
         method: 'POST',
@@ -373,11 +431,10 @@ export default function GeideaPaymentModal({
 
       // معالجة نجاح الدفع
       if (data.success && data.sessionId) {
-
         // حفظ بيانات الدفع في localStorage للاستخدام لاحقاً
         const paymentData = {
           sessionId: data.sessionId,
-          orderId: data.merchantReferenceId,
+          orderId: data.orderId || merchantReferenceId,
           amount: amount,
           currency: currency,
           timestamp: new Date().toISOString(),
@@ -385,85 +442,46 @@ export default function GeideaPaymentModal({
         };
 
         localStorage.setItem('geidea_payment_data', JSON.stringify(paymentData));
-
-        // تحديث الحالة لنجاح إنشاء الجلسة
-        setState({ loading: false, error: null, isTestMode: false, sessionCreated: true });
-        
-        // الحصول على URL الصحيح من API response
-        const computedRedirectUrl = data.redirectUrl || 
-                                   (data as any)?.fullResponse?.session?.redirectUrl || 
-                                   (data as any)?.session?.redirectUrl ||
-                                   `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
-        
-        // حفظ URL و session ID في localStorage للاستخدام لاحقاً
-        localStorage.setItem('geidea_payment_url', computedRedirectUrl);
         localStorage.setItem('geidea_session_id', data.sessionId);
 
         // تحديث الحالة لنجاح إنشاء الجلسة
         setState({ loading: false, error: null, isTestMode: false, sessionCreated: true });
 
-        // فتح صفحة الدفع مباشرة باستخدام redirectUrl من API
-        if (computedRedirectUrl && computedRedirectUrl.includes('http')) {
-          try {
-            // حساب موضع النافذة في وسط الشاشة
-            const width = 900;
-            const height = 700;
-            const left = (window.screen.width / 2) - (width / 2);
-            const top = (window.screen.height / 2) - (height / 2);
-            
-            // محاولة فتح صفحة الدفع في popup window
-            const paymentWindow = window.open(
-              computedRedirectUrl, 
-              'geidea_payment_popup', 
-              `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=no,status=no`
-            );
-            
-            if (paymentWindow && !paymentWindow.closed) {
-              // التركيز على النافذة المنبثقة
-              paymentWindow.focus();
-              
-              // مراقبة إغلاق النافذة
-              const checkClosed = setInterval(() => {
-                if (paymentWindow.closed) {
-                  clearInterval(checkClosed);
-                  // إغلاق المودال بعد إغلاق نافذة الدفع
-                  onRequestClose();
-                }
-              }, 1000);
-              
-              // إغلاق المودال بعد فتح صفحة الدفع
-              setTimeout(() => {
-                onRequestClose();
-              }, 500);
-            } else {
-              // إذا تم حظر popup، استخدم redirect مباشر
-              window.location.href = computedRedirectUrl;
-            }
-          } catch (error) {
-            console.error('❌ [Geidea] Error opening payment window:', error);
-            // Fallback: استخدام redirect مباشر
-            window.location.href = computedRedirectUrl;
-          }
-        } else {
-          // إذا لم يكن هناك redirectUrl، استخدم GeideaCheckout library
+        // استخدام GeideaCheckout library للـ Popup Mode (الطريقة الموصى بها حسب الوثائق)
+        // تحميل المكتبة أولاً إذا لم تكن محملة
+        try {
+          await loadGeideaScript();
+          
           if (typeof window !== 'undefined' && window.GeideaCheckout) {
-            try {
-              const payment = new window.GeideaCheckout(onSuccess, onError, onCancel);
-              payment.startPayment(data.sessionId);
-              // إغلاق المودال بعد بدء الدفع
-              setTimeout(() => {
-                onRequestClose();
-              }, 500);
-            } catch (error) {
-              console.error('❌ [Geidea] Error starting payment with GeideaCheckout:', error);
-              // Fallback: استخدام URL افتراضي
-              const fallbackUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
-              window.location.href = fallbackUrl;
-            }
+            console.log('✅ [Geidea] Starting payment with GeideaCheckout library (Popup Mode)');
+            
+            // إنشاء instance من GeideaCheckout مع callbacks
+            const payment = new window.GeideaCheckout(onSuccess, onError, onCancel);
+            
+            // بدء الدفع - هذا يفتح popup/modal iframe تلقائياً حسب الوثائق
+            payment.startPayment(data.sessionId);
+            
+            // إغلاق المودال بعد بدء الدفع
+            setTimeout(() => {
+              onRequestClose();
+            }, 500);
           } else {
-            const fallbackUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
-            window.location.href = fallbackUrl;
+            // Fallback: استخدام Redirection Mode إذا لم تكن المكتبة متاحة
+            console.warn('⚠️ [Geidea] GeideaCheckout library not available, using Redirection Mode');
+            const redirectUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
+            window.open(redirectUrl, '_blank');
+            setTimeout(() => {
+              onRequestClose();
+            }, 500);
           }
+        } catch (error) {
+          console.error('❌ [Geidea] Error starting payment:', error);
+          // Fallback: استخدام Redirection Mode
+          const redirectUrl = `https://www.merchant.geidea.net/hpp/checkout/?${data.sessionId}`;
+          window.open(redirectUrl, '_blank');
+          setTimeout(() => {
+            onRequestClose();
+          }, 500);
         }
       } else {
         // إذا لم يكن هناك success أو sessionId، فهذا خطأ

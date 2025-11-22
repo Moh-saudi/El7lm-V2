@@ -36,7 +36,7 @@ import {
     TabsList,
     TabsTrigger
 } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/index';
 import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity, searchCities } from '@/data/countries-from-register';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -210,7 +210,7 @@ export default function EmployeesManagement() {
 
   // تحديث واجهة المستخدم لعرض الصلاحيات
   const renderEmployeeActions = (employee: Employee) => (
-    <div className="flex items-center gap-2">
+    <div className="flex gap-2 items-center">
       {canEditEmployee() && (
         <Button
           variant="ghost"
@@ -351,10 +351,18 @@ export default function EmployeesManagement() {
   function SimpleEmployeeForm() {
     // استخدام useState مع lazy initializer - key prop يضمن إعادة إنشاء المكون عند تغيير الموظف
     // قراءة editingEmployee مرة واحدة فقط عند mount (lazy initializer)
+    // استخدام draftRef كقيمة احتياطية للحفاظ على البيانات عند إعادة التهيئة
     const [local, setLocal] = useState<Partial<Employee>>(() => {
       // حساب initial data مرة واحدة فقط عند mount
       // استخدام editingEmployee من closure - key prop يضمن إعادة إنشاء المكون عند تغييره
       const currentEmployee = editingEmployee;
+      
+      // إذا كان هناك بيانات محفوظة في draftRef (من جلسة سابقة)، استخدمها
+      if (Object.keys(draftRef.current).length > 0 && !currentEmployee) {
+        console.log('🔄 [SimpleEmployeeForm] استعادة البيانات من draftRef:', draftRef.current);
+        return { ...draftRef.current };
+      }
+      
       if (currentEmployee) {
         return {
           name: currentEmployee.name || '',
@@ -393,10 +401,11 @@ export default function EmployeesManagement() {
       };
     });
     
-    // تحديث draftRef عند التهيئة فقط
+    // تحديث draftRef عند كل تغيير في local state
     useEffect(() => {
       draftRef.current = { ...local };
-    }, []); // مرة واحدة فقط عند mount
+      console.log('🔄 [SimpleEmployeeForm] تم تحديث draftRef:', draftRef.current);
+    }, [local]); // تحديث عند كل تغيير في local
 
     const onInput = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
@@ -431,11 +440,11 @@ export default function EmployeesManagement() {
     };
 
     return (
-    <div className="space-y-6 py-4">
+    <div className="py-4 space-y-6">
       {/* معلومات شخصية */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+        <div className="flex gap-3 items-center mb-4">
+          <div className="flex justify-center items-center w-10 h-10 bg-blue-100 rounded-full">
             <Users className="w-5 h-5 text-blue-600" />
           </div>
           <div>
@@ -444,7 +453,7 @@ export default function EmployeesManagement() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
             <Input
@@ -499,19 +508,19 @@ export default function EmployeesManagement() {
               type="date"
               value={(local.birthDate as string) || ''}
               onChange={onInput('birthDate')}
-              className="w-full h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-blue-500"
+              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-blue-500"
             />
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label className="text-sm font-medium text-gray-700">الصورة الشخصية</Label>
-            <div className="flex items-center gap-4">
+            <div className="flex gap-4 items-center">
               {(local.avatar as string) ? (
                 <div className="relative">
                   <img
                     src={local.avatar as string}
                     alt="صورة الموظف"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-blue-200"
+                    className="object-cover w-20 h-20 rounded-full border-2 border-blue-200"
                   />
                   <button
                     type="button"
@@ -519,13 +528,15 @@ export default function EmployeesManagement() {
                       setLocal(prev => ({ ...prev, avatar: undefined }));
                       draftRef.current = { ...draftRef.current, avatar: undefined };
                     }}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                    className="flex absolute -top-2 -right-2 justify-center items-center w-6 h-6 text-white bg-red-500 rounded-full hover:bg-red-600"
+                    title="حذف الصورة"
+                    aria-label="حذف الصورة"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-2xl">
+                <div className="flex justify-center items-center w-20 h-20 text-2xl font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
                   {(local.name as string)?.charAt(0) || 'U'}
                 </div>
               )}
@@ -535,6 +546,8 @@ export default function EmployeesManagement() {
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  title="رفع صورة الموظف"
+                  aria-label="رفع صورة الموظف"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -555,17 +568,17 @@ export default function EmployeesManagement() {
                 >
                   {uploadingAvatar ? (
                     <>
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      <Loader2 className="ml-2 w-4 h-4 animate-spin" />
                       جاري الرفع...
                     </>
                   ) : (
                     <>
-                      <Upload className="w-4 h-4 ml-2" />
+                      <Upload className="ml-2 w-4 h-4" />
                       {local.avatar ? 'تغيير الصورة' : 'رفع صورة'}
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-gray-500 mt-1">الحد الأقصى: 5 ميجابايت (JPG, PNG, WEBP)</p>
+                <p className="mt-1 text-xs text-gray-500">الحد الأقصى: 5 ميجابايت (JPG, PNG, WEBP)</p>
               </div>
             </div>
           </div>
@@ -573,9 +586,9 @@ export default function EmployeesManagement() {
       </div>
 
       {/* معلومات العمل */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+      <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+        <div className="flex gap-3 items-center mb-4">
+          <div className="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
             <Briefcase className="w-5 h-5 text-green-600" />
           </div>
           <div>
@@ -584,7 +597,7 @@ export default function EmployeesManagement() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
             <Select
@@ -609,8 +622,8 @@ export default function EmployeesManagement() {
             
             {/* معاينة الصلاحيات */}
             {local.role && (
-              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs font-semibold text-blue-900 mb-2">الصلاحيات الممنوحة:</p>
+              <div className="p-3 mt-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="mb-2 text-xs font-semibold text-blue-900">الصلاحيات الممنوحة:</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {Object.entries(DEFAULT_PERMISSIONS[local.role as EmployeeRole] || {}).map(([key, value]) => {
                     if (typeof value === 'boolean' && value) {
@@ -626,7 +639,7 @@ export default function EmployeesManagement() {
                         canManageSupport: 'إدارة تذاكر الدعم'
                       };
                       return (
-                        <div key={key} className="flex items-center gap-1">
+                        <div key={key} className="flex gap-1 items-center">
                           <CheckCircle className="w-3 h-3 text-green-600" />
                           <span className="text-blue-800">{permissionLabels[key] || key}</span>
                         </div>
@@ -671,7 +684,7 @@ export default function EmployeesManagement() {
               type="date"
               value={(local.hireDate as string) || ''}
               onChange={onInput('hireDate')}
-              className="w-full h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-green-500"
+              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
             />
           </div>
 
@@ -684,7 +697,7 @@ export default function EmployeesManagement() {
               value={(local.salary as string) || ''}
               onChange={onInput('salary')}
               placeholder="0.00"
-              className="w-full h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-green-500"
+              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
               dir="ltr"
             />
             <p className="text-xs text-gray-500">أدخل الراتب بالأرقام (مثال: 5000 أو 5000.50)</p>
@@ -693,9 +706,9 @@ export default function EmployeesManagement() {
       </div>
 
       {/* معلومات المنصة */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+      <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+        <div className="flex gap-3 items-center mb-4">
+          <div className="flex justify-center items-center w-10 h-10 bg-purple-100 rounded-full">
             <Building2 className="w-5 h-5 text-purple-600" />
           </div>
           <div>
@@ -705,14 +718,14 @@ export default function EmployeesManagement() {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">المشرف المباشر</Label>
               <Select
                 value={(local.supervisor as string) || ''}
                 onValueChange={onSelect('supervisor')}
               >
-                <SelectTrigger className="w-full h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-purple-500">
+                <SelectTrigger className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500">
                   <SelectValue placeholder="اختر المشرف" />
                 </SelectTrigger>
                 <SelectContent>
@@ -734,15 +747,15 @@ export default function EmployeesManagement() {
                   type="time"
                   value={(local.workStartTime as string) || '09:00'}
                   onChange={onInput('workStartTime')}
-                  className="flex-1 h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-purple-500"
+                  className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
                 />
-                <span className="flex items-center text-gray-500 text-sm">إلى</span>
+                <span className="flex items-center text-sm text-gray-500">إلى</span>
                 <Input
                   id="emp_wend"
                   type="time"
                   value={(local.workEndTime as string) || '17:00'}
                   onChange={onInput('workEndTime')}
-                  className="flex-1 h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-purple-500"
+                  className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
                 />
               </div>
             </div>
@@ -750,7 +763,7 @@ export default function EmployeesManagement() {
 
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">المناطق الجغرافية *</Label>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="p-4 bg-white rounded-lg border border-gray-200">
               <LocationSelector />
             </div>
           </div>
@@ -758,9 +771,9 @@ export default function EmployeesManagement() {
       </div>
 
       {/* معلومات إضافية */}
-      <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+      <div className="p-6 bg-gradient-to-r from-gray-50 rounded-xl border border-gray-200 to-slate-50">
+        <div className="flex gap-3 items-center mb-4">
+          <div className="flex justify-center items-center w-10 h-10 bg-gray-100 rounded-full">
             <AlertCircle className="w-5 h-5 text-gray-600" />
           </div>
           <div>
@@ -777,12 +790,12 @@ export default function EmployeesManagement() {
               value={(local.notes as string) || ''}
               onChange={onInput('notes')}
               placeholder="أي ملاحظات إضافية حول الموظف..."
-              className="w-full h-11 text-sm sm:h-12 sm:text-base border-gray-300 focus:border-gray-500"
+              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-gray-500"
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex gap-4 items-center">
+            <div className="flex gap-2 items-center">
               <input
                 type="checkbox"
                 id="isActive"
@@ -796,7 +809,7 @@ export default function EmployeesManagement() {
               </Label>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 type="checkbox"
                 id="sendWelcomeEmail"
@@ -1156,6 +1169,13 @@ export default function EmployeesManagement() {
     try {
       setUploadingAvatar(true);
       
+      console.log('🔄 [Employee Avatar Upload] بدء رفع الصورة:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        employeeId: employeeId || 'new'
+      });
+      
       // التحقق من نوع الملف
       if (!file.type.startsWith('image/')) {
         toast.error('الملف المحدد ليس صورة');
@@ -1164,39 +1184,81 @@ export default function EmployeesManagement() {
 
       // التحقق من حجم الملف (5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('حجم الصورة كبير جداً. الحد الأقصى: 5 ميجابايت');
+        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+        toast.error(`حجم الصورة كبير جداً (${fileSizeMB} ميجابايت). الحد الأقصى: 5 ميجابايت`);
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
+      // إنشاء اسم فريد للملف
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const timestamp = Date.now();
       const fileName = employeeId 
         ? `employees/${employeeId}.${fileExt}`
-        : `employees/temp_${Date.now()}.${fileExt}`;
+        : `employees/temp_${timestamp}.${fileExt}`;
+
+      console.log('📤 [Employee Avatar Upload] رفع الصورة إلى Supabase:', {
+        bucket: 'avatars',
+        fileName,
+        fileSize: file.size,
+        fileType: file.type
+      });
 
       // رفع الصورة - استخدام bucket avatars لأنه موجود ومستخدم في المشروع
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, file, { 
+          upsert: true,
+          cacheControl: '3600',
+          contentType: file.type
+        });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error('حدث خطأ أثناء رفع الصورة. تأكد من وجود bucket "avatars" في Supabase Storage');
+        console.error('❌ [Employee Avatar Upload] خطأ في الرفع:', uploadError);
+        console.error('📋 [Employee Avatar Upload] تفاصيل الخطأ:', {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError.error
+        });
+        
+        // رسائل خطأ أكثر تفصيلاً
+        if (uploadError.message?.includes('Bucket not found')) {
+          toast.error('❌ Bucket "avatars" غير موجود في Supabase Storage. يرجى التحقق من إعدادات Supabase');
+        } else if (uploadError.message?.includes('new row violates row-level security')) {
+          toast.error('❌ خطأ في الصلاحيات. يرجى التحقق من إعدادات RLS في Supabase Storage');
+        } else if (uploadError.message?.includes('JWT')) {
+          toast.error('❌ خطأ في المصادقة. يرجى التحقق من إعدادات Supabase');
+        } else {
+          toast.error(`❌ حدث خطأ أثناء رفع الصورة: ${uploadError.message || 'خطأ غير معروف'}`);
+        }
         return;
       }
 
+      console.log('✅ [Employee Avatar Upload] تم رفع الصورة بنجاح:', uploadData);
+
       // الحصول على رابط الصورة
-      const { data } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // لا نحدث newEmployee هنا لأن SimpleEmployeeForm يدير local state مباشرة
-      // يتم تحديث local مباشرة في SimpleEmployeeForm عند استدعاء handleAvatarUpload
+      if (!urlData?.publicUrl) {
+        console.error('❌ [Employee Avatar Upload] فشل في الحصول على رابط الصورة');
+        toast.error('تم رفع الصورة لكن فشل في الحصول على الرابط');
+        return;
+      }
+
+      console.log('🔗 [Employee Avatar Upload] رابط الصورة:', urlData.publicUrl);
       
-      toast.success('تم رفع الصورة بنجاح');
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast.error('حدث خطأ أثناء رفع الصورة');
+      toast.success('✅ تم رفع الصورة بنجاح');
+      return urlData.publicUrl;
+    } catch (error: any) {
+      console.error('❌ [Employee Avatar Upload] خطأ غير متوقع:', error);
+      console.error('📋 [Employee Avatar Upload] تفاصيل الخطأ:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      toast.error(`حدث خطأ غير متوقع أثناء رفع الصورة: ${error?.message || 'خطأ غير معروف'}`);
+      return;
     } finally {
       setUploadingAvatar(false);
     }
@@ -1251,15 +1313,15 @@ export default function EmployeesManagement() {
           compact ? 'p-4' : 'p-5'
         )}
       >
-        <div className={cn('flex flex-col gap-3', compact ? '' : 'md:flex-row md:items-start md:justify-between')}>
+        <div className={cn('flex flex-col gap-3', compact ? '':'md:flex-row md:items-start md:justify-between')}>
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 items-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-lg">
+              <div className="flex justify-center items-center w-12 h-12 text-lg font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
                 {employee.avatar ? (
                   <img
                     src={employee.avatar}
                     alt={employee.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="object-cover w-12 h-12 rounded-full"
                   />
                 ) : (
                   <span>{employee.name?.charAt(0) || 'U'}</span>
@@ -1277,12 +1339,12 @@ export default function EmployeesManagement() {
                 {getRoleLabel(employee.role)}
               </Badge>
               {employee.isActive ? (
-                <Badge className="text-xs bg-emerald-50 text-emerald-700">
-                  <CheckCircle className="w-3 h-3 ml-1" />
+                <Badge className="text-xs text-emerald-700 bg-emerald-50">
+                  <CheckCircle className="ml-1 w-3 h-3" />
                   نشط
                 </Badge>
               ) : (
-                <Badge className="text-xs bg-red-50 text-red-700">
+                <Badge className="text-xs text-red-700 bg-red-50">
                   غير نشط
                 </Badge>
               )}
@@ -1293,7 +1355,7 @@ export default function EmployeesManagement() {
         <div className={cn('grid gap-4 mt-4', compact ? 'grid-cols-1' : 'md:grid-cols-2')}>
           <div>
             <p className="text-xs text-slate-500">القسم</p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex gap-2 items-center mt-1">
               <Building2 className="w-4 h-4 text-purple-400" />
               <p className="text-sm font-medium text-slate-900">
                 {employee.department || '—'}
@@ -1302,7 +1364,7 @@ export default function EmployeesManagement() {
           </div>
           <div>
             <p className="text-xs text-slate-500">الهاتف</p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex gap-2 items-center mt-1">
               <Phone className="w-4 h-4 text-blue-400" />
               <a
                 href={`tel:${employee.phone}`}
@@ -1315,7 +1377,7 @@ export default function EmployeesManagement() {
           {(employee as any).salary && (
             <div>
               <p className="text-xs text-slate-500">الراتب الشهري</p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex gap-2 items-center mt-1">
                 <Briefcase className="w-4 h-4 text-emerald-400" />
                 <p className="text-sm font-semibold text-emerald-700">
                   {Number((employee as any).salary).toLocaleString('ar-EG', {
@@ -1327,7 +1389,7 @@ export default function EmployeesManagement() {
             </div>
           )}
           {employee.locations && employee.locations.length > 0 && (
-            <div className={compact ? '' : 'md:col-span-2'}>
+            <div className={compact ? '':'md:col-span-2'}>
               <p className="text-xs text-slate-500">المناطق</p>
               <div className="flex flex-wrap gap-1 mt-1">
                 {employee.locations.slice(0, 3).map((loc, idx) => (
@@ -1346,31 +1408,31 @@ export default function EmployeesManagement() {
           
           {/* بيانات تسجيل الدخول */}
           {((employee as any).loginMethods || employee.authUserId) && (
-            <div className={compact ? '' : 'md:col-span-2'}>
-              <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-xs font-semibold text-blue-900 mb-2">طرق تسجيل الدخول:</p>
+            <div className={compact ? '':'md:col-span-2'}>
+              <div className="p-3 mt-2 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="mb-2 text-xs font-semibold text-blue-900">طرق تسجيل الدخول:</p>
                 <div className="space-y-2">
                   {(employee as any).loginMethods?.email?.enabled && (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex gap-2 items-center text-xs">
                       <Mail className="w-3 h-3 text-blue-600" />
                       <span className="text-blue-800">إيميل: {(employee as any).loginMethods.email.email || employee.email}</span>
                       {employee.authUserId && (
-                        <Badge variant="outline" className="text-xs px-1 py-0">✓ محفوظ</Badge>
+                        <Badge variant="outline" className="px-1 py-0 text-xs">✓ محفوظ</Badge>
                       )}
                     </div>
                   )}
                   {(employee as any).loginMethods?.whatsapp?.enabled && (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex gap-2 items-center text-xs">
                       <Phone className="w-3 h-3 text-green-600" />
                       <span className="text-green-800">واتساب: {(employee as any).loginMethods.whatsapp.phone || employee.phone}</span>
-                      <Badge variant="outline" className="text-xs px-1 py-0">✓ محفوظ</Badge>
+                      <Badge variant="outline" className="px-1 py-0 text-xs">✓ محفوظ</Badge>
                     </div>
                   )}
                   {!((employee as any).loginMethods) && employee.authUserId && (
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <div className="flex gap-2 items-center text-xs text-gray-600">
                       <Mail className="w-3 h-3" />
                       <span>إيميل: {employee.email}</span>
-                      <Badge variant="outline" className="text-xs px-1 py-0">✓ محفوظ</Badge>
+                      <Badge variant="outline" className="px-1 py-0 text-xs">✓ محفوظ</Badge>
                     </div>
                   )}
                 </div>
@@ -1388,12 +1450,12 @@ export default function EmployeesManagement() {
               onClick={() => {
                 setEditingEmployee(employee);
                 setNewEmployee(employee);
-                setSelectedCountry(employee.locations[0]?.countryName || employee.locations[0]?.countryId || '');
+                // setSelectedCountry removed - using setSelectedCountries instead
                 setSelectedCities(employee.locations.map(loc => loc.cityName || loc.cityId));
                 setShowAddDialog(true);
               }}
             >
-              <Edit className="w-4 h-4 ml-2" />
+              <Edit className="ml-2 w-4 h-4" />
               تعديل
             </Button>
           )}
@@ -1407,7 +1469,7 @@ export default function EmployeesManagement() {
               setShowActivityLog(true);
             }}
           >
-            <History className="w-4 h-4 ml-2" />
+            <History className="ml-2 w-4 h-4" />
             السجل
           </Button>
           <Button
@@ -1430,7 +1492,7 @@ export default function EmployeesManagement() {
               toast.success('تم نسخ بيانات الموظف');
             }}
           >
-            <Copy className="w-4 h-4 ml-2" />
+            <Copy className="ml-2 w-4 h-4" />
             نسخ
           </Button>
           {canDeleteEmployee() && (
@@ -1440,7 +1502,7 @@ export default function EmployeesManagement() {
               className={cn('flex-1 text-red-600 border-red-200 hover:bg-red-50', compact && 'text-xs')}
               onClick={() => handleDeleteEmployee(employee.id)}
             >
-              <Trash2 className="w-4 h-4 ml-2" />
+              <Trash2 className="ml-2 w-4 h-4" />
               حذف
             </Button>
           )}
@@ -1547,7 +1609,7 @@ export default function EmployeesManagement() {
     return (
       <div className="space-y-4">
         <div className="grid gap-2">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <Label>الدول *</Label>
             <div className="flex gap-2">
               <Button
@@ -1561,10 +1623,10 @@ export default function EmployeesManagement() {
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg max-h-48 overflow-y-auto">
+          <div className="grid overflow-y-auto grid-cols-2 gap-2 p-3 max-h-48 rounded-lg border">
             {countries && Array.isArray(countries) && countries.length > 0 ? (
               countries.map((country, index) => (
-                <div key={`country-${country.name}-${index}-${country.id || index}`} className="flex items-center gap-2">
+                <div key={`country-${country.name}-${index}-${country.id || index}`} className="flex gap-2 items-center">
                   <Checkbox
                     id={`country-${country.name}-${index}`}
                     checked={selectedCountries.includes(country.name)}
@@ -1572,7 +1634,7 @@ export default function EmployeesManagement() {
                   />
                   <label
                     htmlFor={`country-${country.name}-${index}`}
-                    className="text-sm cursor-pointer select-none flex items-center gap-2"
+                    className="flex gap-2 items-center text-sm cursor-pointer select-none"
                   >
                     <span className="text-xl">{country.flag || '🏳️'}</span>
                     <span>{country.name}</span>
@@ -1580,7 +1642,7 @@ export default function EmployeesManagement() {
                 </div>
               ))
             ) : (
-              <div className="col-span-2 text-sm text-gray-500 p-4 text-center">
+              <div className="col-span-2 p-4 text-sm text-center text-gray-500">
                 جاري تحميل الدول...
               </div>
             )}
@@ -1594,13 +1656,15 @@ export default function EmployeesManagement() {
                 <Badge
                   key={country}
                   variant="secondary"
-                  className="flex items-center gap-1 px-2 py-1 bg-green-100"
+                  className="flex gap-1 items-center px-2 py-1 bg-green-100"
                 >
                   {country}
                   <button
                     type="button"
                     onClick={() => handleCountryToggle(country)}
                     className="ml-1 hover:text-red-600"
+                    title="إزالة الدولة"
+                    aria-label="إزالة الدولة"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -1612,7 +1676,7 @@ export default function EmployeesManagement() {
 
         {selectedCountries.length > 0 && (
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex justify-between items-center">
               <Label>المدن *</Label>
               <div className="flex gap-2">
                 <Button
@@ -1642,11 +1706,11 @@ export default function EmployeesManagement() {
                   className="w-full h-11 text-sm sm:h-12 sm:text-base"
                 />
                 {showCityDropdown && availableCities && Array.isArray(availableCities) && availableCities.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="overflow-y-auto absolute z-50 mt-1 w-full max-h-48 bg-white rounded-lg border shadow-lg">
                     {availableCities.map((city) => (
                       <div
                         key={city}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                        className="flex gap-2 items-center px-4 py-2 cursor-pointer hover:bg-gray-100"
                         onClick={() => handleCityToggle(city)}
                       >
                         <Checkbox
@@ -1667,13 +1731,15 @@ export default function EmployeesManagement() {
                     <Badge
                       key={city}
                       variant="secondary"
-                      className="flex items-center gap-1 px-2 py-1"
+                      className="flex gap-1 items-center px-2 py-1"
                     >
                       {city}
                       <button
                         type="button"
                         onClick={() => handleCityToggle(city)}
                         className="ml-1 hover:text-red-600"
+                        title="إزالة المدينة"
+                        aria-label="إزالة المدينة"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1684,9 +1750,9 @@ export default function EmployeesManagement() {
 
               {/* قائمة المدن المتاحة (عند عدم وجود بحث) */}
               {!citySearchQuery && availableCities && Array.isArray(availableCities) && availableCities.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg max-h-48 overflow-y-auto">
+                <div className="grid overflow-y-auto grid-cols-2 gap-2 p-3 max-h-48 rounded-lg border">
                   {availableCities.slice(0, 20).map((city) => (
-                    <div key={city} className="flex items-center gap-2">
+                    <div key={city} className="flex gap-2 items-center">
                       <Checkbox
                         id={`city-${city}`}
                         checked={selectedCities.includes(city)}
@@ -1701,7 +1767,7 @@ export default function EmployeesManagement() {
                     </div>
                   ))}
                   {availableCities.length > 20 && (
-                    <div className="col-span-2 text-xs text-gray-500 text-center">
+                    <div className="col-span-2 text-xs text-center text-gray-500">
                       و {availableCities.length - 20} مدينة أخرى - استخدم البحث للعثور عليها
                     </div>
                   )}
@@ -1709,7 +1775,7 @@ export default function EmployeesManagement() {
               )}
 
               {selectedCountries.length > 0 && (!availableCities || !Array.isArray(availableCities) || availableCities.length === 0) && !citySearchQuery && (
-                <div className="text-sm text-yellow-600 bg-yellow-50 p-4 rounded-lg flex items-center gap-2">
+                <div className="flex gap-2 items-center p-4 text-sm text-yellow-600 bg-yellow-50 rounded-lg">
                   <AlertCircle className="w-5 h-5" />
                   <span>لا توجد مدن مضافة للدول المختارة</span>
                 </div>
@@ -1719,7 +1785,7 @@ export default function EmployeesManagement() {
         )}
 
         {selectedCountries.length === 0 && (
-          <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 text-sm text-gray-500 bg-gray-50 rounded-lg">
             يرجى اختيار دولة واحدة على الأقل لعرض المدن المتاحة
           </div>
         )}
@@ -1727,26 +1793,18 @@ export default function EmployeesManagement() {
     );
   }
 
-  // دالة لإنشاء كلمة مرور قوية
+  // دالة لإنشاء كلمة مرور بسيطة
   const generateStrongPassword = () => {
-    const length = 12;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    // كلمة مرور بسيطة: 8 أحرف فقط (أحرف صغيرة وأرقام)
+    const length = 8;
+    const charset = "abcdefghijklmnopqrstuvwxyz0123456789";
     let password = "";
 
-    // التأكد من وجود حرف كبير على الأقل
-    password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
-
-    // التأكد من وجود حرف صغير على الأقل
-    password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)];
-
-    // التأكد من وجود رقم على الأقل
+    // إضافة رقم واحد على الأقل
     password += "0123456789"[Math.floor(Math.random() * 10)];
 
-    // التأكد من وجود رمز خاص على الأقل
-    password += "!@#$%^&*"[Math.floor(Math.random() * 8)];
-
     // إكمال باقي الأحرف عشوائياً
-    for (let i = 4; i < length; i++) {
+    for (let i = 1; i < length; i++) {
       password += charset[Math.floor(Math.random() * charset.length)];
     }
 
@@ -1758,9 +1816,17 @@ export default function EmployeesManagement() {
   const savingRef = useRef(false);
   const handleSaveEmployee = async () => {
     try {
-      if (savingRef.current) return; // منع الضغط المزدوج
+      if (savingRef.current) {
+        console.log('⚠️ [Save Employee] العملية قيد التنفيذ بالفعل، تم تجاهل الطلب');
+        return; // منع الضغط المزدوج
+      }
       savingRef.current = true;
-      console.log('🔄 بدء عملية حفظ الموظف...', { newEmployee, selectedCountries, selectedCities });
+      console.log('🔄 [Save Employee] بدء عملية حفظ الموظف...', { 
+        editingEmployee: editingEmployee?.id || 'new',
+        draftRef: draftRef.current,
+        selectedCountries: selectedCountries.length,
+        selectedCities: selectedCities.length
+      });
 
       // Validate form
       if (!validateForm()) {
@@ -1787,15 +1853,27 @@ export default function EmployeesManagement() {
       const phoneVal = (document.querySelector('#emp_phone') as HTMLInputElement | null)?.value || draftRef.current.phone || newEmployee.phone || '';
       const roleVal = (draftRef.current.role as string) || newEmployee.role || '';
       const deptVal = (draftRef.current.department as string) || newEmployee.department || '';
+      
+      console.log('📋 [Save Employee] القيم المقروءة:', {
+        nameVal,
+        emailVal,
+        phoneVal,
+        roleVal,
+        deptVal,
+        selectedCountries: selectedCountries.length,
+        selectedCities: selectedCities.length
+      });
 
       // Validate required fields
       if (!nameVal.trim()) {
         toast.error('يرجى إدخال اسم الموظف');
+        savingRef.current = false;
         return;
       }
 
       if (!emailVal.trim()) {
         toast.error('يرجى إدخال البريد الإلكتروني');
+        savingRef.current = false;
         return;
       }
 
@@ -1803,17 +1881,20 @@ export default function EmployeesManagement() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailVal)) {
         toast.error('يرجى إدخال بريد إلكتروني صحيح');
+        savingRef.current = false;
         return;
       }
 
       if (!phoneVal.trim()) {
         toast.error('يرجى إدخال رقم الهاتف');
+        savingRef.current = false;
         return;
       }
 
       // phone: 8-15 digits
       if (!/^\d{8,15}$/.test(phoneVal)) {
         toast.error('رقم الهاتف يجب أن يحتوي على 8 إلى 15 رقمًا');
+        savingRef.current = false;
         return;
       }
 
@@ -1821,26 +1902,31 @@ export default function EmployeesManagement() {
       const salaryStr = (draftRef.current.salary as string) || '';
       if (salaryStr && isNaN(Number(salaryStr))) {
         toast.error('الراتب يجب أن يكون رقمًا صالحًا');
+        savingRef.current = false;
         return;
       }
 
       if (!roleVal) {
         toast.error('يرجى اختيار الوظيفة');
+        savingRef.current = false;
         return;
       }
 
       if (!deptVal?.trim()) {
         toast.error('يرجى اختيار القسم');
+        savingRef.current = false;
         return;
       }
 
       if (selectedCountries.length === 0) {
         toast.error('يرجى اختيار دولة واحدة على الأقل');
+        savingRef.current = false;
         return;
       }
 
       if (selectedCities.length === 0) {
         toast.error('يرجى اختيار مدينة واحدة على الأقل');
+        savingRef.current = false;
         return;
       }
 
@@ -1855,6 +1941,7 @@ export default function EmployeesManagement() {
 
       if (!editingEmployee && !emailQuerySnapshot.empty) {
         toast.error('البريد الإلكتروني مستخدم بالفعل');
+        savingRef.current = false;
         return;
       }
 
@@ -1869,14 +1956,14 @@ export default function EmployeesManagement() {
           console.log('🔑 تم إنشاء كلمة مرور مؤقتة');
 
           // Prepare employee data first - استخدام القيم من draftRef
-            const employeeData: Partial<Employee> = {
+          const employeeData: any = {
             name: nameVal,
             email: emailVal,
             phone: phoneVal,
             role: roleVal as EmployeeRole,
             department: deptVal,
             permissions: DEFAULT_PERMISSIONS[roleVal as EmployeeRole],
-            avatar: (draftRef.current.avatar as string) || '',
+            avatar: (draftRef.current.avatar as any) || '',
             createdAt: new Date(),
             isActive: true,
             locations: selectedCities.map(cityName => {
@@ -1891,6 +1978,29 @@ export default function EmployeesManagement() {
               };
             })
           };
+          
+          // إضافة الحقول الإضافية إذا كانت موجودة
+          if (draftRef.current.birthDate) {
+            employeeData.birthDate = draftRef.current.birthDate;
+          }
+          if (draftRef.current.hireDate) {
+            employeeData.hireDate = draftRef.current.hireDate;
+          }
+          if (draftRef.current.salary) {
+            employeeData.salary = draftRef.current.salary;
+          }
+          if (draftRef.current.supervisor) {
+            employeeData.supervisor = draftRef.current.supervisor;
+          }
+          if (draftRef.current.workStartTime) {
+            employeeData.workStartTime = draftRef.current.workStartTime;
+          }
+          if (draftRef.current.workEndTime) {
+            employeeData.workEndTime = draftRef.current.workEndTime;
+          }
+          if (draftRef.current.notes) {
+            employeeData.notes = draftRef.current.notes;
+          }
 
           console.log('📋 بيانات الموظف المحضرة:', employeeData);
 
@@ -1933,7 +2043,7 @@ export default function EmployeesManagement() {
             
             await updateDoc(employeeRef, {
               authUserId: authUserId,
-              avatar: (draftRef.current.avatar as string) || employeeData.avatar,
+              avatar: (draftRef.current.avatar as any) || employeeData.avatar,
               loginMethods: loginMethodsData
             });
             
@@ -1998,24 +2108,26 @@ export default function EmployeesManagement() {
             } else {
               toast.error('حدث خطأ أثناء إنشاء الحساب');
             }
+            savingRef.current = false;
             return;
           }
 
         } catch (error) {
           console.error('Error creating employee:', error);
           toast.error('حدث خطأ أثناء إنشاء الموظف');
+          savingRef.current = false;
           return;
         }
       } else {
           // Update existing employee
         try {
-          const employeeData: Partial<Employee> = {
+          const employeeData: any = {
             name: nameVal,
             phone: phoneVal,
             role: roleVal as EmployeeRole,
             department: deptVal,
             permissions: DEFAULT_PERMISSIONS[roleVal as EmployeeRole],
-            avatar: (draftRef.current.avatar as string) || '',
+            avatar: (draftRef.current.avatar as any) || '',
             locations: selectedCities.map(cityName => {
               // استخدام نفس المنطق من ملف اللاعبين - أسماء المدن مباشرة
               // تحديد الدولة من المدينة أو استخدام أول دولة مختارة
@@ -2043,6 +2155,29 @@ export default function EmployeesManagement() {
               }
             }
           };
+          
+          // إضافة الحقول الإضافية إذا كانت موجودة
+          if (draftRef.current.birthDate) {
+            employeeData.birthDate = draftRef.current.birthDate;
+          }
+          if (draftRef.current.hireDate) {
+            employeeData.hireDate = draftRef.current.hireDate;
+          }
+          if (draftRef.current.salary) {
+            employeeData.salary = draftRef.current.salary;
+          }
+          if (draftRef.current.supervisor) {
+            employeeData.supervisor = draftRef.current.supervisor;
+          }
+          if (draftRef.current.workStartTime) {
+            employeeData.workStartTime = draftRef.current.workStartTime;
+          }
+          if (draftRef.current.workEndTime) {
+            employeeData.workEndTime = draftRef.current.workEndTime;
+          }
+          if (draftRef.current.notes) {
+            employeeData.notes = draftRef.current.notes;
+          }
 
           console.log('🔄 تحديث بيانات الموظف مع بيانات تسجيل الدخول...');
           console.log('📋 بيانات تسجيل الدخول المراد حفظها:', JSON.stringify(employeeData.loginMethods, null, 2));
@@ -2064,8 +2199,9 @@ export default function EmployeesManagement() {
           
           toast.success('تم تحديث بيانات الموظف بنجاح');
         } catch (error) {
-          console.error('Error updating employee:', error);
+          console.error('❌ [Save Employee] خطأ في تحديث الموظف:', error);
           toast.error('حدث خطأ أثناء تحديث بيانات الموظف');
+          savingRef.current = false;
           return;
         }
       }
@@ -2079,13 +2215,22 @@ export default function EmployeesManagement() {
         phone: '',
         role: 'support',
         isActive: true,
+        department: '',
+        sendWelcomeEmail: true
+      });
+      setSelectedCities([]);
+      setSelectedCountries([]);
+      setFormErrors({
+        name: '',
+        email: '',
+        phone: '',
+        role: '',
         department: ''
       });
-      setSelectedCountries([]);
-      setSelectedCities([]);
+      draftRef.current = {}; // إعادة تعيين draftRef
 
       // Refresh employee list
-      loadEmployees();
+      await loadEmployees();
 
     } catch (error: any) {
       console.error('Error in handleSaveEmployee:', error);
@@ -2123,17 +2268,17 @@ export default function EmployeesManagement() {
     }
   };
 
-  // Add function to send credentials via SMS
+  // Add function to send credentials via WhatsApp
   const sendCredentialsSMS = async () => {
     try {
       setIsSendingSMS(true);
-      // Here you would integrate with your SMS service
+      // Here you would integrate with your WhatsApp service
       // For now, we'll just simulate it
       await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('تم إرسال بيانات الدخول عبر رسالة نصية');
+      toast.success('تم إرسال بيانات الدخول عبر WhatsApp');
     } catch (error) {
-      console.error('Error sending SMS:', error);
-      toast.error('حدث خطأ أثناء إرسال الرسالة النصية');
+      console.error('Error sending WhatsApp:', error);
+      toast.error('حدث خطأ أثناء إرسال الرسالة عبر WhatsApp');
     } finally {
       setIsSendingSMS(false);
     }
@@ -2143,9 +2288,9 @@ export default function EmployeesManagement() {
   function CredentialsDialog() {
     return (
     <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-green-600">
+          <DialogTitle className="flex gap-2 items-center text-green-600">
             <CheckCircle className="w-5 h-5" />
             تم إنشاء حساب الموظف بنجاح
           </DialogTitle>
@@ -2154,60 +2299,43 @@ export default function EmployeesManagement() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="py-4 space-y-6">
           {/* Credentials Display */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+          <div className="p-4 space-y-4 bg-gray-50 rounded-lg">
+            <div className="space-y-2">
+              <h4 className="flex gap-2 items-center text-sm font-semibold text-gray-900">
                 <Mail className="w-4 h-4 text-blue-500" />
-                تسجيل الدخول عبر البريد الإلكتروني
+                بيانات الدخول
               </h4>
               <div className="space-y-2">
-                <Label className="text-gray-600">البريد الإلكتروني</Label>
-                <div className="flex items-center gap-2 p-2 bg-white rounded border">
-                  <Mail className="w-4 h-4 text-gray-500" />
-                  <span className="flex-1 font-medium text-gray-900">{newUserCredentials?.email}</span>
+                <Label className="text-xs text-gray-600">البريد الإلكتروني</Label>
+                <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                  <Mail className="w-3 h-3 text-gray-500" />
+                  <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.email}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-gray-600">كلمة المرور المؤقتة</Label>
-                <div className="flex items-center gap-2 p-2 bg-white rounded border">
-                  <Key className="w-4 h-4 text-gray-500" />
-                  <span className="flex-1 font-mono font-medium text-gray-900">{newUserCredentials?.password}</span>
+                <Label className="text-xs text-gray-600">كلمة المرور</Label>
+                <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                  <Key className="w-3 h-3 text-gray-500" />
+                  <span className="flex-1 font-mono text-sm font-medium text-gray-900">{newUserCredentials?.password}</span>
                 </div>
               </div>
-              {newUserCredentials?.authUserId && (
-                <div className="space-y-2">
-                  <Label className="text-gray-600">معرف الحساب (Auth ID)</Label>
-                  <div className="flex items-center gap-2 p-2 bg-white rounded border">
-                    <Key className="w-4 h-4 text-gray-500" />
-                    <span className="flex-1 font-mono text-xs text-gray-600">{newUserCredentials.authUserId}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t pt-4 space-y-3">
-              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-green-500" />
-                تسجيل الدخول عبر WhatsApp
-              </h4>
               <div className="space-y-2">
-                <Label className="text-gray-600">رقم الهاتف</Label>
-                <div className="flex items-center gap-2 p-2 bg-white rounded border">
-                  <Phone className="w-4 h-4 text-gray-500" />
-                  <span className="flex-1 font-medium text-gray-900">{newUserCredentials?.phone || 'غير متوفر'}</span>
+                <Label className="text-xs text-gray-600">رقم الهاتف (WhatsApp)</Label>
+                <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                  <Phone className="w-3 h-3 text-gray-500" />
+                  <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.phone || 'غير متوفر'}</span>
                 </div>
-                <p className="text-xs text-gray-500">يمكن للموظف تسجيل الدخول باستخدام رقم الهاتف عبر WhatsApp OTP</p>
               </div>
             </div>
           </div>
 
           {/* Send Options */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-900">خيارات إرسال بيانات الدخول</h4>
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-gray-900">خيارات الإرسال</h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-2">
               <Button
                 variant="outline"
                 className="w-full"
@@ -2216,12 +2344,12 @@ export default function EmployeesManagement() {
               >
                 {isSendingEmail ? (
                   <>
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                    <Loader2 className="ml-2 w-4 h-4 animate-spin" />
                     جاري الإرسال...
                   </>
                 ) : (
                   <>
-                    <Mail className="w-4 h-4 ml-2" />
+                    <Mail className="ml-2 w-4 h-4" />
                     إرسال عبر البريد
                   </>
                 )}
@@ -2235,13 +2363,13 @@ export default function EmployeesManagement() {
               >
                 {isSendingSMS ? (
                   <>
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                    <Loader2 className="ml-2 w-4 h-4 animate-spin" />
                     جاري الإرسال...
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="w-4 h-4 ml-2" />
-                    إرسال عبر SMS
+                    <Phone className="ml-2 w-4 h-4" />
+                    إرسال عبر WhatsApp
                   </>
                 )}
               </Button>
@@ -2284,12 +2412,12 @@ export default function EmployeesManagement() {
             >
               {credentialsCopied ? (
                 <>
-                  <Check className="w-4 h-4 ml-2" />
+                  <Check className="ml-2 w-4 h-4" />
                   تم النسخ
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 ml-2" />
+                  <Copy className="ml-2 w-4 h-4" />
                   نسخ البيانات
                 </>
               )}
@@ -2297,16 +2425,14 @@ export default function EmployeesManagement() {
           </div>
 
           {/* Important Notes */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-            <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              تعليمات مهمة
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <h4 className="flex gap-2 items-center mb-1 text-xs font-medium text-blue-800">
+              <AlertCircle className="w-3 h-3" />
+              ملاحظات
             </h4>
-            <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-              <li>سيتم إرسال رابط تغيير كلمة المرور تلقائياً إلى البريد الإلكتروني</li>
-              <li>يجب على الموظف تغيير كلمة المرور عند أول تسجيل دخول</li>
-              <li>تأكد من إرسال البيانات بشكل آمن</li>
-              <li>احتفظ بنسخة من البيانات في مكان آمن للرجوع إليها عند الحاجة</li>
+            <ul className="space-y-1 text-xs list-disc list-inside text-blue-700">
+              <li>سيتم إرسال رابط تغيير كلمة المرور تلقائياً</li>
+              <li>يجب تغيير كلمة المرور عند أول تسجيل دخول</li>
             </ul>
           </div>
         </div>
@@ -2320,7 +2446,7 @@ export default function EmployeesManagement() {
               setCredentialsCopied(false);
             }}
           >
-            <Check className="w-4 h-4 ml-2" />
+            <Check className="ml-2 w-4 h-4" />
             تم
           </Button>
         </DialogFooter>
@@ -2424,10 +2550,10 @@ export default function EmployeesManagement() {
     return (
       <AccountTypeProtection allowedTypes={['admin']}>
         <div className="p-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto max-w-7xl">
             <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <div className="mx-auto w-12 h-12 rounded-full border-b-2 border-blue-500 animate-spin"></div>
                 <p className="mt-4 text-gray-600">جاري تحميل بيانات الموظفين...</p>
               </div>
             </div>
@@ -2458,23 +2584,23 @@ export default function EmployeesManagement() {
                 variant="default"
                 className="bg-white text-slate-900 hover:bg-white/90"
               >
-                <UserPlus className="w-4 h-4 ml-2" />
+                <UserPlus className="ml-2 w-4 h-4" />
                 إضافة موظف جديد
               </Button>
               <Button
                 onClick={exportToPDF}
                 variant="secondary"
-                className="bg-white/20 text-white hover:bg-white/30"
+                className="text-white bg-white/20 hover:bg-white/30"
               >
-                <FileText className="w-4 h-4 ml-2" />
+                <FileText className="ml-2 w-4 h-4" />
                 تصدير PDF
               </Button>
               <Button
                 onClick={exportToExcel}
                 variant="secondary"
-                className="bg-white/20 text-white hover:bg-white/30"
+                className="text-white bg-white/20 hover:bg-white/30"
               >
-                <Download className="w-4 h-4 ml-2" />
+                <Download className="ml-2 w-4 h-4" />
                 تصدير Excel
               </Button>
             </div>
@@ -2540,7 +2666,7 @@ export default function EmployeesManagement() {
           {/* توزيع الموظفين حسب الدور */}
           <Card className="border-none shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex gap-2 items-center">
                 <Users className="w-5 h-5 text-blue-500" />
                 توزيع الموظفين حسب الدور
               </CardTitle>
@@ -2590,7 +2716,7 @@ export default function EmployeesManagement() {
           {/* توزيع الموظفين حسب القسم */}
           <Card className="border-none shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex gap-2 items-center">
                 <Building2 className="w-5 h-5 text-purple-500" />
                 توزيع الموظفين حسب القسم
               </CardTitle>
@@ -2788,7 +2914,7 @@ export default function EmployeesManagement() {
 
                 {/* عرض الجدول (Table) */}
                 {viewMode === 'table' && (
-                  <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+                  <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -2807,13 +2933,13 @@ export default function EmployeesManagement() {
                         {filteredEmployees.map((employee) => (
                           <TableRow key={employee.id}>
                             <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                              <div className="flex gap-3 items-center">
+                                <div className="flex justify-center items-center w-10 h-10 font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
                                   {employee.avatar ? (
                                     <img
                                       src={employee.avatar}
                                       alt={employee.name}
-                                      className="w-10 h-10 rounded-full object-cover"
+                                      className="object-cover w-10 h-10 rounded-full"
                                     />
                                   ) : (
                                     <span>{employee.name?.charAt(0) || 'U'}</span>
@@ -2831,14 +2957,14 @@ export default function EmployeesManagement() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div className="flex gap-2 items-center">
                                 <Building2 className="w-4 h-4 text-gray-400" />
                                 <span>{employee.department || '-'}</span>
                               </div>
                             </TableCell>
                             <TableCell>
                               {(employee as any).salary ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex gap-2 items-center">
                                   <Briefcase className="w-4 h-4 text-emerald-400" />
                                   <span className="font-medium text-emerald-700">
                                     {Number((employee as any).salary).toLocaleString('ar-EG')} ر.ق
@@ -2850,13 +2976,13 @@ export default function EmployeesManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex gap-2 items-center">
                                   <Mail className="w-4 h-4 text-gray-400" />
                                   <a href={`mailto:${employee.email}`} className="text-sm text-blue-600 hover:underline">
                                     {employee.email}
                                   </a>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex gap-2 items-center">
                                   <Phone className="w-4 h-4 text-gray-400" />
                                   <a href={`tel:${employee.phone}`} className="text-sm text-blue-600 hover:underline">
                                     {employee.phone || '-'}
@@ -2868,7 +2994,7 @@ export default function EmployeesManagement() {
                               {renderLocations(employee)}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div className="flex gap-2 items-center">
                                 <Building2 className="w-4 h-4 text-gray-400" />
                                 <span className="text-sm">
                                   {employee.supervisor ? (
@@ -2878,7 +3004,7 @@ export default function EmployeesManagement() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div className="flex gap-2 items-center">
                                 <Switch
                                   checked={employee.isActive}
                                   onCheckedChange={() => toggleEmployeeStatus(employee)}
@@ -2960,8 +3086,8 @@ export default function EmployeesManagement() {
                     department: '',
                     sendWelcomeEmail: true
                   });
-                  setSelectedCountry('');
                   setSelectedCities([]);
+                  setSelectedCountries([]);
                   setFormErrors({
                     name: '',
                     email: '',
@@ -2969,24 +3095,26 @@ export default function EmployeesManagement() {
                     role: '',
                     department: ''
                   });
+                  draftRef.current = {}; // إعادة تعيين draftRef عند الإلغاء
                 }}
                 className="px-6"
               >
                 إلغاء
               </Button>
               <Button
-                type="submit"
+                type="button"
                 onClick={handleSaveEmployee}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8"
+                disabled={savingRef.current}
+                className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingEmployee ? (
                   <>
-                    <Edit className="w-4 h-4 ml-2" />
+                    <Edit className="ml-2 w-4 h-4" />
                     تحديث الموظف
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4 ml-2" />
+                    <UserPlus className="ml-2 w-4 h-4" />
                     إضافة الموظف
                   </>
                 )}
@@ -3002,7 +3130,7 @@ export default function EmployeesManagement() {
         <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
           <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex gap-2 items-center">
                 <History className="w-5 h-5 text-blue-500" />
                 سجل نشاطات الموظف
               </DialogTitle>
@@ -3016,10 +3144,10 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="py-4 space-y-4">
               {employeeActivities.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <History className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                <div className="py-8 text-center text-slate-500">
+                  <History className="mx-auto mb-4 w-12 h-12 text-slate-300" />
                   <p>لا توجد نشاطات مسجلة لهذا الموظف</p>
                 </div>
               ) : (
@@ -3034,9 +3162,9 @@ export default function EmployeesManagement() {
                     return (
                       <div
                         key={activity.id}
-                        className="p-4 bg-slate-50 rounded-lg border border-slate-200"
+                        className="p-4 rounded-lg border bg-slate-50 border-slate-200"
                       >
-                        <div className="flex items-start justify-between">
+                        <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <p className="font-semibold text-slate-900">{activity.action}</p>
                             {activity.details && Object.keys(activity.details).length > 0 && (

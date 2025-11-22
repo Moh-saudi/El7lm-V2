@@ -2,7 +2,7 @@ import React from 'react';
 import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/index';
 
 interface ConnectionStatusProps {
   isConnected: boolean;

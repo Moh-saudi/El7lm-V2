@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 import { Player } from '@/types/player';
 import { Tournament } from '@/types/tournament';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/index";
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 import {
     AlertTriangle,
@@ -2963,7 +2963,7 @@ ${playersList}
       title={`دفع بالكارت البنكي - ${selectedTournament?.name}`}
       description={`دفع رسوم التسجيل للبطولة: ${selectedTournament?.name} - فيزا، ماستركارد، جيديا`}
       customerEmail={userProfile?.email || ''}
-      merchantReferenceId={`TOURNAMENT_${selectedTournament?.id}_${Date.now()}`}
+      merchantReferenceId={`EL7LMTOURNAMENT_${selectedTournament?.id}_${Date.now()}`}
       returnUrl={typeof window !== 'undefined' ? '/tournaments/unified-registration?payment=success' : undefined}
       callbackUrl={undefined}
     />

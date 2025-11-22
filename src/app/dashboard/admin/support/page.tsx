@@ -54,7 +54,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/index';
 
 interface SupportConversation {
   id: string;
