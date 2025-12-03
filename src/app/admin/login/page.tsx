@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { auth, db } from '@/lib/firebase/config';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import {
     Activity,
     AlertCircle,
@@ -146,24 +146,69 @@ export default function AdminLoginPage() {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
+      let userData: any = null;
+      let isEmployee = false;
+
+      if (userDoc.exists()) {
+        userData = userDoc.data();
+      } else {
+        // إذا لم توجد في users، ابحث في employees collection
+        try {
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          const employeesSnapshot = await getDocs(employeesQuery);
+
+          if (!employeesSnapshot.empty) {
+            const employeeDoc = employeesSnapshot.docs[0];
+            const employeeData = employeeDoc.data();
+            isEmployee = true;
+            
+            // إنشاء userData من بيانات الموظف
+            userData = {
+              accountType: 'admin', // الموظفون يستخدمون dashboard المدير
+              name: employeeData.name,
+              email: employeeData.email || user.email,
+              phone: employeeData.phone,
+              isActive: employeeData.isActive !== false,
+              employeeId: employeeDoc.id,
+              employeeRole: employeeData.role,
+              role: employeeData.role,
+              ...employeeData
+            };
+
+            // إنشاء document في users collection للموظف
+            try {
+              await setDoc(userDocRef, {
+                ...userData,
+                updated_at: new Date()
+              }, { merge: true });
+            } catch (syncError) {
+              console.warn('Error syncing employee data to users collection:', syncError);
+            }
+          }
+        } catch (employeeError) {
+          console.warn('Error searching employees collection:', employeeError);
+        }
+      }
+
+      if (!userData) {
         throw new Error('User data not found in database');
       }
 
-      const userData = userDoc.data();
-
       // Check admin permissions
-              if (userData.accountType !== 'admin') {
+      if (userData.accountType !== 'admin' && !isEmployee) {
         // Check admins collection as fallback
         const adminDocRef = doc(db, 'admins', user.uid);
         const adminDoc = await getDoc(adminDocRef);
 
         if (!adminDoc.exists()) {
-                      await logSecurityEvent('unauthorized_access_attempt', {
-              email,
-              userRole: userData.accountType,
-              timestamp: new Date()
-            });
+          await logSecurityEvent('unauthorized_access_attempt', {
+            email,
+            userRole: userData.accountType,
+            timestamp: new Date()
+          });
           throw new Error('You do not have admin permissions to access this panel');
         }
 
@@ -172,6 +217,12 @@ export default function AdminLoginPage() {
           await logSecurityEvent('inactive_admin_login_attempt', { email, timestamp: new Date() });
           throw new Error('Your admin account is deactivated. Please contact administration');
         }
+      }
+
+      // التحقق من حالة الموظف إذا كان موظفاً
+      if (isEmployee && userData.isActive === false) {
+        await logSecurityEvent('inactive_employee_login_attempt', { email, timestamp: new Date() });
+        throw new Error('Your employee account is deactivated. Please contact administration');
       }
 
       // Update last login info

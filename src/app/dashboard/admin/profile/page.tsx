@@ -1,241 +1,476 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import AdminHeader from '@/components/layout/AdminHeader';
-import AdminFooter from '@/components/layout/AdminFooter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Phone, Upload, Camera } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { User, Mail, Phone, Camera, Save, X, Edit } from 'lucide-react';
+import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
+import { auth } from '@/lib/firebase/config';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function AdminProfile() {
   const { user, userData, refreshUserData } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: userData?.name || '',
-    phone: userData?.phone || '',
-    avatar: userData?.avatar || ''
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  const [profileData, setProfileData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    avatar: ''
   });
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
+  // تحديث profileData عند تغيير userData (بعد refreshUserData)
+  useEffect(() => {
+    if (userData && !isEditing) {
+      setProfileData(prev => ({
+        name: userData.name || userData.full_name || userData.displayName || prev.name,
+        phone: userData.phone || userData.phoneNumber || prev.phone,
+        email: user?.email || userData.email || prev.email,
+        avatar: userData.avatar || userData.profile_image || userData.photoURL || prev.avatar
+      }));
+    }
+  }, [userData, user, isEditing]);
+
+  // جلب البيانات من Firestore
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user?.uid) return;
+
+      try {
+        setLoading(true);
+        
+        // البحث في users collection أولاً
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setProfileData({
+            name: data.name || data.full_name || data.displayName || '',
+            phone: data.phone || data.phoneNumber || '',
+            email: user.email || data.email || '',
+            avatar: data.avatar || data.profile_image || data.photoURL || ''
+          });
+        } else {
+          // إذا لم توجد في users، ابحث في employees collection
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          const employeesSnapshot = await getDocs(employeesQuery);
+
+          if (!employeesSnapshot.empty) {
+            const employeeData = employeesSnapshot.docs[0].data();
+            setProfileData({
+              name: employeeData.name || '',
+              phone: employeeData.phone || '',
+              email: user.email || employeeData.email || '',
+              avatar: employeeData.avatar || ''
+            });
+          } else {
+            // إذا لم تكن البيانات موجودة في أي مكان، استخدم بيانات المستخدم الأساسية
+            setProfileData({
+              name: '',
+              phone: '',
+              email: user.email || '',
+              avatar: ''
+            });
+          }
+        }
+      } catch (error) {
+        console.error('خطأ في جلب البيانات:', error);
+        toast.error('حدث خطأ أثناء جلب البيانات');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [user]);
+
+  // رفع الصورة
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    // التحقق من نوع الملف
+    if (!file.type.startsWith('image/')) {
+      toast.error('يرجى اختيار ملف صورة صالح');
+      return;
+    }
+
+    // التحقق من حجم الملف (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('حجم الصورة كبير جداً. الحد الأقصى: 5 ميجابايت');
+      return;
+    }
 
     try {
-      setLoading(true);
-      
-      // إنشاء اسم فريد للملف
+      setUploadingAvatar(true);
+      toast.info('جاري رفع الصورة...');
+
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop();
+      const bucketName = 'avatars';
       const filePath = `admin-avatars/${user.uid}/${timestamp}.${fileExt}`;
 
-      console.log('🚀 بدء رفع صورة المدير:', {
-        bucket: 'profile-images',
-        filePath,
-        fileSize: file.size,
-        fileType: file.type
-      });
-
-      // رفع الملف إلى Supabase
-      const { data, error } = await supabase.storage
-        .from('profile-images')
+      // رفع الملف
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
           contentType: file.type
         });
 
-      if (error) {
-        console.error('❌ خطأ في رفع الصورة:', error);
-        throw new Error(`فشل في رفع الصورة: ${error.message}`);
+      if (uploadError) {
+        throw new Error(uploadError.message);
       }
 
       // الحصول على الرابط العام
       const { data: urlData } = supabase.storage
-        .from('profile-images')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       if (!urlData?.publicUrl) {
         throw new Error('فشل في الحصول على رابط الصورة');
       }
 
-      console.log('✅ تم رفع الصورة بنجاح:', urlData.publicUrl);
-      
-      setFormData(prev => ({ ...prev, avatar: urlData.publicUrl }));
+      // تحديث البيانات المحلية
+      setProfileData(prev => ({ ...prev, avatar: urlData.publicUrl }));
       toast.success('تم رفع الصورة بنجاح');
-    } catch (error) {
-      console.error('❌ خطأ في رفع الصورة:', error);
-      toast.error('حدث خطأ أثناء رفع الصورة');
+    } catch (error: any) {
+      console.error('خطأ في رفع الصورة:', error);
+      toast.error(error?.message || 'حدث خطأ أثناء رفع الصورة');
     } finally {
-      setLoading(false);
+      setUploadingAvatar(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  // حفظ البيانات
+  const handleSave = async (e?: React.FormEvent) => {
+    e?.preventDefault(); // منع إعادة تحميل الصفحة إذا كان الزر داخل form
+    
+    console.log('💾 بدء حفظ البيانات...', {
+      uid: user?.uid,
+      name: profileData.name,
+      phone: profileData.phone,
+      avatar: profileData.avatar ? 'موجود' : 'غير موجود'
+    });
+
+    if (!user?.uid) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+
+    // التحقق من البيانات
+    if (!profileData.name.trim()) {
+      toast.error('الاسم مطلوب');
+      return;
+    }
+
+    if (profileData.name.trim().length < 3) {
+      toast.error('الاسم يجب أن يحتوي على 3 أحرف على الأقل');
+      return;
+    }
+
+    if (profileData.phone && !/^\+?\d{8,15}$/.test(profileData.phone.trim())) {
+      toast.error('رقم الهاتف غير صحيح');
+      return;
+    }
 
     try {
-      setLoading(true);
-      const userRef = doc(db, 'users', user.uid);
+      setSaving(true);
+      console.log('📤 جاري حفظ البيانات في Firestore...');
       
-      await updateDoc(userRef, {
-        name: formData.name,
-        phone: formData.phone,
-        avatar: formData.avatar,
+      // التحقق من وجود المستخدم في users collection
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+
+      const updateData = {
+        name: profileData.name.trim(),
+        phone: profileData.phone.trim() || null,
+        avatar: profileData.avatar || null,
         updatedAt: new Date()
-      });
+      };
+
+      if (userDoc.exists()) {
+        // إذا كان موجوداً في users، احفظ هناك
+        const data = userDoc.data();
+        const finalUpdateData = {
+          ...updateData,
+          accountType: data.accountType || 'admin' // الحفاظ على accountType الموجود
+        };
+        
+        console.log('📋 البيانات المراد حفظها في users:', finalUpdateData);
+        await updateDoc(userRef, finalUpdateData);
+        console.log('✅ تم حفظ البيانات بنجاح في users collection');
+      } else {
+        // إذا لم يكن موجوداً في users، ابحث في employees
+        const employeesQuery = query(
+          collection(db, 'employees'),
+          where('authUserId', '==', user.uid)
+        );
+        const employeesSnapshot = await getDocs(employeesQuery);
+
+        if (!employeesSnapshot.empty) {
+          // حفظ في employees collection
+          const employeeRef = doc(db, 'employees', employeesSnapshot.docs[0].id);
+          console.log('📋 البيانات المراد حفظها في employees:', updateData);
+          await updateDoc(employeeRef, updateData);
+          console.log('✅ تم حفظ البيانات بنجاح في employees collection');
+        } else {
+          // إنشاء document جديد في users إذا لم يكن موجوداً في أي مكان
+          const newUserData = {
+            uid: user.uid,
+            email: user.email || '',
+            accountType: 'admin',
+            ...updateData,
+            createdAt: new Date()
+          };
+          console.log('📋 إنشاء document جديد في users:', newUserData);
+          await updateDoc(userRef, newUserData);
+          console.log('✅ تم إنشاء وحفظ البيانات في users collection');
+        }
+      }
+
+      // تحديث profileData مباشرة بالبيانات المحفوظة
+      setProfileData(prev => ({
+        ...prev,
+        name: updateData.name,
+        phone: updateData.phone || '',
+        avatar: updateData.avatar || ''
+      }));
 
       await refreshUserData();
+      console.log('✅ تم تحديث بيانات المستخدم في الذاكرة');
+      
       setIsEditing(false);
-      toast.success('تم تحديث البيانات بنجاح');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('حدث خطأ أثناء تحديث البيانات');
+      toast.success('تم حفظ البيانات بنجاح');
+    } catch (error: any) {
+      console.error('❌ خطأ في حفظ البيانات:', error);
+      console.error('❌ تفاصيل الخطأ:', {
+        code: error?.code,
+        message: error?.message,
+        stack: error?.stack
+      });
+      toast.error(error?.message || 'حدث خطأ أثناء حفظ البيانات');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  return (
-    <div className="flex flex-col bg-gray-50">
-      <AdminHeader />
-      
-      <main className="flex-1 container mx-auto px-6 py-8">
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle>الملف الشخصي</CardTitle>
-            </CardHeader>
-            
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Avatar Upload */}
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={formData.avatar || userData?.avatar} />
-                      <AvatarFallback>
-                        <User className="w-12 h-12" />
-                      </AvatarFallback>
-                    </Avatar>
-                    {isEditing && (
-                      <label 
-                        htmlFor="avatar-upload" 
-                        className="absolute bottom-0 right-0 p-1 bg-blue-500 text-white rounded-full cursor-pointer hover:bg-blue-600"
-                      >
-                        <Camera className="w-4 h-4" />
-                        <input
-                          id="avatar-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleImageUpload}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  <div className="text-center">
-                    <h3 className="font-medium text-lg">{userData?.name || 'مدير النظام'}</h3>
-                    <p className="text-gray-500 text-sm">{user?.email}</p>
-                  </div>
-                </div>
+  // إرسال رابط تغيير كلمة المرور
+  const handlePasswordReset = async () => {
+    if (!user?.email) {
+      toast.error('البريد الإلكتروني غير متوفر');
+      return;
+    }
 
-                {/* Form Fields */}
-                <div className="space-y-4">
-                  <div>
-                    <Label>الاسم</Label>
-                    <div className="relative">
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        disabled={!isEditing}
-                        className="pr-10"
-                        placeholder="الاسم الكامل"
-                      />
-                      <User className="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      toast.success('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني');
+    } catch (error: any) {
+      console.error('خطأ في إرسال رابط تغيير كلمة المرور:', error);
+      toast.error(error?.message || 'حدث خطأ أثناء إرسال الرابط');
+    }
+  };
 
-                  <div>
-                    <Label>البريد الإلكتروني</Label>
-                    <div className="relative">
-                      <Input
-                        value={user?.email || ''}
-                        disabled
-                        className="pr-10"
-                      />
-                      <Mail className="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+  // إلغاء التعديل
+  const handleCancel = async () => {
+    setIsEditing(false);
+    // إعادة تحميل البيانات
+    if (user?.uid) {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
 
-                  <div>
-                    <Label>رقم الهاتف</Label>
-                    <div className="relative">
-                      <Input
-                        value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        disabled={!isEditing}
-                        className="pr-10"
-                        placeholder="رقم الهاتف"
-                      />
-                      <Phone className="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
-                </div>
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setProfileData({
+            name: data.name || data.full_name || data.displayName || '',
+            phone: data.phone || data.phoneNumber || '',
+            email: user.email || data.email || '',
+            avatar: data.avatar || data.profile_image || data.photoURL || ''
+          });
+        } else {
+          // البحث في employees collection
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          const employeesSnapshot = await getDocs(employeesQuery);
 
-                {/* Action Buttons */}
-                <div className="flex justify-center gap-4 pt-4">
-                  {isEditing ? (
-                    <>
-                      <Button 
-                        type="submit" 
-                        className="bg-blue-600 hover:bg-blue-700"
-                        disabled={loading}
-                      >
-                        {loading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setFormData({
-                            name: userData?.name || '',
-                            phone: userData?.phone || '',
-                            avatar: userData?.avatar || ''
-                          });
-                        }}
-                        disabled={loading}
-                      >
-                        إلغاء
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={() => setIsEditing(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      تعديل البيانات
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          if (!employeesSnapshot.empty) {
+            const employeeData = employeesSnapshot.docs[0].data();
+            setProfileData({
+              name: employeeData.name || '',
+              phone: employeeData.phone || '',
+              email: user.email || employeeData.email || '',
+              avatar: employeeData.avatar || ''
+            });
+          }
+        }
+      } catch (error) {
+        console.error('خطأ في إعادة تحميل البيانات:', error);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-full border-4 border-blue-200 animate-spin border-t-blue-600"></div>
+          <p className="text-gray-600">جاري تحميل البيانات...</p>
         </div>
-      </main>
+      </div>
+    );
+  }
 
-      <AdminFooter />
+  return (
+    <div className="p-6 mx-auto max-w-3xl">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl">الملف الشخصي</CardTitle>
+            {!isEditing && (
+              <Button
+                onClick={() => setIsEditing(true)}
+                className="flex gap-2 items-center text-white bg-gradient-to-r from-blue-600 to-blue-700 shadow-md hover:from-blue-700 hover:to-blue-800"
+              >
+                <Edit className="w-4 h-4" />
+                تعديل البيانات
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* صورة الملف الشخصي */}
+          <div className="flex flex-col gap-4 items-center">
+            <div className="relative">
+              <Avatar className="w-32 h-32">
+                <AvatarImage src={profileData.avatar} alt="صورة الملف الشخصي" />
+                <AvatarFallback>
+                  <User className="w-16 h-16 text-gray-400" />
+                </AvatarFallback>
+              </Avatar>
+              {isEditing && (
+                <label
+                  className="absolute right-0 bottom-0 p-2 text-white bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-pointer hover:bg-blue-700"
+                  title="تغيير الصورة"
+                >
+                  <Camera className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                    aria-label="رفع صورة الملف الشخصي"
+                  />
+                </label>
+              )}
+            </div>
+            {uploadingAvatar && (
+              <p className="text-sm text-blue-600">جاري رفع الصورة...</p>
+            )}
+          </div>
+
+          {/* الاسم */}
+          <div>
+            <Label htmlFor="name">الاسم الكامل</Label>
+            <Input
+              id="name"
+              value={profileData.name}
+              onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+              disabled={!isEditing}
+              placeholder="أدخل الاسم الكامل"
+              className="mt-1"
+            />
+          </div>
+
+          {/* البريد الإلكتروني */}
+          <div>
+            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Input
+              id="email"
+              value={profileData.email}
+              disabled
+              className="mt-1 bg-gray-50"
+            />
+            <p className="mt-1 text-xs text-gray-500">لا يمكن تغيير البريد الإلكتروني</p>
+          </div>
+
+          {/* رقم الهاتف */}
+          <div>
+            <Label htmlFor="phone">رقم الهاتف</Label>
+            <Input
+              id="phone"
+              value={profileData.phone}
+              onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+              disabled={!isEditing}
+              placeholder="+974 1234 5678"
+              className="mt-1"
+            />
+            <p className="mt-1 text-xs text-gray-500">يمكنك إضافة رمز الدولة (+974)</p>
+          </div>
+
+          {/* أزرار الإجراءات */}
+          {isEditing && (
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                onClick={(e) => handleSave(e)}
+                disabled={saving}
+                className="flex flex-1 gap-2 justify-center items-center text-white bg-gradient-to-r from-green-600 to-green-700 shadow-md hover:from-green-700 hover:to-green-800 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCancel}
+                variant="outline"
+                disabled={saving}
+                className="flex gap-2 justify-center items-center text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+                إلغاء
+              </Button>
+            </div>
+          )}
+
+          {/* تغيير كلمة المرور */}
+          <div className="pt-6 border-t">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold">أمان الحساب</h3>
+                <p className="text-sm text-gray-500">إرسال رابط آمن لتغيير كلمة المرور</p>
+              </div>
+              <Button
+                onClick={handlePasswordReset}
+                variant="outline"
+                className="flex gap-2 items-center text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400"
+              >
+                <Mail className="w-4 h-4" />
+                إرسال رابط تغيير كلمة المرور
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-} 
+}

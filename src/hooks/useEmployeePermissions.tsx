@@ -278,10 +278,15 @@ export const useEmployeePermissions = () => {
       // تحديد دور الموظف من البيانات
       let userRole = userData.employeeRole || userData.role;
       
-      // إذا كان المستخدم admin، نعطيه صلاحيات admin
-      if (userData.accountType === 'admin') {
+      // إذا كان المستخدم admin حقيقي (ليس موظف)، نعطيه صلاحيات admin
+      // التحقق من أن المستخدم ليس موظفاً (ليس لديه employeeId أو employeeRole)
+      if (userData.accountType === 'admin' && !userData.employeeId && !userData.employeeRole) {
         userRole = 'admin';
-        console.log('🔍 useEmployeePermissions - Setting role to admin because accountType is admin');
+        console.log('🔍 useEmployeePermissions - Setting role to admin (real admin, not employee)');
+      } else if (userData.accountType === 'admin' && (userData.employeeId || userData.employeeRole)) {
+        // إذا كان موظفاً، استخدم دوره الفعلي
+        userRole = userData.employeeRole || userData.role || 'customer_service';
+        console.log('🔍 useEmployeePermissions - Employee detected, using actual role:', userRole);
       }
       
       // إذا لم يكن هناك دور محدد، نستخدم customer_service كافتراضي

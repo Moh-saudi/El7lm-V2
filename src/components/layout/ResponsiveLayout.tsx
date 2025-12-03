@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+import { EmployeeRole, RolePermissions } from '@/types/employees';
 import {
     collection,
     doc,
@@ -299,6 +300,168 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   };
 
   // الحصول على مجموعات القائمة
+  // الصلاحيات الافتراضية لكل دور وظيفي (من employees/page.tsx)
+  const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
+    support: {
+      canViewUsers: true,
+      canEditUsers: false,
+      canViewFinancials: false,
+      canManagePayments: false,
+      allowedLocations: [],
+      canViewReports: false,
+      canManageContent: false,
+      canManageEmployees: false,
+      canViewSupport: true,
+      canManageSupport: true
+    },
+    finance: {
+      canViewUsers: true,
+      canEditUsers: false,
+      canViewFinancials: true,
+      canManagePayments: true,
+      allowedLocations: [],
+      canViewReports: true,
+      canManageContent: false,
+      canManageEmployees: false,
+      canViewSupport: false,
+      canManageSupport: false
+    },
+    sales: {
+      canViewUsers: true,
+      canEditUsers: false,
+      canViewFinancials: false,
+      canManagePayments: false,
+      allowedLocations: [],
+      canViewReports: true,
+      canManageContent: false,
+      canManageEmployees: false,
+      canViewSupport: true,
+      canManageSupport: false
+    },
+    content: {
+      canViewUsers: false,
+      canEditUsers: false,
+      canViewFinancials: false,
+      canManagePayments: false,
+      allowedLocations: [],
+      canViewReports: false,
+      canManageContent: true,
+      canManageEmployees: false,
+      canViewSupport: false,
+      canManageSupport: false
+    },
+    admin: {
+      canViewUsers: true,
+      canEditUsers: true,
+      canViewFinancials: true,
+      canManagePayments: true,
+      allowedLocations: [],
+      canViewReports: true,
+      canManageContent: true,
+      canManageEmployees: true,
+      canViewSupport: true,
+      canManageSupport: true
+    },
+    supervisor: {
+      canViewUsers: true,
+      canEditUsers: true,
+      canViewFinancials: true,
+      canManagePayments: false,
+      allowedLocations: [],
+      canViewReports: true,
+      canManageContent: true,
+      canManageEmployees: false,
+      canViewSupport: true,
+      canManageSupport: true
+    }
+  };
+
+  // الحصول على صلاحيات الموظف
+  const getEmployeePermissions = useMemo((): RolePermissions | null => {
+    if (!userData || accountType !== 'admin') {
+      return null;
+    }
+    
+    console.log('🔍 ResponsiveSidebar - Checking userData:', {
+      employeeId: userData.employeeId,
+      employeeRole: userData.employeeRole,
+      role: userData.role,
+      accountType: userData.accountType,
+      allKeys: Object.keys(userData)
+    });
+    
+    // إذا كان موظفاً (لديه employeeId أو employeeRole أو role)
+    if (userData.employeeId || userData.employeeRole || userData.role) {
+      const role = (userData.employeeRole || userData.role) as EmployeeRole;
+      
+      // التحقق من أن الدور موجود في DEFAULT_PERMISSIONS
+      if (role && role in DEFAULT_PERMISSIONS) {
+        console.log('✅ ResponsiveSidebar - Employee detected with valid role:', {
+          role,
+          permissions: DEFAULT_PERMISSIONS[role]
+        });
+        return DEFAULT_PERMISSIONS[role];
+      } else {
+        console.warn('⚠️ ResponsiveSidebar - Employee role not found in DEFAULT_PERMISSIONS:', role);
+        return null;
+      }
+    }
+    
+    // إذا كان admin حقيقي (ليس موظف)
+    console.log('✅ ResponsiveSidebar - Real admin detected (not employee) - showing all items');
+    return null; // null يعني عرض كل شيء
+  }, [userData, accountType]);
+
+  // التحقق من صلاحية لعنصر القائمة
+  const hasPermissionForMenuItem = (menuItemId: string, permissions: RolePermissions | null): boolean => {
+    // إذا لم تكن صلاحيات محددة (ليس موظف)، اظهر كل شيء
+    if (!permissions) return true;
+    
+    // mapping بين عناصر القائمة والصلاحيات المطلوبة
+    const menuItemPermissions: Record<string, keyof RolePermissions> = {
+      'admin-users-management': 'canViewUsers',
+      'admin-employees': 'canManageEmployees',
+      'admin-email-migration': 'canManageEmployees',
+      'admin-check-phone': 'canViewUsers',
+      'admin-payments': 'canManagePayments',
+      'admin-geidea-transactions': 'canViewFinancials',
+      'admin-geidea-settings': 'canManagePayments',
+      'admin-subscriptions': 'canManagePayments',
+      'admin-invoices': 'canViewFinancials',
+      'admin-reports': 'canViewReports',
+      'admin-clarity': 'canViewReports',
+      'admin-support': 'canViewSupport',
+      'admin-system': 'canManageEmployees', // يحتاج صلاحية إدارة الموظفين
+      'admin-beon-v3': 'canManageEmployees',
+      'admin-whatsapp-test': 'canManageSupport',
+      'admin-tournaments': 'canManageContent',
+      'admin-dream-academy-categories': 'canManageContent',
+      'admin-customer-management': 'canViewUsers',
+      'admin-careers': 'canManageContent',
+      'admin-send-notifications': 'canManageSupport',
+      'admin-notification-center': 'canManageSupport',
+      'admin-notifications': 'canManageSupport',
+      'admin-marketing-ads': 'canManageContent',
+      'admin-marketing-campaigns': 'canManageContent',
+      'admin-marketing-analytics': 'canViewReports',
+      'admin-convert-players': 'canEditUsers',
+    };
+    
+    const requiredPermission = menuItemPermissions[menuItemId];
+    if (!requiredPermission) {
+      // العناصر التي لا تحتاج صلاحيات خاصة (مثل profile, messages) تظهر دائماً
+      return true;
+    }
+    
+    return permissions[requiredPermission] === true;
+  };
+
+  // فلترة عناصر المجموعة بناءً على الصلاحيات
+  const filterGroupItems = (items: any[], permissions: RolePermissions | null): any[] => {
+    if (!permissions) return items;
+    return items.filter(item => hasPermissionForMenuItem(item.id, permissions));
+  };
+
   const getMenuGroups = () => {
     const baseGroup = {
       id: 'main',
@@ -1193,10 +1356,29 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       });
     }
 
-    return [baseGroup, subscriptionGroup, academyGroup, tournamentsGroup, sharedGroup, ...accountSpecificGroups];
+    const allGroups = [baseGroup, subscriptionGroup, academyGroup, tournamentsGroup, sharedGroup, ...accountSpecificGroups];
+    
+    // فلترة العناصر بناءً على صلاحيات الموظف
+    if (accountType === 'admin' && getEmployeePermissions) {
+      const filteredGroups = allGroups.map(group => ({
+        ...group,
+        items: filterGroupItems(group.items, getEmployeePermissions)
+      })).filter(group => group.items.length > 0); // إزالة المجموعات الفارغة
+      
+      console.log('✅ ResponsiveSidebar - Filtered menu groups:', {
+        totalGroups: allGroups.length,
+        filteredGroups: filteredGroups.length,
+        removedGroups: allGroups.length - filteredGroups.length,
+        employeePermissions: getEmployeePermissions
+      });
+      
+      return filteredGroups;
+    }
+    
+    return allGroups;
   };
 
-  const menuGroups = useMemo(() => getMenuGroups(), [accountType]);
+  const menuGroups = useMemo(() => getMenuGroups(), [accountType, userData, getEmployeePermissions]);
   const showText = useMemo(() => shouldShowText(), [isMobile, isTablet, isSidebarCollapsed]);
   const sidebarWidth = useMemo(() => getSidebarWidth(), [isMobile, isTablet, isSidebarCollapsed]);
 

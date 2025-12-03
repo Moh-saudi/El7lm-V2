@@ -18,11 +18,11 @@ import {
     getDoc,
     serverTimestamp,
     setDoc,
-    updateDoc,
     collection,
     query,
     where,
-    getDocs
+    getDocs,
+    updateDoc
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -296,7 +296,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
             } else {
               // 🔧 FIX: Search in role-specific collections FIRST (this is the source of truth)
               // This ensures we get the correct accountType from clubs, academies, etc.
-              const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players'];
+              const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
               let userAccountType: UserRole = 'player';
               let foundData = null;
               let foundCollection = null;
@@ -312,8 +312,35 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                 if (results[i].exists()) {
                   foundData = results[i].data();
                   foundCollection = accountTypes[i];
-                  userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+                  // معالجة خاصة لـ admins collection
+                  if (accountTypes[i] === 'admins') {
+                    userAccountType = 'admin';
+                  } else {
+                    userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+                  }
                   break; // Use first found collection as source of truth
+                }
+              }
+
+              // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
+              let employeesSnapshot: any = null;
+              if (!foundData) {
+                try {
+                  const employeesQuery = query(
+                    collection(db, 'employees'),
+                    where('authUserId', '==', user.uid)
+                  );
+                  employeesSnapshot = await getDocs(employeesQuery);
+
+                  if (!employeesSnapshot.empty) {
+                    const employeeDoc = employeesSnapshot.docs[0];
+                    foundData = employeeDoc.data();
+                    foundCollection = 'employees';
+                    userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
+                    console.log(`✅ Found employee data in employees collection:`, foundData);
+                  }
+                } catch (employeeError) {
+                  console.warn('Error searching employees collection:', employeeError);
                 }
               }
 
@@ -327,7 +354,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                     accountType: userAccountType,
                     full_name: foundData.full_name || foundData.name || '',
                     phone: foundData.phone || '',
-                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || '',
+                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
                     country: foundData.country || '',
                     isNewUser: false,
                     isActive: foundData.isActive !== undefined ? foundData.isActive : true,
@@ -344,10 +371,19 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                   // Update users collection to sync with role collection
                   const userRef = doc(db, 'users', user.uid);
                   try {
-                    await setDoc(userRef, {
+                    const syncData: any = {
                       ...userData,
                       updated_at: new Date()
-                    }, { merge: true });
+                    };
+                    
+                    // إذا كان موظفاً، أضف معلومات إضافية
+                    if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
+                      syncData.employeeId = employeesSnapshot.docs[0].id;
+                      syncData.employeeRole = foundData.role;
+                      syncData.role = foundData.role;
+                    }
+                    
+                    await setDoc(userRef, syncData, { merge: true });
                   } catch (syncError) {
                     // Continue anyway - this is not critical
                   }
@@ -381,12 +417,29 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                       uid: user.uid,
                       email: data.email,
                       accountType: data.accountType,
+                      name: data.name,
+                      phone: data.phone,
+                      avatar: data.avatar ? 'موجود' : 'غير موجود',
                       isActive: data.isActive,
-                      hasAllRequiredFields: !!(data.uid && data.email && data.accountType)
+                      hasAllRequiredFields: !!(data.uid && data.email && data.accountType),
+                      allFields: Object.keys(data)
                     });
 
-                    setUserData(data);
-                    console.log('✅ AuthProvider - User data set from users collection (fallback)');
+                    // التأكد من وجود accountType
+                    const finalData: UserData = {
+                      ...data,
+                      accountType: data.accountType || 'player',
+                      uid: user.uid,
+                      email: user.email || data.email || ''
+                    };
+
+                    setUserData(finalData);
+                    console.log('✅ AuthProvider - User data set from users collection (fallback):', {
+                      name: finalData.name,
+                      phone: finalData.phone,
+                      avatar: finalData.avatar ? 'موجود' : 'غير موجود',
+                      accountType: finalData.accountType
+                    });
                   } else {
                     // Create basic user document if no data found anywhere
                     console.log('⚠️ AuthProvider - No data found in any collection, creating basic user document...');
@@ -462,9 +515,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('📋 AuthProvider - Fetching user data from Firestore...');
 
       // البحث في المجموعات الخاصة بالأدوار أولاً
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players'];
+      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
       let foundData = null;
       let userAccountType: UserRole = 'player';
+      let foundCollection = null;
 
       // استخدام Promise.all للبحث المتوازي
       const queries = accountTypes.map(collection =>
@@ -476,9 +530,37 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       for (let i = 0; i < results.length; i++) {
         if (results[i].exists()) {
           foundData = results[i].data();
-          userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          foundCollection = accountTypes[i];
+          // معالجة خاصة لـ admins collection
+          if (accountTypes[i] === 'admins') {
+            userAccountType = 'admin';
+          } else {
+            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          }
           console.log(`✅ Found user data in ${accountTypes[i]} collection:`, foundData);
           break;
+        }
+      }
+
+      // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
+      let employeesSnapshot: any = null;
+      if (!foundData) {
+        try {
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          employeesSnapshot = await getDocs(employeesQuery);
+
+          if (!employeesSnapshot.empty) {
+            const employeeDoc = employeesSnapshot.docs[0];
+            foundData = employeeDoc.data();
+            foundCollection = 'employees';
+            userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
+            console.log(`✅ Found employee data in employees collection:`, foundData);
+          }
+        } catch (employeeError) {
+          console.warn('Error searching employees collection:', employeeError);
         }
       }
 
@@ -486,17 +568,33 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       if (foundData) {
         const userData: UserData = {
           uid: user.uid,
-          email: user.email || '',
+          email: user.email || foundData.email || '',
           accountType: userAccountType,
           full_name: foundData.full_name || foundData.name || '',
           phone: foundData.phone || '',
-          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || '',
+          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
           country: foundData.country || '',
           isNewUser: false,
           created_at: foundData.created_at || foundData.createdAt || new Date(),
           updated_at: new Date(),
           ...foundData
         };
+
+        // إذا كان موظفاً، أنشئ document في users collection
+        if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
+          const userRef = doc(db, 'users', user.uid);
+          try {
+            await setDoc(userRef, {
+              ...userData,
+              employeeId: employeesSnapshot.docs[0].id,
+              employeeRole: foundData.role,
+              role: foundData.role,
+              updated_at: new Date()
+            }, { merge: true });
+          } catch (syncError) {
+            console.warn('Error syncing employee data to users collection:', syncError);
+          }
+        }
 
         // فحص حالة الحساب
         const accountStatus = await checkAccountStatus(user.uid);
@@ -984,9 +1082,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('🔄 Refreshing user data...');
 
       // البحث في المجموعات الخاصة بالأدوار أولاً
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players'];
+      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
       let foundData = null;
       let userAccountType: UserRole = 'player';
+      let foundCollection = null;
 
       // استخدام Promise.all للبحث المتوازي
       const queries = accountTypes.map(collection =>
@@ -998,9 +1097,37 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       for (let i = 0; i < results.length; i++) {
         if (results[i].exists()) {
           foundData = results[i].data();
-          userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          foundCollection = accountTypes[i];
+          // معالجة خاصة لـ admins collection
+          if (accountTypes[i] === 'admins') {
+            userAccountType = 'admin';
+          } else {
+            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          }
           console.log(`✅ Refresh - Found user data in ${accountTypes[i]} collection:`, foundData);
           break;
+        }
+      }
+
+      // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
+      let employeesSnapshot: any = null;
+      if (!foundData) {
+        try {
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          employeesSnapshot = await getDocs(employeesQuery);
+
+          if (!employeesSnapshot.empty) {
+            const employeeDoc = employeesSnapshot.docs[0];
+            foundData = employeeDoc.data();
+            foundCollection = 'employees';
+            userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
+            console.log(`✅ Refresh - Found employee data in employees collection:`, foundData);
+          }
+        } catch (employeeError) {
+          console.warn('Error searching employees collection in refresh:', employeeError);
         }
       }
 
@@ -1016,11 +1143,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
         const userData: UserData = {
           uid: user.uid,
-          email: user.email || '',
+          email: user.email || foundData.email || '',
           accountType: userAccountType,
           full_name: foundData.full_name || foundData.name || '',
           phone: foundData.phone || '',
-          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || '',
+          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
           country: foundData.country || '',
           isNewUser: false,
           created_at: foundData.created_at || foundData.createdAt || new Date(),
@@ -1032,6 +1159,22 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           trainer_name: foundData.trainer_name,
           ...foundData
         };
+
+        // إذا كان موظفاً، أنشئ document في users collection
+        if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
+          const userRef = doc(db, 'users', user.uid);
+          try {
+            await setDoc(userRef, {
+              ...userData,
+              employeeId: employeesSnapshot.docs[0].id,
+              employeeRole: foundData.role,
+              role: foundData.role,
+              updated_at: new Date()
+            }, { merge: true });
+          } catch (syncError) {
+            console.warn('Error syncing employee data to users collection in refresh:', syncError);
+          }
+        }
 
         console.log('🔍 Final userData created:', {
           accountType: userData.accountType,
@@ -1051,8 +1194,29 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
       if (userDoc.exists()) {
         const data = userDoc.data() as UserData;
-        setUserData(data);
-        console.log('✅ User data refreshed successfully from users collection');
+        console.log('📋 Data from users collection:', {
+          name: data.name,
+          phone: data.phone,
+          avatar: data.avatar ? 'موجود' : 'غير موجود',
+          accountType: data.accountType,
+          allFields: Object.keys(data)
+        });
+        
+        // التأكد من وجود accountType
+        const finalData: UserData = {
+          ...data,
+          accountType: data.accountType || 'player',
+          uid: user.uid,
+          email: user.email || data.email || ''
+        };
+        
+        setUserData(finalData);
+        console.log('✅ User data refreshed successfully from users collection:', {
+          name: finalData.name,
+          phone: finalData.phone,
+          avatar: finalData.avatar ? 'موجود' : 'غير موجود',
+          accountType: finalData.accountType
+        });
       } else {
         console.warn('No user data found in any collection');
       }

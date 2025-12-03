@@ -46,16 +46,24 @@ export interface Employee extends BaseEntity {
   role: EmployeeRole;
   permissions: RolePermissions;
   isActive: boolean;
+  sendWelcomeEmail?: boolean;
   lastLoginAt?: DateOrTimestamp;
   department?: string; // القسم
   supervisor?: string; // المشرف المباشر
-  avatar?: MediaFile; // الصورة الشخصية
+  avatar?: MediaFile | string; // الصورة الشخصية
   authUserId?: string; // معرف حساب المصادقة
   deactivatedAt?: DateOrTimestamp; // تاريخ تعطيل الحساب
   deactivationReason?: string; // سبب تعطيل الحساب
   locations: EmployeeLocation[]; // المناطق الجغرافية التي يعمل بها الموظف
   contactInfo?: ContactInfo;
   address?: Address;
+  birthDate?: string;
+  hireDate?: string;
+  salary?: string;
+  workStartTime?: string;
+  workEndTime?: string;
+  notes?: string;
+  regions?: string[];
 }
 
 // إحصائيات أداء الموظف

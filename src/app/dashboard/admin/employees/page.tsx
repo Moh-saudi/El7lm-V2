@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -43,6 +44,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { auth, db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
+import type { DateOrTimestamp } from '@/types/common';
 import {
     createUserWithEmailAndPassword,
     sendPasswordResetEmail
@@ -121,6 +123,18 @@ const employeeSchema = z.object({
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
 
+type AvatarValue = Employee['avatar'] | string;
+
+type EmployeeFormState = Partial<Employee> & {
+  avatar?: AvatarValue;
+  sendWelcomeEmail?: boolean;
+};
+
+const resolveAvatarUrl = (avatar?: AvatarValue): string | undefined => {
+  if (!avatar) return undefined;
+  return typeof avatar === 'string' ? avatar : avatar.url;
+};
+
 // الصلاحيات الافتراضية لكل دور وظيفي
 const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
   support: {
@@ -128,6 +142,7 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     canEditUsers: false,
     canViewFinancials: false,
     canManagePayments: false,
+    allowedLocations: [],
     canViewReports: false,
     canManageContent: false,
     canManageEmployees: false,
@@ -139,6 +154,7 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     canEditUsers: false,
     canViewFinancials: true,
     canManagePayments: true,
+    allowedLocations: [],
     canViewReports: true,
     canManageContent: false,
     canManageEmployees: false,
@@ -150,18 +166,19 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     canEditUsers: false,
     canViewFinancials: false,
     canManagePayments: false,
+    allowedLocations: [],
     canViewReports: true,
     canManageContent: false,
     canManageEmployees: false,
     canViewSupport: true,
-    canManageSupport: false,
-    allowedRegions: []
+    canManageSupport: false
   },
   content: {
     canViewUsers: false,
     canEditUsers: false,
     canViewFinancials: false,
     canManagePayments: false,
+    allowedLocations: [],
     canViewReports: false,
     canManageContent: true,
     canManageEmployees: false,
@@ -173,6 +190,7 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     canEditUsers: true,
     canViewFinancials: true,
     canManagePayments: true,
+    allowedLocations: [],
     canViewReports: true,
     canManageContent: true,
     canManageEmployees: true,
@@ -184,6 +202,7 @@ const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     canEditUsers: true,
     canViewFinancials: true,
     canManagePayments: false,
+    allowedLocations: [],
     canViewReports: true,
     canManageContent: true,
     canManageEmployees: false,
@@ -229,6 +248,21 @@ export default function EmployeesManagement() {
           className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
         >
           <Edit className="w-4 h-4" />
+        </Button>
+      )}
+
+      {canEditEmployee() && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSendPasswordReset(employee)}
+          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+        >
+          {resettingPasswordFor === employee.id ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Key className="w-4 h-4" />
+          )}
         </Button>
       )}
 
@@ -352,7 +386,7 @@ export default function EmployeesManagement() {
     // استخدام useState مع lazy initializer - key prop يضمن إعادة إنشاء المكون عند تغيير الموظف
     // قراءة editingEmployee مرة واحدة فقط عند mount (lazy initializer)
     // استخدام draftRef كقيمة احتياطية للحفاظ على البيانات عند إعادة التهيئة
-    const [local, setLocal] = useState<Partial<Employee>>(() => {
+    const [local, setLocal] = useState<EmployeeFormState>(() => {
       // حساب initial data مرة واحدة فقط عند mount
       // استخدام editingEmployee من closure - key prop يضمن إعادة إنشاء المكون عند تغييره
       const currentEmployee = editingEmployee;
@@ -407,7 +441,9 @@ export default function EmployeesManagement() {
       console.log('🔄 [SimpleEmployeeForm] تم تحديث draftRef:', draftRef.current);
     }, [local]); // تحديث عند كل تغيير في local
 
-    const onInput = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const localAvatarUrl = resolveAvatarUrl(local.avatar);
+
+    const onInput = (field: keyof EmployeeFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
       // تقييد أنواع محددة أثناء الكتابة
       if (field === 'phone') {
@@ -428,7 +464,7 @@ export default function EmployeesManagement() {
       }
     };
 
-    const onCheckbox = (field: keyof Employee) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onCheckbox = (field: keyof EmployeeFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
       setLocal(prev => { const next = { ...prev, [field]: e.target.checked }; draftRef.current = next; return next; });
     };
 
@@ -515,10 +551,10 @@ export default function EmployeesManagement() {
           <div className="space-y-2 md:col-span-2">
             <Label className="text-sm font-medium text-gray-700">الصورة الشخصية</Label>
             <div className="flex gap-4 items-center">
-              {(local.avatar as string) ? (
+              {localAvatarUrl ? (
                 <div className="relative">
                   <img
-                    src={local.avatar as string}
+                    src={localAvatarUrl}
                     alt="صورة الموظف"
                     className="object-cover w-20 h-20 rounded-full border-2 border-blue-200"
                   />
@@ -574,7 +610,7 @@ export default function EmployeesManagement() {
                   ) : (
                     <>
                       <Upload className="ml-2 w-4 h-4" />
-                      {local.avatar ? 'تغيير الصورة' : 'رفع صورة'}
+                      {localAvatarUrl ? 'تغيير الصورة' : 'رفع صورة'}
                     </>
                   )}
                 </Button>
@@ -842,6 +878,7 @@ export default function EmployeesManagement() {
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table' | 'grid'>('cards');
+  const [showAllEmployees, setShowAllEmployees] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [countries, setCountries] = useState<any[]>([]);
@@ -855,12 +892,19 @@ export default function EmployeesManagement() {
   const [employeeActivities, setEmployeeActivities] = useState<any[]>([]);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [selectedEmployeeForActivity, setSelectedEmployeeForActivity] = useState<Employee | null>(null);
+  const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
+  const [activityForm, setActivityForm] = useState({
+    action: '',
+    durationMinutes: '',
+    notes: ''
+  });
+  const [isSavingActivity, setIsSavingActivity] = useState(false);
   // أحدث مسودّة للحقول من النموذج المبسط
-  const draftRef = useRef<Partial<Employee>>({});
+  const draftRef = useRef<EmployeeFormState>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New employee form state
-  const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
+  const [newEmployee, setNewEmployee] = useState<EmployeeFormState>({
     name: '',
     email: '',
     phone: '',
@@ -883,30 +927,6 @@ export default function EmployeesManagement() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingSMS, setIsSendingSMS] = useState(false);
   const [credentialsCopied, setCredentialsCopied] = useState(false);
-
-  // Load employees
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  const loadEmployees = async () => {
-    try {
-      setLoading(true);
-      const employeesRef = collection(db, 'employees');
-      const employeesSnap = await getDocs(employeesRef);
-
-      const employeesList: Employee[] = [];
-      employeesSnap.forEach(doc => {
-        employeesList.push({ id: doc.id, ...doc.data() } as Employee);
-      });
-
-      setEmployees(employeesList);
-    } catch (error) {
-      console.error('Error loading employees:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // تحميل الدول والمدن - استخدام نفس الدوال من ملف اللاعبين
   const loadCountries = async () => {
@@ -993,6 +1013,89 @@ export default function EmployeesManagement() {
     };
     return labels[role] || role;
   };
+
+  // Normalize allowed regions from the authenticated user
+  const normalizedAllowedRegions = useMemo(() => {
+    const regions = userData?.permissions?.allowedRegions;
+    if (!regions || regions.length === 0) {
+      return null;
+    }
+
+    return regions
+      .map(region => ({
+        countryId: (region?.countryId || '').toString().trim(),
+        cityId: (region?.cityId || '').toString().trim()
+      }))
+      .filter(entry => entry.countryId || entry.cityId);
+  }, [userData]);
+
+  const hasRegionAccess = useCallback(
+    (employee: Employee) => {
+      if (userData?.accountType === 'admin') {
+        return true;
+      }
+
+      if (!normalizedAllowedRegions || normalizedAllowedRegions.length === 0) {
+        return true;
+      }
+
+      if (!employee.locations || employee.locations.length === 0) {
+        return false;
+      }
+
+      return employee.locations.some(location => {
+        const locationCountry = (location.countryId || location.countryName || '').toString().trim();
+        const locationCity = (location.cityId || location.cityName || '').toString().trim();
+
+        return normalizedAllowedRegions.some(region => {
+          const matchesCountry = !region.countryId || region.countryId === locationCountry;
+          const matchesCity = !region.cityId || region.cityId === locationCity;
+          return matchesCountry && matchesCity;
+        });
+      });
+    },
+    [normalizedAllowedRegions, userData?.accountType]
+  );
+
+  const canViewAllEmployees = userData?.accountType === 'admin';
+
+  // Load employees
+  const loadEmployees = useCallback(async () => {
+    try {
+      setLoading(true);
+      const employeesRef = collection(db, 'employees');
+      const employeesSnap = await getDocs(employeesRef);
+
+      const employeesList: Employee[] = [];
+      employeesSnap.forEach(employeeDoc => {
+        employeesList.push({ id: employeeDoc.id, ...employeeDoc.data() } as Employee);
+      });
+
+      const filteredEmployees = showAllEmployees && canViewAllEmployees
+        ? employeesList
+        : employeesList.filter(emp => hasRegionAccess(emp));
+
+      if (!showAllEmployees && filteredEmployees.length !== employeesList.length) {
+        console.log(
+          `👀 تم تصفية ${employeesList.length - filteredEmployees.length} موظف حسب المناطق المسموح لها`
+        );
+      }
+
+      setEmployees(filteredEmployees);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [hasRegionAccess, showAllEmployees, canViewAllEmployees]);
+
+  useEffect(() => {
+    if (!user || !userData) {
+      return;
+    }
+
+    loadEmployees();
+  }, [loadEmployees, user, userData]);
 
   // Chart data - توزيع الموظفين حسب الدور
   const roleDistributionData = useMemo(() => {
@@ -1214,10 +1317,11 @@ export default function EmployeesManagement() {
 
       if (uploadError) {
         console.error('❌ [Employee Avatar Upload] خطأ في الرفع:', uploadError);
+        const uploadErrorDetails = uploadError as { statusCode?: number; error?: string };
         console.error('📋 [Employee Avatar Upload] تفاصيل الخطأ:', {
           message: uploadError.message,
-          statusCode: uploadError.statusCode,
-          error: uploadError.error
+          statusCode: uploadErrorDetails.statusCode,
+          error: uploadErrorDetails.error
         });
         
         // رسائل خطأ أكثر تفصيلاً
@@ -1288,14 +1392,19 @@ export default function EmployeesManagement() {
       const q = query(activitiesRef, where('employeeId', '==', employeeId));
       const snapshot = await getDocs(q);
       
-      const activities = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => {
-        const aTime = a.timestamp?.seconds || 0;
-        const bTime = b.timestamp?.seconds || 0;
-        return bTime - aTime;
-      });
+      const activities = snapshot.docs
+        .map(doc => {
+          const data = doc.data() as { timestamp?: DateOrTimestamp } & Record<string, unknown>;
+          return {
+            id: doc.id,
+            ...data
+          };
+        })
+        .sort((a, b) => {
+          const aTime = (a.timestamp as DateOrTimestamp | undefined)?.seconds || 0;
+          const bTime = (b.timestamp as DateOrTimestamp | undefined)?.seconds || 0;
+          return bTime - aTime;
+        });
 
       setEmployeeActivities(activities);
     } catch (error) {
@@ -1303,8 +1412,100 @@ export default function EmployeesManagement() {
     }
   };
 
+  const handleOpenActivityLog = (employee: Employee) => {
+    if (!hasRegionAccess(employee)) {
+      toast.error('ليس لديك الصلاحية لعرض سجل هذا الموظف');
+      return;
+    }
+
+    setSelectedEmployeeForActivity(employee);
+    loadEmployeeActivities(employee.id);
+    setShowActivityLog(true);
+  };
+
+  const formatDuration = (minutes: number) => {
+    if (!minutes) return '0 د';
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (hours > 0) {
+      return `${hours} س ${mins} د`;
+    }
+    return `${mins} د`;
+  };
+
+  const totalActivityMinutes = useMemo(() => {
+    return employeeActivities.reduce((sum, activity) => {
+      const value = Number(activity?.details?.durationMinutes || 0);
+      if (isNaN(value) || value <= 0) {
+        return sum;
+      }
+      return sum + value;
+    }, 0);
+  }, [employeeActivities]);
+
+  const handleAddActivityEntry = async () => {
+    if (!selectedEmployeeForActivity) {
+      toast.error('يرجى اختيار موظف أولاً');
+      return;
+    }
+
+    if (!activityForm.action.trim()) {
+      toast.error('يرجى كتابة وصف للحركة');
+      return;
+    }
+
+    const durationMinutes = activityForm.durationMinutes ? Number(activityForm.durationMinutes) : 0;
+    if (activityForm.durationMinutes && (isNaN(durationMinutes) || durationMinutes < 0)) {
+      toast.error('يرجى إدخال زمن صالح بالأرقام');
+      return;
+    }
+
+    setIsSavingActivity(true);
+    try {
+      await logActivity(selectedEmployeeForActivity.id, activityForm.action.trim(), {
+        notes: activityForm.notes.trim() || undefined,
+        durationMinutes: durationMinutes || undefined,
+        recordedBy: user?.email || user?.uid || 'admin_panel'
+      });
+
+      setActivityForm({ action: '', durationMinutes: '', notes: '' });
+      await loadEmployeeActivities(selectedEmployeeForActivity.id);
+      toast.success('تم حفظ الحركة بنجاح');
+    } catch (error) {
+      console.error('Error saving activity entry:', error);
+      toast.error('حدث خطأ أثناء حفظ الحركة');
+    } finally {
+      setIsSavingActivity(false);
+    }
+  };
+
+  const handleSendPasswordReset = async (employee: Employee) => {
+    if (!employee.email) {
+      toast.error('لا يوجد بريد إلكتروني لهذا الموظف');
+      return;
+    }
+
+    try {
+      setResettingPasswordFor(employee.id);
+      await sendPasswordResetEmail(auth, employee.email);
+      toast.success('تم إرسال رابط تغيير كلمة المرور بنجاح');
+    } catch (error: any) {
+      console.error('Error sending password reset:', error);
+      if (error.code === 'auth/user-not-found') {
+        toast.error('الموظف غير موجود في نظام المصادقة');
+      } else if (error.code === 'auth/too-many-requests') {
+        toast.error('تم إرسال العديد من الطلبات، حاول مجدداً لاحقاً');
+      } else {
+        toast.error(error.message || 'حدث خطأ أثناء إرسال الرابط');
+      }
+    } finally {
+      setResettingPasswordFor(null);
+    }
+  };
+
   // Render employee card
   const renderEmployeeCard = (employee: Employee, compact: boolean = false) => {
+    const employeeAvatarUrl = resolveAvatarUrl(employee.avatar);
     return (
       <div
         key={employee.id}
@@ -1317,9 +1518,9 @@ export default function EmployeesManagement() {
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex justify-center items-center w-12 h-12 text-lg font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
-                {employee.avatar ? (
+                {employeeAvatarUrl ? (
                   <img
-                    src={employee.avatar}
+                    src={employeeAvatarUrl}
                     alt={employee.name}
                     className="object-cover w-12 h-12 rounded-full"
                   />
@@ -1384,6 +1585,46 @@ export default function EmployeesManagement() {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })} ر.ق
+                </p>
+              </div>
+            </div>
+          )}
+          {(employee as any).birthDate && (
+            <div>
+              <p className="text-xs text-slate-500">تاريخ الميلاد</p>
+              <div className="flex gap-2 items-center mt-1">
+                <span className="text-sm font-medium text-slate-900">
+                  {(employee as any).birthDate}
+                </span>
+              </div>
+            </div>
+          )}
+          {(employee as any).hireDate && (
+            <div>
+              <p className="text-xs text-slate-500">تاريخ التوظيف</p>
+              <div className="flex gap-2 items-center mt-1">
+                <span className="text-sm font-medium text-slate-900">
+                  {(employee as any).hireDate}
+                </span>
+              </div>
+            </div>
+          )}
+          {((employee as any).workStartTime || (employee as any).workEndTime) && (
+            <div>
+              <p className="text-xs text-slate-500">ساعات العمل</p>
+              <div className="flex gap-2 items-center mt-1">
+                <span className="text-sm font-medium text-slate-900">
+                  {(employee as any).workStartTime || '—'} - {(employee as any).workEndTime || '—'}
+                </span>
+              </div>
+            </div>
+          )}
+          {(employee as any).notes && (
+            <div className={compact ? '':'md:col-span-2'}>
+              <p className="text-xs text-slate-500">ملاحظات</p>
+              <div className="mt-1">
+                <p className="text-sm text-slate-700 line-clamp-2">
+                  {(employee as any).notes}
                 </p>
               </div>
             </div>
@@ -1463,15 +1704,32 @@ export default function EmployeesManagement() {
             size="sm"
             variant="outline"
             className={cn('flex-1', compact && 'text-xs')}
-            onClick={() => {
-              setSelectedEmployeeForActivity(employee);
-              loadEmployeeActivities(employee.id);
-              setShowActivityLog(true);
-            }}
+            onClick={() => handleOpenActivityLog(employee)}
           >
             <History className="ml-2 w-4 h-4" />
             السجل
           </Button>
+          {canEditEmployee() && (
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn('flex-1', compact && 'text-xs', 'text-orange-700 border-orange-200 hover:bg-orange-50')}
+              onClick={() => handleSendPasswordReset(employee)}
+              disabled={resettingPasswordFor === employee.id}
+            >
+              {resettingPasswordFor === employee.id ? (
+                <>
+                  <Loader2 className="ml-2 w-4 h-4 animate-spin" />
+                  جاري الإرسال...
+                </>
+              ) : (
+                <>
+                  <Key className="ml-2 w-4 h-4" />
+                  إرسال رابط تغيير كلمة المرور
+                </>
+              )}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -1484,9 +1742,13 @@ export default function EmployeesManagement() {
 الوظيفة: ${getRoleLabel(employee.role)}
 القسم: ${employee.department || '-'}
 الراتب: ${(employee as any).salary ? `${Number((employee as any).salary).toLocaleString('ar-EG')} ر.ق` : 'غير محدد'}
+تاريخ الميلاد: ${(employee as any).birthDate || '-'}
+تاريخ التوظيف: ${(employee as any).hireDate || '-'}
+ساعات العمل: ${(employee as any).workStartTime || '—'} - ${(employee as any).workEndTime || '—'}
 الحالة: ${employee.isActive ? 'نشط' : 'غير نشط'}
 المناطق: ${employee.locations?.map(loc => `${loc.cityName}, ${loc.countryName}`).join('; ') || '-'}
 المشرف: ${employee.supervisor ? employees.find(e => e.id === employee.supervisor)?.name || '-' : 'بدون مشرف'}
+${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               `.trim();
               await navigator.clipboard.writeText(employeeData);
               toast.success('تم نسخ بيانات الموظف');
@@ -2871,6 +3133,19 @@ export default function EmployeesManagement() {
                       <TableIcon className="w-4 h-4" />
                       جدول
                     </Button>
+                  {canViewAllEmployees && (
+                    <Button
+                      size="sm"
+                      variant={showAllEmployees ? 'default' : 'outline'}
+                      onClick={() => setShowAllEmployees(prev => !prev)}
+                      className={cn(
+                        'h-8 px-3 text-xs capitalize',
+                        showAllEmployees ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100'
+                      )}
+                    >
+                      {showAllEmployees ? 'تقييد بالمناطق' : 'عرض كل الموظفين'}
+                    </Button>
+                  )}
                   </div>
                 </div>
                 <div className="text-sm text-slate-500">
@@ -2930,14 +3205,16 @@ export default function EmployeesManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredEmployees.map((employee) => (
-                          <TableRow key={employee.id}>
+                        {filteredEmployees.map((employee) => {
+                          const tableAvatarUrl = resolveAvatarUrl(employee.avatar);
+                          return (
+                            <TableRow key={employee.id}>
                             <TableCell>
                               <div className="flex gap-3 items-center">
                                 <div className="flex justify-center items-center w-10 h-10 font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
-                                  {employee.avatar ? (
+                                  {tableAvatarUrl ? (
                                     <img
-                                      src={employee.avatar}
+                                      src={tableAvatarUrl}
                                       alt={employee.name}
                                       className="object-cover w-10 h-10 rounded-full"
                                     />
@@ -3029,9 +3306,13 @@ export default function EmployeesManagement() {
 الوظيفة: ${getRoleLabel(employee.role)}
 القسم: ${employee.department || '-'}
 الراتب: ${(employee as any).salary ? `${Number((employee as any).salary).toLocaleString('ar-EG')} ر.ق` : 'غير محدد'}
+تاريخ الميلاد: ${(employee as any).birthDate || '-'}
+تاريخ التوظيف: ${(employee as any).hireDate || '-'}
+ساعات العمل: ${(employee as any).workStartTime || '—'} - ${(employee as any).workEndTime || '—'}
 الحالة: ${employee.isActive ? 'نشط' : 'غير نشط'}
 المناطق: ${employee.locations?.map(loc => `${loc.cityName}, ${loc.countryName}`).join('; ') || '-'}
 المشرف: ${employee.supervisor ? employees.find(e => e.id === employee.supervisor)?.name || '-' : 'بدون مشرف'}
+${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               `.trim();
                                     await navigator.clipboard.writeText(employeeData);
                                     toast.success('تم نسخ بيانات الموظف');
@@ -3043,7 +3324,8 @@ export default function EmployeesManagement() {
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -3128,7 +3410,7 @@ export default function EmployeesManagement() {
 
         {/* Activity Log Dialog */}
         <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[960px] xl:max-w-[1100px] w-full max-h-[85vh] px-0 pb-0 overflow-hidden">
             <DialogHeader>
               <DialogTitle className="flex gap-2 items-center">
                 <History className="w-5 h-5 text-blue-500" />
@@ -3144,7 +3426,71 @@ export default function EmployeesManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4 space-y-4">
+            <div className="px-5 py-4 space-y-5">
+              {selectedEmployeeForActivity && (
+                <div className="space-y-5 rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-md w-full">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">الوقت الإجمالي المسجل</p>
+                    <span className="text-4xl font-bold text-slate-900">{formatDuration(totalActivityMinutes)}</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-600">وصف الحركة</Label>
+                      <Input
+                        placeholder="مثلاً: متابعة تذاكر الدعم أو مراجعة التقارير"
+                        value={activityForm.action}
+                        onChange={(e) =>
+                          setActivityForm((prev) => ({ ...prev, action: e.target.value }))
+                        }
+                        className="h-14 text-base rounded-xl w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-600">زمن العمل (دقائق)</Label>
+                      <Input
+                        placeholder="مثلاً: 45"
+                        inputMode="numeric"
+                        value={activityForm.durationMinutes}
+                        onChange={(e) =>
+                          setActivityForm((prev) => ({ ...prev, durationMinutes: e.target.value }))
+                        }
+                        className="h-14 text-base rounded-xl w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-600">ملاحظات إضافية</Label>
+                      <Textarea
+                        placeholder="ملاحظات قصيرة لمساعدة الفريق"
+                        value={activityForm.notes}
+                        onChange={(e) =>
+                          setActivityForm((prev) => ({ ...prev, notes: e.target.value }))
+                        }
+                        className="min-h-[160px] text-base rounded-xl w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleAddActivityEntry}
+                      disabled={isSavingActivity}
+                      className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-base text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {isSavingActivity ? (
+                        <>
+                          <Loader2 className="ml-2 w-4 h-4 animate-spin text-white" />
+                          جاري الحفظ...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="ml-2 w-4 h-4" />
+                          حفظ الحركة
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
               {employeeActivities.length === 0 ? (
                 <div className="py-8 text-center text-slate-500">
                   <History className="mx-auto mb-4 w-12 h-12 text-slate-300" />
@@ -3158,6 +3504,10 @@ export default function EmployeesManagement() {
                       : activity.timestamp instanceof Date 
                         ? activity.timestamp 
                         : new Date();
+                    const durationMinutes = Number(activity.details?.durationMinutes || 0);
+                    const detailEntries = activity.details
+                      ? Object.entries(activity.details).filter(([key]) => key !== 'durationMinutes')
+                      : [];
                     
                     return (
                       <div
@@ -3165,16 +3515,21 @@ export default function EmployeesManagement() {
                         className="p-4 rounded-lg border bg-slate-50 border-slate-200"
                       >
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                          <div className="flex-1 space-y-2">
                             <p className="font-semibold text-slate-900">{activity.action}</p>
-                            {activity.details && Object.keys(activity.details).length > 0 && (
-                              <div className="mt-2 text-sm text-slate-600">
-                                {Object.entries(activity.details).map(([key, value]) => (
+                            {detailEntries.length > 0 && (
+                              <div className="text-sm text-slate-600">
+                                {detailEntries.map(([key, value]) => (
                                   <p key={key}>
                                     <span className="font-medium">{key}:</span> {String(value)}
                                   </p>
                                 ))}
                               </div>
+                            )}
+                            {durationMinutes > 0 && (
+                              <p className="text-xs font-semibold text-amber-700">
+                                الوقت المسجل: {formatDuration(durationMinutes)}
+                              </p>
                             )}
                           </div>
                           <div className="text-xs text-slate-500">
