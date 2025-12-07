@@ -7,12 +7,12 @@ import { db } from '@/lib/firebase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  CreditCard, 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  CreditCard,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertCircle,
   Download,
   Printer,
@@ -81,7 +81,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
       setLoading(false);
       return;
     }
-    
+
     // 🔒 حماية إضافية: التحقق من أن accountType صحيح
     if (!accountType) {
       console.warn('⚠️ [Subscription Status] لا يوجد accountType');
@@ -93,20 +93,20 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     const fetchSubscriptionData = async () => {
       try {
         setLoading(true);
-        
+
         // 🔍 1. التحقق من الحسابات التابعة (لللاعبين التابعين لأكاديمية/نادي/مدرب/وكيل)
         let parentAccountId: string | null = null;
         let parentAccountType: string | null = null;
         let parentAccountName: string | null = null;
-        
+
         if (accountType === 'player' && userData) {
           // التحقق من الانتماء لمنظمة
-          parentAccountId = userData.club_id || userData.clubId || 
-                           userData.academy_id || userData.academyId || 
-                           userData.trainer_id || userData.trainerId || 
-                           userData.agent_id || userData.agentId ||
-                           userData.parentAccountId || userData.parent_account_id || null;
-          
+          parentAccountId = userData.club_id || userData.clubId ||
+            userData.academy_id || userData.academyId ||
+            userData.trainer_id || userData.trainerId ||
+            userData.agent_id || userData.agentId ||
+            userData.parentAccountId || userData.parent_account_id || null;
+
           if (parentAccountId) {
             // تحديد نوع الحساب الأب
             if (userData.club_id || userData.clubId) {
@@ -118,33 +118,33 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             } else if (userData.agent_id || userData.agentId) {
               parentAccountType = 'agent';
             }
-            
+
             console.log('🔍 [Subscription Status] اللاعب تابع لحساب:', {
               parentAccountId,
               parentAccountType
             });
-            
+
             // جلب اسم الحساب الأب
             if (parentAccountType && parentAccountId) {
               try {
                 const parentCollection = parentAccountType === 'club' ? 'clubs' :
-                                       parentAccountType === 'academy' ? 'academies' :
-                                       parentAccountType === 'trainer' ? 'trainers' :
-                                       parentAccountType === 'agent' ? 'agents' : 'users';
-                
+                  parentAccountType === 'academy' ? 'academies' :
+                    parentAccountType === 'trainer' ? 'trainers' :
+                      parentAccountType === 'agent' ? 'agents' : 'users';
+
                 const parentDocRef = doc(db, parentCollection, parentAccountId);
                 const parentDoc = await getDoc(parentDocRef);
-                
+
                 if (parentDoc.exists()) {
                   const parentData = parentDoc.data();
-                  parentAccountName = parentData.name || 
-                                     parentData.club_name || 
-                                     parentData.academy_name || 
-                                     parentData.trainer_name || 
-                                     parentData.agent_name || 
-                                     parentData.full_name || 
-                                     'غير محدد';
-                  
+                  parentAccountName = parentData.name ||
+                    parentData.club_name ||
+                    parentData.academy_name ||
+                    parentData.trainer_name ||
+                    parentData.agent_name ||
+                    parentData.full_name ||
+                    'غير محدد';
+
                   console.log('✅ [Subscription Status] تم جلب اسم الحساب الأب:', parentAccountName);
                 }
               } catch (error) {
@@ -153,26 +153,26 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             }
           }
         }
-        
+
         // 🔍 2. البحث في subscriptions collection (المصدر الأساسي) - اشتراك المستخدم نفسه
         console.log('🔍 البحث في subscriptions collection للمستخدم الحالي...');
         const subscriptionRef = doc(db, 'subscriptions', user.uid);
         const subscriptionDoc = await getDoc(subscriptionRef);
-        
+
         if (subscriptionDoc.exists()) {
           const subData = subscriptionDoc.data();
           console.log('✅ تم العثور على اشتراك خاص للمستخدم في subscriptions:', subData);
-          
-          const expiresAt = subData.expires_at?.toDate ? subData.expires_at.toDate() : 
-                           subData.end_date?.toDate ? subData.end_date.toDate() : 
-                           subData.endDate?.toDate ? subData.endDate.toDate() : null;
-          
+
+          const expiresAt = subData.expires_at?.toDate ? subData.expires_at.toDate() :
+            subData.end_date?.toDate ? subData.end_date.toDate() :
+              subData.endDate?.toDate ? subData.endDate.toDate() : null;
+
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-          
+
           setSubscription({
-            status: subData.status === 'active' && daysLeft > 0 ? 'active' : 
-                   subData.status === 'active' && daysLeft <= 0 ? 'expired' : 
-                   subData.status || 'inactive',
+            status: subData.status === 'active' && daysLeft > 0 ? 'active' :
+              subData.status === 'active' && daysLeft <= 0 ? 'expired' :
+                subData.status || 'inactive',
             plan_name: subData.plan_name || subData.package_name || 'باقة غير محددة',
             package_name: subData.package_name || subData.plan_name || 'باقة غير محددة',
             packageType: subData.packageType || subData.package_name || subData.plan_name,
@@ -188,34 +188,34 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         } else if (parentAccountId && parentAccountType) {
           // 🔍 3. إذا لم يكن هناك اشتراك خاص، ابحث عن اشتراك الحساب الأب
           console.log('🔍 البحث عن اشتراك الحساب الأب...', { parentAccountId, parentAccountType });
-          
+
           try {
             // جلب بيانات الحساب الأب من users collection
             const parentUserDocRef = doc(db, 'users', parentAccountId);
             const parentUserDoc = await getDoc(parentUserDocRef);
-            
+
             if (parentUserDoc.exists()) {
               const parentUserData = parentUserDoc.data();
               const parentUid = parentUserData.uid || parentAccountId;
-              
+
               // البحث عن اشتراك الحساب الأب
               const parentSubscriptionRef = doc(db, 'subscriptions', parentUid);
               const parentSubscriptionDoc = await getDoc(parentSubscriptionRef);
-              
+
               if (parentSubscriptionDoc.exists()) {
                 const parentSubData = parentSubscriptionDoc.data();
                 console.log('✅ تم العثور على اشتراك الحساب الأب:', parentSubData);
-                
-                const expiresAt = parentSubData.expires_at?.toDate ? parentSubData.expires_at.toDate() : 
-                                 parentSubData.end_date?.toDate ? parentSubData.end_date.toDate() : 
-                                 parentSubData.endDate?.toDate ? parentSubData.endDate.toDate() : null;
-                
+
+                const expiresAt = parentSubData.expires_at?.toDate ? parentSubData.expires_at.toDate() :
+                  parentSubData.end_date?.toDate ? parentSubData.end_date.toDate() :
+                    parentSubData.endDate?.toDate ? parentSubData.endDate.toDate() : null;
+
                 const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-                
+
                 setSubscription({
-                  status: parentSubData.status === 'active' && daysLeft > 0 ? 'active' : 
-                         parentSubData.status === 'active' && daysLeft <= 0 ? 'expired' : 
-                         parentSubData.status || 'inactive',
+                  status: parentSubData.status === 'active' && daysLeft > 0 ? 'active' :
+                    parentSubData.status === 'active' && daysLeft <= 0 ? 'expired' :
+                      parentSubData.status || 'inactive',
                   plan_name: parentSubData.plan_name || parentSubData.package_name || 'باقة غير محددة',
                   package_name: parentSubData.package_name || parentSubData.plan_name || 'باقة غير محددة',
                   packageType: parentSubData.packageType || parentSubData.package_name || parentSubData.plan_name,
@@ -230,7 +230,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   parentAccountType: parentAccountType,
                   parentAccountName: parentAccountName || 'غير محدد'
                 });
-                
+
                 // 🔍 إعداد Real-time listener لاشتراك الحساب الأب (لللاعبين التابعين)
                 // ⚠️ مهم: هذا يسمح للاعب التابع برؤية تحديثات اشتراك الحساب الأب فوراً
                 if (parentUid) {
@@ -240,17 +240,17 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                       if (parentDocSnapshot.exists()) {
                         const parentSubData = parentDocSnapshot.data();
                         console.log('🔄 [Subscription Status] تم تحديث اشتراك الحساب الأب:', parentSubData);
-                        
-                        const expiresAt = parentSubData.expires_at?.toDate ? parentSubData.expires_at.toDate() : 
-                                         parentSubData.end_date?.toDate ? parentSubData.end_date.toDate() : 
-                                         parentSubData.endDate?.toDate ? parentSubData.endDate.toDate() : null;
-                        
+
+                        const expiresAt = parentSubData.expires_at?.toDate ? parentSubData.expires_at.toDate() :
+                          parentSubData.end_date?.toDate ? parentSubData.end_date.toDate() :
+                            parentSubData.endDate?.toDate ? parentSubData.endDate.toDate() : null;
+
                         const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-                        
+
                         setSubscription({
-                          status: parentSubData.status === 'active' && daysLeft > 0 ? 'active' : 
-                                 parentSubData.status === 'active' && daysLeft <= 0 ? 'expired' : 
-                                 parentSubData.status || 'inactive',
+                          status: parentSubData.status === 'active' && daysLeft > 0 ? 'active' :
+                            parentSubData.status === 'active' && daysLeft <= 0 ? 'expired' :
+                              parentSubData.status || 'inactive',
                           plan_name: parentSubData.plan_name || parentSubData.package_name || 'باقة غير محددة',
                           package_name: parentSubData.package_name || parentSubData.plan_name || 'باقة غير محددة',
                           packageType: parentSubData.packageType || parentSubData.package_name || parentSubData.plan_name,
@@ -265,7 +265,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                           parentAccountType: parentAccountType,
                           parentAccountName: parentAccountName || 'غير محدد'
                         });
-                        
+
                         setIsUpdating(true);
                         setLastUpdateTime(new Date());
                         setTimeout(() => setIsUpdating(false), 2000);
@@ -275,7 +275,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                       console.error('❌ [Subscription Status] خطأ في listener اشتراك الحساب الأب:', error);
                     }
                   );
-                  
+
                   // حفظ unsubscribe function للتنظيف لاحقاً
                   setParentSubscriptionUnsubscribe(() => unsubscribeParentSubscription);
                 } else {
@@ -304,19 +304,19 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           orderBy('createdAt', 'desc'),
           limit(20)
         );
-        
+
         const bulkPaymentsSnapshot = await getDocs(bulkPaymentsQuery);
         const paymentData: PaymentRecord[] = [];
-        
+
         bulkPaymentsSnapshot.forEach((doc) => {
           const data = doc.data();
           paymentData.push({
             id: doc.id,
             amount: data.amount || 0,
             currency: data.currency || 'EGP',
-            status: data.status === 'success' ? 'completed' : 
-                   data.status === 'completed' ? 'completed' : 
-                   data.status || 'pending',
+            status: data.status === 'success' ? 'completed' :
+              data.status === 'completed' ? 'completed' :
+                data.status || 'pending',
             payment_date: data.createdAt || data.paymentDate,
             createdAt: data.createdAt,
             package_name: data.packageType || data.selectedPackage || 'باقة غير محددة',
@@ -339,7 +339,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
               orderBy('callbackReceivedAt', 'desc'),
               limit(20)
             );
-            
+
             const geideaPaymentsSnapshot = await getDocs(geideaPaymentsQueryByEmail);
             geideaPaymentsSnapshot.forEach((doc) => {
               const data = doc.data();
@@ -352,8 +352,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   status: data.status === 'success' ? 'completed' : 'pending',
                   payment_date: data.paidAt || data.callbackReceivedAt || data.createdAt,
                   createdAt: data.callbackReceivedAt || data.createdAt,
-                  package_name: 'اشتراك جيديا',
-                  packageType: 'geidea_subscription',
+                  // ✨ استخدام اسم الباقة الفعلي من البيانات المثراة
+                  package_name: data.plan_name || data.packageType || data.selectedPackage || 'اشتراك جيديا',
+                  packageType: data.packageType || data.selectedPackage || 'geidea_subscription',
                   transaction_id: data.orderId || data.transactionId || data.merchantReferenceId || doc.id,
                   customer_name: data.customerName || userData?.name,
                   customer_email: data.customerEmail || user?.email,
@@ -362,7 +363,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                 });
               }
             });
-            
+
             if (geideaPaymentsSnapshot.empty) {
               console.log('ℹ️ لم يتم العثور على مدفوعات في geidea_payments باستخدام email');
             } else {
@@ -382,7 +383,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             orderBy('payment_date', 'desc'),
             limit(20)
           );
-          
+
           const oldPaymentsSnapshot = await getDocs(oldPaymentsQuery);
           oldPaymentsSnapshot.forEach((doc) => {
             const data = doc.data();
@@ -390,9 +391,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
               id: doc.id,
               amount: data.amount || 0,
               currency: data.currency || 'EGP',
-              status: data.status === 'success' ? 'completed' : 
-                     data.status === 'completed' ? 'completed' : 
-                     data.status || 'pending',
+              status: data.status === 'success' ? 'completed' :
+                data.status === 'completed' ? 'completed' :
+                  data.status || 'pending',
               payment_date: data.payment_date || data.createdAt,
               createdAt: data.createdAt,
               package_name: data.package_name || data.selectedPackage || 'باقة غير محددة',
@@ -407,12 +408,12 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
 
         setPayments(paymentData);
         console.log('✅ تم جلب', paymentData.length, 'دفعة');
-        
+
         // إذا لم يكن هناك اشتراك في subscriptions ولكن هناك مدفوعات مكتملة
         // (نستخدم subscriptionRef بدلاً من subscription state لأن setState غير متزامن)
         const subscriptionDocCheckRef = doc(db, 'subscriptions', user.uid);
         const subscriptionDocCheck = await getDoc(subscriptionDocCheckRef);
-        
+
         if (!subscriptionDocCheck.exists() && paymentData.length > 0) {
           const completedPayment = paymentData.find(p => p.status === 'completed' || p.status === 'success');
           if (completedPayment) {
@@ -425,7 +426,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             });
           }
         }
-        
+
       } catch (err: any) {
         console.error('❌ خطأ في جلب بيانات الاشتراك:', err);
         setError('حدث خطأ في جلب بيانات الاشتراك');
@@ -454,9 +455,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             id: doc.id,
             amount: data.amount || 0,
             currency: data.currency || 'EGP',
-            status: data.status === 'success' ? 'completed' : 
-                   data.status === 'completed' ? 'completed' : 
-                   data.status || 'pending',
+            status: data.status === 'success' ? 'completed' :
+              data.status === 'completed' ? 'completed' :
+                data.status || 'pending',
             payment_date: data.createdAt || data.paymentDate,
             createdAt: data.createdAt,
             package_name: data.packageType || data.selectedPackage || 'باقة غير محددة',
@@ -470,14 +471,14 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         setPayments(prev => {
           // دمج البيانات الجديدة مع القديمة
           const merged = [...paymentData, ...prev];
-          const unique = merged.filter((p, index, self) => 
+          const unique = merged.filter((p, index, self) =>
             index === self.findIndex(t => t.id === p.id)
           );
           return unique.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 
-                         a.payment_date?.toDate ? a.payment_date.toDate().getTime() : 0;
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 
-                         b.payment_date?.toDate ? b.payment_date.toDate().getTime() : 0;
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() :
+              a.payment_date?.toDate ? a.payment_date.toDate().getTime() : 0;
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() :
+              b.payment_date?.toDate ? b.payment_date.toDate().getTime() : 0;
             return dateB - dateA;
           });
         });
@@ -503,24 +504,24 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             expires_at: subData.expires_at,
             activated_at: subData.activated_at
           });
-          
-          const expiresAt = subData.expires_at?.toDate ? subData.expires_at.toDate() : 
-                           subData.end_date?.toDate ? subData.end_date.toDate() : 
-                           subData.endDate?.toDate ? subData.endDate.toDate() : null;
-          
+
+          const expiresAt = subData.expires_at?.toDate ? subData.expires_at.toDate() :
+            subData.end_date?.toDate ? subData.end_date.toDate() :
+              subData.endDate?.toDate ? subData.endDate.toDate() : null;
+
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-          
+
           // عرض جميع الحالات كما يحددها الادمن (pending, completed, rejected, etc.)
           let finalStatus = subData.status || 'inactive';
-          
+
           // إذا كانت الحالة active ولكن انتهت المدة، نغيرها إلى expired
           if (finalStatus === 'active' && daysLeft <= 0) {
             finalStatus = 'expired';
           }
-          
+
           // الحفاظ على معلومات الحساب الأب من state الحالي (إن وجدت)
           const currentSubscription = subscription;
-          
+
           const newSubscription = {
             status: finalStatus, // ⬅️ نعرض الحالة كما هي من الادمن
             plan_name: subData.plan_name || subData.package_name || 'باقة غير محددة',
@@ -538,14 +539,14 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             parentAccountType: currentSubscription?.parentAccountType,
             parentAccountName: currentSubscription?.parentAccountName
           };
-          
+
           console.log('✅ [Subscription Status] تم تحديث state بالبيانات الجديدة:', newSubscription);
-          
+
           // مؤشر بصري للتحديث
           setIsUpdating(true);
           setLastUpdateTime(new Date());
           setSubscription(newSubscription);
-          
+
           // إخفاء المؤشر بعد ثانيتين
           setTimeout(() => {
             setIsUpdating(false);
@@ -585,12 +586,12 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     }
 
     const updateCountdown = () => {
-      const expiresAt = subscription.expires_at?.toDate 
-        ? subscription.expires_at.toDate() 
-        : subscription.expires_at instanceof Date 
-        ? subscription.expires_at 
-        : new Date(subscription.expires_at);
-      
+      const expiresAt = subscription.expires_at?.toDate
+        ? subscription.expires_at.toDate()
+        : subscription.expires_at instanceof Date
+          ? subscription.expires_at
+          : new Date(subscription.expires_at);
+
       const now = new Date();
       const diff = expiresAt.getTime() - now.getTime();
 
@@ -686,7 +687,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           </div>
         </div>
       )}
-      
+
       {/* عنوان الصفحة */}
       <div className="flex items-center justify-between">
         <div>
@@ -714,31 +715,30 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
       {subscription && (
         <Card className={
           subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
-            ? 'border-green-500 border-2' : 
-          subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-            ? 'border-red-500 border-2' : 
-          subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-            ? 'border-yellow-500 border-2' : 
-          'border-gray-500 border-2'
+            ? 'border-green-500 border-2' :
+            subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+              ? 'border-red-500 border-2' :
+              subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                ? 'border-yellow-500 border-2' :
+                'border-gray-500 border-2'
         }>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 flex-wrap">
-              <Zap className={`w-5 h-5 ${
-                subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
-                  ? 'text-green-600' : 
-                subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                  ? 'text-red-600' : 
-                subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                  ? 'text-yellow-600' : 
-                'text-gray-600'
-              }`} />
+              <Zap className={`w-5 h-5 ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
+                  ? 'text-green-600' :
+                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                    ? 'text-red-600' :
+                    subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                      ? 'text-yellow-600' :
+                      'text-gray-600'
+                }`} />
               حالة الاشتراك الحالية
               {subscription.isFromParent && (
                 <Badge className="mr-2 bg-blue-100 text-blue-800 border-blue-200 text-xs">
                   📋 من {subscription.parentAccountType === 'academy' ? 'أكاديمية' :
-                         subscription.parentAccountType === 'club' ? 'نادي' :
-                         subscription.parentAccountType === 'trainer' ? 'مدرب' :
-                         subscription.parentAccountType === 'agent' ? 'وكيل' : 'حساب أب'}: {subscription.parentAccountName}
+                    subscription.parentAccountType === 'club' ? 'نادي' :
+                      subscription.parentAccountType === 'trainer' ? 'مدرب' :
+                        subscription.parentAccountType === 'agent' ? 'وكيل' : 'حساب أب'}: {subscription.parentAccountName}
                 </Badge>
               )}
               {subscription.activated_at && (
@@ -759,16 +759,15 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   {subscription.package_name || subscription.plan_name || 'غير محدد'}
                 </div>
               </div>
-              
-              <div className={`p-4 rounded-lg ${
-                subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success' 
+
+              <div className={`p-4 rounded-lg ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
                   ? 'bg-gradient-to-br from-green-50 to-green-100' :
-                subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                  ? 'bg-gradient-to-br from-red-50 to-red-100' :
-                subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                  ? 'bg-gradient-to-br from-yellow-50 to-yellow-100' :
-                'bg-gradient-to-br from-gray-50 to-gray-100'
-              }`}>
+                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                    ? 'bg-gradient-to-br from-red-50 to-red-100' :
+                    subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100' :
+                      'bg-gradient-to-br from-gray-50 to-gray-100'
+                }`}>
                 <div className="flex items-center gap-2 mb-2">
                   {subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success' ? (
                     <CheckCircle className="w-5 h-5 text-green-600" />
@@ -781,26 +780,25 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   )}
                   <span className="text-sm font-medium text-gray-700">الحالة</span>
                 </div>
-                <div className={`text-xl font-bold ${
-                  subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
+                <div className={`text-xl font-bold ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
                     ? 'text-green-700' :
-                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                    ? 'text-red-700' :
-                  subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                    ? 'text-yellow-700' :
-                  'text-gray-700'
-                }`}>
+                    subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                      ? 'text-red-700' :
+                      subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                        ? 'text-yellow-700' :
+                        'text-gray-700'
+                  }`}>
                   {subscription.status === 'active' ? 'مفعل' :
-                   subscription.status === 'completed' ? 'مكتمل' :
-                   subscription.status === 'success' ? 'ناجح' :
-                   subscription.status === 'expired' ? 'منتهي' :
-                   subscription.status === 'pending' ? 'قيد المراجعة' :
-                   subscription.status === 'processing' ? 'قيد المعالجة' :
-                   subscription.status === 'waiting' ? 'في الانتظار' :
-                   subscription.status === 'cancelled' ? 'ملغي' :
-                   subscription.status === 'failed' ? 'فشل' :
-                   subscription.status === 'rejected' ? 'مرفوض' :
-                   subscription.status || 'غير محدد'}
+                    subscription.status === 'completed' ? 'مكتمل' :
+                      subscription.status === 'success' ? 'ناجح' :
+                        subscription.status === 'expired' ? 'منتهي' :
+                          subscription.status === 'pending' ? 'قيد المراجعة' :
+                            subscription.status === 'processing' ? 'قيد المعالجة' :
+                              subscription.status === 'waiting' ? 'في الانتظار' :
+                                subscription.status === 'cancelled' ? 'ملغي' :
+                                  subscription.status === 'failed' ? 'فشل' :
+                                    subscription.status === 'rejected' ? 'مرفوض' :
+                                      subscription.status || 'غير محدد'}
                 </div>
                 {/* عداد انتهاء ديناميكي */}
                 {countdown && subscription.status !== 'expired' && subscription.status !== 'cancelled' && subscription.status !== 'failed' && subscription.status !== 'rejected' && (
@@ -898,7 +896,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
               {payments.map((payment) => {
                 const statusInfo = getStatusInfo(payment.status);
                 const StatusIcon = statusInfo.icon;
-                
+
                 return (
                   <div key={payment.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-between">

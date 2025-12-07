@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, setDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { RefreshCw, Download, Search, Filter, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { RefreshCw, Download, Search, Filter, CheckCircle, XCircle, Clock, AlertCircle, Upload, Save } from 'lucide-react';
 
 interface GeideaTransaction {
   id: string;
@@ -25,7 +25,7 @@ interface GeideaTransaction {
   fetchedFromGeideaAt?: string;
   createdAt?: any;
   wasNew?: boolean;
-  source?: string; // 'firestore_geidea_payments', 'firestore_bulkPayments', 'geidea_api'
+  source?: string; // 'firestore_geidea_payments', 'firestore_bulkPayments', 'geidea_api', 'imported_from_bulk'
 }
 
 export default function GeideaTransactionsPage() {
@@ -38,11 +38,25 @@ export default function GeideaTransactionsPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [updatingTransactions, setUpdatingTransactions] = useState<Set<string>>(new Set());
   const [updatingPending, setUpdatingPending] = useState(false);
-  
+  const [syncing, setSyncing] = useState(false);
+
+  // متغيرات الاستيراد
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [searchingLegacy, setSearchingLegacy] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [foundTransactions, setFoundTransactions] = useState<GeideaTransaction[]>([]);
+  const [selectedForImport, setSelectedForImport] = useState<Set<string>>(new Set());
+
   // فلاتر
   const [filters, setFilters] = useState({
     search: '',
     status: 'all', // all, success, failed, pending
+    fromDate: '',
+    toDate: '',
+    minAmount: '',
+    maxAmount: '',
+    currency: 'all', // all, EGP, SAR, USD, etc.
+    source: 'all', // all, firestore_geidea_payments, imported_from_bulk
   });
 
   useEffect(() => {
@@ -60,10 +74,10 @@ export default function GeideaTransactionsPage() {
     if (!isAuthorized) return;
 
     const interval = setInterval(() => {
-      const pendingTransactions = transactions.filter(t => 
+      const pendingTransactions = transactions.filter(t =>
         t.status === 'pending' || t.status === 'processing'
       );
-      
+
       if (pendingTransactions.length > 0) {
         console.log(`🔄 [Auto Update] Updating ${pendingTransactions.length} pending transactions...`);
         // استدعاء الوظيفة مباشرة
@@ -78,7 +92,7 @@ export default function GeideaTransactionsPage() {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      
+
       // جلب من Firestore أولاً (للمدفوعات القديمة والجديدة)
       const allTransactions: GeideaTransaction[] = [];
 
@@ -94,7 +108,7 @@ export default function GeideaTransactionsPage() {
           console.warn('⚠️ orderBy failed for geidea_payments, fetching without order:', orderByError);
           geideaSnapshot = await getDocs(geideaPaymentsRef);
         }
-        
+
         geideaSnapshot.forEach((doc) => {
           const data = doc.data();
           allTransactions.push({
@@ -117,110 +131,35 @@ export default function GeideaTransactionsPage() {
             source: 'firestore_geidea_payments',
           });
         });
-        
+
         console.log(`✅ جلب ${geideaSnapshot.size} معاملة من geidea_payments`);
       } catch (error) {
         console.error('Error fetching from geidea_payments:', error);
-      }
-
-      // 2. جلب من bulkPayments - نجلب جميع المدفوعات ثم نفلترها في الكود
-      try {
-        const bulkPaymentsRef = collection(db, 'bulkPayments');
-        let bulkSnapshot;
-        
-        // محاولة الجلب مع orderBy أولاً
-        try {
-          const bulkQuery = query(bulkPaymentsRef, orderBy('createdAt', 'desc'));
-          bulkSnapshot = await getDocs(bulkQuery);
-        } catch (orderByError) {
-          // إذا فشل orderBy، نجلب بدون ترتيب
-          console.warn('⚠️ orderBy failed for bulkPayments, fetching without order:', orderByError);
-          bulkSnapshot = await getDocs(bulkPaymentsRef);
-        }
-        
-        let geideaCount = 0;
-        bulkSnapshot.forEach((doc) => {
-          const data = doc.data();
-          
-          // التحقق من أن هذه مدفوعة جيديا (من خلال فحص paymentMethod أو transactionId أو أي علامة أخرى)
-          const isGeideaPayment = 
-            data.paymentMethod === 'geidea' ||
-            data.method === 'geidea' ||
-            data.gateway === 'geidea' ||
-            (data.transactionId && typeof data.transactionId === 'string' && data.transactionId.length > 10) || // transactionId من جيديا عادة طويل
-            (data.orderId && typeof data.orderId === 'string' && data.orderId.includes('-')) || // orderId من جيديا عادة يحتوي على شرطات
-            (data.merchantReferenceId && typeof data.merchantReferenceId === 'string' && data.merchantReferenceId.startsWith('EL7LM')); // merchantReferenceId يبدأ بـ EL7LM
-          
-          if (isGeideaPayment) {
-            geideaCount++;
-            
-            // استخراج اسم العميل ورقم الهاتف (مثل ما يحدث في صفحة المدفوعات)
-            let customerName = data.customerName || data.playerName || 'غير محدد';
-            let customerPhone = data.customerPhone || data.phone || '';
-            
-            // إذا كان هناك players array، نأخذ البيانات منه
-            if (data.players && Array.isArray(data.players) && data.players.length > 0) {
-              const player = data.players[0];
-              if (player.name && !customerName.includes('@')) {
-                customerName = player.name;
-              }
-              if (player.phone && !customerPhone) {
-                customerPhone = player.phone;
-              }
-            }
-            
-            // التحقق من عدم وجود المعاملة مسبقاً (تجنب التكرار)
-            const existingIndex = allTransactions.findIndex(
-              t => (t.orderId && data.orderId && t.orderId === data.orderId) || 
-                   (t.merchantReferenceId && data.merchantReferenceId && t.merchantReferenceId === data.merchantReferenceId) ||
-                   t.id === doc.id
-            );
-            
-            if (existingIndex === -1) {
-              allTransactions.push({
-                id: doc.id,
-                orderId: data.orderId || data.transactionId || doc.id,
-                merchantReferenceId: data.merchantReferenceId || data.reference || data.merchantRef,
-                status: data.status || 'pending',
-                amount: data.amount || data.total || null,
-                currency: data.currency || 'EGP',
-                responseCode: data.responseCode,
-                detailedResponseCode: data.detailedResponseCode,
-                responseMessage: data.responseMessage || data.detailedResponseMessage || data.errorMessage,
-                detailedResponseMessage: data.detailedResponseMessage,
-                customerEmail: data.customerEmail || data.email,
-                customerName: customerName,
-                customerPhone: customerPhone,
-                paidAt: data.paidAt || data.timestamp || data.paymentDate,
-                createdAt: data.createdAt,
-                source: 'firestore_bulkPayments',
-              });
-            }
-          }
-        });
-        
-        console.log(`✅ جلب ${geideaCount} معاملة جيديا من ${bulkSnapshot.size} مدفوعة في bulkPayments`);
-      } catch (error) {
-        console.error('Error fetching from bulkPayments:', error);
+        toast.error('حدث خطأ أثناء جلب معاملات جيديا');
       }
 
       // ترتيب حسب التاريخ (الأحدث أولاً)
       allTransactions.sort((a, b) => {
-        const dateA = a.paidAt 
+        const dateA = a.paidAt
           ? new Date(a.paidAt).getTime()
-          : a.createdAt?.toDate 
+          : a.createdAt?.toDate
             ? a.createdAt.toDate().getTime()
             : 0;
-        const dateB = b.paidAt 
+        const dateB = b.paidAt
           ? new Date(b.paidAt).getTime()
-          : b.createdAt?.toDate 
+          : b.createdAt?.toDate
             ? b.createdAt.toDate().getTime()
             : 0;
         return dateB - dateA;
       });
 
       setTransactions(allTransactions);
-      toast.success(`تم جلب ${allTransactions.length} معاملة من Firestore`);
+
+      if (allTransactions.length === 0) {
+        toast('لا توجد معاملات جيديا بعد. ستظهر هنا تلقائياً عند استلام Callback من جيديا.', { icon: 'ℹ️' });
+      } else {
+        toast.success(`تم جلب ${allTransactions.length} معاملة من جيديا`);
+      }
     } catch (error) {
       console.error('Error fetching transactions:', error);
       toast.error('حدث خطأ أثناء جلب المعاملات');
@@ -232,10 +171,10 @@ export default function GeideaTransactionsPage() {
   const fetchFromGeidea = async () => {
     try {
       setFetching(true);
-      
+
       // استخدام API الجديد لجلب جميع المعاملات من Geidea
       toast.loading('جاري جلب المعاملات من Geidea...', { id: 'fetching-geidea' });
-      
+
       // جلب merchantReferenceIds من transactions الحالية (بدون استخدام Firestore)
       const currentMerchantRefs = transactions
         .filter(t => t.merchantReferenceId && t.merchantReferenceId.startsWith('EL7LM'))
@@ -245,19 +184,19 @@ export default function GeideaTransactionsPage() {
       const response = await fetch('/api/geidea/fetch-all-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           merchantReferenceIds: currentMerchantRefs, // استخدام القائمة الحالية بدلاً من جلب من Firestore
           limit: 10,
           save: false // لا نحفظ في Firestore لتجنب Quota
         }),
       });
-      
+
       const data = await response.json();
       toast.dismiss('fetching-geidea');
 
       if (data.success) {
         const { results, quotaWarning } = data;
-        
+
         if (quotaWarning) {
           toast.error(
             '⚠️ تم تجاوز الحصة المسموحة في Firestore. تم إيقاف الجلب. يرجى المحاولة مرة أخرى بعد قليل.',
@@ -269,7 +208,7 @@ export default function GeideaTransactionsPage() {
             { duration: 5000 }
           );
         }
-        
+
         // إعادة جلب المعاملات من Firestore بعد التحديث (فقط إذا لم يكن هناك quota error)
         if (!quotaWarning) {
           await fetchTransactions();
@@ -277,7 +216,7 @@ export default function GeideaTransactionsPage() {
       } else {
         const errorMsg = data.error || 'فشل جلب المعاملات من Geidea';
         const isQuotaError = errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('Quota exceeded');
-        
+
         if (isQuotaError) {
           toast.error(
             '⚠️ تم تجاوز الحصة المسموحة في Firestore. يرجى المحاولة مرة أخرى بعد قليل أو التحقق من إعدادات Firestore.',
@@ -339,13 +278,49 @@ export default function GeideaTransactionsPage() {
   };
 
   // تحديث جميع المعاملات المعلقة
+  // مزامنة شاملة مع Geidea (جميع المعاملات)
+  const syncWithGeidea = async () => {
+    try {
+      setSyncing(true);
+      toast.loading('جاري المزامنة مع Geidea (جميع المعاملات)...', { id: 'syncing-geidea' });
+
+      const response = await fetch('/api/geidea/search-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          save: true, // حفظ النتائج في Firestore
+          limit: 1000 // محاولة جلب عدد كبير من المعاملات
+        }),
+      });
+
+      const data = await response.json();
+      toast.dismiss('syncing-geidea');
+
+      if (data.success) {
+        const { total, savedCount } = data.data;
+        toast.success(`✅ تمت المزامنة بنجاح. تم العثور على ${total} معاملة وتحديث ${savedCount} منها.`);
+
+        // إعادة جلب المعاملات لتحديث القائمة
+        await fetchTransactions();
+      } else {
+        toast.error(data.error || 'فشل المزامنة مع Geidea');
+      }
+    } catch (error) {
+      console.error('Error syncing with Geidea:', error);
+      toast.dismiss('syncing-geidea');
+      toast.error('حدث خطأ أثناء المزامنة');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const updatePendingTransactions = async () => {
-    const pendingTransactions = transactions.filter(t => 
+    const pendingTransactions = transactions.filter(t =>
       t.status === 'pending' || t.status === 'processing'
     );
 
     if (pendingTransactions.length === 0) {
-      toast.info('لا توجد معاملات معلقة للتحديث');
+      toast('لا توجد معاملات معلقة للتحديث', { icon: 'ℹ️' });
       return;
     }
 
@@ -392,7 +367,7 @@ export default function GeideaTransactionsPage() {
 
       toast.dismiss('updating-pending');
       toast.success(`تم تحديث ${successCount} معاملة بنجاح${failCount > 0 ? ` (فشل ${failCount})` : ''}`);
-      
+
       // إعادة جلب المعاملات من Firestore
       await fetchTransactions();
     } catch (error) {
@@ -404,13 +379,138 @@ export default function GeideaTransactionsPage() {
     }
   };
 
+  // البحث عن معاملات قديمة في bulkPayments
+  const searchLegacyTransactions = async () => {
+    try {
+      setSearchingLegacy(true);
+      setFoundTransactions([]);
+      setSelectedForImport(new Set());
+
+      const bulkPaymentsRef = collection(db, 'bulkPayments');
+      // نبحث عن المعاملات التي طريقة دفعها geidea
+      const q = query(bulkPaymentsRef, where('paymentMethod', '==', 'geidea'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+
+      const found: GeideaTransaction[] = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+
+        // التحقق الإضافي: يجب أن يكون لها merchantReferenceId يبدأ بـ EL7LM أو orderId مميز
+        const isValidGeidea =
+          (data.merchantReferenceId && typeof data.merchantReferenceId === 'string' && data.merchantReferenceId.startsWith('EL7LM')) ||
+          (data.orderId && typeof data.orderId === 'string' && data.orderId.includes('-'));
+
+        if (isValidGeidea) {
+          // التحقق مما إذا كانت موجودة بالفعل في المعاملات الحالية
+          const exists = transactions.some(t =>
+            (t.orderId && data.orderId && t.orderId === data.orderId) ||
+            (t.merchantReferenceId && data.merchantReferenceId && t.merchantReferenceId === data.merchantReferenceId)
+          );
+
+          if (!exists) {
+            // استخراج اسم العميل ورقم الهاتف
+            let customerName = data.customerName || data.playerName || 'غير محدد';
+            let customerPhone = data.customerPhone || data.phone || '';
+
+            if (data.players && Array.isArray(data.players) && data.players.length > 0) {
+              const player = data.players[0];
+              if (player.name && !customerName.includes('@')) customerName = player.name;
+              if (player.phone && !customerPhone) customerPhone = player.phone;
+            }
+
+            found.push({
+              id: doc.id, // نحتفظ بنفس ID المستند
+              orderId: data.orderId || data.transactionId || doc.id,
+              merchantReferenceId: data.merchantReferenceId || data.reference || data.merchantRef,
+              status: data.status || 'pending',
+              amount: data.amount || data.total || null,
+              currency: data.currency || 'EGP',
+              responseCode: data.responseCode,
+              detailedResponseCode: data.detailedResponseCode,
+              responseMessage: data.responseMessage || data.detailedResponseMessage || data.errorMessage,
+              detailedResponseMessage: data.detailedResponseMessage,
+              customerEmail: data.customerEmail || data.email,
+              customerName: customerName,
+              customerPhone: customerPhone,
+              paidAt: data.paidAt || data.timestamp || data.paymentDate,
+              createdAt: data.createdAt,
+              source: 'imported_from_bulk',
+            });
+          }
+        }
+      });
+
+      setFoundTransactions(found);
+      if (found.length === 0) {
+        toast('لم يتم العثور على معاملات جيديا جديدة في المحفظة', { icon: 'ℹ️' });
+      } else {
+        toast.success(`تم العثور على ${found.length} معاملة يمكن استيرادها`);
+      }
+    } catch (error) {
+      console.error('Error searching legacy transactions:', error);
+      toast.error('حدث خطأ أثناء البحث');
+    } finally {
+      setSearchingLegacy(false);
+    }
+  };
+
+  // استيراد المعاملات المحددة
+  const importLegacyTransactions = async () => {
+    if (selectedForImport.size === 0) {
+      toast.error('يرجى تحديد معاملات للاستيراد');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      const transactionsToImport = foundTransactions.filter(t => selectedForImport.has(t.id));
+
+      for (const transaction of transactionsToImport) {
+        try {
+          // إنشاء مستند جديد في geidea_payments
+          // نستخدم orderId أو merchantReferenceId كـ ID للمستند إذا أمكن، وإلا نستخدم ID الأصلي
+          const docId = transaction.orderId || transaction.merchantReferenceId || transaction.id;
+          const docRef = doc(db, 'geidea_payments', docId);
+
+          await setDoc(docRef, {
+            ...transaction,
+            importedAt: new Date().toISOString(),
+            source: 'imported_from_bulk'
+          });
+
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to import transaction ${transaction.id}:`, error);
+          failCount++;
+        }
+      }
+
+      toast.success(`تم استيراد ${successCount} معاملة بنجاح${failCount > 0 ? ` (فشل ${failCount})` : ''}`);
+      setShowImportModal(false);
+      setFoundTransactions([]);
+      setSelectedForImport(new Set());
+
+      // تحديث القائمة
+      fetchTransactions();
+    } catch (error) {
+      console.error('Error importing transactions:', error);
+      toast.error('حدث خطأ أثناء الاستيراد');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const filterTransactions = () => {
     let filtered = [...transactions];
 
     // فلتر البحث
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.orderId?.toLowerCase().includes(searchLower) ||
         t.merchantReferenceId?.toLowerCase().includes(searchLower) ||
         t.customerEmail?.toLowerCase().includes(searchLower) ||
@@ -433,6 +533,55 @@ export default function GeideaTransactionsPage() {
         }
         return true;
       });
+    }
+
+    // فلتر التاريخ (من)
+    if (filters.fromDate) {
+      const fromDate = new Date(filters.fromDate);
+      filtered = filtered.filter(t => {
+        const transactionDate = t.paidAt
+          ? new Date(t.paidAt)
+          : t.createdAt?.toDate
+            ? t.createdAt.toDate()
+            : null;
+        return transactionDate && transactionDate >= fromDate;
+      });
+    }
+
+    // فلتر التاريخ (إلى)
+    if (filters.toDate) {
+      const toDate = new Date(filters.toDate);
+      toDate.setHours(23, 59, 59, 999); // نهاية اليوم
+      filtered = filtered.filter(t => {
+        const transactionDate = t.paidAt
+          ? new Date(t.paidAt)
+          : t.createdAt?.toDate
+            ? t.createdAt.toDate()
+            : null;
+        return transactionDate && transactionDate <= toDate;
+      });
+    }
+
+    // فلتر المبلغ (الحد الأدنى)
+    if (filters.minAmount) {
+      const minAmount = parseFloat(filters.minAmount);
+      filtered = filtered.filter(t => t.amount && t.amount >= minAmount);
+    }
+
+    // فلتر المبلغ (الحد الأقصى)
+    if (filters.maxAmount) {
+      const maxAmount = parseFloat(filters.maxAmount);
+      filtered = filtered.filter(t => t.amount && t.amount <= maxAmount);
+    }
+
+    // فلتر العملة
+    if (filters.currency !== 'all') {
+      filtered = filtered.filter(t => t.currency === filters.currency);
+    }
+
+    // فلتر المصدر
+    if (filters.source !== 'all') {
+      filtered = filtered.filter(t => t.source === filters.source);
     }
 
     setFilteredTransactions(filtered);
@@ -497,7 +646,7 @@ export default function GeideaTransactionsPage() {
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'جاري التحديث...' : 'تحديث من Firestore'}
+            {loading ? 'جاري التحديث...' : 'تحديث معاملات جيديا'}
           </button>
           <button
             onClick={updatePendingTransactions}
@@ -507,25 +656,62 @@ export default function GeideaTransactionsPage() {
             <RefreshCw className={`w-4 h-4 ${updatingPending ? 'animate-spin' : ''}`} />
             {updatingPending ? 'جاري التحديث...' : `تحديث المعاملات المعلقة (${transactions.filter(t => t.status === 'pending' || t.status === 'processing').length})`}
           </button>
+          <button
+            onClick={syncWithGeidea}
+            disabled={syncing}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'جاري المزامنة...' : 'مزامنة شاملة (الكل)'}
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            استيراد بيانات قديمة
+          </button>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 mb-4">
           <div className="font-semibold mb-2">📋 معلومات مهمة:</div>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li><strong>جلب من Firestore:</strong> يعرض جميع المعاملات المحفوظة محلياً (موصى به) ✅</li>
-            <li><strong>جلب من جيديا API:</strong> وفقاً لـ <a href="https://docs.geidea.net/docs/geidea-checkout-v2" target="_blank" rel="noopener noreferrer" className="underline">وثائق Geidea</a>، لا توفر الشركة API مباشر لجلب جميع المعاملات</li>
-            <li><strong>تحديث معاملة محددة:</strong> استخدم زر "تحديث" بجانب كل معاملة لجلب أحدث بياناتها من Geidea ✅</li>
-            <li><strong>تحديث المعاملات المعلقة:</strong> استخدم زر "تحديث المعاملات المعلقة" لتحديث جميع المعاملات المعلقة دفعة واحدة ✅</li>
-            <li><strong>تحديث تلقائي:</strong> يتم تحديث المعاملات المعلقة تلقائياً كل 5 دقائق ✅</li>
-            <li><strong>المدفوعات الجديدة:</strong> تأتي تلقائياً عبر callback من Geidea وتُحفظ في Firestore ✅</li>
-            <li><strong>عرض جميع المعاملات:</strong> استخدم <a href="https://merchant.geidea.net" target="_blank" rel="noopener noreferrer" className="underline">Geidea Merchant Portal</a> لعرض جميع المعاملات</li>
-            <li><strong>البيانات الحالية:</strong> تم جلب {transactions.length} معاملة من Firestore</li>
+            <li><strong>مصدر البيانات:</strong> معاملات جيديا الرسمية فقط (من Callback) ✅</li>
+            <li><strong>Callback URL:</strong> <code>https://www.el7lm.com/api/geidea/callback</code></li>
+            <li><strong>المعاملات الجديدة:</strong> تظهر تلقائياً عند استلام Callback من جيديا ✅</li>
+            <li><strong>تحديث المعاملات المعلقة:</strong> استخدم زر "تحديث المعاملات المعلقة" ✅</li>
+            <li><strong>تحديث معاملة محددة:</strong> استخدم زر "تحديث" بجانب كل معاملة ✅</li>
+            <li><strong>عرض جميع المعاملات:</strong> استخدم <a href="https://merchant.geidea.net" target="_blank" rel="noopener noreferrer" className="underline">Geidea Merchant Portal</a></li>
+            <li><strong>البيانات الحالية:</strong> {transactions.length} معاملة من جيديا</li>
           </ul>
         </div>
       </div>
 
       {/* الفلاتر */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            فلاتر البحث
+          </h3>
+          <button
+            onClick={() => setFilters({
+              search: '',
+              status: 'all',
+              fromDate: '',
+              toDate: '',
+              minAmount: '',
+              maxAmount: '',
+              currency: 'all',
+              source: 'all',
+            })}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            مسح الفلاتر
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* البحث */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">بحث</label>
             <div className="relative">
@@ -539,6 +725,8 @@ export default function GeideaTransactionsPage() {
               />
             </div>
           </div>
+
+          {/* الحالة */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
             <select
@@ -551,6 +739,83 @@ export default function GeideaTransactionsPage() {
               <option value="failed">فشلت</option>
               <option value="pending">قيد الانتظار</option>
             </select>
+          </div>
+
+          {/* العملة */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">العملة</label>
+            <select
+              value={filters.currency}
+              onChange={(e) => setFilters({ ...filters, currency: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">الكل</option>
+              <option value="EGP">EGP - جنيه مصري</option>
+              <option value="SAR">SAR - ريال سعودي</option>
+              <option value="USD">USD - دولار أمريكي</option>
+              <option value="AED">AED - درهم إماراتي</option>
+            </select>
+          </div>
+
+          {/* المصدر */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">المصدر</label>
+            <select
+              value={filters.source}
+              onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">الكل</option>
+              <option value="firestore_geidea_payments">geidea_payments</option>
+              <option value="imported_from_bulk">مستورد من المحفظة</option>
+              <option value="geidea_api">Geidea API</option>
+            </select>
+          </div>
+
+          {/* من تاريخ */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">من تاريخ</label>
+            <input
+              type="date"
+              value={filters.fromDate}
+              onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* إلى تاريخ */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">إلى تاريخ</label>
+            <input
+              type="date"
+              value={filters.toDate}
+              onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* الحد الأدنى للمبلغ */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">الحد الأدنى للمبلغ</label>
+            <input
+              type="number"
+              value={filters.minAmount}
+              onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+              placeholder="0"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* الحد الأقصى للمبلغ */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">الحد الأقصى للمبلغ</label>
+            <input
+              type="number"
+              value={filters.maxAmount}
+              onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
+              placeholder="∞"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
         </div>
       </div>
@@ -614,10 +879,10 @@ export default function GeideaTransactionsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm font-mono text-gray-700">
-                      {transaction.orderId || transaction.geideaOrderId || '-'}
+                      {transaction.orderId || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm font-mono text-gray-700">
-                      {transaction.merchantReferenceId || transaction.ourMerchantReferenceId || '-'}
+                      {transaction.merchantReferenceId || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <div>{transaction.customerName || 'غير محدد'}</div>
@@ -627,9 +892,9 @@ export default function GeideaTransactionsPage() {
                       {transaction.amount ? `${transaction.amount.toLocaleString()} ${transaction.currency || 'EGP'}` : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {transaction.paidAt 
+                      {transaction.paidAt
                         ? new Date(transaction.paidAt).toLocaleString('ar-EG')
-                        : transaction.createdAt?.toDate 
+                        : transaction.createdAt?.toDate
                           ? transaction.createdAt.toDate().toLocaleString('ar-EG')
                           : '-'}
                     </td>
@@ -694,11 +959,11 @@ export default function GeideaTransactionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-medium text-gray-700">Order ID:</label>
-                  <p className="text-gray-900 font-mono text-sm">{selectedTransaction.orderId || selectedTransaction.geideaOrderId || '-'}</p>
+                  <p className="text-gray-900 font-mono text-sm">{selectedTransaction.orderId || '-'}</p>
                 </div>
                 <div>
                   <label className="font-medium text-gray-700">Merchant Reference ID:</label>
-                  <p className="text-gray-900 font-mono text-sm">{selectedTransaction.merchantReferenceId || selectedTransaction.ourMerchantReferenceId || '-'}</p>
+                  <p className="text-gray-900 font-mono text-sm">{selectedTransaction.merchantReferenceId || '-'}</p>
                 </div>
                 <div>
                   <label className="font-medium text-gray-700">الحالة:</label>
@@ -733,9 +998,9 @@ export default function GeideaTransactionsPage() {
                 <div>
                   <label className="font-medium text-gray-700">التاريخ:</label>
                   <p className="text-gray-900">
-                    {selectedTransaction.paidAt 
+                    {selectedTransaction.paidAt
                       ? new Date(selectedTransaction.paidAt).toLocaleString('ar-EG')
-                      : selectedTransaction.createdAt?.toDate 
+                      : selectedTransaction.createdAt?.toDate
                         ? selectedTransaction.createdAt.toDate().toLocaleString('ar-EG')
                         : '-'}
                   </p>
@@ -747,6 +1012,124 @@ export default function GeideaTransactionsPage() {
                   <p className="text-red-700 text-sm">{selectedTransaction.responseMessage || selectedTransaction.detailedResponseMessage}</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* نافذة الاستيراد */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <Upload className="w-6 h-6 text-purple-600" />
+                استيراد بيانات قديمة
+              </h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-6 bg-purple-50 p-4 rounded-lg text-sm text-purple-800">
+              <p className="font-semibold mb-1">كيف يعمل الاستيراد؟</p>
+              <p>يقوم هذا النظام بالبحث في "المحفظة" (bulkPayments) عن معاملات تم دفعها عبر Geidea ولكنها غير موجودة في القائمة الرسمية. يتم استخدام معايير صارمة لضمان الدقة.</p>
+            </div>
+
+            <div className="flex gap-4 mb-4">
+              <button
+                onClick={searchLegacyTransactions}
+                disabled={searchingLegacy}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Search className={`w-4 h-4 ${searchingLegacy ? 'animate-spin' : ''}`} />
+                {searchingLegacy ? 'جاري البحث...' : 'بحث عن معاملات في المحفظة'}
+              </button>
+
+              {foundTransactions.length > 0 && (
+                <button
+                  onClick={importLegacyTransactions}
+                  disabled={importing || selectedForImport.size === 0}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Save className={`w-4 h-4 ${importing ? 'animate-spin' : ''}`} />
+                  {importing ? 'جاري الاستيراد...' : `استيراد المحدد (${selectedForImport.size})`}
+                </button>
+              )}
+            </div>
+
+            {/* نتائج البحث */}
+            <div className="flex-1 overflow-y-auto border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 text-right">
+                      <input
+                        type="checkbox"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedForImport(new Set(foundTransactions.map(t => t.id)));
+                          } else {
+                            setSelectedForImport(new Set());
+                          }
+                        }}
+                        checked={foundTransactions.length > 0 && selectedForImport.size === foundTransactions.length}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Merchant Ref</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">المبلغ</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">التاريخ</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {foundTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        {searchingLegacy ? 'جاري البحث...' : 'اضغط "بحث" للبدء'}
+                      </td>
+                    </tr>
+                  ) : (
+                    foundTransactions.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedForImport.has(transaction.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedForImport);
+                              if (e.target.checked) {
+                                newSet.add(transaction.id);
+                              } else {
+                                newSet.delete(transaction.id);
+                              }
+                              setSelectedForImport(newSet);
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-gray-700">{transaction.orderId || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-gray-700">{transaction.merchantReferenceId || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-semibold">
+                          {transaction.amount ? `${transaction.amount.toLocaleString()} ${transaction.currency || 'EGP'}` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {transaction.paidAt
+                            ? new Date(transaction.paidAt).toLocaleString('ar-EG')
+                            : transaction.createdAt?.toDate
+                              ? transaction.createdAt.toDate().toLocaleString('ar-EG')
+                              : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {getStatusBadge(transaction.status, transaction.responseCode)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

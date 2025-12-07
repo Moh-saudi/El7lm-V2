@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 import {
   Banknote,
   CreditCard,
@@ -17,12 +18,13 @@ import {
   Mail,
   Printer,
   MessageCircle,
-  FileDown,
   X,
-  Eye,
   Info,
-  Download,
+  RotateCcw,
   Send,
+  FileDown,
+  Eye,
+  Download,
   MessageSquare,
   Share2,
 } from 'lucide-react';
@@ -145,11 +147,11 @@ const getPackageDurationMonths = (planName?: string | null, packageType?: string
   } else if (type.includes('3months') || type.includes('3 شهور') || type.includes('ثلاثة') || type.includes('subscription_3')) {
     return 3;
   }
-  
+
   // البحث في planName
   if (!planName) return 0;
   const plan = planName.toLowerCase();
-  
+
   if (plan.includes('annual') || plan.includes('yearly') || plan.includes('سنوي') || plan.includes('12') || plan.includes('subscription_12')) {
     return 12;
   } else if (plan.includes('6months') || plan.includes('6 شهور') || plan.includes('ستة') || plan.includes('subscription_6')) {
@@ -157,7 +159,7 @@ const getPackageDurationMonths = (planName?: string | null, packageType?: string
   } else if (plan.includes('3months') || plan.includes('3 شهور') || plan.includes('ثلاثة') || plan.includes('subscription_3')) {
     return 3;
   }
-  
+
   return 0;
 };
 
@@ -200,24 +202,24 @@ const calculateExpiryDate = (data: any, createdAt: Date): Date | null => {
 
   if (durationMonths > 0) {
     // استخدام تاريخ الدفع (paidAt) إذا كان موجوداً، وإلا استخدام تاريخ التفعيل (activated_at)، وإلا تاريخ الإنشاء
-    const startDate = 
-      toDate(data?.paid_at) || 
-      toDate(data?.paidAt) || 
-      toDate(data?.paymentDate) || 
+    const startDate =
+      toDate(data?.paid_at) ||
+      toDate(data?.paidAt) ||
+      toDate(data?.paymentDate) ||
       toDate(data?.activated_at) ||
       toDate(data?.activatedAt) ||
       toDate(data?.activationDate) ||
       createdAt;
-    
+
     const expiryDate = new Date(startDate);
     expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
-    
+
     console.log('✅ [Invoice] تم حساب تاريخ الانتهاء:', {
       startDate: startDate.toISOString(),
       expiryDate: expiryDate.toISOString(),
       durationMonths
     });
-    
+
     return expiryDate;
   }
 
@@ -289,14 +291,14 @@ const extractCustomerPhone = (data: any, source?: string): string => {
       if (value && typeof value === 'string') {
         const text = value.trim();
         const lowerKey = key.toLowerCase();
-        
+
         // البحث في الحقول التي قد تحتوي على أرقام هواتف
-        if ((lowerKey.includes('phone') || lowerKey.includes('mobile') || 
-             lowerKey.includes('tel') || lowerKey.includes('whatsapp') ||
-             lowerKey.includes('contact')) &&
-            text.length >= 7 && text.length <= 15 &&
-            /^\d+$/.test(text.replace(/[\s\-\(\)]/g, ''))) {
-          
+        if ((lowerKey.includes('phone') || lowerKey.includes('mobile') ||
+          lowerKey.includes('tel') || lowerKey.includes('whatsapp') ||
+          lowerKey.includes('contact')) &&
+          text.length >= 7 && text.length <= 15 &&
+          /^\d+$/.test(text.replace(/[\s\-\(\)]/g, ''))) {
+
           const cleanPhone = text.replace(/[\s\-\(\)]/g, '');
           console.log(`Found phone in field: ${key} = ${cleanPhone}`);
           return cleanPhone;
@@ -338,7 +340,7 @@ const extractCustomerName = (data: any, source: string): string => {
           .map((p: any) => p.name || p.playerName || '')
           .filter((name: string) => name && name.trim() && !name.includes('@'))
           .map((name: string) => name.trim());
-        
+
         if (playerNames.length > 0) {
           if (playerNames.length <= 3) {
             // إذا كان 3 لاعبين أو أقل، اعرض جميع الأسماء
@@ -361,8 +363,8 @@ const extractCustomerName = (data: any, source: string): string => {
       const foundName = data[field].trim();
       // التحقق من أن القيمة ليست مجرد كلمة "player" أو كلمات مشابهة
       const lowerName = foundName.toLowerCase();
-      if (lowerName !== 'player' && lowerName !== 'user' && lowerName !== 'customer' && 
-          lowerName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+      if (lowerName !== 'player' && lowerName !== 'user' && lowerName !== 'customer' &&
+        lowerName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
         playerName = foundName;
         console.log(`Found name in primary field '${field}': ${playerName}`);
         return playerName;
@@ -388,9 +390,9 @@ const extractCustomerName = (data: any, source: string): string => {
 
         // التحقق من أن القيمة ليست إيميل وليست كلمة عامة
         const lowerFoundName = foundName.toLowerCase();
-        if (!foundName.includes('@') && 
-            lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-            foundName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+        if (!foundName.includes('@') &&
+          lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
+          foundName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
           playerName = foundName;
           console.log(`Found name directly in data: ${field} = ${playerName}`);
           return playerName;
@@ -410,19 +412,19 @@ const extractCustomerName = (data: any, source: string): string => {
 
         // البحث في الحقول التي قد تحتوي على أسماء
         if (lowerKey.includes('name') || lowerKey.includes('user') ||
-            lowerKey.includes('customer') || lowerKey.includes('player') ||
-            lowerKey.includes('client') || lowerKey.includes('account')) {
+          lowerKey.includes('customer') || lowerKey.includes('player') ||
+          lowerKey.includes('client') || lowerKey.includes('account')) {
 
           const foundValue = value.toString().trim();
 
           // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
           const lowerFoundValue = foundValue.toLowerCase();
           if (!foundValue.includes('@') &&
-              lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
-              foundValue.length > 2 &&
-              foundValue.length < 50 &&
-              /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
-              !/^\d+$/.test(foundValue)) {
+            lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
+            foundValue.length > 2 &&
+            foundValue.length < 50 &&
+            /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
+            !/^\d+$/.test(foundValue)) {
 
             playerName = foundValue;
             console.log(`Found real name in field: ${key} = ${playerName}`);
@@ -473,12 +475,12 @@ const normalizeRecord = (source: string, id: string, data: any): InvoiceRecord =
   const amount =
     Number(
       data?.amount ??
-        data?.total ??
-        data?.total_amount ??
-        data?.value ??
-        data?.price ??
-        data?.finalPrice ??
-        0,
+      data?.total ??
+      data?.total_amount ??
+      data?.value ??
+      data?.price ??
+      data?.finalPrice ??
+      0,
     ) || 0;
   const currency =
     data?.currency ||
@@ -565,15 +567,15 @@ const getInvoiceDownloadUrl = (record: InvoiceRecord): string => {
   // في وضع التطوير: window.location.origin = "http://localhost:3000"
   // في الإنتاج: window.location.origin = "https://www.el7lm.com" (تلقائياً من النطاق الفعلي)
   // fallback: استخدام NEXT_PUBLIC_BASE_URL من البيئة أو القيمة الافتراضية
-  const baseUrl = typeof window !== 'undefined' 
+  const baseUrl = typeof window !== 'undefined'
     ? window.location.origin  // ✅ في الإنتاج سيأخذ النطاق الفعلي تلقائياً
     : process.env.NEXT_PUBLIC_BASE_URL || 'https://www.el7lm.com';
-  
+
   // استخدام ID الفاتورة أو invoiceNumber أو orderId أو merchantReferenceId
   const invoiceId = record.id || record.invoiceNumber || record.reference.orderId || record.reference.merchantReferenceId;
-  
+
   if (!invoiceId) return '';
-  
+
   // رابط صفحة الفاتورة العامة للعميل (ليست في لوحة الإدارة)
   // في التطوير: http://localhost:3000/invoice/[id]
   // في الإنتاج: https://www.el7lm.com/invoice/[id]
@@ -588,36 +590,36 @@ const buildShareMessage = (record: InvoiceRecord, includeDownloadLink: boolean =
     `رقم الفاتورة: ${record.invoiceNumber}`,
     `المبلغ المستحق: ${formatCurrency(record.amount, record.currency)}`,
   ];
-  
+
   if (record.packageDuration && record.packageDuration !== 'غير محدد') {
     lines.push(`مدة الاشتراك: ${record.packageDuration}`);
   }
-  
+
   if (record.expiryDate) {
-    const expiryText = record.expiryDate < new Date() 
+    const expiryText = record.expiryDate < new Date()
       ? `تاريخ الانتهاء: ${formatDate(record.expiryDate)} (منتهي)`
       : `تاريخ الانتهاء: ${formatDate(record.expiryDate)}`;
     lines.push(expiryText);
   }
-  
+
   lines.push(`الحالة الحالية: ${statusLabel}`);
-  
+
   if (includeDownloadLink) {
-    const baseUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
+    const baseUrl = typeof window !== 'undefined'
+      ? window.location.origin
       : process.env.NEXT_PUBLIC_BASE_URL || 'https://www.el7lm.com';
     const subscriptionStatusUrl = `${baseUrl}/dashboard/shared/subscription-status`;
-    
+
     lines.push('');
     lines.push('يمكنك الآن الوصول إلى الفاتورة عبر صفحة حالة الاشتراك:');
     lines.push(subscriptionStatusUrl);
     lines.push('');
     lines.push('يمكنك فتح وطباعة الفاتورة أو حفظها كملف PDF من المتصفح.');
   }
-  
+
   lines.push('');
   lines.push('إذا احتجت أي مساعدة أو استفسار فنحن جاهزون فوراً لدعمك ومواصلة العمل على نجاحاتنا المشتركة 💪.');
-  
+
   return lines.join('\n');
 };
 
@@ -781,6 +783,111 @@ export default function AdminInvoicesListPage() {
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [previewInvoiceRecord, setPreviewInvoiceRecord] = useState<InvoiceRecord | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  /**
+   * إثراء معلومات الباقة لسجلات جيديا من بيانات المستخدمين
+   */
+  const enrichPackageInfoForInvoices = async (records: InvoiceRecord[]) => {
+    // فقط لسجلات جيديا التي لا تحتوي على معلومات الباقة
+    const geideaRecordsNeedingEnrichment = records.filter(
+      (r) => r.source === 'geidea_payments' && !r.planName && (r.customerEmail || r.customerPhone)
+    );
+
+    if (geideaRecordsNeedingEnrichment.length === 0) {
+      return;
+    }
+
+    console.log(`📦 [Invoices] Enriching ${geideaRecordsNeedingEnrichment.length} Geidea records with package info...`);
+
+    // جلب معلومات المستخدمين بناءً على الإيميل أو الهاتف
+    const uniqueEmails = [...new Set(geideaRecordsNeedingEnrichment.map((r) => r.customerEmail).filter(Boolean))];
+    const uniquePhones = [...new Set(geideaRecordsNeedingEnrichment.map((r) => r.customerPhone).filter(Boolean))];
+
+    const emailToUserMap: Record<string, any> = {};
+    const phoneToUserMap: Record<string, any> = {};
+
+    // البحث بالإيميل
+    for (const email of uniqueEmails) {
+      if (!email) continue;
+
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', email));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const userData = snapshot.docs[0].data();
+          emailToUserMap[email] = userData;
+          console.log(`✅ [Invoices] Found user by email: ${email}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ [Invoices] Failed to fetch user data for email ${email}:`, error);
+      }
+    }
+
+    // البحث بالهاتف
+    for (const phone of uniquePhones) {
+      if (!phone) continue;
+
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('phone', '==', phone));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const userData = snapshot.docs[0].data();
+          phoneToUserMap[phone] = userData;
+          console.log(`✅ [Invoices] Found user by phone: ${phone}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ [Invoices] Failed to fetch user data for phone ${phone}:`, error);
+      }
+    }
+
+    // تحديث السجلات بمعلومات الباقة والاسم
+    geideaRecordsNeedingEnrichment.forEach((record) => {
+      let userData = null;
+
+      // البحث بالإيميل أولاً
+      if (record.customerEmail && emailToUserMap[record.customerEmail]) {
+        userData = emailToUserMap[record.customerEmail];
+      }
+      // إذا لم نجد بالإيميل، نبحث بالهاتف
+      else if (record.customerPhone && phoneToUserMap[record.customerPhone]) {
+        userData = phoneToUserMap[record.customerPhone];
+      }
+
+      if (userData) {
+        // تحديث اسم العميل
+        if (!record.customerName || record.customerName === 'غير محدد') {
+          record.customerName = userData.full_name || userData.name || userData.displayName || record.customerName;
+        }
+
+        // تحديث معلومات الباقة
+        const packageType = userData.selectedPackage || userData.packageType || userData.package_type;
+        const planName = userData.plan_name || packageType;
+
+        if (packageType || planName) {
+          record.planName = planName || packageType || '';
+          record.packageDuration = getPackageDurationLabel(planName, packageType);
+
+          // حساب expiryDate بناءً على الباقة
+          record.expiryDate = calculateExpiryDate(
+            { ...record.raw, packageType: packageType, plan_name: planName },
+            record.createdAt
+          );
+
+          console.log(`✅ [Invoices] Enriched record for ${record.customerEmail || record.customerPhone}: ${planName}`);
+        }
+      }
+    });
+
+    console.log(`✨ [Invoices] Enrichment complete!`);
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -798,8 +905,18 @@ export default function AdminInvoicesListPage() {
           console.warn(`⚠️ Failed to load ${cfg.name}:`, error);
         }
       }
-      aggregated.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      setRecords(aggregated);
+
+      // ✅ استبعاد الفواتير الخاصة بـ contact@fakhracademy.com
+      const filteredRecords = aggregated.filter(
+        (record) => record.customerEmail !== 'contact@fakhracademy.com'
+      );
+
+      filteredRecords.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      // ✨ إثراء معلومات الباقة لسجلات جيديا
+      await enrichPackageInfoForInvoices(filteredRecords);
+
+      setRecords(filteredRecords);
     } finally {
       setLoading(false);
     }
@@ -843,24 +960,75 @@ export default function AdminInvoicesListPage() {
     });
   }, [records, search, filters]);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = useMemo(() => {
+    return filtered.slice(startIndex, endIndex);
+  }, [filtered, startIndex, endIndex]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filters]);
+
+
   const stats = useMemo(() => {
     const totalAmount = records.reduce((sum, rec) => sum + rec.amount, 0);
     const paidAmount = records
       .filter((rec) => rec.status === 'paid')
       .reduce((sum, rec) => sum + rec.amount, 0);
+    const paidCount = records.filter((rec) => rec.status === 'paid').length;
     const pendingAmount = records
       .filter((rec) => rec.status === 'pending')
       .reduce((sum, rec) => sum + rec.amount, 0);
+    const pendingCount = records.filter((rec) => rec.status === 'pending').length;
+    const cancelledAmount = records
+      .filter((rec) => rec.status === 'cancelled')
+      .reduce((sum, rec) => sum + rec.amount, 0);
+    const cancelledCount = records.filter((rec) => rec.status === 'cancelled').length;
     const uniqueClients = new Set(
       records.map((rec) => rec.customerEmail || rec.customerPhone || rec.customerName),
     ).size;
+
+    // إحصائيات جيديا
+    const geideaRecords = records.filter((rec) => rec.source === 'geidea_payments');
+    const geideaCount = geideaRecords.length;
+    const geideaAmount = geideaRecords.reduce((sum, rec) => sum + rec.amount, 0);
+
+    // إحصائيات المحفظة
+    const walletRecords = records.filter((rec) =>
+      rec.source === 'wallet' || rec.source === 'bulkPayments' || rec.source === 'bulk_payments'
+    );
+    const walletCount = walletRecords.length;
+    const walletAmount = walletRecords.reduce((sum, rec) => sum + rec.amount, 0);
+
+    // إحصائيات إنستا باي
+    const instapayRecords = records.filter((rec) => rec.source === 'instapay');
+    const instapayCount = instapayRecords.length;
+    const instapayAmount = instapayRecords.reduce((sum, rec) => sum + rec.amount, 0);
+
+    // متوسط قيمة الفاتورة
+    const averageAmount = records.length > 0 ? totalAmount / records.length : 0;
 
     return {
       count: records.length,
       totalAmount,
       paidAmount,
+      paidCount,
       pendingAmount,
+      pendingCount,
+      cancelledAmount,
+      cancelledCount,
       uniqueClients,
+      geideaCount,
+      geideaAmount,
+      walletCount,
+      walletAmount,
+      instapayCount,
+      instapayAmount,
+      averageAmount,
     };
   }, [records]);
 
@@ -1000,7 +1168,7 @@ export default function AdminInvoicesListPage() {
 
     setSendingWhatsAppId(selectedRecordForWhatsApp.id);
     setShowMessagePreview(false);
-    
+
     try {
       const response = await fetch('/api/whatsapp/send-official', {
         method: 'POST',
@@ -1017,7 +1185,7 @@ export default function AdminInvoicesListPage() {
       });
 
       const result = await response.json();
-      
+
       if (!response.ok || !result.success) {
         const errorMsg = result?.error || result?.details || 'فشل إرسال رسالة الواتساب الرسمية';
         console.error('❌ [Invoices] WhatsApp API send failed:', {
@@ -1048,6 +1216,205 @@ export default function AdminInvoicesListPage() {
     }
   };
 
+  /**
+   * تصدير البيانات إلى Excel (CSV format)
+   */
+  const handleExportToExcel = () => {
+    try {
+      console.log('🔄 [Export] Starting Excel export...', {
+        totalRecords: records.length,
+        filteredRecords: filtered.length,
+        filters: filters,
+        search: search
+      });
+
+      // إعداد البيانات للتصدير
+      const dataToExport = filtered.map((record, index) => ({
+        '#': index + 1,
+        'رقم الفاتورة': record.invoiceNumber || '-',
+        'الحالة': record.status === 'paid' ? 'مدفوع' :
+          record.status === 'pending' ? 'قيد المراجعة' :
+            record.status === 'cancelled' ? 'ملغي' :
+              record.status === 'overdue' ? 'متأخر' : record.status,
+        'اسم العميل': record.customerName || '-',
+        'البريد الإلكتروني': record.customerEmail || '-',
+        'رقم الهاتف': record.customerPhone || '-',
+        'الخدمة/الباقة': record.planName || '-',
+        'مدة الباقة': record.packageDuration || '-',
+        'المبلغ': record.amount || 0,
+        'العملة': record.currency || 'EGP',
+        'طريقة الدفع': record.paymentMethod || '-',
+        'المصدر': record.source || '-',
+        'تاريخ الإنشاء': record.createdAt ? formatDate(record.createdAt) : '-',
+        'تاريخ الدفع': record.paidAt ? formatDate(record.paidAt) : '-',
+        'تاريخ الانتهاء': record.expiryDate ? formatDate(record.expiryDate) : '-',
+        'Order ID': record.reference.orderId || '-',
+        'Merchant Reference': record.reference.merchantReferenceId || '-',
+        'Transaction ID': record.reference.transactionId || '-',
+        'Payment ID': record.reference.paymentId || '-',
+        'ملاحظات': record.notes || '-'
+      }));
+
+      // إضافة صف الإحصائيات في الأعلى
+      const statsRow = {
+        '#': '',
+        'رقم الفاتورة': '📊 إحصائيات',
+        'الحالة': `إجمالي: ${filtered.length}`,
+        'اسم العميل': `مدفوع: ${filtered.filter(r => r.status === 'paid').length}`,
+        'البريد الإلكتروني': `قيد المراجعة: ${filtered.filter(r => r.status === 'pending').length}`,
+        'رقم الهاتف': `ملغي: ${filtered.filter(r => r.status === 'cancelled').length}`,
+        'الخدمة/الباقة': '',
+        'مدة الباقة': '',
+        'المبلغ': stats.totalAmount,
+        'العملة': 'EGP',
+        'طريقة الدفع': `متوسط: ${stats.averageAmount.toFixed(2)}`,
+        'المصدر': '',
+        'تاريخ الإنشاء': '',
+        'تاريخ الدفع': '',
+        'تاريخ الانتهاء': '',
+        'Order ID': '',
+        'Merchant Reference': '',
+        'Transaction ID': '',
+        'Payment ID': '',
+        'ملاحظات': `تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}`
+      };
+
+      const emptyRow = {
+        '#': '', 'رقم الفاتورة': '', 'الحالة': '', 'اسم العميل': '',
+        'البريد الإلكتروني': '', 'رقم الهاتف': '', 'الخدمة/الباقة': '',
+        'مدة الباقة': '', 'المبلغ': '', 'العملة': '', 'طريقة الدفع': '',
+        'المصدر': '', 'تاريخ الإنشاء': '', 'تاريخ الدفع': '', 'تاريخ الانتهاء': '',
+        'Order ID': '', 'Merchant Reference': '', 'Transaction ID': '',
+        'Payment ID': '', 'ملاحظات': ''
+      };
+
+      // دمج البيانات مع الإحصائيات
+      const finalData = [statsRow, emptyRow, ...dataToExport];
+
+      // تحويل إلى CSV
+      const headers = Object.keys(finalData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...finalData.map(row =>
+          headers.map(header => {
+            const value = row[header];
+            // معالجة القيم التي تحتوي على فواصل أو أحرف خاصة
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // إضافة BOM لدعم UTF-8 في Excel
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+      // إنشاء رابط التحميل
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      // اسم الملف مع التاريخ
+      const filterSuffix = filters.status !== 'all' ? `_${filters.status}` :
+        filters.method !== 'all' ? `_${filters.method}` :
+          filters.source !== 'all' ? `_${filters.source}` : '';
+      const fileName = `invoices_${new Date().toISOString().split('T')[0]}${filterSuffix}.csv`;
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log('✅ [Export] Excel export completed:', {
+        fileName,
+        recordsExported: filtered.length,
+        fileSize: blob.size
+      });
+
+      toast.success(`✅ تم تصدير ${filtered.length} فاتورة إلى Excel`, {
+        description: `اسم الملف: ${fileName}`,
+        duration: 5000
+      });
+    } catch (error) {
+      console.error('❌ [Export] Error exporting to Excel:', error);
+      toast.error('❌ فشل تصدير البيانات', {
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+        duration: 5000
+      });
+    }
+  };
+
+  /**
+   * تصدير البيانات إلى JSON
+   */
+  const handleExportToJSON = () => {
+    try {
+      const dataToExport = filtered.map((record, index) => ({
+        index: index + 1,
+        invoiceNumber: record.invoiceNumber,
+        status: record.status,
+        customerName: record.customerName,
+        customerEmail: record.customerEmail,
+        customerPhone: record.customerPhone,
+        planName: record.planName,
+        packageDuration: record.packageDuration,
+        amount: record.amount,
+        currency: record.currency,
+        paymentMethod: record.paymentMethod,
+        source: record.source,
+        createdAt: record.createdAt?.toISOString(),
+        paidAt: record.paidAt?.toISOString(),
+        expiryDate: record.expiryDate?.toISOString(),
+        reference: record.reference,
+        notes: record.notes
+      }));
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        totalRecords: filtered.length,
+        filters: {
+          status: filters.status,
+          method: filters.method,
+          source: filters.source,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+          search: search
+        },
+        statistics: {
+          totalAmount: stats.totalAmount,
+          paidAmount: stats.paidAmount,
+          pendingAmount: stats.pendingAmount,
+          averageAmount: stats.averageAmount,
+          uniqueClients: stats.uniqueClients
+        },
+        records: dataToExport
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      const fileName = `invoices_${new Date().toISOString().split('T')[0]}.json`;
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`✅ تم تصدير ${filtered.length} فاتورة إلى JSON`, {
+        description: `اسم الملف: ${fileName}`,
+        duration: 5000
+      });
+    } catch (error) {
+      console.error('❌ [Export] Error exporting to JSON:', error);
+      toast.error('❌ فشل تصدير البيانات');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -1062,6 +1429,26 @@ export default function AdminInvoicesListPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                onClick={handleExportToExcel}
+                disabled={loading || filtered.length === 0}
+                className="gap-2 bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+              >
+                <FileDown className="w-4 h-4" />
+                Excel ({filtered.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExportToJSON}
+                disabled={loading || filtered.length === 0}
+                className="gap-2 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                <FileDown className="w-4 h-4" />
+                JSON
+              </Button>
+            </div>
             <Button variant="outline" onClick={load} disabled={loading} className="gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
               تحديث البيانات
@@ -1072,22 +1459,61 @@ export default function AdminInvoicesListPage() {
           </div>
         </div>
 
+        {/* الصف الأول: الإحصائيات الرئيسية */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="p-4 bg-white/80 shadow-sm border border-slate-200">
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="p-4 bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
             <p className="text-sm text-gray-500">إجمالي الفواتير</p>
             <p className="text-3xl font-bold text-gray-900">{stats.count}</p>
-          </Card>
-          <Card className="p-4 bg-white/80 shadow-sm border border-slate-200">
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="p-4 bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
             <p className="text-sm text-gray-500">إجمالي المبالغ</p>
             <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.totalAmount)}</p>
-          </Card>
-          <Card className="p-4 bg-white/80 shadow-sm border border-slate-200">
-            <p className="text-sm text-gray-500">المبالغ المدفوعة</p>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(stats.paidAmount)}</p>
-          </Card>
-          <Card className="p-4 bg-white/80 shadow-sm border border-slate-200">
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="p-4 bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
+            <p className="text-sm text-gray-500">متوسط الفاتورة</p>
+            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(stats.averageAmount)}</p>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="p-4 bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
             <p className="text-sm text-gray-500">عملاء فريدون</p>
             <p className="text-3xl font-bold text-purple-600">{stats.uniqueClients}</p>
+          </motion.div>
+        </div>
+
+        {/* الصف الثاني: تفصيل الحالات */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="p-4 bg-green-50 border border-green-200">
+            <p className="text-sm text-green-700 font-semibold">✅ مدفوع</p>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.paidAmount)}</p>
+            <p className="text-xs text-green-500 mt-1">{stats.paidCount} فاتورة</p>
+          </Card>
+          <Card className="p-4 bg-yellow-50 border border-yellow-200">
+            <p className="text-sm text-yellow-700 font-semibold">⏳ قيد المراجعة</p>
+            <p className="text-2xl font-bold text-yellow-600">{formatCurrency(stats.pendingAmount)}</p>
+            <p className="text-xs text-yellow-500 mt-1">{stats.pendingCount} فاتورة</p>
+          </Card>
+          <Card className="p-4 bg-red-50 border border-red-200">
+            <p className="text-sm text-red-700 font-semibold">❌ ملغي</p>
+            <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.cancelledAmount)}</p>
+            <p className="text-xs text-red-500 mt-1">{stats.cancelledCount} فاتورة</p>
+          </Card>
+        </div>
+
+        {/* الصف الثالث: تفصيل المصادر */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="p-4 bg-purple-50 border border-purple-300">
+            <p className="text-sm text-purple-700 font-semibold">💳 جيديا</p>
+            <p className="text-xl font-bold text-purple-600">{stats.geideaCount} معاملة</p>
+            <p className="text-sm text-purple-500 mt-1">{formatCurrency(stats.geideaAmount)}</p>
+          </Card>
+          <Card className="p-4 bg-amber-50 border border-amber-200">
+            <p className="text-sm text-amber-700 font-semibold">👛 المحفظة</p>
+            <p className="text-xl font-bold text-amber-600">{stats.walletCount} معاملة</p>
+            <p className="text-sm text-amber-500 mt-1">{formatCurrency(stats.walletAmount)}</p>
+          </Card>
+          <Card className="p-4 bg-blue-50 border border-blue-200">
+            <p className="text-sm text-blue-700 font-semibold">📲 إنستا باي</p>
+            <p className="text-xl font-bold text-blue-600">{stats.instapayCount} معاملة</p>
+            <p className="text-sm text-blue-500 mt-1">{formatCurrency(stats.instapayAmount)}</p>
           </Card>
         </div>
 
@@ -1177,7 +1603,7 @@ export default function AdminInvoicesListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
               <thead className="bg-gray-50 text-gray-600">
-                <tr>
+                <tr className="sticky top-0 z-10">
                   <th className="px-3 py-3 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[200px] border-r border-gray-200">إجراءات</th>
                   <th className="px-4 py-3 font-semibold">الفاتورة</th>
                   <th className="px-4 py-3 font-semibold">العميل</th>
@@ -1190,14 +1616,14 @@ export default function AdminInvoicesListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       لا توجد بيانات مطابقة حالياً
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((record) => (
+                  paginatedData.map((record) => (
                     <tr key={`${record.source}-${record.id}`} className="hover:bg-gray-50 transition">
                       <td className="px-3 py-3 sticky left-0 bg-white z-10 border-r border-gray-200 shadow-sm">
                         <div className="flex flex-row gap-1.5 flex-wrap">
@@ -1328,313 +1754,554 @@ export default function AdminInvoicesListPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        </Card>
-      </div>
-
-      {selected && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-4 relative">
-            <button
-              className="absolute left-4 top-4 text-gray-500 hover:text-gray-700"
-              onClick={() => setSelected(null)}
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div>
-              <p className="text-sm text-gray-500">تفاصيل الفاتورة</p>
-              <h2 className="text-2xl font-bold text-gray-900">{selected.invoiceNumber}</h2>
-              <p className="text-sm text-gray-500">المصدر: {selected.source}</p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-800">معلومات العميل</h3>
-                <p>الاسم: {selected.customerName}</p>
-                <p>البريد: {selected.customerEmail || 'غير متوفر'}</p>
-                <p>الهاتف: {selected.customerPhone || 'غير متوفر'}</p>
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-gray-800">تفاصيل الدفع</h3>
-                <p>المبلغ: {formatCurrency(selected.amount, selected.currency)}</p>
-                <p>طريقة الدفع: {METHOD_DETAILS[selected.paymentMethod]?.label || selected.paymentMethod}</p>
-                {selected.planName && (
-                  <p>
-                    <span className="font-semibold">الخدمة / الباقة:</span> {selected.planName}
-                  </p>
-                )}
-                {selected.packageDuration && selected.packageDuration !== 'غير محدد' && (
-                  <p className="text-purple-600 font-semibold">
-                    📅 <span className="font-semibold">مدة الاشتراك:</span> {selected.packageDuration}
-                  </p>
-                )}
-                <p>الحالة: {STATUS_LABELS[selected.status]?.label || selected.status}</p>
-                <p>تاريخ الإنشاء: {formatDate(selected.createdAt)}</p>
-                {selected.paidAt && <p>تاريخ التحصيل: {formatDate(selected.paidAt)}</p>}
-                {selected.expiryDate && (
-                  <p className={selected.expiryDate < new Date() ? 'text-red-600 font-semibold' : ''}>
-                    تاريخ الانتهاء: {formatDate(selected.expiryDate)}
-                    {selected.expiryDate < new Date() && ' (منتهي)'}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <h3 className="font-semibold text-gray-800">المرجعيات</h3>
-                <p>Order ID: {selected.reference.orderId || '—'}</p>
-                <p>Merchant Reference: {selected.reference.merchantReferenceId || '—'}</p>
-                <p>Transaction ID: {selected.reference.transactionId || '—'}</p>
-                <p>Payment ID: {selected.reference.paymentId || '—'}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">ملاحظات داخلية</h3>
-                <p className="text-gray-700 whitespace-pre-wrap min-h-[80px] bg-gray-50 rounded-lg p-3">
-                  {selected.notes || 'لا توجد ملاحظات'}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={() => handlePreviewInvoice(selected)}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold"
-              >
-                <FileText className="w-4 h-4" />
-                معاينة الفاتورة
-              </Button>
-              <Button
-                onClick={() => handlePrintInvoice(selected)}
-                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-semibold"
-              >
-                <Printer className="w-4 h-4" />
-                طباعة PDF
-              </Button>
-              <Button
-                variant="outline"
-                className="inline-flex items-center gap-2 text-sm font-semibold"
-                onClick={() => handleSendEmail(selected)}
-              >
-                <Mail className="w-4 h-4" />
-                إرسال بريد
-              </Button>
-              <Button
-                variant="outline"
-                className="inline-flex items-center gap-2 text-sm font-semibold"
-                onClick={() => handleSendWhatsApp(selected)}
-              >
-                <MessageCircle className="w-4 h-4" />
-                إرسال واتساب
-              </Button>
-              <Button
-                variant="outline"
-                className="inline-flex items-center gap-2 text-sm font-semibold"
-                disabled={sendingWhatsAppId === selected.id}
-                onClick={() => handleSendWhatsAppApi(selected)}
-              >
-                {sendingWhatsAppId === selected.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <MessageCircle className="w-4 h-4" />
-                )}
-                واتساب API
-              </Button>
-              <Link
-                href="/dashboard/admin/payments"
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700"
-              >
-                مراجعة في صفحة المدفوعات
-              </Link>
-              {selected.receiptUrl && (
-                <a
-                  href={selected.receiptUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold text-gray-700"
-                >
-                  <Receipt className="w-4 h-4" />
-                  فتح الإيصال
-                </a>
+            {/* Mobile Card View */}
+            <div className="hidden grid gap-4 md:hidden">
+              {filtered.length === 0 ? (
+                <p className="text-center text-gray-500">لا توجد بيانات مطابقة حالياً</p>
+              ) : (
+                filtered.map((record) => (
+                  <Card key={`${record.source}-${record.id}`} className="p-4 bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-semibold text-gray-900">{record.invoiceNumber}</div>
+                      <Button size="sm" variant="outline" className="text-xs px-2 py-1 h-7 border-blue-300 text-blue-600" onClick={() => setSelected(record)}><Info className="w-3.5 h-3.5" /></Button>
+                    </div>
+                    <div className="text-sm text-gray-500 mb-1">المصدر: {record.source}</div>
+                    <div className="text-sm text-gray-800">{record.customerName}</div>
+                    <div className="text-xs text-gray-500">{record.customerEmail || record.customerPhone || '-'}</div>
+                    <div className="mt-2 text-gray-900 font-bold">{formatCurrency(record.amount, record.currency)}</div>
+                    <div className="text-xs text-gray-600">{formatDate(record.createdAt)}</div>
+                    <div className="mt-1">{statusDisplay(record.status)}</div>
+                  </Card>
+                ))
               )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal معاينة وتعديل رسالة الواتساب */}
-      {showMessagePreview && selectedRecordForWhatsApp && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 relative">
-            <button
-              className="absolute left-4 top-4 text-gray-500 hover:text-gray-700"
-              onClick={() => {
+            {/* Pagination Controls */}
+            {filtered.length > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-50 rounded-lg">
+                {/* Items per page selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">عرض:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-700">
+                    عرض {startIndex + 1} - {Math.min(endIndex, filtered.length)} من {filtered.length}
+                  </span>
+                </div>
+
+                {/* Page navigation */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    الأولى
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    السابق
+                  </button>
+
+                  {/* Page numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 text-sm border rounded-md ${currentPage === pageNum
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'border-gray-300 hover:bg-gray-100'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    التالي
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    الأخيرة
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div >
+
+
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center px-4 py-8 z-50 overflow-y-auto"
+            onClick={() => setSelected(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-3xl w-full p-8 border border-white/20 my-auto"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-gray-900">{selected.invoiceNumber}</h2>
+                    <div className="mt-1">{statusDisplay(selected.status)}</div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">المصدر: {selected.source}</p>
+                </div>
+                <button
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-700"
+                  onClick={() => setSelected(null)}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Client Info Card */}
+                <div className="bg-gray-50/50 rounded-xl p-5 border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                      <Wallet2 className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 text-lg">بيانات العميل</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                      <span className="text-gray-500 text-sm">الاسم</span>
+                      <span className="font-semibold text-gray-900 text-left">{selected.customerName}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                      <span className="text-gray-500 text-sm">البريد الإلكتروني</span>
+                      <span className="font-medium text-gray-900 text-left break-all">{selected.customerEmail || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 text-sm">رقم الهاتف</span>
+                      <span className="font-medium text-gray-900 text-left" dir="ltr">{selected.customerPhone || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Info Card */}
+                <div className="bg-gray-50/50 rounded-xl p-5 border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 text-lg">تفاصيل الدفع</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                      <span className="text-gray-500 text-sm">المبلغ</span>
+                      <span className="font-bold text-emerald-600 text-lg">{formatCurrency(selected.amount, selected.currency)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-gray-100 pb-2">
+                      <span className="text-gray-500 text-sm">طريقة الدفع</span>
+                      <span>{paymentDisplay(selected)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 text-sm">تاريخ الإنشاء</span>
+                      <span className="font-medium text-gray-700">{formatDate(selected.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package Info Card */}
+                {(selected.planName || selected.packageDuration) && (
+                  <div className="bg-purple-50/50 rounded-xl p-5 border border-purple-100 shadow-sm md:col-span-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                        <Banknote className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-bold text-purple-900 text-lg">تفاصيل الباقة والاشتراك</h3>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {selected.planName && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-purple-700 font-medium">الخدمة/الباقة:</span>
+                          <span className="font-bold text-purple-900">{selected.planName}</span>
+                        </div>
+                      )}
+                      {selected.packageDuration && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-purple-700 font-medium">المدة:</span>
+                          <span className="font-bold text-purple-900">{selected.packageDuration}</span>
+                        </div>
+                      )}
+                      {selected.expiryDate && (
+                        <div className="flex items-center gap-2 md:col-span-2">
+                          <span className="text-purple-700 font-medium">تاريخ الانتهاء:</span>
+                          <span className={`font-bold ${selected.expiryDate < new Date() ? 'text-red-600' : 'text-purple-900'
+                            }`}>
+                            {formatDate(selected.expiryDate)}
+                            {selected.expiryDate < new Date() && ' (منتهي)'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Technical Info */}
+                <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-2">
+                  <button
+                    onClick={(e) => {
+                      const details = e.currentTarget.nextElementSibling;
+                      details?.classList.toggle('hidden');
+                    }}
+                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors w-full text-right"
+                  >
+                    <Info className="w-4 h-4" />
+                    عرض التفاصيل التقنية والمرجعيات
+                  </button>
+                  <div className="hidden grid md:grid-cols-2 gap-4 text-xs text-gray-600 bg-gray-50 p-4 rounded-lg mt-2 transition-all">
+                    <p><span className="font-semibold block text-gray-800">Order ID:</span> {selected.reference.orderId || '—'}</p>
+                    <p><span className="font-semibold block text-gray-800">Merchant Ref:</span> {selected.reference.merchantReferenceId || '—'}</p>
+                    <p><span className="font-semibold block text-gray-800">Transaction ID:</span> {selected.reference.transactionId || '—'}</p>
+                    <p><span className="font-semibold block text-gray-800">Payment ID:</span> {selected.reference.paymentId || '—'}</p>
+                    {selected.notes && (
+                      <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-200">
+                        <span className="font-semibold block text-gray-800">ملاحظات داخلية:</span>
+                        <p className="mt-1 whitespace-pre-wrap">{selected.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-gray-100 justify-end">
+                <Button
+                  onClick={() => handlePreviewInvoice(selected)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  <FileText className="w-4 h-4 ml-2" />
+                  معاينة الفاتورة
+                </Button>
+                <Button
+                  onClick={() => handlePrintInvoice(selected)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  <Printer className="w-4 h-4 ml-2" />
+                  طباعة
+                </Button>
+
+                <div className="w-px h-8 bg-gray-300 mx-1 hidden sm:block"></div>
+
+                <Button variant="outline" onClick={() => handleSendEmail(selected)} className="hover:bg-gray-50">
+                  <Mail className="w-4 h-4 ml-2 text-gray-600" />
+                  إرسال بريد
+                </Button>
+                <Button variant="outline" onClick={() => handleSendWhatsApp(selected)} className="hover:bg-gray-50">
+                  <MessageCircle className="w-4 h-4 ml-2 text-green-600" />
+                  واتساب
+                </Button>
+
+                {selected.receiptUrl && (
+                  <a
+                    href={selected.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    الإيصال
+                  </a>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMessagePreview && selectedRecordForWhatsApp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50"
+            dir="rtl"
+            onClick={() => {
+              if (!sendingWhatsAppId) {
                 setShowMessagePreview(false);
                 setSelectedRecordForWhatsApp(null);
                 setPreviewMessage('');
-              }}
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#f0f2f5] rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col h-[600px] border border-gray-200"
             >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">معاينة رسالة الواتساب</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                يمكنك مراجعة وتعديل الرسالة قبل الإرسال
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                المستلم: {selectedRecordForWhatsApp.customerName || 'غير محدد'}
-              </label>
-              <label className="block text-sm font-semibold text-gray-700">
-                رقم الهاتف: {formatPhoneForApi(selectedRecordForWhatsApp.customerPhone) || 'غير متوفر'}
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                محتوى الرسالة:
-              </label>
-              <textarea
-                value={previewMessage}
-                onChange={(e) => setPreviewMessage(e.target.value)}
-                className="w-full min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-y font-sans text-sm"
-                placeholder="أدخل نص الرسالة..."
-                dir="rtl"
-              />
-              <p className="text-xs text-gray-500">
-                عدد الأحرف: {previewMessage.length} | عدد الأسطر: {previewMessage.split('\n').length}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-4 border-t">
-              <Button
-                onClick={sendWhatsAppApiConfirmed}
-                disabled={!previewMessage.trim() || sendingWhatsAppId === selectedRecordForWhatsApp.id}
-                className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white"
-              >
-                {sendingWhatsAppId === selectedRecordForWhatsApp.id ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    جاري الإرسال...
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    إرسال الرسالة
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowMessagePreview(false);
-                  setSelectedRecordForWhatsApp(null);
-                  setPreviewMessage('');
-                }}
-                disabled={sendingWhatsAppId === selectedRecordForWhatsApp.id}
-                className="flex-1 min-w-[120px]"
-              >
-                إلغاء
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const originalMessage = buildWhatsAppMessage(selectedRecordForWhatsApp);
-                  setPreviewMessage(originalMessage);
-                  toast.success('تم استعادة الرسالة الأصلية');
-                }}
-                disabled={sendingWhatsAppId === selectedRecordForWhatsApp.id}
-                className="text-xs"
-              >
-                استعادة الأصلية
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal معاينة الفاتورة */}
-      {showInvoicePreview && previewInvoiceRecord && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50" dir="rtl">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">معاينة الفاتورة</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  رقم الفاتورة: {previewInvoiceRecord.invoiceNumber}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handlePrintFromPreview}
-                  className="gap-2"
-                >
-                  <Printer className="w-4 h-4" />
-                  طباعة
-                </Button>
+              {/* Header */}
+              <div className="bg-[#008069] text-white p-4 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-full">
+                    <MessageCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-lg">معاينة الرسالة</h2>
+                    <p className="text-xs text-white/80">
+                      إلى: {selectedRecordForWhatsApp.customerName || 'غير محدد'} ({formatPhoneForApi(selectedRecordForWhatsApp.customerPhone) || '—'})
+                    </p>
+                  </div>
+                </div>
                 <button
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-full transition-colors"
                   onClick={() => {
-                    setShowInvoicePreview(false);
-                    setPreviewInvoiceRecord(null);
+                    if (!sendingWhatsAppId) {
+                      setShowMessagePreview(false);
+                      setSelectedRecordForWhatsApp(null);
+                      setPreviewMessage('');
+                    }
                   }}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </div>
 
-            {/* Invoice Content */}
-            <div className="flex-1 overflow-auto p-6 bg-gray-50">
-              <iframe
-                srcDoc={generateInvoiceHTML(previewInvoiceRecord)}
-                className="w-full h-full min-h-[600px] border-0 rounded-lg bg-white shadow-sm"
-                title={`معاينة فاتورة ${previewInvoiceRecord.invoiceNumber}`}
-              />
-            </div>
+              {/* Chat Area (Simulation) */}
+              <div className="flex-1 p-4 overflow-y-auto bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                <div className="flex flex-col gap-2">
+                  <div className="self-center bg-[#e1f3fb] text-gray-800 text-xs px-3 py-1 rounded-lg shadow-sm mb-4">
+                    {formatDate(new Date())}
+                  </div>
 
-            {/* Footer Actions */}
-            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-white">
-              <div className="text-sm text-gray-600">
-                <p>المصدر: {previewInvoiceRecord.source}</p>
-                <p>الحالة: {STATUS_LABELS[previewInvoiceRecord.status]?.label || previewInvoiceRecord.status}</p>
+                  <div className="self-end bg-[#d9fdd3] text-gray-900 status-paid p-3 rounded-lg rounded-tl-none shadow-sm max-w-[90%] text-sm whitespace-pre-wrap relative">
+                    {previewMessage}
+                    <span className="text-[10px] text-gray-500 block text-left mt-1 flex items-center justify-end gap-1">
+                      <span>12:00 م</span>
+                      <span className="text-blue-500">✓✓</span>
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
+
+              {/* Editor & Actions */}
+              <div className="bg-white p-3 border-t border-gray-200">
+                <label className="block text-xs font-semibold text-gray-500 mb-2 px-1">
+                  تعديل نص الرسالة:
+                </label>
+                <textarea
+                  value={previewMessage}
+                  onChange={(e) => setPreviewMessage(e.target.value)}
+                  className="w-full h-32 p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00a884] focus:border-[#00a884] resize-none text-sm"
+                  placeholder="اكتب رسالتك هنا..."
+                />
+
+                <div className="flex items-center justify-between mt-3 gap-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const originalMessage = buildWhatsAppMessage(selectedRecordForWhatsApp);
+                        setPreviewMessage(originalMessage);
+                        toast.success('تم استعادة الرسالة الأصلية');
+                      }}
+                      className="text-gray-500 hover:text-gray-700 text-xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      استعادة الأصل
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (!sendingWhatsAppId) {
+                          setShowMessagePreview(false);
+                          setSelectedRecordForWhatsApp(null);
+                          setPreviewMessage('');
+                        }
+                      }}
+                      disabled={!!sendingWhatsAppId}
+                      className="text-gray-600 hover:bg-gray-100"
+                    >
+                      إلغاء
+                    </Button>
+                    <Button
+                      onClick={sendWhatsAppApiConfirmed}
+                      disabled={!previewMessage.trim() || sendingWhatsAppId === selectedRecordForWhatsApp.id}
+                      className="bg-[#00a884] hover:bg-[#008f6f] text-white px-6 shadow-md"
+                    >
+                      {sendingWhatsAppId === selectedRecordForWhatsApp.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                          جاري الإرسال
+                        </>
+                      ) : (
+                        <>
+                          إرسال
+                          <Send className="w-4 h-4 mr-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showInvoicePreview && previewInvoiceRecord && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center px-4 py-8 z-50"
+            dir="rtl"
+            onClick={() => {
+              setShowInvoicePreview(false);
+              setPreviewInvoiceRecord(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden border border-white/20"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-white/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 p-2 rounded-lg text-purple-600">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">معاينة الفاتورة</h2>
+                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                      رقم الفاتورة:
+                      <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded ml-1">{previewInvoiceRecord.invoiceNumber}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handlePrintFromPreview}
+                    className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md transition-all"
+                  >
+                    <Printer className="w-4 h-4" />
+                    طباعة الآن
+                  </Button>
+                  <button
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors"
+                    onClick={() => {
+                      setShowInvoicePreview(false);
+                      setPreviewInvoiceRecord(null);
+                    }}
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Invoice Content */}
+              <div className="flex-1 overflow-hidden bg-gray-100/50 p-4 sm:p-8 flex items-center justify-center">
+                <div className="w-full h-full bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+                  <iframe
+                    srcDoc={generateInvoiceHTML(previewInvoiceRecord)}
+                    className="w-full h-full border-0"
+                    title={`معاينة فاتورة ${previewInvoiceRecord.invoiceNumber}`}
+                  />
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white text-sm">
+                <div className="flex gap-4 text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">المصدر:</span> {previewInvoiceRecord.source}
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1">
+                    <span className="font-medium">التاريخ:</span> {formatDate(previewInvoiceRecord.createdAt)}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => {
                     setShowInvoicePreview(false);
                     setPreviewInvoiceRecord(null);
-                  }}
-                >
-                  إغلاق
-                </Button>
-                <Button
-                  onClick={handlePrintFromPreview}
-                  className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
-                >
-                  <Printer className="w-4 h-4" />
-                  طباعة PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowInvoicePreview(false);
-                    setSelected(previewInvoiceRecord);
-                    setPreviewInvoiceRecord(null);
-                  }}
-                  className="gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  عرض التفاصيل
-                </Button>
+                  }}>
+                    إغلاق
+                  </Button>
+                  <Button
+                    onClick={handlePrintFromPreview}
+                    className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
+                  >
+                    <Printer className="w-4 h-4" />
+                    طباعة PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowInvoicePreview(false);
+                      setSelected(previewInvoiceRecord);
+                      setPreviewInvoiceRecord(null);
+                    }}
+                    className="gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    عرض التفاصيل
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div >
   );
 }

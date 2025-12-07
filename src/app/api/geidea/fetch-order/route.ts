@@ -9,19 +9,21 @@ export const revalidate = 0;
 
 const buildEndpoint = (baseUrl: string, orderId?: string, merchantReferenceId?: string) => {
   const baseEndpoint = `${baseUrl.replace(/\/$/, '')}/pgw/api/v1/direct/order`;
-  
-  if (orderId) {
-    // استخدام path parameter لـ orderId
+
+  // التحقق من أن orderId هو GUID صالح (x-x-x-x-x)
+  const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (orderId && guidRegex.test(orderId)) {
+    // استخدام path parameter لـ orderId فقط إذا كان GUID صالح
     return `${baseEndpoint}/${orderId}`;
   }
 
   if (merchantReferenceId) {
-    // استخدام query parameter لـ merchantReferenceId حسب الوثائق الرسمية
-    // https://docs.geidea.net/docs/fetch-transaction-or-order-details-by-merchant-reference
+    // استخدام query parameter لـ merchantReferenceId
     return `${baseEndpoint}?MerchantReferenceId=${encodeURIComponent(merchantReferenceId)}`;
   }
 
-  throw new Error('Either orderId or merchantReferenceId is required');
+  throw new Error('Either a valid orderId (GUID) or merchantReferenceId is required');
 };
 
 export async function GET(request: NextRequest) {

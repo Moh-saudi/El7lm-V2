@@ -56,9 +56,8 @@ const SectionCard = ({ title, description, children }: { title: string; descript
 
 const StatusPill = ({ active, label }: { active: boolean; label: string }) => (
   <span
-    className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full ${
-      active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-    }`}
+    className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
+      }`}
   >
     {active ? <ShieldCheck className="w-3 h-3" /> : <ShieldOff className="w-3 h-3" />}
     {label}
@@ -90,11 +89,10 @@ const CredentialRow = ({ label, value }: { label: string; value: string }) => {
 
 const ModePill = ({ mode, active }: { mode: GeideaMode; active: boolean }) => (
   <span
-    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-      active 
-        ? 'bg-indigo-600 text-white shadow-md' 
+    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${active
+        ? 'bg-indigo-600 text-white shadow-md'
         : 'bg-gray-100 text-gray-500'
-    }`}
+      }`}
   >
     {active && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
     {mode === 'live' ? 'البيئة الحية' : 'بيئة الاختبار'}
@@ -121,12 +119,12 @@ export default function GeideaSettingsPage() {
     try {
       setStatusLoading(true);
       console.log('🔄 [Geidea Settings] Loading config status...');
-      
+
       const response = await fetch('/api/geidea/config-status');
       const data = await response.json();
-      
+
       console.log('🔄 [Geidea Settings] Config status response:', data);
-      
+
       if (data.success) {
         setConfigStatus(data.config);
         if (data.mode === 'test' || data.mode === 'live') {
@@ -157,21 +155,21 @@ export default function GeideaSettingsPage() {
     try {
       setModeSaving(true);
       console.log('🔄 [Geidea Settings] Updating mode to:', newMode);
-      
+
       const response = await fetch('/api/geidea/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: newMode }),
       });
-      
+
       const data = await response.json();
       console.log('🔄 [Geidea Settings] Mode update response:', data);
-      
+
       if (data.success) {
         setMode(newMode);
         setEnv(newMode);
         toast.success(newMode === 'live' ? '✅ تم تفعيل البيئة الحية' : '✅ تم تفعيل بيئة الاختبار');
-        
+
         // إعادة تحميل حالة الإعدادات بعد التحديث
         setTimeout(() => {
           loadConfigStatus();
@@ -179,7 +177,7 @@ export default function GeideaSettingsPage() {
       } else {
         console.error('❌ [Geidea Settings] Mode update failed:', data);
         const errorMessage = data.error || 'تعذر تحديث وضع Geidea';
-        
+
         // معالجة خاصة لأخطاء Quota
         if (errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('Quota exceeded')) {
           toast.error('تم تجاوز الحصة المسموحة في Firestore. يرجى المحاولة مرة أخرى بعد قليل.', {
@@ -282,11 +280,70 @@ export default function GeideaSettingsPage() {
   }, [configStatus]);
 
   if (isCheckingAuth) {
-    return <div className="p-6 text-center">جاري التحقق من الصلاحيات...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
+          <p className="text-gray-600 font-medium">جاري التحقق من الصلاحيات...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthorized) {
-    return <div className="p-6 text-center text-red-600">غير مصرح لك بالوصول إلى هذه الصفحة</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4" dir="rtl">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          {/* أيقونة القفل */}
+          <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+
+          {/* العنوان */}
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            غير مصرح لك بالوصول
+          </h2>
+
+          {/* الوصف */}
+          <p className="text-gray-600 mb-8">
+            هذه الصفحة مخصصة للمسؤولين فقط. يرجى تسجيل الدخول بحساب إداري للوصول إلى إعدادات جيديا.
+          </p>
+
+          {/* الأزرار */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => window.location.href = '/admin/login'}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              تسجيل الدخول
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/'}
+              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              الصفحة الرئيسية
+            </button>
+          </div>
+
+          {/* رابط المساعدة */}
+          <p className="mt-6 text-sm text-gray-500">
+            هل تحتاج مساعدة؟{' '}
+            <a href="/support" className="text-blue-600 hover:text-blue-700 font-medium">
+              اتصل بالدعم الفني
+            </a>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -321,11 +378,10 @@ export default function GeideaSettingsPage() {
                 key={type}
                 onClick={() => handleModeUpdate(type)}
                 disabled={modeSaving || mode === type}
-                className={`rounded-full border px-3 py-1 font-medium transition ${
-                  mode === type 
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 cursor-default' 
+                className={`rounded-full border px-3 py-1 font-medium transition ${mode === type
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 cursor-default'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {mode === type ? '✓ ' : ''}اجعل {type === 'live' ? 'الإنتاج' : 'الاختبار'} نشطاً
               </button>
@@ -448,7 +504,7 @@ export default function GeideaSettingsPage() {
                   {testingCallback ? 'جاري الاختبار...' : 'اختبار Callback'}
                 </button>
               </div>
-              
+
               {callbackTestResult && (
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <h4 className="font-semibold text-gray-800 mb-2">نتيجة الاختبار:</h4>
@@ -458,7 +514,7 @@ export default function GeideaSettingsPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
               <h4 className="font-semibold text-blue-900 mb-2">أو استخدم Console:</h4>
               <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800 mb-3">
@@ -467,7 +523,7 @@ export default function GeideaSettingsPage() {
                 <li>انسخ والصق الكود التالي:</li>
               </ol>
               <pre className="p-3 bg-white rounded border border-blue-200 text-xs overflow-x-auto">
-{`fetch('/api/geidea/test-callback', {
+                {`fetch('/api/geidea/test-callback', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -502,9 +558,8 @@ export default function GeideaSettingsPage() {
                   <button
                     key={type}
                     onClick={() => setEnv(type)}
-                    className={`flex-1 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                      env === type ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600'
-                    }`}
+                    className={`flex-1 rounded-xl border px-4 py-2 text-sm font-medium transition ${env === type ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600'
+                      }`}
                   >
                     {type === 'live' ? 'البيئة الحية' : 'بيئة الاختبار'}
                   </button>
@@ -549,9 +604,8 @@ export default function GeideaSettingsPage() {
                 {orderResult && (
                   <>
                     <span
-                      className={`text-xs font-semibold ${
-                        orderResult.success ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
+                      className={`text-xs font-semibold ${orderResult.success ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
                     >
                       {orderResult.success ? 'نجاح' : 'فشل'}
                     </span>
@@ -586,7 +640,7 @@ export default function GeideaSettingsPage() {
                 </p>
                 {orderResult.savedData && (
                   <p className="text-xs text-gray-500 mt-1">
-                    الحالة: {orderResult.savedData.status} | 
+                    الحالة: {orderResult.savedData.status} |
                     المبلغ: {orderResult.savedData.amount} {orderResult.savedData.currency}
                   </p>
                 )}

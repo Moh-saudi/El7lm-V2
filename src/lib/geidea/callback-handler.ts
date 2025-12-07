@@ -53,7 +53,7 @@ export async function processGeideaCallback(
     'merchant_reference_id',
     'reference',
   ]);
-  
+
   const responseCode = extractString(payload, ['responseCode', 'response_code', 'code']);
   const detailedResponseCode = extractString(payload, [
     'detailedResponseCode',
@@ -64,23 +64,23 @@ export async function processGeideaCallback(
     'detailedResponseMessage',
     'detailed_response_message',
   ]);
-  
+
   const transactionId = extractString(payload, [
     'transactionId',
     'sessionId',
     'id',
     'paymentId',
   ]);
-  
+
   const customerEmail = extractString(payload, [
     'customerEmail',
     'customer_email',
     'email',
     'payerEmail',
   ]);
-  
+
   const customerName = extractString(payload, ['customerName', 'customer_name', 'name']);
-  
+
   const customerPhone = extractString(payload, [
     'customerPhone',
     'customer_phone',
@@ -88,7 +88,7 @@ export async function processGeideaCallback(
     'phoneNumber',
     'mobile',
   ]);
-  
+
   const amount = extractNumber(payload, [
     'amount',
     'orderAmount',
@@ -96,9 +96,9 @@ export async function processGeideaCallback(
     'totalAmount',
     'total_amount',
   ]);
-  
+
   const currency = extractString(payload, ['currency', 'currencyCode', 'orderCurrency']) || 'EGP';
-  
+
   const timestampValue = extractString(payload, [
     'timestamp',
     'timeStamp',
@@ -133,7 +133,7 @@ export async function processGeideaCallback(
   // تسجيل في Firestore
   try {
     await saveGeideaPayment(processed);
-    
+
     console.log('✅ [Geidea Callback Handler] Payment processed and saved:', {
       orderId,
       merchantReferenceId,
@@ -159,6 +159,92 @@ export async function processGeideaCallback(
 }
 
 /**
+ * إثراء بيانات الدفع بمعلومات الباقة من بيانات المستخدم
+ */
+async function enrichWithPackageInfo(
+  merchantReferenceId: string | null,
+  customerEmail: string | null
+): Promise<{
+  plan_name?: string | null;
+  packageType?: string | null;
+  package_type?: string | null;
+  selectedPackage?: string | null;
+} | null> {
+  if (!adminDb) {
+    console.warn('⚠️ [Package Info] Admin DB not available');
+    return null;
+  }
+
+  try {
+    let userId: string | null = null;
+
+    // 1️⃣ محاولة استخراج UID من merchantReferenceId
+    // Format expected: EL7LM-{uid}-{timestamp} or similar
+    if (merchantReferenceId) {
+      const parts = merchantReferenceId.split('-');
+      if (parts.length >= 2) {
+        // Try second part as UID
+        userId = parts[1];
+        console.log('🔍 [Package Info] Extracted UID from merchantReferenceId:', userId);
+      }
+    }
+
+    // 2️⃣ إذا لم ننجح، ابحث باستخدام email
+    if (!userId && customerEmail) {
+      console.log('🔍 [Package Info] Searching for user by email:', customerEmail);
+      const usersSnapshot = await adminDb
+        .collection('users')
+        .where('email', '==', customerEmail)
+        .limit(1)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        userId = usersSnapshot.docs[0].id;
+        console.log('✅ [Package Info] Found user by email, UID:', userId);
+      }
+    }
+
+    // 3️⃣ إذا لم نجد المستخدم، return null
+    if (!userId) {
+      console.warn('⚠️ [Package Info] Could not find user ID from merchantReferenceId or email');
+      return null;
+    }
+
+    // 4️⃣ جلب بيانات المستخدم
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      console.warn('⚠️ [Package Info] User document not found:', userId);
+      return null;
+    }
+
+    const userData = userDoc.data();
+    if (!userData) {
+      return null;
+    }
+
+    // 5️⃣ استخراج معلومات الباقة
+    const packageType = userData.selectedPackage || userData.packageType || userData.package_type || null;
+    const plan_name = userData.plan_name || packageType || null;
+
+    console.log('📦 [Package Info] Retrieved package info:', {
+      userId,
+      packageType,
+      plan_name,
+    });
+
+    return {
+      plan_name,
+      packageType,
+      package_type: packageType,
+      selectedPackage: packageType,
+    };
+  } catch (error) {
+    console.error('❌ [Package Info] Error enriching with package info:', error);
+    return null;
+  }
+}
+
+/**
  * حفظ الدفعة في Firestore
  */
 async function saveGeideaPayment(processed: ProcessedCallback): Promise<void> {
@@ -170,6 +256,12 @@ async function saveGeideaPayment(processed: ProcessedCallback): Promise<void> {
   const documentId = processed.orderId;
   const docRef = adminDb.collection('geidea_payments').doc(documentId);
   const existingDoc = await docRef.get();
+
+  // ✨ إثراء بمعلومات الباقة
+  const packageInfo = await enrichWithPackageInfo(
+    processed.merchantReferenceId,
+    processed.customerEmail
+  );
 
   const docData: any = {
     orderId: processed.orderId,
@@ -192,6 +284,11 @@ async function saveGeideaPayment(processed: ProcessedCallback): Promise<void> {
     callbackReceivedAt: new Date().toISOString(),
     paymentMethod: 'geidea',
     source: 'geidea_callback',
+    // ✨ إضافة معلومات الباقة
+    plan_name: packageInfo?.plan_name || null,
+    packageType: packageInfo?.packageType || null,
+    package_type: packageInfo?.package_type || null,
+    selectedPackage: packageInfo?.selectedPackage || null,
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -411,7 +508,7 @@ export async function processGeideaOrderResponse(
 
   // استخراج order من الاستجابة
   const order = orderData?.order || orderData;
-  
+
   if (!order) {
     throw new Error('Order data is required in response');
   }
@@ -428,61 +525,61 @@ export async function processGeideaOrderResponse(
   // استخراج بيانات المعاملة من transactions array
   // نبحث عن آخر معاملة ناجحة أو أول معاملة
   const transactions = order.transactions || [];
-  const successfulTransaction = transactions.find((t: any) => 
+  const successfulTransaction = transactions.find((t: any) =>
     t.status === 'Success' || t.codes?.responseCode === '000'
   );
   const lastTransaction = transactions[transactions.length - 1] || successfulTransaction || {};
 
   // استخراج response codes من المعاملة أو من order
-  const responseCode = lastTransaction.codes?.responseCode || 
-                      order.responseCode || 
-                      orderData.responseCode || 
-                      null;
-  const detailedResponseCode = lastTransaction.codes?.detailedResponseCode || 
-                               order.detailedResponseCode || 
-                               orderData.detailedResponseCode || 
-                               null;
-  const responseMessage = lastTransaction.codes?.responseMessage || 
-                         lastTransaction.codes?.acquirerMessage ||
-                         order.responseMessage || 
-                         orderData.responseMessage || 
-                         null;
-  const detailedResponseMessage = lastTransaction.codes?.detailedResponseMessage || 
-                                 order.detailedResponseMessage || 
-                                 orderData.detailedResponseMessage || 
-                                 null;
+  const responseCode = lastTransaction.codes?.responseCode ||
+    order.responseCode ||
+    orderData.responseCode ||
+    null;
+  const detailedResponseCode = lastTransaction.codes?.detailedResponseCode ||
+    order.detailedResponseCode ||
+    orderData.detailedResponseCode ||
+    null;
+  const responseMessage = lastTransaction.codes?.responseMessage ||
+    lastTransaction.codes?.acquirerMessage ||
+    order.responseMessage ||
+    orderData.responseMessage ||
+    null;
+  const detailedResponseMessage = lastTransaction.codes?.detailedResponseMessage ||
+    order.detailedResponseMessage ||
+    orderData.detailedResponseMessage ||
+    null;
 
   // استخراج transactionId
-  const transactionId = lastTransaction.transactionId || 
-                       lastTransaction.id || 
-                       order.threeDSecureId || 
-                       null;
+  const transactionId = lastTransaction.transactionId ||
+    lastTransaction.id ||
+    order.threeDSecureId ||
+    null;
 
   // استخراج بيانات العميل
   const customerEmail = order.customerEmail || null;
   const customerName = order.customerName || null;
-  const customerPhone = order.customerPhoneNumber || 
-                       (order.customerPhoneCountryCode && order.customerPhoneNumber 
-                         ? `${order.customerPhoneCountryCode}${order.customerPhoneNumber}` 
-                         : null) || 
-                       null;
+  const customerPhone = order.customerPhoneNumber ||
+    (order.customerPhoneCountryCode && order.customerPhoneNumber
+      ? `${order.customerPhoneCountryCode}${order.customerPhoneNumber}`
+      : null) ||
+    null;
 
   // استخراج المبلغ
   const amount = order.totalAmount || order.amount || null;
   const currency = order.currency || order.settleCurrency || 'EGP';
 
   // استخراج تاريخ الدفع
-  const paidAt = order.updatedDate || 
-                 lastTransaction.updatedDate || 
-                 lastTransaction.createdDate || 
-                 order.createdDate || 
-                 null;
+  const paidAt = order.updatedDate ||
+    lastTransaction.updatedDate ||
+    lastTransaction.createdDate ||
+    order.createdDate ||
+    null;
   const paidAtDate = paidAt ? parseDate(paidAt) : null;
 
   // تحديد الحالة من order.status أو order.detailedStatus
   const orderStatus = order.status || order.detailedStatus || '';
   let status: 'success' | 'failed' | 'pending' | 'cancelled';
-  
+
   if (orderStatus.toLowerCase() === 'success' || orderStatus.toLowerCase() === 'paid') {
     status = 'success';
   } else if (orderStatus.toLowerCase() === 'failed' || orderStatus.toLowerCase() === 'declined') {
@@ -521,7 +618,7 @@ export async function processGeideaOrderResponse(
   // تسجيل في Firestore
   try {
     await saveGeideaPaymentFromOrder(processed, orderData);
-    
+
     console.log('✅ [Geidea Order Handler] Order processed and saved:', {
       orderId,
       merchantReferenceId,
@@ -567,25 +664,31 @@ async function saveGeideaPaymentFromOrder(
     const existingData = existingDoc.data();
     const existingStatus = existingData?.status;
     const existingFetchedAt = existingData?.fetchedFromGeideaAt;
-    
+
     // إذا كانت الحالة لم تتغير، نتخطى الكتابة تماماً (حتى لو لم تكن البيانات حديثة)
     if (existingStatus === processed.status) {
       console.log(`ℹ️ [Geidea Order Handler] Skipping save - status unchanged: ${documentId} (${processed.status})`);
       return; // نتخطى الكتابة تماماً لتقليل استخدام Firestore
     }
-    
+
     // إذا كانت البيانات تم جلبها مؤخراً (خلال آخر 10 دقائق)، نتخطى الكتابة حتى لو تغيرت الحالة
     if (existingFetchedAt) {
       const lastFetched = new Date(existingFetchedAt).getTime();
       const now = Date.now();
       const tenMinutes = 10 * 60 * 1000;
-      
+
       if (now - lastFetched < tenMinutes) {
         console.log(`ℹ️ [Geidea Order Handler] Skipping save - recently fetched (${Math.round((now - lastFetched) / 1000 / 60)} minutes ago): ${documentId}`);
         return; // نتخطى الكتابة لتقليل استخدام Firestore
       }
     }
   }
+
+  // ✨ إثراء بمعلومات الباقة
+  const packageInfo = await enrichWithPackageInfo(
+    processed.merchantReferenceId,
+    processed.customerEmail
+  );
 
   const docData: any = {
     orderId: processed.orderId,
@@ -608,6 +711,11 @@ async function saveGeideaPaymentFromOrder(
     fetchedFromGeideaAt: new Date().toISOString(),
     paymentMethod: 'geidea',
     source: 'geidea_fetch_order_api',
+    // ✨ إضافة معلومات الباقة
+    plan_name: packageInfo?.plan_name || null,
+    packageType: packageInfo?.packageType || null,
+    package_type: packageInfo?.package_type || null,
+    selectedPackage: packageInfo?.selectedPackage || null,
     updatedAt: FieldValue.serverTimestamp(),
   };
 
