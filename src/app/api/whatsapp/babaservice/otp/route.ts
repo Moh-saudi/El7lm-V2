@@ -1,7 +1,7 @@
 import { createMessageFromTemplate, formatPhoneNumber, validatePhoneNumber } from '@/lib/whatsapp/babaservice-config';
 import BabaserviceWhatsAppService from '@/lib/whatsapp/babaservice-whatsapp-service';
 import { NextRequest, NextResponse } from 'next/server';
-import { storeOtp } from '../verify-otp/route';
+import { storeOTPInFirestore, hasActiveOTP } from '@/lib/otp/firestore-otp-manager';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,8 +19,23 @@ export async function POST(request: NextRequest) {
     // تنسيق رقم الهاتف أولاً قبل أي استخدام
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    // تخزين الرمز للتحقق لاحقاً
-    storeOtp(formattedPhone, otp);
+    // التحقق من وجود OTP نشط (Rate Limiting)
+    const hasActive = await hasActiveOTP(formattedPhone);
+    if (hasActive) {
+      return NextResponse.json({
+        success: false,
+        error: 'يوجد رمز تحقق نشط بالفعل. يرجى الانتظار قليلاً أو استخدام الرمز المرسل سابقاً'
+      }, { status: 429 }); // Too Many Requests
+    }
+
+    // تخزين الرمز في Firestore للتحقق لاحقاً
+    const storeResult = await storeOTPInFirestore(formattedPhone, otp, 'registration');
+    if (!storeResult.success) {
+      return NextResponse.json({
+        success: false,
+        error: storeResult.error || 'فشل في حفظ رمز التحقق'
+      }, { status: 500 });
+    }
 
     console.log('📱 [API /whatsapp/babaservice/otp] طلب إرسال OTP:', {
       phoneNumber,

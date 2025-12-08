@@ -10,36 +10,36 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 import {
-    Activity,
-    AlertCircle,
-    BarChart3,
-    Building2,
-    Calendar,
-    CheckCircle2,
-    ChevronDown,
-    ChevronUp,
-    Clock,
-    Download,
-    Edit,
-    Eye,
-    Filter,
-    Globe,
-    KeyRound,
-    Mail,
-    MapPin,
-    Phone,
-    RefreshCcw,
-    Search,
-    Shield,
-    Trash2,
-    TrendingUp,
-    UserCheck,
-    UserCog,
-    Users,
-    UserX,
-    XCircle
+  Activity,
+  AlertCircle,
+  BarChart3,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Download,
+  Edit,
+  Eye,
+  Filter,
+  Globe,
+  KeyRound,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCcw,
+  Search,
+  Shield,
+  Trash2,
+  TrendingUp,
+  UserCheck,
+  UserCog,
+  Users,
+  UserX,
+  XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -103,7 +103,7 @@ export default function AdminUsersPage() {
   const [filterRegistrationType, setFilterRegistrationType] = useState<string>('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [organizationsCache, setOrganizationsCache] = useState<{[key: string]: string}>({});
+  const [organizationsCache, setOrganizationsCache] = useState<{ [key: string]: string }>({});
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -136,6 +136,7 @@ export default function AdminUsersPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [newAccountType, setNewAccountType] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [isPermanentDelete, setIsPermanentDelete] = useState(false);
 
   // دالة للتحقق من صحة أرقام الهواتف
   const validateUserPhone = (user: User) => {
@@ -427,8 +428,8 @@ export default function AdminUsersPage() {
         const analyticsRef = collection(db, 'analytics');
         const analyticsSnapshot = await getDocs(analyticsRef);
 
-      analyticsSnapshot.forEach(doc => {
-        const data = doc.data();
+        analyticsSnapshot.forEach(doc => {
+          const data = doc.data();
           const date = safeToDate(data.timestamp || data.date);
 
           if (date) {
@@ -583,7 +584,7 @@ export default function AdminUsersPage() {
 
       // Determine collection name based on account type
       const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
-                            selectedUserDetails.accountType + 's';
+        selectedUserDetails.accountType + 's';
 
       await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
         isActive: false,
@@ -618,7 +619,7 @@ export default function AdminUsersPage() {
       setActionLoading(true);
 
       const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
-                            selectedUserDetails.accountType + 's';
+        selectedUserDetails.accountType + 's';
 
       await updateDoc(doc(db, collectionName, selectedUserDetails.id), {
         isActive: true,
@@ -650,38 +651,61 @@ export default function AdminUsersPage() {
       setActionLoading(true);
 
       const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
-                            selectedUserDetails.accountType + 's';
+        selectedUserDetails.accountType + 's';
 
-      const deletePayload = {
-        isDeleted: true,
-        isActive: false, // Ensure account is inactive upon deletion
-        deletedAt: new Date(),
-        deletedBy: user?.uid || 'admin'
-      };
+      if (isPermanentDelete) {
+        // حذف نهائي - Hard Delete
+        // 1. حذف من المجموعة الخاصة (role collection)
+        await deleteDoc(doc(db, collectionName, selectedUserDetails.id));
 
-      // Update in the source collection
-      await updateDoc(doc(db, collectionName, selectedUserDetails.id), deletePayload);
-
-      // Also update in users collection if it exists (for sync purposes)
-      try {
-        const userDocRef = doc(db, 'users', selectedUserDetails.id);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          await updateDoc(userDocRef, deletePayload);
+        // 2. حذف من مجموعة users الرئيسية إذا كانت مختلفة
+        if (collectionName !== 'users') {
+          try {
+            await deleteDoc(doc(db, 'users', selectedUserDetails.id));
+          } catch (e) {
+            console.warn('Could not delete from users collection (might not exist)', e);
+          }
         }
-      } catch (syncError) {
-        // Non-critical if users collection doesn't exist for this user
-        console.warn('Could not sync deletion to users collection:', syncError);
+
+        // 3. تحديث الواجهة (إزالة المستخدم تماماً)
+        setUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUserDetails.id));
+
+        toast.success('تم حذف الحساب وبياناته نهائياً من قاعدة البيانات');
+      } else {
+        // حذف ناعم - Soft Delete
+        const deletePayload = {
+          isDeleted: true,
+          isActive: false, // Ensure account is inactive upon deletion
+          deletedAt: new Date(),
+          deletedBy: user?.uid || 'admin'
+        };
+
+        // Update in the source collection
+        await updateDoc(doc(db, collectionName, selectedUserDetails.id), deletePayload);
+
+        // Also update in users collection if it exists (for sync purposes)
+        try {
+          const userDocRef = doc(db, 'users', selectedUserDetails.id);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            await updateDoc(userDocRef, deletePayload);
+          }
+        } catch (syncError) {
+          // Non-critical if users collection doesn't exist for this user
+          console.warn('Could not sync deletion to users collection:', syncError);
+        }
+
+        setUsers(prevUsers => prevUsers.map(u =>
+          u.id === selectedUserDetails.id
+            ? { ...u, isDeleted: true, isActive: false }
+            : u
+        ));
+
+        toast.success('تم تغيير حالة الحساب إلى محذوف (Soft Delete)');
       }
 
-      setUsers(prevUsers => prevUsers.map(u =>
-        u.id === selectedUserDetails.id
-          ? { ...u, isDeleted: true, isActive: false }
-          : u
-      ));
-
-      toast.success('تم حذف الحساب بنجاح');
       setShowDeleteDialog(false);
+      setIsPermanentDelete(false);
       setShowUserDetailsDialog(false);
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -701,7 +725,7 @@ export default function AdminUsersPage() {
       setActionLoading(true);
 
       const oldCollectionName = selectedUserDetails.accountType === 'user' ? 'users' :
-                                selectedUserDetails.accountType + 's';
+        selectedUserDetails.accountType + 's';
       const newCollectionName = newAccountType === 'user' ? 'users' : newAccountType + 's';
 
       // Update in current collection
@@ -736,7 +760,7 @@ export default function AdminUsersPage() {
       if (!userToVerify) return;
 
       const collectionName = userToVerify.accountType === 'user' ? 'users' :
-                            userToVerify.accountType + 's';
+        userToVerify.accountType + 's';
 
       await updateDoc(doc(db, collectionName, userId), {
         verificationStatus: 'verified',
@@ -763,7 +787,7 @@ export default function AdminUsersPage() {
       if (!userToReject) return;
 
       const collectionName = userToReject.accountType === 'user' ? 'users' :
-                            userToReject.accountType + 's';
+        userToReject.accountType + 's';
 
       await updateDoc(doc(db, collectionName, userId), {
         verificationStatus: 'rejected',
@@ -809,7 +833,7 @@ export default function AdminUsersPage() {
               }
             }
           });
-        } catch {}
+        } catch { }
         try {
           const visitsSnap = await getDocs(collection(db, 'visits'));
           visitsSnap.forEach((docSnap) => {
@@ -822,7 +846,7 @@ export default function AdminUsersPage() {
               }
             }
           });
-        } catch {}
+        } catch { }
         try {
           const joinsSnap = await getDocs(collection(db, 'player_join_requests'));
           joinsSnap.forEach((docSnap) => {
@@ -835,14 +859,14 @@ export default function AdminUsersPage() {
               }
             }
           });
-        } catch {}
+        } catch { }
         const fallbackActivityCount = Object.keys(earliestActivityByUser).length;
         if (fallbackActivityCount > 0) {
           console.log(`🗂️ تم تجميع تواريخ بديلة لنشاط ${fallbackActivityCount} مستخدم لاستخدامها كتاريخ تسجيل عند الحاجة`);
         }
 
         // أولاً، جلب جميع المنظمات للـ cache
-        const orgsCache: {[key: string]: string} = {};
+        const orgsCache: { [key: string]: string } = {};
         for (const collectionName of ['clubs', 'academies', 'agents', 'trainers']) {
           try {
             const snapshot = await getDocs(collection(db, collectionName));
@@ -909,39 +933,39 @@ export default function AdminUsersPage() {
                 // تحديد نوع التسجيل واسم المنظمة
                 const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || data.agentId || data.agent_id || data.trainerId || data.trainer_id || '';
                 const parentType = data.parentAccountType || data.parent_account_type ||
-                                 (data.clubId || data.club_id ? 'club' : '') ||
-                                 (data.academyId || data.academy_id ? 'academy' : '') ||
-                                 (data.agentId || data.agent_id ? 'agent' : '') ||
-                                 (data.trainerId || data.trainer_id ? 'trainer' : '') || '';
+                  (data.clubId || data.club_id ? 'club' : '') ||
+                  (data.academyId || data.academy_id ? 'academy' : '') ||
+                  (data.agentId || data.agent_id ? 'agent' : '') ||
+                  (data.trainerId || data.trainer_id ? 'trainer' : '') || '';
 
                 const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
                 const registrationType = parentId ? 'organization' : 'direct';
 
-              const userData: User = {
+                const userData: User = {
                   id: userDoc.id,
-                name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                email: data.email || '',
-                phone: data.phone || data.phoneNumber || '',
-                countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
+                  name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
+                  email: data.email || '',
+                  phone: data.phone || data.phoneNumber || '',
+                  countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                   accountType: accountType,
-                isActive: data.isActive !== false,
+                  isActive: data.isActive !== false,
                   createdAt: createdAtDate,
                   lastLogin: safeToDate(data.lastLogin || data.last_login || data.lastAccessTime),
-                city: data.city || data.location?.city || '',
-                country: data.country || data.location?.country || '',
+                  city: data.city || data.location?.city || '',
+                  country: data.country || data.location?.country || '',
                   parentAccountId: parentId,
                   parentAccountType: parentType,
                   parentOrganizationName: parentOrgName,
                   registrationType: registrationType,
-                isDeleted: data.isDeleted || data.deleted || false,
+                  isDeleted: data.isDeleted || data.deleted || false,
                   verificationStatus: data.verificationStatus || data.verification_status || 'pending',
                   profileCompletion: profileCompletion,
                   profileCompleted: profileCompletion >= 80,
                   suspendReason: data.suspendReason || undefined,
                   suspendedAt: safeToDate(data.suspendedAt)
-              };
+                };
 
-              allUsers.push(userData);
+                allUsers.push(userData);
                 collectionCount++;
                 totalProcessed++;
 
@@ -980,11 +1004,11 @@ export default function AdminUsersPage() {
                   allUsers.push({
                     id: userDoc.id,
                     name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                  email: data.email || '',
+                    email: data.email || '',
                     phone: data.phone || data.phoneNumber || '',
                     countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                     accountType: accountType,
-                  isActive: data.isActive !== false,
+                    isActive: data.isActive !== false,
                     createdAt: fallbackDate,
                     lastLogin: null,
                     city: data.city || data.location?.city || '',
@@ -1108,9 +1132,9 @@ export default function AdminUsersPage() {
     const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
     const matchesCity = filterCity === 'all' || user.city === filterCity;
     const matchesOrganization = filterOrganization === 'all' ||
-                               (filterOrganization === 'direct' && !user.parentAccountId) ||
-                               (filterOrganization === 'organization' && user.parentAccountId) ||
-                               (user.parentOrganizationName && user.parentOrganizationName.toLowerCase().includes(filterOrganization.toLowerCase()));
+      (filterOrganization === 'direct' && !user.parentAccountId) ||
+      (filterOrganization === 'organization' && user.parentAccountId) ||
+      (user.parentOrganizationName && user.parentOrganizationName.toLowerCase().includes(filterOrganization.toLowerCase()));
     const matchesRegistrationType = filterRegistrationType === 'all' || user.registrationType === filterRegistrationType;
 
     const matchesProfileCompletion = (() => {
@@ -1161,8 +1185,8 @@ export default function AdminUsersPage() {
     })();
 
     return matchesSearch && matchesType && matchesVerification &&
-           matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
-           matchesOrganization && matchesRegistrationType;
+      matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
+      matchesOrganization && matchesRegistrationType;
   }).sort((a, b) => {
     let aValue: any = a[sortBy as keyof User];
     let bValue: any = b[sortBy as keyof User];
@@ -1573,8 +1597,8 @@ export default function AdminUsersPage() {
 
           // إذا كان الخطأ متعلق بـ Instance ID، اقترح إعادة الربط
           if (whatsappResult.data.errors[0].error.includes('instance') ||
-              whatsappResult.data.errors[0].error.includes('Instance') ||
-              whatsappResult.data.errors[0].error.includes('connection')) {
+            whatsappResult.data.errors[0].error.includes('Instance') ||
+            whatsappResult.data.errors[0].error.includes('connection')) {
             toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
           }
         }
@@ -1720,7 +1744,7 @@ export default function AdminUsersPage() {
                       <span className="text-green-600 font-semibold">{stats.active.toLocaleString()} نشط</span>
                       <span className="text-gray-400">•</span>
                       <span className="text-red-600 font-semibold">{stats.inactive.toLocaleString()} معطل</span>
-                  </div>
+                    </div>
                   </div>
                   <Users className="h-12 w-12 text-blue-600 opacity-80" />
                 </div>
@@ -1908,9 +1932,8 @@ export default function AdminUsersPage() {
                         <div key={index} className="text-center">
                           <div className="h-20 bg-gray-100 rounded relative mb-1 overflow-hidden">
                             <div
-                              className={`absolute bottom-0 left-0 right-0 transition-all ${
-                                isToday ? 'bg-blue-500' : 'bg-gray-400'
-                              }`}
+                              className={`absolute bottom-0 left-0 right-0 transition-all ${isToday ? 'bg-blue-500' : 'bg-gray-400'
+                                }`}
                               style={{ height: `${percentage}%` }}
                             ></div>
                           </div>
@@ -1936,11 +1959,11 @@ export default function AdminUsersPage() {
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 3)
                         .map(([page, count]) => (
-                            <div key={page} className="flex items-center justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                              <span className="text-gray-700 truncate flex-1">{getPageLabel(page)}</span>
-                              <span className="font-semibold text-blue-600 ml-2">{count}</span>
-                                </div>
-                          ))}
+                          <div key={page} className="flex items-center justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                            <span className="text-gray-700 truncate flex-1">{getPageLabel(page)}</span>
+                            <span className="font-semibold text-blue-600 ml-2">{count}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -1957,11 +1980,11 @@ export default function AdminUsersPage() {
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 5)
                         .map(([country, count]) => (
-                            <div key={country} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                              <span className="text-gray-700 truncate">{country}</span>
-                              <span className="font-semibold text-blue-600">{count}</span>
-                                </div>
-                          ))}
+                          <div key={country} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                            <span className="text-gray-700 truncate">{country}</span>
+                            <span className="font-semibold text-blue-600">{count}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
 
@@ -1975,11 +1998,11 @@ export default function AdminUsersPage() {
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 5)
                         .map(([city, count]) => (
-                            <div key={city} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                              <span className="text-gray-700 truncate">{city}</span>
-                              <span className="font-semibold text-green-600">{count}</span>
-                                </div>
-                          ))}
+                          <div key={city} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
+                            <span className="text-gray-700 truncate">{city}</span>
+                            <span className="font-semibold text-green-600">{count}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -1997,7 +2020,7 @@ export default function AdminUsersPage() {
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <MapPin className="h-3 w-3 text-gray-400 flex-shrink-0" />
                             <span className="text-gray-700 truncate">{visit.country} - {visit.city}</span>
-                            </div>
+                          </div>
                           <span className="text-gray-500 text-xs ml-2 flex-shrink-0">
                             {visit.timestamp.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -2046,15 +2069,15 @@ export default function AdminUsersPage() {
                 {/* Filter Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {/* Account Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
-                  <select
-                    value={filterType}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
+                    <select
+                      value={filterType}
                       onChange={(e) => {
                         setFilterType(e.target.value);
                         setCurrentPage(1);
                       }}
-                    title="اختر نوع الحساب"
+                      title="اختر نوع الحساب"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="all">جميع الأنواع ({stats.total.toLocaleString()})</option>
@@ -2063,13 +2086,13 @@ export default function AdminUsersPage() {
                       <option value="agent">وكيل ({stats.byType.agent.toLocaleString()})</option>
                       <option value="trainer">مدرب ({stats.byType.trainer.toLocaleString()})</option>
                       <option value="club">نادي ({stats.byType.club.toLocaleString()})</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
 
                   {/* Verification Status */}
-                <div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">حالة التوثيق</label>
-                  <select
+                    <select
                       value={filterVerification}
                       onChange={(e) => {
                         setFilterVerification(e.target.value);
@@ -2077,18 +2100,18 @@ export default function AdminUsersPage() {
                       }}
                       title="اختر حالة التوثيق"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="all">جميع الحالات</option>
+                    >
+                      <option value="all">جميع الحالات</option>
                       <option value="verified">موثق ({stats.verified.toLocaleString()})</option>
                       <option value="pending">في الانتظار ({stats.pending.toLocaleString()})</option>
                       <option value="rejected">مرفوض</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
 
                   {/* Profile Completion */}
-                <div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">اكتمال الملف</label>
-                  <select
+                    <select
                       value={filterProfileCompletion}
                       onChange={(e) => {
                         setFilterProfileCompletion(e.target.value);
@@ -2102,8 +2125,8 @@ export default function AdminUsersPage() {
                       <option value="partial">جزئي 50-79%</option>
                       <option value="minimal">قليل &lt;50%</option>
                       <option value="incomplete">غير مكتمل &lt;80% ({stats.profileIncomplete.toLocaleString()})</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
 
                   {/* Country */}
                   <div>
@@ -2152,29 +2175,29 @@ export default function AdminUsersPage() {
                   </div>
 
                   {/* Registration Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
-                  <select
-                    value={dateFilter}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
+                    <select
+                      value={dateFilter}
                       onChange={(e) => {
                         setDateFilter(e.target.value);
                         setCurrentPage(1);
                       }}
                       title="اختر فترة التسجيل"
                       className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
-                    <option value="all">جميع التواريخ</option>
+                    >
+                      <option value="all">جميع التواريخ</option>
                       <option value="newest">الأحدث (آخر 24 ساعة) ⭐</option>
                       <option value="today">اليوم ({stats.newToday})</option>
-                    <option value="yesterday">أمس</option>
+                      <option value="yesterday">أمس</option>
                       <option value="last3Days">آخر 3 أيام</option>
                       <option value="thisWeek">هذا الأسبوع ({stats.newThisWeek})</option>
-                    <option value="thisMonth">هذا الشهر</option>
+                      <option value="thisMonth">هذا الشهر</option>
                       {stats.noDate > 0 && (
                         <option value="noDate">بدون تاريخ ({stats.noDate}) ⚠️</option>
                       )}
-                  </select>
-              </div>
+                    </select>
+                  </div>
 
                   {/* Sort By */}
                   <div>
@@ -2286,7 +2309,7 @@ export default function AdminUsersPage() {
                     إعادة تعيين جميع الفلاتر
                   </Button>
                 </div>
-            </CardContent>
+              </CardContent>
             )}
           </Card>
 
@@ -2324,14 +2347,14 @@ export default function AdminUsersPage() {
                     )}
                     {activeTab === 'inactive' && (
                       <>
-                    <Button
-                      size="sm"
-                      onClick={() => handleBulkAction('activate')}
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('activate')}
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                    >
+                        >
                           <UserCheck className="h-4 w-4" />
                           تفعيل ({selectedUsers.length})
-                    </Button>
+                        </Button>
                       </>
                     )}
                     {activeTab === 'deleted' && (
@@ -2403,8 +2426,8 @@ export default function AdminUsersPage() {
                     </span>
                     <span className="text-sm font-normal text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
                       عرض <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> من <span className="font-bold text-blue-600">{getUsersByTab().length.toLocaleString()}</span> مستخدم
-                </span>
-              </CardTitle>
+                    </span>
+                  </CardTitle>
                 </TabsContent>
               </Tabs>
             </CardHeader>
@@ -2447,22 +2470,22 @@ export default function AdminUsersPage() {
 
                       return (
                         <tr key={user.id} className={`hover:bg-blue-50 transition-colors ${isNew ? 'bg-green-50' : ''}`}>
-                        <td className="p-4">
-                          <input
-                            type="checkbox"
+                          <td className="p-4">
+                            <input
+                              type="checkbox"
                               title={`تحديد ${user.name}`}
-                            checked={selectedUsers.includes(user.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedUsers([...selectedUsers, user.id]);
-                              } else {
-                                setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                              }
-                            }}
+                              checked={selectedUsers.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUsers([...selectedUsers, user.id]);
+                                } else {
+                                  setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                                }
+                              }}
                               className="rounded h-5 w-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-4">
+                            />
+                          </td>
+                          <td className="p-4">
                             <div className="flex items-center gap-2">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
                                 {user.name.charAt(0).toUpperCase()}
@@ -2500,8 +2523,8 @@ export default function AdminUsersPage() {
                                 )}
                               </div>
                             </div>
-                        </td>
-                        <td className="p-4">
+                          </td>
+                          <td className="p-4">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Mail className="h-4 w-4 text-gray-400" />
                               <span className="text-sm">{user.email || 'غير محدد'}</span>
@@ -2552,40 +2575,39 @@ export default function AdminUsersPage() {
                           <td className="p-4">
                             <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
                               {getAccountTypeLabel(user.accountType)}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          {user.parentOrganizationName ? (
-                            <div className="flex flex-col gap-1">
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
-                                🏢 {user.parentOrganizationName}
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                ({getAccountTypeLabel(user.parentAccountType)})
-                              </span>
-                            </div>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
-                              📝 تسجيل مباشر
                             </Badge>
-                          )}
-                        </td>
-                        <td className="p-4">
+                          </td>
+                          <td className="p-4">
+                            {user.parentOrganizationName ? (
+                              <div className="flex flex-col gap-1">
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
+                                  🏢 {user.parentOrganizationName}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  ({getAccountTypeLabel(user.parentAccountType)})
+                                </span>
+                              </div>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
+                                📝 تسجيل مباشر
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="p-4">
                             <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
-                            {getVerificationLabel(user.verificationStatus)}
-                          </Badge>
-                        </td>
+                              {getVerificationLabel(user.verificationStatus)}
+                            </Badge>
+                          </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
                               <div className="w-20 bg-gray-200 rounded-full h-2.5">
                                 <div
-                                  className={`h-2.5 rounded-full transition-all ${
-                                    user.profileCompletion >= 80
-                                      ? 'bg-green-500'
-                                      : user.profileCompletion >= 50
+                                  className={`h-2.5 rounded-full transition-all ${user.profileCompletion >= 80
+                                    ? 'bg-green-500'
+                                    : user.profileCompletion >= 50
                                       ? 'bg-yellow-500'
                                       : 'bg-red-500'
-                                  }`}
+                                    }`}
                                   style={{ width: `${user.profileCompletion}%` }}
                                 ></div>
                               </div>
@@ -2612,8 +2634,8 @@ export default function AdminUsersPage() {
                               </p>
                             </div>
                           </td>
-                        <td className="p-4">
-                          {user.createdAt ? (
+                          <td className="p-4">
+                            {user.createdAt ? (
                               <div className="text-sm">
                                 <p className="font-medium text-gray-900">
                                   {user.createdAt.toLocaleDateString('en-GB')}
@@ -2621,8 +2643,8 @@ export default function AdminUsersPage() {
                                 <p className="text-gray-600 text-xs">
                                   {user.createdAt.toLocaleTimeString('en-GB')}
                                 </p>
-                            </div>
-                          ) : (
+                              </div>
+                            ) : (
                               <div className="text-sm">
                                 <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">
                                   <AlertCircle className="h-3 w-3 inline mr-1" />
@@ -2630,109 +2652,127 @@ export default function AdminUsersPage() {
                                 </Badge>
                                 <p className="text-xs text-gray-500 mt-1">لا يوجد تاريخ</p>
                               </div>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2 flex-wrap">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
-                              title="عرض التفاصيل"
-                              onClick={() => {
-                                setSelectedUserDetails(user);
-                                setShowUserDetailsDialog(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                title="عرض التفاصيل"
+                                onClick={() => {
+                                  setSelectedUserDetails(user);
+                                  setShowUserDetailsDialog(true);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
 
-                            {/* Verify/Reject Buttons */}
-                            {user.verificationStatus === 'pending' && (
-                              <>
+                              {/* Verify/Reject Buttons */}
+                              {user.verificationStatus === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                    title="توثيق الحساب"
+                                    onClick={() => handleVerifyAccount(user.id)}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
+                                    title="رفض التوثيق"
+                                    onClick={() => handleRejectAccount(user.id)}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+
+                              {/* Suspend/Activate Button */}
+                              {user.isActive ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                                  title="إيقاف مؤقت"
+                                  onClick={() => {
+                                    setSelectedUserDetails(user);
+                                    setShowSuspendDialog(true);
+                                  }}
+                                >
+                                  <UserX className="h-4 w-4" />
+                                </Button>
+                              ) : (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
-                                  title="توثيق الحساب"
-                                  onClick={() => handleVerifyAccount(user.id)}
+                                  title="تفعيل الحساب"
+                                  onClick={() => {
+                                    setSelectedUserDetails(user);
+                                    setShowActivateDialog(true);
+                                  }}
                                 >
-                                  <CheckCircle2 className="h-4 w-4" />
+                                  <UserCheck className="h-4 w-4" />
                                 </Button>
+                              )}
+
+                              {/* Delete Button (Soft Delete) */}
+                              {!user.isDeleted && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
-                                  title="رفض التوثيق"
-                                  onClick={() => handleRejectAccount(user.id)}
+                                  title="حذف الحساب"
+                                  onClick={() => {
+                                    setSelectedUserDetails(user);
+                                    setIsPermanentDelete(false);
+                                    setShowDeleteDialog(true);
+                                  }}
                                 >
-                                  <XCircle className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </>
-                            )}
+                              )}
 
-                            {/* Suspend/Activate Button */}
-                            {user.isActive ? (
+                              {/* Hard Delete Button (For already deleted users) */}
+                              {user.isDeleted && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-red-100 hover:bg-red-600 border-red-200 text-red-700 hover:text-white transition-colors"
+                                  title="حذف نهائي من قاعدة البيانات"
+                                  onClick={() => {
+                                    setSelectedUserDetails(user);
+                                    setIsPermanentDelete(true);
+                                    setShowDeleteDialog(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+
+                              {/* Change Account Type Button */}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
-                                title="إيقاف مؤقت"
+                                className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800"
+                                title="تغيير نوع الحساب"
                                 onClick={() => {
                                   setSelectedUserDetails(user);
-                                  setShowSuspendDialog(true);
+                                  setNewAccountType(user.accountType);
+                                  setShowChangeTypeDialog(true);
                                 }}
                               >
-                                <UserX className="h-4 w-4" />
+                                <UserCog className="h-4 w-4" />
                               </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
-                                title="تفعيل الحساب"
-                                onClick={() => {
-                                  setSelectedUserDetails(user);
-                                  setShowActivateDialog(true);
-                                }}
-                              >
-                                <UserCheck className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Delete Button */}
-                            {!user.isDeleted && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
-                                title="حذف الحساب"
-                                onClick={() => {
-                                  setSelectedUserDetails(user);
-                                  setShowDeleteDialog(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Change Account Type Button */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800"
-                              title="تغيير نوع الحساب"
-                              onClick={() => {
-                                setSelectedUserDetails(user);
-                                setNewAccountType(user.accountType);
-                                setShowChangeTypeDialog(true);
-                              }}
-                            >
-                              <UserCog className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -2757,7 +2797,7 @@ export default function AdminUsersPage() {
                         {Math.min(startIndex + itemsPerPage, filteredAndSortedUsers.length).toLocaleString()}
                       </span>{' '}
                       من <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> نتيجة
-                  </div>
+                    </div>
                     <div className="flex gap-2 flex-wrap justify-center">
                       <Button
                         variant="outline"
@@ -2768,15 +2808,15 @@ export default function AdminUsersPage() {
                       >
                         الأول
                       </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
-                    >
-                      السابق
-                    </Button>
+                      >
+                        السابق
+                      </Button>
                       {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
                         let page;
                         if (totalPages <= 7) {
@@ -2788,31 +2828,31 @@ export default function AdminUsersPage() {
                         } else {
                           page = currentPage - 3 + i;
                         }
-                      return (
-                        <Button
-                          key={page}
+                        return (
+                          <Button
+                            key={page}
                             variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
                             className={
                               currentPage === page
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg font-bold min-w-[40px]'
                                 : 'bg-white hover:bg-blue-50 border-blue-300 text-blue-700 min-w-[40px]'
-                          }
-                        >
-                          {page}
-                        </Button>
-                      );
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
+                            }
+                          >
+                            {page}
+                          </Button>
+                        );
+                      })}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
-                    >
-                      التالي
-                    </Button>
+                      >
+                        التالي
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -2821,7 +2861,7 @@ export default function AdminUsersPage() {
                         className="bg-white hover:bg-blue-50 border-blue-300 text-blue-700 disabled:opacity-50"
                       >
                         الأخير ({totalPages})
-                    </Button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -2831,316 +2871,198 @@ export default function AdminUsersPage() {
 
         </div>
 
-        {/* User Details Dialog */}
+        {/* User Details Dialog - Redesigned */}
         <Dialog open={showUserDetailsDialog} onOpenChange={setShowUserDetailsDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-3 text-2xl">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
-                  {selectedUserDetails?.name.charAt(0).toUpperCase()}
+          <DialogContent className="sm:max-w-md w-[95vw] p-0 overflow-hidden rounded-[2rem] gap-0 border-0 shadow-2xl flex flex-col max-h-[90vh]">
+
+            {/* 1. Vibrant Header */}
+            <div className="bg-gradient-to-bl from-indigo-600 via-purple-600 to-fuchsia-600 p-6 pt-8 pb-12 text-white relative shrink-0 overflow-hidden">
+              {/* Decorative Circles */}
+              <div className="absolute top-[-50%] left-[-20%] w-[150%] h-[150%] rounded-full border-2 border-white/10 animate-pulse"></div>
+              <div className="absolute top-[-10%] right-[-10%] w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-4 top-4 text-white/80 hover:text-white hover:bg-white/20 rounded-full z-20"
+                onClick={() => setShowUserDetailsDialog(false)}
+              >
+                <XCircle className="w-7 h-7" />
+              </Button>
+
+              <div className="flex flex-col items-center relative z-10">
+                <div className="w-24 h-24 rounded-full p-1.5 bg-white/20 backdrop-blur-md shadow-xl mb-3">
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600 shadow-inner">
+                    {selectedUserDetails?.name.charAt(0).toUpperCase()}
+                  </div>
                 </div>
-                <div>
-                  <p>{selectedUserDetails?.name}</p>
-                  <Badge className={`${getAccountTypeColor(selectedUserDetails?.accountType || 'user')} mt-1`}>
+
+                <h2 className="text-2xl font-bold text-center mb-1 drop-shadow-md">{selectedUserDetails?.name}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className="bg-white/25 hover:bg-white/30 text-white border-0 backdrop-blur-sm shadow-sm px-3 py-1 text-xs">
                     {getAccountTypeLabel(selectedUserDetails?.accountType || 'user')}
                   </Badge>
+                  {selectedUserDetails?.isActive
+                    ? <Badge className="bg-emerald-400/80 hover:bg-emerald-400 text-white border-0 px-2 py-1 text-xs shadow-sm">نشط</Badge>
+                    : <Badge className="bg-rose-500/80 hover:bg-rose-500 text-white border-0 px-2 py-1 text-xs shadow-sm">معطل</Badge>
+                  }
                 </div>
-              </DialogTitle>
-              <DialogDescription>
-                معرف المستخدم: {selectedUserDetails?.id}
-              </DialogDescription>
-            </DialogHeader>
+              </div>
+            </div>
 
-            {selectedUserDetails && (
-              <div className="space-y-6 mt-4">
-                {/* معلومات أساسية */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
-                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-blue-900">
-                    <UserCog className="h-5 w-5" />
-                    المعلومات الأساسية
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-600 flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
-                        البريد الإلكتروني
-                      </label>
-                      <p className="font-medium text-gray-900">{selectedUserDetails.email || 'غير محدد'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600 flex items-center gap-1">
-                        <Phone className="h-4 w-4" />
-                        رقم الهاتف
-                      </label>
-                      <p className="font-medium text-gray-900">{selectedUserDetails.phone || 'غير محدد'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600 flex items-center gap-1">
-                        <Globe className="h-4 w-4" />
-                        الدولة
-                      </label>
-                      <p className="font-medium text-gray-900">{selectedUserDetails.country || 'غير محدد'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600 flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        المدينة
-                      </label>
-                      <p className="font-medium text-gray-900">{selectedUserDetails.city || 'غير محدد'}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* 2. Compact Content - Floating Card Effect */}
+            <div className="flex-1 overflow-y-auto bg-slate-50 -mt-6 rounded-t-[2rem] relative z-20 px-5 pt-8 pb-4 space-y-5">
 
-                {/* حالة الحساب */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
-                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-green-900">
-                    <Shield className="h-5 w-5" />
-                    حالة الحساب
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-600">حالة التفعيل</label>
-                      <div className="mt-1">
-                        <Badge className={selectedUserDetails.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                          {selectedUserDetails.isActive ? '✓ نشط' : '✗ معطل'}
-                        </Badge>
-                      </div>
+              {selectedUserDetails && (
+                <>
+                  {/* Floating Stats Row */}
+                  <div className="flex justify-between divide-x divide-x-reverse divide-slate-100 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="text-center px-2 flex-1">
+                      <p className="text-xs text-slate-400 font-medium mb-1">نسبة الملف</p>
+                      <p className="text-lg font-bold text-indigo-600">{selectedUserDetails.profileCompletion}%</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-600">حالة التوثيق</label>
-                      <div className="mt-1">
-                        <Badge className={getVerificationColor(selectedUserDetails.verificationStatus)}>
-                          {getVerificationLabel(selectedUserDetails.verificationStatus)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">حالة الحذف</label>
-                      <div className="mt-1">
-                        <Badge className={selectedUserDetails.isDeleted ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>
-                          {selectedUserDetails.isDeleted ? '✗ محذوف' : '✓ موجود'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* عرض سبب الإيقاف إذا كان الحساب موقوفاً */}
-                  {!selectedUserDetails.isActive && selectedUserDetails.suspendReason && (
-                    <div className="mt-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
-                      <p className="text-sm font-medium text-orange-900 mb-1 flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4" />
-                        سبب الإيقاف:
+                    <div className="text-center px-2 flex-1">
+                      <p className="text-xs text-slate-400 font-medium mb-1">تاريخ التسجيل</p>
+                      <p className="text-sm font-bold text-slate-700" dir="ltr">
+                        {selectedUserDetails.createdAt ? Math.floor((new Date().getTime() - selectedUserDetails.createdAt.getTime()) / (1000 * 60 * 60 * 24)) + ' يوم' : '-'}
                       </p>
-                      <p className="text-sm text-orange-700">{selectedUserDetails.suspendReason}</p>
-                      {selectedUserDetails.suspendedAt && (
-                        <p className="text-xs text-orange-600 mt-2">
-                          تاريخ الإيقاف: {selectedUserDetails.suspendedAt.toLocaleDateString('ar-SA')}
+                    </div>
+                    <div className="text-center px-2 flex-1">
+                      <p className="text-xs text-slate-400 font-medium mb-1">الزيارات (7 أيام)</p>
+                      <p className="text-lg font-bold text-purple-600">
+                        {visitStats.recentVisits.filter(v => v.userId === selectedUserDetails.id).length || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Info Cards Grid */}
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Email */}
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-indigo-100 transition-colors shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                        <Mail className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500 font-medium">البريد الإلكتروني</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate select-all font-mono">{selectedUserDetails.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-green-100 transition-colors shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                        <Phone className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500 font-medium">رقم الهاتف</p>
+                        <p className="text-sm font-semibold text-slate-800 font-mono select-all" dir="ltr">{selectedUserDetails.phone || 'غير مسجل'}</p>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-orange-100 transition-colors shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500 font-medium">الموقع</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {selectedUserDetails.city ? `${selectedUserDetails.country} - ${selectedUserDetails.city}` : selectedUserDetails.country || 'غير محدد'}
                         </p>
-                      )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Suspension Warning */}
+                  {selectedUserDetails.suspendReason && !selectedUserDetails.isActive && (
+                    <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex gap-3 items-start">
+                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-red-800">الحساب موقوف</p>
+                        <p className="text-xs text-red-600 mt-1">{selectedUserDetails.suspendReason}</p>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* معلومات التسجيل */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
-                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-purple-900">
-                    <Calendar className="h-5 w-5" />
-                    معلومات التسجيل
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-600">تاريخ التسجيل</label>
-                      {selectedUserDetails.createdAt ? (
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {selectedUserDetails.createdAt.toLocaleDateString('ar-SA', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {selectedUserDetails.createdAt.toLocaleTimeString('ar-SA')}
-                          </p>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="text-yellow-600">غير محدد</Badge>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">آخر تسجيل دخول</label>
-                      {selectedUserDetails.lastLogin ? (
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {selectedUserDetails.lastLogin.toLocaleDateString('ar-SA', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {selectedUserDetails.lastLogin.toLocaleTimeString('ar-SA')}
-                          </p>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="text-gray-600">لم يسجل دخول بعد</Badge>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">طريقة التسجيل</label>
-                      <div className="mt-1">
-                        <Badge className={selectedUserDetails.registrationType === 'direct' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
-                          {selectedUserDetails.registrationType === 'direct' ? '📝 تسجيل مباشر' : '🏢 عبر منظمة'}
-                        </Badge>
-                      </div>
-                    </div>
-                    {selectedUserDetails.parentOrganizationName && (
-                      <div>
-                        <label className="text-sm text-gray-600">المنظمة التابع لها</label>
-                        <p className="font-medium text-gray-900">{selectedUserDetails.parentOrganizationName}</p>
-                        <p className="text-sm text-gray-600">({getAccountTypeLabel(selectedUserDetails.parentAccountType)})</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* الإحصائيات */}
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-2 border-orange-200">
-                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-orange-900">
-                    <BarChart3 className="h-5 w-5" />
-                    الإحصائيات
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-white rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">{selectedUserDetails.profileCompletion}%</p>
-                      <p className="text-sm text-gray-600">نسبة الاكتمال</p>
-                    </div>
-                    <div className="text-center p-3 bg-white rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">
-                        {selectedUserDetails.createdAt ?
-                          Math.floor((new Date().getTime() - selectedUserDetails.createdAt.getTime()) / (1000 * 60 * 60 * 24))
-                          : '—'}
+                  {/* Hidden / Deleted Warning */}
+                  {selectedUserDetails.isDeleted && (
+                    <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 text-center">
+                      <p className="text-sm font-bold text-slate-600 flex items-center justify-center gap-2">
+                        <Trash2 className="w-4 h-4" />
+                        هذا الحساب محذوف (Soft Delete)
                       </p>
-                      <p className="text-sm text-gray-600">أيام منذ التسجيل</p>
                     </div>
-                    <div className="text-center p-3 bg-white rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">
-                        {selectedUserDetails.lastLogin ?
-                          Math.floor((new Date().getTime() - selectedUserDetails.lastLogin.getTime()) / (1000 * 60 * 60 * 24))
-                          : '—'}
-                      </p>
-                      <p className="text-sm text-gray-600">أيام منذ آخر دخول</p>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
+              )}
+            </div>
 
-                {/* أزرار الإجراءات */}
-                <div className="flex flex-col gap-3 pt-4 border-t">
-                  {/* أزرار الإدارة */}
-                  <div className="flex gap-2 flex-wrap">
-                    {/* Suspend/Activate */}
+            {/* 3. Action Bar - Sticky Bottom */}
+            <div className="p-5 bg-white border-t border-slate-100 shrink-0 pb-6">
+              {selectedUserDetails && (
+                <div className="space-y-3">
+                  {/* Primary Actions Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => setShowQuickMessageDialog(true)}
+                      className="w-full bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-200"
+                    >
+                      <Mail className="w-4 h-4 mr-2" /> مراسلة
+                    </Button>
+
+                    {/* Contextual Status Action */}
                     {selectedUserDetails.isActive ? (
                       <Button
-                        variant="outline"
-                        className="bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-700"
-                        onClick={() => {
-                          setShowSuspendDialog(true);
-                        }}
+                        onClick={() => setShowSuspendDialog(true)}
+                        className="w-full bg-orange-100 text-orange-700 hover:bg-orange-200 border-0 rounded-xl"
                       >
-                        <UserX className="h-4 w-4 ml-2" />
-                        إيقاف مؤقت
+                        <UserX className="w-4 h-4 mr-2" /> إيقاف
                       </Button>
                     ) : (
                       <Button
-                        variant="outline"
-                        className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
-                        onClick={() => {
-                          setShowActivateDialog(true);
-                        }}
+                        onClick={() => setShowActivateDialog(true)}
+                        className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-0 rounded-xl"
                       >
-                        <UserCheck className="h-4 w-4 ml-2" />
-                        تفعيل الحساب
+                        <UserCheck className="w-4 h-4 mr-2" /> تفعيل
                       </Button>
                     )}
+                  </div>
 
-                    {/* Delete */}
-                    {!selectedUserDetails.isDeleted && (
-                      <Button
-                        variant="outline"
-                        className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
-                        onClick={() => {
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 ml-2" />
-                        حذف الحساب
-                      </Button>
-                    )}
-
-                    {/* Change Type */}
+                  {/* Secondary & Destructive Row */}
+                  <div className="flex gap-3">
                     <Button
                       variant="outline"
-                      className="bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700"
                       onClick={() => {
                         setNewAccountType(selectedUserDetails.accountType);
                         setShowChangeTypeDialog(true);
                       }}
+                      className="flex-1 rounded-xl border-slate-200 text-slate-600"
                     >
-                      <UserCog className="h-4 w-4 ml-2" />
-                      تغيير النوع
+                      <UserCog className="w-4 h-4 mr-2" /> تعديل
                     </Button>
 
-                    {/* Verify/Reject */}
-                    {selectedUserDetails.verificationStatus === 'pending' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
-                          onClick={() => {
-                            handleVerifyAccount(selectedUserDetails.id);
-                            setShowUserDetailsDialog(false);
-                          }}
-                        >
-                          <CheckCircle2 className="h-4 w-4 ml-2" />
-                          توثيق
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
-                          onClick={() => {
-                            handleRejectAccount(selectedUserDetails.id);
-                            setShowUserDetailsDialog(false);
-                          }}
-                        >
-                          <XCircle className="h-4 w-4 ml-2" />
-                          رفض
-                        </Button>
-                      </>
-                    )}
+                    {/* Explicit Delete Button */}
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-xl"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> حذف الحساب
+                    </Button>
                   </div>
 
-                  {/* أزرار التواصل والإغلاق */}
-                  <div className="flex gap-3 justify-between">
+                  {/* Verify Actions (Only if Pending) */}
+                  {selectedUserDetails.verificationStatus === 'pending' && (
                     <Button
-                      variant="outline"
-                      onClick={() => setShowUserDetailsDialog(false)}
+                      onClick={() => handleVerifyAccount(selectedUserDetails.id)}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-200"
                     >
-                      إغلاق
+                      <CheckCircle2 className="w-4 h-4 mr-2" /> قبول توثيق الحساب
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
-                      onClick={() => {
-                        setShowQuickMessageDialog(true);
-                      }}
-                    >
-                      <Mail className="h-4 w-4 ml-2" />
-                      إرسال رسالة
-                    </Button>
-                  </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -3171,11 +3093,10 @@ export default function AdminUsersPage() {
                     <button
                       key={template.id}
                       onClick={() => applyTemplate(template.id)}
-                      className={`p-3 rounded-lg border-2 hover:scale-105 transition-transform ${
-                        selectedTemplate === template.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300'
-                      }`}
+                      className={`p-3 rounded-lg border-2 hover:scale-105 transition-transform ${selectedTemplate === template.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300'
+                        }`}
                       title={template.name}
                     >
                       <div className="text-2xl">{template.icon}</div>
@@ -3349,33 +3270,82 @@ export default function AdminUsersPage() {
         </Dialog>
 
         {/* Delete Account Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-red-600">حذف الحساب</DialogTitle>
-              <DialogDescription>
-                هل أنت متأكد من حذف حساب {selectedUserDetails?.name}؟ سيتمكن المستخدم من التسجيل مرة أخرى باستخدام نفس البريد الإلكتروني.
+        <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+          setShowDeleteDialog(open);
+          if (!open) setIsPermanentDelete(false);
+        }}>
+          <DialogContent className="sm:max-w-[400px] w-[95vw] p-6 rounded-2xl gap-5">
+            <DialogHeader className="space-y-3 text-right">
+              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="text-center text-xl font-bold text-slate-900">
+                حذف الحساب
+              </DialogTitle>
+              <DialogDescription className="text-center text-slate-500 text-sm leading-relaxed">
+                هل أنت متأكد من حذف حساب <span className="font-bold text-slate-800 break-words">{selectedUserDetails?.name}</span>؟
               </DialogDescription>
             </DialogHeader>
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-              <p className="text-sm text-red-700">
-                <strong>ملاحظة:</strong> عملية الحذف ستقوم بوضع علامة حذف على الحساب، ولن يتم حذف البيانات نهائياً. يمكن للمستخدم إنشاء حساب جديد.
-              </p>
+
+            <div className="space-y-4">
+              <div className={`p-4 rounded-xl text-sm border ${isPermanentDelete ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'} transition-colors duration-200`}>
+                <div className="flex gap-3">
+                  <AlertCircle className={`h-5 w-5 flex-shrink-0 ${isPermanentDelete ? 'text-red-600' : 'text-orange-600'}`} />
+                  <p className={`${isPermanentDelete ? 'text-red-800' : 'text-orange-800'} font-medium`}>
+                    {isPermanentDelete
+                      ? 'سيتم حذف جميع البيانات نهائياً ولن يمكنك استرجاعها.'
+                      : 'سيتم نقل الحساب إلى سلة المحذوفات ويمكن استرجاعه لاحقاً.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="permanentDelete"
+                  checked={isPermanentDelete}
+                  onChange={(e) => setIsPermanentDelete(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <label
+                  htmlFor="permanentDelete"
+                  className="flex items-center gap-3 p-3 rounded-xl border-2 border-slate-200 cursor-pointer transition-all hover:bg-slate-50 peer-checked:border-red-500 peer-checked:bg-red-50/50"
+                  dir="rtl"
+                >
+                  <div className="w-5 h-5 rounded border-2 border-slate-300 peer-checked:border-red-500 peer-checked:bg-red-500 flex items-center justify-center transition-all bg-white">
+                    {isPermanentDelete && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <span className={`text-sm font-bold select-none ${isPermanentDelete ? 'text-red-700' : 'text-slate-600'}`}>
+                    حذف نهائي (Hard Delete)
+                  </span>
+                </label>
+              </div>
             </div>
-            <div className="flex gap-3 justify-end pt-4">
+
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteDialog(false)}
                 disabled={actionLoading}
+                className="w-full h-11 rounded-xl font-bold border-slate-200 hover:bg-slate-50 text-slate-600"
               >
                 إلغاء
               </Button>
               <Button
                 onClick={handleDeleteAccount}
                 disabled={actionLoading}
-                className="bg-red-600 hover:bg-red-700"
+                className={`w-full h-11 rounded-xl font-bold shadow-md hover:shadow-lg transition-all ${isPermanentDelete
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-orange-600 hover:bg-orange-700 text-white'
+                  }`}
               >
-                {actionLoading ? 'جاري الحذف...' : 'حذف الحساب'}
+                {actionLoading ? (
+                  <RefreshCcw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    {isPermanentDelete ? 'حذف نهائي' : 'حذف مؤقت'}
+                  </>
+                )}
               </Button>
             </div>
           </DialogContent>

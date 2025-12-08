@@ -155,23 +155,20 @@ export default function ForgotPasswordPage() {
 
       console.log('✅ [Step 1/3] المستخدم موجود:', checkData.userName);
 
-      // 2️⃣ إذا كان المستخدم موجوداً، نرسل OTP
-      // توليد OTP من 6 أرقام
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-      console.log('📤 [Step 2/3] إرسال OTP عبر WhatsApp...');
+      // 2️⃣ إذا كان المستخدم موجوداً، نرسل OTP عبر الخدمة الموحدة
+      console.log('📤 [Step 2/3] إرسال OTP عبر الخدمة الموحدة...');
       console.log('📱 الرقم المنسق:', formattedPhone);
-      console.log('🔐 رمز OTP:', generatedOtp);
 
-      // استخدام Babaservice WhatsApp API الجديد
-      const res = await fetch('/api/whatsapp/babaservice/otp', {
+      // استخدام الخدمة الموحدة لإرسال OTP (WhatsApp أو SMS تلقائياً)
+      const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: formattedPhone,
-          otp: generatedOtp,
           name: checkData.userName || 'مستخدم',
-          instance_id: '68F243B3A8D8D'
+          purpose: 'password_reset',
+          channel: 'auto', // سيحاول WhatsApp أولاً، ثم SMS إذا فشل
+          instanceId: '68F243B3A8D8D'
         }),
       });
 
@@ -179,24 +176,28 @@ export default function ForgotPasswordPage() {
       console.log('📥 [Step 2/3] رد API إرسال OTP:', {
         status: res.status,
         ok: res.ok,
-        data: data
+        data: { ...data, otp: data.otp ? '***' : undefined } // إخفاء OTP في الـ logs
       });
 
       if (!res.ok || !data.success) {
         const errorMsg = data.error || 'فشل إرسال الرمز';
         console.error('❌ [Step 2/3] فشل إرسال OTP:', errorMsg);
         setDetailedError(`خطأ في الإرسال: ${errorMsg}`);
-        setWhatsappStatus('disconnected');
+        setWhatsappStatus(data.channel === 'whatsapp' ? 'disconnected' : null);
         throw new Error(errorMsg);
       }
 
-      console.log('✅ [Step 2/3] تم إرسال OTP بنجاح');
-      setWhatsappStatus('connected');
+      console.log('✅ [Step 2/3] تم إرسال OTP بنجاح عبر', data.channel);
+      setWhatsappStatus(data.channel === 'whatsapp' ? 'connected' : 'sms');
 
       // حفظ OTP المُرسل والرقم المنسق للتحقق لاحقاً
-      sessionStorage.setItem('reset_otp', generatedOtp);
-      sessionStorage.setItem('reset_otp_time', Date.now().toString());
-      sessionStorage.setItem('reset_formatted_phone', formattedPhone);
+      // ملاحظة: في الإنتاج، OTP محفوظ في Firestore ولا نحتاج sessionStorage
+      // لكن نستخدمه للتحقق المحلي أيضاً
+      if (data.otp) {
+        sessionStorage.setItem('reset_otp', data.otp);
+        sessionStorage.setItem('reset_otp_time', Date.now().toString());
+        sessionStorage.setItem('reset_formatted_phone', formattedPhone);
+      }
 
       console.log('✅ [Step 3/3] الانتقال لخطوة إدخال OTP');
       toast.success('تم إرسال رمز التحقق عبر WhatsApp بنجاح ✅');
@@ -219,35 +220,52 @@ export default function ForgotPasswordPage() {
       console.log('🔐 [OTP Verification] بدء التحقق من رمز OTP...');
       console.log('📱 الرمز المدخل:', otp);
 
-      // التحقق من OTP محلياً
-      const savedOtp = sessionStorage.getItem('reset_otp');
-      const savedTime = sessionStorage.getItem('reset_otp_time');
-
-      console.log('💾 الرمز المحفوظ:', savedOtp);
-      console.log('⏰ وقت الإرسال:', savedTime ? new Date(parseInt(savedTime)).toLocaleString('ar-EG') : 'غير موجود');
-
-      if (!savedOtp || !savedTime) {
-        throw new Error('انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد');
+      // استخدام Firestore للتحقق من OTP (الطريقة الجديدة)
+      const formattedPhone = sessionStorage.getItem('reset_formatted_phone') || fullPhoneNumber;
+      
+      if (!formattedPhone) {
+        throw new Error('رقم الهاتف غير موجود. يرجى طلب رمز جديد');
       }
 
-      // التحقق من انتهاء صلاحية OTP (10 دقائق)
-      const otpAge = Date.now() - parseInt(savedTime);
-      const otpAgeMinutes = Math.floor(otpAge / 60000);
-      console.log(`⏱️ عمر الرمز: ${otpAgeMinutes} دقيقة`);
+      const verifyResponse = await fetch('/api/whatsapp/babaservice/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          otp: otp
+        })
+      });
 
-      if (otpAge > 10 * 60 * 1000) {
-        sessionStorage.removeItem('reset_otp');
-        sessionStorage.removeItem('reset_otp_time');
-        throw new Error('انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد');
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyResponse.ok || !verifyData.success) {
+        // Fallback: التحقق المحلي من sessionStorage (للتوافق مع OTP القديمة)
+        const savedOtp = sessionStorage.getItem('reset_otp');
+        const savedTime = sessionStorage.getItem('reset_otp_time');
+
+        if (savedOtp && savedTime) {
+          const otpAge = Date.now() - parseInt(savedTime);
+          // التحقق المحلي في حالة OTP قديم جداً: 1 دقيقة فقط
+          if (otpAge <= 1 * 60 * 1000 && otp === savedOtp) {
+            console.log('✅ [OTP Verification] تم التحقق محلياً (fallback)');
+            sessionStorage.removeItem('reset_otp');
+            sessionStorage.removeItem('reset_otp_time');
+            toast.success('تم التحقق من الرمز بنجاح ✅ يمكنك الآن إدخال كلمة المرور الجديدة');
+            setStep('password');
+            setLoading(false);
+            return;
+          }
+        }
+
+        throw new Error(verifyData.error || 'رمز التحقق غير صحيح');
       }
 
-      // التحقق من تطابق OTP
-      if (otp !== savedOtp) {
-        console.error('❌ الرمز غير مطابق:', { entered: otp, expected: savedOtp });
-        throw new Error('رمز التحقق غير صحيح');
-      }
-
-      console.log('✅ [OTP Verification] تم التحقق من الرمز بنجاح');
+      console.log('✅ [OTP Verification] تم التحقق من الرمز بنجاح عبر Firestore');
+      
+      // تنظيف sessionStorage
+      sessionStorage.removeItem('reset_otp');
+      sessionStorage.removeItem('reset_otp_time');
+      
       toast.success('تم التحقق من الرمز بنجاح ✅ يمكنك الآن إدخال كلمة المرور الجديدة');
       setStep('password');
     } catch (error: any) {

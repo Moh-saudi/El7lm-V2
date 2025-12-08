@@ -5,18 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import {
-    ArrowRight,
-    BarChart3,
-    BookOpen,
-    Calendar,
-    FileText,
-    Megaphone,
-    Plus,
-    Settings,
-    Shield,
-    Trophy,
-    Users,
-    Video
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Calendar,
+  FileText,
+  Megaphone,
+  Plus,
+  Settings,
+  Shield,
+  Trophy,
+  Users,
+  Video
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -79,192 +79,56 @@ export default function AdminDashboardPage() {
     let isMounted = true;
 
     async function fetchAllStats() {
+      if (!isMounted) return;
+      setLoading(true);
+      console.log('🔍 Starting to fetch all stats in parallel...');
+
       try {
-        if (isMounted) {
-          // Use setTimeout to avoid blocking the main thread
-          setTimeout(() => {
-            if (isMounted) {
-              setLoading(true);
-            }
-          }, 0);
-        }
-        console.log('🔍 Starting to fetch all stats...');
+        const [messageResult, userResult, adResult, mediaResult] = await Promise.allSettled([
+          fetch('/api/admin/babaservice/stats'),
+          fetch('/api/admin/users/count'),
+          fetch('/api/admin/ads/count'),
+          fetch('/api/admin/media/count')
+        ]);
 
-        // Fetch message stats
-        console.log('📊 Fetching message stats...');
-        const messageResponse = await fetch('/api/admin/babaservice/stats');
-
-        if (!messageResponse.ok) {
-          throw new Error(`Message stats API failed: ${messageResponse.status} ${messageResponse.statusText}`);
-        }
-
-        const messageData = await messageResponse.json();
-        console.log('📊 Message stats response:', messageData);
-
-        if (messageData.success && isMounted) {
-          setMessageStats(messageData.data);
-          console.log('✅ Message stats set successfully');
+        // 1. Message Stats
+        if (messageResult.status === 'fulfilled' && messageResult.value.ok) {
+          try {
+            const data = await messageResult.value.json();
+            if (data.success && isMounted) setMessageStats(data.data);
+          } catch (e) { console.error('Failed to parse message stats'); }
         } else {
-          console.warn('⚠️ Failed to fetch message stats:', messageData.error);
-          // Set default values if API fails
-          if (isMounted) {
-            setMessageStats({
-              totalMessages: 0,
-              activeUsers: 0,
-              successRate: 0,
-              lastUpdate: new Date().toISOString(),
-              platform: 'Baba Service',
-              status: 'error'
-            });
-          }
+          console.warn('Message stats fetch failed');
         }
 
-        // Fetch user stats
-        console.log('🔍 Fetching user stats...');
-        const userResponse = await fetch('/api/admin/users/count');
-
-        if (!userResponse.ok) {
-          console.warn(`⚠️ User stats API failed: ${userResponse.status} ${userResponse.statusText}`);
-          // Set default values if API fails
-          setUserStats({
-            totalUsers: 0,
-            activeUsers: 0,
-            newUsersToday: 0,
-            lastUpdate: new Date().toISOString()
-          });
-        } else {
-          const userData = await userResponse.json();
-          console.log('📊 User stats response:', userData);
-          if (userData.success && isMounted) {
-            setUserStats(userData.data);
-            console.log('✅ User stats set:', userData.data);
-          } else {
-            console.warn('⚠️ Failed to fetch user stats:', userData.error);
-            // Set default values if API fails
-            if (isMounted) {
-              setUserStats({
-                totalUsers: 0,
-                activeUsers: 0,
-                newUsersToday: 0,
-                lastUpdate: new Date().toISOString()
-              });
-            }
-          }
+        // 2. User Stats
+        if (userResult.status === 'fulfilled' && userResult.value.ok) {
+          try {
+            const data = await userResult.value.json();
+            if (data.success && isMounted) setUserStats(data.data);
+          } catch (e) { console.error('Failed to parse user stats'); }
         }
 
-        // Fetch ad stats
-        console.log('🔍 Fetching ad stats...');
-        const adResponse = await fetch('/api/admin/ads/count');
-
-        if (!adResponse.ok) {
-          console.warn(`⚠️ Ad stats API failed: ${adResponse.status} ${adResponse.statusText}`);
-          setAdStats({
-            totalAds: 0,
-            activeAds: 0,
-            pendingAds: 0,
-            lastUpdate: new Date().toISOString()
-          });
-        } else {
-          const adData = await adResponse.json();
-          if (adData.success && isMounted) {
-            setAdStats(adData.data);
-            console.log('✅ Ad stats set successfully');
-          } else {
-            console.warn('⚠️ Failed to fetch ad stats:', adData.error);
-            if (isMounted) {
-              setAdStats({
-                totalAds: 0,
-                activeAds: 0,
-                pendingAds: 0,
-                lastUpdate: new Date().toISOString()
-              });
-            }
-          }
+        // 3. Ad Stats
+        if (adResult.status === 'fulfilled' && adResult.value.ok) {
+          try {
+            const data = await adResult.value.json();
+            if (data.success && isMounted) setAdStats(data.data);
+          } catch (e) { console.error('Failed to parse ad stats'); }
         }
 
-        // Fetch media stats
-        console.log('🔍 Fetching media stats...');
-        const mediaResponse = await fetch('/api/admin/media/count');
-
-        if (!mediaResponse.ok) {
-          console.warn(`⚠️ Media stats API failed: ${mediaResponse.status} ${mediaResponse.statusText}`);
-          setMediaStats({
-            totalMedia: 0,
-            images: 0,
-            videos: 0,
-            documents: 0,
-            lastUpdate: new Date().toISOString()
-          });
-        } else {
-          const mediaData = await mediaResponse.json();
-          if (mediaData.success && isMounted) {
-            setMediaStats(mediaData.data);
-            console.log('✅ Media stats set successfully');
-          } else {
-            console.warn('⚠️ Failed to fetch media stats:', mediaData.error);
-            if (isMounted) {
-              setMediaStats({
-                totalMedia: 0,
-                images: 0,
-                videos: 0,
-                documents: 0,
-                lastUpdate: new Date().toISOString()
-              });
-            }
-          }
+        // 4. Media Stats
+        if (mediaResult.status === 'fulfilled' && mediaResult.value.ok) {
+          try {
+            const data = await mediaResult.value.json();
+            if (data.success && isMounted) setMediaStats(data.data);
+          } catch (e) { console.error('Failed to parse media stats'); }
         }
+
       } catch (error) {
-        console.error('❌ Error fetching all stats:', error);
-
-        // Set default values for all stats if there's a general error
-        if (isMounted) {
-          // Use setTimeout to avoid blocking the main thread
-          setTimeout(() => {
-            if (isMounted) {
-              setMessageStats({
-                totalMessages: 0,
-                activeUsers: 0,
-                successRate: 0,
-                lastUpdate: new Date().toISOString(),
-                platform: 'BeOn V3',
-                status: 'error'
-              });
-
-              setUserStats({
-                totalUsers: 0,
-                activeUsers: 0,
-                newUsersToday: 0,
-                lastUpdate: new Date().toISOString()
-              });
-
-              setAdStats({
-                totalAds: 0,
-                activeAds: 0,
-                pendingAds: 0,
-                lastUpdate: new Date().toISOString()
-              });
-
-              setMediaStats({
-                totalMedia: 0,
-                images: 0,
-                videos: 0,
-                documents: 0,
-                lastUpdate: new Date().toISOString()
-              });
-            }
-          }, 0);
-        }
-
-        console.log('✅ Default stats set due to error');
+        console.error('❌ Error in parallel fetch:', error);
       } finally {
-        if (isMounted) {
-          // Use setTimeout to avoid blocking the main thread
-          setTimeout(() => {
-            if (isMounted) {
-              setLoading(false);
-            }
-          }, 0);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 

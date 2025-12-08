@@ -3,26 +3,31 @@
 import SimpleLoader from '@/components/shared/SimpleLoader';
 import { UserData } from '@/types';
 import {
-    createUserWithEmailAndPassword,
-    EmailAuthProvider,
-    onAuthStateChanged,
-    reauthenticateWithCredential,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signOut,
-    updatePassword,
-    User
+  createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  signInWithPopup,
+  signOut,
+  updatePassword,
+  User
 } from 'firebase/auth';
 import {
-    doc,
-    getDoc,
-    serverTimestamp,
-    setDoc,
-    collection,
-    query,
-    where,
-    getDocs,
-    updateDoc
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -39,6 +44,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<{ user: User; userData: UserData }>;
+  signInWithGoogle: (defaultRole?: UserRole) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
   register: (email: string, password: string, role: UserRole, additionalData?: any) => Promise<UserData>;
   logout: () => Promise<void>;
   signOut: () => Promise<void>; // إضافة signOut كمرادف لـ logout
@@ -47,6 +53,9 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   clearError: () => void;
   refreshUserData: () => Promise<void>;
+  setupRecaptcha: (containerId: string) => Promise<any>;
+  sendPhoneOTP: (phoneNumber: string, appVerifier: any) => Promise<any>;
+  verifyPhoneOTP: (confirmationResult: any, otp: string, defaultRole?: UserRole, additionalData?: any) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
 }
 
 // Create context
@@ -118,8 +127,8 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
   // Skip auth initialization during build to prevent memory issues
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
-                     process.env.DISABLE_FIREBASE_DURING_BUILD === 'true' ||
-                     process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+    process.env.DISABLE_FIREBASE_DURING_BUILD === 'true' ||
+    process.env.NODE_ENV === 'production' && typeof window === 'undefined';
 
   if (isBuildTime) {
     console.log('🚫 Skipping Firebase Auth initialization during build phase');
@@ -130,14 +139,18 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       loading: false,
       error: null,
       login: async () => { throw new Error('Auth not available during build'); },
+      signInWithGoogle: async () => { throw new Error('Auth not available during build'); },
       register: async () => { throw new Error('Auth not available during build'); },
-      logout: async () => {},
-      signOut: async () => {},
-      updateUserData: async () => {},
-      resetPassword: async () => {},
-      changePassword: async () => {},
-      clearError: () => {},
-      refreshUserData: async () => {}
+      logout: async () => { },
+      signOut: async () => { },
+      updateUserData: async () => { },
+      resetPassword: async () => { },
+      changePassword: async () => { },
+      clearError: () => { },
+      refreshUserData: async () => { },
+      setupRecaptcha: async () => { return null; },
+      sendPhoneOTP: async () => { throw new Error('Auth not available during build'); },
+      verifyPhoneOTP: async () => { throw new Error('Auth not available during build'); }
     };
     return (
       <AuthContext.Provider value={mockValue}>
@@ -224,6 +237,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           phone: additionalData.phone || '',
           profile_image: additionalData.profile_image || additionalData.profileImage || user.photoURL || '',
           isNewUser: false, // Since we found data in role collection, not actually new
+          isActive: true,
           created_at: additionalData.created_at || additionalData.createdAt || new Date(),
           updated_at: new Date(),
           ...additionalData
@@ -375,14 +389,14 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                       ...userData,
                       updated_at: new Date()
                     };
-                    
+
                     // إذا كان موظفاً، أضف معلومات إضافية
                     if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
                       syncData.employeeId = employeesSnapshot.docs[0].id;
                       syncData.employeeRole = foundData.role;
                       syncData.role = foundData.role;
                     }
-                    
+
                     await setDoc(userRef, syncData, { merge: true });
                   } catch (syncError) {
                     // Continue anyway - this is not critical
@@ -466,9 +480,9 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         }
       } finally {
         if (isSubscribed) {
-        setLoading(false);
-        setHasInitialized(true);
-      }
+          setLoading(false);
+          setHasInitialized(true);
+        }
       }
     });
 
@@ -677,7 +691,414 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
   };
 
   /**
+   * تسجيل الدخول/التسجيل باستخدام Google
+   * @param defaultRole - الدور الافتراضي للمستخدم الجديد (player)
+   * @returns بيانات المستخدم ومعلومة إذا كان جديد أم لا
+   */
+  const signInWithGoogle = async (
+    defaultRole: UserRole = 'player'
+  ): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
+    try {
+      console.log('🔵 Starting Google Sign-In...');
+      setError(null);
+
+      // إنشاء Google Provider
+      const googleProvider = new GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+
+      // تعيين اللغة العربية
+      googleProvider.setCustomParameters({
+        prompt: 'select_account',
+        hl: 'ar'
+      });
+
+      // تسجيل الدخول باستخدام Popup
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      console.log('✅ Google Sign-In successful:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      });
+
+      // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
+      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      let foundData = null;
+      let userAccountType: UserRole = defaultRole;
+      let isNewUser = true;
+
+      // البحث المتوازي في جميع المجموعات
+      const queries = accountTypes.map(collectionName =>
+        getDoc(doc(db, collectionName, user.uid))
+      );
+
+      const results = await Promise.all(queries);
+
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].exists()) {
+          foundData = results[i].data();
+          // معالجة خاصة لـ admins collection
+          if (accountTypes[i] === 'admins') {
+            userAccountType = 'admin';
+          } else {
+            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          }
+          isNewUser = false;
+          console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
+          break;
+        }
+      }
+
+      // إذا لم نجد في المجموعات الخاصة، نبحث في users
+      let migrationData: any = null;
+
+      if (!foundData) {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          foundData = userDoc.data();
+          userAccountType = foundData.accountType || defaultRole;
+          isNewUser = false;
+          console.log('✅ Found existing user in users collection');
+        } else if (user.email) {
+          // البحث عن مستخدم بنفس البريد الإلكتروني للمهاجرة
+          try {
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('email', '==', user.email));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+              migrationData = querySnapshot.docs[0].data();
+              console.log('🔄 Found existing account via email - starting migration', migrationData);
+              // نستخدم البيانات القديمة لكن نعتبره مستخدم جديد (من حيث Auth ID) ليتم حفظ البيانات في الـ Doc الجديد
+              // لكن نوع الحساب يجب أن يكون من الحساب القديم
+              if (migrationData.accountType) {
+                userAccountType = migrationData.accountType as UserRole;
+              }
+            }
+          } catch (err) {
+            console.warn('Error searching by email for migration:', err);
+          }
+        }
+      }
+
+      let userData: UserData;
+
+      if (isNewUser) {
+        // مستخدم جديد - إنشاء حساب
+        console.log(migrationData ? '🔄 Migrating user data...' : '🆕 Creating new user from Google Sign-In...');
+
+        userData = {
+          uid: user.uid,
+          email: user.email || '',
+          accountType: userAccountType, // استخدام النوع المحدد (سواء افتراضي او من المهاجرة)
+          full_name: (migrationData ? (migrationData.full_name || migrationData.name) : null) || user.displayName || '',
+          phone: (migrationData ? migrationData.phone : null) || user.phoneNumber || '',
+          profile_image: (migrationData ? (migrationData.profile_image || migrationData.profileImage) : null) || user.photoURL || '',
+          isNewUser: migrationData ? false : true,
+          isGoogleUser: true,
+          googleId: user.uid,
+          created_at: migrationData ? (migrationData.created_at || new Date()) : new Date(),
+          updated_at: new Date(),
+          country: migrationData?.country || '',
+          countryCode: migrationData?.countryCode || '',
+          currency: migrationData?.currency || '',
+          currencySymbol: migrationData?.currencySymbol || '',
+          ...(migrationData || {}) // دمج البيانات القديمة
+        };
+
+        // التأكد من أن UID هو الجديد
+        userData.uid = user.uid;
+        if (migrationData) {
+          userData.migratedFromUid = migrationData.uid;
+        }
+
+        // حفظ في مجموعة users
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, sanitizeForFirestore(userData));
+        console.log('✅ User saved to users collection');
+
+        // حفظ في المجموعة الخاصة بالدور
+        if (userAccountType !== 'admin') {
+          const roleRef = doc(db, userAccountType + 's', user.uid);
+          await setDoc(roleRef, sanitizeForFirestore({
+            ...userData,
+            created_at: new Date(),
+            updated_at: new Date()
+          }));
+          console.log(`✅ User saved to ${userAccountType}s collection`);
+        }
+      } else {
+        // مستخدم موجود - تحديث البيانات
+        console.log('👤 Existing user signed in with Google');
+
+        userData = {
+          uid: user.uid,
+          email: user.email || foundData?.email || '',
+          accountType: userAccountType,
+          full_name: foundData?.full_name || foundData?.name || user.displayName || '',
+          phone: foundData?.phone || user.phoneNumber || '',
+          profile_image: foundData?.profile_image || foundData?.profileImage || user.photoURL || '',
+          country: foundData?.country || '',
+          isNewUser: false,
+          isGoogleUser: true,
+          created_at: foundData?.created_at || foundData?.createdAt || new Date(),
+          updated_at: new Date(),
+          ...foundData
+        };
+
+        // تحديث آخر دخول
+        try {
+          await updateLastLogin(user.uid);
+        } catch (updateError) {
+          console.warn('Failed to update last login:', updateError);
+        }
+      }
+
+      // فحص حالة الحساب (غير مفعل/محذوف)
+      if (!isNewUser) {
+        const accountStatus = await checkAccountStatus(user.uid);
+        if (!accountStatus.canLogin) {
+          await signOut(auth);
+          throw new Error(accountStatus.message);
+        }
+      }
+
+      setUser(user);
+      setUserData(userData);
+
+      console.log('🎉 Google Sign-In completed successfully', {
+        isNewUser,
+        accountType: userData.accountType
+      });
+
+      return { user, userData, isNewUser };
+    } catch (error: any) {
+      console.error('❌ Google Sign-In error:', error);
+
+      // معالجة أخطاء Google Sign-In
+      let errorMessage = 'فشل تسجيل الدخول بواسطة Google';
+
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'تم إغلاق نافذة تسجيل الدخول';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة';
+          break;
+        case 'auth/cancelled-popup-request':
+          errorMessage = 'تم إلغاء طلب تسجيل الدخول';
+          break;
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = 'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني بطريقة مختلفة';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'خطأ في الاتصال بالإنترنت';
+          break;
+        default:
+          if (error.message) {
+            errorMessage = error.message;
+          }
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  /**
+   * إعداد reCAPTCHA
+   */
+  const setupRecaptcha = async (containerId: string) => {
+    try {
+      if (!auth) throw new Error('Auth not initialized');
+
+      // تنظيف أي verifier سابق لتجنب التكرار
+      if ((window as any).recaptchaVerifier) {
+        try { (window as any).recaptchaVerifier.clear(); } catch (e) { }
+      }
+
+      const verifier = new RecaptchaVerifier(auth, containerId, {
+        size: 'invisible',
+        callback: (response: any) => {
+          console.log('✅ Recaptcha solved');
+        },
+        'expired-callback': () => {
+          console.warn('⚠️ Recaptcha expired');
+        }
+      });
+
+      (window as any).recaptchaVerifier = verifier;
+      return verifier;
+    } catch (error) {
+      console.error('❌ Recaptcha setup error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * إرسال رمز التحقق لهاتف
+   */
+  const sendPhoneOTP = async (phoneNumber: string, appVerifier: any) => {
+    try {
+      console.log('📱 Sending OTP to:', phoneNumber);
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      return confirmationResult;
+    } catch (error) {
+      console.error('❌ Send Phone OTP error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * التحقق من رمز الهاتف وإنشاء/تحديث المستخدم
+   */
+  const verifyPhoneOTP = async (
+    confirmationResult: any,
+    otp: string,
+    defaultRole: UserRole = 'player',
+    additionalData: any = {}
+  ): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
+    try {
+      console.log('🔐 Verifying Phone OTP...');
+      setError(null);
+
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+      console.log('✅ Phone verified successfully:', user.uid);
+
+      // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
+      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      let foundData = null;
+      let userAccountType: UserRole = defaultRole;
+      let isNewUser = true;
+
+      // البحث المتوازي في جميع المجموعات
+      const queries = accountTypes.map(collectionName =>
+        getDoc(doc(db, collectionName, user.uid))
+      );
+
+      const results = await Promise.all(queries);
+
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].exists()) {
+          foundData = results[i].data();
+          if (accountTypes[i] === 'admins') {
+            userAccountType = 'admin';
+          } else {
+            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+          }
+          isNewUser = false;
+          console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
+          break;
+        }
+      }
+
+      // إذا لم نجد في المجموعات الخاصة، نبحث في users
+      if (!foundData) {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          foundData = userDoc.data();
+          userAccountType = foundData.accountType || defaultRole;
+          isNewUser = false;
+          console.log('✅ Found existing user in users collection');
+        }
+      }
+
+      let userData: UserData;
+
+      if (isNewUser) {
+        // مستخدم جديد - إنشاء حساب
+        console.log('🆕 Creating new user from Phone Auth...');
+
+        userData = {
+          uid: user.uid,
+          email: user.email || additionalData.email || '',
+          accountType: defaultRole,
+          full_name: additionalData.full_name || additionalData.name || 'User',
+          phone: user.phoneNumber || '',
+          profile_image: '',
+          isNewUser: true,
+          isPhoneAuth: true,
+          created_at: new Date(),
+          updated_at: new Date(),
+          country: additionalData.country || '',
+          countryCode: additionalData.countryCode || '',
+          currency: additionalData.currency || '',
+          currencySymbol: additionalData.currencySymbol || '',
+          ...additionalData
+        };
+
+        // حفظ في مجموعة users
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, sanitizeForFirestore(userData));
+
+        // حفظ في المجموعة الخاصة بالدور
+        if (defaultRole !== 'admin') {
+          const roleRef = doc(db, defaultRole + 's', user.uid);
+          await setDoc(roleRef, sanitizeForFirestore({
+            ...userData,
+            created_at: new Date(),
+            updated_at: new Date()
+          }));
+        }
+      } else {
+        // مستخدم موجود - تحديث
+        console.log('👤 Existing user signed in with Phone');
+
+        userData = {
+          uid: user.uid,
+          email: user.email || foundData?.email || '',
+          accountType: userAccountType,
+          full_name: foundData?.full_name || foundData?.name || '',
+          phone: user.phoneNumber || foundData?.phone || '',
+          profile_image: foundData?.profile_image || foundData?.profileImage || '',
+          country: foundData?.country || '',
+          isNewUser: false,
+          isPhoneAuth: true,
+          created_at: foundData?.created_at || foundData?.createdAt || new Date(),
+          updated_at: new Date(),
+          ...foundData
+        };
+
+        try {
+          await updateLastLogin(user.uid);
+        } catch (updateError) {
+          console.warn('Failed to update last login:', updateError);
+        }
+      }
+
+      // فحص حالة الحساب
+      if (!isNewUser) {
+        const accountStatus = await checkAccountStatus(user.uid);
+        if (!accountStatus.canLogin) {
+          await signOut(auth);
+          throw new Error(accountStatus.message);
+        }
+      }
+
+      setUser(user);
+      setUserData(userData);
+
+      return { user, userData, isNewUser };
+    } catch (error: any) {
+      console.error('❌ Phone Verification Error:', error);
+      let msg = 'رمز التحقق غير صحيح أو منتهي الصلاحية';
+      if (error.code === 'auth/invalid-verification-code') {
+        msg = 'رمز التحقق غير صحيح';
+      } else if (error.code === 'auth/code-expired') {
+        msg = 'انتهت صلاحية رمز التحقق، يرجى إعادة الإرسال';
+      }
+      throw new Error(msg);
+    }
+  };
+
+  /**
    * إعادة تفعيل حساب محذوف
+  
    */
   const reactivateDeletedAccount = async (
     email: string,
@@ -689,21 +1110,21 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       // محاولة تسجيل الدخول للحصول على UID
       const signInResult = await signInWithEmailAndPassword(auth, email, password);
       const uid = signInResult.user.uid;
-      
+
       console.log('🔍 Checking account status in Firestore for UID:', uid);
-      
+
       // التحقق من حالة الحساب في جميع المجموعات
       const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
       let isDeleted = false;
-      
+
       for (const coll of collections) {
         try {
           const docRef = doc(db, coll, uid);
           const docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             const data = docSnap.data();
-            
+
             // التحقق من حالة الحذف
             if (data.isDeleted === true || data.isActive === false || data.deletedAt) {
               isDeleted = true;
@@ -718,18 +1139,18 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           continue;
         }
       }
-      
+
       if (!isDeleted) {
         console.log('⚠️ Account not found or not deleted');
         return null;
       }
-      
+
       // إعادة تفعيل الحساب
       console.log('🔄 Reactivating account with new data...', {
         organizationCode: additionalData.organizationCode,
         accountType: role
       });
-      
+
       // دمج البيانات الجديدة مع البيانات القديمة (إن وجدت)
       const userData: UserData = {
         uid: uid,
@@ -755,16 +1176,16 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         academyId: additionalData.academyId || '',
         ...additionalData
       };
-      
+
       // تحديث البيانات في users collection
       const userRef = doc(db, 'users', uid);
       await setDoc(userRef, sanitizeForFirestore(userData), { merge: true });
-      
+
       // تحديث البيانات في المجموعة الخاصة بالدور
       if (role !== 'admin') {
         const roleRef = doc(db, role + 's', uid);
         await setDoc(roleRef, sanitizeForFirestore(userData), { merge: true });
-        
+
         // إذا كان لاعب، نحذف طلبات الانضمام القديمة المعلقة
         if (role === 'player') {
           try {
@@ -774,11 +1195,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
               where('status', '==', 'pending')
             );
             const oldRequests = await getDocs(joinRequestsQuery);
-            
+
             if (!oldRequests.empty) {
               console.log(`🗑️ Deleting ${oldRequests.size} old join requests...`);
-              const deletePromises = oldRequests.docs.map(doc => 
-                updateDoc(doc.ref, { 
+              const deletePromises = oldRequests.docs.map(doc =>
+                updateDoc(doc.ref, {
                   status: 'cancelled',
                   cancelledAt: serverTimestamp(),
                   cancelReason: 'Account reactivated'
@@ -792,13 +1213,13 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           }
         }
       }
-      
+
       setUser(signInResult.user);
       setUserData(userData);
-      
+
       console.log('✅ Account reactivated successfully');
       return userData;
-      
+
     } catch (error: any) {
       console.error('❌ Reactivation error:', error);
       return null;
@@ -891,6 +1312,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         phone: additionalData.phone || '',
         profile_image: additionalData.profile_image || additionalData.profileImage || '',
         isNewUser: true,
+        isActive: true,
         created_at: new Date(),
         updated_at: new Date(),
         // Store additional phone-related data
@@ -957,7 +1379,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           } catch (reactivationError) {
             console.error('❌ Reactivation failed:', reactivationError);
           }
-          
+
           errorMessage = 'هذا الحساب موجود مسبقاً. إذا كان الحساب قد تم حذفه، يرجى التواصل مع الإدارة لإعادة تفعيله أو تسجيل الدخول.';
           break;
         case 'auth/weak-password':
@@ -1201,7 +1623,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           accountType: data.accountType,
           allFields: Object.keys(data)
         });
-        
+
         // التأكد من وجود accountType
         const finalData: UserData = {
           ...data,
@@ -1209,7 +1631,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           uid: user.uid,
           email: user.email || data.email || ''
         };
-        
+
         setUserData(finalData);
         console.log('✅ User data refreshed successfully from users collection:', {
           name: finalData.name,
@@ -1236,6 +1658,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
     loading,
     error,
     login,
+    signInWithGoogle,
     register,
     logout,
     signOut: logout, // Map logout to signOut for consistency
@@ -1243,7 +1666,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
     resetPassword,
     changePassword,
     clearError,
-    refreshUserData
+    refreshUserData,
+    setupRecaptcha,
+    sendPhoneOTP,
+    verifyPhoneOTP
   };
 
   return (
