@@ -3,98 +3,138 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 🔐 قاعدة أساسية: السماح بالقراءة والكتابة للجميع (للاختبار فقط)
-    // في الإنتاج، يجب تغيير هذا إلى request.auth != null
-    match /{document=**} {
-      allow read, write: if true;
+    // =========================
+    // 🛡️ Helper Functions
+    // =========================
+    
+    // التحقق من أن المستخدم مسجل دخول
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    // 👥 قواعد المستخدمين - السماح بالقراءة والكتابة للجميع
-    match /users/{userId} {
-      allow read, write: if true;
+    // التحقق من أن المستخدم هو مالك البيانات
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // 👨‍💼 قواعد الإدارة
-    match /admins/{adminId} {
-      allow read, write: if true;
-    }
-    
-    // 💬 قواعد الرسائل والدعم الفني
-    match /messages/{messageId} {
-      allow read, write: if true;
-    }
-    
-    match /conversations/{conversationId} {
-      allow read, write: if true;
-    }
-    
-    match /support_messages/{messageId} {
-      allow read, write: if true;
-    }
-    
-    match /support_conversations/{conversationId} {
-      allow read, write: if true;
-    }
-    
-    // 🔧 قواعد إضافية للخدمات
-    match /services/{serviceId} {
-      allow read, write: if true;
-    }
-    
-    // 📊 قواعد إضافية للبيانات العامة
-    match /public/{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // 🔐 قواعد خاصة بالمصادقة
-    match /auth/{document=**} {
-      allow read, write: if request.auth != null;
+    // التحقق من أن المستخدم مشرف (يفترض وجود حقل isAdmin في وثيقة المستخدم أو وجوده في مجموعة admins)
+    // يمكن تعديلها لاحقاً لتناسب نظام الصلاحيات الخاص بك بدقة
+    function isAdmin() {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
     }
 
     // =========================
-    // Organization Referrals System Rules
+    // 📂 Collection Rules
+    // =========================
+
+    // 👤 Users Collection
+    match /users/{userId} {
+      // السماح للجميع بقراءة البيانات الأساسية (للملفات الشخصية العامة)
+      allow read: if true;
+      // السماح للمالك فقط بالتعديل
+      allow create, update, delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // 🎥 Player Videos (The new feature)
+    match /player_videos/{videoId} {
+      // الجميع يمكنهم مشاهدة الفيديوهات
+      allow read: if true;
+      
+      // الإنشاء: يجب أن يكون مسجلاً وأن يكون الـplayerId في البيانات يطابق معرفه
+      allow create: if isAuthenticated() 
+                   && request.resource.data.playerId == request.auth.uid;
+      
+      // التعديل والحذف: المالك فقط
+      allow update, delete: if isAuthenticated() 
+                           && resource.data.playerId == request.auth.uid;
+    }
+
+    // 📢 Ads (System Data)
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 👨‍💼 Admins
+    match /admins/{adminId} {
+      allow read, write: if false; // يفضل تقييدها تماماً أو للمشرفين الكبار فقط
+    }
+    
+    // 💬 Messaging & Support
+    match /messages/{messageId} {
+      allow read, write: if isAuthenticated(); // تطوير لاحق: التحقق من المشاركين في المحادثة
+    }
+    
+    match /conversations/{conversationId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // =========================
+    // 🔗 Referral & Notifications
     // =========================
 
     // Organization referrals
     match /organization_referrals/{referralId} {
-      // أي مستخدم مصادق يمكنه القراءة
-      allow read: if request.auth != null;
-      // الإنشاء والتحديث والحذف مسموح فقط لمالك المنظمة
-      allow create: if request.auth != null 
-        && request.auth.uid == request.resource.data.organizationId;
-      allow update, delete: if request.auth != null 
-        && request.auth.uid == resource.data.organizationId;
+      allow read: if isAuthenticated();
+      allow create: if isOwner(request.resource.data.organizationId);
+      allow update, delete: if isOwner(resource.data.organizationId);
     }
 
     // Player join requests
     match /player_join_requests/{requestId} {
-      // القراءة مسموحة للاعب صاحب الطلب أو المنظمة المستهدفة
-      allow read: if request.auth != null 
+      allow read: if isAuthenticated() 
         && (
-          request.auth.uid == resource.data.playerId ||
-          request.auth.uid == resource.data.organizationId
+          isOwner(resource.data.playerId) ||
+          isOwner(resource.data.organizationId)
         );
-      // الإنشاء مسموح للاعب فقط
-      allow create: if request.auth != null 
-        && request.auth.uid == request.resource.data.playerId;
-      // التحديث (المعالجة) مسموح للمنظمة فقط
-      allow update: if request.auth != null 
-        && request.auth.uid == resource.data.organizationId;
+      allow create: if isOwner(request.resource.data.playerId);
+      allow update: if isOwner(resource.data.organizationId);
     }
 
-    // Join request notifications (for organizations)
+    // Notifications
     match /join_request_notifications/{notificationId} {
-      allow read, update: if request.auth != null 
-        && request.auth.uid == resource.data.organizationId;
-      allow create: if request.auth != null;
+      allow read, update: if isOwner(resource.data.organizationId);
+      allow create: if isAuthenticated();
     }
 
-    // Player notifications
     match /player_notifications/{notificationId} {
-      allow read, update: if request.auth != null 
-        && request.auth.uid == resource.data.playerId;
-      allow create: if request.auth != null;
+      allow read, update: if isOwner(resource.data.playerId);
+      allow create: if isAuthenticated();
+    }
+
+    // =========================
+    // 💰 Pricing & Subscriptions
+    // =========================
+
+    // Subscription Plans - Admin only for write, everyone can read
+    match /subscription_plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Promotional Offers - Admin only for write, everyone can read
+    match /promotional_offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Partners - Admin only for write, everyone can read
+    match /partners/{partnerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // =========================
+    // ⚠️ Fallback Rule (Transition Period)
+    // =========================
+    
+    // لباقي المجموعات التي لم نحددها، نسمح للمستخدمين المسجلين فقط بالقراءة والكتابة
+    // بدلاً من السماح للجميع (if true)
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 } 
