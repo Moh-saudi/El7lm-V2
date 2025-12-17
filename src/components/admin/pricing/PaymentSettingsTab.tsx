@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Plus, Trash2, Globe, CreditCard, Smartphone, Banknote } from 'lucide-react';
 import { doc, getDoc, setDoc, onSnapshot, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase/firebase';
+import { db } from '@/lib/firebase/config';
 import toast from 'react-hot-toast';
 
 interface PaymentMethod {
@@ -149,8 +149,8 @@ export default function PaymentSettingsTab() {
                             key={country.countryCode}
                             onClick={() => setSelectedCountry(country.countryCode)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCountry === country.countryCode
-                                    ? 'bg-blue-600 text-white shadow-lg'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                                ? 'bg-blue-600 text-white shadow-lg'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                 }`}
                         >
                             {country.countryName}
