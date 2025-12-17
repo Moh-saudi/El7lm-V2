@@ -25,6 +25,7 @@ import {
     Star,
     PlayCircle,
     Loader2,
+    CreditCard,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -32,6 +33,7 @@ import EditPlanModal from '@/components/admin/pricing/EditPlanModal';
 import AccountTypePricingTab from '@/components/admin/pricing/AccountTypePricingTab';
 import GuidelinesTab from '@/components/admin/pricing/GuidelinesTab';
 import CreateOfferModal from '@/components/admin/pricing/CreateOfferModal';
+import PaymentSettingsTab from '@/components/admin/pricing/PaymentSettingsTab';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { initializeRealPricingSystem } from '@/lib/services/init-real-pricing';
 import { PricingService } from '@/lib/pricing/pricing-service';
@@ -351,6 +353,12 @@ export default function PricingAdminPage() {
                             icon={<Users className="w-5 h-5" />}
                             label="الشركاء"
                         />
+                        <TabButton
+                            active={activeTab === 'payments'}
+                            onClick={() => setActiveTab('payments')}
+                            icon={<CreditCard className="w-5 h-5" />}
+                            label="إعدادات الدفع"
+                        />
                     </div>
 
                     {/* Tab Content */}
@@ -362,6 +370,7 @@ export default function PricingAdminPage() {
                             {activeTab === 'guidelines' && <GuidelinesTab />}
                             {activeTab === 'offers' && <OffersTab offers={offers} plans={plans} onUpdate={loadData} />}
                             {activeTab === 'partners' && <PartnersTab partners={partners} onUpdate={loadData} />}
+                            {activeTab === 'payments' && <PaymentSettingsTab />}
                         </AnimatePresence>
                     </div>
                 </div>

@@ -25,6 +25,9 @@ declare global {
   }
 }
 
+// Add getDoc to imports if not present (handled by multi_replace logic usually, but here manually ensuring)
+import { getDoc } from 'firebase/firestore';
+
 // Types
 interface BulkPaymentPageProps {
   accountType: 'club' | 'academy' | 'trainer' | 'agent' | 'player';
@@ -50,7 +53,7 @@ const SUPPORTED_COUNTRIES = COUNTRIES.reduce((acc, c) => ({
   [c.code]: { name: c.name, currency: c.currency, flag: c.flag }
 }), {} as Record<string, any>);
 
-const PAYMENT_METHODS = {
+const DEFAULT_PAYMENT_METHODS = {
   global: [
     { id: 'geidea', name: 'بطاقة بنكية', icon: '💳', description: 'ماستركارد، فيزا، مدى', discount: 0, popular: true },
     { id: 'paypal', name: 'PayPal', icon: '💙', description: 'دفع آمن عالمياً', discount: 0, popular: true },
@@ -123,6 +126,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [promoCodeError, setPromoCodeError] = useState<string>('');
   const [promoCodeSuccess, setPromoCodeSuccess] = useState<boolean>(false);
   const [appliedPartner, setAppliedPartner] = useState<Partner | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [currentPaymentDetails, setCurrentPaymentDetails] = useState<string>('');
+  const [currentPaymentInstructions, setCurrentPaymentInstructions] = useState<string>('');
 
   // --- Effects ---
 
@@ -159,6 +165,60 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     };
     loadActiveOffers();
   }, []);
+
+  // Load Payment Settings
+  useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      const countryCode = selectedCountry || 'global';
+      // Default methods for this country
+      const baseMethods = DEFAULT_PAYMENT_METHODS[countryCode as keyof typeof DEFAULT_PAYMENT_METHODS] || DEFAULT_PAYMENT_METHODS.global;
+
+      try {
+        const docRef = doc(db, 'payment_settings', countryCode);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const settings = docSnap.data();
+          const serverMethods = settings.methods || [];
+
+          // Merge server settings with base methods logic
+          const mergedMethods = baseMethods.map(baseMethod => {
+            const serverMethod = serverMethods.find((m: any) => m.id === baseMethod.id);
+            if (serverMethod) {
+              return {
+                ...baseMethod,
+                enabled: serverMethod.enabled !== false, // Default true if not specified
+                // Override details with account number/instructions from server
+                details: serverMethod.accountNumber || baseMethod.details,
+                instructions: serverMethod.instructions
+              };
+            }
+            return { ...baseMethod, enabled: true };
+          }).filter(m => m.enabled); // Only show enabled methods
+
+          setPaymentMethods(mergedMethods);
+        } else {
+          setPaymentMethods(baseMethods);
+        }
+      } catch (error) {
+        console.error('Error fetching payment settings:', error);
+        setPaymentMethods(baseMethods);
+      }
+    };
+
+    if (selectedCountry) {
+      fetchPaymentSettings();
+    }
+  }, [selectedCountry]);
+
+  // Update details/instructions when method changes
+  useEffect(() => {
+    const currentMethod = paymentMethods.find(m => m.id === selectedPaymentMethod);
+    if (currentMethod) {
+      setCurrentPaymentDetails(currentMethod.details || '');
+      setCurrentPaymentInstructions(currentMethod.instructions || '');
+    }
+  }, [selectedPaymentMethod, paymentMethods]);
 
   // Load Currency Rates
   const loadCurrencyRates = async () => {
@@ -630,8 +690,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(() => {
-                  const countryCode = selectedCountry || 'global';
-                  const methods = PAYMENT_METHODS[countryCode as keyof typeof PAYMENT_METHODS] || PAYMENT_METHODS['global'];
+                  // Use dynamic methods fetched from Firebase
+                  const methods = paymentMethods;
 
                   return methods.map((method: any) => {
                     const isSelected = selectedPaymentMethod === method.id;
@@ -688,6 +748,13 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                                   <Copy className="w-4 h-4" />
                                 </button>
                               </div>
+                              {/* عرض التعليمات الإضافية */}
+                              {method.instructions && (
+                                <p className="mt-2 text-xs text-gray-600 bg-yellow-50 p-2 rounded-lg border border-yellow-100 flex gap-2 items-start">
+                                  <span className="shrink-0">💡</span>
+                                  {method.instructions}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -891,7 +958,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           </div>
 
         </div>
-      </div>
+      </div >
 
       <GeideaPaymentModal
         visible={showGeideaModal}
@@ -906,6 +973,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         merchantReferenceId={`PAY-${Date.now()}`}
       />
 
-    </div>
+    </div >
   );
 }
