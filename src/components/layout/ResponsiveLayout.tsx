@@ -9,52 +9,52 @@ import { db } from '@/lib/firebase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
 import {
-    collection,
-    doc,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc,
-    where
+  collection,
+  doc,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Award,
-    BarChart3,
-    Bell,
-    Brain,
-    Briefcase,
-    Building,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    CreditCard,
-    DollarSign,
-    FileText,
-    GraduationCap,
-    Headphones,
-    Home,
-    LogOut,
-    Mail,
-    Menu,
-    MessageSquare,
-    Play,
-    Search,
-    Send,
-    Settings,
-    Shield,
-    ShoppingBag,
-    Star,
-    Target,
-    TrendingUp,
-    Trophy,
-    User,
-    UserCheck,
-    UserPlus,
-    Users,
-    Video,
-    X
+  Award,
+  BarChart3,
+  Bell,
+  Brain,
+  Briefcase,
+  Building,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  FileText,
+  GraduationCap,
+  Headphones,
+  Home,
+  LogOut,
+  Mail,
+  Menu,
+  MessageSquare,
+  Play,
+  Search,
+  Send,
+  Settings,
+  Shield,
+  ShoppingBag,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  User,
+  UserCheck,
+  UserPlus,
+  Users,
+  Video,
+  X
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
@@ -381,7 +381,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     if (!userData || accountType !== 'admin') {
       return null;
     }
-    
+
     console.log('🔍 ResponsiveSidebar - Checking userData:', {
       employeeId: userData.employeeId,
       employeeRole: userData.employeeRole,
@@ -389,11 +389,11 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       accountType: userData.accountType,
       allKeys: Object.keys(userData)
     });
-    
+
     // إذا كان موظفاً (لديه employeeId أو employeeRole أو role)
     if (userData.employeeId || userData.employeeRole || userData.role) {
       const role = (userData.employeeRole || userData.role) as EmployeeRole;
-      
+
       // التحقق من أن الدور موجود في DEFAULT_PERMISSIONS
       if (role && role in DEFAULT_PERMISSIONS) {
         console.log('✅ ResponsiveSidebar - Employee detected with valid role:', {
@@ -406,7 +406,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         return null;
       }
     }
-    
+
     // إذا كان admin حقيقي (ليس موظف)
     console.log('✅ ResponsiveSidebar - Real admin detected (not employee) - showing all items');
     return null; // null يعني عرض كل شيء
@@ -416,7 +416,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const hasPermissionForMenuItem = (menuItemId: string, permissions: RolePermissions | null): boolean => {
     // إذا لم تكن صلاحيات محددة (ليس موظف)، اظهر كل شيء
     if (!permissions) return true;
-    
+
     // mapping بين عناصر القائمة والصلاحيات المطلوبة
     const menuItemPermissions: Record<string, keyof RolePermissions> = {
       'admin-users-management': 'canViewUsers',
@@ -427,6 +427,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-geidea-transactions': 'canViewFinancials',
       'admin-geidea-settings': 'canManagePayments',
       'admin-subscriptions': 'canManagePayments',
+      'admin-pricing': 'canManagePayments',
+
       'admin-invoices': 'canViewFinancials',
       'admin-reports': 'canViewReports',
       'admin-clarity': 'canViewReports',
@@ -446,13 +448,13 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-marketing-analytics': 'canViewReports',
       'admin-convert-players': 'canEditUsers',
     };
-    
+
     const requiredPermission = menuItemPermissions[menuItemId];
     if (!requiredPermission) {
       // العناصر التي لا تحتاج صلاحيات خاصة (مثل profile, messages) تظهر دائماً
       return true;
     }
-    
+
     return permissions[requiredPermission] === true;
   };
 
@@ -650,22 +652,22 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             color: 'text-green-600',
             bgColor: 'bg-green-50'
           },
-        {
-          id: 'player-shared-videos',
-          label: 'فيديوهات اللاعبين المشتركة',
-          icon: Play,
-          href: `/dashboard/player/shared-videos`,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50'
-        },
-        {
-          id: 'player-tournaments',
-          label: 'البطولات',
-          icon: Award,
-          href: `/tournaments/unified-registration`,
-          color: 'text-yellow-600',
-          bgColor: 'bg-yellow-50'
-        },
+          {
+            id: 'player-shared-videos',
+            label: 'فيديوهات اللاعبين المشتركة',
+            icon: Play,
+            href: `/dashboard/player/shared-videos`,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50'
+          },
+          {
+            id: 'player-tournaments',
+            label: 'البطولات',
+            icon: Award,
+            href: `/tournaments/unified-registration`,
+            color: 'text-yellow-600',
+            bgColor: 'bg-yellow-50'
+          },
         ]
       });
 
@@ -1042,6 +1044,15 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             bgColor: 'bg-orange-50'
           },
           {
+            id: 'admin-pricing',
+            label: 'إدارة الأسعار والعروض',
+            icon: DollarSign,
+            href: `/dashboard/admin/pricing-management`,
+            color: 'text-green-600',
+            bgColor: 'bg-green-50'
+          },
+
+          {
             id: 'admin-invoices',
             label: 'الفواتير',
             icon: FileText,
@@ -1336,45 +1347,45 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         title: 'لوحة الوالد',
         icon: User,
         items: [
-        {
-          id: 'parent-main',
-          label: 'لوحة الوالد',
-          icon: BarChart3,
-          href: `/dashboard/parent`,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50'
-        },
-        {
-          id: 'parent-tournaments',
-          label: 'البطولات',
-          icon: Award,
-          href: `/tournaments/unified-registration`,
-          color: 'text-yellow-600',
-          bgColor: 'bg-yellow-50'
-        },
+          {
+            id: 'parent-main',
+            label: 'لوحة الوالد',
+            icon: BarChart3,
+            href: `/dashboard/parent`,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50'
+          },
+          {
+            id: 'parent-tournaments',
+            label: 'البطولات',
+            icon: Award,
+            href: `/tournaments/unified-registration`,
+            color: 'text-yellow-600',
+            bgColor: 'bg-yellow-50'
+          },
         ]
       });
     }
 
     const allGroups = [baseGroup, subscriptionGroup, academyGroup, tournamentsGroup, sharedGroup, ...accountSpecificGroups];
-    
+
     // فلترة العناصر بناءً على صلاحيات الموظف
     if (accountType === 'admin' && getEmployeePermissions) {
       const filteredGroups = allGroups.map(group => ({
         ...group,
         items: filterGroupItems(group.items, getEmployeePermissions)
       })).filter(group => group.items.length > 0); // إزالة المجموعات الفارغة
-      
+
       console.log('✅ ResponsiveSidebar - Filtered menu groups:', {
         totalGroups: allGroups.length,
         filteredGroups: filteredGroups.length,
         removedGroups: allGroups.length - filteredGroups.length,
         employeePermissions: getEmployeePermissions
       });
-      
+
       return filteredGroups;
     }
-    
+
     return allGroups;
   };
 
@@ -1385,7 +1396,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   // جلب صورة النادي من Firestore إذا كان accountType === 'club'
   useEffect(() => {
     console.log('🔄 ResponsiveSidebar: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
-    
+
     if (accountType !== 'club' || !user?.uid) {
       console.log('🔄 ResponsiveSidebar: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
       return;
@@ -1393,7 +1404,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
 
     console.log('🔄 ResponsiveSidebar: Starting to fetch club logo for user:', user.uid);
     const clubRef = doc(db, 'clubs', user.uid);
-    
+
     // استخدام onSnapshot للاستماع للتحديثات الفورية
     const unsubscribe = onSnapshot(
       clubRef,
@@ -1402,13 +1413,13 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           console.log('🔄 ResponsiveSidebar: Club document snapshot received, exists:', clubDoc.exists());
           if (clubDoc.exists()) {
             const data = clubDoc.data();
-            console.log('🔄 ResponsiveSidebar: Club data:', { 
-              hasLogo: !!data.logo, 
+            console.log('🔄 ResponsiveSidebar: Club data:', {
+              hasLogo: !!data.logo,
               logo: data.logo,
               logoType: typeof data.logo,
               logoStartsWithHttp: data.logo?.startsWith('http')
             });
-            
+
             if (data.logo) {
               // إذا كان logo رابط كامل، استخدمه مباشرة
               if (data.logo.startsWith('http')) {
@@ -1458,11 +1469,11 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       console.log('✅ ResponsiveSidebar: Using club logo from Firestore:', clubLogo);
       return clubLogo;
     }
-    
+
     if (accountType === 'club') {
       console.log('⚠️ ResponsiveSidebar: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
     }
-    
+
     // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
     const avatarUrl = getPlayerAvatarUrl(userData, user);
     console.log('🔄 ResponsiveSidebar: getPlayerAvatarUrl returned:', avatarUrl);
@@ -1471,7 +1482,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
 
   const getUserDisplayName = () => {
     if (!userData) return 'مستخدم';
-    
+
     // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
     switch (userData.accountType) {
       case 'player':
@@ -1561,9 +1572,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         initial={isMobile ? { x: '100%' } : { width: isSidebarCollapsed ? 64 : 256 }}
         animate={isMobile ? { x: isSidebarOpen ? 0 : '100%' } : { width: isSidebarCollapsed ? (isTablet ? 56 : 64) : (isTablet ? 224 : 256) }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed top-0 right-0 h-full bg-gradient-to-b ${accountInfo.color} z-50 shadow-xl backdrop-blur-xl border-l border-white/20 ${
-          isMobile ? 'w-72' : sidebarWidth
-        }`}
+        className={`fixed top-0 right-0 h-full bg-gradient-to-b ${accountInfo.color} z-50 shadow-xl backdrop-blur-xl border-l border-white/20 ${isMobile ? 'w-72' : sidebarWidth
+          }`}
         dir="rtl"
       >
         <div className="flex flex-col h-full">
@@ -1616,9 +1626,9 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           <div className="p-3 border-b border-white/20">
             <div className="flex gap-2 items-center">
               <Avatar className="w-10 h-10 ring-2 ring-white/30">
-                <AvatarImage 
-                  key={getUserAvatar() || 'default'} 
-                  src={getUserAvatar() || undefined} 
+                <AvatarImage
+                  key={getUserAvatar() || 'default'}
+                  src={getUserAvatar() || undefined}
                   alt={getUserDisplayName()}
                   onError={(e) => {
                     console.error('❌ ResponsiveSidebar: Error loading avatar image:', getUserAvatar());
@@ -1672,9 +1682,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
                     <Button
                       variant="ghost"
                       onClick={() => toggleGroup(group.id)}
-                      className={`w-full justify-between h-8 px-2 text-white hover:bg-white/20 ${
-                        group.id === 'main' ? 'font-semibold' : 'font-medium'
-                      }`}
+                      className={`w-full justify-between h-8 px-2 text-white hover:bg-white/20 ${group.id === 'main' ? 'font-semibold' : 'font-medium'
+                        }`}
                     >
                       <div className="flex gap-2 items-center">
                         <GroupIcon className="w-3.5 h-3.5" />
@@ -1731,18 +1740,15 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
                                   <Button
                                     variant="ghost"
                                     onClick={() => handleNavigation(item.href, item.id)}
-                                    className={`w-full justify-start gap-2 h-8 px-2 transition-all duration-500 ease-out ${
-                                      isActive
-                                        ? 'text-gray-900 bg-white shadow-lg'
-                                        : 'text-white hover:bg-white/20'
-                                    }`}
+                                    className={`w-full justify-start gap-2 h-8 px-2 transition-all duration-500 ease-out ${isActive
+                                      ? 'text-gray-900 bg-white shadow-lg'
+                                      : 'text-white hover:bg-white/20'
+                                      }`}
                                   >
-                                    <div className={`p-1 rounded-md transition-colors ${
-                                      isActive ? item.bgColor : (item.isHighlighted ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20' : 'bg-white/10')
-                                    }`}>
-                                      <IconComponent className={`w-3 h-3 ${
-                                        isActive ? item.color : (item.isHighlighted ? 'text-yellow-300' : 'text-white')
-                                      }`} />
+                                    <div className={`p-1 rounded-md transition-colors ${isActive ? item.bgColor : (item.isHighlighted ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20' : 'bg-white/10')
+                                      }`}>
+                                      <IconComponent className={`w-3 h-3 ${isActive ? item.color : (item.isHighlighted ? 'text-yellow-300' : 'text-white')
+                                        }`} />
                                     </div>
 
                                     <AnimatePresence>
@@ -1751,9 +1757,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
                                           initial={{ opacity: 0, x: -10 }}
                                           animate={{ opacity: 1, x: 0 }}
                                           exit={{ opacity: 0, x: -10 }}
-                                          className={`text-xs font-medium ${
-                                            isActive ? 'text-gray-900' : (item.isHighlighted ? 'text-yellow-300 font-bold' : 'text-white')
-                                          }`}
+                                          className={`text-xs font-medium ${isActive ? 'text-gray-900' : (item.isHighlighted ? 'text-yellow-300 font-bold' : 'text-white')
+                                            }`}
                                         >
                                           {item.label}
                                         </motion.span>
@@ -1836,7 +1841,7 @@ const ResponsiveHeader: React.FC = () => {
 
   const getUserDisplayName = () => {
     if (!userData) return 'مستخدم';
-    
+
     // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
     switch (userData.accountType) {
       case 'player':
@@ -1860,11 +1865,11 @@ const ResponsiveHeader: React.FC = () => {
       console.log('✅ ResponsiveHeader: Using club logo from Firestore:', clubLogo);
       return clubLogo;
     }
-    
+
     if (accountType === 'club') {
       console.log('⚠️ ResponsiveHeader: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
     }
-    
+
     // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
     const avatarUrl = getPlayerAvatarUrl(userData, user);
     console.log('🔄 ResponsiveHeader: getPlayerAvatarUrl returned:', avatarUrl);
@@ -1897,7 +1902,7 @@ const ResponsiveHeader: React.FC = () => {
   // جلب صورة النادي من Firestore إذا كان accountType === 'club'
   useEffect(() => {
     console.log('🔄 ResponsiveHeader: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
-    
+
     if (accountType !== 'club' || !user?.uid) {
       console.log('🔄 ResponsiveHeader: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
       return;
@@ -1905,7 +1910,7 @@ const ResponsiveHeader: React.FC = () => {
 
     console.log('🔄 ResponsiveHeader: Starting to fetch club logo for user:', user.uid);
     const clubRef = doc(db, 'clubs', user.uid);
-    
+
     // استخدام onSnapshot للاستماع للتحديثات الفورية
     const unsubscribe = onSnapshot(
       clubRef,
@@ -1914,13 +1919,13 @@ const ResponsiveHeader: React.FC = () => {
           console.log('🔄 ResponsiveHeader: Club document snapshot received, exists:', clubDoc.exists());
           if (clubDoc.exists()) {
             const data = clubDoc.data();
-            console.log('🔄 ResponsiveHeader: Club data:', { 
-              hasLogo: !!data.logo, 
+            console.log('🔄 ResponsiveHeader: Club data:', {
+              hasLogo: !!data.logo,
               logo: data.logo,
               logoType: typeof data.logo,
               logoStartsWithHttp: data.logo?.startsWith('http')
             });
-            
+
             if (data.logo) {
               // إذا كان logo رابط كامل، استخدمه مباشرة
               if (data.logo.startsWith('http')) {
@@ -2260,12 +2265,12 @@ const ResponsiveHeader: React.FC = () => {
             <h1 className="text-xl font-semibold text-gray-900">لوحة التحكم</h1>
             <p className="text-sm text-gray-600">
               مرحباً بك في {accountType === 'admin' ? 'منصة الإدارة' :
-                           accountType === 'academy' ? 'منصة الأكاديمية' :
-                           accountType === 'club' ? 'منصة النادي' :
-                           accountType === 'trainer' ? 'منصة المدرب' :
-                           accountType === 'agent' ? 'منصة الوكيل' :
-                           accountType === 'marketer' ? 'منصة المسوق' :
-                           'منصة اللاعب'}
+                accountType === 'academy' ? 'منصة الأكاديمية' :
+                  accountType === 'club' ? 'منصة النادي' :
+                    accountType === 'trainer' ? 'منصة المدرب' :
+                      accountType === 'agent' ? 'منصة الوكيل' :
+                        accountType === 'marketer' ? 'منصة المسوق' :
+                          'منصة اللاعب'}
             </p>
           </div>
         </div>
@@ -2273,19 +2278,18 @@ const ResponsiveHeader: React.FC = () => {
         <div className="flex overflow-visible gap-2 items-center lg:gap-3">
           {/* أيقونة الرسائل مع القائمة المنسدلة */}
           <div className="inline-block relative messages-dropdown">
-          <Button
-            variant="ghost"
-            size="icon"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleMessagesDropdown}
-              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${
-                isMessagesActive
-                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-              }`}
+              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${isMessagesActive
+                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                }`}
               title={`الرسائل${newMessagesCount > 0 ? ` (${newMessagesCount} جديدة)` : ''}`}
             >
               <MessageSquare className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
-            {/* مؤشر الرسائل الجديدة */}
+              {/* مؤشر الرسائل الجديدة */}
               {newMessagesCount > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-red-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
                   <span className="text-[10px] lg:text-[11px] text-white font-bold">
@@ -2297,7 +2301,7 @@ const ResponsiveHeader: React.FC = () => {
               {isMessagesActive && (
                 <div className="absolute -bottom-1 left-1/2 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-blue-600 rounded-full shadow-sm transform -translate-x-1/2"></div>
               )}
-          </Button>
+            </Button>
 
             {/* قائمة الرسائل المنسدلة */}
             {showMessagesDropdown && (
@@ -2327,9 +2331,8 @@ const ResponsiveHeader: React.FC = () => {
                       <div
                         key={message.id}
                         onClick={() => handleMessageClick(message)}
-                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-blue-50 active:scale-98 ${
-                          message.unread ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
-                        }`}
+                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-blue-50 active:scale-98 ${message.unread ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
+                          }`}
                       >
                         <div className="flex gap-3 justify-between items-start">
                           <div className="flex-1 min-w-0">
@@ -2367,19 +2370,18 @@ const ResponsiveHeader: React.FC = () => {
 
           {/* أيقونة الإشعارات مع القائمة المنسدلة */}
           <div className="inline-block relative notifications-dropdown">
-          <Button
-            variant="ghost"
-            size="icon"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleNotificationsDropdown}
-              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${
-                isNotificationsActive
-                  ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-              }`}
+              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${isNotificationsActive
+                ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                }`}
               title={`الإشعارات${newNotificationsCount > 0 ? ` (${newNotificationsCount} جديدة)` : ''}`}
             >
               <Bell className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
-            {/* مؤشر الإشعارات الجديدة */}
+              {/* مؤشر الإشعارات الجديدة */}
               {newNotificationsCount > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-orange-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
                   <span className="text-[10px] lg:text-[11px] text-white font-bold">
@@ -2391,7 +2393,7 @@ const ResponsiveHeader: React.FC = () => {
               {isNotificationsActive && (
                 <div className="absolute -bottom-1 left-1/2 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-orange-600 rounded-full shadow-sm transform -translate-x-1/2"></div>
               )}
-          </Button>
+            </Button>
 
             {/* قائمة الإشعارات المنسدلة */}
             {showNotificationsDropdown && (
@@ -2421,18 +2423,16 @@ const ResponsiveHeader: React.FC = () => {
                       <div
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
-                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-orange-50 active:scale-98 ${
-                          !notification.read ? 'bg-orange-50 border-r-4 border-r-orange-500' : ''
-                        }`}
+                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-orange-50 active:scale-98 ${!notification.read ? 'bg-orange-50 border-r-4 border-r-orange-500' : ''
+                          }`}
                       >
                         <div className="flex gap-3 items-start">
-                          <div className={`w-3 h-3 lg:w-4 lg:h-4 rounded-full mt-1.5 lg:mt-2 flex-shrink-0 ${
-                            notification.type === 'message' ? 'bg-blue-500' :
+                          <div className={`w-3 h-3 lg:w-4 lg:h-4 rounded-full mt-1.5 lg:mt-2 flex-shrink-0 ${notification.type === 'message' ? 'bg-blue-500' :
                             notification.type === 'payment' ? 'bg-green-500' :
-                            notification.type === 'system' ? 'bg-gray-500' :
-                            notification.type === 'match' ? 'bg-purple-500' :
-                            'bg-orange-500'
-                          }`}></div>
+                              notification.type === 'system' ? 'bg-gray-500' :
+                                notification.type === 'match' ? 'bg-purple-500' :
+                                  'bg-orange-500'
+                            }`}></div>
                           <div className="flex-1 min-w-0">
                             <div className="flex gap-2 items-center mb-1">
                               <p className="text-sm font-semibold text-gray-900 lg:text-base">
@@ -2472,22 +2472,22 @@ const ResponsiveHeader: React.FC = () => {
           {/* صورة المستخدم */}
           <div className="flex gap-2 items-center">
             <Avatar className="w-8 h-8 transition-transform duration-500 ease-out cursor-pointer hover:scale-105">
-            <AvatarImage 
-              key={getUserAvatar() || 'default'} 
-              src={getUserAvatar() || undefined} 
-              alt={getUserDisplayName()}
-              onError={(e) => {
-                console.error('❌ ResponsiveHeader: Error loading avatar image:', getUserAvatar());
-                e.currentTarget.style.display = 'none';
-              }}
-              onLoad={() => {
-                console.log('✅ ResponsiveHeader: Avatar image loaded successfully:', getUserAvatar());
-              }}
-            />
-            <AvatarFallback className="font-bold text-blue-600 bg-blue-100">
-              {getUserDisplayName().slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+              <AvatarImage
+                key={getUserAvatar() || 'default'}
+                src={getUserAvatar() || undefined}
+                alt={getUserDisplayName()}
+                onError={(e) => {
+                  console.error('❌ ResponsiveHeader: Error loading avatar image:', getUserAvatar());
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('✅ ResponsiveHeader: Avatar image loaded successfully:', getUserAvatar());
+                }}
+              />
+              <AvatarFallback className="font-bold text-blue-600 bg-blue-100">
+                {getUserDisplayName().slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             {!isMobile && (
               <div className="hidden md:block">
                 <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
