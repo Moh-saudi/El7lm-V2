@@ -645,6 +645,15 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             {index === 2 && <Crown className="w-6 h-6" />}
                           </div>
 
+                          {/* Annual Plan Special Badge */}
+                          {pkg.id === 'subscription_annual' && (
+                            <div className="absolute top-0 right-0 bg-gradient-to-l from-red-500 to-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-md z-20 flex items-center gap-1">
+                              <span className="animate-pulse">🔥</span>
+                              <span>الأكثر توفيراً</span>
+                              <span className="bg-white/20 px-1 rounded text-white ml-1">وفر {pkg.discount}</span>
+                            </div>
+                          )}
+
                           {/* Duration Badge */}
                           <div className={`
                             inline-block px-3 py-1 rounded-full text-xs font-bold mb-3
