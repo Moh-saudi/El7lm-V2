@@ -590,7 +590,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {Object.values(packages)
-                  .sort((a: any, b: any) => (a.price || 0) - (b.price || 0))
+                  .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
                   .map((pkg: any, index: number) => {
                     const isSelected = selectedPackage === pkg.id;
 
