@@ -645,6 +645,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             {index === 2 && <Crown className="w-6 h-6" />}
                           </div>
 
+                          {/* Duration Badge */}
+                          <div className={`
+                            inline-block px-3 py-1 rounded-full text-xs font-bold mb-3
+                            ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}
+                          `}>
+                            {pkg.period}
+                          </div>
+
                           {/* Title */}
                           <h3 className={`text-lg font-bold mb-2 ${isSelected ? 'text-white' : 'text-gray-900'}`}>{pkg.title}</h3>
                           <p className={`text-xs mb-4 px-2 min-h-[40px] leading-relaxed ${isSelected ? 'text-blue-50' : 'text-gray-500'}`}>{pkg.description}</p>
