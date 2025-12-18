@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { SidebarProvider } from '@/lib/context/SidebarContext';
 import ModernUnifiedHeader from '@/components/layout/ModernUnifiedHeader';
@@ -68,7 +69,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
   const isPlayerProfilePage = pathname.includes('/player/profile');
   const isPlayerReportsPage = pathname.includes('/player/reports');
   const isEntityProfilePage = pathname.includes('/search/profile/');
-  
+
   // إظهار القائمة الجانبية في صفحة ملف اللاعب أيضاً. نخفيها فقط لملفات الكيانات العامة.
   const shouldShowSidebar = !isEntityProfilePage;
 
@@ -80,7 +81,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
       const key = `dream_academy_welcome_v1_${user.uid}`;
       const seen = typeof window !== 'undefined' ? localStorage.getItem(key) : '1';
       if (!seen) setShowWelcome(true);
-    } catch {}
+    } catch { }
   }, [user, pathname]);
 
   const markWelcomeSeen = () => {
@@ -88,7 +89,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
       if (!user) return;
       const key = `dream_academy_welcome_v1_${user.uid}`;
       localStorage.setItem(key, '1');
-    } catch {}
+    } catch { }
   };
 
   // Loading state - wait for auth to complete
@@ -105,21 +106,9 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
 
   // Authentication check - only show error after loading and auth check are complete
   if (!user && !loading && authCheckComplete) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center">
-          <div className="p-8 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg">
-            <p className="text-slate-600 mb-4">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
-            <button 
-              onClick={() => router.push('/auth/login')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              تسجيل الدخول
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    // We import AuthRedirect dynamically to avoid circular dependencies if any
+    const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
+    return <AuthRedirect />;
   }
 
   const effectiveAccountType = (userData?.accountType as string) || accountType;
@@ -127,10 +116,10 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" style={{ direction: 'rtl' }}>
-        
+
         {/* الإشعارات المحسنة */}
         <EnhancedNotifications />
-        
+
         {/* الهيدر الحديث - يظهر باستثناء صفحات ملفات الكيانات العامة */}
         {!isEntityProfilePage && (
           <ModernUnifiedHeader
@@ -140,10 +129,10 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
             variant="gaming"
           />
         )}
-        
+
         {/* المحتوى الرئيسي */}
         <div className="flex flex-1 min-h-0" style={{ direction: 'rtl' }}>
-          
+
           {/* القائمة الجانبية الحديثة */}
           {shouldShowSidebar && (
             <ModernEnhancedSidebar
@@ -153,12 +142,11 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
               userData={userData}
             />
           )}
-          
+
           {/* المحتوى الرئيسي */}
-          <main 
-            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${
-              shouldShowSidebar ? (collapsed ? 'mr-20' : 'mr-[280px]') : ''
-            }`}
+          <main
+            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${shouldShowSidebar ? (collapsed ? 'mr-20' : 'mr-[280px]') : ''
+              }`}
             style={{ direction: 'rtl' }}
           >
             {/* مساحة للهيدر */}
@@ -177,7 +165,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
         </div>
 
         {/* نافذة ترحيبية عصرية بأكاديمية الحلم */}
-        <Dialog open={showWelcome} onOpenChange={(open)=>{ setShowWelcome(open); if (!open && dontShowAgain) markWelcomeSeen(); }}>
+        <Dialog open={showWelcome} onOpenChange={(open) => { setShowWelcome(open); if (!open && dontShowAgain) markWelcomeSeen(); }}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>مرحباً بك في أكاديمية الحلم</DialogTitle>
@@ -194,20 +182,20 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
             </div>
             <div className="flex items-center justify-between mt-4">
               <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={dontShowAgain} onChange={(e)=>setDontShowAgain(e.target.checked)} />
+                <input type="checkbox" checked={dontShowAgain} onChange={(e) => setDontShowAgain(e.target.checked)} />
                 لا تُظهر هذه الرسالة مرة أخرى
               </label>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={()=>{ if (dontShowAgain) markWelcomeSeen(); setShowWelcome(false); }}>لاحقاً</Button>
-                <Button className="bg-gradient-to-r from-sky-500 to-blue-600 text-white" onClick={()=>{ if (dontShowAgain) markWelcomeSeen(); router.push('/dashboard/dream-academy'); }}>الدخول الآن</Button>
+                <Button variant="outline" onClick={() => { if (dontShowAgain) markWelcomeSeen(); setShowWelcome(false); }}>لاحقاً</Button>
+                <Button className="bg-gradient-to-r from-sky-500 to-blue-600 text-white" onClick={() => { if (dontShowAgain) markWelcomeSeen(); router.push('/dashboard/dream-academy'); }}>الدخول الآن</Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
-        
+
         {/* الفوتر - يظهر باستثناء صفحات ملفات الكيانات العامة */}
         {showFooter && !isEntityProfilePage && <Footer />}
-        
+
         {/* أيقونة الدعم الفني العائم */}
         {showFloatingChat && <FloatingChatWidget />}
       </div>

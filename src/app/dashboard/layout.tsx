@@ -41,20 +41,18 @@ export default function DashboardLayout({
     );
   }
 
-  // عرض رسالة خطأ إذا لم يكن هناك مستخدم
+  // استيراد المكون الجديد ديناميكياً
+  const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
+
+  // إعادة التوجيه لصفحة تسجيل الدخول إذا لم يكن هناك مستخدم
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-pink-50">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <p className="text-gray-600 font-medium">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
-        </div>
-      </div>
-    );
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        window.location.href = '/auth/login';
+      }, 3500);
+    }
+
+    return <AuthRedirect />;
   }
 
   return (
@@ -86,7 +84,7 @@ export default function DashboardLayout({
 
       <FloatingChatWidget />
       <PushNotificationSetup />
-      
+
       {/* Display ads based on account type */}
       <ProfessionalAdPopup location={accountType as any} />
     </>
