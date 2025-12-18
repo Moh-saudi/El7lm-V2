@@ -7,7 +7,7 @@ import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { db } from '@/lib/firebase/config';
-import { uploadFile, getPublicUrl } from '@/lib/supabase/storage';
+
 
 interface ClubData {
   name: string;
@@ -142,9 +142,13 @@ function validateImage(file: File, type: 'logo' | 'cover'): Promise<string | nul
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
+
+  // استخدام رابط Cloudflare المباشر
+  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
   // استخدام bucket clubavatar للصور الخاصة بالنادي
-  const { data: { publicUrl } } = supabase.storage.from('clubavatar').getPublicUrl(path);
-  return publicUrl || '';
+  return `${CLOUDFLARE_PUBLIC_URL}/clubavatar/${cleanPath}`;
 };
 
 const requiredFields = [
@@ -174,7 +178,7 @@ export default function ClubProfilePage() {
     // قراءة معرف النادي من URL parameters
     const clubId = searchParams?.get('id');
     const targetClubId = clubId || user?.uid;
-    
+
     if (!targetClubId) {
       console.error('❌ لا يوجد معرف نادي متاح');
       return;
@@ -189,9 +193,9 @@ export default function ClubProfilePage() {
     try {
       const clubRef = doc(db, 'clubs', targetClubId);
       const clubDoc = await getDoc(clubRef);
-      
+
       let data = {};
-      
+
       if (clubDoc.exists()) {
         data = clubDoc.data() as any;
         console.log(`✅ تم العثور على بيانات النادي: ${(data as any).name || 'غير محدد'}`);
@@ -215,13 +219,13 @@ export default function ClubProfilePage() {
             isVerified: false,
             isPremium: false
           };
-          
+
           await setDoc(clubRef, basicData);
           data = basicData;
           console.log('✅ تم إنشاء بيانات نادي جديدة');
         }
       }
-      
+
       const mergedData = {
         ...initialClubData,
         ...(data as any),
@@ -280,7 +284,7 @@ export default function ClubProfilePage() {
   const handleInputChange = (field: string, value: unknown, parentField?: string, subField?: string) => {
     setClubData(prev => {
       if (!prev) return prev;
-      
+
       if (parentField && subField) {
         const parent = prev[parentField as keyof ClubData] as Record<string, unknown>;
         return {
@@ -309,7 +313,7 @@ export default function ClubProfilePage() {
       toast.error('لا يمكن تعديل بيانات نادي آخر');
       return;
     }
-    
+
     if (!user?.uid) return;
     try {
       if (!file.type.startsWith('image/')) {
@@ -318,44 +322,29 @@ export default function ClubProfilePage() {
       }
       if (file.size > 5 * 1024 * 1024) {
         const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`, {
-          duration: 9000,
-          style: {
-            maxWidth: '400px',
-            fontSize: '15px',
-            lineHeight: '1.6',
-            direction: 'rtl',
-            textAlign: 'right'
-          }
-        });
+        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`);
         return;
       }
-      
+
       setUploading(true);
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${timestamp}.${fileExt}`;
       const filePath = `${user.uid}/${type}/${fileName}`;
-      
-      // استخدام bucket clubavatar للصور الخاصة بالنادي
-      const { data, error } = await supabase.storage
-        .from('clubavatar')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
-      if (error) {
-        toast.error('حدث خطأ أثناء رفع الصورة');
-        return;
-      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('clubavatar')
-        .getPublicUrl(filePath);
+      // استخدام storageManager للرفع (يدعم R2 و Supabase)
+      const { storageManager } = await import('@/lib/storage');
+
+      // استخدام 'clubavatar' كاسم للبوكت (أو يتم تحويله لمجلد في R2)
+      const result = await storageManager.upload('clubavatar', filePath, file, {
+        upsert: true,
+        contentType: file.type
+      });
+
+      const publicUrl = result.publicUrl;
 
       let updatedData = { ...clubData };
-      
+
       if (type === 'gallery') {
         updatedData.gallery = [...(clubData.gallery || []), publicUrl];
       } else if (type === 'chairman') {
@@ -367,9 +356,9 @@ export default function ClubProfilePage() {
       } else if (type === 'logo') {
         updatedData.logo = publicUrl;
       }
-      
+
       setClubData(updatedData);
-              toast.success('✅ تم رفع الصورة بنجاح');
+      toast.success('✅ تم رفع الصورة بنجاح');
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error('حدث خطأ أثناء رفع الصورة');
@@ -383,7 +372,7 @@ export default function ClubProfilePage() {
       toast.error('لا يمكن تعديل بيانات نادي آخر');
       return;
     }
-    
+
     if (!user?.uid || !clubData) {
       toast.error('لم يتم العثور على بيانات المستخدم');
       return;
@@ -446,18 +435,18 @@ export default function ClubProfilePage() {
       };
 
       // استخدام دالة تنظيف البيانات العالمية من firestore-fix.js
-      const dataToSave = (window as any).cleanFirestoreData ? 
-        (window as any).cleanFirestoreData(rawData) : 
+      const dataToSave = (window as any).cleanFirestoreData ?
+        (window as any).cleanFirestoreData(rawData) :
         rawData;
 
       console.log('Raw data:', rawData);
       console.log('Cleaned data to save:', dataToSave);
 
       const clubRef = doc(db, 'clubs', user.uid);
-      
+
       // التحقق من وجود المستند أولاً
       const clubDoc = await getDoc(clubRef);
-      
+
       if (clubDoc.exists()) {
         // المستند موجود - نحدثه
         await updateDoc(clubRef, dataToSave);
@@ -471,7 +460,7 @@ export default function ClubProfilePage() {
           isPremium: false
         });
       }
-      
+
       toast.success('🎉 تم حفظ بيانات النادي بنجاح! أنت رائع، استمر في تطوير ناديك! 🏆');
       await fetchClubData(); // إعادة جلب البيانات بعد الحفظ
       setEditMode(false);
@@ -1092,25 +1081,25 @@ export default function ClubProfilePage() {
                 {/* صور الغلاف واللوجو */}
                 <div className="flex flex-col gap-4 mb-4">
                   <label className="font-bold dark:text-white">شعار النادي (PNG/JPG، {LOGO_WIDTH}×{LOGO_HEIGHT} بكسل):</label>
-                  <input 
-                    type="file" 
-                    accept="image/png,image/jpeg" 
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
                     onChange={e => {
                       if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'logo');
-                    }} 
-                    disabled={uploading} 
+                    }}
+                    disabled={uploading}
                     className="dark:text-gray-300"
                     aria-label="رفع شعار النادي"
                     title="رفع شعار النادي"
                   />
                   <label className="font-bold dark:text-white">صورة الغلاف (PNG/JPG، {COVER_WIDTH}×{COVER_HEIGHT} بكسل):</label>
-                  <input 
-                    type="file" 
-                    accept="image/png,image/jpeg" 
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
                     onChange={e => {
                       if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'cover');
-                    }} 
-                    disabled={uploading} 
+                    }}
+                    disabled={uploading}
                     className="dark:text-gray-300"
                     aria-label="رفع صورة الغلاف"
                     title="رفع صورة الغلاف"

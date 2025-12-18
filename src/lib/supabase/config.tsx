@@ -13,7 +13,7 @@ export const STORAGE_BUCKETS = {
   PLAYER_VIDEOS: 'videos',
   CLUB_VIDEOS: 'videos',
   ACADEMY_VIDEOS: 'videos',
-  ADS: 'ads', // Bucket للإعلانات
+  ADS: process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'ads', // Bucket للإعلانات
   // بوكتات خاصة باللاعبين حسب نوع الحساب
   PLAYER_TRAINER: 'playertrainer',
   PLAYER_CLUB: 'playerclub',
@@ -39,12 +39,12 @@ export const supabase = (() => {
     // Server-side: create new instance
     return createBrowserClient(supabaseUrl, supabaseAnonKey);
   }
-  
+
   // Client-side: use singleton pattern
   if (!supabaseInstance) {
     supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey);
   }
-  
+
   return supabaseInstance;
 })();
 

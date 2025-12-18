@@ -5,37 +5,37 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils/index';
 import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity, searchCities } from '@/data/countries-from-register';
@@ -46,39 +46,39 @@ import { supabase } from '@/lib/supabase/config';
 import { Employee, EmployeeRole, RolePermissions } from '@/types/employees';
 import type { DateOrTimestamp } from '@/types/common';
 import {
-    createUserWithEmailAndPassword,
-    sendPasswordResetEmail
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import {
-    AlertCircle,
-    ArrowUpRight,
-    Briefcase,
-    Building2,
-    Check,
-    CheckCircle,
-    Copy,
-    Download,
-    Edit,
-    FileText,
-    Globe,
-    History,
-    Image as ImageIcon,
-    Key,
-    LayoutGrid,
-    List,
-    Loader2,
-    Mail,
-    MessageSquare,
-    Phone,
-    Search,
-    Sparkles,
-    Table as TableIcon,
-    Trash2,
-    Upload,
-    UserPlus,
-    Users,
-    X
+  AlertCircle,
+  ArrowUpRight,
+  Briefcase,
+  Building2,
+  Check,
+  CheckCircle,
+  Copy,
+  Download,
+  Edit,
+  FileText,
+  Globe,
+  History,
+  Image as ImageIcon,
+  Key,
+  LayoutGrid,
+  List,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Phone,
+  Search,
+  Sparkles,
+  Table as TableIcon,
+  Trash2,
+  Upload,
+  UserPlus,
+  Users,
+  X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -341,7 +341,7 @@ export default function EmployeesManagement() {
         });
 
         setFormErrors(errors);
-        
+
         // عرض أول خطأ للمستخدم
         const firstError = error.errors[0];
         if (firstError) {
@@ -390,13 +390,13 @@ export default function EmployeesManagement() {
       // حساب initial data مرة واحدة فقط عند mount
       // استخدام editingEmployee من closure - key prop يضمن إعادة إنشاء المكون عند تغييره
       const currentEmployee = editingEmployee;
-      
+
       // إذا كان هناك بيانات محفوظة في draftRef (من جلسة سابقة)، استخدمها
       if (Object.keys(draftRef.current).length > 0 && !currentEmployee) {
         console.log('🔄 [SimpleEmployeeForm] استعادة البيانات من draftRef:', draftRef.current);
         return { ...draftRef.current };
       }
-      
+
       if (currentEmployee) {
         return {
           name: currentEmployee.name || '',
@@ -434,7 +434,7 @@ export default function EmployeesManagement() {
         sendWelcomeEmail: true
       };
     });
-    
+
     // تحديث draftRef عند كل تغيير في local state
     useEffect(() => {
       draftRef.current = { ...local };
@@ -476,398 +476,398 @@ export default function EmployeesManagement() {
     };
 
     return (
-    <div className="py-4 space-y-6">
-      {/* معلومات شخصية */}
-      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-        <div className="flex gap-3 items-center mb-4">
-          <div className="flex justify-center items-center w-10 h-10 bg-blue-100 rounded-full">
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">المعلومات الشخصية</h3>
-            <p className="text-sm text-gray-600">البيانات الأساسية للموظف</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
-            <Input
-              id="emp_name"
-              value={local.name as string}
-              onChange={onInput('name')}
-              placeholder="أدخل الاسم الكامل"
-              className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.name ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
-              dir="rtl"
-            />
-            {formErrors.name && (
-              <p className="text-sm text-red-500">{formErrors.name}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">البريد الإلكتروني *</Label>
-            <Input
-              id="emp_email"
-              type="email"
-              value={local.email as string}
-              onChange={onInput('email')}
-              placeholder="example@el7lm.com"
-              className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
-              dir="ltr"
-            />
-            {formErrors.email && (
-              <p className="text-sm text-red-500">{formErrors.email}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">رقم الهاتف *</Label>
-            <Input
-              id="emp_phone"
-              type="tel"
-              value={local.phone as string}
-              onChange={onInput('phone')}
-              placeholder="05xxxxxxxx"
-              className={`w-full h-11 text-sm sm:h-12 sm:text-base text-left ${formErrors.phone ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
-              dir="ltr"
-            />
-            {formErrors.phone && (
-              <p className="text-sm text-red-500">{formErrors.phone}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">تاريخ الميلاد</Label>
-            <Input
-              id="emp_birth"
-              type="date"
-              value={(local.birthDate as string) || ''}
-              onChange={onInput('birthDate')}
-              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-blue-500"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-medium text-gray-700">الصورة الشخصية</Label>
-            <div className="flex gap-4 items-center">
-              {localAvatarUrl ? (
-                <div className="relative">
-                  <img
-                    src={localAvatarUrl}
-                    alt="صورة الموظف"
-                    className="object-cover w-20 h-20 rounded-full border-2 border-blue-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLocal(prev => ({ ...prev, avatar: undefined }));
-                      draftRef.current = { ...draftRef.current, avatar: undefined };
-                    }}
-                    className="flex absolute -top-2 -right-2 justify-center items-center w-6 h-6 text-white bg-red-500 rounded-full hover:bg-red-600"
-                    title="حذف الصورة"
-                    aria-label="حذف الصورة"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex justify-center items-center w-20 h-20 text-2xl font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
-                  {(local.name as string)?.charAt(0) || 'U'}
-                </div>
-              )}
-              <div className="flex-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  title="رفع صورة الموظف"
-                  aria-label="رفع صورة الموظف"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const avatarUrl = await handleAvatarUpload(file, editingEmployee?.id);
-                      if (avatarUrl) {
-                        setLocal(prev => ({ ...prev, avatar: avatarUrl }));
-                        draftRef.current = { ...draftRef.current, avatar: avatarUrl };
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                  className="w-full"
-                >
-                  {uploadingAvatar ? (
-                    <>
-                      <Loader2 className="ml-2 w-4 h-4 animate-spin" />
-                      جاري الرفع...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="ml-2 w-4 h-4" />
-                      {localAvatarUrl ? 'تغيير الصورة' : 'رفع صورة'}
-                    </>
-                  )}
-                </Button>
-                <p className="mt-1 text-xs text-gray-500">الحد الأقصى: 5 ميجابايت (JPG, PNG, WEBP)</p>
-              </div>
+      <div className="py-4 space-y-6">
+        {/* معلومات شخصية */}
+        <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+          <div className="flex gap-3 items-center mb-4">
+            <div className="flex justify-center items-center w-10 h-10 bg-blue-100 rounded-full">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">المعلومات الشخصية</h3>
+              <p className="text-sm text-gray-600">البيانات الأساسية للموظف</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* معلومات العمل */}
-      <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-        <div className="flex gap-3 items-center mb-4">
-          <div className="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
-            <Briefcase className="w-5 h-5 text-green-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">معلومات العمل</h3>
-            <p className="text-sm text-gray-600">الوظيفة والصلاحيات في المنصة</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
-            <Select
-              value={(local.role as string) || ''}
-              onValueChange={onSelect('role')}
-            >
-              <SelectTrigger className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.role ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
-                <SelectValue placeholder="اختر الوظيفة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="support">دعم فني</SelectItem>
-                <SelectItem value="finance">مالية</SelectItem>
-                <SelectItem value="sales">مبيعات</SelectItem>
-                <SelectItem value="content">محتوى</SelectItem>
-                <SelectItem value="supervisor">مشرف</SelectItem>
-                <SelectItem value="admin">مدير نظام</SelectItem>
-              </SelectContent>
-            </Select>
-            {formErrors.role && (
-              <p className="text-sm text-red-500">{formErrors.role}</p>
-            )}
-            
-            {/* معاينة الصلاحيات */}
-            {local.role && (
-              <div className="p-3 mt-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="mb-2 text-xs font-semibold text-blue-900">الصلاحيات الممنوحة:</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {Object.entries(DEFAULT_PERMISSIONS[local.role as EmployeeRole] || {}).map(([key, value]) => {
-                    if (typeof value === 'boolean' && value) {
-                      const permissionLabels: Record<string, string> = {
-                        canViewUsers: 'عرض المستخدمين',
-                        canEditUsers: 'تعديل المستخدمين',
-                        canViewFinancials: 'عرض التقارير المالية',
-                        canManagePayments: 'إدارة المدفوعات',
-                        canViewReports: 'عرض التقارير',
-                        canManageContent: 'إدارة المحتوى',
-                        canManageEmployees: 'إدارة الموظفين',
-                        canViewSupport: 'عرض تذاكر الدعم',
-                        canManageSupport: 'إدارة تذاكر الدعم'
-                      };
-                      return (
-                        <div key={key} className="flex gap-1 items-center">
-                          <CheckCircle className="w-3 h-3 text-green-600" />
-                          <span className="text-blue-800">{permissionLabels[key] || key}</span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">القسم *</Label>
-            <Select
-              value={(local.department as string) || ''}
-              onValueChange={onSelect('department')}
-            >
-              <SelectTrigger className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.department ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
-                <SelectValue placeholder="اختر القسم" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="التقنية">التقنية</SelectItem>
-                <SelectItem value="المالية">المالية</SelectItem>
-                <SelectItem value="المبيعات">المبيعات</SelectItem>
-                <SelectItem value="المحتوى">المحتوى</SelectItem>
-                <SelectItem value="الدعم الفني">الدعم الفني</SelectItem>
-                <SelectItem value="الإدارة">الإدارة</SelectItem>
-                <SelectItem value="التسويق">التسويق</SelectItem>
-                <SelectItem value="الموارد البشرية">الموارد البشرية</SelectItem>
-              </SelectContent>
-            </Select>
-            {formErrors.department && (
-              <p className="text-sm text-red-500">{formErrors.department}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">تاريخ التعيين</Label>
-            <Input
-              id="emp_hire"
-              type="date"
-              value={(local.hireDate as string) || ''}
-              onChange={onInput('hireDate')}
-              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">الراتب الشهري</Label>
-            <Input
-              id="emp_salary"
-              type="text"
-              inputMode="decimal"
-              value={(local.salary as string) || ''}
-              onChange={onInput('salary')}
-              placeholder="0.00"
-              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
-              dir="ltr"
-            />
-            <p className="text-xs text-gray-500">أدخل الراتب بالأرقام (مثال: 5000 أو 5000.50)</p>
-          </div>
-        </div>
-      </div>
-
-      {/* معلومات المنصة */}
-      <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-        <div className="flex gap-3 items-center mb-4">
-          <div className="flex justify-center items-center w-10 h-10 bg-purple-100 rounded-full">
-            <Building2 className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">إعدادات المنصة</h3>
-            <p className="text-sm text-gray-600">الصلاحيات والمناطق الجغرافية</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">المشرف المباشر</Label>
-              <Select
-                value={(local.supervisor as string) || ''}
-                onValueChange={onSelect('supervisor')}
-              >
-                <SelectTrigger className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500">
-                  <SelectValue placeholder="اختر المشرف" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">بدون مشرف</SelectItem>
-                  {employees.filter(emp => emp.role === 'supervisor' || emp.role === 'admin').map(emp => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.name} - {emp.role === 'admin' ? 'مدير نظام' : 'مشرف'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-medium text-gray-700">الاسم الكامل *</Label>
+              <Input
+                id="emp_name"
+                value={local.name as string}
+                onChange={onInput('name')}
+                placeholder="أدخل الاسم الكامل"
+                className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.name ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+                dir="rtl"
+              />
+              {formErrors.name && (
+                <p className="text-sm text-red-500">{formErrors.name}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">ساعات العمل</Label>
-              <div className="flex gap-2 items-center">
-                <Input
-                  id="emp_wstart"
-                  type="time"
-                  value={(local.workStartTime as string) || '09:00'}
-                  onChange={onInput('workStartTime')}
-                  className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
-                />
-                <span className="flex items-center text-sm text-gray-500">إلى</span>
-                <Input
-                  id="emp_wend"
-                  type="time"
-                  value={(local.workEndTime as string) || '17:00'}
-                  onChange={onInput('workEndTime')}
-                  className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
-                />
+              <Label className="text-sm font-medium text-gray-700">البريد الإلكتروني *</Label>
+              <Input
+                id="emp_email"
+                type="email"
+                value={local.email as string}
+                onChange={onInput('email')}
+                placeholder="example@el7lm.com"
+                className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.email ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+                dir="ltr"
+              />
+              {formErrors.email && (
+                <p className="text-sm text-red-500">{formErrors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">رقم الهاتف *</Label>
+              <Input
+                id="emp_phone"
+                type="tel"
+                value={local.phone as string}
+                onChange={onInput('phone')}
+                placeholder="05xxxxxxxx"
+                className={`w-full h-11 text-sm sm:h-12 sm:text-base text-left ${formErrors.phone ? 'border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
+                dir="ltr"
+              />
+              {formErrors.phone && (
+                <p className="text-sm text-red-500">{formErrors.phone}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">تاريخ الميلاد</Label>
+              <Input
+                id="emp_birth"
+                type="date"
+                value={(local.birthDate as string) || ''}
+                onChange={onInput('birthDate')}
+                className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-sm font-medium text-gray-700">الصورة الشخصية</Label>
+              <div className="flex gap-4 items-center">
+                {localAvatarUrl ? (
+                  <div className="relative">
+                    <img
+                      src={localAvatarUrl}
+                      alt="صورة الموظف"
+                      className="object-cover w-20 h-20 rounded-full border-2 border-blue-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocal(prev => ({ ...prev, avatar: undefined }));
+                        draftRef.current = { ...draftRef.current, avatar: undefined };
+                      }}
+                      className="flex absolute -top-2 -right-2 justify-center items-center w-6 h-6 text-white bg-red-500 rounded-full hover:bg-red-600"
+                      title="حذف الصورة"
+                      aria-label="حذف الصورة"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center w-20 h-20 text-2xl font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
+                    {(local.name as string)?.charAt(0) || 'U'}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    title="رفع صورة الموظف"
+                    aria-label="رفع صورة الموظف"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const avatarUrl = await handleAvatarUpload(file, editingEmployee?.id);
+                        if (avatarUrl) {
+                          setLocal(prev => ({ ...prev, avatar: avatarUrl }));
+                          draftRef.current = { ...draftRef.current, avatar: avatarUrl };
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="w-full"
+                  >
+                    {uploadingAvatar ? (
+                      <>
+                        <Loader2 className="ml-2 w-4 h-4 animate-spin" />
+                        جاري الرفع...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="ml-2 w-4 h-4" />
+                        {localAvatarUrl ? 'تغيير الصورة' : 'رفع صورة'}
+                      </>
+                    )}
+                  </Button>
+                  <p className="mt-1 text-xs text-gray-500">الحد الأقصى: 5 ميجابايت (JPG, PNG, WEBP)</p>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">المناطق الجغرافية *</Label>
-            <div className="p-4 bg-white rounded-lg border border-gray-200">
-              <LocationSelector />
+        {/* معلومات العمل */}
+        <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+          <div className="flex gap-3 items-center mb-4">
+            <div className="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
+              <Briefcase className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">معلومات العمل</h3>
+              <p className="text-sm text-gray-600">الوظيفة والصلاحيات في المنصة</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* معلومات إضافية */}
-      <div className="p-6 bg-gradient-to-r from-gray-50 rounded-xl border border-gray-200 to-slate-50">
-        <div className="flex gap-3 items-center mb-4">
-          <div className="flex justify-center items-center w-10 h-10 bg-gray-100 rounded-full">
-            <AlertCircle className="w-5 h-5 text-gray-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">معلومات إضافية</h3>
-            <p className="text-sm text-gray-600">ملاحظات ومعلومات إضافية</p>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">الوظيفة *</Label>
+              <Select
+                value={(local.role as string) || ''}
+                onValueChange={onSelect('role')}
+              >
+                <SelectTrigger className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.role ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
+                  <SelectValue placeholder="اختر الوظيفة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="support">دعم فني</SelectItem>
+                  <SelectItem value="finance">مالية</SelectItem>
+                  <SelectItem value="sales">مبيعات</SelectItem>
+                  <SelectItem value="content">محتوى</SelectItem>
+                  <SelectItem value="supervisor">مشرف</SelectItem>
+                  <SelectItem value="admin">مدير نظام</SelectItem>
+                </SelectContent>
+              </Select>
+              {formErrors.role && (
+                <p className="text-sm text-red-500">{formErrors.role}</p>
+              )}
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
-            <Input
-              id="emp_notes"
-              value={(local.notes as string) || ''}
-              onChange={onInput('notes')}
-              placeholder="أي ملاحظات إضافية حول الموظف..."
-              className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-gray-500"
-            />
-          </div>
+              {/* معاينة الصلاحيات */}
+              {local.role && (
+                <div className="p-3 mt-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="mb-2 text-xs font-semibold text-blue-900">الصلاحيات الممنوحة:</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {Object.entries(DEFAULT_PERMISSIONS[local.role as EmployeeRole] || {}).map(([key, value]) => {
+                      if (typeof value === 'boolean' && value) {
+                        const permissionLabels: Record<string, string> = {
+                          canViewUsers: 'عرض المستخدمين',
+                          canEditUsers: 'تعديل المستخدمين',
+                          canViewFinancials: 'عرض التقارير المالية',
+                          canManagePayments: 'إدارة المدفوعات',
+                          canViewReports: 'عرض التقارير',
+                          canManageContent: 'إدارة المحتوى',
+                          canManageEmployees: 'إدارة الموظفين',
+                          canViewSupport: 'عرض تذاكر الدعم',
+                          canManageSupport: 'إدارة تذاكر الدعم'
+                        };
+                        return (
+                          <div key={key} className="flex gap-1 items-center">
+                            <CheckCircle className="w-3 h-3 text-green-600" />
+                            <span className="text-blue-800">{permissionLabels[key] || key}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
-          <div className="flex gap-4 items-center">
-            <div className="flex gap-2 items-center">
-              <input
-                type="checkbox"
-                id="isActive"
-                title="تفعيل الحساب فوراً"
-                checked={!!local.isActive}
-                onChange={onCheckbox('isActive')}
-                className="rounded border-gray-300"
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">القسم *</Label>
+              <Select
+                value={(local.department as string) || ''}
+                onValueChange={onSelect('department')}
+              >
+                <SelectTrigger className={`w-full h-11 text-sm sm:h-12 sm:text-base ${formErrors.department ? 'border-red-500' : 'border-gray-300 focus:border-green-500'}`}>
+                  <SelectValue placeholder="اختر القسم" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="التقنية">التقنية</SelectItem>
+                  <SelectItem value="المالية">المالية</SelectItem>
+                  <SelectItem value="المبيعات">المبيعات</SelectItem>
+                  <SelectItem value="المحتوى">المحتوى</SelectItem>
+                  <SelectItem value="الدعم الفني">الدعم الفني</SelectItem>
+                  <SelectItem value="الإدارة">الإدارة</SelectItem>
+                  <SelectItem value="التسويق">التسويق</SelectItem>
+                  <SelectItem value="الموارد البشرية">الموارد البشرية</SelectItem>
+                </SelectContent>
+              </Select>
+              {formErrors.department && (
+                <p className="text-sm text-red-500">{formErrors.department}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">تاريخ التعيين</Label>
+              <Input
+                id="emp_hire"
+                type="date"
+                value={(local.hireDate as string) || ''}
+                onChange={onInput('hireDate')}
+                className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
               />
-              <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                تفعيل الحساب فوراً
-              </Label>
             </div>
 
-            <div className="flex gap-2 items-center">
-              <input
-                type="checkbox"
-                id="sendWelcomeEmail"
-                title="إرسال بريد ترحيبي"
-                checked={!!local.sendWelcomeEmail}
-                onChange={onCheckbox('sendWelcomeEmail')}
-                className="rounded border-gray-300"
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">الراتب الشهري</Label>
+              <Input
+                id="emp_salary"
+                type="text"
+                inputMode="decimal"
+                value={(local.salary as string) || ''}
+                onChange={onInput('salary')}
+                placeholder="0.00"
+                className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-green-500"
+                dir="ltr"
               />
-              <Label htmlFor="sendWelcomeEmail" className="text-sm font-medium text-gray-700">
-                إرسال بريد ترحيبي
-              </Label>
+              <p className="text-xs text-gray-500">أدخل الراتب بالأرقام (مثال: 5000 أو 5000.50)</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* مزامنة الحالة المحلية إلى الحالة العامة عند الحفظ */}
-      <div className="hidden">
-        {/* عنصر مخفي يُحدَّث قبل الحفظ عبر handleSaveEmployee */}
+        {/* معلومات المنصة */}
+        <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+          <div className="flex gap-3 items-center mb-4">
+            <div className="flex justify-center items-center w-10 h-10 bg-purple-100 rounded-full">
+              <Building2 className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">إعدادات المنصة</h3>
+              <p className="text-sm text-gray-600">الصلاحيات والمناطق الجغرافية</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">المشرف المباشر</Label>
+                <Select
+                  value={(local.supervisor as string) || ''}
+                  onValueChange={onSelect('supervisor')}
+                >
+                  <SelectTrigger className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500">
+                    <SelectValue placeholder="اختر المشرف" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون مشرف</SelectItem>
+                    {employees.filter(emp => emp.role === 'supervisor' || emp.role === 'admin').map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.name} - {emp.role === 'admin' ? 'مدير نظام' : 'مشرف'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">ساعات العمل</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="emp_wstart"
+                    type="time"
+                    value={(local.workStartTime as string) || '09:00'}
+                    onChange={onInput('workStartTime')}
+                    className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
+                  />
+                  <span className="flex items-center text-sm text-gray-500">إلى</span>
+                  <Input
+                    id="emp_wend"
+                    type="time"
+                    value={(local.workEndTime as string) || '17:00'}
+                    onChange={onInput('workEndTime')}
+                    className="flex-1 h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-purple-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">المناطق الجغرافية *</Label>
+              <div className="p-4 bg-white rounded-lg border border-gray-200">
+                <LocationSelector />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* معلومات إضافية */}
+        <div className="p-6 bg-gradient-to-r from-gray-50 rounded-xl border border-gray-200 to-slate-50">
+          <div className="flex gap-3 items-center mb-4">
+            <div className="flex justify-center items-center w-10 h-10 bg-gray-100 rounded-full">
+              <AlertCircle className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">معلومات إضافية</h3>
+              <p className="text-sm text-gray-600">ملاحظات ومعلومات إضافية</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">الملاحظات</Label>
+              <Input
+                id="emp_notes"
+                value={(local.notes as string) || ''}
+                onChange={onInput('notes')}
+                placeholder="أي ملاحظات إضافية حول الموظف..."
+                className="w-full h-11 text-sm border-gray-300 sm:h-12 sm:text-base focus:border-gray-500"
+              />
+            </div>
+
+            <div className="flex gap-4 items-center">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  title="تفعيل الحساب فوراً"
+                  checked={!!local.isActive}
+                  onChange={onCheckbox('isActive')}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+                  تفعيل الحساب فوراً
+                </Label>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id="sendWelcomeEmail"
+                  title="إرسال بريد ترحيبي"
+                  checked={!!local.sendWelcomeEmail}
+                  onChange={onCheckbox('sendWelcomeEmail')}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="sendWelcomeEmail" className="text-sm font-medium text-gray-700">
+                  إرسال بريد ترحيبي
+                </Label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* مزامنة الحالة المحلية إلى الحالة العامة عند الحفظ */}
+        <div className="hidden">
+          {/* عنصر مخفي يُحدَّث قبل الحفظ عبر handleSaveEmployee */}
+        </div>
       </div>
-    </div>
-  );
+    );
   }
 
   // State
@@ -989,7 +989,7 @@ export default function EmployeesManagement() {
 
     const matchesRole = roleFilter === 'all' || employee.role === roleFilter;
     const matchesDepartment = departmentFilter === 'all' || employee.department === departmentFilter;
-    const matchesStatus = statusFilter === 'all' || 
+    const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && employee.isActive) ||
       (statusFilter === 'inactive' && !employee.isActive);
 
@@ -1271,14 +1271,14 @@ export default function EmployeesManagement() {
   const handleAvatarUpload = async (file: File, employeeId?: string) => {
     try {
       setUploadingAvatar(true);
-      
+
       console.log('🔄 [Employee Avatar Upload] بدء رفع الصورة:', {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         employeeId: employeeId || 'new'
       });
-      
+
       // التحقق من نوع الملف
       if (!file.type.startsWith('image/')) {
         toast.error('الملف المحدد ليس صورة');
@@ -1295,67 +1295,37 @@ export default function EmployeesManagement() {
       // إنشاء اسم فريد للملف
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const timestamp = Date.now();
-      const fileName = employeeId 
+      const fileName = employeeId
         ? `employees/${employeeId}.${fileExt}`
         : `employees/temp_${timestamp}.${fileExt}`;
 
-      console.log('📤 [Employee Avatar Upload] رفع الصورة إلى Supabase:', {
+      console.log('📤 [Employee Avatar Upload] رفع الصورة إلى Cloudflare R2:', {
         bucket: 'avatars',
         fileName,
         fileSize: file.size,
         fileType: file.type
       });
 
+      const { storageManager } = await import('@/lib/storage');
+
       // رفع الصورة - استخدام bucket avatars لأنه موجود ومستخدم في المشروع
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { 
-          upsert: true,
-          cacheControl: '3600',
-          contentType: file.type
-        });
+      // في R2، هذا سيقوم بالرفع إلى المجلد avatars/employees/...
+      const result = await storageManager.upload('avatars', fileName, file, {
+        upsert: true,
+        cacheControl: '3600',
+        contentType: file.type
+      });
 
-      if (uploadError) {
-        console.error('❌ [Employee Avatar Upload] خطأ في الرفع:', uploadError);
-        const uploadErrorDetails = uploadError as { statusCode?: number; error?: string };
-        console.error('📋 [Employee Avatar Upload] تفاصيل الخطأ:', {
-          message: uploadError.message,
-          statusCode: uploadErrorDetails.statusCode,
-          error: uploadErrorDetails.error
-        });
-        
-        // رسائل خطأ أكثر تفصيلاً
-        if (uploadError.message?.includes('Bucket not found')) {
-          toast.error('❌ Bucket "avatars" غير موجود في Supabase Storage. يرجى التحقق من إعدادات Supabase');
-        } else if (uploadError.message?.includes('new row violates row-level security')) {
-          toast.error('❌ خطأ في الصلاحيات. يرجى التحقق من إعدادات RLS في Supabase Storage');
-        } else if (uploadError.message?.includes('JWT')) {
-          toast.error('❌ خطأ في المصادقة. يرجى التحقق من إعدادات Supabase');
-        } else {
-          toast.error(`❌ حدث خطأ أثناء رفع الصورة: ${uploadError.message || 'خطأ غير معروف'}`);
-        }
-        return;
+      if (!result?.publicUrl) {
+        throw new Error('فشل في الحصول على رابط الصورة');
       }
 
-      console.log('✅ [Employee Avatar Upload] تم رفع الصورة بنجاح:', uploadData);
+      const publicUrl = result.publicUrl;
+      console.log('✅ [Employee Avatar Upload] تم الرفع بنجاح:', publicUrl);
 
-      // الحصول على رابط الصورة
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ [Employee Avatar Upload] فشل في الحصول على رابط الصورة');
-        toast.error('تم رفع الصورة لكن فشل في الحصول على الرابط');
-        return;
-      }
-
-      console.log('🔗 [Employee Avatar Upload] رابط الصورة:', urlData.publicUrl);
-      
       toast.success('✅ تم رفع الصورة بنجاح');
-      return urlData.publicUrl;
+      return publicUrl;
     } catch (error: any) {
-      console.error('❌ [Employee Avatar Upload] خطأ غير متوقع:', error);
       console.error('📋 [Employee Avatar Upload] تفاصيل الخطأ:', {
         message: error?.message,
         stack: error?.stack,
@@ -1367,6 +1337,7 @@ export default function EmployeesManagement() {
       setUploadingAvatar(false);
     }
   };
+
 
   // Log activity function
   const logActivity = async (employeeId: string, action: string, details?: any) => {
@@ -1391,7 +1362,7 @@ export default function EmployeesManagement() {
       const activitiesRef = collection(db, 'employee_activities');
       const q = query(activitiesRef, where('employeeId', '==', employeeId));
       const snapshot = await getDocs(q);
-      
+
       const activities = snapshot.docs
         .map(doc => {
           const data = doc.data() as { timestamp?: DateOrTimestamp } & Record<string, unknown>;
@@ -1514,7 +1485,7 @@ export default function EmployeesManagement() {
           compact ? 'p-4' : 'p-5'
         )}
       >
-        <div className={cn('flex flex-col gap-3', compact ? '':'md:flex-row md:items-start md:justify-between')}>
+        <div className={cn('flex flex-col gap-3', compact ? '' : 'md:flex-row md:items-start md:justify-between')}>
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex justify-center items-center w-12 h-12 text-lg font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
@@ -1620,7 +1591,7 @@ export default function EmployeesManagement() {
             </div>
           )}
           {(employee as any).notes && (
-            <div className={compact ? '':'md:col-span-2'}>
+            <div className={compact ? '' : 'md:col-span-2'}>
               <p className="text-xs text-slate-500">ملاحظات</p>
               <div className="mt-1">
                 <p className="text-sm text-slate-700 line-clamp-2">
@@ -1630,7 +1601,7 @@ export default function EmployeesManagement() {
             </div>
           )}
           {employee.locations && employee.locations.length > 0 && (
-            <div className={compact ? '':'md:col-span-2'}>
+            <div className={compact ? '' : 'md:col-span-2'}>
               <p className="text-xs text-slate-500">المناطق</p>
               <div className="flex flex-wrap gap-1 mt-1">
                 {employee.locations.slice(0, 3).map((loc, idx) => (
@@ -1646,10 +1617,10 @@ export default function EmployeesManagement() {
               </div>
             </div>
           )}
-          
+
           {/* بيانات تسجيل الدخول */}
           {((employee as any).loginMethods || employee.authUserId) && (
-            <div className={compact ? '':'md:col-span-2'}>
+            <div className={compact ? '' : 'md:col-span-2'}>
               <div className="p-3 mt-2 bg-blue-50 rounded-lg border border-blue-100">
                 <p className="mb-2 text-xs font-semibold text-blue-900">طرق تسجيل الدخول:</p>
                 <div className="space-y-2">
@@ -1790,7 +1761,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
     // معالج البحث في المدن
     const handleCitySearch = (query: string) => {
       setCitySearchQuery(query);
-      
+
       if (query.length > 0) {
         // البحث في جميع الدول المختارة
         const allSearchResults: string[] = [];
@@ -1859,13 +1830,13 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
     };
 
     // التحقق من اختيار كل الدول
-    const allCountriesSelected = countries && Array.isArray(countries) && 
-      selectedCountries.length === countries.length && 
+    const allCountriesSelected = countries && Array.isArray(countries) &&
+      selectedCountries.length === countries.length &&
       countries.every(c => selectedCountries.includes(c.name));
 
     // التحقق من اختيار كل المدن المتاحة
-    const allCitiesSelected = availableCities && Array.isArray(availableCities) && 
-      availableCities.length > 0 && 
+    const allCitiesSelected = availableCities && Array.isArray(availableCities) &&
+      availableCities.length > 0 &&
       availableCities.every(city => selectedCities.includes(city));
 
     return (
@@ -1909,7 +1880,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               </div>
             )}
           </div>
-          
+
           {/* الدول المختارة */}
           {selectedCountries.length > 0 && (
             <div className="flex flex-wrap gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
@@ -2083,7 +2054,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
         return; // منع الضغط المزدوج
       }
       savingRef.current = true;
-      console.log('🔄 [Save Employee] بدء عملية حفظ الموظف...', { 
+      console.log('🔄 [Save Employee] بدء عملية حفظ الموظف...', {
         editingEmployee: editingEmployee?.id || 'new',
         draftRef: draftRef.current,
         selectedCountries: selectedCountries.length,
@@ -2115,7 +2086,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
       const phoneVal = (document.querySelector('#emp_phone') as HTMLInputElement | null)?.value || draftRef.current.phone || newEmployee.phone || '';
       const roleVal = (draftRef.current.role as string) || newEmployee.role || '';
       const deptVal = (draftRef.current.department as string) || newEmployee.department || '';
-      
+
       console.log('📋 [Save Employee] القيم المقروءة:', {
         nameVal,
         emailVal,
@@ -2240,7 +2211,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               };
             })
           };
-          
+
           // إضافة الحقول الإضافية إذا كانت موجودة
           if (draftRef.current.birthDate) {
             employeeData.birthDate = draftRef.current.birthDate;
@@ -2300,15 +2271,15 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
                 createdAt: new Date()
               }
             };
-            
+
             console.log('📋 بيانات تسجيل الدخول المراد حفظها:', JSON.stringify(loginMethodsData, null, 2));
-            
+
             await updateDoc(employeeRef, {
               authUserId: authUserId,
               avatar: (draftRef.current.avatar as any) || employeeData.avatar,
               loginMethods: loginMethodsData
             });
-            
+
             // التحقق من الحفظ
             const savedDoc = await getDoc(employeeRef);
             const savedData = savedDoc.data();
@@ -2381,7 +2352,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
           return;
         }
       } else {
-          // Update existing employee
+        // Update existing employee
         try {
           const employeeData: any = {
             name: nameVal,
@@ -2417,7 +2388,7 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               }
             }
           };
-          
+
           // إضافة الحقول الإضافية إذا كانت موجودة
           if (draftRef.current.birthDate) {
             employeeData.birthDate = draftRef.current.birthDate;
@@ -2443,22 +2414,22 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
 
           console.log('🔄 تحديث بيانات الموظف مع بيانات تسجيل الدخول...');
           console.log('📋 بيانات تسجيل الدخول المراد حفظها:', JSON.stringify(employeeData.loginMethods, null, 2));
-          
+
           await updateDoc(doc(db, 'employees', editingEmployee.id), employeeData);
-          
+
           // التحقق من الحفظ
           const updatedDoc = await getDoc(doc(db, 'employees', editingEmployee.id));
           const updatedData = updatedDoc.data();
           console.log('✅ تم تحديث بيانات الموظف بنجاح');
           console.log('📊 بيانات تسجيل الدخول المحفوظة في قاعدة البيانات:', JSON.stringify(updatedData?.loginMethods, null, 2));
-          
+
           // Log activity
           await logActivity(editingEmployee.id, 'تم تحديث بيانات الموظف', {
             updatedFields: Object.keys(employeeData),
             updatedBy: user?.email || 'system',
             loginMethodsUpdated: true
           });
-          
+
           toast.success('تم تحديث بيانات الموظف بنجاح');
         } catch (error) {
           console.error('❌ [Save Employee] خطأ في تحديث الموظف:', error);
@@ -2549,102 +2520,102 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
   // Update CredentialsDialog component
   function CredentialsDialog() {
     return (
-    <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle className="flex gap-2 items-center text-green-600">
-            <CheckCircle className="w-5 h-5" />
-            تم إنشاء حساب الموظف بنجاح
-          </DialogTitle>
-          <DialogDescription>
-            يرجى حفظ أو إرسال بيانات الدخول التالية للموظف بشكل آمن
-          </DialogDescription>
-        </DialogHeader>
+      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex gap-2 items-center text-green-600">
+              <CheckCircle className="w-5 h-5" />
+              تم إنشاء حساب الموظف بنجاح
+            </DialogTitle>
+            <DialogDescription>
+              يرجى حفظ أو إرسال بيانات الدخول التالية للموظف بشكل آمن
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="py-4 space-y-6">
-          {/* Credentials Display */}
-          <div className="p-4 space-y-4 bg-gray-50 rounded-lg">
-            <div className="space-y-2">
-              <h4 className="flex gap-2 items-center text-sm font-semibold text-gray-900">
-                <Mail className="w-4 h-4 text-blue-500" />
-                بيانات الدخول
-              </h4>
+          <div className="py-4 space-y-6">
+            {/* Credentials Display */}
+            <div className="p-4 space-y-4 bg-gray-50 rounded-lg">
               <div className="space-y-2">
-                <Label className="text-xs text-gray-600">البريد الإلكتروني</Label>
-                <div className="flex gap-2 items-center p-2 bg-white rounded border">
-                  <Mail className="w-3 h-3 text-gray-500" />
-                  <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.email}</span>
+                <h4 className="flex gap-2 items-center text-sm font-semibold text-gray-900">
+                  <Mail className="w-4 h-4 text-blue-500" />
+                  بيانات الدخول
+                </h4>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600">البريد الإلكتروني</Label>
+                  <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                    <Mail className="w-3 h-3 text-gray-500" />
+                    <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.email}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600">كلمة المرور</Label>
-                <div className="flex gap-2 items-center p-2 bg-white rounded border">
-                  <Key className="w-3 h-3 text-gray-500" />
-                  <span className="flex-1 font-mono text-sm font-medium text-gray-900">{newUserCredentials?.password}</span>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600">كلمة المرور</Label>
+                  <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                    <Key className="w-3 h-3 text-gray-500" />
+                    <span className="flex-1 font-mono text-sm font-medium text-gray-900">{newUserCredentials?.password}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600">رقم الهاتف (WhatsApp)</Label>
-                <div className="flex gap-2 items-center p-2 bg-white rounded border">
-                  <Phone className="w-3 h-3 text-gray-500" />
-                  <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.phone || 'غير متوفر'}</span>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600">رقم الهاتف (WhatsApp)</Label>
+                  <div className="flex gap-2 items-center p-2 bg-white rounded border">
+                    <Phone className="w-3 h-3 text-gray-500" />
+                    <span className="flex-1 text-sm font-medium text-gray-900">{newUserCredentials?.phone || 'غير متوفر'}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Send Options */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-900">خيارات الإرسال</h4>
+            {/* Send Options */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-gray-900">خيارات الإرسال</h4>
 
-            <div className="grid grid-cols-1 gap-2">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={sendCredentialsEmail}
-                disabled={isSendingEmail}
-              >
-                {isSendingEmail ? (
-                  <>
-                    <Loader2 className="ml-2 w-4 h-4 animate-spin" />
-                    جاري الإرسال...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="ml-2 w-4 h-4" />
-                    إرسال عبر البريد
-                  </>
-                )}
-              </Button>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={sendCredentialsEmail}
+                  disabled={isSendingEmail}
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 className="ml-2 w-4 h-4 animate-spin" />
+                      جاري الإرسال...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="ml-2 w-4 h-4" />
+                      إرسال عبر البريد
+                    </>
+                  )}
+                </Button>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={sendCredentialsSMS}
-                disabled={isSendingSMS}
-              >
-                {isSendingSMS ? (
-                  <>
-                    <Loader2 className="ml-2 w-4 h-4 animate-spin" />
-                    جاري الإرسال...
-                  </>
-                ) : (
-                  <>
-                    <Phone className="ml-2 w-4 h-4" />
-                    إرسال عبر WhatsApp
-                  </>
-                )}
-              </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={sendCredentialsSMS}
+                  disabled={isSendingSMS}
+                >
+                  {isSendingSMS ? (
+                    <>
+                      <Loader2 className="ml-2 w-4 h-4 animate-spin" />
+                      جاري الإرسال...
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="ml-2 w-4 h-4" />
+                      إرسال عبر WhatsApp
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Copy to Clipboard */}
-          <div className="space-y-4">
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => {
-                const credentials = `
+            {/* Copy to Clipboard */}
+            <div className="space-y-4">
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  const credentials = `
 بيانات الدخول للنظام:
 ------------------------
                 بيانات تسجيل الدخول:
@@ -2665,56 +2636,56 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
 - جميع بيانات تسجيل الدخول محفوظة في قاعدة البيانات
                 `.trim();
 
-                navigator.clipboard.writeText(credentials);
-                setCredentialsCopied(true);
-                toast.success('تم نسخ البيانات إلى الحافظة');
+                  navigator.clipboard.writeText(credentials);
+                  setCredentialsCopied(true);
+                  toast.success('تم نسخ البيانات إلى الحافظة');
 
-                setTimeout(() => setCredentialsCopied(false), 2000);
+                  setTimeout(() => setCredentialsCopied(false), 2000);
+                }}
+              >
+                {credentialsCopied ? (
+                  <>
+                    <Check className="ml-2 w-4 h-4" />
+                    تم النسخ
+                  </>
+                ) : (
+                  <>
+                    <Copy className="ml-2 w-4 h-4" />
+                    نسخ البيانات
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Important Notes */}
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <h4 className="flex gap-2 items-center mb-1 text-xs font-medium text-blue-800">
+                <AlertCircle className="w-3 h-3" />
+                ملاحظات
+              </h4>
+              <ul className="space-y-1 text-xs list-disc list-inside text-blue-700">
+                <li>سيتم إرسال رابط تغيير كلمة المرور تلقائياً</li>
+                <li>يجب تغيير كلمة المرور عند أول تسجيل دخول</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => {
+                setShowCredentialsDialog(false);
+                setNewUserCredentials(null);
+                setCredentialsCopied(false);
               }}
             >
-              {credentialsCopied ? (
-                <>
-                  <Check className="ml-2 w-4 h-4" />
-                  تم النسخ
-                </>
-              ) : (
-                <>
-                  <Copy className="ml-2 w-4 h-4" />
-                  نسخ البيانات
-                </>
-              )}
+              <Check className="ml-2 w-4 h-4" />
+              تم
             </Button>
-          </div>
-
-          {/* Important Notes */}
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <h4 className="flex gap-2 items-center mb-1 text-xs font-medium text-blue-800">
-              <AlertCircle className="w-3 h-3" />
-              ملاحظات
-            </h4>
-            <ul className="space-y-1 text-xs list-disc list-inside text-blue-700">
-              <li>سيتم إرسال رابط تغيير كلمة المرور تلقائياً</li>
-              <li>يجب تغيير كلمة المرور عند أول تسجيل دخول</li>
-            </ul>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="default"
-            onClick={() => {
-              setShowCredentialsDialog(false);
-              setNewUserCredentials(null);
-              setCredentialsCopied(false);
-            }}
-          >
-            <Check className="ml-2 w-4 h-4" />
-            تم
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   // Delete employee
@@ -2768,14 +2739,14 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
       await updateDoc(doc(db, 'employees', employee.id), {
         isActive: newStatus
       });
-      
+
       // Log activity
       await logActivity(employee.id, `تم ${newStatus ? 'تفعيل' : 'تعطيل'} الموظف`, {
         previousStatus: employee.isActive ? 'نشط' : 'غير نشط',
         newStatus: newStatus ? 'نشط' : 'غير نشط',
         changedBy: user?.email || 'system'
       });
-      
+
       loadEmployees();
       toast.success(`تم ${newStatus ? 'تفعيل' : 'تعطيل'} الموظف بنجاح`);
     } catch (error) {
@@ -2829,477 +2800,477 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
     <AccountTypeProtection allowedTypes={['admin']}>
       <div className="min-h-screen bg-slate-50" dir="rtl">
         <div className="px-4 py-8 mx-auto space-y-8 max-w-7xl sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="flex flex-col gap-4 p-8 text-white bg-gradient-to-l from-indigo-600 via-blue-600 to-sky-500 rounded-3xl shadow-xl">
-          <div className="flex flex-wrap gap-4 justify-between items-center">
-            <div>
-              <p className="text-sm tracking-widest uppercase text-white/80">
-                لوحة تحكم إدارة الموظفين
-              </p>
-              <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
-                إدارة موظفي منصة الحلم
-              </h1>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() => setShowAddDialog(true)}
-                variant="default"
-                className="bg-white text-slate-900 hover:bg-white/90"
-              >
-                <UserPlus className="ml-2 w-4 h-4" />
-                إضافة موظف جديد
-              </Button>
-              <Button
-                onClick={exportToPDF}
-                variant="secondary"
-                className="text-white bg-white/20 hover:bg-white/30"
-              >
-                <FileText className="ml-2 w-4 h-4" />
-                تصدير PDF
-              </Button>
-              <Button
-                onClick={exportToExcel}
-                variant="secondary"
-                className="text-white bg-white/20 hover:bg-white/30"
-              >
-                <Download className="ml-2 w-4 h-4" />
-                تصدير Excel
-              </Button>
-            </div>
-          </div>
-          <p className="max-w-3xl text-base text-white/90">
-            إدارة شاملة لموظفي المنصة، صلاحياتهم، وأدوارهم في النظام. أضف موظفين جدد، عدّل الصلاحيات، واتبع الأداء.
-          </p>
-        </header>
-
-        {/* Stats */}
-        <section className="grid gap-4 md:grid-cols-4">
-          <Card className="border-none shadow-sm bg-white/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-500">إجمالي الموظفين</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-between items-end">
-              <span className="text-3xl font-bold text-slate-900">{employees.length}</span>
-              <Badge className="bg-slate-100 text-slate-800">
-                {filteredEmployees.length} بعد التصفية
-              </Badge>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-white/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-500">موظفين نشطين</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-between items-end">
-              <span className="text-3xl font-bold text-emerald-600">
-                {employees.filter(e => e.isActive).length}
-              </span>
-              <CheckCircle className="w-6 h-6 text-emerald-400" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-white/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-500">الأقسام</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-between items-end">
-              <span className="text-3xl font-bold text-purple-600">
-                {new Set(employees.map(e => e.department).filter(Boolean)).size}
-              </span>
-              <Building2 className="w-6 h-6 text-purple-400" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-white/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-500">الوظائف</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-between items-end">
-              <span className="text-3xl font-bold text-orange-600">
-                {new Set(employees.map(e => e.role)).size}
-              </span>
-              <Briefcase className="w-6 h-6 text-orange-400" />
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Charts Section */}
-        <section className="grid gap-6 md:grid-cols-2">
-          {/* توزيع الموظفين حسب الدور */}
-          <Card className="border-none shadow-md">
-            <CardHeader>
-              <CardTitle className="flex gap-2 items-center">
-                <Users className="w-5 h-5 text-blue-500" />
-                توزيع الموظفين حسب الدور
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {roleDistributionData.length > 0 ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={roleDistributionData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {roleDistributionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          direction: 'rtl'
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ paddingTop: '20px' }}
-                        iconType="circle"
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  لا توجد بيانات للعرض
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* توزيع الموظفين حسب القسم */}
-          <Card className="border-none shadow-md">
-            <CardHeader>
-              <CardTitle className="flex gap-2 items-center">
-                <Building2 className="w-5 h-5 text-purple-500" />
-                توزيع الموظفين حسب القسم
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {departmentDistributionData.length > 0 ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={departmentDistributionData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        width={100}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          direction: 'rtl'
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[0, 8, 8, 0]}>
-                        {departmentDistributionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-slate-500">
-                  لا توجد بيانات للعرض
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Filters */}
-        <Card className="border-none shadow-md">
-          <CardHeader className="space-y-3">
-            <div className="flex gap-3 items-center text-slate-500">
-              <Search className="w-5 h-5" />
+          {/* Header */}
+          <header className="flex flex-col gap-4 p-8 text-white bg-gradient-to-l from-indigo-600 via-blue-600 to-sky-500 rounded-3xl shadow-xl">
+            <div className="flex flex-wrap gap-4 justify-between items-center">
               <div>
-                <p className="text-sm tracking-widest uppercase text-slate-400">البحث والتصفية</p>
-                <h2 className="text-2xl font-semibold text-slate-900">مركز إدارة الموظفين</h2>
+                <p className="text-sm tracking-widest uppercase text-white/80">
+                  لوحة تحكم إدارة الموظفين
+                </p>
+                <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+                  إدارة موظفي منصة الحلم
+                </h1>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => setShowAddDialog(true)}
+                  variant="default"
+                  className="bg-white text-slate-900 hover:bg-white/90"
+                >
+                  <UserPlus className="ml-2 w-4 h-4" />
+                  إضافة موظف جديد
+                </Button>
+                <Button
+                  onClick={exportToPDF}
+                  variant="secondary"
+                  className="text-white bg-white/20 hover:bg-white/30"
+                >
+                  <FileText className="ml-2 w-4 h-4" />
+                  تصدير PDF
+                </Button>
+                <Button
+                  onClick={exportToExcel}
+                  variant="secondary"
+                  className="text-white bg-white/20 hover:bg-white/30"
+                >
+                  <Download className="ml-2 w-4 h-4" />
+                  تصدير Excel
+                </Button>
               </div>
             </div>
-            <p className="text-sm text-slate-500">
-              استخدم البحث والتصفية لتحديد الموظفين بسرعة، ثم اختر طريقة العرض المناسبة.
+            <p className="max-w-3xl text-base text-white/90">
+              إدارة شاملة لموظفي المنصة، صلاحياتهم، وأدوارهم في النظام. أضف موظفين جدد، عدّل الصلاحيات، واتبع الأداء.
             </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 pointer-events-none text-slate-400" />
-                  <Input
-                    className="pl-10 h-11 text-sm"
-                    placeholder="ابحث بالاسم، البريد، الهاتف..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+          </header>
+
+          {/* Stats */}
+          <section className="grid gap-4 md:grid-cols-4">
+            <Card className="border-none shadow-sm bg-white/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-slate-500">إجمالي الموظفين</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-between items-end">
+                <span className="text-3xl font-bold text-slate-900">{employees.length}</span>
+                <Badge className="bg-slate-100 text-slate-800">
+                  {filteredEmployees.length} بعد التصفية
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-slate-500">موظفين نشطين</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-between items-end">
+                <span className="text-3xl font-bold text-emerald-600">
+                  {employees.filter(e => e.isActive).length}
+                </span>
+                <CheckCircle className="w-6 h-6 text-emerald-400" />
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-slate-500">الأقسام</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-between items-end">
+                <span className="text-3xl font-bold text-purple-600">
+                  {new Set(employees.map(e => e.department).filter(Boolean)).size}
+                </span>
+                <Building2 className="w-6 h-6 text-purple-400" />
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-slate-500">الوظائف</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-between items-end">
+                <span className="text-3xl font-bold text-orange-600">
+                  {new Set(employees.map(e => e.role)).size}
+                </span>
+                <Briefcase className="w-6 h-6 text-orange-400" />
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Charts Section */}
+          <section className="grid gap-6 md:grid-cols-2">
+            {/* توزيع الموظفين حسب الدور */}
+            <Card className="border-none shadow-md">
+              <CardHeader>
+                <CardTitle className="flex gap-2 items-center">
+                  <Users className="w-5 h-5 text-blue-500" />
+                  توزيع الموظفين حسب الدور
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {roleDistributionData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={roleDistributionData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {roleDistributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            direction: 'rtl'
+                          }}
+                        />
+                        <Legend
+                          wrapperStyle={{ paddingTop: '20px' }}
+                          iconType="circle"
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-slate-500">
+                    لا توجد بيانات للعرض
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* توزيع الموظفين حسب القسم */}
+            <Card className="border-none shadow-md">
+              <CardHeader>
+                <CardTitle className="flex gap-2 items-center">
+                  <Building2 className="w-5 h-5 text-purple-500" />
+                  توزيع الموظفين حسب القسم
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {departmentDistributionData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={departmentDistributionData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          width={100}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            direction: 'rtl'
+                          }}
+                        />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[0, 8, 8, 0]}>
+                          {departmentDistributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-slate-500">
+                    لا توجد بيانات للعرض
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Filters */}
+          <Card className="border-none shadow-md">
+            <CardHeader className="space-y-3">
+              <div className="flex gap-3 items-center text-slate-500">
+                <Search className="w-5 h-5" />
+                <div>
+                  <p className="text-sm tracking-widest uppercase text-slate-400">البحث والتصفية</p>
+                  <h2 className="text-2xl font-semibold text-slate-900">مركز إدارة الموظفين</h2>
                 </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="h-11 text-sm">
-                    <SelectValue placeholder="تصفية حسب الوظيفة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">كل الوظائف</SelectItem>
-                    <SelectItem value="support">دعم فني</SelectItem>
-                    <SelectItem value="finance">مالية</SelectItem>
-                    <SelectItem value="sales">مبيعات</SelectItem>
-                    <SelectItem value="content">محتوى</SelectItem>
-                    <SelectItem value="supervisor">مشرف</SelectItem>
-                    <SelectItem value="admin">مدير نظام</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger className="h-11 text-sm">
-                    <SelectValue placeholder="تصفية حسب القسم" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">كل الأقسام</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-11 text-sm">
-                    <SelectValue placeholder="حالة الموظف" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">كل الحالات</SelectItem>
-                    <SelectItem value="active">نشط</SelectItem>
-                    <SelectItem value="inactive">غير نشط</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-              
-              {/* أزرار اختيار طريقة العرض */}
-              <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm font-medium text-slate-700">طريقة العرض:</span>
-                  <div className="flex gap-2 p-1 rounded-lg border border-slate-200 bg-slate-50">
-                    <Button
-                      size="sm"
-                      variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                      onClick={() => setViewMode('cards')}
-                      className={cn(
-                        'h-8 gap-2',
-                        viewMode === 'cards' 
-                          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                          : 'text-slate-600 hover:bg-slate-100'
+              <p className="text-sm text-slate-500">
+                استخدم البحث والتصفية لتحديد الموظفين بسرعة، ثم اختر طريقة العرض المناسبة.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 pointer-events-none text-slate-400" />
+                    <Input
+                      className="pl-10 h-11 text-sm"
+                      placeholder="ابحث بالاسم، البريد، الهاتف..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="h-11 text-sm">
+                      <SelectValue placeholder="تصفية حسب الوظيفة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الوظائف</SelectItem>
+                      <SelectItem value="support">دعم فني</SelectItem>
+                      <SelectItem value="finance">مالية</SelectItem>
+                      <SelectItem value="sales">مبيعات</SelectItem>
+                      <SelectItem value="content">محتوى</SelectItem>
+                      <SelectItem value="supervisor">مشرف</SelectItem>
+                      <SelectItem value="admin">مدير نظام</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                    <SelectTrigger className="h-11 text-sm">
+                      <SelectValue placeholder="تصفية حسب القسم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الأقسام</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-11 text-sm">
+                      <SelectValue placeholder="حالة الموظف" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الحالات</SelectItem>
+                      <SelectItem value="active">نشط</SelectItem>
+                      <SelectItem value="inactive">غير نشط</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* أزرار اختيار طريقة العرض */}
+                <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                  <div className="flex gap-2 items-center">
+                    <span className="text-sm font-medium text-slate-700">طريقة العرض:</span>
+                    <div className="flex gap-2 p-1 rounded-lg border border-slate-200 bg-slate-50">
+                      <Button
+                        size="sm"
+                        variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                        onClick={() => setViewMode('cards')}
+                        className={cn(
+                          'h-8 gap-2',
+                          viewMode === 'cards'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        )}
+                      >
+                        <List className="w-4 h-4" />
+                        قائمة
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                        onClick={() => setViewMode('grid')}
+                        className={cn(
+                          'h-8 gap-2',
+                          viewMode === 'grid'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        )}
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                        شبكة
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={viewMode === 'table' ? 'default' : 'ghost'}
+                        onClick={() => setViewMode('table')}
+                        className={cn(
+                          'h-8 gap-2',
+                          viewMode === 'table'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        )}
+                      >
+                        <TableIcon className="w-4 h-4" />
+                        جدول
+                      </Button>
+                      {canViewAllEmployees && (
+                        <Button
+                          size="sm"
+                          variant={showAllEmployees ? 'default' : 'outline'}
+                          onClick={() => setShowAllEmployees(prev => !prev)}
+                          className={cn(
+                            'h-8 px-3 text-xs capitalize',
+                            showAllEmployees ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100'
+                          )}
+                        >
+                          {showAllEmployees ? 'تقييد بالمناطق' : 'عرض كل الموظفين'}
+                        </Button>
                       )}
-                    >
-                      <List className="w-4 h-4" />
-                      قائمة
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                      onClick={() => setViewMode('grid')}
-                      className={cn(
-                        'h-8 gap-2',
-                        viewMode === 'grid' 
-                          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                          : 'text-slate-600 hover:bg-slate-100'
-                      )}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                      شبكة
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={viewMode === 'table' ? 'default' : 'ghost'}
-                      onClick={() => setViewMode('table')}
-                      className={cn(
-                        'h-8 gap-2',
-                        viewMode === 'table' 
-                          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                          : 'text-slate-600 hover:bg-slate-100'
-                      )}
-                    >
-                      <TableIcon className="w-4 h-4" />
-                      جدول
-                    </Button>
-                  {canViewAllEmployees && (
-                    <Button
-                      size="sm"
-                      variant={showAllEmployees ? 'default' : 'outline'}
-                      onClick={() => setShowAllEmployees(prev => !prev)}
-                      className={cn(
-                        'h-8 px-3 text-xs capitalize',
-                        showAllEmployees ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100'
-                      )}
-                    >
-                      {showAllEmployees ? 'تقييد بالمناطق' : 'عرض كل الموظفين'}
-                    </Button>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {filteredEmployees.length} موظف
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Employees Display */}
+          <Card className="border-none shadow-md">
+            <CardContent className="p-6">
+              {loading && (
+                <div className="p-12 text-center rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-base text-slate-500">جاري تحميل الموظفين...</p>
+                </div>
+              )}
+
+              {!loading && filteredEmployees.length === 0 && (
+                <div className="p-12 text-center rounded-2xl border border-dashed border-slate-200 text-slate-500">
+                  لا توجد موظفين مطابقين لخيارات البحث الحالية
+                </div>
+              )}
+
+              {!loading && filteredEmployees.length > 0 && (
+                <>
+                  {/* عرض القائمة (Cards) */}
+                  {viewMode === 'cards' && (
+                    <div className="space-y-4">
+                      {filteredEmployees.map((employee) => renderEmployeeCard(employee, false))}
+                    </div>
                   )}
-                  </div>
-                </div>
-                <div className="text-sm text-slate-500">
-                  {filteredEmployees.length} موظف
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Employees Display */}
-        <Card className="border-none shadow-md">
-          <CardContent className="p-6">
-            {loading && (
-              <div className="p-12 text-center rounded-2xl border border-dashed border-slate-200">
-                <p className="text-base text-slate-500">جاري تحميل الموظفين...</p>
-              </div>
-            )}
+                  {/* عرض الشبكة (Grid) */}
+                  {viewMode === 'grid' && (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {filteredEmployees.map((employee) => renderEmployeeCard(employee, true))}
+                    </div>
+                  )}
 
-            {!loading && filteredEmployees.length === 0 && (
-              <div className="p-12 text-center rounded-2xl border border-dashed border-slate-200 text-slate-500">
-                لا توجد موظفين مطابقين لخيارات البحث الحالية
-              </div>
-            )}
-
-            {!loading && filteredEmployees.length > 0 && (
-              <>
-                {/* عرض القائمة (Cards) */}
-                {viewMode === 'cards' && (
-                  <div className="space-y-4">
-                    {filteredEmployees.map((employee) => renderEmployeeCard(employee, false))}
-                  </div>
-                )}
-
-                {/* عرض الشبكة (Grid) */}
-                {viewMode === 'grid' && (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredEmployees.map((employee) => renderEmployeeCard(employee, true))}
-                  </div>
-                )}
-
-                {/* عرض الجدول (Table) */}
-                {viewMode === 'table' && (
-                  <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>الموظف</TableHead>
-                          <TableHead>الوظيفة</TableHead>
-                          <TableHead>القسم</TableHead>
-                          <TableHead>الراتب</TableHead>
-                          <TableHead>التواصل</TableHead>
-                          <TableHead>المناطق</TableHead>
-                          <TableHead>التبعية</TableHead>
-                          <TableHead>الحالة</TableHead>
-                          <TableHead className="text-center">الإجراءات</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredEmployees.map((employee) => {
-                          const tableAvatarUrl = resolveAvatarUrl(employee.avatar);
-                          return (
-                            <TableRow key={employee.id}>
-                            <TableCell>
-                              <div className="flex gap-3 items-center">
-                                <div className="flex justify-center items-center w-10 h-10 font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
-                                  {tableAvatarUrl ? (
-                                    <img
-                                      src={tableAvatarUrl}
-                                      alt={employee.name}
-                                      className="object-cover w-10 h-10 rounded-full"
-                                    />
+                  {/* عرض الجدول (Table) */}
+                  {viewMode === 'table' && (
+                    <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>الموظف</TableHead>
+                            <TableHead>الوظيفة</TableHead>
+                            <TableHead>القسم</TableHead>
+                            <TableHead>الراتب</TableHead>
+                            <TableHead>التواصل</TableHead>
+                            <TableHead>المناطق</TableHead>
+                            <TableHead>التبعية</TableHead>
+                            <TableHead>الحالة</TableHead>
+                            <TableHead className="text-center">الإجراءات</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredEmployees.map((employee) => {
+                            const tableAvatarUrl = resolveAvatarUrl(employee.avatar);
+                            return (
+                              <TableRow key={employee.id}>
+                                <TableCell>
+                                  <div className="flex gap-3 items-center">
+                                    <div className="flex justify-center items-center w-10 h-10 font-semibold text-white bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full">
+                                      {tableAvatarUrl ? (
+                                        <img
+                                          src={tableAvatarUrl}
+                                          alt={employee.name}
+                                          className="object-cover w-10 h-10 rounded-full"
+                                        />
+                                      ) : (
+                                        <span>{employee.name?.charAt(0) || 'U'}</span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="font-medium">{employee.name}</div>
+                                      <div className="text-sm text-gray-500">{employee.email}</div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="capitalize">
+                                    {getRoleLabel(employee.role)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2 items-center">
+                                    <Building2 className="w-4 h-4 text-gray-400" />
+                                    <span>{employee.department || '-'}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {(employee as any).salary ? (
+                                    <div className="flex gap-2 items-center">
+                                      <Briefcase className="w-4 h-4 text-emerald-400" />
+                                      <span className="font-medium text-emerald-700">
+                                        {Number((employee as any).salary).toLocaleString('ar-EG')} ر.ق
+                                      </span>
+                                    </div>
                                   ) : (
-                                    <span>{employee.name?.charAt(0) || 'U'}</span>
+                                    <span className="text-gray-400">—</span>
                                   )}
-                                </div>
-                                <div>
-                                  <div className="font-medium">{employee.name}</div>
-                                  <div className="text-sm text-gray-500">{employee.email}</div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="capitalize">
-                                {getRoleLabel(employee.role)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2 items-center">
-                                <Building2 className="w-4 h-4 text-gray-400" />
-                                <span>{employee.department || '-'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {(employee as any).salary ? (
-                                <div className="flex gap-2 items-center">
-                                  <Briefcase className="w-4 h-4 text-emerald-400" />
-                                  <span className="font-medium text-emerald-700">
-                                    {Number((employee as any).salary).toLocaleString('ar-EG')} ر.ق
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="flex gap-2 items-center">
-                                  <Mail className="w-4 h-4 text-gray-400" />
-                                  <a href={`mailto:${employee.email}`} className="text-sm text-blue-600 hover:underline">
-                                    {employee.email}
-                                  </a>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                  <Phone className="w-4 h-4 text-gray-400" />
-                                  <a href={`tel:${employee.phone}`} className="text-sm text-blue-600 hover:underline">
-                                    {employee.phone || '-'}
-                                  </a>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {renderLocations(employee)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2 items-center">
-                                <Building2 className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm">
-                                  {employee.supervisor ? (
-                                    employees.find(emp => emp.id === employee.supervisor)?.name || 'غير محدد'
-                                  ) : 'بدون مشرف'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2 items-center">
-                                <Switch
-                                  checked={employee.isActive}
-                                  onCheckedChange={() => toggleEmployeeStatus(employee)}
-                                />
-                                <span className={employee.isActive ? 'text-green-600' : 'text-red-600'}>
-                                  {employee.isActive ? 'نشط' : 'غير نشط'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2 justify-center">
-                                {renderEmployeeActions(employee)}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="px-2 h-8"
-                                  onClick={async () => {
-              const employeeData = `
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="flex gap-2 items-center">
+                                      <Mail className="w-4 h-4 text-gray-400" />
+                                      <a href={`mailto:${employee.email}`} className="text-sm text-blue-600 hover:underline">
+                                        {employee.email}
+                                      </a>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                      <Phone className="w-4 h-4 text-gray-400" />
+                                      <a href={`tel:${employee.phone}`} className="text-sm text-blue-600 hover:underline">
+                                        {employee.phone || '-'}
+                                      </a>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {renderLocations(employee)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2 items-center">
+                                    <Building2 className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm">
+                                      {employee.supervisor ? (
+                                        employees.find(emp => emp.id === employee.supervisor)?.name || 'غير محدد'
+                                      ) : 'بدون مشرف'}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2 items-center">
+                                    <Switch
+                                      checked={employee.isActive}
+                                      onCheckedChange={() => toggleEmployeeStatus(employee)}
+                                    />
+                                    <span className={employee.isActive ? 'text-green-600' : 'text-red-600'}>
+                                      {employee.isActive ? 'نشط' : 'غير نشط'}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2 justify-center">
+                                    {renderEmployeeActions(employee)}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="px-2 h-8"
+                                      onClick={async () => {
+                                        const employeeData = `
 الاسم: ${employee.name}
 البريد: ${employee.email}
 الهاتف: ${employee.phone || '-'}
@@ -3314,247 +3285,247 @@ ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
 المشرف: ${employee.supervisor ? employees.find(e => e.id === employee.supervisor)?.name || '-' : 'بدون مشرف'}
 ${(employee as any).notes ? `ملاحظات: ${(employee as any).notes}` : ''}
               `.trim();
-                                    await navigator.clipboard.writeText(employeeData);
-                                    toast.success('تم نسخ بيانات الموظف');
-                                  }}
-                                  title="نسخ بيانات الموظف"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Add/Edit Employee Dialog */}
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent key={editingEmployee?.id || 'new'} className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-gray-900">
-                {editingEmployee ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}
-              </DialogTitle>
-              <DialogDescription className="text-gray-600">
-                {editingEmployee
-                  ? 'قم بتحديث بيانات الموظف وصلاحياته في النظام'
-                  : 'أدخل بيانات الموظف الجديد وحدد صلاحياته في منصة الحلم'
-                }
-              </DialogDescription>
-            </DialogHeader>
-
-            <SimpleEmployeeForm key={`form-${editingEmployee?.id || 'new'}`} />
-
-            <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setEditingEmployee(null);
-                  setNewEmployee({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    role: 'support',
-                    isActive: true,
-                    department: '',
-                    sendWelcomeEmail: true
-                  });
-                  setSelectedCities([]);
-                  setSelectedCountries([]);
-                  setFormErrors({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    role: '',
-                    department: ''
-                  });
-                  draftRef.current = {}; // إعادة تعيين draftRef عند الإلغاء
-                }}
-                className="px-6"
-              >
-                إلغاء
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSaveEmployee}
-                disabled={savingRef.current}
-                className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editingEmployee ? (
-                  <>
-                    <Edit className="ml-2 w-4 h-4" />
-                    تحديث الموظف
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="ml-2 w-4 h-4" />
-                    إضافة الموظف
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Credentials Dialog */}
-        <CredentialsDialog />
-
-        {/* Activity Log Dialog */}
-        <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
-          <DialogContent className="sm:max-w-[960px] xl:max-w-[1100px] w-full max-h-[85vh] px-0 pb-0 overflow-hidden">
-            <DialogHeader>
-              <DialogTitle className="flex gap-2 items-center">
-                <History className="w-5 h-5 text-blue-500" />
-                سجل نشاطات الموظف
-              </DialogTitle>
-              <DialogDescription>
-                {selectedEmployeeForActivity && (
-                  <div className="mt-2">
-                    <p className="font-semibold text-slate-900">{selectedEmployeeForActivity.name}</p>
-                    <p className="text-sm text-slate-500">{selectedEmployeeForActivity.email}</p>
-                  </div>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="px-5 py-4 space-y-5">
-              {selectedEmployeeForActivity && (
-                <div className="space-y-5 rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-md w-full">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">الوقت الإجمالي المسجل</p>
-                    <span className="text-4xl font-bold text-slate-900">{formatDuration(totalActivityMinutes)}</span>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs text-slate-600">وصف الحركة</Label>
-                      <Input
-                        placeholder="مثلاً: متابعة تذاكر الدعم أو مراجعة التقارير"
-                        value={activityForm.action}
-                        onChange={(e) =>
-                          setActivityForm((prev) => ({ ...prev, action: e.target.value }))
-                        }
-                        className="h-14 text-base rounded-xl w-full"
-                      />
+                                        await navigator.clipboard.writeText(employeeData);
+                                        toast.success('تم نسخ بيانات الموظف');
+                                      }}
+                                      title="نسخ بيانات الموظف"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-slate-600">زمن العمل (دقائق)</Label>
-                      <Input
-                        placeholder="مثلاً: 45"
-                        inputMode="numeric"
-                        value={activityForm.durationMinutes}
-                        onChange={(e) =>
-                          setActivityForm((prev) => ({ ...prev, durationMinutes: e.target.value }))
-                        }
-                        className="h-14 text-base rounded-xl w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-slate-600">ملاحظات إضافية</Label>
-                      <Textarea
-                        placeholder="ملاحظات قصيرة لمساعدة الفريق"
-                        value={activityForm.notes}
-                        onChange={(e) =>
-                          setActivityForm((prev) => ({ ...prev, notes: e.target.value }))
-                        }
-                        className="min-h-[160px] text-base rounded-xl w-full"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      onClick={handleAddActivityEntry}
-                      disabled={isSavingActivity}
-                      className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-base text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 disabled:opacity-60"
-                    >
-                      {isSavingActivity ? (
-                        <>
-                          <Loader2 className="ml-2 w-4 h-4 animate-spin text-white" />
-                          جاري الحفظ...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="ml-2 w-4 h-4" />
-                          حفظ الحركة
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
-              {employeeActivities.length === 0 ? (
-                <div className="py-8 text-center text-slate-500">
-                  <History className="mx-auto mb-4 w-12 h-12 text-slate-300" />
-                  <p>لا توجد نشاطات مسجلة لهذا الموظف</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {employeeActivities.map((activity) => {
-                    const timestamp = activity.timestamp?.seconds 
-                      ? new Date(activity.timestamp.seconds * 1000)
-                      : activity.timestamp instanceof Date 
-                        ? activity.timestamp 
-                        : new Date();
-                    const durationMinutes = Number(activity.details?.durationMinutes || 0);
-                    const detailEntries = activity.details
-                      ? Object.entries(activity.details).filter(([key]) => key !== 'durationMinutes')
-                      : [];
-                    
-                    return (
-                      <div
-                        key={activity.id}
-                        className="p-4 rounded-lg border bg-slate-50 border-slate-200"
+            </CardContent>
+          </Card>
+
+          {/* Add/Edit Employee Dialog */}
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogContent key={editingEmployee?.id || 'new'} className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  {editingEmployee ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'}
+                </DialogTitle>
+                <DialogDescription className="text-gray-600">
+                  {editingEmployee
+                    ? 'قم بتحديث بيانات الموظف وصلاحياته في النظام'
+                    : 'أدخل بيانات الموظف الجديد وحدد صلاحياته في منصة الحلم'
+                  }
+                </DialogDescription>
+              </DialogHeader>
+
+              <SimpleEmployeeForm key={`form-${editingEmployee?.id || 'new'}`} />
+
+              <DialogFooter className="gap-3 pt-6 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddDialog(false);
+                    setEditingEmployee(null);
+                    setNewEmployee({
+                      name: '',
+                      email: '',
+                      phone: '',
+                      role: 'support',
+                      isActive: true,
+                      department: '',
+                      sendWelcomeEmail: true
+                    });
+                    setSelectedCities([]);
+                    setSelectedCountries([]);
+                    setFormErrors({
+                      name: '',
+                      email: '',
+                      phone: '',
+                      role: '',
+                      department: ''
+                    });
+                    draftRef.current = {}; // إعادة تعيين draftRef عند الإلغاء
+                  }}
+                  className="px-6"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveEmployee}
+                  disabled={savingRef.current}
+                  className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editingEmployee ? (
+                    <>
+                      <Edit className="ml-2 w-4 h-4" />
+                      تحديث الموظف
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="ml-2 w-4 h-4" />
+                      إضافة الموظف
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Credentials Dialog */}
+          <CredentialsDialog />
+
+          {/* Activity Log Dialog */}
+          <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
+            <DialogContent className="sm:max-w-[960px] xl:max-w-[1100px] w-full max-h-[85vh] px-0 pb-0 overflow-hidden">
+              <DialogHeader>
+                <DialogTitle className="flex gap-2 items-center">
+                  <History className="w-5 h-5 text-blue-500" />
+                  سجل نشاطات الموظف
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedEmployeeForActivity && (
+                    <div className="mt-2">
+                      <p className="font-semibold text-slate-900">{selectedEmployeeForActivity.name}</p>
+                      <p className="text-sm text-slate-500">{selectedEmployeeForActivity.email}</p>
+                    </div>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="px-5 py-4 space-y-5">
+                {selectedEmployeeForActivity && (
+                  <div className="space-y-5 rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-md w-full">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">الوقت الإجمالي المسجل</p>
+                      <span className="text-4xl font-bold text-slate-900">{formatDuration(totalActivityMinutes)}</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-600">وصف الحركة</Label>
+                        <Input
+                          placeholder="مثلاً: متابعة تذاكر الدعم أو مراجعة التقارير"
+                          value={activityForm.action}
+                          onChange={(e) =>
+                            setActivityForm((prev) => ({ ...prev, action: e.target.value }))
+                          }
+                          className="h-14 text-base rounded-xl w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-600">زمن العمل (دقائق)</Label>
+                        <Input
+                          placeholder="مثلاً: 45"
+                          inputMode="numeric"
+                          value={activityForm.durationMinutes}
+                          onChange={(e) =>
+                            setActivityForm((prev) => ({ ...prev, durationMinutes: e.target.value }))
+                          }
+                          className="h-14 text-base rounded-xl w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-600">ملاحظات إضافية</Label>
+                        <Textarea
+                          placeholder="ملاحظات قصيرة لمساعدة الفريق"
+                          value={activityForm.notes}
+                          onChange={(e) =>
+                            setActivityForm((prev) => ({ ...prev, notes: e.target.value }))
+                          }
+                          className="min-h-[160px] text-base rounded-xl w-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={handleAddActivityEntry}
+                        disabled={isSavingActivity}
+                        className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-base text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 disabled:opacity-60"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1 space-y-2">
-                            <p className="font-semibold text-slate-900">{activity.action}</p>
-                            {detailEntries.length > 0 && (
-                              <div className="text-sm text-slate-600">
-                                {detailEntries.map(([key, value]) => (
-                                  <p key={key}>
-                                    <span className="font-medium">{key}:</span> {String(value)}
-                                  </p>
-                                ))}
-                              </div>
-                            )}
-                            {durationMinutes > 0 && (
-                              <p className="text-xs font-semibold text-amber-700">
-                                الوقت المسجل: {formatDuration(durationMinutes)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {timestamp.toLocaleString('ar-EG')}
+                        {isSavingActivity ? (
+                          <>
+                            <Loader2 className="ml-2 w-4 h-4 animate-spin text-white" />
+                            جاري الحفظ...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="ml-2 w-4 h-4" />
+                            حفظ الحركة
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {employeeActivities.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500">
+                    <History className="mx-auto mb-4 w-12 h-12 text-slate-300" />
+                    <p>لا توجد نشاطات مسجلة لهذا الموظف</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {employeeActivities.map((activity) => {
+                      const timestamp = activity.timestamp?.seconds
+                        ? new Date(activity.timestamp.seconds * 1000)
+                        : activity.timestamp instanceof Date
+                          ? activity.timestamp
+                          : new Date();
+                      const durationMinutes = Number(activity.details?.durationMinutes || 0);
+                      const detailEntries = activity.details
+                        ? Object.entries(activity.details).filter(([key]) => key !== 'durationMinutes')
+                        : [];
+
+                      return (
+                        <div
+                          key={activity.id}
+                          className="p-4 rounded-lg border bg-slate-50 border-slate-200"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 space-y-2">
+                              <p className="font-semibold text-slate-900">{activity.action}</p>
+                              {detailEntries.length > 0 && (
+                                <div className="text-sm text-slate-600">
+                                  {detailEntries.map(([key, value]) => (
+                                    <p key={key}>
+                                      <span className="font-medium">{key}:</span> {String(value)}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              {durationMinutes > 0 && (
+                                <p className="text-xs font-semibold text-amber-700">
+                                  الوقت المسجل: {formatDuration(durationMinutes)}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {timestamp.toLocaleString('ar-EG')}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowActivityLog(false)}>
-                إغلاق
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowActivityLog(false)}>
+                  إغلاق
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-        {/* Permissions Preview Dialog */}
-        <Dialog open={false} onOpenChange={() => {}}>
-          {/* سيتم إضافة هذا لاحقاً */}
-        </Dialog>
+          {/* Permissions Preview Dialog */}
+          <Dialog open={false} onOpenChange={() => { }}>
+            {/* سيتم إضافة هذا لاحقاً */}
+          </Dialog>
         </div>
       </div>
     </AccountTypeProtection>

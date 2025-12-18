@@ -61,40 +61,29 @@ export const uploadVideoToSupabase = async (
       fileType: file.type
     });
 
-    // رفع الملف إلى Supabase
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKETS.VIDEOS)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
 
-    if (error) {
-      console.error('❌ خطأ في رفع الفيديو:', error);
-      throw new Error(`فشل في رفع الفيديو: ${error.message}`);
-    }
+    // رفع الملف
+    const result = await storageManager.upload(STORAGE_BUCKETS.VIDEOS, filePath, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false // الفيديوهات لا تحتاج upsert عادةً
+    });
 
-    // الحصول على الرابط العام
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKETS.VIDEOS)
-      .getPublicUrl(filePath);
+    console.log('✅ تم رفع الفيديو بنجاح:', result.publicUrl);
 
-    if (!urlData?.publicUrl) {
-      throw new Error('فشل في الحصول على رابط الفيديو');
-    }
+    // ملاحظة: storageManager يتعامل مع logic الحصول على الرابط العام
 
-    console.log('✅ تم رفع الفيديو بنجاح:', urlData.publicUrl);
-
-    const result: VideoUploadResult = {
-      url: urlData.publicUrl,
+    const uploadResult: VideoUploadResult = {
+      url: result.publicUrl,
       name: fileName,
       size: file.size,
       type: file.type,
-      path: filePath
+      path: result.path
     };
 
-    return result;
+    return uploadResult;
 
   } catch (error) {
     console.error('❌ خطأ في رفع الفيديو:', error);
@@ -254,7 +243,7 @@ export const generateVideoThumbnail = (file: File): Promise<string> => {
     video.addEventListener('seeked', () => {
       // رسم الإطار على الكانفس
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       // تحويل الكانفس إلى صورة
       canvas.toBlob((blob) => {
         if (blob) {

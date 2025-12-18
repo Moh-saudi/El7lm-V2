@@ -41,6 +41,7 @@ import {
   UserX,
   XCircle
 } from 'lucide-react';
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -79,6 +80,16 @@ interface VisitStats {
     count: number;
     dayName: string;
   }>;
+  last30Days: Array<{
+    date: string;
+    count: number;
+    dayName: string;
+  }>;
+  lastYear: Array<{
+    month: string;
+    count: number;
+    monthName: string;
+  }>;
   recentVisits: Array<{
     country: string;
     city: string;
@@ -108,6 +119,7 @@ export default function AdminUsersPage() {
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [chartTimeRange, setChartTimeRange] = useState<'7days' | '30days' | 'year'>('7days');
   const [visitStats, setVisitStats] = useState<VisitStats>({
     total: 0,
     byCountry: {},
@@ -115,6 +127,8 @@ export default function AdminUsersPage() {
     byDate: {},
     byPage: {},
     last7Days: [],
+    last30Days: [],
+    lastYear: [],
     recentVisits: []
   });
   const [showVisitDetails, setShowVisitDetails] = useState(true);
@@ -411,10 +425,12 @@ export default function AdminUsersPage() {
         byDate: {},
         byPage: {},
         last7Days: [],
+        last30Days: [],
+        lastYear: [],
         recentVisits: []
       };
 
-      // إنشاء آخر 7 أيام
+      // تحضير آخر 7 أيام
       const last7DaysData: { [key: string]: { count: number; dayName: string } } = {};
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
@@ -424,42 +440,46 @@ export default function AdminUsersPage() {
         last7DaysData[dateKey] = { count: 0, dayName };
       }
 
-      try {
-        const analyticsRef = collection(db, 'analytics');
-        const analyticsSnapshot = await getDocs(analyticsRef);
+      // تحضير آخر 30 يوم
+      const last30DaysData: { [key: string]: { count: number; dayName: string } } = {};
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toLocaleDateString('en-GB');
+        // يوم/شهر لـ 30 يوم
+        const dayName = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric' });
+        last30DaysData[dateKey] = { count: 0, dayName };
+      }
 
-        analyticsSnapshot.forEach(doc => {
-          const data = doc.data();
-          const date = safeToDate(data.timestamp || data.date);
+      // تحضير آخر سنة (12 شهر)
+      const lastYearData: { [key: string]: { count: number; monthName: string } } = {};
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(today);
+        date.setMonth(date.getMonth() - i);
+        date.setDate(1); // لضمان ثبات الشهر
+        const monthKey = date.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' });
+        const monthName = date.toLocaleDateString('ar-SA', { month: 'long' });
+        lastYearData[monthKey] = { count: 0, monthName };
+      }
 
-          if (date) {
-            const dateKey = date.toLocaleDateString('en-GB');
-            stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
+      const processDoc = (doc: any) => {
+        const data = doc.data();
+        const date = safeToDate(data.timestamp || data.date);
 
-            if (last7DaysData[dateKey]) {
-              last7DaysData[dateKey].count++;
-            }
-          }
+        if (date) {
+          const dateKey = date.toLocaleDateString('en-GB');
+          const monthKey = date.toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' });
 
-          if (data.country) {
-            stats.byCountry[data.country] = (stats.byCountry[data.country] || 0) + 1;
-          }
+          stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
 
-          if (data.city) {
-            stats.byCity[data.city] = (stats.byCity[data.city] || 0) + 1;
-          }
-
-          if (data.route || data.page) {
-            const page = data.route || data.page;
-            stats.byPage[page] = (stats.byPage[page] || 0) + 1;
-          }
-
-          stats.total++;
+          if (last7DaysData[dateKey]) last7DaysData[dateKey].count++;
+          if (last30DaysData[dateKey]) last30DaysData[dateKey].count++;
+          if (lastYearData[monthKey]) lastYearData[monthKey].count++;
 
           const sevenDaysAgo = new Date(today);
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-          if (date && date >= sevenDaysAgo) {
+          if (date >= sevenDaysAgo) {
             stats.recentVisits.push({
               country: data.country || 'غير محدد',
               city: data.city || 'غير محدد',
@@ -468,7 +488,22 @@ export default function AdminUsersPage() {
               page: data.route || data.page || '/'
             });
           }
-        });
+        }
+
+        if (data.country) stats.byCountry[data.country] = (stats.byCountry[data.country] || 0) + 1;
+        if (data.city) stats.byCity[data.city] = (stats.byCity[data.city] || 0) + 1;
+        if (data.route || data.page) {
+          const page = data.route || data.page;
+          stats.byPage[page] = (stats.byPage[page] || 0) + 1;
+        }
+
+        stats.total++;
+      };
+
+      try {
+        const analyticsRef = collection(db, 'analytics');
+        const analyticsSnapshot = await getDocs(analyticsRef);
+        analyticsSnapshot.forEach(processDoc);
       } catch (error) {
         console.log('محاولة جلب من مجموعة visits...');
       }
@@ -476,64 +511,28 @@ export default function AdminUsersPage() {
       try {
         const visitsRef = collection(db, 'visits');
         const visitsSnapshot = await getDocs(visitsRef);
-
-        visitsSnapshot.forEach(doc => {
-          const data = doc.data();
-          const date = safeToDate(data.timestamp);
-
-          if (date) {
-            const dateKey = date.toLocaleDateString('en-GB');
-            stats.byDate[dateKey] = (stats.byDate[dateKey] || 0) + 1;
-
-            if (last7DaysData[dateKey]) {
-              last7DaysData[dateKey].count++;
-            }
-          }
-
-          if (data.country) {
-            stats.byCountry[data.country] = (stats.byCountry[data.country] || 0) + 1;
-          }
-
-          if (data.city) {
-            stats.byCity[data.city] = (stats.byCity[data.city] || 0) + 1;
-          }
-
-          if (data.route || data.page) {
-            const page = data.route || data.page;
-            stats.byPage[page] = (stats.byPage[page] || 0) + 1;
-          }
-
-          stats.total++;
-
-          const sevenDaysAgo = new Date(today);
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-          if (date && date >= sevenDaysAgo) {
-            stats.recentVisits.push({
-              country: data.country || 'غير محدد',
-              city: data.city || 'غير محدد',
-              timestamp: date,
-              userId: data.userId,
-              page: data.route || data.page || '/'
-            });
-          }
-        });
+        visitsSnapshot.forEach(processDoc);
       } catch (error) {
         console.error('خطأ في جلب الزيارات:', error);
       }
 
-      // تحويل last7Days إلى مصفوفة مرتبة
+      // تحويل البيانات إلى مصفوفات
       stats.last7Days = Object.entries(last7DaysData).map(([date, data]) => ({
-        date,
-        count: data.count,
-        dayName: data.dayName
+        date, count: data.count, dayName: data.dayName
+      }));
+
+      stats.last30Days = Object.entries(last30DaysData).map(([date, data]) => ({
+        date, count: data.count, dayName: data.dayName
+      }));
+
+      stats.lastYear = Object.entries(lastYearData).map(([month, data]) => ({
+        month, count: data.count, monthName: data.monthName
       }));
 
       stats.recentVisits.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-      stats.recentVisits = stats.recentVisits.slice(0, 20);
+      stats.recentVisits = stats.recentVisits.slice(0, 20); // Keep top 20 recent, though we only show 5
 
       setVisitStats(stats);
-      console.log('📊 إحصائيات الزيارات:', stats);
     } catch (error) {
       console.error('خطأ في تحميل إحصائيات الزيارات:', error);
     }
@@ -912,9 +911,9 @@ export default function AdminUsersPage() {
                 );
 
                 // إذا لم نجد تاريخ، نستخدم تاريخ إنشاء المستند في Firestore (metadata)
-                if (!createdAtDate && userDoc.metadata?.createTime) {
+                if (!createdAtDate && (userDoc.metadata as any)?.createTime) {
                   try {
-                    createdAtDate = userDoc.metadata.createTime.toDate();
+                    createdAtDate = (userDoc.metadata as any).createTime.toDate();
                   } catch (e) {
                     // تجاهل
                   }
@@ -982,8 +981,8 @@ export default function AdminUsersPage() {
                   // محاولة أخيرة لاستخراج التاريخ من metadata
                   let fallbackDate = null;
                   try {
-                    if (userDoc.metadata?.createTime) {
-                      fallbackDate = userDoc.metadata.createTime.toDate();
+                    if ((userDoc.metadata as any)?.createTime) {
+                      fallbackDate = (userDoc.metadata as any).createTime.toDate();
                     }
                   } catch (e) {
                     // تجاهل
@@ -1264,7 +1263,8 @@ export default function AdminUsersPage() {
       agent: 'وكيل',
       trainer: 'مدرب',
       club: 'نادي',
-      user: 'مستخدم'
+      user: 'مستخدم',
+      unknown: 'غير محدد'
     };
     return labels[type] || type;
   };
@@ -1646,22 +1646,54 @@ export default function AdminUsersPage() {
   if (loading) {
     return (
       <AccountTypeProtection allowedTypes={['admin']}>
-        <div className="p-8 text-center text-gray-500">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-6"></div>
-          <p className="text-2xl font-bold text-gray-800">جاري تحميل بيانات المستخدمين...</p>
-          <p className="text-lg mt-3 text-gray-600">نقوم بجلب جميع المستخدمين من 6 مجموعات</p>
-          <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-            <p className="text-sm text-blue-800">
-              ⏳ قد يستغرق هذا دقيقة لتحميل أكثر من 1000 مستخدم...
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              يرجى الانتظار وعدم إغلاق الصفحة
-            </p>
+        <div className="p-4 md:p-8 bg-gray-50/50 min-h-screen space-y-8">
+          {/* Header Skeleton */}
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-96 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+            </div>
           </div>
-          <div className="mt-8 flex justify-center gap-2">
-            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
-            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:0.1s]"></div>
-            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+
+          {/* Stats Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                  <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Table Skeleton */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-200 flex gap-4">
+              <div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="p-0">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center p-4 border-b border-gray-100 gap-4">
+                  <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                  <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </AccountTypeProtection>
@@ -1676,230 +1708,128 @@ export default function AdminUsersPage() {
         <div className="max-w-[1600px] mx-auto">
 
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-3">
-                  <UserCog className="h-10 w-10 text-blue-600" />
-                  إدارة المستخدمين المتقدمة
-                </h1>
-                <p className="text-gray-600 mt-2 flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  نظام شامل لإدارة وتحليل <span className="font-bold text-blue-600">{users.length.toLocaleString()}</span> مستخدم مسجل
-                </p>
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
-                  <RefreshCcw className="h-4 w-4" />
-                  تحديث
-                </Button>
-                <Button onClick={exportToExcel} className="gap-2 bg-green-600 hover:bg-green-700">
-                  <Download className="h-4 w-4" />
-                  تصدير Excel ({filteredAndSortedUsers.length})
-                </Button>
-              </div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">المستخدمين</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                إدارة وتحليل {users.length.toLocaleString()} حساب مسجل
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={exportToExcel} variant="outline" size="sm" className="bg-white hover:bg-gray-50">
+                <Download className="h-4 w-4 ml-2" />
+                تصدير CSV
+              </Button>
+              <Button onClick={() => window.location.reload()} size="sm" className="bg-slate-900 hover:bg-slate-800 text-white">
+                <RefreshCcw className="h-4 w-4 ml-2" />
+                تحديث البيانات
+              </Button>
             </div>
           </div>
 
           {/* Warning for users without dates */}
           {stats.noDate > 0 && (
-            <Card className="mb-6 border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-6 w-6 text-yellow-600 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-yellow-900 mb-1">
-                      ⚠️ تنبيه: {stats.noDate.toLocaleString()} مستخدم بدون تاريخ تسجيل
-                    </h3>
-                    <p className="text-sm text-yellow-800">
-                      هناك {stats.noDate.toLocaleString()} مستخدم ليس لديهم تاريخ تسجيل محدد في قاعدة البيانات.
-                      يمكنك فلترتهم باختيار <span className="font-bold">"بدون تاريخ"</span> من فلتر تاريخ التسجيل.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setDateFilter('noDate');
-                        setShowAdvancedFilters(true);
-                      }}
-                      className="mt-2 bg-yellow-100 hover:bg-yellow-200 border-yellow-400 text-yellow-900"
-                    >
-                      عرض المستخدمين بدون تاريخ
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="mb-6 p-4 rounded-lg bg-orange-50 border border-orange-200 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-bold text-orange-900 text-sm">
+                  بيانات غير مكتملة
+                </h3>
+                <p className="text-sm text-orange-800 mt-1">
+                  هناك {stats.noDate.toLocaleString()} مستخدم بدون تاريخ تسجيل.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDateFilter('noDate');
+                  setShowAdvancedFilters(true);
+                }}
+                className="text-orange-700 hover:text-orange-900 hover:bg-orange-100 h-8"
+              >
+                عرض
+              </Button>
+            </div>
           )}
 
-          {/* Main Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
-            <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">إجمالي المستخدمين</p>
-                    <p className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      <span className="text-green-600 font-semibold">{stats.active.toLocaleString()} نشط</span>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-red-600 font-semibold">{stats.inactive.toLocaleString()} معطل</span>
-                    </div>
-                  </div>
-                  <Users className="h-12 w-12 text-blue-600 opacity-80" />
+          {/* Stats Overview */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="shadow-sm border-gray-200 bg-white">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">إجمالي المستخدمين</span>
+                  <Users className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-900">{stats.total.toLocaleString()}</span>
+                  {stats.newToday > 0 && (
+                    <span className="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-0.5 rounded-full">+{stats.newToday} اليوم</span>
+                  )}
+                </div>
+                <div className="mt-3 flex gap-2 text-xs text-gray-400">
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {stats.active.toLocaleString()} نشط</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> {stats.inactive.toLocaleString()} خامل</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* إحصائيات أرقام الهواتف */}
-            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">أرقام صحيحة</p>
-                    <p className="text-3xl font-bold text-green-600">
-                      {users.filter(user => {
-                        if (!user.phone || !user.countryCode) return false;
-                        return validateUserPhone(user).isValid;
-                      }).length}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
-                      <span className="text-green-600 font-semibold">مطابقة للبلد</span>
-                    </div>
-                  </div>
-                  <CheckCircle2 className="h-12 w-12 text-green-600 opacity-80" />
+            <Card className="shadow-sm border-gray-200 bg-white">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">جودة البيانات</span>
+                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-900">{Math.round((stats.verified / stats.total) * 100)}%</span>
+                  <span className="text-gray-500 text-xs font-medium">موثق</span>
+                </div>
+                <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(stats.verified / stats.total) * 100}%` }}></div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">أرقام غير صحيحة</p>
-                    <p className="text-3xl font-bold text-red-600">
-                      {users.filter(user => {
-                        if (!user.phone || !user.countryCode) return true;
-                        return !validateUserPhone(user).isValid;
-                      }).length}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      <AlertCircle className="h-3 w-3 text-red-500" />
-                      <span className="text-red-600 font-semibold">تحتاج إصلاح</span>
-                    </div>
-                  </div>
-                  <AlertCircle className="h-12 w-12 text-red-600 opacity-80" />
+            <Card className="shadow-sm border-gray-200 bg-white">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">زيارات المنصة</span>
+                  <TrendingUp className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-900">{visitStats.total.toLocaleString()}</span>
+                </div>
+                <div className="mt-3 text-xs text-gray-400 truncate">
+                  من {Object.keys(visitStats.byCity).length} مدينة مختلفة
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">بدون كود بلد</p>
-                    <p className="text-3xl font-bold text-orange-600">
-                      {users.filter(user => user.phone && !user.countryCode).length}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      <Globe className="h-3 w-3 text-orange-500" />
-                      <span className="text-orange-600 font-semibold">يمكن اكتشافها</span>
-                    </div>
-                  </div>
-                  <Globe className="h-12 w-12 text-orange-600 opacity-80" />
+            <Card className="shadow-sm border-gray-200 bg-white">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">فئات الحسابات</span>
+                  <Building2 className="h-4 w-4 text-gray-400" />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">اللاعبين</p>
-                    <p className="text-3xl font-bold text-purple-600">{stats.byType.player.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-2">أكبر فئة</p>
+                <div className="space-y-1 mt-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">لاعبين</span>
+                    <span className="font-medium text-gray-900">{stats.byType.player.toLocaleString()}</span>
                   </div>
-                  <Activity className="h-12 w-12 text-purple-600 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">الأكاديميات</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.byType.academy.toLocaleString()}</p>
-                    <div className="mt-2 text-xs text-gray-500">
-                      {stats.byType.club.toLocaleString()} نادي • {stats.byType.agent.toLocaleString()} وكيل
-                    </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">أكاديميات</span>
+                    <span className="font-medium text-gray-900">{stats.byType.academy.toLocaleString()}</span>
                   </div>
-                  <Shield className="h-12 w-12 text-green-600 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-yellow-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">اكتمال الملف</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.profileComplete.toLocaleString()}</p>
-                    <div className="mt-2 text-xs text-gray-500">
-                      {stats.profileIncomplete.toLocaleString()} غير مكتمل
-                    </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">أندية</span>
+                    <span className="font-medium text-gray-900">{stats.byType.club.toLocaleString()}</span>
                   </div>
-                  <CheckCircle2 className="h-12 w-12 text-yellow-600 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">الزيارات الكلية</p>
-                    <p className="text-3xl font-bold text-orange-600">{visitStats.total.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {Object.keys(visitStats.byCountry).length} دولة
-                    </p>
-                  </div>
-                  <TrendingUp className="h-12 w-12 text-orange-600 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-indigo-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">مستخدمين جدد</p>
-                    <p className="text-3xl font-bold text-indigo-600">{stats.newToday.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {stats.newThisWeek.toLocaleString()} هذا الأسبوع
-                    </p>
-                  </div>
-                  <Calendar className="h-12 w-12 text-indigo-600 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">تسجيل مباشر</p>
-                    <p className="text-3xl font-bold text-teal-600">{stats.byRegistrationType.direct.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {stats.byRegistrationType.organization.toLocaleString()} عبر منظمة
-                    </p>
-                  </div>
-                  <Building2 className="h-12 w-12 text-teal-600 opacity-80" />
                 </div>
               </CardContent>
             </Card>
           </div>
+
+
 
           {/* Visit Statistics Details - Compact */}
           <Card className="mb-6 border border-gray-200 shadow-sm">
@@ -1917,118 +1847,211 @@ export default function AdminUsersPage() {
             </CardHeader>
             {showVisitDetails && (
               <CardContent className="p-4">
-                {/* Weekly Chart - Compact */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-700">
-                    <Calendar className="h-4 w-4" />
-                    آخر 7 أيام
-                  </h4>
-                  <div className="grid grid-cols-7 gap-2">
-                    {visitStats.last7Days.map((day, index) => {
-                      const percentage = maxVisitsInWeek > 0 ? (day.count / maxVisitsInWeek) * 100 : 0;
-                      const isToday = day.date === new Date().toLocaleDateString('en-GB');
-
-                      return (
-                        <div key={index} className="text-center">
-                          <div className="h-20 bg-gray-100 rounded relative mb-1 overflow-hidden">
-                            <div
-                              className={`absolute bottom-0 left-0 right-0 transition-all ${isToday ? 'bg-blue-500' : 'bg-gray-400'
-                                }`}
-                              style={{ height: `${percentage}%` }}
-                            ></div>
+                <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+                  {/* Charts Section */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Area Chart (Span 2) */}
+                    <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-sm font-semibold flex items-center gap-2 text-gray-800">
+                            <Activity className="h-4 w-4 text-blue-500" />
+                            {chartTimeRange === '7days' ? 'تحليل الزيارات (آخر 7 أيام)' :
+                              chartTimeRange === '30days' ? 'تحليل الزيارات (آخر 30 يوم)' :
+                                'تحليل الزيارات (آخر سنة)'}
+                          </h4>
+                          <div className="relative">
+                            <select
+                              value={chartTimeRange}
+                              onChange={(e) => setChartTimeRange(e.target.value as any)}
+                              className="text-xs border-none bg-gray-50 rounded-md py-1 pr-8 pl-2 focus:ring-1 focus:ring-blue-500 cursor-pointer outline-none"
+                            >
+                              <option value="7days">آخر 7 أيام</option>
+                              <option value="30days">آخر 30 يوم</option>
+                              <option value="year">آخر سنة</option>
+                            </select>
                           </div>
-                          <p className={`text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
-                            {day.count}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">{day.dayName.substring(0, 3)}</p>
                         </div>
-                      );
-                    })}
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {(chartTimeRange === '7days' ? (visitStats.last7Days || []) :
+                            chartTimeRange === '30days' ? (visitStats.last30Days || []) :
+                              (visitStats.lastYear || [])).reduce((a: number, b) => a + b.count, 0)} زيارة
+                        </Badge>
+                      </div>
+                      <div className="h-[250px] w-full" dir="ltr">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={chartTimeRange === '7days' ? (visitStats.last7Days || []) :
+                              chartTimeRange === '30days' ? (visitStats.last30Days || []) :
+                                (visitStats.lastYear || [])}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis
+                              dataKey={chartTimeRange === 'year' ? 'monthName' : 'dayName'}
+                              fontSize={11}
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fill: '#6b7280' }}
+                              dy={10}
+                            />
+                            <YAxis
+                              fontSize={11}
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fill: '#6b7280' }}
+                              tickFormatter={(value: number | string) => `${value}`}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                borderRadius: '12px',
+                                border: 'none',
+                                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                padding: '12px'
+                              }}
+                              itemStyle={{ color: '#1f2937', fontWeight: 600 }}
+                              labelStyle={{ color: '#6b7280', marginBottom: '4px', fontSize: '11px' }}
+                            />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                            <Area
+                              type="monotone"
+                              dataKey="count"
+                              name="الزيارات"
+                              stroke="#3b82f6"
+                              strokeWidth={3}
+                              fillOpacity={1}
+                              fill="url(#colorVisits)"
+                              activeDot={{ r: 6, strokeWidth: 0, fill: '#2563eb' }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Top Pages (Span 1) */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm flex flex-col">
+                      <h4 className="text-sm font-semibold mb-6 flex items-center gap-2 text-gray-800">
+                        <Globe className="h-4 w-4 text-purple-500" />
+                        الصفحات الأكثر زيارة
+                      </h4>
+                      {Object.keys(visitStats.byPage).length > 0 ? (
+                        <div className="space-y-5 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                          {Object.entries(visitStats.byPage)
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 6)
+                            .map(([page, count]) => {
+                              const max = Math.max(...Object.values(visitStats.byPage));
+                              const percent = (count / max) * 100;
+                              return (
+                                <div key={page} className="space-y-1.5 group">
+                                  <div className="flex justify-between text-xs text-gray-600">
+                                    <span className="truncate max-w-[180px] font-medium group-hover:text-purple-600 transition-colors" title={page}>{getPageLabel(page)}</span>
+                                    <span className="font-bold text-gray-900">{count}</span>
+                                  </div>
+                                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center flex-1 text-gray-400 gap-2">
+                          <BarChart3 className="h-8 w-8 opacity-20" />
+                          <p className="text-xs">لا توجد بيانات</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Geography & Recent Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Countries */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <Globe className="h-4 w-4 text-emerald-500" />
+                        أهم الدول
+                      </h4>
+                      <div className="space-y-3">
+                        {Object.entries(visitStats.byCountry)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 5)
+                          .map(([country, count], idx) => (
+                            <div key={country} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
+                                <span className="text-sm text-gray-700 font-medium">{country}</span>
+                              </div>
+                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-none">
+                                {count}
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Cities */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <MapPin className="h-4 w-4 text-orange-500" />
+                        أهم المدن
+                      </h4>
+                      <div className="space-y-3">
+                        {Object.entries(visitStats.byCity)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 5)
+                          .map(([city, count], idx) => (
+                            <div key={city} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
+                                <span className="text-sm text-gray-700 font-medium">{city}</span>
+                              </div>
+                              <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-none">
+                                {count}
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Visits */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        <Clock className="h-4 w-4 text-indigo-500" />
+                        آخر نشاط
+                      </h4>
+                      <div className="space-y-4">
+                        {visitStats.recentVisits.slice(0, 5).map((visit, i) => (
+                          <div key={i} className="relative pl-4 border-l-2 border-gray-100 pb-1 last:pb-0">
+                            <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-white"></div>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex justify-between items-start">
+                                <span className="text-xs font-semibold text-gray-900">{visit.country}, {visit.city}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  {visit.timestamp.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 truncate" title={getPageLabel(visit.page)}>
+                                زيارة: <span className="text-indigo-600 font-medium">{getPageLabel(visit.page)}</span>
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {visitStats.recentVisits.length === 0 && (
+                          <p className="text-center text-xs text-gray-400 py-4">لا يوجد نشاط حديث</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Top Pages - Compact */}
-                {Object.keys(visitStats.byPage).length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
-                      <Globe className="h-4 w-4" />
-                      أكثر الصفحات زيارة
-                    </h4>
-                    <div className="space-y-1.5">
-                      {Object.entries(visitStats.byPage)
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 3)
-                        .map(([page, count]) => (
-                          <div key={page} className="flex items-center justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                            <span className="text-gray-700 truncate flex-1">{getPageLabel(page)}</span>
-                            <span className="font-semibold text-blue-600 ml-2">{count}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Geography - Compact Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
-                      <Globe className="h-4 w-4" />
-                      الدول ({Object.keys(visitStats.byCountry).length})
-                    </h4>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {Object.entries(visitStats.byCountry)
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 5)
-                        .map(([country, count]) => (
-                          <div key={country} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                            <span className="text-gray-700 truncate">{country}</span>
-                            <span className="font-semibold text-blue-600">{count}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
-                      <MapPin className="h-4 w-4" />
-                      المدن ({Object.keys(visitStats.byCity).length})
-                    </h4>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {Object.entries(visitStats.byCity)
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 5)
-                        .map(([city, count]) => (
-                          <div key={city} className="flex justify-between text-xs py-1 px-2 bg-gray-50 rounded">
-                            <span className="text-gray-700 truncate">{city}</span>
-                            <span className="font-semibold text-green-600">{count}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recent Visits - Compact */}
-                {visitStats.recentVisits.length > 0 && (
-                  <div className="mt-4 pt-3 border-t">
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-gray-700">
-                      <Clock className="h-4 w-4" />
-                      آخر الزيارات
-                    </h4>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {visitStats.recentVisits.slice(0, 5).map((visit, index) => (
-                        <div key={index} className="flex items-center justify-between text-xs py-1.5 px-2 bg-gray-50 rounded hover:bg-gray-100">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <MapPin className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                            <span className="text-gray-700 truncate">{visit.country} - {visit.city}</span>
-                          </div>
-                          <span className="text-gray-500 text-xs ml-2 flex-shrink-0">
-                            {visit.timestamp.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             )}
           </Card>
@@ -2396,48 +2419,85 @@ export default function AdminUsersPage() {
           )}
 
           {/* Tabs for Active/Inactive/Deleted */}
-          <Card className="shadow-xl border-2 border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 pb-0">
-              <Tabs value={activeTab} onValueChange={(v) => {
-                setActiveTab(v as any);
-                setSelectedUsers([]);
-                setCurrentPage(1);
-              }}>
-                <TabsList className="grid w-full md:w-[600px] grid-cols-3 mb-4">
-                  <TabsTrigger value="active" className="gap-2">
-                    <UserCheck className="h-4 w-4" />
-                    النشطين ({stats.active.toLocaleString()})
-                  </TabsTrigger>
-                  <TabsTrigger value="inactive" className="gap-2">
-                    <UserX className="h-4 w-4" />
-                    المعطلين ({stats.inactive.toLocaleString()})
-                  </TabsTrigger>
-                  <TabsTrigger value="deleted" className="gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    المحذوفين ({stats.deleted.toLocaleString()})
-                  </TabsTrigger>
-                </TabsList>
+          <Card className="shadow-lg border border-gray-200 overflow-hidden bg-white">
+            <div className="border-b border-gray-100 p-4 md:p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                {/* Custom Tabs UI */}
+                <div className="bg-gray-100/80 p-1.5 rounded-xl w-full md:w-auto grid grid-cols-3 gap-1 md:flex md:gap-1">
+                  <button
+                    onClick={() => { setActiveTab('active'); setSelectedUsers([]); setCurrentPage(1); }}
+                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${activeTab === 'active'
+                      ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                      }`}
+                  >
+                    <UserCheck className={`h-3.5 w-3.5 md:h-4 md:w-4 ${activeTab === 'active' ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <span className="hidden sm:inline">النشطين</span>
+                    <span className="sm:hidden">نشط</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] md:text-xs ${activeTab === 'active' ? 'bg-blue-50 text-blue-700' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {stats.active.toLocaleString()}
+                    </span>
+                  </button>
 
-                <TabsContent value={activeTab} className="mt-0">
-                  <CardTitle className="flex items-center justify-between flex-wrap gap-3 pb-4">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-6 w-6 text-gray-700" />
-                      قائمة المستخدمين
+                  <button
+                    onClick={() => { setActiveTab('inactive'); setSelectedUsers([]); setCurrentPage(1); }}
+                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${activeTab === 'inactive'
+                      ? 'bg-white text-amber-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                      }`}
+                  >
+                    <UserX className={`h-3.5 w-3.5 md:h-4 md:w-4 ${activeTab === 'inactive' ? 'text-amber-600' : 'text-gray-400'}`} />
+                    <span className="hidden sm:inline">المعطلين</span>
+                    <span className="sm:hidden">معطل</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] md:text-xs ${activeTab === 'inactive' ? 'bg-amber-50 text-amber-700' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {stats.inactive.toLocaleString()}
                     </span>
-                    <span className="text-sm font-normal text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-200">
-                      عرض <span className="font-bold text-blue-600">{filteredAndSortedUsers.length.toLocaleString()}</span> من <span className="font-bold text-blue-600">{getUsersByTab().length.toLocaleString()}</span> مستخدم
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('deleted'); setSelectedUsers([]); setCurrentPage(1); }}
+                    className={`flex items-center justify-center gap-2 px-3 lg:px-4 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${activeTab === 'deleted'
+                      ? 'bg-white text-red-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                      }`}
+                  >
+                    <Trash2 className={`h-3.5 w-3.5 md:h-4 md:w-4 ${activeTab === 'deleted' ? 'text-red-600' : 'text-gray-400'}`} />
+                    <span className="hidden sm:inline">المحذوفين</span>
+                    <span className="sm:hidden">محذوف</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] md:text-xs ${activeTab === 'deleted' ? 'bg-red-50 text-red-700' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {stats.deleted.toLocaleString()}
                     </span>
-                  </CardTitle>
-                </TabsContent>
-              </Tabs>
-            </CardHeader>
+                  </button>
+                </div>
+
+                {/* Stats Info */}
+                <div className="flex items-center justify-between md:justify-end gap-3 px-1 glass-effect p-2 rounded-lg md:bg-transparent md:p-0">
+                  <span className="flex items-center gap-2 text-sm text-gray-600">
+                    <Users className="h-4 w-4 md:hidden" />
+                    <span className="md:hidden font-medium">قائمة المستخدمين</span>
+                  </span>
+
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-blue-50/50 text-blue-700 border-blue-100 px-3 flex items-center gap-2">
+                      <span className="text-gray-500 font-normal">عرض</span>
+                      <span className="font-bold">{filteredAndSortedUsers.length.toLocaleString()}</span>
+                      <span className="text-gray-400">/</span>
+                      <span className="font-bold">{getUsersByTab().length.toLocaleString()}</span>
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-100 border-b-2 border-gray-200">
+                  <thead className="bg-gray-50/80 border-b border-gray-100 backdrop-blur-sm sticky top-0 z-10">
                     <tr>
-                      <th className="text-right p-4 font-semibold text-gray-700 w-12">
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider w-12">
                         <input
                           type="checkbox"
                           title="تحديد الكل"
@@ -2449,31 +2509,30 @@ export default function AdminUsersPage() {
                               setSelectedUsers([]);
                             }
                           }}
-                          className="rounded h-5 w-5 cursor-pointer"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer align-middle"
                         />
                       </th>
-                      <th className="text-right p-4 font-semibold text-gray-700">الاسم</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">البريد</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">الهاتف</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">النوع</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">المنظمة</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">التوثيق</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">اكتمال الملف</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">الموقع</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">التسجيل</th>
-                      <th className="text-right p-4 font-semibold text-gray-700">الإجراءات</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الاسم</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">البريد الإلكتروني</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الهاتف</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">النوع</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">المنظمة</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">التوثيق</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">اكتمال الملف</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الموقع</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">التسجيل</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الإجراءات</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-50">
                     {paginatedUsers.map((user) => {
                       const isNew = user.createdAt && (new Date().getTime() - user.createdAt.getTime()) < 24 * 60 * 60 * 1000;
 
                       return (
-                        <tr key={user.id} className={`hover:bg-blue-50 transition-colors ${isNew ? 'bg-green-50' : ''}`}>
+                        <tr key={user.id} className={`group hover:bg-gray-50/50 transition-all duration-200 ${selectedUsers.includes(user.id) ? 'bg-blue-50/30' : ''}`}>
                           <td className="p-4">
                             <input
                               type="checkbox"
-                              title={`تحديد ${user.name}`}
                               checked={selectedUsers.includes(user.id)}
                               onChange={(e) => {
                                 if (e.target.checked) {
@@ -2482,31 +2541,29 @@ export default function AdminUsersPage() {
                                   setSelectedUsers(selectedUsers.filter(id => id !== user.id));
                                 }
                               }}
-                              className="rounded h-5 w-5 cursor-pointer"
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer align-middle"
                             />
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm ring-2 ring-white">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-semibold text-gray-900">{user.name}</p>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 truncate max-w-[150px]">{user.name}</p>
                                   {isNew && (
-                                    <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
-                                      جديد!
-                                    </Badge>
+                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-emerald-200">
+                                      جديد
+                                    </span>
                                   )}
+                                </div>
+                                <div className="flex gap-1 mt-0.5">
                                   {!user.isActive && (
-                                    <Badge className="bg-orange-500 text-white text-xs px-2 py-0.5">
-                                      موقوف
-                                    </Badge>
+                                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded-sm">موقوف</span>
                                   )}
                                   {user.isDeleted && (
-                                    <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
-                                      محذوف
-                                    </Badge>
+                                    <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 rounded-sm line-through">محذوف</span>
                                   )}
                                 </div>
                                 {user.lastLogin && (
@@ -2525,141 +2582,100 @@ export default function AdminUsersPage() {
                             </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2 text-gray-700">
-                              <Mail className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm">{user.email || 'غير محدد'}</span>
+                            <div className="flex items-center gap-2 text-gray-600 group-hover:text-gray-900 transition-colors">
+                              <Mail className="h-3.5 w-3.5 text-gray-400" />
+                              <span className="text-sm font-medium">{user.email || '-'}</span>
                             </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2 text-gray-700">
-                              <Phone className="h-4 w-4 text-gray-400" />
-                              <div className="flex flex-col gap-1">
-                                <span className="text-sm">{user.phone || 'غير محدد'}</span>
-                                {user.phone && user.countryCode && (() => {
-                                  const validation = validateUserPhone(user);
-                                  if (!validation.isValid) {
-                                    return (
-                                      <div className="flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3 text-red-500" />
-                                        <span className="text-xs text-red-600">{validation.error}</span>
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <div className="flex items-center gap-1">
-                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                      <span className="text-xs text-green-600">صحيح</span>
-                                    </div>
-                                  );
-                                })()}
-                                {user.phone && !user.countryCode && (() => {
-                                  const detectedCountry = detectCountryFromPhone(user.phone);
-                                  if (detectedCountry) {
-                                    return (
-                                      <div className="flex items-center gap-1">
-                                        <Globe className="h-3 w-3 text-blue-500" />
-                                        <span className="text-xs text-blue-600">مكتشف: {detectedCountry.name}</span>
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <div className="flex items-center gap-1">
-                                      <AlertCircle className="h-3 w-3 text-orange-500" />
-                                      <span className="text-xs text-orange-600">كود البلد غير محدد</span>
-                                    </div>
-                                  );
-                                })()}
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Phone className="h-3.5 w-3.5 text-gray-400" />
+                                <span className="text-sm font-medium dir-ltr">{user.phone || '-'}</span>
                               </div>
+                              {user.phone && (
+                                <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const validation = user.countryCode ? validateUserPhone(user) : { isValid: false, error: 'no_code' };
+                                    if (validation.isValid) {
+                                      return <span className="flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 px-1.5 rounded"><CheckCircle2 className="h-2.5 w-2.5" /> صحيح</span>;
+                                    } else {
+                                      return <span className="flex items-center gap-1 text-[10px] text-red-600 bg-red-50 px-1.5 rounded"><AlertCircle className="h-2.5 w-2.5" /> {user.countryCode ? 'خطأ' : 'كود مفقود'}</span>;
+                                    }
+                                  })()}
+                                  {!user.countryCode && (
+                                    (() => {
+                                      const detected = detectCountryFromPhone(user.phone);
+                                      return detected ? <span className="text-[10px] text-blue-600 flex items-center gap-0.5"><Globe className="h-2.5 w-2.5" /> {detected.name}</span> : null;
+                                    })()
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="p-4">
-                            <Badge className={`${getAccountTypeColor(user.accountType)} border font-semibold`}>
+                            <Badge variant="outline" className={`${getAccountTypeColor(user.accountType)} font-medium`}>
                               {getAccountTypeLabel(user.accountType)}
                             </Badge>
                           </td>
                           <td className="p-4">
                             {user.parentOrganizationName ? (
-                              <div className="flex flex-col gap-1">
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">
-                                  🏢 {user.parentOrganizationName}
-                                </Badge>
-                                <span className="text-xs text-gray-500">
-                                  ({getAccountTypeLabel(user.parentAccountType)})
-                                </span>
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-gray-700">{user.parentOrganizationName}</span>
+                                  <span className="text-[10px] text-gray-500">{getAccountTypeLabel(user.parentAccountType)}</span>
+                                </div>
                               </div>
                             ) : (
-                              <Badge className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
-                                📝 تسجيل مباشر
-                              </Badge>
+                              <span className="text-xs text-gray-400 font-medium">تسجيل مباشر</span>
                             )}
                           </td>
                           <td className="p-4">
-                            <Badge className={`${getVerificationColor(user.verificationStatus)} border font-semibold`}>
-                              {getVerificationLabel(user.verificationStatus)}
-                            </Badge>
+                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${getVerificationColor(user.verificationStatus)}`}>
+                              {user.verificationStatus === 'verified' && <CheckCircle2 className="h-3 w-3" />}
+                              {user.verificationStatus === 'pending' && <Clock className="h-3 w-3" />}
+                              {user.verificationStatus === 'rejected' && <XCircle className="h-3 w-3" />}
+                              <span className="text-xs font-semibold">{getVerificationLabel(user.verificationStatus)}</span>
+                            </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-200 rounded-full h-2.5">
+                            <div className="w-24">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs font-medium text-gray-600">{user.profileCompletion}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                                 <div
-                                  className={`h-2.5 rounded-full transition-all ${user.profileCompletion >= 80
-                                    ? 'bg-green-500'
-                                    : user.profileCompletion >= 50
-                                      ? 'bg-yellow-500'
-                                      : 'bg-red-500'
+                                  className={`h-full rounded-full transition-all duration-500 ${user.profileCompletion >= 80 ? 'bg-emerald-500' :
+                                    user.profileCompletion >= 50 ? 'bg-yellow-500' : 'bg-red-500'
                                     }`}
                                   style={{ width: `${user.profileCompletion}%` }}
-                                ></div>
+                                />
                               </div>
-                              <Badge className={`${getProfileCompletionBgColor(user.profileCompletion)} border font-bold text-xs`}>
-                                {user.profileCompletion}%
-                              </Badge>
-                            </div>
-                            {user.profileCompletion < 80 && (
-                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" />
-                                غير مكتمل
-                              </p>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            <div className="text-sm">
-                              <p className="font-medium text-gray-900 flex items-center gap-1">
-                                <Globe className="h-3 w-3 text-gray-400" />
-                                {user.country || 'غير محدد'}
-                              </p>
-                              <p className="text-gray-600 flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-gray-400" />
-                                {user.city || 'غير محدد'}
-                              </p>
                             </div>
                           </td>
                           <td className="p-4">
-                            {user.createdAt ? (
-                              <div className="text-sm">
-                                <p className="font-medium text-gray-900">
-                                  {user.createdAt.toLocaleDateString('en-GB')}
-                                </p>
-                                <p className="text-gray-600 text-xs">
-                                  {user.createdAt.toLocaleTimeString('en-GB')}
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="text-sm">
-                                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">
-                                  <AlertCircle className="h-3 w-3 inline mr-1" />
-                                  غير محدد
-                                </Badge>
-                                <p className="text-xs text-gray-500 mt-1">لا يوجد تاريخ</p>
-                              </div>
-                            )}
+                            <div className="flex flex-col text-sm">
+                              <span className="font-medium text-gray-700">{user.country || '-'}</span>
+                              <span className="text-xs text-gray-500">{user.city}</span>
+                            </div>
                           </td>
                           <td className="p-4">
-                            <div className="flex gap-2 flex-wrap">
+                            <div className="flex flex-col">
+                              <span className="text-sm text-gray-700 font-medium numbers-english">
+                                {user.createdAt?.toLocaleDateString('en-GB') || '-'}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {user.createdAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 title="عرض التفاصيل"
                                 onClick={() => {
                                   setSelectedUserDetails(user);
@@ -2674,8 +2690,8 @@ export default function AdminUsersPage() {
                                 <>
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                     title="توثيق الحساب"
                                     onClick={() => handleVerifyAccount(user.id)}
                                   >
@@ -2683,8 +2699,8 @@ export default function AdminUsersPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                     title="رفض التوثيق"
                                     onClick={() => handleRejectAccount(user.id)}
                                   >
@@ -2697,8 +2713,8 @@ export default function AdminUsersPage() {
                               {user.isActive ? (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                   title="إيقاف مؤقت"
                                   onClick={() => {
                                     setSelectedUserDetails(user);
@@ -2710,8 +2726,8 @@ export default function AdminUsersPage() {
                               ) : (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                   title="تفعيل الحساب"
                                   onClick={() => {
                                     setSelectedUserDetails(user);
@@ -2726,9 +2742,9 @@ export default function AdminUsersPage() {
                               {!user.isDeleted && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800"
-                                  title="حذف الحساب"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="حذف"
                                   onClick={() => {
                                     setSelectedUserDetails(user);
                                     setIsPermanentDelete(false);
@@ -2743,9 +2759,9 @@ export default function AdminUsersPage() {
                               {user.isDeleted && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="bg-red-100 hover:bg-red-600 border-red-200 text-red-700 hover:text-white transition-colors"
-                                  title="حذف نهائي من قاعدة البيانات"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="حذف نهائي"
                                   onClick={() => {
                                     setSelectedUserDetails(user);
                                     setIsPermanentDelete(true);
@@ -2759,8 +2775,8 @@ export default function AdminUsersPage() {
                               {/* Change Account Type Button */}
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                                 title="تغيير نوع الحساب"
                                 onClick={() => {
                                   setSelectedUserDetails(user);
@@ -3406,6 +3422,6 @@ export default function AdminUsersPage() {
         </Dialog>
 
       </div>
-    </AccountTypeProtection>
+    </AccountTypeProtection >
   );
 }

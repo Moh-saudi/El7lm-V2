@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { db } from '@/lib/firebase/config';
+import { uploadPlayerVideo } from '@/lib/firebase/upload-media';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { referralService } from '@/lib/referral/referral-service';
 import { PlayerVideo, POINTS_CONVERSION } from '@/types/referral';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Video, 
-  Upload, 
-  Play, 
-  Clock, 
+import {
+  Video,
+  Upload,
+  Play,
+  Clock,
   Eye,
   ThumbsUp,
   DollarSign,
@@ -75,7 +78,7 @@ export default function VideoUploadPage() {
       setLoading(true);
       const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
       setPlayerRewards(rewards);
-      
+
       // هنا يمكن جلب فيديوهات اللاعب من قاعدة البيانات
       // setUploadedVideos(playerVideosData);
     } catch (error) {
@@ -106,41 +109,103 @@ export default function VideoUploadPage() {
     }
   };
 
+
+
+  // ... (other imports remain)
+
+  // Fetch videos
+  const fetchVideos = async () => {
+    if (!user?.uid) return;
+    try {
+      const q = query(
+        collection(db, 'player_videos'),
+        where('playerId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      const videos = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        uploadedAt: doc.data().createdAt?.toDate() || new Date(),
+      })) as UploadedVideo[];
+      setUploadedVideos(videos);
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadPlayerData();
+      fetchVideos();
+    }
+  }, [user]);
+
   const handleUpload = async () => {
     if (!selectedFile || !videoTitle.trim()) {
       toast.error('يرجى اختيار ملف فيديو وإدخال عنوان');
       return;
     }
 
+    if (!user?.uid) return;
+
     setUploading(true);
 
     try {
-      // هنا يمكن إضافة رفع الملف إلى Firebase Storage
-      // const videoUrl = await uploadVideoToStorage(selectedFile);
-      
-      // إنشاء كائن الفيديو
-      const newVideo: UploadedVideo = {
-        id: Date.now().toString(),
+      // 1. Upload to Cloudflare R2 (via uploadPlayerVideo)
+      // For independent player: ownerId = uid, playerId = uid
+      const { url, name } = await uploadPlayerVideo(
+        selectedFile,
+        user.uid,
+        user.uid,
+        'independent'
+      );
+
+      // 2. Save Metadata to Firestore
+      const videoData = {
+        playerId: user.uid,
         title: videoTitle,
         description: videoDescription,
-        videoUrl: 'https://example.com/video.mp4', // سيتم استبداله بالرابط الحقيقي
-        thumbnail: '/images/video-thumbnail.jpg',
-        duration: 0, // سيتم حسابها من الفيديو
+        videoUrl: url,
+        fileName: name,
+        thumbnail: '/images/video-placeholder.png', // Could generate thumbnail later
+        duration: 0, // Pending processing
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        pointsEarned: 0,
+        views: 0,
+        likes: 0
+      };
+
+      const docRef = await addDoc(collection(db, 'player_videos'), videoData);
+
+      // 3. Update UI
+      const newVideo: UploadedVideo = {
+        id: docRef.id,
+        title: videoTitle,
+        description: videoDescription,
+        videoUrl: url,
+        thumbnail: '/images/video-placeholder.png',
+        duration: 0,
         status: 'pending',
         uploadedAt: new Date()
       };
 
       setUploadedVideos(prev => [newVideo, ...prev]);
-      
+
       toast.success('تم رفع الفيديو بنجاح! سيتم مراجعته قريباً');
       setShowUploadModal(false);
       setSelectedFile(null);
       setVideoTitle('');
       setVideoDescription('');
 
+      // Notify Admin (Optional - implementation depends on backend logic)
+      // await notifyAdminOfNewVideo(docRef.id);
+
     } catch (error) {
       console.error('خطأ في رفع الفيديو:', error);
-      toast.error('حدث خطأ في رفع الفيديو');
+      toast.error('حدث خطأ أثناء رفع الفيديو: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setUploading(false);
     }
@@ -215,7 +280,7 @@ export default function VideoUploadPage() {
                 <p className="text-blue-100">النقاط المتوفرة</p>
                 <p className="text-3xl font-bold">{playerRewards?.availablePoints.toLocaleString()}</p>
                 <p className="text-sm text-blue-100">
-                  ≈ ${(playerRewards?.availablePoints || 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR} 
+                  ≈ ${(playerRewards?.availablePoints || 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR}
                   ({((playerRewards?.availablePoints || 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR * POINTS_CONVERSION.DOLLAR_TO_EGP).toFixed(2)} ج.م)
                 </p>
               </div>
@@ -249,7 +314,7 @@ export default function VideoUploadPage() {
                   ارفع فيديو يظهر مهاراتك في كرة القدم
                 </p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-yellow-600" />
@@ -259,7 +324,7 @@ export default function VideoUploadPage() {
                   سيقوم فريقنا بمراجعة الفيديو خلال 24 ساعة
                 </p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <DollarSign className="w-8 h-8 text-green-600" />
@@ -332,7 +397,7 @@ export default function VideoUploadPage() {
                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
                       <Play className="w-8 h-8 text-gray-400" />
                     </div>
-                    
+
                     <div className="flex-1">
                       <h3 className="font-semibold">{video.title}</h3>
                       <p className="text-sm text-gray-600 line-clamp-2">{video.description}</p>
@@ -343,7 +408,7 @@ export default function VideoUploadPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <Badge className={`${getStatusColor(video.status)} text-white`}>
                         <div className="flex items-center gap-1">
@@ -351,13 +416,13 @@ export default function VideoUploadPage() {
                           {getStatusText(video.status)}
                         </div>
                       </Badge>
-                      
+
                       {video.status === 'approved' && video.pointsEarned && (
                         <div className="text-sm text-green-600 mt-1">
                           +{video.pointsEarned.toLocaleString()} نقطة
                         </div>
                       )}
-                      
+
                       {video.status === 'rejected' && video.adminNotes && (
                         <div className="text-sm text-red-600 mt-1">
                           {video.adminNotes}
@@ -390,7 +455,7 @@ export default function VideoUploadPage() {
                 <XCircle className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">اختر ملف الفيديو</label>
@@ -413,7 +478,7 @@ export default function VideoUploadPage() {
                   </label>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">عنوان الفيديو</label>
                 <Input
@@ -422,7 +487,7 @@ export default function VideoUploadPage() {
                   placeholder="أدخل عنوان الفيديو"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">وصف الفيديو</label>
                 <Textarea
@@ -432,7 +497,7 @@ export default function VideoUploadPage() {
                   rows={3}
                 />
               </div>
-              
+
               <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-sm text-blue-800">
                   <strong>نصائح للحصول على الموافقة:</strong>
@@ -444,7 +509,7 @@ export default function VideoUploadPage() {
                   <li>• استخدم عنوان ووصف واضحين</li>
                 </ul>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   onClick={handleUpload}

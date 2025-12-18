@@ -19,7 +19,7 @@ interface AcademyData {
   is_federation_approved: boolean;
   license_number: string;
   registration_date: string;
-  
+
   // معلومات الاتصال
   country: string;
   city: string;
@@ -32,18 +32,18 @@ interface AcademyData {
     instagram: string;
     twitter: string;
   };
-  
+
   // المعلومات الفنية
   age_groups: string[];
   sports_facilities: string[];
   number_of_coaches: number;
   training_programs: string;
   achievements: string;
-  
+
   // المستندات
   license_file: string;
   facility_photos: string[];
-  
+
   // بيانات الإدارة
   director: {
     name: string;
@@ -57,7 +57,7 @@ interface AcademyData {
     license: string;
     experience: string;
   };
-  
+
   // الفروع
   main_branch: {
     address: string;
@@ -69,12 +69,12 @@ interface AcademyData {
     address: string;
     contact: string;
   }[];
-  
+
   // معلومات إضافية
   academy_goals: string;
   success_stories: string[];
   partnerships: string[];
-  
+
   // إحصائيات (للعرض)
   stats: {
     students: number;
@@ -95,7 +95,7 @@ const initialAcademyData: AcademyData = {
   is_federation_approved: false,
   license_number: '',
   registration_date: '',
-  
+
   // معلومات الاتصال
   country: '',
   city: '',
@@ -108,18 +108,18 @@ const initialAcademyData: AcademyData = {
     instagram: '',
     twitter: ''
   },
-  
+
   // المعلومات الفنية
   age_groups: [],
   sports_facilities: [],
   number_of_coaches: 0,
   training_programs: '',
   achievements: '',
-  
+
   // المستندات
   license_file: '',
   facility_photos: [],
-  
+
   // بيانات الإدارة
   director: {
     name: '',
@@ -133,7 +133,7 @@ const initialAcademyData: AcademyData = {
     license: '',
     experience: ''
   },
-  
+
   // الفروع
   main_branch: {
     address: '',
@@ -141,12 +141,12 @@ const initialAcademyData: AcademyData = {
     photos: []
   },
   branches: [],
-  
+
   // معلومات إضافية
   academy_goals: '',
   success_stories: [],
   partnerships: [],
-  
+
   // إحصائيات (للعرض)
   stats: {
     students: 0,
@@ -159,8 +159,13 @@ const initialAcademyData: AcademyData = {
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  const { data: { publicUrl } } = supabase.storage.from('academy').getPublicUrl(path);
-  return publicUrl || '';
+
+  // استخدام رابط Cloudflare المباشر
+  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+  // افتراض أن الملف في bucket 'academy'
+  return `${CLOUDFLARE_PUBLIC_URL}/academy/${cleanPath}`;
 };
 
 export default function AcademyProfilePage() {
@@ -176,9 +181,9 @@ export default function AcademyProfilePage() {
     try {
       const academyRef = doc(db, 'academies', user.uid);
       const academyDoc = await getDoc(academyRef);
-      
+
       let data = {};
-      
+
       if (academyDoc.exists()) {
         data = academyDoc.data();
       } else {
@@ -194,18 +199,18 @@ export default function AcademyProfilePage() {
           isVerified: false,
           isPremium: false
         };
-        
+
         await setDoc(academyRef, basicData);
         data = basicData;
       }
-      
+
       const mergedData = {
         ...initialAcademyData,
         ...data,
-        academy_name: ((data as any).academy_name && (data as any).academy_name.trim()) 
-          ? (data as any).academy_name 
-          : ((data as any).name && (data as any).name.trim()) 
-            ? (data as any).name 
+        academy_name: ((data as any).academy_name && (data as any).academy_name.trim())
+          ? (data as any).academy_name
+          : ((data as any).name && (data as any).name.trim())
+            ? (data as any).name
             : (userData?.name || 'أكاديمية جديدة'),
         description: (data as any).description || (data as any).bio || '',
         phone: ((data as any).phone && (data as any).phone.trim()) ? (data as any).phone : (userData?.phone || ''),
@@ -260,10 +265,10 @@ export default function AcademyProfilePage() {
     setUploading(true);
     try {
       const academyRef = doc(db, 'academies', user.uid);
-      
+
       // التحقق من وجود المستند أولاً
       const academyDoc = await getDoc(academyRef);
-      
+
       if (academyDoc.exists()) {
         // المستند موجود - نحدثه
         await updateDoc(academyRef, { ...academyData } as any);
@@ -279,7 +284,7 @@ export default function AcademyProfilePage() {
           isPremium: false
         });
       }
-      
+
       toast.success('🎉 تم حفظ بيانات الأكاديمية بنجاح! 🎓');
       await fetchAcademyData();
       setEditMode(false);
@@ -300,57 +305,39 @@ export default function AcademyProfilePage() {
       }
       if (file.size > 5 * 1024 * 1024) {
         const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`, {
-          duration: 9000,
-          style: {
-            maxWidth: '400px',
-            fontSize: '15px',
-            lineHeight: '1.6',
-            direction: 'rtl',
-            textAlign: 'right'
-          }
-        });
+        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`);
         return;
       }
-      
+
       setUploading(true);
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${timestamp}.${fileExt}`;
       const filePath = `${user.uid}/${type}/${fileName}`;
-      
-      const { data, error } = await supabase.storage
-        .from('academy')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
-      if (error) {
-        toast.error('حدث خطأ أثناء رفع الصورة');
-        return;
-      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('academy')
-        .getPublicUrl(filePath);
+      // استيراد storageManager ديناميكياً لتجنب مشاكل الـ imports الدائرية أو الـ server/client
+      const { storageManager } = await import('@/lib/storage');
+
+      // استخدام 'academy' كاسم للبوكت
+      const result = await storageManager.upload('academy', filePath, file, {
+        upsert: true,
+        contentType: file.type
+      });
+
+      const publicUrl = result.publicUrl;
 
       let updatedData = { ...academyData } as any;
-      let updateObj: any = {};
-      
+
       if (type === 'gallery') {
         updatedData.gallery = [...((academyData as any).gallery || []), publicUrl];
-        updateObj.gallery = updatedData.gallery;
       } else if (type === 'cover') {
         updatedData.coverImage = publicUrl;
-        updateObj.coverImage = publicUrl;
       } else if (type === 'logo') {
         updatedData.logo = publicUrl;
-        updateObj.logo = publicUrl;
       }
-      
+
       setAcademyData(updatedData);
-              toast.success('✅ تم رفع الصورة بنجاح');
+      toast.success('✅ تم رفع الصورة بنجاح');
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error('حدث خطأ أثناء رفع الصورة');
@@ -458,7 +445,7 @@ export default function AcademyProfilePage() {
           <div className="flex flex-col items-center p-5 text-white shadow bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl">
             <Users size={28} />
             <div className="mt-2 text-2xl font-bold">{academyData?.stats?.students ?? 150}</div>
-                            <div className="mt-1 text-sm">اللاعبين</div>
+            <div className="mt-1 text-sm">اللاعبين</div>
           </div>
           <div className="flex flex-col items-center p-5 text-white shadow bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl">
             <BookOpen size={28} />
@@ -606,13 +593,13 @@ export default function AcademyProfilePage() {
           <h3 className="flex items-center gap-2 mb-4 text-lg font-bold text-orange-600">
             <Award size={20} /> الإنجازات والجوائز
           </h3>
-          
+
           {academyData?.achievements && (typeof academyData.achievements === 'string' ? academyData.achievements.trim() : String(academyData.achievements)) ? (
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-700 leading-relaxed">
-                {typeof academyData.achievements === 'string' 
-                  ? academyData.achievements 
-                  : Array.isArray(academyData.achievements) 
+                {typeof academyData.achievements === 'string'
+                  ? academyData.achievements
+                  : Array.isArray(academyData.achievements)
                     ? (academyData.achievements as any[]).map((a: any) => typeof a === 'string' ? a : a.title || a).join(', ')
                     : String(academyData.achievements)
                 }
@@ -642,7 +629,7 @@ export default function AcademyProfilePage() {
               </div>
             </div>
           )}
-          
+
           {/* قصص النجاح */}
           {academyData?.success_stories && academyData.success_stories.length > 0 && (
             <div className="mt-6">
@@ -656,7 +643,7 @@ export default function AcademyProfilePage() {
               </div>
             </div>
           )}
-          
+
           {/* الشراكات */}
           {academyData?.partnerships && academyData.partnerships.length > 0 && (
             <div className="mt-6">
@@ -715,10 +702,10 @@ export default function AcademyProfilePage() {
                 ×
               </button>
               <h2 className="mb-6 text-xl font-bold text-orange-600">تعديل بيانات الأكاديمية</h2>
-              
+
               {/* نموذج التعديل الشامل */}
               <div className="space-y-6">
-                
+
                 {/* قسم رفع الصور */}
                 <div className="p-6 bg-orange-50 rounded-lg">
                   <h4 className="mb-4 font-bold text-orange-800">رفع الصور</h4>
@@ -772,7 +759,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="اسم الأكاديمية الرسمي"
                         value={academyData?.academy_name}
-                        onChange={(e) => setAcademyData({...academyData, academy_name: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, academy_name: e.target.value })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -782,7 +769,7 @@ export default function AcademyProfilePage() {
                         rows={4}
                         placeholder="نبذة مختصرة عن الأكاديمية، رؤيتها، وأهدافها..."
                         value={academyData?.description}
-                        onChange={(e) => setAcademyData({...academyData, description: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, description: e.target.value })}
                       />
                     </div>
                     <div>
@@ -792,7 +779,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="2020"
                         value={academyData?.founding_year}
-                        onChange={(e) => setAcademyData({...academyData, founding_year: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, founding_year: e.target.value })}
                       />
                     </div>
                     <div>
@@ -800,7 +787,7 @@ export default function AcademyProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         value={academyData?.academy_type}
-                        onChange={(e) => setAcademyData({...academyData, academy_type: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, academy_type: e.target.value })}
                       >
                         <option value="">اختر نوع الرياضة</option>
                         <option value="كرة قدم">كرة قدم</option>
@@ -818,7 +805,7 @@ export default function AcademyProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         value={academyData?.is_federation_approved ? 'true' : 'false'}
-                        onChange={(e) => setAcademyData({...academyData, is_federation_approved: e.target.value === 'true'})}
+                        onChange={(e) => setAcademyData({ ...academyData, is_federation_approved: e.target.value === 'true' })}
                       >
                         <option value="false">لا</option>
                         <option value="true">نعم</option>
@@ -831,7 +818,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="رقم الرخصة الرسمية"
                         value={academyData?.license_number}
-                        onChange={(e) => setAcademyData({...academyData, license_number: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, license_number: e.target.value })}
                       />
                     </div>
                     <div>
@@ -840,7 +827,7 @@ export default function AcademyProfilePage() {
                         type="date"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         value={academyData?.registration_date}
-                        onChange={(e) => setAcademyData({...academyData, registration_date: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, registration_date: e.target.value })}
                       />
                     </div>
                   </div>
@@ -855,7 +842,7 @@ export default function AcademyProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         value={academyData?.country}
-                        onChange={(e) => setAcademyData({...academyData, country: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, country: e.target.value })}
                       >
                         <option value="">اختر الدولة</option>
                         <option value="السعودية">السعودية</option>
@@ -877,7 +864,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="اسم المدينة"
                         value={academyData?.city}
-                        onChange={(e) => setAcademyData({...academyData, city: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, city: e.target.value })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -887,7 +874,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="العنوان الكامل للأكاديمية"
                         value={academyData?.address}
-                        onChange={(e) => setAcademyData({...academyData, address: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, address: e.target.value })}
                       />
                     </div>
                     <div>
@@ -897,7 +884,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="+966501234567"
                         value={academyData?.phone}
-                        onChange={(e) => setAcademyData({...academyData, phone: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, phone: e.target.value })}
                       />
                     </div>
                     <div>
@@ -907,7 +894,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="academy@example.com"
                         value={academyData?.email}
-                        onChange={(e) => setAcademyData({...academyData, email: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, email: e.target.value })}
                       />
                     </div>
                     <div>
@@ -917,7 +904,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="https://academy.com"
                         value={academyData?.website}
-                        onChange={(e) => setAcademyData({...academyData, website: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, website: e.target.value })}
                       />
                     </div>
                     <div>
@@ -927,7 +914,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="https://facebook.com/academy"
                         value={academyData?.social_media?.facebook}
-                        onChange={(e) => setAcademyData({...academyData, social_media: {...academyData.social_media, facebook: e.target.value}})}
+                        onChange={(e) => setAcademyData({ ...academyData, social_media: { ...academyData.social_media, facebook: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -937,7 +924,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="https://instagram.com/academy"
                         value={academyData?.social_media?.instagram}
-                        onChange={(e) => setAcademyData({...academyData, social_media: {...academyData.social_media, instagram: e.target.value}})}
+                        onChange={(e) => setAcademyData({ ...academyData, social_media: { ...academyData.social_media, instagram: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -947,7 +934,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="https://twitter.com/academy"
                         value={academyData?.social_media?.twitter}
-                        onChange={(e) => setAcademyData({...academyData, social_media: {...academyData.social_media, twitter: e.target.value}})}
+                        onChange={(e) => setAcademyData({ ...academyData, social_media: { ...academyData.social_media, twitter: e.target.value } })}
                       />
                     </div>
                   </div>
@@ -964,7 +951,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="15"
                         value={academyData?.number_of_coaches}
-                        onChange={(e) => setAcademyData({...academyData, number_of_coaches: parseInt(e.target.value) || 0})}
+                        onChange={(e) => setAcademyData({ ...academyData, number_of_coaches: parseInt(e.target.value) || 0 })}
                       />
                     </div>
                     <div>
@@ -974,7 +961,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="U8, U10, U12, U14, U16, U18 (افصل بفاصلة)"
                         value={academyData?.age_groups?.join(', ')}
-                        onChange={(e) => setAcademyData({...academyData, age_groups: e.target.value.split(',').map(item => item.trim()).filter(item => item)})}
+                        onChange={(e) => setAcademyData({ ...academyData, age_groups: e.target.value.split(',').map(item => item.trim()).filter(item => item) })}
                       />
                     </div>
                     <div>
@@ -984,7 +971,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="ملعب, صالة, مسبح (افصل بفاصلة)"
                         value={academyData?.sports_facilities?.join(', ')}
-                        onChange={(e) => setAcademyData({...academyData, sports_facilities: e.target.value.split(',').map(item => item.trim()).filter(item => item)})}
+                        onChange={(e) => setAcademyData({ ...academyData, sports_facilities: e.target.value.split(',').map(item => item.trim()).filter(item => item) })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -994,7 +981,7 @@ export default function AcademyProfilePage() {
                         rows={4}
                         placeholder="وصف مفصل للبرامج التدريبية المقدمة..."
                         value={academyData?.training_programs}
-                        onChange={(e) => setAcademyData({...academyData, training_programs: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, training_programs: e.target.value })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -1004,7 +991,7 @@ export default function AcademyProfilePage() {
                         rows={3}
                         placeholder="أهم الإنجازات والجوائز..."
                         value={academyData?.achievements}
-                        onChange={(e) => setAcademyData({...academyData, achievements: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, achievements: e.target.value })}
                       />
                     </div>
                   </div>
@@ -1024,7 +1011,7 @@ export default function AcademyProfilePage() {
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                           placeholder="اسم المدير العام"
                           value={academyData?.director?.name}
-                          onChange={(e) => setAcademyData({...academyData, director: {...academyData.director, name: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, director: { ...academyData.director, name: e.target.value } })}
                         />
                       </div>
                       <div>
@@ -1034,7 +1021,7 @@ export default function AcademyProfilePage() {
                           rows={3}
                           placeholder="الخبرات والإنجازات..."
                           value={academyData?.director?.bio}
-                          onChange={(e) => setAcademyData({...academyData, director: {...academyData.director, bio: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, director: { ...academyData.director, bio: e.target.value } })}
                         />
                       </div>
                       <div>
@@ -1044,7 +1031,7 @@ export default function AcademyProfilePage() {
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                           placeholder="رقم الهاتف أو البريد الإلكتروني"
                           value={academyData?.director?.contact}
-                          onChange={(e) => setAcademyData({...academyData, director: {...academyData.director, contact: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, director: { ...academyData.director, contact: e.target.value } })}
                         />
                       </div>
                     </div>
@@ -1059,7 +1046,7 @@ export default function AcademyProfilePage() {
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                           placeholder="اسم المدير الفني"
                           value={academyData?.technical_director?.name}
-                          onChange={(e) => setAcademyData({...academyData, technical_director: {...academyData.technical_director, name: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, technical_director: { ...academyData.technical_director, name: e.target.value } })}
                         />
                       </div>
                       <div>
@@ -1069,7 +1056,7 @@ export default function AcademyProfilePage() {
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                           placeholder="رقم الرخصة"
                           value={academyData?.technical_director?.license}
-                          onChange={(e) => setAcademyData({...academyData, technical_director: {...academyData.technical_director, license: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, technical_director: { ...academyData.technical_director, license: e.target.value } })}
                         />
                       </div>
                       <div>
@@ -1079,7 +1066,7 @@ export default function AcademyProfilePage() {
                           rows={3}
                           placeholder="الأندية السابقة، سنوات الخبرة..."
                           value={academyData?.technical_director?.experience}
-                          onChange={(e) => setAcademyData({...academyData, technical_director: {...academyData.technical_director, experience: e.target.value}})}
+                          onChange={(e) => setAcademyData({ ...academyData, technical_director: { ...academyData.technical_director, experience: e.target.value } })}
                         />
                       </div>
                     </div>
@@ -1097,7 +1084,7 @@ export default function AcademyProfilePage() {
                         rows={4}
                         placeholder="رؤية الأكاديمية وأهدافها المستقبلية..."
                         value={academyData?.academy_goals}
-                        onChange={(e) => setAcademyData({...academyData, academy_goals: e.target.value})}
+                        onChange={(e) => setAcademyData({ ...academyData, academy_goals: e.target.value })}
                       />
                     </div>
                     <div>
@@ -1107,7 +1094,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="أسماء اللاعبين المتميزين (افصل بفاصلة)"
                         value={academyData?.success_stories?.join(', ')}
-                        onChange={(e) => setAcademyData({...academyData, success_stories: e.target.value.split(',').map(item => item.trim()).filter(item => item)})}
+                        onChange={(e) => setAcademyData({ ...academyData, success_stories: e.target.value.split(',').map(item => item.trim()).filter(item => item) })}
                       />
                     </div>
                     <div>
@@ -1117,7 +1104,7 @@ export default function AcademyProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         placeholder="الأندية، الماركات، المؤسسات الشريكة (افصل بفاصلة)"
                         value={academyData?.partnerships?.join(', ')}
-                        onChange={(e) => setAcademyData({...academyData, partnerships: e.target.value.split(',').map(item => item.trim()).filter(item => item)})}
+                        onChange={(e) => setAcademyData({ ...academyData, partnerships: e.target.value.split(',').map(item => item.trim()).filter(item => item) })}
                       />
                     </div>
                   </div>

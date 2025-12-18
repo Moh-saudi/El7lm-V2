@@ -4,35 +4,40 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactPlayer from "react-player";
-import { 
-  Video, 
-  ImageIcon, 
-  User, 
-  Phone, 
-  Eye, 
-  Star, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Flag, 
-  MessageSquare, 
+import {
+  Video,
+  ImageIcon,
+  User,
+  Phone,
+  Eye,
+  Star,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Flag,
+  MessageSquare,
   Bell,
-  ExternalLink,
   Copy,
   Send,
-  Trash2
+  Trash2,
+  Calendar,
+  Shield,
+  Smartphone,
+  Info,
+  Maximize2,
+  Download,
+  RotateCw
 } from "lucide-react";
 import StatusBadge from "@/components/admin/videos/StatusBadge";
-import { 
-  performanceAnalysisCategories, 
-  searchPerformanceTemplates, 
+import {
+  performanceAnalysisCategories,
+  searchPerformanceTemplates,
   formatMessage,
-  validateSMSLength,
   PerformanceTemplate
 } from "@/lib/messages/performance-analysis-templates";
 
@@ -73,10 +78,10 @@ interface UnifiedMediaModalProps {
   formatPhoneNumber: (phone: string | undefined) => string;
 }
 
-export default function UnifiedMediaModal({ 
-  isOpen, 
-  onClose, 
-  media, 
+export default function UnifiedMediaModal({
+  isOpen,
+  onClose,
+  media,
   mediaType,
   onStatusUpdate,
   onSendMessage,
@@ -87,20 +92,29 @@ export default function UnifiedMediaModal({
   logsLoading,
   customMessage,
   setCustomMessage,
-  displayPhoneNumber,
-  formatPhoneNumber
+  displayPhoneNumber
 }: UnifiedMediaModalProps) {
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("info");
   const [templateSearch, setTemplateSearch] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<PerformanceTemplate | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [rotation, setRotation] = useState(0);
+
+  // Reset rotation when media changes
+  React.useEffect(() => {
+    setRotation(0);
+  }, [media?.id]);
+
+  const rotateMedia = () => {
+    setRotation(prev => (prev + 90) % 360);
+  };
 
   if (!media) return null;
 
   // Filter templates based on search and category
-  const filteredTemplates = templateSearch 
+  const filteredTemplates = templateSearch
     ? searchPerformanceTemplates(templateSearch)
-    : selectedCategory 
+    : selectedCategory
       ? performanceAnalysisCategories.find(cat => cat.id === selectedCategory)?.templates || []
       : [];
 
@@ -110,7 +124,7 @@ export default function UnifiedMediaModal({
       const d = date?.toDate ? date.toDate() : new Date(date);
       return d.toLocaleDateString("ar-EG", {
         year: "numeric",
-        month: "long",
+        month: "short",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit"
@@ -126,727 +140,383 @@ export default function UnifiedMediaModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[85vw] max-h-[85vh] w-full h-full flex flex-col p-0 overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50" dir="rtl">
+      <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 gap-0 bg-white overflow-hidden flex flex-col lg:flex-row shadow-2xl transition-all duration-300 border-none rounded-xl" dir="rtl">
         <DialogHeader className="sr-only">
-          <DialogTitle>مودال إدارة الوسائط المتطور</DialogTitle>
-          <DialogDescription>
-            مودال شامل ومتطور لإدارة ومراجعة جميع الوسائط مع أدوات احترافية
-          </DialogDescription>
+          <DialogTitle>{media.title}</DialogTitle>
+          <DialogDescription>Media Preview</DialogDescription>
         </DialogHeader>
 
-        {/* ==================== COMPACT HEADER ==================== */}
-        <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 text-white p-4 md:p-6 flex-shrink-0 sticky top-0 z-20 shadow-xl border-b-2 border-purple-500">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-20"></div>
-          
-          <div className="relative flex items-center justify-between">
-            {/* Left: Media Info */}
-            <div className="flex items-center gap-3 md:gap-4">
-              {/* Compact Media Thumbnail */}
-              <div className="relative group">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-600 flex items-center justify-center shadow-xl border-2 border-white/30 transform group-hover:scale-105 transition-all duration-300">
-                  {media.thumbnailUrl ? (
-                    <img 
-                      src={media.thumbnailUrl} 
-                      alt={media.title} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                    />
-                  ) : (
-                    mediaType === "videos" ? 
-                      <Video className="w-8 h-8 md:w-10 md:h-10 text-white drop-shadow-lg" /> :
-                      <ImageIcon className="w-8 h-8 md:w-10 md:h-10 text-white drop-shadow-lg" />
-                  )}
-                </div>
-                
-                {/* Media Type Badge */}
-                <div className="absolute -bottom-2 -right-2 z-10">
-                  <Badge className={`${mediaType === "videos" ? "bg-blue-600 border-blue-400" : "bg-purple-600 border-purple-400"} text-white border font-bold text-xs px-2 py-1 shadow-lg transform hover:scale-110 transition-all`}>
-                    {mediaType === "videos" ? <Video className="w-3 h-3 ml-1" /> : <ImageIcon className="w-3 h-3 ml-1" />}
-                    {mediaType === "videos" ? "فيديو" : "صورة"}
-                  </Badge>
-                </div>
-              </div>
-              
-              {/* Media Information */}
-              <div className="flex-1 space-y-2">
-                <h2 className="text-lg md:text-xl lg:text-2xl font-black text-white drop-shadow-lg leading-tight">{media.title}</h2>
-                
-                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                  {/* User Info */}
-                  <div className="flex items-center gap-1 bg-white/15 rounded-full px-2 md:px-3 py-1 backdrop-blur-sm border border-white/25">
-                    <User className="w-3 h-3 md:w-4 md:h-4 text-purple-300" />
-                    <span className="font-bold text-white text-sm md:text-base">{media.userName}</span>
-                  </div>
-                  
-                  {/* Phone Number */}
-                  {media.phone && (
-                    <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 md:px-3 py-1 border border-white/50 text-white font-bold text-sm md:text-base">
-                      <Phone className="w-3 h-3 md:w-4 md:h-4 text-green-300" />
-                      <span>{displayPhoneNumber(media.phone)}</span>
-                      <Button
-                        onClick={() => copyToClipboard(media.phone || "")}
-                        size="sm"
-                        variant="ghost"
-                        className="text-white hover:bg-white/20 p-0.5 h-5 w-5"
-                      >
-                        <Copy className="w-2.5 h-2.5" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {/* Account Type */}
-                  <Badge className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-0 font-bold px-2 md:px-3 py-1 text-xs md:text-sm shadow-lg">
-                    {media.accountType}
-                  </Badge>
-                  
-                  {/* Source Type */}
-                  <Badge className="bg-gray-800/50 text-gray-200 border border-gray-600 font-bold px-2 py-1 text-xs">
-                    {media.sourceType === "firebase" ? "🔥 Firebase" : "⚡ Supabase"}
-                  </Badge>
-                </div>
-              </div>
+        {/* ================= LEFT PANEL: MEDIA PREVIEW (Dark Theme) ================= */}
+        <div className="w-full lg:w-[45%] h-[40vh] lg:h-full bg-zinc-950 relative flex flex-col shrink-0 border-l border-zinc-800">
+
+          {/* Top Bar Overlay */}
+          <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+            <div className="flex gap-2 pointer-events-auto">
+              <Badge variant="outline" className={`text-white border-white/30 backdrop-blur-md ${mediaType === 'videos' ? 'bg-blue-600/50' : 'bg-purple-600/50'}`}>
+                {mediaType === 'videos' ? <Video className="w-3 h-3 mr-1" /> : <ImageIcon className="w-3 h-3 mr-1" />}
+                {mediaType === 'videos' ? 'فيديو' : 'صورة'}
+              </Badge>
             </div>
-            
-            {/* Right: Action Controls */}
-            <div className="flex items-center gap-2 md:gap-3">
-              {/* Status Badge */}
-              <div className="flex flex-col items-center gap-1">
-                <StatusBadge status={media.status} className="text-sm md:text-base px-2 md:px-3 py-1 shadow-lg border" />
-                <p className="text-xs text-gray-300 font-medium hidden md:block">الحالة</p>
-              </div>
-              
-              {/* Quick Action Buttons */}
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 font-bold px-3 md:px-4 py-2 shadow-lg transition-all duration-300 rounded-lg text-xs md:text-sm"
-                  onClick={() => onStatusUpdate(media.id, "approved")}
-                >
-                  <CheckCircle className="w-4 h-4 ml-1" />
-                  <span className="hidden md:inline">موافقة</span>
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white border-0 font-bold px-3 md:px-4 py-2 shadow-lg transition-all duration-300 rounded-lg text-xs md:text-sm"
-                  onClick={() => onStatusUpdate(media.id, "rejected")}
-                >
-                  <XCircle className="w-4 h-4 ml-1" />
-                  <span className="hidden md:inline">رفض</span>
-                </Button>
-              </div>
-              
-              {/* Close Button */}
+
+            <div className="flex gap-2 pointer-events-auto">
+              {/* Rotation Button */}
               <Button
-                onClick={onClose}
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20 font-bold text-xl px-2 py-2 rounded-lg shadow-md border border-white/30"
+                size="icon"
+                variant="secondary"
+                className="bg-black/50 text-white hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-full w-8 h-8"
+                onClick={rotateMedia}
+                title="تدوير 90 درجة"
               >
-                ✕
+                <RotateCw className="w-4 h-4" />
               </Button>
+
+              {/* Mobile Close Button */}
+              <Button size="icon" variant="ghost" className="lg:hidden text-white hover:bg-white/20 rounded-full w-8 h-8" onClick={onClose}>
+                <XCircle className="w-6 h-6" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Media Container */}
+          <div className="flex-1 flex items-center justify-center p-4 lg:p-8 overflow-hidden relative group">
+            <div
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                maxHeight: rotation % 180 === 0 ? '100%' : '60%',
+                maxWidth: rotation % 180 === 0 ? '100%' : '60%',
+                aspectRatio: mediaType === 'videos' ? '16/9' : 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className={`relative transition-all duration-300 ${mediaType === 'videos' ? 'w-full' : ''}`}
+            >
+              {mediaType === "videos" ? (
+                <div className="w-full h-full rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black aspect-video">
+                  <ReactPlayer
+                    url={media.url}
+                    width="100%"
+                    height="100%"
+                    controls={true}
+                    config={{
+                      youtube: { playerVars: { modestbranding: 1, rel: 0, showinfo: 0 } }
+                    }}
+                  />
+                </div>
+              ) : (
+                <img
+                  src={media.url}
+                  alt={media.title}
+                  className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md transition-transform"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/images/default-avatar.png";
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Info Overlay (on Left Panel) */}
+          <div className="p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10 text-white space-y-2">
+            <h2 className="text-xl lg:text-2xl font-bold leading-tight line-clamp-2" title={media.title}>
+              {media.title}
+            </h2>
+            <div className="flex items-center gap-4 text-sm text-zinc-300">
+              <div className="flex items-center gap-1">
+                <User className="w-4 h-4" />
+                <span>{media.userName}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                <span>{formatDate(media.uploadDate)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ==================== MAIN CONTENT ==================== */}
-        <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            {/* Compact Tab Navigation */}
-            <div className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300 px-3 md:px-4 py-2 md:py-3">
-              <TabsList className="grid w-full max-w-xl grid-cols-4 bg-white shadow-md rounded-lg h-10">
-                <TabsTrigger 
-                  value="details" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white font-bold text-xs md:text-sm transition-all duration-300 rounded-md"
-                >
-                  <span className="md:hidden">📊</span>
-                  <span className="hidden md:inline">📊 التفاصيل</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="preview" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-teal-600 data-[state=active]:text-white font-bold text-xs md:text-sm transition-all duration-300 rounded-md"
-                >
-                  <span className="md:hidden">👁️</span>
-                  <span className="hidden md:inline">👁️ المعاينة</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="notifications" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-red-600 data-[state=active]:text-white font-bold text-xs md:text-sm transition-all duration-300 rounded-md"
-                >
-                  <span className="md:hidden">🔔</span>
-                  <span className="hidden md:inline">🔔 الإشعارات</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="logs" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-600 data-[state=active]:to-slate-600 data-[state=active]:text-white font-bold text-xs md:text-sm transition-all duration-300 rounded-md"
-                >
-                  <span className="md:hidden">📋</span>
-                  <span className="hidden md:inline">📋 السجلات</span>
-                </TabsTrigger>
-              </TabsList>
+        {/* ================= RIGHT PANEL: DETAILS & ACTIONS (Light Theme) ================= */}
+        <div className="flex-1 flex flex-col h-full bg-zinc-50/50 backdrop-blur-sm">
+
+          {/* Header */}
+          <div className="p-4 border-b border-zinc-200 bg-white/80 sticky top-0 z-10 flex justify-between items-center shadow-sm">
+            <div className="flex items-center gap-3">
+              <StatusBadge status={media.status} className="px-3 py-1 text-sm shadow-sm" />
+              <Badge variant="outline" className="bg-zinc-100 border-zinc-300 text-zinc-700">
+                {media.accountType}
+              </Badge>
             </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-auto">
-              {/* Details Tab */}
-              <TabsContent value="details" className="h-full p-3 md:p-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 h-full">
-                  {/* Media Information Card */}
-                  <Card className="border-2 border-blue-200 shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50">
-                    <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg p-3 md:p-4">
-                      <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-bold">
-                        <ImageIcon className="w-5 h-5 md:w-6 md:h-6" />
-                        معلومات الوسائط
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 md:p-4 space-y-3 md:space-y-4">
-                      {/* Phone Number Section */}
-                      {media.phone && (
-                        <div className="bg-green-100 p-3 rounded-lg border border-green-300 shadow-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="bg-green-600 p-1.5 rounded-full">
-                              <Phone className="w-4 h-4 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-green-900 font-bold text-lg md:text-xl">{displayPhoneNumber(media.phone)}</p>
-                              <p className="text-green-700 text-xs md:text-sm">رقم الهاتف</p>
-                            </div>
-                            <Button
-                              onClick={() => copyToClipboard(media.phone || "")}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-white border-0 font-bold px-2 py-1 rounded-md shadow-sm text-xs"
-                            >
-                              نسخ
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+            {/* Desktop Close */}
+            <Button size="icon" variant="ghost" className="hidden lg:flex text-zinc-500 hover:text-red-500 hover:bg-red-50" onClick={onClose}>
+              <XCircle className="w-6 h-6" />
+            </Button>
+          </div>
 
-                      {/* Basic Info */}
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-gray-700 font-bold text-sm">العنوان</Label>
-                          <p className="text-gray-900 font-medium text-base md:text-lg mt-1">{media.title}</p>
-                        </div>
-                        
-                        <div>
-                          <Label className="text-gray-700 font-bold">الوصف</Label>
-                          <p className="text-gray-600 mt-1">{media.description || "لا يوجد وصف"}</p>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-gray-700 font-bold">المشاهدات</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Eye className="w-4 h-4 text-blue-600" />
-                              <span className="font-bold text-blue-600">{media.views}</span>
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-gray-700 font-bold">الإعجابات</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Star className="w-4 h-4 text-yellow-600" />
-                              <span className="font-bold text-yellow-600">{media.likes}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <Label className="text-gray-700 font-bold">تاريخ الرفع</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Clock className="w-4 h-4 text-gray-600" />
-                            <span className="text-gray-600 font-medium">{formatDate(media.uploadDate)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+          {/* Main Content Areas */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-4 pt-4">
+                <TabsList className="grid w-full grid-cols-3 bg-zinc-200/50 p-1 rounded-lg">
+                  <TabsTrigger value="info" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md font-bold text-zinc-600 data-[state=active]:text-blue-600 transition-all">
+                    <Info className="w-4 h-4 ml-2" /> التفاصيل
+                  </TabsTrigger>
+                  <TabsTrigger value="actions" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md font-bold text-zinc-600 data-[state=active]:text-green-600 transition-all">
+                    <MessageSquare className="w-4 h-4 ml-2" /> المراسلة
+                  </TabsTrigger>
+                  <TabsTrigger value="logs" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md font-bold text-zinc-600 data-[state=active]:text-purple-600 transition-all">
+                    <Shield className="w-4 h-4 ml-2" /> السجل
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-                  {/* User Information Card */}
-                  <Card className="border-2 border-purple-200 shadow-xl bg-gradient-to-br from-purple-50 to-pink-50">
-                    <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-                      <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                        <User className="w-6 h-6" />
-                        معلومات المستخدم
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                      <div>
-                        <Label className="text-gray-700 font-bold">الاسم</Label>
-                        <p className="text-gray-900 font-medium text-lg mt-1">{media.userName}</p>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-gray-700 font-bold">البريد الإلكتروني</Label>
-                        <p className="text-gray-600 mt-1">{media.userEmail || "غير متوفر"}</p>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-gray-700 font-bold">نوع الحساب</Label>
-                        <Badge className="bg-purple-100 text-purple-800 border border-purple-300 font-bold mt-1">
-                          {media.accountType}
-                        </Badge>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-gray-700 font-bold">معرف المستخدم</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">{media.userId}</code>
-                          <Button
-                            onClick={() => copyToClipboard(media.userId)}
-                            size="sm"
-                            variant="outline"
-                            className="p-1 h-6 w-6"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
 
-              {/* Preview Tab */}
-              <TabsContent value="preview" className="h-full p-6">
-                <Card className="h-full border-2 border-green-200 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
-                    <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                      <Eye className="w-6 h-6" />
-                      معاينة {mediaType === "videos" ? "الفيديو" : "الصورة"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 h-full">
-                    <div className="bg-black rounded-xl overflow-hidden h-full flex items-center justify-center">
-                      {mediaType === "videos" ? (
-                        <ReactPlayer
-                          url={media.url}
-                          width="100%"
-                          height="100%"
-                          controls={true}
-                          config={{
-                            youtube: {
-                              playerVars: {
-                                modestbranding: 1,
-                                rel: 0,
-                                showinfo: 0
-                              }
-                            }
-                          }}
-                        />
-                      ) : (
-                        <img
-                          src={media.url}
-                          alt={media.title}
-                          className="max-w-full max-h-full object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "/images/default-avatar.png";
-                          }}
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Notifications Tab */}
-              <TabsContent value="notifications" className="h-full p-3 md:p-4 overflow-auto">
-                <div className="space-y-4 md:space-y-6">
-                  {/* Professional Performance Analysis Templates */}
-                  <Card className="border border-blue-200 shadow-lg">
-                    <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 md:p-4">
-                      <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-bold">
-                        ⚽ رسائل تحليل الأداء
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 md:p-4 space-y-3 md:space-y-4">
-                      {/* Search and Category Selection */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-gray-700 font-bold mb-1 block text-sm">🔍 البحث</Label>
-                          <input
-                            type="text"
-                            value={templateSearch}
-                            onChange={(e) => setTemplateSearch(e.target.value)}
-                            placeholder="ابحث عن قالب..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 font-medium text-sm"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label className="text-gray-700 font-bold mb-1 block text-sm">📂 الفئة</Label>
-                          <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 font-medium text-sm"
-                            aria-label="اختيار فئة القوالب"
-                          >
-                            <option value="">جميع الفئات</option>
-                            {performanceAnalysisCategories.map(category => (
-                              <option key={category.id} value={category.id}>
-                                {category.icon} {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Category Quick Access */}
-                      {!templateSearch && !selectedCategory && (
-                        <div>
-                          <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3">🎯 الفئات المتاحة</h3>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                            {performanceAnalysisCategories.map(category => (
-                              <Button
-                                key={category.id}
-                                onClick={() => setSelectedCategory(category.id)}
-                                variant="outline"
-                                className={`h-16 md:h-20 flex flex-col items-center gap-1 border hover:scale-105 transition-all text-xs md:text-sm ${
-                                  category.color === 'blue' ? 'border-blue-300 hover:bg-blue-50' :
-                                  category.color === 'green' ? 'border-green-300 hover:bg-green-50' :
-                                  category.color === 'purple' ? 'border-purple-300 hover:bg-purple-50' :
-                                  category.color === 'indigo' ? 'border-indigo-300 hover:bg-indigo-50' :
-                                  category.color === 'orange' ? 'border-orange-300 hover:bg-orange-50' :
-                                  'border-yellow-300 hover:bg-yellow-50'
-                                }`}
-                              >
-                                <span className="text-lg md:text-2xl">{category.icon}</span>
-                                <span className="font-bold text-center leading-tight">{category.name}</span>
-                                <span className="text-xs text-gray-500">({category.templates.length})</span>
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Templates List */}
-                      {(templateSearch || selectedCategory) && (
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">
-                              📝 القوالب المتاحة ({filteredTemplates.length})
-                            </h3>
-                            {selectedCategory && (
-                              <Button
-                                onClick={() => {
-                                  setSelectedCategory("");
-                                  setTemplateSearch("");
-                                }}
-                                variant="outline"
-                                size="sm"
-                              >
-                                🔄 إعادة تعيين
-                              </Button>
-                            )}
-                          </div>
-                          
-                          {filteredTemplates.length === 0 ? (
-                            <div className="text-center py-8">
-                              <p className="text-gray-500 font-medium">لا توجد قوالب مطابقة للبحث</p>
-                            </div>
-                          ) : (
-                            <div className="grid gap-4 max-h-96 overflow-y-auto">
-                              {filteredTemplates.map(template => (
-                                <Card
-                                  key={template.id}
-                                  className={`border-2 cursor-pointer transition-all hover:shadow-lg ${
-                                    selectedTemplate?.id === template.id 
-                                      ? 'border-blue-500 bg-blue-50' 
-                                      : 'border-gray-200 hover:border-blue-300'
-                                  }`}
-                                  onClick={() => setSelectedTemplate(template)}
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <h4 className="font-bold text-gray-800 mb-2">{template.title}</h4>
-                                        <div className="flex flex-wrap gap-2 mb-3">
-                                          {template.tags.map(tag => (
-                                            <span
-                                              key={tag}
-                                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium"
-                                            >
-                                              {tag}
-                                            </span>
-                                          ))}
-                                        </div>
-                                        <p className="text-sm text-gray-600 line-clamp-2">
-                                          {template.smsMessage}
-                                        </p>
-                                      </div>
-                                      {selectedTemplate?.id === template.id && (
-                                        <div className="ml-3">
-                                          <CheckCircle className="w-6 h-6 text-blue-600" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Selected Template Preview and Actions */}
-                      {selectedTemplate && (
-                        <Card className="border-2 border-green-200 bg-green-50">
-                          <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white">
-                            <CardTitle className="flex items-center gap-3 text-lg font-bold">
-                              ✨ معاينة القالب المحدد
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-6 space-y-4">
-                            <div>
-                              <h4 className="font-bold text-gray-800 mb-2">{selectedTemplate.title}</h4>
-                              
-                              {/* WhatsApp Preview */}
-                              <div className="mb-4">
-                                <Label className="text-green-700 font-bold mb-2 block">📱 معاينة رسالة واتساب:</Label>
-                                <div className="bg-white p-4 rounded-lg border border-green-200 max-h-48 overflow-y-auto">
-                                  <pre className="whitespace-pre-wrap text-sm font-medium text-gray-800">
-                                    {formatMessage(selectedTemplate, media.userName, 'whatsapp')}
-                                  </pre>
-                                </div>
-                              </div>
-
-                              {/* SMS Preview */}
-                              <div className="mb-4">
-                                <Label className="text-blue-700 font-bold mb-2 block">📲 معاينة رسالة SMS:</Label>
-                                <div className="bg-white p-4 rounded-lg border border-blue-200">
-                                  <p className="text-sm font-medium text-gray-800">
-                                    {formatMessage(selectedTemplate, media.userName, 'sms')}
-                                  </p>
-                                  <div className="mt-2 text-xs text-gray-500">
-                                    الطول: {formatMessage(selectedTemplate, media.userName, 'sms').length}/65 حرف
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Send Actions */}
-                              <div className="flex gap-3">
-                                <Button
-                                  onClick={() => {
-                                    const whatsappMessage = formatMessage(selectedTemplate, media.userName, 'whatsapp');
-                                    setCustomMessage(whatsappMessage);
-                                    onSendWhatsApp("custom");
-                                  }}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3"
-                                >
-                                  📱 إرسال واتساب
-                                </Button>
-                                
-                                <Button
-                                  onClick={() => {
-                                    const smsMessage = formatMessage(selectedTemplate, media.userName, 'sms');
-                                    setCustomMessage(smsMessage);
-                                    onSendMessage("sms");
-                                  }}
-                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3"
-                                >
-                                  📲 إرسال SMS
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Quick Actions */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Quick Notifications */}
-                    <Card className="border-2 border-orange-200 shadow-xl">
-                      <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white">
-                        <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                          <Bell className="w-6 h-6" />
-                          إشعارات سريعة
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            onClick={() => onSendWhatsApp("approved")}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg"
-                          >
-                            <CheckCircle className="w-4 h-4 ml-1" />
-                            واتساب موافقة
-                          </Button>
-                          <Button
-                            onClick={() => onSendMessage("approved")}
-                            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg"
-                          >
-                            <CheckCircle className="w-4 h-4 ml-1" />
-                            SMS موافقة
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            onClick={() => onSendWhatsApp("rejected")}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg"
-                          >
-                            <XCircle className="w-4 h-4 ml-1" />
-                            واتساب رفض
-                          </Button>
-                          <Button
-                            onClick={() => onSendMessage("rejected")}
-                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg"
-                          >
-                            <XCircle className="w-4 h-4 ml-1" />
-                            SMS رفض
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            onClick={() => onSendWhatsApp("review")}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg"
-                          >
-                            <Flag className="w-4 h-4 ml-1" />
-                            واتساب مراجعة
-                          </Button>
-                          <Button
-                            onClick={() => onSendMessage("review")}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg"
-                          >
-                            <Flag className="w-4 h-4 ml-1" />
-                            SMS مراجعة
-                          </Button>
-                        </div>
+                {/* ============ INFO TAB ============ */}
+                <TabsContent value="info" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-bottom-2">
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="bg-white border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                        <Eye className="w-5 h-5 text-blue-500 mb-2" />
+                        <span className="text-xl font-bold text-zinc-800">{media.views}</span>
+                        <span className="text-xs text-zinc-500">مشاهدة</span>
                       </CardContent>
                     </Card>
-
-                    {/* Custom Message */}
-                    <Card className="border-2 border-purple-200 shadow-xl">
-                      <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                        <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                          <MessageSquare className="w-6 h-6" />
-                          رسالة مخصصة
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <div>
-                          <Label className="text-gray-700 font-bold">نص الرسالة</Label>
-                          <Textarea
-                            value={customMessage}
-                            onChange={(e) => setCustomMessage(e.target.value)}
-                            placeholder="اكتب رسالتك المخصصة هنا..."
-                            className="mt-2 min-h-[120px] border-2 border-gray-300 rounded-lg"
-                          />
-                          <div className="flex justify-between items-center mt-2">
-                            <p className="text-sm text-gray-500">
-                              {customMessage.length}/500 حرف
-                            </p>
-                            {customMessage.length > 65 && (
-                              <p className="text-xs text-orange-600">
-                                ⚠️ أطول من حد SMS (65 حرف)
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                          <Button
-                            onClick={() => setCustomMessage("")}
-                            variant="outline"
-                            className="flex-1"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            مسح
-                          </Button>
-                          
-                          <Button
-                            onClick={() => onSendMessage("sms")}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={!customMessage.trim()}
-                          >
-                            <Send className="w-4 h-4 ml-2" />
-                            إرسال SMS
-                          </Button>
-                          
-                          <Button
-                            onClick={() => onSendWhatsApp("custom")}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                            disabled={!customMessage.trim()}
-                          >
-                            <Send className="w-4 h-4 ml-2" />
-                            واتساب
-                          </Button>
-                          
-                          {onTestWhatsApp && (
-                            <Button
-                              onClick={onTestWhatsApp}
-                              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3"
-                              title="اختبار WhatsApp برقم ثابت"
-                            >
-                              🧪 اختبار
-                            </Button>
-                          )}
-                          
-                          {onTestUserPhone && (
-                            <Button
-                              onClick={onTestUserPhone}
-                              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3"
-                              title="اختبار WhatsApp برقم المستخدم الحالي"
-                            >
-                              📱 اختبار رقم المستخدم
-                            </Button>
-                          )}
-                        </div>
+                    <Card className="bg-white border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                        <Star className="w-5 h-5 text-yellow-500 mb-2" />
+                        <span className="text-xl font-bold text-zinc-800">{media.likes}</span>
+                        <span className="text-xs text-zinc-500">إعجاب</span>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                        <MessageSquare className="w-5 h-5 text-purple-500 mb-2" />
+                        <span className="text-xl font-bold text-zinc-800">{media.comments}</span>
+                        <span className="text-xs text-zinc-500">تعليق</span>
                       </CardContent>
                     </Card>
                   </div>
-                </div>
-              </TabsContent>
 
-              {/* Logs Tab */}
-              <TabsContent value="logs" className="h-full p-6">
-                <Card className="h-full border-2 border-gray-200 shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-gray-600 to-slate-600 text-white">
-                    <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                      📋 سجل الأنشطة ({logs.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 h-full overflow-auto">
-                    {logsLoading ? (
-                      <div className="flex items-center justify-center h-32">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-                        <span className="ml-3 text-gray-600 font-medium">جاري تحميل السجلات...</span>
-                      </div>
-                    ) : logs.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="text-gray-400 mb-4">
-                          📋
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label className="text-zinc-500 font-semibold text-xs uppercase tracking-wider">الوصف</Label>
+                    <p className="text-sm text-zinc-700 bg-white p-3 rounded-lg border border-zinc-200 leading-relaxed min-h-[4rem]">
+                      {media.description || "لا يوجد وصف متاح."}
+                    </p>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 space-y-4">
+                    <h3 className="font-bold text-blue-900 flex items-center gap-2">
+                      <Smartphone className="w-5 h-5" /> بيانات الاتصال
+                    </h3>
+
+                    <div className="grid gap-3">
+                      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-xs text-zinc-500 block">الاسم</span>
+                            <span className="text-sm font-bold text-zinc-800">{media.userName}</span>
+                          </div>
                         </div>
-                        <p className="text-gray-600 font-medium">لا توجد أنشطة مسجلة</p>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(media.userName)}>
+                          <Copy className="w-3 h-3 text-zinc-400" />
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-green-100 p-2 rounded-full text-green-600">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-xs text-zinc-500 block">رقم الهاتف</span>
+                            <span className="text-sm font-bold text-zinc-800" dir="ltr">
+                              {media.phone ? displayPhoneNumber(media.phone) : 'غير متوفر'}
+                            </span>
+                          </div>
+                        </div>
+                        {media.phone && (
+                          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(media.phone || "")}>
+                            <Copy className="w-3 h-3 text-zinc-400" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* ============ ACTIONS TAB ============ */}
+                <TabsContent value="actions" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-bottom-2">
+
+                  {/* Templates Section */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-zinc-800 font-bold">قوالب الرد السريع</Label>
+                      <Badge variant="secondary" className="text-xs">{performanceAnalysisCategories.length} فئات</Badge>
+                    </div>
+
+                    {/* Categories Horizontal Scroll */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                      <Button
+                        variant={selectedCategory === "" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedCategory("")}
+                        className="whitespace-nowrap"
+                      >
+                        الكل
+                      </Button>
+                      {performanceAnalysisCategories.map(cat => (
+                        <Button
+                          key={cat.id}
+                          variant={selectedCategory === cat.id ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`whitespace-nowrap ${selectedCategory === cat.id ? '' : 'bg-white hover:bg-zinc-50'}`}
+                        >
+                          <span className="mr-1">{cat.icon}</span> {cat.name}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {/* Templates Grid */}
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+                      {filteredTemplates.map(template => (
+                        <div
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTemplate?.id === template.id
+                            ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
+                            : 'bg-white border-zinc-200 hover:border-blue-300 hover:bg-blue-50/50'
+                            }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-sm text-zinc-800">{template.title}</h4>
+                            {selectedTemplate?.id === template.id && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{template.smsMessage}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message Customization */}
+                  <div className="space-y-3 pt-4 border-t border-zinc-200">
+                    <Label className="text-zinc-800 font-bold">تخصيص الرسالة</Label>
+
+                    {selectedTemplate && (
+                      <div className="bg-blue-50 p-3 rounded-md text-xs text-blue-800 mb-2 flex items-start gap-2">
+                        <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                        <p>تم اختيار: <strong>{selectedTemplate.title}</strong>. يمكنك تعديل الرسالة أدناه قبل الإرسال.</p>
+                      </div>
+                    )}
+
+                    <Textarea
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="اكتب رسالة مخصصة أو اختر قالباً..."
+                      className="min-h-[100px] bg-white border-zinc-300 focus:border-blue-500 resize-none"
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={() => {
+                          if (selectedTemplate) setCustomMessage(formatMessage(selectedTemplate, media.userName, 'whatsapp'));
+                          onSendWhatsApp("custom");
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={!customMessage && !selectedTemplate}
+                      >
+                        <Smartphone className="w-4 h-4 ml-2" /> إرسال واتساب
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (selectedTemplate) setCustomMessage(formatMessage(selectedTemplate, media.userName, 'sms'));
+                          onSendMessage("sms");
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={!customMessage && !selectedTemplate}
+                      >
+                        <MessageSquare className="w-4 h-4 ml-2" /> إرسال SMS
+                      </Button>
+                    </div>
+                  </div>
+
+                </TabsContent>
+
+                {/* ============ LOGS TAB ============ */}
+                <TabsContent value="logs" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2">
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-zinc-900 mb-2">سجل الأنشطة ({logs.length})</h3>
+                    {logsLoading ? (
+                      <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>
+                    ) : logs.length === 0 ? (
+                      <div className="text-center py-8 text-zinc-400 bg-zinc-50 rounded-lg border border-dashed border-zinc-200">
+                        <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>لا توجد سجلات</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {logs.map((log, index) => (
-                          <Card key={index} className="border border-gray-200 hover:shadow-md transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900">{log.action}</p>
-                                  <p className="text-sm text-gray-600">{log.details}</p>
-                                  <p className="text-xs text-gray-500">{formatDate(log.timestamp)}</p>
-                                </div>
-                                <Badge className="bg-gray-100 text-gray-800 border border-gray-300">
-                                  {log.user}
+                      <div className="relative border-r-2 border-zinc-200 pr-4 space-y-6 mr-2">
+                        {logs.map((log, idx) => (
+                          <div key={idx} className="relative">
+                            <div className="absolute -right-[23px] top-1 w-4 h-4 rounded-full bg-white border-2 border-blue-500 ring-2 ring-blue-50"></div>
+                            <div className="bg-white p-3 rounded-lg border border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="font-bold text-sm text-zinc-800">{log.action || "إجراء إداري"}</span>
+                                <span className="text-[10px] text-zinc-400 font-mono">{formatDate(log.timestamp)}</span>
+                              </div>
+                              <p className="text-xs text-zinc-600">{log.details || "تم تحديث الحالة"}</p>
+                              <div className="mt-2 flex items-center gap-1">
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1 bg-zinc-100 text-zinc-500">
+                                  {log.user || "System"}
                                 </Badge>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </TabsContent>
+
+              </div>
+            </Tabs>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-4 bg-white border-t border-zinc-200 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => onStatusUpdate(media.id, "approved")}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 text-lg shadow-lg shadow-emerald-200"
+              >
+                <CheckCircle className="w-5 h-5 ml-2" /> موافقة
+              </Button>
+
+              <Button
+                onClick={() => onStatusUpdate(media.id, "rejected")}
+                variant="destructive"
+                className="font-bold h-12 text-lg shadow-lg shadow-red-200"
+              >
+                <XCircle className="w-5 h-5 ml-2" /> رفض
+              </Button>
             </div>
-          </Tabs>
+
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-zinc-100">
+              <Button variant="ghost" size="sm" onClick={() => onStatusUpdate(media.id, "flagged")} className="text-amber-600 hover:text-amber-700 hover:bg-amber-50">
+                <Flag className="w-4 h-4 ml-1" /> إبلاغ
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="text-zinc-500 hover:bg-zinc-100">
+                إغلاق
+              </Button>
+            </div>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>

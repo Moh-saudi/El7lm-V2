@@ -34,8 +34,24 @@ interface HeaderProps {
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '/images/default-avatar.png';
   if (path.startsWith('http')) return path;
-  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-  return publicUrl || '/images/default-avatar.png';
+
+  // استخدام رابط Cloudflare المباشر للملفات
+  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
+
+  // إزالة أي شرطة مائلة في البداية لتجنب الازدواج
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+  // افتراض أن الملف في bucket 'avatars' إذا لم يكن المسار يحتوي على اسم bucket
+  // الملاحظة: التخزين الجديد يستخدم بادئات، لكن الروابط القديمة قد تكون مختلفة.
+  // ومع ذلك، بما أننا حدثنا قاعدة البيانات، فالمفترض أن المسارات النسبية (إذا وجدت)
+  // تشير إلى المسار الكامل داخل الـ bucket أو تحتاج لاسم الـ bucket.
+
+  // في Supabase القديم، getPublicUrl كانت تضيف اسم الـ bucket.
+  // path هنا غالباً هو اسم الملف فقط (مثل 'img.jpg') أو مسار نسبي ('folder/img.jpg').
+  // دالة getPublicUrl القديمة كانت: supabase.storage.from('avatars').getPublicUrl(path);
+  // لذا المسار الكامل في R2 يجب أن يكون: CLOUDFLARE_PUBLIC_URL/avatars/path
+
+  return `${CLOUDFLARE_PUBLIC_URL}/avatars/${cleanPath}`;
 };
 
 const getAccountTypeInfo = (accountType: string) => {
@@ -88,7 +104,7 @@ export default function UnifiedHeader({
     if (!user?.uid) return;
 
     const userRef = doc(db, 'users', user.uid);
-    
+
     const unsubscribe = onSnapshot(userRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
@@ -125,16 +141,16 @@ export default function UnifiedHeader({
         {/* الشعار والعنوان */}
         <div className="flex items-center gap-3">
           {logo && (
-            <img 
-              src={logo} 
-              alt="الشعار" 
-              className="w-10 h-10 rounded-full border-2 border-orange-400 shadow" 
+            <img
+              src={logo}
+              alt="الشعار"
+              className="w-10 h-10 rounded-full border-2 border-orange-400 shadow"
             />
           )}
-                <div className="flex flex-col">
+          <div className="flex flex-col">
             <span className="text-xl font-bold tracking-tight text-orange-700 dark:text-orange-300">
               {title}
-                  </span>
+            </span>
             {userProfile && (
               <div className="flex items-center gap-2">
                 <Badge className={`text-xs ${accountTypeInfo?.color}`}>
@@ -154,18 +170,18 @@ export default function UnifiedHeader({
         <div className="flex items-center gap-4">
           {/* الإشعارات */}
           {showNotifications && <UnifiedNotificationsButton />}
-          
+
           {/* الرسائل */}
           {showMessages && <EnhancedMessageButton />}
-          
+
           {/* الدعم الفني */}
-          
+
           {/* الإجراءات المخصصة */}
           {customActions}
-          
+
           {/* تبديل الوضع المظلم */}
-              <Button 
-                variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setDarkMode(!darkMode)}
             className="hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -188,7 +204,7 @@ export default function UnifiedHeader({
                       {userProfile.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-              </Button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
@@ -197,8 +213,8 @@ export default function UnifiedHeader({
                     <p className="w-[200px] truncate text-sm text-muted-foreground">
                       {userProfile.email}
                     </p>
-            </div>
-          </div>
+                  </div>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer">
@@ -213,7 +229,7 @@ export default function UnifiedHeader({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="cursor-pointer text-red-600 dark:text-red-400"
                   onClick={handleSignOut}
                 >

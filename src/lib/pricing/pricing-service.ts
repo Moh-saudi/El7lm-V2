@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { SubscriptionPlan, PriceResult } from '@/types/pricing';
 import { convertCurrency } from '@/lib/currency-rates';
 
@@ -165,6 +165,17 @@ export const PricingService = {
             return true;
         } catch (error) {
             console.error('Error updating plan:', error);
+            throw error;
+        }
+    },
+
+    async deletePlan(planId: string) {
+        try {
+            const docRef = doc(db, COLLECTION_NAME, planId);
+            await deleteDoc(docRef);
+            return true;
+        } catch (error) {
+            console.error('Error deleting plan:', error);
             throw error;
         }
     },

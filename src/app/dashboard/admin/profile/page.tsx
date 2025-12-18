@@ -11,7 +11,6 @@ import { User, Mail, Phone, Camera, Save, X, Edit } from 'lucide-react';
 import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase/config';
 import { auth } from '@/lib/firebase/config';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
@@ -21,7 +20,7 @@ export default function AdminProfile() {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  
+
   const [profileData, setProfileData] = useState({
     name: '',
     phone: '',
@@ -48,7 +47,7 @@ export default function AdminProfile() {
 
       try {
         setLoading(true);
-        
+
         // البحث في users collection أولاً
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
@@ -121,33 +120,29 @@ export default function AdminProfile() {
 
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop();
-      const bucketName = 'avatars';
-      const filePath = `admin-avatars/${user.uid}/${timestamp}.${fileExt}`;
+      const bucketName = 'el7lmplatform'; // Cloudflare R2 bucket name
+      const filePath = `avatars/admin-avatars/${user.uid}/${timestamp}.${fileExt}`;
 
-      // رفع الملف
-      const { error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
+      // استخدام نظام التخزين الموحد (يدعم Cloudflare R2 و Supabase)
+      const { storageManager } = await import('@/lib/storage');
+
+      const result = await storageManager.upload(
+        bucketName,
+        filePath,
+        file,
+        {
           cacheControl: '3600',
           upsert: false,
           contentType: file.type
-        });
+        }
+      );
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-
-      // الحصول على الرابط العام
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(filePath);
-
-      if (!urlData?.publicUrl) {
+      if (!result?.publicUrl) {
         throw new Error('فشل في الحصول على رابط الصورة');
       }
 
       // تحديث البيانات المحلية
-      setProfileData(prev => ({ ...prev, avatar: urlData.publicUrl }));
+      setProfileData(prev => ({ ...prev, avatar: result.publicUrl }));
       toast.success('تم رفع الصورة بنجاح');
     } catch (error: any) {
       console.error('خطأ في رفع الصورة:', error);
@@ -160,7 +155,7 @@ export default function AdminProfile() {
   // حفظ البيانات
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault(); // منع إعادة تحميل الصفحة إذا كان الزر داخل form
-    
+
     console.log('💾 بدء حفظ البيانات...', {
       uid: user?.uid,
       name: profileData.name,
@@ -192,7 +187,7 @@ export default function AdminProfile() {
     try {
       setSaving(true);
       console.log('📤 جاري حفظ البيانات في Firestore...');
-      
+
       // التحقق من وجود المستخدم في users collection
       const userRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
@@ -211,7 +206,7 @@ export default function AdminProfile() {
           ...updateData,
           accountType: data.accountType || 'admin' // الحفاظ على accountType الموجود
         };
-        
+
         console.log('📋 البيانات المراد حفظها في users:', finalUpdateData);
         await updateDoc(userRef, finalUpdateData);
         console.log('✅ تم حفظ البيانات بنجاح في users collection');
@@ -254,7 +249,7 @@ export default function AdminProfile() {
 
       await refreshUserData();
       console.log('✅ تم تحديث بيانات المستخدم في الذاكرة');
-      
+
       setIsEditing(false);
       toast.success('تم حفظ البيانات بنجاح');
     } catch (error: any) {

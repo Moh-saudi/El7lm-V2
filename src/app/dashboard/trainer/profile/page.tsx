@@ -18,7 +18,7 @@ interface TrainerData {
   nationality: string;
   current_location: string;
   description: string;
-  
+
   // المعلومات المهنية
   is_certified: boolean;
   license_number: string;
@@ -27,12 +27,12 @@ interface TrainerData {
   coaching_level: string;
   specialization: string;
   spoken_languages: string[];
-  
+
   // الخبرات السابقة
   previous_clubs: string[];
   achievements: string;
   references: string;
-  
+
   // معلومات الاتصال
   phone: string;
   email: string;
@@ -41,12 +41,12 @@ interface TrainerData {
     twitter: string;
     instagram: string;
   };
-  
+
   // المستندات
   id_copy: string;
   license_copy: string;
   cv: string;
-  
+
   // إحصائيات (للعرض)
   stats: {
     players_trained: number;
@@ -65,7 +65,7 @@ const initialTrainerData: TrainerData = {
   nationality: '',
   current_location: '',
   description: '',
-  
+
   // المعلومات المهنية
   is_certified: false,
   license_number: '',
@@ -74,12 +74,12 @@ const initialTrainerData: TrainerData = {
   coaching_level: '',
   specialization: '',
   spoken_languages: [],
-  
+
   // الخبرات السابقة
   previous_clubs: [],
   achievements: '',
   references: '',
-  
+
   // معلومات الاتصال
   phone: '',
   email: '',
@@ -88,12 +88,12 @@ const initialTrainerData: TrainerData = {
     twitter: '',
     instagram: ''
   },
-  
+
   // المستندات
   id_copy: '',
   license_copy: '',
   cv: '',
-  
+
   // إحصائيات
   stats: {
     players_trained: 0,
@@ -106,41 +106,14 @@ const initialTrainerData: TrainerData = {
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  
-  // قائمة الـ buckets للبحث فيها بالترتيب
-  const bucketsToCheck = ['trainer', 'avatars', 'wallet', 'clubavatar'];
-  
-  // تحديد bucket بناءً على اسم الملف أولاً
-  let preferredBucket = 'trainer'; // افتراضي للمدربين
-  
-  if (path.includes('wallet') || path.startsWith('wallet')) {
-    preferredBucket = 'wallet';
-  } else if (path.includes('avatar') || path.startsWith('avatar')) {
-    preferredBucket = 'avatars';
-  } else if (path.includes('clubavatar') || path.startsWith('clubavatar')) {
-    preferredBucket = 'clubavatar';
-  } else if (path.includes('trainer') || path.startsWith('trainer')) {
-    preferredBucket = 'trainer';
-  }
-  
-  // وضع الـ bucket المفضل في المقدمة
-  const orderedBuckets = [preferredBucket, ...bucketsToCheck.filter(b => b !== preferredBucket)];
-  
-  // جرب كل bucket حتى نجد الملف
-  for (const bucketName of orderedBuckets) {
-    try {
-      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(path);
-      if (publicUrl) {
-        return publicUrl;
-      }
-    } catch (error) {
-      continue;
-    }
-  }
-  
-  // إذا لم نجد في أي bucket، استخدم الافتراضي
-  const { data: { publicUrl } } = supabase.storage.from(preferredBucket).getPublicUrl(path);
-  return publicUrl || '';
+
+  // استخدام رابط Cloudflare المباشر
+  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+  // افتراض أن الملف في bucket 'trainer' لأنه الأكثر احتمالاً في هذه الصفحة
+  // وبما أن Loop القديم كان يعيد أول نتيجة فوراً (لأن getPublicUrl متزامنة)، فهذا يطابق السلوك القديم
+  return `${CLOUDFLARE_PUBLIC_URL}/trainer/${cleanPath}`;
 };
 
 export default function TrainerProfilePage() {
@@ -160,9 +133,9 @@ export default function TrainerProfilePage() {
     try {
       const trainerRef = doc(db, 'trainers', user.uid);
       const trainerDoc = await getDoc(trainerRef);
-      
+
       let data = {};
-      
+
       if (trainerDoc.exists()) {
         data = trainerDoc.data();
       } else {
@@ -177,11 +150,11 @@ export default function TrainerProfilePage() {
           isVerified: false,
           isPremium: false
         };
-        
+
         await setDoc(trainerRef, basicData);
         data = basicData;
       }
-      
+
       const mergedData = {
         ...initialTrainerData,
         ...data,
@@ -190,10 +163,10 @@ export default function TrainerProfilePage() {
         email: (data as any).email || userData?.email || '',
         profile_photo: getSupabaseImageUrl((data as any).profile_photo || initialTrainerData.profile_photo),
         coverImage: getSupabaseImageUrl((data as any).coverImage || initialTrainerData.coverImage),
-                  social_media: {
-            linkedin: (data as any).social_media?.linkedin || (data as any).linkedin || '',
-                      twitter: (data as any).social_media?.twitter || (data as any).twitter || '',
-            instagram: (data as any).social_media?.instagram || (data as any).instagram || ''
+        social_media: {
+          linkedin: (data as any).social_media?.linkedin || (data as any).linkedin || '',
+          twitter: (data as any).social_media?.twitter || (data as any).twitter || '',
+          instagram: (data as any).social_media?.instagram || (data as any).instagram || ''
         }
       };
       setTrainerData(mergedData);
@@ -219,16 +192,16 @@ export default function TrainerProfilePage() {
     setUploading(true);
     try {
       const trainerRef = doc(db, 'trainers', user.uid);
-      
+
       // دمج الصور المعلقة مع البيانات الحالية
       const dataToSave = {
         ...trainerData,
         ...(pendingImages.profile && { profile_photo: pendingImages.profile }),
         ...(pendingImages.cover && { coverImage: pendingImages.cover })
       };
-      
+
       const trainerDoc = await getDoc(trainerRef);
-      
+
       if (trainerDoc.exists()) {
         await updateDoc(trainerRef, dataToSave);
       } else {
@@ -242,7 +215,7 @@ export default function TrainerProfilePage() {
           isPremium: false
         });
       }
-      
+
       toast.success('🎉 تم حفظ بيانات المدرب بنجاح! 🏋️‍♂️');
       await fetchTrainerData();
       setEditMode(false);
@@ -260,7 +233,7 @@ export default function TrainerProfilePage() {
       toast.error('لم يتم العثور على معرف المستخدم');
       return;
     }
-    
+
     console.log('🔄 بدء رفع الصورة:', {
       fileName: file.name,
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
@@ -268,7 +241,7 @@ export default function TrainerProfilePage() {
       uploadType: type,
       userId: user.uid
     });
-    
+
     try {
       // التحقق من نوع الملف
       if (!file.type.startsWith('image/') && !file.type.includes('pdf')) {
@@ -276,97 +249,55 @@ export default function TrainerProfilePage() {
         toast.error('يرجى اختيار ملف صورة أو PDF صالح');
         return;
       }
-      
+
       // التحقق من حجم الملف (5MB حد أقصى)
       if (file.size > 5 * 1024 * 1024) {
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`, {
-          duration: 9000,
-          style: {
-            maxWidth: '400px',
-            fontSize: '15px',
-            lineHeight: '1.6',
-            direction: 'rtl',
-            textAlign: 'right'
-          }
-        });
+        toast.error('حجم الملف كبير جداً. الحد الأقصى: 5 ميجابايت');
         return;
       }
-      
+
       setUploading(true);
       toast.info('🔄 جاري رفع الملف...');
-      
+
       // إنشاء اسم ملف فريد
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `trainer-${type}-${user.uid}-${timestamp}.${fileExt}`;
-      
-      // قائمة الـ buckets للمحاولة بالترتيب
-      const bucketsToTry = ['trainer', 'avatars', 'wallet', 'clubavatar'];
-      let uploadSuccessful = false;
-      let finalPublicUrl = '';
-      let usedBucket = '';
-      
-      // محاولة الرفع في كل bucket حتى النجاح
-      for (const bucketName of bucketsToTry) {
-        try {
-          console.log(`📤 محاولة رفع إلى bucket: ${bucketName}`);
-          
-          const uploadResult = await supabase.storage
-            .from(bucketName)
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: true,
-              contentType: file.type
-            });
-          
-          if (!uploadResult.error) {
-            console.log(`✅ نجح الرفع في ${bucketName} bucket:`, uploadResult.data);
-            
-            // إنشاء الرابط العام
-            const { data: { publicUrl } } = supabase.storage
-              .from(bucketName)
-              .getPublicUrl(fileName);
-              
-            finalPublicUrl = publicUrl;
-            usedBucket = bucketName;
-            uploadSuccessful = true;
-            break; // توقف عند أول نجاح
-            
-          } else {
-            console.warn(`⚠️ فشل في ${bucketName}:`, uploadResult.error.message);
-          }
-          
-        } catch (bucketError: any) {
-          console.warn(`💥 خطأ في bucket ${bucketName}:`, bucketError.message);
-        }
-      }
-      
-      if (!uploadSuccessful) {
-        console.error('❌ فشل الرفع في جميع الـ buckets');
-        toast.error('فشل في رفع الملف - تحقق من إعدادات Supabase');
-        return;
-      }
-      
-      console.log('🔗 رابط الملف العام:', finalPublicUrl);
-      console.log('📂 تم الرفع في bucket:', usedBucket);
+      const fileName = `${type}/${user.uid}/${timestamp}.${fileExt}`;
+      const bucketName = 'trainer';
 
-      // حفظ في الحالة المعلقة مع معلومات الـ bucket
+      // استخدام storageManager للرفع
+      const { storageManager } = await import('@/lib/storage');
+
+      console.log(`📤 محاولة رفع إلى Cloudflare R2: ${bucketName}/${fileName}`);
+
+      const result = await storageManager.upload(
+        bucketName,
+        fileName,
+        file,
+        {
+          cacheControl: '3600',
+          contentType: file.type
+        }
+      );
+
+      if (!result?.publicUrl) {
+        throw new Error('فشل في الحصول على رابط الملف');
+      }
+
+      const finalPublicUrl = result.publicUrl;
+      console.log('🔗 رابط الملف العام:', finalPublicUrl);
+
+      // حفظ في الحالة المعلقة
       setPendingImages(prev => ({
         ...prev,
         [type === 'profile' ? 'profile' : 'cover']: finalPublicUrl
       }));
-      
-      // رسالة نجاح مخصصة حسب الـ bucket المستخدم
-      const successMessage = usedBucket === 'trainer' 
-        ? `🎯 تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح في Trainer bucket الأساسي!`
-        : `✅ تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح في ${usedBucket}!`;
-        
-      toast.success(successMessage);
-      
+
+      toast.success(`✅ تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح!`);
+
     } catch (error: any) {
       console.error('💥 خطأ غير متوقع:', error);
-      toast.error(`خطأ غير متوقع: ${error.message || 'حدث خطأ أثناء رفع الملف'}`);
+      toast.error(`خطأ: ${error.message || 'حدث خطأ أثناء رفع الملف'}`);
     } finally {
       setUploading(false);
       console.log('🏁 انتهت عملية الرفع');
@@ -644,9 +575,9 @@ export default function TrainerProfilePage() {
                 ×
               </button>
               <h2 className="mb-6 text-xl font-bold text-cyan-600">تعديل بيانات المدرب</h2>
-              
+
               <div className="space-y-6">
-                
+
                 {/* قسم رفع الصورة */}
                 <div className="p-6 bg-cyan-50 rounded-lg">
                   <h4 className="mb-4 font-bold text-cyan-800">الصور</h4>
@@ -717,7 +648,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="الاسم الثلاثي كاملاً"
                         value={trainerData?.full_name}
-                        onChange={(e) => setTrainerData({...trainerData, full_name: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, full_name: e.target.value })}
                       />
                     </div>
                     <div>
@@ -726,7 +657,7 @@ export default function TrainerProfilePage() {
                         type="date"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         value={trainerData?.date_of_birth}
-                        onChange={(e) => setTrainerData({...trainerData, date_of_birth: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, date_of_birth: e.target.value })}
                       />
                     </div>
                     <div>
@@ -734,7 +665,7 @@ export default function TrainerProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         value={trainerData?.nationality}
-                        onChange={(e) => setTrainerData({...trainerData, nationality: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, nationality: e.target.value })}
                       >
                         <option value="">اختر الجنسية</option>
                         <option value="السعودية">السعودية</option>
@@ -760,7 +691,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="الدولة - المدينة"
                         value={trainerData?.current_location}
-                        onChange={(e) => setTrainerData({...trainerData, current_location: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, current_location: e.target.value })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -770,7 +701,7 @@ export default function TrainerProfilePage() {
                         rows={3}
                         placeholder="اكتب نبذة مختصرة عن خبراتك وتخصصك..."
                         value={trainerData?.description}
-                        onChange={(e) => setTrainerData({...trainerData, description: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, description: e.target.value })}
                       />
                     </div>
                   </div>
@@ -785,7 +716,7 @@ export default function TrainerProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         value={trainerData?.is_certified ? 'true' : 'false'}
-                        onChange={(e) => setTrainerData({...trainerData, is_certified: e.target.value === 'true'})}
+                        onChange={(e) => setTrainerData({ ...trainerData, is_certified: e.target.value === 'true' })}
                       >
                         <option value="false">لا</option>
                         <option value="true">نعم</option>
@@ -800,7 +731,7 @@ export default function TrainerProfilePage() {
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                             placeholder="رقم رخصة التدريب"
                             value={trainerData?.license_number}
-                            onChange={(e) => setTrainerData({...trainerData, license_number: e.target.value})}
+                            onChange={(e) => setTrainerData({ ...trainerData, license_number: e.target.value })}
                           />
                         </div>
                         <div>
@@ -809,7 +740,7 @@ export default function TrainerProfilePage() {
                             type="date"
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                             value={trainerData?.license_expiry}
-                            onChange={(e) => setTrainerData({...trainerData, license_expiry: e.target.value})}
+                            onChange={(e) => setTrainerData({ ...trainerData, license_expiry: e.target.value })}
                           />
                         </div>
                       </>
@@ -822,7 +753,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="عدد سنوات الخبرة"
                         value={trainerData?.years_of_experience}
-                        onChange={(e) => setTrainerData({...trainerData, years_of_experience: parseInt(e.target.value) || 0})}
+                        onChange={(e) => setTrainerData({ ...trainerData, years_of_experience: parseInt(e.target.value) || 0 })}
                       />
                     </div>
                     <div>
@@ -830,7 +761,7 @@ export default function TrainerProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         value={trainerData?.coaching_level}
-                        onChange={(e) => setTrainerData({...trainerData, coaching_level: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, coaching_level: e.target.value })}
                       >
                         <option value="">اختر المستوى</option>
                         <option value="المستوى C">المستوى C</option>
@@ -847,7 +778,7 @@ export default function TrainerProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         value={trainerData?.specialization}
-                        onChange={(e) => setTrainerData({...trainerData, specialization: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, specialization: e.target.value })}
                       >
                         <option value="">اختر التخصص</option>
                         <option value="لياقة بدنية">لياقة بدنية</option>
@@ -867,7 +798,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="العربية, الإنجليزية, الفرنسية (افصل بفاصلة)"
                         value={trainerData?.spoken_languages?.join(', ')}
-                        onChange={(e) => setTrainerData({...trainerData, spoken_languages: e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang)})}
+                        onChange={(e) => setTrainerData({ ...trainerData, spoken_languages: e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang) })}
                       />
                     </div>
                   </div>
@@ -884,7 +815,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="النادي الأهلي (2020-2022), نادي الهلال (2018-2020) (افصل بفاصلة)"
                         value={trainerData?.previous_clubs?.join(', ')}
-                        onChange={(e) => setTrainerData({...trainerData, previous_clubs: e.target.value.split(',').map(club => club.trim()).filter(club => club)})}
+                        onChange={(e) => setTrainerData({ ...trainerData, previous_clubs: e.target.value.split(',').map(club => club.trim()).filter(club => club) })}
                       />
                     </div>
                     <div>
@@ -894,7 +825,7 @@ export default function TrainerProfilePage() {
                         rows={4}
                         placeholder="اذكر أهم إنجازاتك وجوائزك في مجال التدريب..."
                         value={trainerData?.achievements}
-                        onChange={(e) => setTrainerData({...trainerData, achievements: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, achievements: e.target.value })}
                       />
                     </div>
                     <div>
@@ -904,7 +835,7 @@ export default function TrainerProfilePage() {
                         rows={3}
                         placeholder="أذكر أسماء وأرقام الأشخاص الذين يمكن الرجوع إليهم للتوصية..."
                         value={trainerData?.references}
-                        onChange={(e) => setTrainerData({...trainerData, references: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, references: e.target.value })}
                       />
                     </div>
                   </div>
@@ -921,7 +852,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="+966501234567"
                         value={trainerData?.phone}
-                        onChange={(e) => setTrainerData({...trainerData, phone: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, phone: e.target.value })}
                       />
                     </div>
                     <div>
@@ -931,7 +862,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="trainer@example.com"
                         value={trainerData?.email}
-                        onChange={(e) => setTrainerData({...trainerData, email: e.target.value})}
+                        onChange={(e) => setTrainerData({ ...trainerData, email: e.target.value })}
                       />
                     </div>
                     <div>
@@ -941,7 +872,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="https://linkedin.com/in/trainer"
                         value={trainerData?.social_media?.linkedin}
-                        onChange={(e) => setTrainerData({...trainerData, social_media: {...trainerData.social_media, linkedin: e.target.value}})}
+                        onChange={(e) => setTrainerData({ ...trainerData, social_media: { ...trainerData.social_media, linkedin: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -951,7 +882,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="https://twitter.com/trainer"
                         value={trainerData?.social_media?.twitter}
-                        onChange={(e) => setTrainerData({...trainerData, social_media: {...trainerData.social_media, twitter: e.target.value}})}
+                        onChange={(e) => setTrainerData({ ...trainerData, social_media: { ...trainerData.social_media, twitter: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -961,7 +892,7 @@ export default function TrainerProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                         placeholder="https://instagram.com/trainer"
                         value={trainerData?.social_media?.instagram}
-                        onChange={(e) => setTrainerData({...trainerData, social_media: {...trainerData.social_media, instagram: e.target.value}})}
+                        onChange={(e) => setTrainerData({ ...trainerData, social_media: { ...trainerData.social_media, instagram: e.target.value } })}
                       />
                     </div>
                   </div>

@@ -187,14 +187,13 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             if (serverMethod) {
               return {
                 ...baseMethod,
-                enabled: serverMethod.enabled !== false, // Default true if not specified
-                // Override details with account number/instructions from server
-                details: serverMethod.accountNumber || baseMethod.details,
+                enabled: serverMethod.enabled !== false,
+                details: serverMethod.accountNumber || (baseMethod as any).details,
                 instructions: serverMethod.instructions
               };
             }
             return { ...baseMethod, enabled: true };
-          }).filter(m => m.enabled); // Only show enabled methods
+          }).filter((m: any) => m.enabled);
 
           setPaymentMethods(mergedMethods);
         } else {
@@ -363,7 +362,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       setAppliedOffer(null);
       return;
     }
-    const selectedPkg = availablePlans.find(p => p.id === selectedPackage);
+    const selectedPkg = packages[selectedPackage];
     if (!selectedPkg) return;
 
     const totalAmount = selectedPkg.price * selectedCount;
@@ -466,7 +465,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
   // Calculations
   // Calculations
-  const selectedPkg = availablePlans.find(p => p.id === selectedPackage);
+  const selectedPkg = packages[selectedPackage]; // Use derived state for resolved price
 
   // Resolve Base Price (Partner Override vs Standard Plan)
   let basePrice = selectedPkg?.price || 0;
@@ -590,8 +589,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {availablePlans
-                  .sort((a: any, b: any) => a.price - b.price)
+                {Object.values(packages)
+                  .sort((a: any, b: any) => (a.price || 0) - (b.price || 0))
                   .map((pkg: any, index: number) => {
                     const isSelected = selectedPackage === pkg.id;
 
@@ -648,7 +647,22 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
                           {/* Title */}
                           <h3 className={`text-lg font-bold mb-2 ${isSelected ? 'text-white' : 'text-gray-900'}`}>{pkg.title}</h3>
-                          <p className={`text-xs mb-6 px-2 min-h-[40px] leading-relaxed ${isSelected ? 'text-blue-50' : 'text-gray-500'}`}>{pkg.description}</p>
+                          <p className={`text-xs mb-4 px-2 min-h-[40px] leading-relaxed ${isSelected ? 'text-blue-50' : 'text-gray-500'}`}>{pkg.description}</p>
+
+                          {/* Features List */}
+                          <div className={`w-full mb-6 space-y-2 text-right px-2 ${isSelected ? 'text-blue-50' : 'text-gray-600'}`}>
+                            {pkg.features?.slice(0, 5).map((feature: any, idx: number) => (
+                              <div key={idx} className="flex items-start gap-2 text-xs">
+                                <Check className={`w-3 h-3 shrink-0 mt-0.5 ${isSelected ? 'text-white/80' : 'text-green-500'}`} />
+                                <span className="line-clamp-1">{typeof feature === 'string' ? feature : feature.name}</span>
+                              </div>
+                            ))}
+                            {pkg.features?.length > 5 && (
+                              <p className={`text-[10px] text-center mt-2 ${isSelected ? 'text-blue-200' : 'text-gray-400'}`}>
+                                + {pkg.features.length - 5} ميزات أخرى
+                              </p>
+                            )}
+                          </div>
 
                           {/* Price */}
                           <div className="mt-auto mb-4">

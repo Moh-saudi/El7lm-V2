@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   Trophy,
   Calendar,
   Users,
@@ -118,12 +118,12 @@ const AdminTournamentsPage: React.FC = () => {
   const [selectedTournamentForRegistrations, setSelectedTournamentForRegistrations] = useState<Tournament | null>(null);
   const [showPaymentManagement, setShowPaymentManagement] = useState(false);
   const [selectedTournamentForPayments, setSelectedTournamentForPayments] = useState<Tournament | null>(null);
-  
+
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [activeTab, setActiveTab] = useState('basic');
-  
+
   const [formData, setFormData] = useState<Partial<Tournament>>({
     name: '',
     description: '',
@@ -157,7 +157,7 @@ const AdminTournamentsPage: React.FC = () => {
 
   const ageGroups = [
     'تحت 8 سنوات',
-    'تحت 10 سنوات', 
+    'تحت 10 سنوات',
     'تحت 12 سنة',
     'تحت 14 سنة',
     'تحت 16 سنة',
@@ -234,16 +234,16 @@ const AdminTournamentsPage: React.FC = () => {
       } else {
         d = new Date(date);
       }
-      
+
       if (isNaN(d.getTime())) {
         return 'غير محدد';
       }
-      
+
       // صيغة DD/MM/YYYY (ميلادي فقط)
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       return 'غير محدد';
@@ -259,14 +259,14 @@ const AdminTournamentsPage: React.FC = () => {
         toast.error('يرجى اختيار ملف صورة صالح');
         return;
       }
-      
+
       if (file.size > 5 * 1024 * 1024) {
         toast.error('حجم الملف يجب أن يكون أقل من 5 ميجابايت');
         return;
       }
-      
+
       setLogoFile(file);
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setLogoPreview(e.target?.result as string);
@@ -277,50 +277,29 @@ const AdminTournamentsPage: React.FC = () => {
 
   const uploadLogo = async (): Promise<string | null> => {
     if (!logoFile) return null;
-    if (!supabase) {
-      toast.error('إعدادات التخزين غير متاحة حالياً. يرجى التحقق من إعدادات Supabase.');
-      return null;
-    }
-    
+
     try {
       setLogoUploading(true);
-      
+
       const fileExt = logoFile.name.split('.').pop();
-      const fileName = `tournament-logo-${Date.now()}.${fileExt}`;
-      
-      const buckets = ['profile-images', 'avatars', 'additional-images'];
-      let uploadSuccess = false;
-      let publicUrl = '';
-      
-      for (const bucket of buckets) {
-        try {
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .upload(fileName, logoFile);
-          
-          if (error) {
-            continue;
-          }
-          
-          const { data: { publicUrl: url } } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(fileName);
-          
-          publicUrl = url;
-          uploadSuccess = true;
-          break;
-        } catch (bucketError) {
-          continue;
-        }
-      }
-      
-      if (!uploadSuccess) {
+      const fileName = `tournaments/logos/${Date.now()}.${fileExt}`;
+
+      const { storageManager } = await import('@/lib/storage');
+
+      // استخدام storageManager للرفع (إلى R2)
+      const result = await storageManager.upload('tournaments', fileName, logoFile, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: logoFile.type
+      });
+
+      if (!result?.publicUrl) {
         toast.error('فشل في رفع اللوجو');
         return null;
       }
-      
+
       toast.success('تم رفع اللوجو بنجاح');
-      return publicUrl;
+      return result.publicUrl;
     } catch (error) {
       console.error('Error uploading logo:', error);
       toast.error('فشل في رفع اللوجو');
@@ -351,10 +330,10 @@ const AdminTournamentsPage: React.FC = () => {
           categories: data.categories || []
         };
       }) as Tournament[];
-      
+
       console.log(`📊 Loaded ${tournamentsData.length} tournaments from admin page`);
       console.log(`✅ Active tournaments: ${tournamentsData.filter(t => t.isActive).length}`);
-      
+
       setTournaments(tournamentsData);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -403,7 +382,7 @@ const AdminTournamentsPage: React.FC = () => {
     e.preventDefault();
     try {
       let logoUrl = formData.logo;
-      
+
       if (logoFile) {
         logoUrl = await uploadLogo();
         if (!logoUrl) {
@@ -411,7 +390,7 @@ const AdminTournamentsPage: React.FC = () => {
           return;
         }
       }
-      
+
       const tournamentData: Partial<Tournament> = {
         ...formData,
         logo: logoUrl,
@@ -512,7 +491,7 @@ const AdminTournamentsPage: React.FC = () => {
       installmentsDetails: '',
       registrations: []
     });
-    
+
     setLogoFile(null);
     setLogoPreview('');
   };
@@ -527,7 +506,7 @@ const AdminTournamentsPage: React.FC = () => {
     try {
       // ترميز اسم المكان للبحث
       const encodedLocation = encodeURIComponent(location);
-      
+
       // فتح Google Maps في تبويب جديد
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
       window.open(mapsUrl, '_blank', 'noopener,noreferrer');
@@ -546,14 +525,14 @@ const AdminTournamentsPage: React.FC = () => {
       }
 
       const text = await navigator.clipboard.readText();
-      
+
       // التحقق من أن الرابط صحيح من Google Maps
-      if (text.includes('maps.google.com') || 
-          text.includes('goo.gl/maps') || 
-          text.includes('maps.app.goo.gl') ||
-          text.startsWith('https://maps.google.com') ||
-          text.startsWith('http://maps.google.com')) {
-        setFormData(prev => ({...prev, locationUrl: text}));
+      if (text.includes('maps.google.com') ||
+        text.includes('goo.gl/maps') ||
+        text.includes('maps.app.goo.gl') ||
+        text.startsWith('https://maps.google.com') ||
+        text.startsWith('http://maps.google.com')) {
+        setFormData(prev => ({ ...prev, locationUrl: text }));
         toast.success('تم لصق رابط الموقع بنجاح');
       } else {
         toast.error('الرجاء لصق رابط صحيح من Google Maps');
@@ -617,7 +596,7 @@ const AdminTournamentsPage: React.FC = () => {
                   <p className="text-gray-600 mt-1">إدارة شاملة لجميع البطولات والتسجيلات</p>
                 </div>
               </div>
-              <Button 
+              <Button
                 onClick={() => {
                   setEditingTournament(null);
                   resetForm();
@@ -661,7 +640,7 @@ const AdminTournamentsPage: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">لا توجد بطولات</h3>
                 <p className="text-gray-600 mb-6">ابدأ بإنشاء بطولة جديدة</p>
-                <Button 
+                <Button
                   onClick={() => {
                     setEditingTournament(null);
                     resetForm();
@@ -682,8 +661,8 @@ const AdminTournamentsPage: React.FC = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         {tournament.logo ? (
-                          <img 
-                            src={tournament.logo} 
+                          <img
+                            src={tournament.logo}
                             alt={tournament.name}
                             className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
                             onError={(e) => {
@@ -742,7 +721,7 @@ const AdminTournamentsPage: React.FC = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center gap-3">
@@ -752,7 +731,7 @@ const AdminTournamentsPage: React.FC = () => {
                           <p className="text-sm font-medium text-gray-900">{tournament.location}</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
                         <Calendar className="h-5 w-5 text-gray-400" />
                         <div>
@@ -762,7 +741,7 @@ const AdminTournamentsPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
                         <Users className="h-5 w-5 text-gray-400" />
                         <div>
@@ -772,7 +751,7 @@ const AdminTournamentsPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       {tournament.isPaid && (
                         <div className="flex items-center gap-3">
                           <DollarSign className="h-5 w-5 text-gray-400" />
@@ -785,11 +764,11 @@ const AdminTournamentsPage: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {tournament.description && (
                       <p className="text-sm text-gray-600 line-clamp-2">{tournament.description}</p>
                     )}
-                    
+
                     <div className="pt-4 border-t border-gray-200 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -814,7 +793,7 @@ const AdminTournamentsPage: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
@@ -907,7 +886,7 @@ const AdminTournamentsPage: React.FC = () => {
                 )}
               </div>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <TabsList className="mx-6 mt-4 mb-0 grid w-auto grid-cols-5 h-auto bg-gray-100 p-1">
@@ -959,26 +938,26 @@ const AdminTournamentsPage: React.FC = () => {
                             <Input
                               id="name"
                               value={formData.name || ''}
-                              onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                               placeholder="مثال: بطولة العلمين الدولية"
                               required
                               className="h-11"
                             />
                           </div>
-                          
+
                           <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="description" className="text-sm font-semibold">وصف البطولة *</Label>
                             <Textarea
                               id="description"
                               value={formData.description || ''}
-                              onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                               placeholder="وصف مفصل عن البطولة..."
                               required
                               rows={4}
                               className="resize-none"
                             />
                           </div>
-                          
+
                           <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="location" className="text-sm font-semibold flex items-center gap-2">
                               <MapPin className="h-4 w-4 text-red-500" />
@@ -988,7 +967,7 @@ const AdminTournamentsPage: React.FC = () => {
                               <Input
                                 id="location"
                                 value={formData.location || ''}
-                                onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                                 placeholder="مثال: ملعب العلمين الرياضي"
                                 required
                                 className="flex-1 h-11"
@@ -1017,7 +996,7 @@ const AdminTournamentsPage: React.FC = () => {
                                   id="locationUrl"
                                   type="url"
                                   value={formData.locationUrl || ''}
-                                  onChange={(e) => setFormData(prev => ({...prev, locationUrl: e.target.value}))}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, locationUrl: e.target.value }))}
                                   placeholder="https://maps.google.com/..."
                                   className="flex-1 h-10 text-sm"
                                 />
@@ -1037,7 +1016,7 @@ const AdminTournamentsPage: React.FC = () => {
                               </p>
                             </div>
                           </div>
-                          
+
                           <div className="space-y-2">
                             <Label htmlFor="maxParticipants" className="text-sm font-semibold flex items-center gap-2">
                               <Users className="h-4 w-4 text-green-600" />
@@ -1048,13 +1027,13 @@ const AdminTournamentsPage: React.FC = () => {
                               type="number"
                               min="1"
                               value={formData.maxParticipants || 100}
-                              onChange={(e) => setFormData(prev => ({...prev, maxParticipants: parseInt(e.target.value) || 100}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, maxParticipants: parseInt(e.target.value) || 100 }))}
                               required
                               className="h-11"
                             />
                           </div>
                         </div>
-                        
+
                         <div className="space-y-3 pt-4 border-t border-gray-200">
                           <Label className="text-sm font-semibold flex items-center gap-2">
                             <ImageIcon className="h-4 w-4 text-purple-600" />
@@ -1062,8 +1041,8 @@ const AdminTournamentsPage: React.FC = () => {
                           </Label>
                           {(logoPreview || formData.logo) && (
                             <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
-                              <img 
-                                src={logoPreview || formData.logo} 
+                              <img
+                                src={logoPreview || formData.logo}
                                 alt="Logo preview"
                                 className="w-16 h-16 object-cover rounded-lg border-2 border-purple-300 shadow-sm"
                               />
@@ -1078,7 +1057,7 @@ const AdminTournamentsPage: React.FC = () => {
                                 onClick={() => {
                                   setLogoFile(null);
                                   setLogoPreview('');
-                                  setFormData(prev => ({...prev, logo: ''}));
+                                  setFormData(prev => ({ ...prev, logo: '' }));
                                 }}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
@@ -1105,7 +1084,7 @@ const AdminTournamentsPage: React.FC = () => {
                               <Input
                                 type="url"
                                 value={formData.logo || ''}
-                                onChange={(e) => setFormData(prev => ({...prev, logo: e.target.value}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, logo: e.target.value }))}
                                 placeholder="https://example.com/logo.png"
                                 className="h-10"
                               />
@@ -1134,31 +1113,31 @@ const AdminTournamentsPage: React.FC = () => {
                               id="startDate"
                               type="date"
                               value={formData.startDate || ''}
-                              onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                               required
                               className="h-11"
                             />
                           </div>
-                          
+
                           <div className="space-y-2">
                             <Label htmlFor="endDate" className="text-sm font-semibold">تاريخ النهاية *</Label>
                             <Input
                               id="endDate"
                               type="date"
                               value={formData.endDate || ''}
-                              onChange={(e) => setFormData(prev => ({...prev, endDate: e.target.value}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                               required
                               className="h-11"
                             />
                           </div>
-                          
+
                           <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="registrationDeadline" className="text-sm font-semibold">آخر موعد للتسجيل *</Label>
                             <Input
                               id="registrationDeadline"
                               type="date"
                               value={formData.registrationDeadline || ''}
-                              onChange={(e) => setFormData(prev => ({...prev, registrationDeadline: e.target.value}))}
+                              onChange={(e) => setFormData(prev => ({ ...prev, registrationDeadline: e.target.value }))}
                               required
                               className="h-11"
                             />
@@ -1184,7 +1163,7 @@ const AdminTournamentsPage: React.FC = () => {
                             <Switch
                               id="isPaid"
                               checked={formData.isPaid || false}
-                              onCheckedChange={(checked) => setFormData(prev => ({...prev, isPaid: checked}))}
+                              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPaid: checked }))}
                             />
                             <Label htmlFor="isPaid" className="text-base font-semibold cursor-pointer">
                               بطولة مدفوعة
@@ -1194,7 +1173,7 @@ const AdminTournamentsPage: React.FC = () => {
                             {formData.isPaid ? 'مدفوعة' : 'مجانية'}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="entryFee" className="text-sm font-semibold flex items-center gap-2">
@@ -1208,14 +1187,14 @@ const AdminTournamentsPage: React.FC = () => {
                                 min="0"
                                 step="0.01"
                                 value={formData.entryFee || 0}
-                                onChange={(e) => setFormData(prev => ({...prev, entryFee: parseFloat(e.target.value) || 0}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, entryFee: parseFloat(e.target.value) || 0 }))}
                                 placeholder="0.00"
                                 className="flex-[2] min-w-[200px] h-16 text-2xl font-bold text-center"
                                 disabled={!formData.isPaid}
                               />
                               <Select
                                 value={formData.currency || 'EGP'}
-                                onValueChange={(value) => setFormData(prev => ({...prev, currency: value}))}
+                                onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                                 disabled={!formData.isPaid}
                               >
                                 <SelectTrigger className="w-36 h-16 text-base font-medium">
@@ -1233,7 +1212,7 @@ const AdminTournamentsPage: React.FC = () => {
                               </Select>
                             </div>
                           </div>
-                          
+
                           <div className="space-y-2">
                             <Label className="text-sm font-semibold">نوع الرسوم *</Label>
                             <div className="flex gap-4 p-3 bg-gray-50 rounded-lg border">
@@ -1244,7 +1223,7 @@ const AdminTournamentsPage: React.FC = () => {
                                   name="feeType"
                                   value="individual"
                                   checked={formData.feeType === 'individual'}
-                                  onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, feeType: e.target.value as 'individual' | 'club' }))}
                                   className="h-4 w-4 text-blue-600"
                                 />
                                 <Label htmlFor="feeType-individual" className="cursor-pointer">للاعب الواحد</Label>
@@ -1256,7 +1235,7 @@ const AdminTournamentsPage: React.FC = () => {
                                   name="feeType"
                                   value="club"
                                   checked={formData.feeType === 'club'}
-                                  onChange={(e) => setFormData(prev => ({...prev, feeType: e.target.value as 'individual' | 'club'}))}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, feeType: e.target.value as 'individual' | 'club' }))}
                                   className="h-4 w-4 text-blue-600"
                                 />
                                 <Label htmlFor="feeType-club" className="cursor-pointer">للنادي</Label>
@@ -1267,7 +1246,7 @@ const AdminTournamentsPage: React.FC = () => {
                                 type="number"
                                 min="1"
                                 value={formData.maxPlayersPerClub || 1}
-                                onChange={(e) => setFormData(prev => ({...prev, maxPlayersPerClub: parseInt(e.target.value) || 1}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, maxPlayersPerClub: parseInt(e.target.value) || 1 }))}
                                 placeholder="عدد اللاعبين الأقصى للنادي"
                                 className="h-11"
                               />
@@ -1280,7 +1259,7 @@ const AdminTournamentsPage: React.FC = () => {
                             <Switch
                               id="allowInstallments"
                               checked={formData.allowInstallments || false}
-                              onCheckedChange={(checked) => setFormData(prev => ({...prev, allowInstallments: checked}))}
+                              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allowInstallments: checked }))}
                             />
                             <Label htmlFor="allowInstallments" className="text-base font-semibold cursor-pointer">
                               السماح بالدفع بالتقسيط
@@ -1297,7 +1276,7 @@ const AdminTournamentsPage: React.FC = () => {
                               <CreditCardIcon className="h-5 w-5" />
                               إعدادات التقسيط
                             </h4>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="installmentsCount" className="text-sm font-semibold">عدد الأقساط *</Label>
@@ -1307,25 +1286,25 @@ const AdminTournamentsPage: React.FC = () => {
                                   min="2"
                                   max="12"
                                   value={formData.installmentsCount || 2}
-                                  onChange={(e) => setFormData(prev => ({...prev, installmentsCount: parseInt(e.target.value) || 2}))}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, installmentsCount: parseInt(e.target.value) || 2 }))}
                                   className="h-11"
                                 />
                                 <p className="text-xs text-gray-500">عدد الأقساط المتاحة (من 2 إلى 12)</p>
                               </div>
-                              
+
                               <div className="space-y-2">
                                 <Label htmlFor="installmentsDetails" className="text-sm font-semibold">تفاصيل التقسيط</Label>
                                 <Textarea
                                   id="installmentsDetails"
                                   value={formData.installmentsDetails || ''}
-                                  onChange={(e) => setFormData(prev => ({...prev, installmentsDetails: e.target.value}))}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, installmentsDetails: e.target.value }))}
                                   placeholder="مثال: يمكن تقسيم المبلغ على 3 أقساط، القسط الأول عند التسجيل..."
                                   rows={3}
                                   className="resize-none"
                                 />
                               </div>
                             </div>
-                            
+
                             {formData.installmentsCount && formData.entryFee && (
                               <div className="mt-4 p-3 bg-white rounded-lg border border-indigo-200">
                                 <p className="text-sm font-semibold text-indigo-900 mb-2">مثال على الأقساط:</p>
@@ -1353,35 +1332,34 @@ const AdminTournamentsPage: React.FC = () => {
                               <CreditCard className="h-5 w-5" />
                               إعدادات الدفع
                             </h4>
-                            
+
                             <div className="space-y-2">
                               <Label htmlFor="paymentDeadline" className="text-sm font-semibold">آخر موعد للدفع</Label>
                               <Input
                                 id="paymentDeadline"
                                 type="date"
                                 value={formData.paymentDeadline || ''}
-                                onChange={(e) => setFormData(prev => ({...prev, paymentDeadline: e.target.value}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, paymentDeadline: e.target.value }))}
                                 className="h-11"
                               />
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label className="text-sm font-semibold">طرق الدفع المتاحة *</Label>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {paymentMethods.map((method) => (
-                                  <div 
-                                    key={method.id} 
-                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                      formData.paymentMethods?.includes(method.id) 
-                                        ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                  <div
+                                    key={method.id}
+                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${formData.paymentMethods?.includes(method.id)
+                                        ? 'bg-blue-50 border-blue-300 shadow-sm'
                                         : 'bg-white border-gray-200 hover:border-gray-300'
-                                    }`}
+                                      }`}
                                     onClick={() => {
                                       const currentMethods = formData.paymentMethods || [];
                                       if (currentMethods.includes(method.id)) {
-                                        setFormData(prev => ({...prev, paymentMethods: currentMethods.filter(m => m !== method.id)}));
+                                        setFormData(prev => ({ ...prev, paymentMethods: currentMethods.filter(m => m !== method.id) }));
                                       } else {
-                                        setFormData(prev => ({...prev, paymentMethods: [...currentMethods, method.id]}));
+                                        setFormData(prev => ({ ...prev, paymentMethods: [...currentMethods, method.id] }));
                                       }
                                     }}
                                   >
@@ -1389,7 +1367,7 @@ const AdminTournamentsPage: React.FC = () => {
                                       type="checkbox"
                                       id={`paymentMethod-${method.id}`}
                                       checked={formData.paymentMethods?.includes(method.id) || false}
-                                      onChange={() => {}}
+                                      onChange={() => { }}
                                       className="h-4 w-4"
                                       onClick={(e) => e.stopPropagation()}
                                     />
@@ -1401,13 +1379,13 @@ const AdminTournamentsPage: React.FC = () => {
                                 ))}
                               </div>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label htmlFor="refundPolicy" className="text-sm font-semibold">سياسة الاسترداد</Label>
                               <Textarea
                                 id="refundPolicy"
                                 value={formData.refundPolicy || ''}
-                                onChange={(e) => setFormData(prev => ({...prev, refundPolicy: e.target.value}))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, refundPolicy: e.target.value }))}
                                 placeholder="سياسة استرداد الرسوم في حالة الإلغاء..."
                                 rows={3}
                                 className="resize-none"
@@ -1437,19 +1415,18 @@ const AdminTournamentsPage: React.FC = () => {
                           </Label>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {ageGroups.map((ageGroup) => (
-                              <div 
+                              <div
                                 key={ageGroup}
-                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                  formData.ageGroups?.includes(ageGroup)
-                                    ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${formData.ageGroups?.includes(ageGroup)
+                                    ? 'bg-blue-50 border-blue-300 shadow-sm'
                                     : 'bg-white border-gray-200 hover:border-gray-300'
-                                }`}
+                                  }`}
                                 onClick={() => {
                                   const currentGroups = formData.ageGroups || [];
                                   if (currentGroups.includes(ageGroup)) {
-                                    setFormData(prev => ({...prev, ageGroups: currentGroups.filter(g => g !== ageGroup)}));
+                                    setFormData(prev => ({ ...prev, ageGroups: currentGroups.filter(g => g !== ageGroup) }));
                                   } else {
-                                    setFormData(prev => ({...prev, ageGroups: [...currentGroups, ageGroup]}));
+                                    setFormData(prev => ({ ...prev, ageGroups: [...currentGroups, ageGroup] }));
                                   }
                                 }}
                               >
@@ -1457,7 +1434,7 @@ const AdminTournamentsPage: React.FC = () => {
                                   type="checkbox"
                                   id={`ageGroup-${ageGroup}`}
                                   checked={formData.ageGroups?.includes(ageGroup) || false}
-                                  onChange={() => {}}
+                                  onChange={() => { }}
                                   className="h-4 w-4"
                                   onClick={(e) => e.stopPropagation()}
                                 />
@@ -1468,7 +1445,7 @@ const AdminTournamentsPage: React.FC = () => {
                             ))}
                           </div>
                         </div>
-                        
+
                         <div className="space-y-3 pt-4 border-t border-gray-200">
                           <Label className="text-sm font-semibold flex items-center gap-2">
                             <Users className="h-4 w-4 text-pink-600" />
@@ -1476,19 +1453,18 @@ const AdminTournamentsPage: React.FC = () => {
                           </Label>
                           <div className="flex flex-wrap gap-3">
                             {categories.map((category) => (
-                              <div 
+                              <div
                                 key={category}
-                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all min-w-[120px] ${
-                                  formData.categories?.includes(category)
-                                    ? 'bg-pink-50 border-pink-300 shadow-sm' 
+                                className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all min-w-[120px] ${formData.categories?.includes(category)
+                                    ? 'bg-pink-50 border-pink-300 shadow-sm'
                                     : 'bg-white border-gray-200 hover:border-gray-300'
-                                }`}
+                                  }`}
                                 onClick={() => {
                                   const currentCategories = formData.categories || [];
                                   if (currentCategories.includes(category)) {
-                                    setFormData(prev => ({...prev, categories: currentCategories.filter(c => c !== category)}));
+                                    setFormData(prev => ({ ...prev, categories: currentCategories.filter(c => c !== category) }));
                                   } else {
-                                    setFormData(prev => ({...prev, categories: [...currentCategories, category]}));
+                                    setFormData(prev => ({ ...prev, categories: [...currentCategories, category] }));
                                   }
                                 }}
                               >
@@ -1496,7 +1472,7 @@ const AdminTournamentsPage: React.FC = () => {
                                   type="checkbox"
                                   id={`category-${category}`}
                                   checked={formData.categories?.includes(category) || false}
-                                  onChange={() => {}}
+                                  onChange={() => { }}
                                   className="h-4 w-4"
                                   onClick={(e) => e.stopPropagation()}
                                 />
@@ -1527,31 +1503,31 @@ const AdminTournamentsPage: React.FC = () => {
                           <Textarea
                             id="rules"
                             value={formData.rules || ''}
-                            onChange={(e) => setFormData(prev => ({...prev, rules: e.target.value}))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, rules: e.target.value }))}
                             placeholder="قوانين ولوائح البطولة..."
                             rows={4}
                             className="resize-none"
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="prizes" className="text-sm font-semibold">الجوائز</Label>
                           <Textarea
                             id="prizes"
                             value={formData.prizes || ''}
-                            onChange={(e) => setFormData(prev => ({...prev, prizes: e.target.value}))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, prizes: e.target.value }))}
                             placeholder="تفاصيل الجوائز والمكافآت..."
                             rows={4}
                             className="resize-none"
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="contactInfo" className="text-sm font-semibold">معلومات الاتصال</Label>
                           <Textarea
                             id="contactInfo"
                             value={formData.contactInfo || ''}
-                            onChange={(e) => setFormData(prev => ({...prev, contactInfo: e.target.value}))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, contactInfo: e.target.value }))}
                             placeholder="رقم الهاتف، البريد الإلكتروني..."
                             rows={3}
                             className="resize-none"
@@ -1568,7 +1544,7 @@ const AdminTournamentsPage: React.FC = () => {
                     <Switch
                       id="isActive"
                       checked={formData.isActive === true}
-                      onCheckedChange={(checked) => setFormData(prev => ({...prev, isActive: checked}))}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
                     />
                     <Label htmlFor="isActive" className="text-sm font-semibold cursor-pointer">
                       البطولة نشطة
@@ -1577,7 +1553,7 @@ const AdminTournamentsPage: React.FC = () => {
                       {formData.isActive ? 'نشطة' : 'غير نشطة'}
                     </Badge>
                   </div>
-                  
+
                   <div className="flex gap-3">
                     <Button
                       type="button"
@@ -1614,7 +1590,7 @@ const AdminTournamentsPage: React.FC = () => {
               <DialogTitle>المسجلين في بطولة: {viewingRegistrations?.name}</DialogTitle>
               <DialogDescription>قائمة اللاعبين المسجلين في البطولة</DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               {viewingRegistrations?.registrations?.length === 0 ? (
                 <div className="text-center py-8">
@@ -1641,10 +1617,10 @@ const AdminTournamentsPage: React.FC = () => {
                           <div>
                             <Badge className={
                               registration.paymentStatus === 'paid' ? 'bg-green-500' :
-                              registration.paymentStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                                registration.paymentStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
                             }>
                               {registration.paymentStatus === 'paid' ? 'مدفوع' :
-                               registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
+                                registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
                             </Badge>
                             {registration.paymentAmount > 0 && (
                               <p className="text-sm text-green-600 font-bold mt-1">
@@ -1674,7 +1650,7 @@ const AdminTournamentsPage: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <ProfessionalRegistrationsContent 
+            <ProfessionalRegistrationsContent
               tournament={selectedTournamentForRegistrations}
               onClose={() => setShowProfessionalRegistrations(false)}
             />
@@ -1709,13 +1685,13 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
 
   const fetchRegistrations = async () => {
     if (!tournament) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Fetch from both collections (new and old format)
       const allRegistrations: any[] = [];
-      
+
       // Fetch from tournament_registrations (old format - individual registrations)
       try {
         const oldRegistrationsQuery = query(
@@ -1733,7 +1709,7 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
       } catch (error) {
         console.error('Error fetching from tournament_registrations:', error);
       }
-      
+
       // Fetch from tournamentRegistrations (new format - group registrations)
       try {
         const newRegistrationsQuery = query(
@@ -1783,9 +1759,9 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
       } catch (error) {
         console.error('Error fetching from tournamentRegistrations:', error);
       }
-      
+
       console.log(`✅ Total registrations loaded: ${allRegistrations.length} for tournament "${tournament.name}"`);
-      
+
       setRegistrations(allRegistrations);
     } catch (error) {
       console.error('Error fetching registrations:', error);
@@ -1856,16 +1832,16 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
       } else {
         d = new Date(date);
       }
-      
+
       if (isNaN(d.getTime())) {
         return 'غير محدد';
       }
-      
+
       // صيغة DD/MM/YYYY (ميلادي فقط)
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       return 'غير محدد';
@@ -2011,11 +1987,11 @@ function ProfessionalRegistrationsContent({ tournament, onClose }: { tournament:
                       <td className="border border-gray-300 p-3 text-center">
                         <Badge className={
                           registration.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                          registration.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
+                            registration.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-blue-100 text-blue-800'
                         }>
                           {registration.paymentStatus === 'paid' ? 'مدفوع' :
-                           registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
+                            registration.paymentStatus === 'pending' ? 'في الانتظار' : 'مجاني'}
                         </Badge>
                       </td>
                       <td className="border border-gray-300 p-3 text-center font-bold text-green-600">

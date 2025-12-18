@@ -64,6 +64,12 @@ interface VideoData {
 type MediaType = 'videos' | 'images';
 type MediaData = VideoData | ImageData;
 
+const truncateText = (text: string, maxLength: number = 30) => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
+
 export default function MediaAdminPage() {
   const { user, userData } = useAuth();
 
@@ -76,6 +82,7 @@ export default function MediaAdminPage() {
   const [videosTotalBytes, setVideosTotalBytes] = useState<number>(0);
   const [imagesTotalBytes, setImagesTotalBytes] = useState<number>(0);
   const [disabledUserIds, setDisabledUserIds] = useState<Set<string>>(new Set());
+  const [cleanupQueue, setCleanupQueue] = useState<string[]>([]); // Queue for background media cleanup
 
   // View State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -180,61 +187,88 @@ export default function MediaAdminPage() {
   };
 
   // Fetch Supabase Videos
+  // Fetch R2 Videos
   const fetchSupabaseVideos = async (): Promise<VideoData[]> => {
     const supabaseVideos: VideoData[] = [];
     let totalBytes = 0;
 
     try {
-      const { data: files, error } = await supabase.storage
-        .from(STORAGE_BUCKETS.VIDEOS)
-        .list('', {
-          limit: 1000,
-          offset: 0,
-          sortBy: { column: 'created_at', order: 'desc' }
-        });
+      // Import server action dynamically if needed, or assume it's available
+      const { listBucketFiles } = await import('@/app/actions/media');
 
-      if (error) {
-        console.error('خطأ في جلب الفيديوهات من Supabase:', error);
+      const { success, files, error } = await listBucketFiles('videos', '');
+
+      if (!success) {
+        console.error('خطأ في جلب الفيديوهات من R2:', error);
         return supabaseVideos;
       }
 
       if (files && files.length > 0) {
         for (const file of files) {
+          // file.name includes path e.g. "userId/video.mp4" (since prefix was empty)
           if (file.name && file.name.includes('/')) {
-            const userId = file.name.split('/')[0];
-            const { data: urlData } = supabase.storage
-              .from(STORAGE_BUCKETS.VIDEOS)
-              .getPublicUrl(file.name);
+            let userId = file.name.split('/')[0];
+            let fileName = file.name.split('/').pop() || file.name;
+            let displayTitle = fileName;
 
-            if (urlData?.publicUrl) {
-              const size = (file as any)?.metadata?.size || (file as any)?.size || 0;
-              totalBytes += typeof size === 'number' ? size : 0;
-              const videoData: VideoData = {
-                id: `supabase_${file.id || file.name}`,
-                title: file.name.split('/').pop() || 'فيديو من Supabase',
-                description: 'فيديو مرفوع إلى Supabase Storage',
-                url: urlData.publicUrl,
-                thumbnailUrl: undefined,
-                duration: 0,
-                uploadDate: file.created_at ? new Date(file.created_at) : new Date(),
-                userId: userId,
-                userEmail: '',
-                userName: `مستخدم ${userId}`,
-                accountType: 'supabase',
-                status: 'pending',
-                views: 0,
-                likes: 0,
-                comments: 0,
-                phone: '',
-                sourceType: 'supabase'
-              };
-              supabaseVideos.push(videoData);
+            // Try to parse timestamp from filename (e.g. 1759505967520...)
+            const timestampMatch = fileName.match(/^(\d{13})/);
+            if (timestampMatch) {
+              const ts = parseInt(timestampMatch[1]);
+              const date = new Date(ts);
+              if (!isNaN(date.getTime())) {
+                displayTitle = `فيديو ${date.toLocaleDateString('ar-EG')}`;
+              }
+            } else {
+              // If not timestamp, maybe clean up underscores and extension
+              displayTitle = fileName.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ");
             }
+
+            // Handle double nesting (e.g. videos/videos/user/...) caused by migration
+            // If the first part of the path is the same as the bucket name (or 'videos'), skip it
+            if (userId === 'videos' && file.name.split('/').length > 2) {
+              userId = file.name.split('/')[1];
+            }
+
+            // Construct R2 Public URL
+            const publicUrl = `https://assets.el7lm.com/videos/${file.name}`;
+
+            // Ensure title is clean
+            if (fileName === userId) {
+              // If filename equals userid (e.g. folder), ignore or use generic
+              // But listBucketFiles returns files usually?
+              // R2 might return directory placeholders if size is 0 and ends with /
+              if (file.size === 0 && file.name.endsWith('/')) continue;
+            }
+
+            const size = file.size || 0;
+            totalBytes += size;
+
+            const videoData: VideoData = {
+              id: `r2_${file.name}`, // Use name as ID
+              title: displayTitle,
+              description: 'فيديو مخزن في النظام',
+              url: publicUrl,
+              thumbnailUrl: undefined,
+              duration: 0,
+              uploadDate: file.updated || new Date(),
+              userId: userId,
+              userEmail: '',
+              userName: `مستخدم ${userId}`,
+              accountType: 'supabase', // Keep as 'supabase' or change to 'r2' if filter permits
+              status: 'pending',
+              views: 0,
+              likes: 0,
+              comments: 0,
+              phone: '',
+              sourceType: 'supabase' // Map to existing filter/ui logic
+            };
+            supabaseVideos.push(videoData);
           }
         }
       }
     } catch (error) {
-      console.error('خطأ في جلب الفيديوهات من Supabase:', error);
+      console.error('خطأ في جلب الفيديوهات من R2:', error);
     }
 
     setVideosTotalBytes(totalBytes);
@@ -261,90 +295,133 @@ export default function MediaAdminPage() {
 
     console.log('🔍 جاري البحث عن الصور في Supabase buckets:', imageBuckets);
 
-    for (const bucketName of imageBuckets) {
+    // Import server action dynamically
+    const { listBucketFiles } = await import('@/app/actions/media');
+
+    // Fetch all buckets in parallel
+    const bucketPromises = imageBuckets.map(async (bucketName) => {
       try {
-        console.log(`📂 فحص bucket: ${bucketName}`);
-        const { data: files, error } = await supabase.storage
-          .from(bucketName)
-          .list('', {
-            limit: 1000,
-            offset: 0,
-            sortBy: { column: 'created_at', order: 'desc' }
-          });
+        console.log(`📂 فحص bucket (async): ${bucketName}`);
+        const result = await listBucketFiles(bucketName, '');
+        return { bucketName, ...result };
+      } catch (error) {
+        return { bucketName, success: false, error, files: [] };
+      }
+    });
 
-        if (error) {
-          console.warn(`⚠️ خطأ في جلب الصور من ${bucketName}:`, error);
-          continue;
-        }
+    const results = await Promise.all(bucketPromises);
 
-        console.log(`📊 عدد الملفات في ${bucketName}:`, files?.length || 0);
+    for (const { bucketName, success, files, error } of results) {
+      if (!success) {
+        console.warn(`⚠️ خطأ في جلب الصور من R2 ${bucketName}:`, error);
+        continue;
+      }
 
-        if (files && files.length > 0) {
-          console.log(`✅ تم العثور على ${files.length} ملف في ${bucketName}`);
-          for (const file of files) {
-            // تحقق من نوع الملف (صور فقط)
-            const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
-            if (!isImage) continue;
+      // Process files
+      console.log(`📊 عدد الملفات في ${bucketName}:`, files?.length || 0);
 
-            console.log(`🖼️ معالجة صورة: ${file.name} من ${bucketName}`);
+      if (files && files.length > 0) {
+        console.log(`✅ تم العثور على ${files.length} ملف في ${bucketName}`);
+        for (const file of files) {
+          // تحقق من نوع الملف (صور فقط)
+          const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+          if (!isImage) continue;
 
-            let userId = 'unknown';
-            let userName = 'مستخدم غير معروف';
+          console.log(`🖼️ معالجة صورة: ${file.name} من ${bucketName}`);
 
-            // استخراج معرف المستخدم من اسم الملف
-            if (file.name.includes('/')) {
-              userId = file.name.split('/')[0];
-              userName = `مستخدم ${userId}`;
-            } else if (file.name.includes('.')) {
-              // ملفات مثل userId.jpg
-              userId = file.name.split('.')[0];
-              userName = `مستخدم ${userId}`;
+          let userId = 'unknown';
+          let userName = 'مستخدم غير معروف';
+
+          // استخراج معرف المستخدم من اسم الملف
+          // في R2 (cloudflare provider)، الاسم يشمل المسار
+          if (file.name.includes('/')) {
+            userId = file.name.split('/')[0];
+            userName = `مستخدم ${userId}`;
+          } else if (file.name.includes('.')) {
+            // ملفات مثل userId.jpg
+            userId = file.name.split('.')[0];
+            userName = `مستخدم ${userId}`;
+          }
+
+
+          // Construct R2 Public URL
+          const publicUrl = `https://assets.el7lm.com/${bucketName}/${file.name}`;
+
+          const size = file.size || 0;
+          totalBytes += size;
+          const getSupabaseImageType = (bucketName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+            if (bucketName.includes('profile') || bucketName.includes('avatar')) return 'profile';
+            if (bucketName.includes('cover')) return 'cover';
+            if (bucketName.includes('additional')) return 'additional';
+            return 'unknown';
+          };
+
+          let imgFileName = file.name.split('/').pop() || file.name;
+          let displayTitle = imgFileName;
+
+          // Context-aware using bucket
+          if (bucketName.includes('avatar') || bucketName.includes('profile')) {
+            displayTitle = 'صورة شخصية';
+          } else if (bucketName.includes('club')) {
+            displayTitle = 'شعار النادي';
+          } else if (bucketName.includes('logo')) {
+            displayTitle = 'شعار';
+          } else if (bucketName.includes('cover')) {
+            displayTitle = 'صورة غلاف';
+          } else if (bucketName.includes('additional')) {
+            displayTitle = 'صورة إضافية';
+          } else if (bucketName.includes('documents')) {
+            displayTitle = 'وثيقة';
+          }
+
+          // Check for timestamp in filename
+          const tsMatch = imgFileName.match(/^(\d{13})/);
+          if (tsMatch) {
+            const ts = parseInt(tsMatch[1]);
+            const date = new Date(ts);
+            if (!isNaN(date.getTime())) {
+              // If we created a generic title context, append date
+              if (displayTitle !== imgFileName) {
+                displayTitle += ` (${date.toLocaleDateString('ar-EG')})`;
+              } else {
+                displayTitle = `صورة ${date.toLocaleDateString('ar-EG')}`;
+              }
             }
-
-            const { data: urlData } = supabase.storage
-              .from(bucketName)
-              .getPublicUrl(file.name);
-
-            if (urlData?.publicUrl && typeof urlData.publicUrl === 'string' && urlData.publicUrl.trim() !== '') {
-              const size = (file as any)?.metadata?.size || (file as any)?.size || 0;
-              totalBytes += typeof size === 'number' ? size : 0;
-              const getSupabaseImageType = (bucketName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
-                if (bucketName.includes('profile') || bucketName.includes('avatar')) return 'profile';
-                if (bucketName.includes('cover')) return 'cover';
-                if (bucketName.includes('additional')) return 'additional';
-                return 'unknown';
-              };
-
-              const imageData: ImageData = {
-                id: `supabase_img_${bucketName}_${file.name.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                title: file.name.split('/').pop() || `صورة من ${bucketName}`,
-                description: `صورة مرفوعة إلى ${bucketName} في Supabase Storage`,
-                url: urlData.publicUrl,
-                thumbnailUrl: urlData.publicUrl,
-                uploadDate: file.created_at ? new Date(file.created_at) : new Date(),
-                userId: userId,
-                userEmail: '',
-                userName: userName,
-                accountType: 'supabase',
-                status: 'pending',
-                views: 0,
-                likes: 0,
-                comments: 0,
-                phone: '',
-                sourceType: 'supabase',
-                imageType: getSupabaseImageType(bucketName)
-              };
-              supabaseImages.push(imageData);
-              console.log(`✅ تمت إضافة صورة: ${imageData.title} - ${urlData.publicUrl}`);
-            } else {
-              console.warn(`⚠️ Invalid Supabase URL for file: ${file.name}`, urlData);
+          } else if (file.updated) {
+            // Use file updated time if filename isn't helping and name matches generic pattern
+            const date = new Date(file.updated);
+            if (displayTitle !== imgFileName && displayTitle === 'صورة شخصية') {
+              displayTitle += ` ${date.toLocaleDateString('ar-EG')}`;
+            } else if (displayTitle === imgFileName) {
+              // Clean up filename
+              displayTitle = imgFileName.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ");
             }
           }
-        } else {
-          console.log(`ℹ️ لا توجد ملفات في ${bucketName}`);
+
+          const imageData: ImageData = {
+            id: `r2_img_${bucketName}_${file.name.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            title: displayTitle,
+            description: 'صورة مخزنة في النظام',
+            url: publicUrl,
+            thumbnailUrl: publicUrl,
+            uploadDate: file.updated || new Date(),
+            userId: userId,
+            userEmail: '',
+            userName: userName,
+            accountType: 'supabase', // or 'r2'
+            status: 'pending',
+            views: 0,
+            likes: 0,
+            comments: 0,
+            phone: '',
+            sourceType: 'supabase',
+            imageType: getSupabaseImageType(bucketName)
+          };
+          supabaseImages.push(imageData);
+          console.log(`✅ تمت إضافة صورة: ${imageData.title} - ${publicUrl}`);
         }
-      } catch (error) {
-        console.error(`❌ خطأ في جلب الصور من ${bucketName}:`, error);
+      } else {
+        console.log(`ℹ️ لا توجد ملفات في ${bucketName}`);
       }
     }
 
@@ -354,45 +431,96 @@ export default function MediaAdminPage() {
   }, []);
 
   // Cleanup user media from Supabase when user is disabled/deleted
+  // Cleanup user media using Server Action (supports R2 + Supabase)
   const cleanedUsersRef = React.useRef<Set<string>>(new Set());
   const cleanupUserMedia = useCallback(async (userId: string) => {
     try {
-      const imageBuckets = [
-        'profile-images',
-        'additional-images',
-        'player-avatar',
-        'player-additional-images',
-        'playertrainer',
-        'playerclub',
-        'playeragent',
-        'playeracademy',
-        'avatars'
-      ];
+      // Import dynamically if needed, or just call the imported action
+      const { deleteUserMedia } = await import('@/app/actions/media');
 
-      // Videos bucket
-      const videoPrefix = `${userId}/`;
-      const { data: videoFiles } = await supabase.storage.from(STORAGE_BUCKETS.VIDEOS).list(videoPrefix, { limit: 1000 });
-      if (videoFiles && videoFiles.length) {
-        const paths = videoFiles.map((f) => `${videoPrefix}${f.name}`);
-        await supabase.storage.from(STORAGE_BUCKETS.VIDEOS).remove(paths);
+      const result = await deleteUserMedia(userId);
+
+      if (result.success) {
+        cleanedUsersRef.current.add(userId);
+        console.log(`🧹 تم تنظيف وسائط المستخدم ${userId} بنجاح (Deleted ${result.deletedCount} files)`);
+      } else {
+        console.error('خطأ جزئي أثناء التنظيف:', result.errors);
       }
-
-      // Image buckets
-      for (const bucket of imageBuckets) {
-        const prefix = `${userId}/`;
-        const { data: files } = await supabase.storage.from(bucket).list(prefix, { limit: 1000 });
-        if (files && files.length) {
-          const paths = files.map((f) => `${prefix}${f.name}`);
-          await supabase.storage.from(bucket).remove(paths);
-        }
-      }
-
-      cleanedUsersRef.current.add(userId);
-      console.log(`🧹 تم تنظيف وسائط المستخدم ${userId} من Supabase`);
     } catch (e) {
       console.error('خطأ أثناء تنظيف وسائط المستخدم:', e);
     }
   }, []);
+
+  // Process cleanup queue one by one with rate limiting
+  useEffect(() => {
+    if (cleanupQueue.length === 0) return;
+
+    let isMounted = true;
+    let timeoutId: any;
+
+    const processNext = async () => {
+      // Optimization: Batch skip already cleaned users
+      let cleanupHistory: Record<string, number> = {};
+      try {
+        cleanupHistory = JSON.parse(localStorage.getItem('media_cleanup_history') || '{}');
+      } catch (e) {
+        console.error('Failed to parse cleanup history, resetting:', e);
+        cleanupHistory = {};
+      }
+
+      const now = Date.now();
+
+      let firstNeededIndex = -1;
+
+      for (let i = 0; i < cleanupQueue.length; i++) {
+        const id = cleanupQueue[i];
+        const last = cleanupHistory[id];
+        if (!last || (now - last) > 24 * 60 * 60 * 1000) {
+          firstNeededIndex = i;
+          break;
+        }
+      }
+
+      if (firstNeededIndex === -1 && cleanupQueue.length > 0) {
+        // All items in queue are recently cleaned
+        if (isMounted) setCleanupQueue([]);
+        return;
+      }
+
+      if (firstNeededIndex > 0) {
+        // Skip the first N items
+        if (isMounted) setCleanupQueue(prev => prev.slice(firstNeededIndex));
+        return;
+      }
+
+      const userId = cleanupQueue[0];
+
+      try {
+        await cleanupUserMedia(userId);
+        if (!isMounted) return;
+
+        // Update history
+        cleanupHistory[userId] = now;
+        localStorage.setItem('media_cleanup_history', JSON.stringify(cleanupHistory));
+      } catch (err) {
+        console.error('Queue processing error:', err);
+      }
+
+      if (!isMounted) return;
+
+      // Remove from queue and wait a bit before processing next
+      timeoutId = setTimeout(() => {
+        if (isMounted) setCleanupQueue(prev => prev.slice(1));
+      }, 1000); // 1 second delay between requests
+    };
+
+    processNext();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [cleanupQueue, cleanupUserMedia]);
 
   // Watch users status changes and hide/cleanup media for disabled/deleted users
   useEffect(() => {
@@ -403,6 +531,7 @@ export default function MediaAdminPage() {
 
     for (const collectionName of collections) {
       const unsub = onSnapshot(collection(db, collectionName), (snap) => {
+        const idsToQueue: string[] = [];
         snap.forEach((d) => {
           const u = d.data() as any;
           const isDisabled = u?.isDeleted === true || u?.isActive === false;
@@ -410,10 +539,15 @@ export default function MediaAdminPage() {
             currentDisabled.add(d.id);
             // Trigger cleanup once per user
             if (!cleanedUsersRef.current.has(d.id)) {
-              cleanupUserMedia(d.id);
+              cleanedUsersRef.current.add(d.id); // Mark as 'seen' this session
+              idsToQueue.push(d.id);
             }
           }
         });
+
+        if (idsToQueue.length > 0) {
+          setCleanupQueue(prev => [...prev, ...idsToQueue]);
+        }
         setDisabledUserIds(new Set(currentDisabled));
         // Filter already loaded media immediately
         setVideos((prev) => prev.filter((v) => !currentDisabled.has(v.userId)));
@@ -435,52 +569,70 @@ export default function MediaAdminPage() {
 
       setLoading(true);
       const allVideos: VideoData[] = [];
+      const userMap = new Map<string, string>();
 
       // Fetch from Firebase collections
       const collections = ['students', 'coaches', 'academies', 'players'];
 
-      for (const collectionName of collections) {
+      const collectionPromises = collections.map(async (collectionName) => {
         try {
-          const querySnapshot = await getDocs(collection(db, collectionName));
-
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            if (userData?.isDeleted === true) return;
-            const userVideos = userData.videos || [];
-
-            userVideos.forEach((video: any, index: number) => {
-              if (video && video.url) {
-                const videoData: VideoData = {
-                  id: `${doc.id}_${index}`,
-                  title: video.title || video.desc || `فيديو ${index + 1}`,
-                  description: video.description || video.desc || '',
-                  url: video.url,
-                  thumbnailUrl: video.thumbnail || video.thumbnailUrl,
-                  duration: video.duration || 0,
-                  uploadDate: video.uploadDate || video.createdAt || video.updated_at || new Date(),
-                  userId: doc.id,
-                  userEmail: userData.email || userData.userEmail || '',
-                  userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
-                  accountType: getAccountTypeFromCollection(collectionName),
-                  status: video.status || 'pending',
-                  views: video.views || 0,
-                  likes: video.likes || 0,
-                  comments: video.comments || 0,
-                  phone: userData.phone || userData.phoneNumber || '',
-                  sourceType: getVideoSourceType(video.url)
-                };
-                allVideos.push(videoData);
-              }
-            });
-          });
-        } catch (error) {
-          console.error(`خطأ في جلب البيانات من مجموعة ${collectionName}:`, error);
+          const snap = await getDocs(collection(db, collectionName));
+          return { collectionName, snap };
+        } catch (e) {
+          console.error(`Error fetching ${collectionName}`, e);
+          return { collectionName, snap: null };
         }
+      });
+
+      const results = await Promise.all(collectionPromises);
+
+      for (const { collectionName, snap: querySnapshot } of results) {
+        if (!querySnapshot) continue;
+
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          const userName = userData.full_name || userData.name || userData.userName || 'مستخدم';
+          userMap.set(doc.id, userName);
+
+          if (userData?.isDeleted === true) return;
+          const userVideos = userData.videos || [];
+
+          userVideos.forEach((video: any, index: number) => {
+            if (video && video.url) {
+              const videoData: VideoData = {
+                id: `${doc.id}_${index}`,
+                title: video.title || video.desc || `فيديو ${index + 1}`,
+                description: video.description || video.desc || '',
+                url: video.url,
+                thumbnailUrl: video.thumbnail || video.thumbnailUrl,
+                duration: video.duration || 0,
+                uploadDate: video.uploadDate || video.createdAt || video.updated_at || new Date(),
+                userId: doc.id,
+                userEmail: userData.email || userData.userEmail || '',
+                userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+                accountType: getAccountTypeFromCollection(collectionName),
+                status: video.status || 'pending',
+                views: video.views || 0,
+                likes: video.likes || 0,
+                comments: video.comments || 0,
+                phone: userData.phone || userData.phoneNumber || '',
+                sourceType: getVideoSourceType(video.url)
+              };
+              allVideos.push(videoData);
+            }
+          });
+        });
       }
 
       // Fetch from Supabase
       try {
         const supabaseVideos = await fetchSupabaseVideos();
+        // Update user names from map
+        supabaseVideos.forEach(v => {
+          if (userMap.has(v.userId)) {
+            v.userName = userMap.get(v.userId)!;
+          }
+        });
         allVideos.push(...supabaseVideos);
       } catch (error) {
         console.error('خطأ في جلب الفيديوهات من Supabase:', error);
@@ -499,126 +651,169 @@ export default function MediaAdminPage() {
 
     setImagesLoading(true);
     const allImages: ImageData[] = [];
+    const userMap = new Map<string, string>();
 
     console.log('🔍 بدء جلب الصور من Firebase و Supabase...');
 
     // Fetch from Firebase collections
     const collections = ['students', 'coaches', 'academies', 'players'];
 
-    for (const collectionName of collections) {
+    const collectionPromises = collections.map(async (collectionName) => {
       try {
-        console.log(`📂 جلب الصور من مجموعة: ${collectionName}`);
-        const querySnapshot = await getDocs(collection(db, collectionName));
-        let collectionImageCount = 0;
-
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data();
-          if (userData?.isDeleted === true) return;
-
-          // البحث في حقول مختلفة للصور
-          const imageFields = [
-            'images',
-            'additional_images',
-            'profile_image',
-            'cover_image',
-            'avatar',
-            'profileImage',
-            'coverImage'
-          ];
-
-          imageFields.forEach(fieldName => {
-            const fieldData = userData[fieldName];
-
-            if ((fieldName === 'profile_image' || fieldName === 'cover_image' || fieldName === 'avatar' || fieldName === 'profileImage' || fieldName === 'coverImage') && fieldData) {
-              // صورة واحدة
-              const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
-                if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
-                if (fieldName.includes('cover')) return 'cover';
-                if (fieldName === 'avatar') return 'avatar';
-                return 'unknown';
-              };
-
-              const imageUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.url === 'string' ? fieldData.url : '');
-              const imageThumbnailUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.thumbnail === 'string' ? fieldData.thumbnail : (typeof fieldData?.url === 'string' ? fieldData.url : ''));
-
-              // Skip if no valid URL
-              if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
-                console.warn(`Skipping invalid image URL for ${fieldName}:`, fieldData);
-                return;
-              }
-
-              const imageData: ImageData = {
-                id: `${doc.id}_${fieldName}`,
-                title: `صورة ${fieldName === 'profile_image' ? 'شخصية' : fieldName === 'cover_image' ? 'غلاف' : fieldName === 'avatar' ? 'رمزية' : fieldName}`,
-                description: `صورة من حقل ${fieldName}`,
-                url: imageUrl,
-                thumbnailUrl: imageThumbnailUrl,
-                uploadDate: fieldData.uploadDate || fieldData.createdAt || new Date(),
-                userId: doc.id,
-                userEmail: userData.email || userData.userEmail || '',
-                userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
-                accountType: getAccountTypeFromCollection(collectionName),
-                status: fieldData.status || 'pending',
-                views: fieldData.views || 0,
-                likes: fieldData.likes || 0,
-                comments: fieldData.comments || 0,
-                phone: userData.phone || userData.phoneNumber || '',
-                sourceType: 'firebase' as const,
-                imageType: getImageType(fieldName)
-              };
-              allImages.push(imageData);
-              collectionImageCount++;
-            } else if (Array.isArray(fieldData) && fieldData.length > 0) {
-              // مصفوفة صور
-              fieldData.forEach((image: any, index: number) => {
-                if (image && (image.url || typeof image === 'string')) {
-                  const imageUrl = typeof image === 'string' ? image : (typeof image.url === 'string' ? image.url : '');
-                  const imageThumbnailUrl = typeof image.thumbnail === 'string' ? image.thumbnail : imageUrl;
-
-                  // Skip if no valid URL
-                  if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
-                    console.warn(`Skipping invalid image URL for ${fieldName}[${index}]:`, image);
-                    return;
-                  }
-
-                  const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
-                    if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
-                    if (fieldName.includes('cover')) return 'cover';
-                    if (fieldName === 'images' || fieldName === 'additional_images') return 'additional';
-                    return 'unknown';
-                  };
-
-                  const imageData: ImageData = {
-                    id: `${doc.id}_${fieldName}_${index}`,
-                    title: image.title || image.desc || `صورة ${index + 1} من ${fieldName}`,
-                    description: image.description || image.desc || `صورة من حقل ${fieldName}`,
-                    url: imageUrl,
-                    thumbnailUrl: imageThumbnailUrl,
-                    uploadDate: image.uploadDate || image.createdAt || image.updated_at || new Date(),
-                    userId: doc.id,
-                    userEmail: userData.email || userData.userEmail || '',
-                    userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
-                    accountType: getAccountTypeFromCollection(collectionName),
-                    status: image.status || 'pending',
-                    views: image.views || 0,
-                    likes: image.likes || 0,
-                    comments: image.comments || 0,
-                    phone: userData.phone || userData.phoneNumber || '',
-                    sourceType: 'firebase' as const,
-                    imageType: getImageType(fieldName)
-                  };
-                  allImages.push(imageData);
-                  collectionImageCount++;
-                }
-              });
-            }
-          });
-        });
-
-        console.log(`✅ تم جلب ${collectionImageCount} صورة من ${collectionName}`);
-      } catch (error) {
-        console.error(`❌ خطأ في جلب البيانات من مجموعة ${collectionName}:`, error);
+        console.log(`📂 جلب الصور من مجموعة (async): ${collectionName}`);
+        const snap = await getDocs(collection(db, collectionName));
+        return { collectionName, snap };
+      } catch (e) {
+        console.error(`Error fetching ${collectionName}`, e);
+        return { collectionName, snap: null };
       }
+    });
+
+    const results = await Promise.all(collectionPromises);
+
+    for (const { collectionName, snap: querySnapshot } of results) {
+      if (!querySnapshot) continue;
+      let collectionImageCount = 0;
+
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        const userName = userData.full_name || userData.name || userData.userName || 'مستخدم';
+        userMap.set(doc.id, userName);
+
+        if (userData?.isDeleted === true) return;
+
+        // البحث في حقول مختلفة للصور
+        const imageFields = [
+          'images',
+          'additional_images',
+          'profile_image',
+          'cover_image',
+          'avatar',
+          'profileImage',
+          'coverImage'
+        ];
+
+        imageFields.forEach(fieldName => {
+          const fieldData = userData[fieldName];
+
+          if ((fieldName === 'profile_image' || fieldName === 'cover_image' || fieldName === 'avatar' || fieldName === 'profileImage' || fieldName === 'coverImage') && fieldData) {
+            // صورة واحدة
+            const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+              if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
+              if (fieldName.includes('cover')) return 'cover';
+              if (fieldName === 'avatar') return 'avatar';
+              return 'unknown';
+            };
+
+            const imageUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.url === 'string' ? fieldData.url : '');
+            const imageThumbnailUrl = typeof fieldData === 'string' ? fieldData : (typeof fieldData?.thumbnail === 'string' ? fieldData.thumbnail : (typeof fieldData?.url === 'string' ? fieldData.url : ''));
+
+            // Skip if no valid URL
+            if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
+              console.warn(`Skipping invalid image URL for ${fieldName}:`, fieldData);
+              return;
+            }
+
+            const imageData: ImageData = {
+              id: `${doc.id}_${fieldName}`,
+              title: fieldName === 'profile_image' || fieldName === 'profileImage' ? 'صورة شخصية' :
+                fieldName === 'cover_image' || fieldName === 'coverImage' ? 'صورة غلاف' :
+                  fieldName === 'avatar' ? 'أفاتار' : fieldName,
+              description: `صورة ${fieldName} للمستخدم`,
+              url: imageUrl,
+              thumbnailUrl: imageThumbnailUrl,
+              uploadDate: userData.createdAt || userData.created_at || new Date(),
+              userId: doc.id,
+              userEmail: userData.email || userData.userEmail || '',
+              userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+              accountType: getAccountTypeFromCollection(collectionName),
+              status: 'approved',
+              views: 0,
+              likes: 0,
+              comments: 0,
+              phone: userData.phone || userData.phoneNumber || '',
+              sourceType: 'firebase' as const,
+              imageType: getImageType(fieldName)
+            };
+            allImages.push(imageData);
+            collectionImageCount++;
+          } else if (Array.isArray(fieldData)) {
+            // مصفوفة صور
+            fieldData.forEach((image: any, index: number) => {
+              if (image && typeof image === 'string') {
+                const imageUrl = image;
+                const imageThumbnailUrl = image; // Assuming thumbnail is same as URL for string images
+
+                // Skip if no valid URL
+                if (!imageUrl || imageUrl.trim() === '' || imageUrl === '[object Object]') {
+                  console.warn(`Skipping invalid image URL for ${fieldName}[${index}]:`, image);
+                  return;
+                }
+
+                const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+                  if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
+                  if (fieldName.includes('cover')) return 'cover';
+                  if (fieldName.includes('additional')) return 'additional';
+                  return 'unknown';
+                };
+
+                const imageData: ImageData = {
+                  id: `${doc.id}_${fieldName}_${index}`,
+                  title: `صورة ${index + 1}`,
+                  description: `صورة من حقل ${fieldName}`,
+                  url: imageUrl,
+                  thumbnailUrl: imageThumbnailUrl,
+                  uploadDate: userData.createdAt || new Date(),
+                  userId: doc.id,
+                  userEmail: userData.email || userData.userEmail || '',
+                  userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+                  accountType: getAccountTypeFromCollection(collectionName),
+                  status: 'pending',
+                  views: 0,
+                  likes: 0,
+                  comments: 0,
+                  phone: userData.phone || userData.phoneNumber || '',
+                  sourceType: 'firebase' as const,
+                  imageType: getImageType(fieldName)
+                };
+                allImages.push(imageData);
+                collectionImageCount++;
+              } else if (image && image.url) {
+                const getImageType = (fieldName: string): 'profile' | 'cover' | 'additional' | 'avatar' | 'unknown' => {
+                  if (fieldName.includes('profile') || fieldName === 'avatar') return 'profile';
+                  if (fieldName.includes('cover')) return 'cover';
+                  if (fieldName.includes('additional')) return 'additional';
+                  return 'unknown';
+                };
+
+                const imageData: ImageData = {
+                  id: `${doc.id}_${fieldName}_${index}`,
+                  title: image.title || `صورة ${index + 1}`,
+                  description: image.description || image.desc || '',
+                  url: image.url,
+                  thumbnailUrl: image.thumbnail || image.thumbnailUrl || image.url,
+                  uploadDate: image.uploadDate || userData.createdAt || new Date(),
+                  userId: doc.id,
+                  userEmail: userData.email || userData.userEmail || '',
+                  userName: userData.full_name || userData.name || userData.userName || 'مستخدم',
+                  accountType: getAccountTypeFromCollection(collectionName),
+                  status: image.status || 'pending',
+                  views: image.views || 0,
+                  likes: image.likes || 0,
+                  comments: image.comments || 0,
+                  phone: userData.phone || userData.phoneNumber || '',
+                  sourceType: 'firebase' as const,
+                  imageType: getImageType(fieldName)
+                };
+                allImages.push(imageData);
+                collectionImageCount++;
+              }
+            });
+          }
+        });
+      });
+
+      console.log(`✅ تم جلب ${collectionImageCount} صورة من ${collectionName}`);
     }
 
     console.log(`📊 إجمالي الصور من Firebase: ${allImages.length}`);
@@ -626,17 +821,23 @@ export default function MediaAdminPage() {
     // Fetch from Supabase
     try {
       const supabaseImages = await fetchSupabaseImages();
+      // Update user names from map
+      supabaseImages.forEach(img => {
+        if (userMap.has(img.userId)) {
+          img.userName = userMap.get(img.userId)!;
+        }
+      });
       allImages.push(...supabaseImages);
       console.log(`📊 إجمالي الصور بعد Supabase: ${allImages.length}`);
     } catch (error) {
       console.error('❌ خطأ في جلب الصور من Supabase:', error);
     }
 
-      setImages(allImages);
-      setImagesLoading(false);
-      console.log(`🎉 انتهى جلب الصور. العدد النهائي: ${allImages.length}`);
-      
-      return allImages;
+    setImages(allImages);
+    setImagesLoading(false);
+    console.log(`🎉 انتهى جلب الصور. العدد النهائي: ${allImages.length}`);
+
+    return allImages;
   }, [user?.uid, userData?.role, fetchSupabaseImages]);
 
   // Fetch Images
@@ -754,7 +955,7 @@ export default function MediaAdminPage() {
       const [userId, itemIndex] = mediaId.split('_');
       const isImage = mediaId.includes('img');
       const collectionName = selectedMedia.accountType === 'student' ? 'students' :
-                           selectedMedia.accountType === 'coach' ? 'coaches' : 'academies';
+        selectedMedia.accountType === 'coach' ? 'coaches' : 'academies';
 
       const userRef = doc(db, collectionName, userId);
       const userDoc = await getDoc(userRef);
@@ -841,32 +1042,32 @@ export default function MediaAdminPage() {
       const userId = media.userId;
       const userRef = doc(db, 'players', userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const isImage = activeTab === 'images';
         const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
-        
+
         // Find the media in the array - try multiple matching strategies
         let mediaIndex = -1;
-        
+
         // Strategy 1: Match by ID
         mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
-        
+
         // Strategy 2: Match by URL (if ID didn't match)
         if (mediaIndex === -1 && media.url) {
           mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
         }
-        
+
         // Strategy 3: Match by title (if URL didn't match)
         if (mediaIndex === -1 && media.title) {
-          mediaIndex = mediaArray.findIndex((m: any) => 
-            (m.title && m.title === media.title) || 
+          mediaIndex = mediaArray.findIndex((m: any) =>
+            (m.title && m.title === media.title) ||
             (m.desc && m.desc === media.title) ||
             (m.description && m.description === media.title)
           );
         }
-        
+
         // Strategy 4: Match by index in ID (for IDs like userId_index)
         if (mediaIndex === -1 && media.id.includes('_')) {
           const parts = media.id.split('_');
@@ -876,11 +1077,11 @@ export default function MediaAdminPage() {
             mediaIndex = numericIndex;
           }
         }
-        
+
         if (mediaIndex !== -1) {
           mediaArray[mediaIndex].status = 'approved';
           mediaArray[mediaIndex].updatedAt = new Date();
-          
+
           const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
           await updateDoc(userRef, updateData);
         } else {
@@ -888,39 +1089,39 @@ export default function MediaAdminPage() {
         }
       }
 
-          // Update local state
-          if (activeTab === 'videos') {
-            setVideos(prev => prev.map(v =>
-              v.id === media.id ? { ...v, status: 'approved' as const } : v
-            ));
-          } else {
-            setImages(prev => prev.map(i =>
-              i.id === media.id ? { ...i, status: 'approved' as const } : i
-            ));
-            // Refetch images to ensure database changes are reflected
-            setTimeout(() => refetchImages(), 500);
-          }
+      // Update local state
+      if (activeTab === 'videos') {
+        setVideos(prev => prev.map(v =>
+          v.id === media.id ? { ...v, status: 'approved' as const } : v
+        ));
+      } else {
+        setImages(prev => prev.map(i =>
+          i.id === media.id ? { ...i, status: 'approved' as const } : i
+        ));
+        // Refetch images to ensure database changes are reflected
+        setTimeout(() => refetchImages(), 500);
+      }
 
-          // Log action
-          await actionLogService.logVideoAction({
-            action: 'status_change',
-            videoId: media.id,
-            playerId: media.userId,
-            actionBy: user?.uid || 'system',
-            actionByType: 'admin',
-            details: {
-              oldStatus: media.status,
-              newStatus: 'approved',
-              notes: `تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بواسطة المدير`,
-              adminNotes: `تم التغيير بواسطة: ${user?.email}`
-            }
-          });
+      // Log action
+      await actionLogService.logVideoAction({
+        action: 'status_change',
+        videoId: media.id,
+        playerId: media.userId,
+        actionBy: user?.uid || 'system',
+        actionByType: 'admin',
+        details: {
+          oldStatus: media.status,
+          newStatus: 'approved',
+          notes: `تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بواسطة المدير`,
+          adminNotes: `تم التغيير بواسطة: ${user?.email}`
+        }
+      });
 
       toast.success(`تم الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'} بنجاح`);
     } catch (error) {
       console.error('Error approving media:', error);
       toast.error(`حدث خطأ أثناء الموافقة على ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'}`);
-      
+
       // Revert local state on error
       if (activeTab === 'videos') {
         setVideos(prev => prev.map(v =>
@@ -1518,32 +1719,32 @@ export default function MediaAdminPage() {
       const userId = media.userId;
       const userRef = doc(db, 'players', userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const isImage = activeTab === 'images';
         const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
-        
+
         // Find the media in the array - try multiple matching strategies
         let mediaIndex = -1;
-        
+
         // Strategy 1: Match by ID
         mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
-        
+
         // Strategy 2: Match by URL (if ID didn't match)
         if (mediaIndex === -1 && media.url) {
           mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
         }
-        
+
         // Strategy 3: Match by title (if URL didn't match)
         if (mediaIndex === -1 && media.title) {
-          mediaIndex = mediaArray.findIndex((m: any) => 
-            (m.title && m.title === media.title) || 
+          mediaIndex = mediaArray.findIndex((m: any) =>
+            (m.title && m.title === media.title) ||
             (m.desc && m.desc === media.title) ||
             (m.description && m.description === media.title)
           );
         }
-        
+
         // Strategy 4: Match by index in ID (for IDs like userId_index)
         if (mediaIndex === -1 && media.id.includes('_')) {
           const parts = media.id.split('_');
@@ -1553,11 +1754,11 @@ export default function MediaAdminPage() {
             mediaIndex = numericIndex;
           }
         }
-        
+
         if (mediaIndex !== -1) {
           mediaArray[mediaIndex].status = 'rejected';
           mediaArray[mediaIndex].updatedAt = new Date();
-          
+
           const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
           await updateDoc(userRef, updateData);
         } else {
@@ -1565,18 +1766,18 @@ export default function MediaAdminPage() {
         }
       }
 
-          // Update local state
-          if (activeTab === 'videos') {
-            setVideos(prev => prev.map(v =>
-              v.id === media.id ? { ...v, status: 'rejected' as const } : v
-            ));
-          } else {
-            setImages(prev => prev.map(i =>
-              i.id === media.id ? { ...i, status: 'rejected' as const } : i
-            ));
-            // Refetch images to ensure database changes are reflected
-            setTimeout(() => refetchImages(), 500);
-          }
+      // Update local state
+      if (activeTab === 'videos') {
+        setVideos(prev => prev.map(v =>
+          v.id === media.id ? { ...v, status: 'rejected' as const } : v
+        ));
+      } else {
+        setImages(prev => prev.map(i =>
+          i.id === media.id ? { ...i, status: 'rejected' as const } : i
+        ));
+        // Refetch images to ensure database changes are reflected
+        setTimeout(() => refetchImages(), 500);
+      }
 
       // Log action
       await actionLogService.logVideoAction({
@@ -1597,7 +1798,7 @@ export default function MediaAdminPage() {
     } catch (error) {
       console.error('Error rejecting media:', error);
       toast.error(`حدث خطأ أثناء رفض ${activeTab === 'videos' ? 'الفيديو' : 'الصورة'}`);
-      
+
       // Revert local state on error
       if (activeTab === 'videos') {
         setVideos(prev => prev.map(v =>
@@ -1634,12 +1835,12 @@ export default function MediaAdminPage() {
           const userId = media.userId;
           const userRef = doc(db, 'players', userId);
           const userDoc = await getDoc(userRef);
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const isImage = activeTab === 'images';
             const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
-            
+
             console.log(`🔍 البحث عن ${isImage ? 'صورة' : 'فيديو'}:`, {
               mediaId: media.id,
               mediaUrl: media.url,
@@ -1647,27 +1848,27 @@ export default function MediaAdminPage() {
               arrayLength: mediaArray.length,
               isImage
             });
-            
+
             // Find the media in the array - try multiple matching strategies
             let mediaIndex = -1;
-            
+
             // Strategy 1: Match by ID
             mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
-            
+
             // Strategy 2: Match by URL (if ID didn't match)
             if (mediaIndex === -1 && media.url) {
               mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
             }
-            
+
             // Strategy 3: Match by title (if URL didn't match)
             if (mediaIndex === -1 && media.title) {
-              mediaIndex = mediaArray.findIndex((m: any) => 
-                (m.title && m.title === media.title) || 
+              mediaIndex = mediaArray.findIndex((m: any) =>
+                (m.title && m.title === media.title) ||
                 (m.desc && m.desc === media.title) ||
                 (m.description && m.description === media.title)
               );
             }
-            
+
             // Strategy 4: Match by index in ID (for IDs like userId_index)
             if (mediaIndex === -1 && media.id.includes('_')) {
               const parts = media.id.split('_');
@@ -1677,17 +1878,17 @@ export default function MediaAdminPage() {
                 mediaIndex = numericIndex;
               }
             }
-            
+
             console.log(`📌 النتيجة:`, {
               found: mediaIndex !== -1,
               index: mediaIndex,
               currentStatus: mediaIndex !== -1 ? mediaArray[mediaIndex]?.status : 'N/A'
             });
-            
+
             if (mediaIndex !== -1) {
               mediaArray[mediaIndex].status = 'approved';
               mediaArray[mediaIndex].updatedAt = new Date();
-              
+
               const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
               await updateDoc(userRef, updateData);
               console.log(`✅ تم تحديث ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
@@ -1729,7 +1930,7 @@ export default function MediaAdminPage() {
           console.error(`❌ خطأ في الموافقة على ${media.id}:`, error);
           errorCount++;
           errors.push(`${media.title}: ${error.message || error}`);
-          
+
           // Revert local state on error
           if (activeTab === 'videos') {
             setVideos(prev => prev.map(v =>
@@ -1788,12 +1989,12 @@ export default function MediaAdminPage() {
           const userId = media.userId;
           const userRef = doc(db, 'players', userId);
           const userDoc = await getDoc(userRef);
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const isImage = activeTab === 'images';
             const mediaArray = isImage ? (userData.images || []) : (userData.videos || []);
-            
+
             console.log(`🔍 البحث عن ${isImage ? 'صورة' : 'فيديو'} للرفض:`, {
               mediaId: media.id,
               mediaUrl: media.url,
@@ -1801,27 +2002,27 @@ export default function MediaAdminPage() {
               arrayLength: mediaArray.length,
               isImage
             });
-            
+
             // Find the media in the array - try multiple matching strategies
             let mediaIndex = -1;
-            
+
             // Strategy 1: Match by ID
             mediaIndex = mediaArray.findIndex((m: any) => m.id === media.id);
-            
+
             // Strategy 2: Match by URL (if ID didn't match)
             if (mediaIndex === -1 && media.url) {
               mediaIndex = mediaArray.findIndex((m: any) => m.url === media.url || m.url?.includes(media.url) || media.url?.includes(m.url));
             }
-            
+
             // Strategy 3: Match by title (if URL didn't match)
             if (mediaIndex === -1 && media.title) {
-              mediaIndex = mediaArray.findIndex((m: any) => 
-                (m.title && m.title === media.title) || 
+              mediaIndex = mediaArray.findIndex((m: any) =>
+                (m.title && m.title === media.title) ||
                 (m.desc && m.desc === media.title) ||
                 (m.description && m.description === media.title)
               );
             }
-            
+
             // Strategy 4: Match by index in ID (for IDs like userId_index)
             if (mediaIndex === -1 && media.id.includes('_')) {
               const parts = media.id.split('_');
@@ -1831,17 +2032,17 @@ export default function MediaAdminPage() {
                 mediaIndex = numericIndex;
               }
             }
-            
+
             console.log(`📌 النتيجة:`, {
               found: mediaIndex !== -1,
               index: mediaIndex,
               currentStatus: mediaIndex !== -1 ? mediaArray[mediaIndex]?.status : 'N/A'
             });
-            
+
             if (mediaIndex !== -1) {
               mediaArray[mediaIndex].status = 'rejected';
               mediaArray[mediaIndex].updatedAt = new Date();
-              
+
               const updateData = isImage ? { images: mediaArray } : { videos: mediaArray };
               await updateDoc(userRef, updateData);
               console.log(`✅ تم تحديث ${isImage ? 'الصورة' : 'الفيديو'} في قاعدة البيانات`);
@@ -1883,7 +2084,7 @@ export default function MediaAdminPage() {
           console.error(`❌ خطأ في رفض ${media.id}:`, error);
           errorCount++;
           errors.push(`${media.title}: ${error.message || error}`);
-          
+
           // Revert local state on error
           if (activeTab === 'videos') {
             setVideos(prev => prev.map(v =>
@@ -2024,7 +2225,7 @@ export default function MediaAdminPage() {
     const getPageNumbers = () => {
       const pages: (number | string)[] = [];
       const maxVisible = 5;
-      
+
       if (totalPages <= maxVisible) {
         // Show all pages if total is small
         for (let i = 1; i <= totalPages; i++) {
@@ -2033,27 +2234,27 @@ export default function MediaAdminPage() {
       } else {
         // Always show first page
         pages.push(1);
-        
+
         if (currentPage > 3) {
           pages.push('...');
         }
-        
+
         // Show pages around current page
         const start = Math.max(2, currentPage - 1);
         const end = Math.min(totalPages - 1, currentPage + 1);
-        
+
         for (let i = start; i <= end; i++) {
           pages.push(i);
         }
-        
+
         if (currentPage < totalPages - 2) {
           pages.push('...');
         }
-        
+
         // Always show last page
         pages.push(totalPages);
       }
-      
+
       return pages;
     };
 
@@ -2073,7 +2274,7 @@ export default function MediaAdminPage() {
               <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, totalItems)}</span> من{' '}
               <span className="font-semibold text-gray-900">{totalItems.toLocaleString()}</span> عنصر
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Label className="text-xs text-gray-500">عرض:</Label>
               <Select
@@ -2138,11 +2339,10 @@ export default function MediaAdminPage() {
                     variant={currentPage === page ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => goToPage(page as number)}
-                    className={`h-8 w-8 p-0 ${
-                      currentPage === page
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : ''
-                    }`}
+                    className={`h-8 w-8 p-0 ${currentPage === page
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : ''
+                      }`}
                   >
                     {page}
                   </Button>
@@ -2196,7 +2396,7 @@ export default function MediaAdminPage() {
 
   // Check if user is admin using accountType (primary) or role (fallback)
   const isAdmin = userData?.accountType === 'admin' || userData?.role === 'admin';
-  
+
   if (!userData || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -2214,37 +2414,37 @@ export default function MediaAdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-          <div className="max-w-7xl mx-auto p-6">
-            {/* Header */}
-            <div className="mb-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">إدارة الوسائط</h1>
-                  <p className="text-gray-600">إدارة ومراجعة الفيديوهات والصور</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
-                    عرض {filteredMedia.length} من {currentMediaData.length}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={viewMode === 'grid' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setViewMode('grid')}
-                    >
-                      <Grid3X3 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant={viewMode === 'list' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setViewMode('list')}
-                    >
-                      <List className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">إدارة الوسائط</h1>
+              <p className="text-gray-600">إدارة ومراجعة الفيديوهات والصور</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
+                عرض {filteredMedia.length} من {currentMediaData.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
               </div>
             </div>
+          </div>
+        </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MediaType)} className="mb-6">
@@ -2496,8 +2696,8 @@ export default function MediaAdminPage() {
                             const thumbnail = getVideoThumbnail(video);
                             return thumbnail ? (
                               <>
-                                <img 
-                                  src={thumbnail} 
+                                <img
+                                  src={thumbnail}
                                   alt={video.title}
                                   onError={(e) => {
                                     // Fallback if thumbnail fails to load
@@ -2508,7 +2708,7 @@ export default function MediaAdminPage() {
                                       if (fallback) fallback.style.display = 'flex';
                                     }
                                   }}
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />
                                 {/* Fallback thumbnail */}
                                 <div className="fallback-thumbnail hidden w-full h-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
@@ -2554,45 +2754,45 @@ export default function MediaAdminPage() {
                             </div>
                           ) : (
                             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleQuickApprove(video, e)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-6 text-xs"
-                              title="موافقة"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleQuickReject(video, e)}
-                              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-6 text-xs"
-                              title="رفض"
-                            >
-                              <XCircle className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleDeleteMedia(video, e)}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-6 text-xs"
-                              title="حذف"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleQuickApprove(video, e)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-6 text-xs"
+                                title="موافقة"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleQuickReject(video, e)}
+                                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-6 text-xs"
+                                title="رفض"
+                              >
+                                <XCircle className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleDeleteMedia(video, e)}
+                                className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-6 text-xs"
+                                title="حذف"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
                           )}
                         </div>
                         <CardContent className="p-4 bg-white">
-                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-3 text-sm leading-tight">
-                            {video.title}
+                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-3 text-sm leading-tight break-all" title={video.title}>
+                            {truncateText(video.title, 40)}
                           </h3>
-                          
+
                           {/* Description if available */}
                           {video.description && (
                             <p className="text-xs text-gray-600 line-clamp-2 mb-3">
                               {video.description}
                             </p>
                           )}
-                          
+
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -2604,7 +2804,7 @@ export default function MediaAdminPage() {
                                 {displayPhoneNumber(video.phone)}
                               </span>
                             </div>
-                            
+
                             {/* Stats row */}
                             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                               <div className="flex items-center gap-3 text-xs text-gray-600">
@@ -2628,7 +2828,7 @@ export default function MediaAdminPage() {
                                 </Badge>
                               </div>
                             </div>
-                            
+
                             {/* Upload date */}
                             {video.uploadDate && (
                               <div className="text-xs text-gray-500 pt-1">
@@ -2728,8 +2928,8 @@ export default function MediaAdminPage() {
                         <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative flex-shrink-0">
                           {image.thumbnailUrl || image.url ? (
                             <>
-                              <img 
-                                src={image.thumbnailUrl || image.url} 
+                              <img
+                                src={image.thumbnailUrl || image.url}
                                 alt={image.title}
                                 onError={(e) => {
                                   // Fallback if image fails to load
@@ -2740,7 +2940,7 @@ export default function MediaAdminPage() {
                                     if (fallback) fallback.style.display = 'flex';
                                   }
                                 }}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
                               {/* Fallback image */}
                               <div className="fallback-image hidden w-full h-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
@@ -2775,10 +2975,10 @@ export default function MediaAdminPage() {
                           {image.imageType && (
                             <div className="absolute bottom-2 left-2 z-10">
                               <Badge variant="secondary" className="text-xs bg-black/70 text-white backdrop-blur-sm px-2 py-0.5">
-                                {image.imageType === 'profile' ? 'شخصية' : 
-                                 image.imageType === 'cover' ? 'غلاف' :
-                                 image.imageType === 'avatar' ? 'رمزية' :
-                                 image.imageType === 'additional' ? 'إضافية' : image.imageType}
+                                {image.imageType === 'profile' ? 'شخصية' :
+                                  image.imageType === 'cover' ? 'غلاف' :
+                                    image.imageType === 'avatar' ? 'رمزية' :
+                                      image.imageType === 'additional' ? 'إضافية' : image.imageType}
                               </Badge>
                             </div>
                           )}
@@ -2797,45 +2997,45 @@ export default function MediaAdminPage() {
                             </div>
                           ) : (
                             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleQuickApprove(image, e)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
-                              title="موافقة"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleQuickReject(image, e)}
-                              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
-                              title="رفض"
-                            >
-                              <XCircle className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={(e) => handleDeleteMedia(image, e)}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
-                              title="حذف"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleQuickApprove(image, e)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
+                                title="موافقة"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleQuickReject(image, e)}
+                                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
+                                title="رفض"
+                              >
+                                <XCircle className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => handleDeleteMedia(image, e)}
+                                className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 h-7 text-xs shadow-lg"
+                                title="حذف"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
                           )}
                         </div>
                         <CardContent className="p-4 bg-white flex-1 flex flex-col">
-                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 text-sm leading-tight min-h-[2.5rem]">
-                            {image.title}
+                          <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 text-sm leading-tight min-h-[2.5rem] break-all" title={image.title}>
+                            {truncateText(image.title, 40)}
                           </h3>
-                          
+
                           {/* Description if available */}
                           {image.description && (
                             <p className="text-xs text-gray-600 line-clamp-2 mb-3 flex-shrink-0">
                               {image.description}
                             </p>
                           )}
-                          
+
                           <div className="space-y-2 text-sm mt-auto">
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -2849,7 +3049,7 @@ export default function MediaAdminPage() {
                                 </span>
                               </div>
                             )}
-                            
+
                             {/* Stats row */}
                             <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
                               <div className="flex items-center gap-3 text-xs text-gray-600">
@@ -2875,7 +3075,7 @@ export default function MediaAdminPage() {
                                 </Badge>
                               </div>
                             </div>
-                            
+
                             {/* Upload date */}
                             {image.uploadDate && (
                               <div className="text-xs text-gray-500 pt-1">

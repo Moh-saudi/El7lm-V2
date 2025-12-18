@@ -21,35 +21,27 @@ export interface AdFileInfo {
  * التحقق من وجود bucket الإعلانات وإنشاؤه إذا لم يكن موجوداً
  */
 export async function ensureAdsBucketExists(): Promise<boolean> {
+  // إذا كنا نستخدم Cloudflare R2، نفترض أن الـ bucket موجود أو يتم التعامل معه من قبل المزود
+  if (process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET) {
+    return true;
+  }
+
   try {
-    console.log('Checking if ads bucket exists...');
-    
-    // محاولة الوصول إلى bucket
+    console.log('Checking if ads bucket exists in Supabase...');
+    // ... rest of supabase check code ...
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKETS.ADS)
-      .list('', { 
+      .list('', {
         limit: 1
       });
 
     if (error) {
       console.error('Error checking ads bucket:', error);
-      
-      // إذا كان الخطأ يشير إلى أن bucket غير موجود
-      if (error.message.includes('not found') || error.message.includes('does not exist')) {
-        console.log('Ads bucket not found. Please create it manually in Supabase Dashboard.');
-        console.log('Steps to create bucket:');
-        console.log('1. Go to Supabase Dashboard');
-        console.log('2. Navigate to Storage');
-        console.log('3. Create a new bucket named "ads"');
-        console.log('4. Set it to public');
-        console.log('5. Run the SQL policies from supabase-ads-policies-simple.sql');
-        return false;
-      }
-      
+      // ... error handling ...
       return false;
     }
 
-    console.log('Ads bucket exists and is accessible');
+    console.log('Ads bucket exists in Supabase');
     return true;
   } catch (error) {
     console.error('Error checking ads bucket:', error);
@@ -79,9 +71,9 @@ export async function uploadAdFile(
     // التحقق من نوع الملف
     const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov'];
-    
+
     const allowedTypes = fileType === 'image' ? allowedImageTypes : allowedVideoTypes;
-    
+
     if (!allowedTypes.includes(file.type)) {
       return {
         error: `نوع الملف غير مدعوم. الأنواع المدعومة: ${allowedTypes.join(', ')}`
@@ -98,62 +90,33 @@ export async function uploadAdFile(
 
     // إنشاء مسار فريد للملف
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    const fileName = `${adId}_${timestamp}.${fileExtension}`;
-    const filePath = `${fileType}s/${fileName}`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = file.name.split('.').slice(0, -1).join('.');
 
-    console.log('Uploading file to path:', filePath);
+    // تنظيف اسم الملف
+    const cleanFileName = fileName.replace(/[^a-zA-Z0-9]/g, '_');
 
-    // رفع الملف مباشرة إلى Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    // الهيكل: ads/{adId}/{type}_{timestamp}_{name}.{ext}
+    const filePath = `ads/${adId}/${fileType}_${timestamp}_${cleanFileName}.${fileExt}`;
 
-    if (error) {
-      console.error('Error uploading ad file:', error);
-      
-      // رسائل خطأ أكثر تفصيلاً
-      if (error.message.includes('not found')) {
-        return {
-          error: 'bucket الإعلانات غير موجود. يرجى إنشاؤه في Supabase Dashboard.'
-        };
-      } else if (error.message.includes('permission')) {
-        return {
-          error: 'لا توجد صلاحيات كافية لرفع الملف. يرجى التحقق من سياسات Storage.'
-        };
-      } else if (error.message.includes('already exists')) {
-        return {
-          error: 'الملف موجود بالفعل. يرجى اختيار ملف آخر.'
-        };
-      }
-      
-      return {
-        error: `فشل في رفع الملف: ${error.message}`
-      };
-    }
+    console.log('Uploading file to storage path:', filePath);
 
-    console.log('File uploaded successfully, getting public URL...');
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+    const bucket = STORAGE_BUCKETS.ADS || 'ads';
 
-    // الحصول على الرابط العام
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .getPublicUrl(filePath);
+    const result = await storageManager.upload(bucket, filePath, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false
+    });
 
-    if (!urlData.publicUrl) {
-      return {
-        error: 'فشل في الحصول على الرابط العام للملف'
-      };
-    }
-
-    console.log('Upload completed successfully:', urlData.publicUrl);
+    console.log('Upload completed successfully:', result.publicUrl);
 
     return {
-      url: urlData.publicUrl,
-      path: filePath,
-      publicUrl: urlData.publicUrl
+      url: result.publicUrl,
+      path: result.path,
+      publicUrl: result.publicUrl
     };
 
   } catch (error) {
@@ -170,27 +133,31 @@ export async function uploadAdFile(
 export async function deleteAdFile(filePath: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('Deleting file:', filePath);
-    
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .remove([filePath]);
 
-    if (error) {
-      console.error('Error deleting ad file:', error);
-      return {
-        success: false,
-        error: `فشل في حذف الملف: ${error.message}`
-      };
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+    // الدالة تفترض أن filePath كامل لكن storageManager يحتاج bucket + path
+    // للتوافق، سنستخدم bucket الإعلانات إذا لم يكن مضمناً في المسار
+    const bucket = STORAGE_BUCKETS.ADS || 'ads';
+
+    // إذا كان المسار يحتوي على الرابط الكامل، نستخرج المسار النسبي
+    const relativePath = filePath.replace(/^https?:\/\/.*?\//, '');
+
+    const result = await storageManager.delete(bucket, relativePath);
+
+    if (result.error) {
+      // قد لا يكون خطأ حقيقي إذا كان الملف غير موجود
+      console.warn('Warning during file deletion:', result.error);
     }
 
-    console.log('File deleted successfully');
+    console.log('File deleted successfully check completed');
     return { success: true };
 
   } catch (error) {
     console.error('Error in deleteAdFile:', error);
     return {
       success: false,
-      error: `خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`
+      error: `فشل في حذف الملف: ${error instanceof Error ? error.message : String(error)}`
     };
   }
 }
@@ -201,7 +168,7 @@ export async function deleteAdFile(filePath: string): Promise<{ success: boolean
 export async function getAdFiles(adId: string): Promise<AdFileInfo[]> {
   try {
     console.log('Getting files for ad:', adId);
-    
+
     // البحث في مجلد الصور
     const { data: images, error: imagesError } = await supabase.storage
       .from(STORAGE_BUCKETS.ADS)
@@ -283,7 +250,7 @@ export async function getAdsStorageStats(): Promise<{
 }> {
   try {
     console.log('Getting storage stats...');
-    
+
     const { data: images } = await supabase.storage
       .from(STORAGE_BUCKETS.ADS)
       .list('images');
@@ -298,13 +265,13 @@ export async function getAdsStorageStats(): Promise<{
 
     // حساب الحجم الإجمالي
     let totalSize = 0;
-    
+
     if (images) {
       for (const image of images) {
         totalSize += image.metadata?.size || 0;
       }
     }
-    
+
     if (videos) {
       for (const video of videos) {
         totalSize += video.metadata?.size || 0;

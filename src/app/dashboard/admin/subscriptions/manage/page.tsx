@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  getDocs, 
-  doc, 
-  updateDoc, 
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
   addDoc,
   deleteDoc,
   query,
@@ -136,17 +136,17 @@ export default function SubscriptionPlansManagement() {
     try {
       setLoading(true);
       const plansQuery = query(
-        collection(db, 'subscription_plans'), 
+        collection(db, 'subscription_plans'),
         orderBy('price', 'asc')
       );
       const snapshot = await getDocs(plansQuery);
-      
+
       if (snapshot.empty) {
         // إنشاء خطط افتراضية إذا لم توجد
         await createDefaultPlans();
         return;
       }
-      
+
       const plansData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -155,13 +155,13 @@ export default function SubscriptionPlansManagement() {
         isFeatured: doc.data().isFeatured ?? false,
         features: Array.isArray(doc.data().features) ? doc.data().features : []
       })) as SubscriptionPlan[];
-      
+
       console.log('📦 تم جلب الباقات في صفحة الإدمن:', plansData);
       console.log(`💼 إجمالي الباقات: ${plansData.length}`);
       plansData.forEach(plan => {
         console.log(`📋 ${plan.name}: ${plan.price} ${plan.currency} - نشطة: ${plan.isActive} - مميزة: ${plan.isFeatured}`);
       });
-      
+
       setPlans(plansData);
     } catch (error) {
       console.error('خطأ في جلب الخطط:', error);
@@ -242,69 +242,69 @@ export default function SubscriptionPlansManagement() {
 
   const savePlan = async () => {
     if (!editingPlan) return;
-    
+
     // التأكد من وجود features صحيحة
     const safePlan = {
       ...editingPlan,
       features: Array.isArray(editingPlan.features) ? editingPlan.features : []
     };
-    
+
     setSaving(true);
     try {
       if (isCreating) {
         // إنشاء خطة جديدة
         const { id, ...planDataToCreate } = safePlan;
-        
+
         console.log('🆕 إنشاء باقة جديدة:', planDataToCreate);
         console.log(`📋 الاسم: ${planDataToCreate.name}`);
         console.log(`💰 السعر: ${planDataToCreate.price} ${planDataToCreate.currency}`);
         console.log(`✅ نشطة: ${planDataToCreate.isActive}`);
-        
+
         const docRef = await addDoc(collection(db, 'subscription_plans'), {
           ...planDataToCreate,
           createdAt: new Date(),
           updatedAt: new Date()
         });
-        
+
         const newPlan: SubscriptionPlan = {
           id: docRef.id,
           ...safePlan,
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
+
         console.log('✅ تم حفظ الباقة بنجاح مع ID:', docRef.id);
         setPlans(prev => [...prev, newPlan]);
       } else {
         // تحديث خطة موجودة
         if (!safePlan.id) return;
-        
+
         const planId = safePlan.id;
         const planIndex = plans.findIndex(p => p.id === planId);
         if (planIndex === -1) return;
-        
+
         console.log('🔄 تحديث باقة موجودة:', planId);
         console.log(`📋 الاسم الجديد: ${safePlan.name}`);
         console.log(`💰 السعر الجديد: ${safePlan.price} ${safePlan.currency}`);
         console.log(`✅ نشطة: ${safePlan.isActive}`);
-        
+
         const { id, ...planDataToUpdate } = safePlan;
         await updateDoc(doc(db, 'subscription_plans', planId), {
           ...planDataToUpdate,
           updatedAt: new Date()
         });
-        
+
         const updatedPlan: SubscriptionPlan = {
           id: planId,
           ...safePlan,
           createdAt: plans[planIndex].createdAt,
           updatedAt: new Date()
         };
-        
+
         console.log('✅ تم تحديث الباقة بنجاح');
         setPlans(prev => prev.map(p => p.id === planId ? updatedPlan : p));
       }
-      
+
       cancelEditing();
     } catch (error) {
       console.error('خطأ في حفظ الخطة:', error);
@@ -315,7 +315,7 @@ export default function SubscriptionPlansManagement() {
 
   const deletePlan = async () => {
     if (!planToDelete) return;
-    
+
     try {
       await deleteDoc(doc(db, 'subscription_plans', planToDelete.id));
       setPlans(prev => prev.filter(p => p.id !== planToDelete.id));
@@ -331,7 +331,7 @@ export default function SubscriptionPlansManagement() {
       // تحديد المدة الجديدة بناءً على المدة الحالية أو المدة المحددة
       let duration = newDuration || plan.duration;
       let durationText = '';
-      
+
       if (newDuration) {
         // إذا تم تحديد مدة جديدة، نستخدمها مع النص المناسب
         switch (newDuration) {
@@ -348,7 +348,7 @@ export default function SubscriptionPlansManagement() {
         else if (plan.duration === 180) duration = 365; // من 6 أشهر إلى سنة
         else if (plan.duration === 365) duration = 30; // من سنة إلى شهر
         else duration = 30; // أي مدة أخرى تصبح شهر
-        
+
         switch (duration) {
           case 30: durationText = ' (شهر)'; break;
           case 90: durationText = ' (3 أشهر)'; break;
@@ -357,7 +357,7 @@ export default function SubscriptionPlansManagement() {
           default: durationText = ` (${duration} يوم)`;
         }
       }
-      
+
       const duplicatedPlan = {
         ...plan,
         name: plan.name + durationText,
@@ -369,20 +369,20 @@ export default function SubscriptionPlansManagement() {
       delete (duplicatedPlan as any).id;
       delete (duplicatedPlan as any).createdAt;
       delete (duplicatedPlan as any).updatedAt;
-      
+
       const docRef = await addDoc(collection(db, 'subscription_plans'), {
         ...duplicatedPlan,
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      
+
       const newPlan: SubscriptionPlan = {
         id: docRef.id,
         ...duplicatedPlan,
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       setPlans(prev => [...prev, newPlan]);
     } catch (error) {
       console.error('خطأ في نسخ الخطة:', error);
@@ -391,10 +391,10 @@ export default function SubscriptionPlansManagement() {
 
   const updateFeature = (featureId: string, updates: Partial<PlanFeature>) => {
     if (!editingPlan || !Array.isArray(editingPlan.features)) return;
-    
+
     setEditingPlan(prev => ({
       ...prev!,
-      features: prev!.features.map(f => 
+      features: prev!.features.map(f =>
         f.id === featureId ? { ...f, ...updates } : f
       )
     }));
@@ -475,7 +475,7 @@ export default function SubscriptionPlansManagement() {
                   placeholder="مثل: الباقة الأساسية"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="nameEn">اسم الخطة (بالإنجليزية)</Label>
                 <Input
@@ -485,7 +485,7 @@ export default function SubscriptionPlansManagement() {
                   placeholder="e.g: Basic Plan"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="price">السعر</Label>
                 <div className="flex gap-2">
@@ -506,7 +506,7 @@ export default function SubscriptionPlansManagement() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="duration">المدة</Label>
                 <div className="flex gap-2">
@@ -531,7 +531,7 @@ export default function SubscriptionPlansManagement() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="maxUsers">عدد المستخدمين المسموح</Label>
                 <Input
@@ -542,7 +542,7 @@ export default function SubscriptionPlansManagement() {
                   placeholder="1"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="maxStorage">مساحة التخزين (MB)</Label>
                 <Input
@@ -554,7 +554,7 @@ export default function SubscriptionPlansManagement() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="description">الوصف</Label>
               <Textarea
@@ -565,7 +565,7 @@ export default function SubscriptionPlansManagement() {
                 rows={3}
               />
             </div>
-            
+
             {/* Settings */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -582,7 +582,7 @@ export default function SubscriptionPlansManagement() {
                   <option value="red">أحمر</option>
                 </select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="icon">أيقونة الخطة</Label>
                 <select
@@ -597,7 +597,7 @@ export default function SubscriptionPlansManagement() {
                   <option value="Shield">درع</option>
                 </select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="supportLevel">مستوى الدعم</Label>
                 <select
@@ -611,7 +611,7 @@ export default function SubscriptionPlansManagement() {
                 </select>
               </div>
             </div>
-            
+
             {/* Switches */}
             <div className="flex gap-6">
               <div className="flex items-center space-x-2 space-x-reverse">
@@ -622,7 +622,7 @@ export default function SubscriptionPlansManagement() {
                 />
                 <Label htmlFor="isActive">الخطة نشطة</Label>
               </div>
-              
+
               <div className="flex items-center space-x-2 space-x-reverse">
                 <Switch
                   id="isFeatured"
@@ -632,7 +632,7 @@ export default function SubscriptionPlansManagement() {
                 <Label htmlFor="isFeatured">خطة مميزة</Label>
               </div>
             </div>
-            
+
             {/* Features */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -682,7 +682,7 @@ export default function SubscriptionPlansManagement() {
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Input
                         value={feature.name}
@@ -697,7 +697,7 @@ export default function SubscriptionPlansManagement() {
                         className="text-sm"
                       />
                     </div>
-                    
+
                     {feature.included && (
                       <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600">حد أقصى:</label>
@@ -722,7 +722,7 @@ export default function SubscriptionPlansManagement() {
                 )}
               </div>
             </div>
-            
+
             {/* Actions */}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={cancelEditing}>
@@ -747,7 +747,7 @@ export default function SubscriptionPlansManagement() {
                 <Badge className="bg-purple-500 text-white">الأكثر شعبية</Badge>
               </div>
             )}
-            
+
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className={`p-3 rounded-full bg-gradient-to-r ${getPlanColor(plan.color)} text-white`}>
@@ -764,7 +764,7 @@ export default function SubscriptionPlansManagement() {
                             isActive: true,
                             updatedAt: new Date()
                           });
-                          setPlans(prev => prev.map(p => 
+                          setPlans(prev => prev.map(p =>
                             p.id === plan.id ? { ...p, isActive: true } : p
                           ));
                         } catch (error) {
@@ -787,7 +787,7 @@ export default function SubscriptionPlansManagement() {
                         <Edit className="w-4 h-4 ml-2" />
                         تعديل
                       </DropdownMenuItem>
-                      
+
                       {/* خيارات النسخ بمدد مختلفة */}
                       <DropdownMenuItem onClick={() => duplicatePlan(plan, 30)}>
                         <Copy className="w-4 h-4 ml-2" />
@@ -805,8 +805,8 @@ export default function SubscriptionPlansManagement() {
                         <Copy className="w-4 h-4 ml-2" />
                         نسخ (سنة كاملة)
                       </DropdownMenuItem>
-                      
-                      <DropdownMenuItem 
+
+                      <DropdownMenuItem
                         onClick={() => {
                           setPlanToDelete(plan);
                           setDeleteDialogOpen(true);
@@ -820,7 +820,7 @@ export default function SubscriptionPlansManagement() {
                   </DropdownMenu>
                 </div>
               </div>
-              
+
               <div>
                 <CardTitle className="flex items-center gap-2">
                   {plan.name}
@@ -828,13 +828,13 @@ export default function SubscriptionPlansManagement() {
                 </CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
               </div>
-              
+
               <div className="text-3xl font-bold">
                 {plan.price} {plan.currency}
                 <span className="text-sm font-normal text-gray-500">/{getDurationText(plan.duration)}</span>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -854,11 +854,11 @@ export default function SubscriptionPlansManagement() {
                     <span className="text-gray-500">الدعم:</span>
                     <span className="font-medium ml-1">
                       {plan.supportLevel === 'basic' ? 'أساسي' :
-                       plan.supportLevel === 'premium' ? 'مميز' : 'أولوية'}
+                        plan.supportLevel === 'premium' ? 'مميز' : 'أولوية'}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <h4 className="font-medium">الميزات المتضمنة:</h4>
                   <div className="space-y-1">
@@ -890,7 +890,7 @@ export default function SubscriptionPlansManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف خطة "{planToDelete?.name}"؟ 
+              هل أنت متأكد من حذف خطة "{planToDelete?.name}"؟
               هذا الإجراء لا يمكن التراجع عنه وقد يؤثر على المستخدمين المشتركين.
             </AlertDialogDescription>
           </AlertDialogHeader>

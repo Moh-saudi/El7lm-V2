@@ -15,7 +15,7 @@ interface Feature {
 interface SubscriptionPlan {
     id: string;
     name: string;
-    key: 'monthly' | 'quarterly' | 'yearly';
+    key: 'monthly' | 'quarterly' | 'yearly' | '3months' | '6months';
     basePrice: number;
     currency: 'USD';
     duration: number;
@@ -136,8 +136,8 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                         <button
                             onClick={() => setActiveSection('basic')}
                             className={`flex-1 px-6 py-3 font-medium transition-colors ${activeSection === 'basic'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                 }`}
                         >
                             المعلومات الأساسية
@@ -145,8 +145,8 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                         <button
                             onClick={() => setActiveSection('features')}
                             className={`flex-1 px-6 py-3 font-medium transition-colors ${activeSection === 'features'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                 }`}
                         >
                             الميزات ({editedPlan.features.length})
@@ -154,8 +154,8 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                         <button
                             onClick={() => setActiveSection('bonus')}
                             className={`flex-1 px-6 py-3 font-medium transition-colors ${activeSection === 'bonus'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                 }`}
                         >
                             المكافآت ({editedPlan.bonusFeatures.length})

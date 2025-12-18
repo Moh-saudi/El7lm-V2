@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -9,26 +8,19 @@ export async function GET(request: NextRequest) {
     // Skip Firebase calls during build time
     if (process.env.NODE_ENV === 'production' && (!process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID === 'build_project')) {
       console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
-      return NextResponse.json({
-        success: true,
-        data: {
-          totalVideos: 0,
-          totalImages: 0,
-          pendingVideos: 0,
-          pendingImages: 0,
-          approvedVideos: 0,
-          approvedImages: 0,
-          rejectedVideos: 0,
-          rejectedImages: 0,
-          totalMedia: 0,
-          lastUpdated: new Date().toISOString()
-        }
-      });
+      return NextResponse.json(emptyStats());
+    }
+
+    let adminDb;
+    try {
+      adminDb = getAdminDb();
+    } catch (error) {
+      console.warn('⚠️ [Admin API] Firebase Admin not configured, returning empty stats');
+      return NextResponse.json(emptyStats());
     }
 
     // Get videos collection
-    const videosRef = collection(db, 'videos');
-    const videosSnapshot = await getDocs(videosRef);
+    const videosSnapshot = await adminDb.collection('videos').get();
 
     const totalVideos = videosSnapshot.size;
     let pendingVideos = 0;
@@ -59,8 +51,7 @@ export async function GET(request: NextRequest) {
     let rejectedImages = 0;
 
     try {
-      const imagesRef = collection(db, 'images');
-      const imagesSnapshot = await getDocs(imagesRef);
+      const imagesSnapshot = await adminDb.collection('images').get();
       totalImages = imagesSnapshot.size;
 
       imagesSnapshot.forEach((doc) => {
@@ -114,4 +105,22 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function emptyStats() {
+  return {
+    success: true,
+    data: {
+      totalVideos: 0,
+      totalImages: 0,
+      pendingVideos: 0,
+      pendingImages: 0,
+      approvedVideos: 0,
+      approvedImages: 0,
+      rejectedVideos: 0,
+      rejectedImages: 0,
+      totalMedia: 0,
+      lastUpdated: new Date().toISOString()
+    }
+  };
 }

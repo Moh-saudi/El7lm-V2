@@ -17,7 +17,7 @@ interface AgentData {
   date_of_birth: string;
   nationality: string;
   current_location: string;
-  
+
   // المعلومات المهنية
   is_fifa_licensed: boolean;
   license_number: string;
@@ -25,7 +25,7 @@ interface AgentData {
   years_of_experience: number;
   specialization: string;
   spoken_languages: string[];
-  
+
   // معلومات الاتصال
   phone: string;
   email: string;
@@ -36,17 +36,17 @@ interface AgentData {
     twitter: string;
     instagram: string;
   };
-  
+
   // بيانات اللاعبين
   current_players: string[];
   past_players: string[];
   notable_deals: string;
-  
+
   // المستندات
   id_copy: string;
   license_copy: string;
   player_contracts_sample: string;
-  
+
   // إحصائيات (للعرض)
   stats: {
     active_players: number;
@@ -64,7 +64,7 @@ const initialAgentData: AgentData = {
   date_of_birth: '',
   nationality: '',
   current_location: '',
-  
+
   // المعلومات المهنية
   is_fifa_licensed: false,
   license_number: '',
@@ -72,7 +72,7 @@ const initialAgentData: AgentData = {
   years_of_experience: 0,
   specialization: '',
   spoken_languages: [],
-  
+
   // معلومات الاتصال
   phone: '',
   email: '',
@@ -83,17 +83,17 @@ const initialAgentData: AgentData = {
     twitter: '',
     instagram: ''
   },
-  
+
   // بيانات اللاعبين
   current_players: [],
   past_players: [],
   notable_deals: '',
-  
+
   // المستندات
   id_copy: '',
   license_copy: '',
   player_contracts_sample: '',
-  
+
   // إحصائيات
   stats: {
     active_players: 0,
@@ -106,46 +106,13 @@ const initialAgentData: AgentData = {
 const getSupabaseImageUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  
-  // قائمة الـ buckets للبحث فيها بالترتيب
-  const bucketsToCheck = ['agent', 'avatars', 'wallet', 'clubavatar'];
-  
-  // تحديد bucket بناءً على اسم الملف أولاً
-  let preferredBucket = 'agent'; // افتراضي للوكلاء
-  
-  if (path.includes('wallet') || path.startsWith('wallet')) {
-    preferredBucket = 'wallet';
-  } else if (path.includes('avatar') || path.startsWith('avatar')) {
-    preferredBucket = 'avatars';
-  } else if (path.includes('clubavatar') || path.startsWith('clubavatar')) {
-    preferredBucket = 'clubavatar';
-  } else if (path.includes('agent') || path.startsWith('agent')) {
-    preferredBucket = 'agent';
-  }
-  
-  // وضع الـ bucket المفضل في المقدمة
-  const orderedBuckets = [preferredBucket, ...bucketsToCheck.filter(b => b !== preferredBucket)];
-  
-  // جرب كل bucket حتى نجد الملف
-  for (const bucketName of orderedBuckets) {
-    try {
-      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(path);
-      if (publicUrl) {
-        // يمكن إضافة لوق للتتبع في وضع التطوير
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔍 Found image in ${bucketName}: ${path}`);
-        }
-        return publicUrl;
-      }
-    } catch (error) {
-      // تجاهل الأخطاء وجرب الـ bucket التالي
-      continue;
-    }
-  }
-  
-  // إذا لم نجد في أي bucket، استخدم الافتراضي
-  const { data: { publicUrl } } = supabase.storage.from(preferredBucket).getPublicUrl(path);
-  return publicUrl || '';
+
+  // استخدام رابط Cloudflare المباشر
+  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+  // افتراض أن الملف في bucket 'agent'
+  return `${CLOUDFLARE_PUBLIC_URL}/agent/${cleanPath}`;
 };
 
 // دالة لإعداد bucket policies
@@ -164,7 +131,7 @@ const setupAgentsBucketPolicies = async () => {
     // Policy للسماح بالرفع للمستخدمين المسجلين
     const uploadPolicy = {
       id: 'agents_authenticated_upload',
-      bucket_id: 'agents', 
+      bucket_id: 'agents',
       name: 'Allow authenticated users to upload to their own folder',
       definition: 'auth.uid()::text = (storage.foldername(name))[1]',
       check: 'auth.uid()::text = (storage.foldername(name))[1]',
@@ -182,10 +149,10 @@ const setupAgentsBucketPolicies = async () => {
     };
 
     console.log('Setting up agents bucket policies...');
-    
+
     // Note: هذه العمليات تتطلب صلاحيات admin في Supabase
     // في البيئة الإنتاجية، يجب إعداد هذه policies من dashboard
-    
+
   } catch (error) {
     console.error('Error setting up bucket policies:', error);
   }
@@ -208,9 +175,9 @@ export default function AgentProfilePage() {
     try {
       const agentRef = doc(db, 'agents', user.uid);
       const agentDoc = await getDoc(agentRef);
-      
+
       let data = {};
-      
+
       if (agentDoc.exists()) {
         data = agentDoc.data() as any;
       } else {
@@ -225,11 +192,11 @@ export default function AgentProfilePage() {
           isVerified: false,
           isPremium: false
         };
-        
+
         await setDoc(agentRef, basicData);
         data = basicData;
       }
-      
+
       const mergedData = {
         ...initialAgentData,
         ...(data as any),
@@ -267,16 +234,16 @@ export default function AgentProfilePage() {
     setUploading(true);
     try {
       const agentRef = doc(db, 'agents', user.uid);
-      
+
       // دمج الصور المعلقة مع البيانات الحالية
       const dataToSave = {
         ...agentData,
         ...(pendingImages.profile && { profile_photo: pendingImages.profile }),
         ...(pendingImages.cover && { coverImage: pendingImages.cover })
       };
-      
+
       const agentDoc = await getDoc(agentRef);
-      
+
       if (agentDoc.exists()) {
         await updateDoc(agentRef, dataToSave);
       } else {
@@ -290,7 +257,7 @@ export default function AgentProfilePage() {
           isPremium: false
         });
       }
-      
+
       toast.success('🎉 تم حفظ بيانات الوكيل بنجاح! 💼');
       await fetchAgentData();
       setEditMode(false);
@@ -308,7 +275,7 @@ export default function AgentProfilePage() {
       toast.error('لم يتم العثور على معرف المستخدم');
       return;
     }
-    
+
     console.log('🔄 بدء رفع الصورة:', {
       fileName: file.name,
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
@@ -316,104 +283,54 @@ export default function AgentProfilePage() {
       uploadType: type,
       userId: user.uid
     });
-    
+
     try {
       // التحقق من نوع الملف
       if (!file.type.startsWith('image/')) {
         toast.error('يرجى اختيار ملف صورة صالح (PNG, JPG, GIF)');
         return;
       }
-      
+
       // التحقق من حجم الملف (5MB حد أقصى)
       if (file.size > 5 * 1024 * 1024) {
         const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`, {
-          duration: 9000,
-          style: {
-            maxWidth: '400px',
-            fontSize: '15px',
-            lineHeight: '1.6',
-            direction: 'rtl',
-            textAlign: 'right'
-          }
-        });
+        toast.error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`);
         return;
       }
-      
+
       setUploading(true);
       toast.info('🔄 جاري رفع الصورة...');
-      
+
       // إنشاء اسم ملف فريد
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `agent-${type}-${user.uid}-${timestamp}.${fileExt}`;
-      
-      // قائمة الـ buckets للمحاولة بالترتيب
-      const bucketsToTry = ['agent', 'avatars', 'wallet', 'clubavatar'];
-      let uploadSuccessful = false;
-      let finalPublicUrl = '';
-      let usedBucket = '';
-      
-      // محاولة الرفع في كل bucket حتى النجاح
-      for (const bucketName of bucketsToTry) {
-        try {
-          console.log(`📤 محاولة رفع إلى bucket: ${bucketName}`);
-          
-          const uploadResult = await supabase.storage
-            .from(bucketName)
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: true,
-              contentType: file.type
-            });
-          
-          if (!uploadResult.error) {
-            console.log(`✅ نجح الرفع في ${bucketName} bucket:`, uploadResult.data);
-            
-            // إنشاء الرابط العام
-            const { data: { publicUrl } } = supabase.storage
-              .from(bucketName)
-              .getPublicUrl(fileName);
-              
-            finalPublicUrl = publicUrl;
-            usedBucket = bucketName;
-            uploadSuccessful = true;
-            break; // توقف عند أول نجاح
-            
-          } else {
-            console.warn(`⚠️ فشل في ${bucketName}:`, uploadResult.error.message);
-          }
-          
-        } catch (bucketError: any) {
-          console.warn(`💥 خطأ في bucket ${bucketName}:`, bucketError.message);
-        }
-      }
-      
-      if (!uploadSuccessful) {
-        console.error('❌ فشل الرفع في جميع الـ buckets');
-        toast.error('فشل في رفع الصورة - تحقق من إعدادات Supabase');
-        return;
-      }
-      
-      console.log('🔗 رابط الصورة العام:', finalPublicUrl);
-      console.log('📂 تم الرفع في bucket:', usedBucket);
+      const filePath = `${user.uid}/${type}/${fileName}`;
 
-      // حفظ في الحالة المعلقة مع معلومات الـ bucket
+      // استيراد storageManager ديناميكياً
+      const { storageManager } = await import('@/lib/storage');
+
+      // الرفع عبر storageManager (يستخدم R2 بشكل أساسي الآن)
+      // نستخدم 'agent' كاسم بوكت/مجلد
+      const result = await storageManager.upload('agent', filePath, file, {
+        upsert: true,
+        contentType: file.type
+      });
+
+      const publicUrl = result.publicUrl;
+      console.log('🔗 رابط الصورة العام:', publicUrl);
+
+      // حفظ في الحالة المعلقة
       setPendingImages(prev => ({
         ...prev,
-        [type === 'profile' ? 'profile' : 'cover']: finalPublicUrl
+        [type === 'profile' ? 'profile' : 'cover']: publicUrl
       }));
-      
-      // رسالة نجاح مخصصة حسب الـ bucket المستخدم
-      const successMessage = usedBucket === 'agent' 
-        ? `🎯 تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح في Agent bucket الأساسي!`
-        : `✅ تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح في ${usedBucket}!`;
-        
-      toast.success(successMessage);
-      
+
+      toast.success(`✅ تم رفع ${type === 'profile' ? 'الصورة الشخصية' : 'صورة الغلاف'} بنجاح!`);
+
     } catch (error: any) {
-      console.error('💥 خطأ غير متوقع:', error);
-      toast.error(`خطأ غير متوقع: ${error.message || 'حدث خطأ أثناء رفع الصورة'}`);
+      console.error('💥 خطأ أثناء رفع الصورة:', error);
+      toast.error(`خطأ أثناء رفع الصورة: ${error.message || 'خطأ غير معروف'}`);
     } finally {
       setUploading(false);
       console.log('🏁 انتهت عملية الرفع');
@@ -676,9 +593,9 @@ export default function AgentProfilePage() {
                 ×
               </button>
               <h2 className="mb-6 text-xl font-bold text-purple-600">تعديل بيانات الوكيل</h2>
-              
+
               <div className="space-y-6">
-                
+
                 {/* قسم رفع الصورة */}
                 <div className="p-6 bg-purple-50 rounded-lg">
                   <h4 className="mb-4 font-bold text-purple-800">الصور</h4>
@@ -749,7 +666,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="الاسم الثلاثي كاملاً"
                         value={agentData?.full_name}
-                        onChange={(e) => setAgentData({...agentData, full_name: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, full_name: e.target.value })}
                       />
                     </div>
                     <div>
@@ -758,7 +675,7 @@ export default function AgentProfilePage() {
                         type="date"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         value={agentData?.date_of_birth}
-                        onChange={(e) => setAgentData({...agentData, date_of_birth: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, date_of_birth: e.target.value })}
                       />
                     </div>
                     <div>
@@ -766,7 +683,7 @@ export default function AgentProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         value={agentData?.nationality}
-                        onChange={(e) => setAgentData({...agentData, nationality: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, nationality: e.target.value })}
                       >
                         <option value="">اختر الجنسية</option>
                         <option value="السعودية">السعودية</option>
@@ -792,7 +709,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="الدولة - المدينة"
                         value={agentData?.current_location}
-                        onChange={(e) => setAgentData({...agentData, current_location: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, current_location: e.target.value })}
                       />
                     </div>
                   </div>
@@ -807,7 +724,7 @@ export default function AgentProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         value={agentData?.is_fifa_licensed ? 'true' : 'false'}
-                        onChange={(e) => setAgentData({...agentData, is_fifa_licensed: e.target.value === 'true'})}
+                        onChange={(e) => setAgentData({ ...agentData, is_fifa_licensed: e.target.value === 'true' })}
                       >
                         <option value="false">لا</option>
                         <option value="true">نعم</option>
@@ -822,7 +739,7 @@ export default function AgentProfilePage() {
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                             placeholder="رقم رخصة FIFA"
                             value={agentData?.license_number}
-                            onChange={(e) => setAgentData({...agentData, license_number: e.target.value})}
+                            onChange={(e) => setAgentData({ ...agentData, license_number: e.target.value })}
                           />
                         </div>
                         <div>
@@ -831,7 +748,7 @@ export default function AgentProfilePage() {
                             type="date"
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                             value={agentData?.license_expiry}
-                            onChange={(e) => setAgentData({...agentData, license_expiry: e.target.value})}
+                            onChange={(e) => setAgentData({ ...agentData, license_expiry: e.target.value })}
                           />
                         </div>
                       </>
@@ -844,7 +761,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="عدد سنوات الخبرة"
                         value={agentData?.years_of_experience}
-                        onChange={(e) => setAgentData({...agentData, years_of_experience: parseInt(e.target.value) || 0})}
+                        onChange={(e) => setAgentData({ ...agentData, years_of_experience: parseInt(e.target.value) || 0 })}
                       />
                     </div>
                     <div>
@@ -852,7 +769,7 @@ export default function AgentProfilePage() {
                       <select
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         value={agentData?.specialization}
-                        onChange={(e) => setAgentData({...agentData, specialization: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, specialization: e.target.value })}
                       >
                         <option value="">اختر التخصص</option>
                         <option value="لاعبين محليين">لاعبين محليين</option>
@@ -869,7 +786,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="العربية, الإنجليزية, الفرنسية (افصل بفاصلة)"
                         value={agentData?.spoken_languages?.join(', ')}
-                        onChange={(e) => setAgentData({...agentData, spoken_languages: e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang)})}
+                        onChange={(e) => setAgentData({ ...agentData, spoken_languages: e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang) })}
                       />
                     </div>
                   </div>
@@ -886,7 +803,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="+966501234567"
                         value={agentData?.phone}
-                        onChange={(e) => setAgentData({...agentData, phone: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, phone: e.target.value })}
                       />
                     </div>
                     <div>
@@ -896,7 +813,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="agent@example.com"
                         value={agentData?.email}
-                        onChange={(e) => setAgentData({...agentData, email: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, email: e.target.value })}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -906,7 +823,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="عنوان المكتب (اختياري)"
                         value={agentData?.office_address}
-                        onChange={(e) => setAgentData({...agentData, office_address: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, office_address: e.target.value })}
                       />
                     </div>
                     <div>
@@ -916,7 +833,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="https://agent-website.com"
                         value={agentData?.website}
-                        onChange={(e) => setAgentData({...agentData, website: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, website: e.target.value })}
                       />
                     </div>
                     <div>
@@ -926,7 +843,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="https://linkedin.com/in/agent"
                         value={agentData?.social_media?.linkedin}
-                        onChange={(e) => setAgentData({...agentData, social_media: {...agentData.social_media, linkedin: e.target.value}})}
+                        onChange={(e) => setAgentData({ ...agentData, social_media: { ...agentData.social_media, linkedin: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -936,7 +853,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="https://twitter.com/agent"
                         value={agentData?.social_media?.twitter}
-                        onChange={(e) => setAgentData({...agentData, social_media: {...agentData.social_media, twitter: e.target.value}})}
+                        onChange={(e) => setAgentData({ ...agentData, social_media: { ...agentData.social_media, twitter: e.target.value } })}
                       />
                     </div>
                     <div>
@@ -946,7 +863,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="https://instagram.com/agent"
                         value={agentData?.social_media?.instagram}
-                        onChange={(e) => setAgentData({...agentData, social_media: {...agentData.social_media, instagram: e.target.value}})}
+                        onChange={(e) => setAgentData({ ...agentData, social_media: { ...agentData.social_media, instagram: e.target.value } })}
                       />
                     </div>
                   </div>
@@ -963,7 +880,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="أحمد محمد, محمد أحمد, علي خالد (افصل بفاصلة)"
                         value={agentData?.current_players?.join(', ')}
-                        onChange={(e) => setAgentData({...agentData, current_players: e.target.value.split(',').map(player => player.trim()).filter(player => player)})}
+                        onChange={(e) => setAgentData({ ...agentData, current_players: e.target.value.split(',').map(player => player.trim()).filter(player => player) })}
                       />
                     </div>
                     <div>
@@ -973,7 +890,7 @@ export default function AgentProfilePage() {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="أسماء اللاعبين السابقين (افصل بفاصلة)"
                         value={agentData?.past_players?.join(', ')}
-                        onChange={(e) => setAgentData({...agentData, past_players: e.target.value.split(',').map(player => player.trim()).filter(player => player)})}
+                        onChange={(e) => setAgentData({ ...agentData, past_players: e.target.value.split(',').map(player => player.trim()).filter(player => player) })}
                       />
                     </div>
                     <div>
@@ -983,7 +900,7 @@ export default function AgentProfilePage() {
                         rows={4}
                         placeholder="وصف للصفقات البارزة والانتقالات المهمة..."
                         value={agentData?.notable_deals}
-                        onChange={(e) => setAgentData({...agentData, notable_deals: e.target.value})}
+                        onChange={(e) => setAgentData({ ...agentData, notable_deals: e.target.value })}
                       />
                     </div>
                   </div>
@@ -992,11 +909,11 @@ export default function AgentProfilePage() {
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                                 <button
-                   onClick={() => {
-                     setEditMode(false);
-                     setPendingImages({});
-                   }}
+                <button
+                  onClick={() => {
+                    setEditMode(false);
+                    setPendingImages({});
+                  }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900"
                 >
                   إلغاء

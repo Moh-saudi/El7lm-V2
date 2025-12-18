@@ -59,30 +59,26 @@ async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
         // إنشاء اسم فريد للملف
         const fileExt = file.name.split('.').pop();
         const timestamp = Date.now();
-        const filePath = `${user.uid}/${timestamp}.${fileExt}`;
+        const filePath = `videos/${user.uid}/${timestamp}.${fileExt}`;
 
         // طباعة للتشخيص
-        console.log('رفع فيديو:', { bucket: STORAGE_BUCKETS.VIDEOS, filePath, file });
+        console.log('رفع فيديو إلى Cloudflare R2:', { bucket: 'videos', filePath, file });
 
-        // رفع الملف إلى Supabase
-        const { data, error } = await supabase.storage
-            .from(STORAGE_BUCKETS.VIDEOS)
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
+        const { storageManager } = await import('@/lib/storage');
 
-        if (error) {
-            console.error('خطأ في رفع الفيديو:', error);
-            throw error;
+        // استخدام storageManager للرفع
+        // لاحظ: نمرر 'videos' كاسم للبوكت، وهو prefix في R2
+        const result = await storageManager.upload('videos', filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type
+        });
+
+        if (!result?.publicUrl) {
+            throw new Error('فشل في الحصول على رابط الفيديو');
         }
 
-        // الحصول على الرابط العام للفيديو
-        const { data: urlData } = supabase.storage
-            .from(STORAGE_BUCKETS.VIDEOS)
-            .getPublicUrl(filePath);
-
-        return urlData.publicUrl;
+        return result.publicUrl;
     } catch (error) {
         console.error('فشل في رفع الفيديو:', error);
         throw error;

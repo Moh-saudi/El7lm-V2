@@ -45,7 +45,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, doc, dele
 interface SubscriptionPlan {
     id: string;
     name: string;
-    key: 'monthly' | 'quarterly' | 'yearly';
+    key: 'monthly' | 'quarterly' | 'yearly' | '3months' | '6months';
     basePrice: number;
     currency: 'USD';
     duration: number;
@@ -112,6 +112,7 @@ interface Partner {
     partnerCode: string;
     partnerType: 'federation' | 'league' | 'government' | 'corporate';
     customPricing: {
+        monthly?: number;     // شهري
         quarterly?: number;   // 3 شهور
         sixMonths?: number;   // 6 شهور
         yearly?: number;      // سنوي
@@ -133,7 +134,7 @@ interface OverviewStats {
 
 export default function PricingAdminPage() {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'plans' | 'custom' | 'accountTypes' | 'guidelines' | 'offers' | 'partners'>('plans');
+    const [activeTab, setActiveTab] = useState<'plans' | 'custom' | 'accountTypes' | 'guidelines' | 'offers' | 'partners' | 'payments'>('plans');
     const [stats, setStats] = useState<OverviewStats>({
         activePlans: 3,
         activeOffers: 2,
@@ -154,6 +155,109 @@ export default function PricingAdminPage() {
     useEffect(() => {
         loadData();
     }, []);
+
+    const handleApplyRecommendedPlans = async () => {
+        if (!confirm('سيتم تحديث الباقات الحالية (Kickoff, Pro, Dream) بالبيانات الجديدة. هل أنت متأكد؟')) return;
+        setLoading(true);
+        try {
+            const plansToUpdate = [
+                {
+                    id: 'subscription_3months',
+                    title: 'باقة الانطلاقة (The Kickoff)',
+                    subtitle: 'للتجربة والبداية',
+                    period: '3 شهور',
+                    base_currency: 'USD',
+                    base_original_price: 30,
+                    base_price: 20,
+                    features: [
+                        'ملف رياضي موثق وعلامة "لاعب نشط"',
+                        'مساحة تخزين تصل إلى 5 فيديوهات مهارات HD',
+                        'إضافة الإحصائيات الأساسية (الطول، الوزن، المراكز)',
+                        'الظهور في نتائج البحث العامة للأندية والوكلاء',
+                        'إمكانية رفع وتحديث السجل الطبي الأساسي'
+                    ],
+                    bonusFeatures: [],
+                    popular: false,
+                    icon: '📅',
+                    color: 'blue',
+                    isActive: true,
+                    order: 1
+                },
+                {
+                    id: 'subscription_6months',
+                    title: 'باقة الاحتراف (The Pro)',
+                    subtitle: 'الخيار الأذكى',
+                    period: '6 شهور',
+                    base_currency: 'USD',
+                    base_original_price: 55,
+                    base_price: 35,
+                    features: [
+                        'ملف رياضي موثق وعلامة "لاعب نشط"',
+                        'مساحة تخزين تصل إلى 5 فيديوهات مهارات HD',
+                        'إضافة الإحصائيات الأساسية (الطول، الوزن، المراكز)',
+                        'الظهور في نتائج البحث العامة للأندية والوكلاء',
+                        'إمكانية رفع وتحديث السجل الطبي الأساسي',
+                        'أولوية الظهور في مقدمة نتائج البحث للوكلاء',
+                        'تحليلات أداء ذكية ورسوم بيانية تفاعلية للنقاط القوية',
+                        'تنبيهات فورية عند قيام كشاف أو نادي بزيارة ملفك',
+                        'معرض صور احترافي للمباريات والتدريبات الرسمية',
+                        'دعم فني مخصص مع أولوية في الرد على الاستفسارات'
+                    ],
+                    bonusFeatures: [],
+                    popular: true,
+                    icon: '👑',
+                    color: 'purple',
+                    isActive: true,
+                    order: 2
+                },
+                {
+                    id: 'subscription_annual',
+                    title: 'باقة الحلم (The Dream)',
+                    subtitle: 'أفضل قيمة وتوفير',
+                    period: '12 شهر',
+                    base_currency: 'USD',
+                    base_original_price: 80,
+                    base_price: 50,
+                    features: [
+                        'ملف رياضي موثق وعلامة "لاعب نشط"',
+                        'مساحة تخزين تصل إلى 5 فيديوهات مهارات HD',
+                        'إضافة الإحصائيات الأساسية (الطول، الوزن، المراكز)',
+                        'الظهور في نتائج البحث العامة للأندية والوكلاء',
+                        'إمكانية رفع وتحديث السجل الطبي الأساسي',
+                        'أولوية الظهور في مقدمة نتائج البحث للوكلاء',
+                        'تحليلات أداء ذكية ورسوم بيانية تفاعلية للنقاط القوية',
+                        'تنبيهات فورية عند قيام كشاف أو نادي بزيارة ملفك',
+                        'معرض صور احترافي للمباريات والتدريبات الرسمية',
+                        'دعم فني مخصص مع أولوية في الرد على الاستفسارات',
+                        'ظهور مميز في قسم "مواهب الأسبوع" بالصفحة الرئيسية',
+                        'خاصية التواصل المباشر وإرسال السيرة الذاتية للوكلاء',
+                        'خدمة مونتاج فيديو "أفضل المهارات" بشكل احترافي',
+                        'أولوية التسجيل وحجز المقاعد في تجارب الأداء الواقعية',
+                        'شارة "نخبة الحلم" الذهبية لتمييز الملف أمام الكشافين',
+                        'تقرير تقييم نصف سنوي مفصل مدعوم بالذكاء الاصطناعي'
+                    ],
+                    bonusFeatures: [],
+                    popular: false,
+                    icon: '⭐',
+                    color: 'emerald',
+                    isActive: true,
+                    order: 3
+                }
+            ];
+
+            for (const plan of plansToUpdate) {
+                await PricingService.updatePlan(plan as any);
+            }
+
+            toast.success('تم تحديث الباقات بنجاح');
+            loadData();
+        } catch (error) {
+            console.error(error);
+            toast.error('حدث خطأ أثناء تحديث الباقات');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
@@ -179,18 +283,18 @@ export default function PricingAdminPage() {
                         plan.id.includes('6months') ? 180 :
                             plan.id.includes('annual') ? 365 : 30,
                     features: Array.isArray(plan.features)
-                        ? plan.features.map((f, i) => ({
+                        ? plan.features.map((f: any, i) => ({
                             id: `f${i}`,
-                            name: typeof f === 'string' ? f : f.name || '',
-                            description: typeof f === 'object' && f.description ? f.description : undefined,
+                            name: typeof f === 'string' ? f : f?.name || '',
+                            description: typeof f === 'object' && f?.description ? f.description : undefined,
                             included: true
                         }))
                         : [],
                     bonusFeatures: Array.isArray(plan.bonusFeatures)
-                        ? plan.bonusFeatures.map((b, i) => ({
+                        ? plan.bonusFeatures.map((b: any, i) => ({
                             id: `b${i}`,
-                            name: typeof b === 'string' ? b : b.name || '',
-                            description: typeof b === 'object' && b.description ? b.description : undefined,
+                            name: typeof b === 'string' ? b : b?.name || '',
+                            description: typeof b === 'object' && b?.description ? b.description : undefined,
                             included: true
                         }))
                         : [],
@@ -275,6 +379,13 @@ export default function PricingAdminPage() {
                             <button className="flex gap-2 items-center px-4 py-2 text-gray-700 bg-white rounded-lg border border-gray-300 transition-colors hover:bg-gray-50">
                                 <Download className="w-4 h-4" />
                                 تصدير
+                            </button>
+                            <button
+                                onClick={handleApplyRecommendedPlans}
+                                className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700"
+                            >
+                                <Check className="w-4 h-4" />
+                                تحديث الباقات القياسية
                             </button>
                             <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
                                 <BarChart3 className="w-4 h-4" />
@@ -490,6 +601,7 @@ interface PlanCardProps {
 function PlanCard({ plan, onUpdate }: PlanCardProps) {
     const [showPreview, setShowPreview] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const savings = plan.key === 'quarterly' ? 10 : plan.key === 'yearly' ? 30 : 0;
 
     const handleSave = async (updatedPlan: SubscriptionPlan) => {
@@ -527,6 +639,24 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
         } catch (error) {
             console.error('خطأ في حفظ الباقة:', error);
             toast.error('❌ فشل في حفظ التعديلات');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذه الباقة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await PricingService.deletePlan(plan.id);
+            toast.success('✅ تم حذف الباقة بنجاح');
+            onUpdate();
+        } catch (error) {
+            console.error('خطأ في حذف الباقة:', error);
+            toast.error('❌ فشل حذف الباقة');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -577,6 +707,13 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                         className="flex gap-2 justify-center items-center px-4 py-2 text-gray-600 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100"
                     >
                         <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="flex gap-2 justify-center items-center px-4 py-2 text-red-600 bg-red-50 rounded-lg transition-colors hover:bg-red-100 disabled:opacity-50"
+                    >
+                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </button>
                 </div>
 
@@ -1020,6 +1157,7 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
     const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
     const [formData, setFormData] = useState({
         title: '',
+        code: '',
         description: '',
         discountType: 'percentage' as 'percentage' | 'fixed',
         discountValue: 0,
@@ -1050,6 +1188,7 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
         setEditingOffer(null);
         setFormData({
             title: '',
+            code: '',
             description: '',
             discountType: 'percentage',
             discountValue: 0,
@@ -1082,6 +1221,7 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
         setEditingOffer(offer);
         setFormData({
             title: offer.title,
+            code: offer.code || '',
             description: offer.description || '',
             discountType: offer.discountType,
             discountValue: offer.discountValue,

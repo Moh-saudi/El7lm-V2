@@ -7,17 +7,17 @@ const STORAGE_BUCKETS = {
   ADDITIONAL_IMAGES: 'avatars', // بوكت avatars للاعبين المستقلين
   // بوكتات خاصة باللاعبين حسب نوع الحساب (أسماء صحيحة من Supabase)
   PLAYER_TRAINER: 'playertrainer',
-  PLAYER_CLUB: 'playerclub', 
+  PLAYER_CLUB: 'playerclub',
   PLAYER_AGENT: 'playeragent',
   PLAYER_ACADEMY: 'playeracademy',
   VIDEOS: 'videos',
   DOCUMENTS: 'documents'
 };
 
-// ????? ???????? ????????
+// أنواع الحسابات المدعومة
 export type AccountType = 'trainer' | 'club' | 'agent' | 'academy' | 'independent';
 
-// ???? ?????? ?????? ??????? ????? ??? ??? ??????
+// تحديد البوكت المناسب حسب نوع الحساب
 function getPlayerBucket(accountType: AccountType): string {
   switch (accountType) {
     case 'trainer':
@@ -35,7 +35,7 @@ function getPlayerBucket(accountType: AccountType): string {
   }
 }
 
-// ???? ?????? ??? ?????? ?? ?????? ??????
+// تحديد نوع الحساب من مسار URL الحالي
 function detectAccountTypeFromPath(): AccountType {
   if (typeof window !== 'undefined') {
     const path = window.location.pathname;
@@ -48,68 +48,105 @@ function detectAccountTypeFromPath(): AccountType {
   return 'independent'; // افتراضي للاعبين المستقلين
 }
 
+// دالة مساعدة لاستخراج مسار الملف (Key) من الرابط
+function extractFileKey(url: string, bucketName: string): string | null {
+  if (!url) return null;
+
+  try {
+    // 1. معالجة روابط Supabase
+    if (url.includes('/storage/v1/object/public/')) {
+      // مثال: .../storage/v1/object/public/profile-images/uid.jpg
+      const parts = url.split(`/storage/v1/object/public/${bucketName}/`);
+      if (parts.length > 1) return decodeURIComponent(parts[1]);
+
+      // محاولة عامة إذا لم يتطابق اسم البوكت
+      const genericParts = url.split('/storage/v1/object/public/');
+      if (genericParts.length > 1) {
+        const fullPath = decodeURIComponent(genericParts[1]);
+        // إذا كان المسار يبدأ باسم البوكت، نحذفه
+        if (fullPath.startsWith(bucketName + '/')) {
+          return fullPath.substring(bucketName.length + 1);
+        }
+        return fullPath;
+      }
+    }
+
+    // 2. معالجة روابط Cloudflare R2 أو روابط مباشرة أخرى
+    if (url.startsWith('http')) {
+      const urlObj = new URL(url);
+      // في R2، المسار هو ما بعد الدومين
+      // مثال: https://pub-xxx.r2.dev/uid.jpg -> uid.jpg
+      return decodeURIComponent(urlObj.pathname.substring(1));
+    }
+
+    // إذا كان رابط نسبي أو مسار مباشر
+    return url;
+
+  } catch (e) {
+    console.error('❌ خطأ في استخراج مسار الملف من الرابط:', url, e);
+    return null;
+  }
+}
+
 export async function uploadProfileImage(file: File, user: User) {
   const fileExt = file.name.split('.').pop();
   const filePath = `profile-images/${user.uid}.${fileExt}`;
-  
-  const { error } = await supabase.storage
-    .from('profile-images')
-    .upload(filePath, file, { upsert: true });
-    
-  if (error) throw error;
-  
-  const { data } = supabase.storage
-    .from('profile-images')
-    .getPublicUrl(filePath);
-    
-  return data.publicUrl;
+
+  // استخدام نظام التخزين الموحد
+  const { storageManager } = await import('@/lib/storage');
+
+  const result = await storageManager.upload('profile-images', filePath, file, {
+    upsert: true,
+    contentType: file.type
+  });
+
+  return result.publicUrl;
 }
 
 export async function deleteProfileImage(imageUrl: string, user: User) {
-  const filePath = imageUrl.split('/storage/v1/object/public/')[1];
+  const filePath = extractFileKey(imageUrl, 'profile-images');
   if (filePath) {
-    await supabase.storage
-      .from('profile-images')
-      .remove([filePath.replace('profile-images/', '')]);
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete('profile-images', filePath);
   }
 }
 
 export async function uploadAdditionalImage(file: File, user: User) {
   const fileExt = file.name.split('.').pop();
   const filePath = `additional-images/${user.uid}/${Date.now()}.${fileExt}`;
-  
-  // ????? ?????? ????? ??? ??? ??????
+
+  // تحديد bucket حسب نوع الحساب
   const accountType = detectAccountTypeFromPath();
   const bucket = getPlayerBucket(accountType);
-  
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file, { upsert: false });
-    
-  if (error) throw error;
-  
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-    
-  return data.publicUrl;
+
+  // استخدام نظام التخزين الموحد
+  const { storageManager } = await import('@/lib/storage');
+
+  const result = await storageManager.upload(bucket, filePath, file, {
+    upsert: false,
+    contentType: file.type
+  });
+
+  return result.publicUrl;
 }
 
 export async function deleteAdditionalImage(imageUrl: string, user: User) {
-  const filePath = imageUrl.split('/storage/v1/object/public/')[1];
+  // تحديد bucket حسب نوع الحساب (محاولة تخمين)
+  const accountType = detectAccountTypeFromPath();
+  const bucket = getPlayerBucket(accountType);
+
+  const filePath = extractFileKey(imageUrl, bucket);
+
   if (filePath) {
-    // ????? ?????? ?? URL ??????
-    const bucketName = filePath.split('/')[0];
-    await supabase.storage
-      .from(bucketName)
-      .remove([filePath.replace(`${bucketName}/`, '')]);
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete(bucket, filePath);
   }
 }
 
-// ??? ???? ????????? ????? ?? ????? ??? ??????
+// رفع صورة اللاعب الشخصية (مع تحديد نوع الحساب)
 export async function uploadPlayerProfileImage(
-  file: File, 
-  userId: string, 
+  file: File,
+  userId: string,
   accountType?: AccountType
 ): Promise<{ url: string }> {
   // التحقق من حجم الملف (5MB حد أقصى)
@@ -118,257 +155,217 @@ export async function uploadPlayerProfileImage(
     throw new Error(`🚫 حجم الصورة كبير جداً (${fileSizeMB} ميجابايت)\n\nالحد الأقصى المسموح: 5 ميجابايت\n\nالرجاء ضغط الصورة باستخدام أي أداة ضغط صور (مثل tinypng.com) ثم حاول رفعها مجدداً.`);
   }
   const fileExt = file.name.split('.').pop();
+  // استخدام userId مباشرة كاسم للملف لضمان استبدال الصورة القديمة
   const filePath = `${userId}.${fileExt}`;
-  
-  // ????? ??? ?????? ??????? ???????
+
+  // تحديد bucket حسب نوع الحساب
   const detectedAccountType = accountType || detectAccountTypeFromPath();
   const bucket = getPlayerBucket(detectedAccountType);
-  
-  console.log('رفع صورة اللاعب الشخصية:', { 
-    bucket, 
+
+  console.log('رفع صورة اللاعب الشخصية:', {
+    bucket,
     accountType: detectedAccountType,
-    filePath, 
+    filePath,
     file: { name: file.name, size: file.size, type: file.type },
     userId
   });
-  
+
   try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, { upsert: true });
-      
-    if (error) {
-      console.error('❌ Supabase upload error:', error);
-      throw error;
-    }
-    
-    console.log('✅ تم رفع صورة اللاعب الشخصية');
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+
+    const result = await storageManager.upload(bucket, filePath, file, {
+      upsert: true,
+      contentType: file.type
+    });
+
+    console.log('✅ تم رفع صورة اللاعب الشخصية:', result.publicUrl);
+    return { url: result.publicUrl };
   } catch (error) {
     console.error('❌ خطأ في رفع صورة اللاعب الشخصية:', error instanceof Error ? error.message : 'Unknown error', error);
     throw error;
   }
-  
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-    
-  console.log('🔗 URL الصورة الشخصية:', data.publicUrl);
-  return { url: data.publicUrl };
 }
 
-// ??? ???? ????????? ?????
+// حذف صورة اللاعب الشخصية
 export async function deletePlayerProfileImage(imageUrl: string, accountType?: AccountType) {
-  const filePath = imageUrl.split('/storage/v1/object/public/')[1];
+  const detectedAccountType = accountType || detectAccountTypeFromPath();
+  const bucket = getPlayerBucket(detectedAccountType);
+
+  const filePath = extractFileKey(imageUrl, bucket);
+
   if (filePath) {
-    // ????? ?????? ?? URL ?? ??? ??????
-    let bucketName = filePath.split('/')[0];
-    
-    // ??? ?? ????? ?? ??????? ?????? ?? URL? ?????? ??? ??????
-    if (!bucketName.startsWith('player')) {
-      const detectedAccountType = accountType || detectAccountTypeFromPath();
-      bucketName = getPlayerBucket(detectedAccountType);
-    }
-    
-    await supabase.storage
-      .from(bucketName)
-      .remove([filePath.replace(`${bucketName}/`, '')]);
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete(bucket, filePath);
   }
 }
 
-// ??? ???? ?????? ????? ?? ????? ??? ??????
+// رفع صورة إضافية للاعب
 export async function uploadPlayerAdditionalImage(
-  file: File, 
-  userId: string, 
+  file: File,
+  userId: string,
   accountType?: AccountType
 ): Promise<{ url: string }> {
   const fileExt = file.name.split('.').pop();
-  const filePath = `additional-images/${userId}/${Date.now()}.${fileExt}`;
-  
-  // ????? ??? ?????? ??????? ???????
+  // استخدام مسار فرعي منظم
+  const filePath = `${userId}/${Date.now()}.${fileExt}`;
+
+  // تحديد bucket حسب نوع الحساب
   const detectedAccountType = accountType || detectAccountTypeFromPath();
   const bucket = getPlayerBucket(detectedAccountType);
-  
-  console.log('رفع صورة إضافية للاعب:', { 
-    bucket, 
+
+  console.log('رفع صورة إضافية للاعب:', {
+    bucket,
     accountType: detectedAccountType,
-    filePath, 
+    filePath,
     file: { name: file.name, size: file.size, type: file.type },
     userId
   });
-  
+
   try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, { upsert: false });
-      
-    if (error) {
-      console.error('? Supabase upload error:', error);
-      throw error;
-    }
-    
-    console.log('? ?? ??? ?????? ???????? ?????');
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+
+    const result = await storageManager.upload(bucket, filePath, file, {
+      upsert: false,
+      contentType: file.type
+    });
+
+    console.log('✅ تم رفع الصورة الإضافية بنجاح:', result.publicUrl);
+    return { url: result.publicUrl };
   } catch (error) {
-    console.error('? ??? ?????? ???????? ???:', error instanceof Error ? error.message : 'Unknown error', error);
+    console.error('❌ خطأ في رفع الصورة الإضافية:', error instanceof Error ? error.message : 'Unknown error', error);
     throw error;
   }
-  
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-    
-  console.log('?? URL ?????? ????????:', data.publicUrl);
-  return { url: data.publicUrl };
 }
 
-// ??? ???? ?????? ?????
+// حذف صورة إضافية
 export async function deletePlayerAdditionalImage(imageUrl: string, accountType?: AccountType) {
-  const filePath = imageUrl.split('/storage/v1/object/public/')[1];
+  const detectedAccountType = accountType || detectAccountTypeFromPath();
+  const bucket = getPlayerBucket(detectedAccountType);
+
+  const filePath = extractFileKey(imageUrl, bucket);
+
   if (filePath) {
-    // ????? ?????? ?? URL ?? ??? ??????
-    let bucketName = filePath.split('/')[0];
-    
-    // ??? ?? ????? ?? ??????? ?????? ?? URL? ?????? ??? ??????
-    if (!bucketName.startsWith('player')) {
-      const detectedAccountType = accountType || detectAccountTypeFromPath();
-      bucketName = getPlayerBucket(detectedAccountType);
-    }
-    
-    await supabase.storage
-      .from(bucketName)
-      .remove([filePath.replace(`${bucketName}/`, '')]);
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete(bucket, filePath);
   }
 }
 
-// ??? ????? ????? ?? ????? ??? ??????
+// رفع مستند للاعب
 export async function uploadPlayerDocument(
-  file: File, 
-  userId: string, 
-  documentType: string, 
+  file: File,
+  userId: string,
+  documentType: string,
   accountType?: AccountType
 ): Promise<{ url: string, name: string }> {
   const fileExt = file.name.split('.').pop();
   const fileName = file.name.split('.').slice(0, -1).join('.');
   const filePath = `documents/${userId}/${documentType}_${Date.now()}.${fileExt}`;
-  
-  // ????? ??? ?????? ??????? ???????
+
+  // تحديد bucket حسب نوع الحساب
   const detectedAccountType = accountType || detectAccountTypeFromPath();
   const bucket = getPlayerBucket(detectedAccountType);
-  
-  console.log('رفع مستند اللاعب:', { 
-    bucket, 
+
+  console.log('رفع مستند اللاعب:', {
+    bucket,
     accountType: detectedAccountType,
-    filePath, 
+    filePath,
     file,
     userId
   });
-  
+
   try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, { upsert: false });
-      
-    if (error) throw error;
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+
+    const result = await storageManager.upload(bucket, filePath, file, {
+      upsert: false,
+      contentType: file.type
+    });
+
+    console.log('✅ تم رفع المستند بنجاح:', result.publicUrl);
+    return {
+      url: result.publicUrl,
+      name: fileName
+    };
   } catch (error) {
-    console.error('??? ??????? ???:', error instanceof Error ? error.message : 'Unknown error', error);
+    console.error('❌ خطأ في رفع المستند:', error instanceof Error ? error.message : 'Unknown error', error);
     throw error;
   }
-  
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-    
-  return { 
-    url: data.publicUrl,
-    name: fileName 
-  };
 }
 
-// ??? ????? ?????
+// حذف مستند
 export async function deletePlayerDocument(documentUrl: string, accountType?: AccountType) {
-  const filePath = documentUrl.split('/storage/v1/object/public/')[1];
-  if (filePath) {
-    // ????? ?????? ?? URL ?? ??? ??????
-    let bucketName = filePath.split('/')[0];
-    
-    // ??? ?? ????? ?? ??????? ?????? ?? URL? ?????? ??? ??????
-    if (!bucketName.startsWith('player')) {
-      const detectedAccountType = accountType || detectAccountTypeFromPath();
-      bucketName = getPlayerBucket(detectedAccountType);
-    }
-    
-    await supabase.storage
-      .from(bucketName)
-      .remove([filePath.replace(`${bucketName}/`, '')]);
-  }
-} 
+  const detectedAccountType = accountType || detectAccountTypeFromPath();
+  const bucket = getPlayerBucket(detectedAccountType);
 
-// ??? ????? ????? ?? ????? ??? ??????
+  const filePath = extractFileKey(documentUrl, bucket);
+
+  if (filePath) {
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete(bucket, filePath);
+  }
+}
+
+// رفع فيديو للاعب
 export async function uploadPlayerVideo(
-  file: File, 
-  ownerId: string, 
-  playerId: string, 
+  file: File,
+  ownerId: string,
+  playerId: string,
   accountType?: AccountType
 ): Promise<{ url: string, name: string }> {
   const fileExt = file.name.split('.').pop();
   const fileName = file.name.split('.').slice(0, -1).join('.');
   const filePath = `videos/${ownerId}/${playerId}/${Date.now()}.${fileExt}`;
-  
-  // ????? ??? ?????? ??????? ???????
+
+  // تحديد bucket حسب نوع الحساب
   const detectedAccountType = accountType || detectAccountTypeFromPath();
   const bucket = getPlayerBucket(detectedAccountType);
-  
-  console.log('رفع فيديو اللاعب:', { 
-    bucket, 
+
+  console.log('رفع فيديو اللاعب:', {
+    bucket,
     accountType: detectedAccountType,
-    filePath, 
+    filePath,
     file,
     ownerId,
     playerId
   });
-  
+
   try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, { upsert: false });
-      
-    if (error) throw error;
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+
+    const result = await storageManager.upload(bucket, filePath, file, {
+      upsert: false,
+      contentType: file.type
+    });
+
+    console.log('✅ تم رفع الفيديو بنجاح:', result.publicUrl);
+    return {
+      url: result.publicUrl,
+      name: fileName
+    };
   } catch (error) {
-    console.error('??? ??????? ???:', error instanceof Error ? error.message : 'Unknown error', error);
+    console.error('❌ خطأ في رفع الفيديو:', error instanceof Error ? error.message : 'Unknown error', error);
     throw error;
   }
-  
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-    
-  return { 
-    url: data.publicUrl,
-    name: fileName 
-  };
 }
 
-// ??? ????? ?????
+// حذف فيديو
 export async function deletePlayerVideo(videoUrl: string, accountType?: AccountType) {
-  const filePath = videoUrl.split('/storage/v1/object/public/')[1];
+  const detectedAccountType = accountType || detectAccountTypeFromPath();
+  const bucket = getPlayerBucket(detectedAccountType);
+
+  const filePath = extractFileKey(videoUrl, bucket);
+
   if (filePath) {
-    // ????? ?????? ?? URL ?? ??? ??????
-    let bucketName = filePath.split('/')[0];
-    
-    // ??? ?? ????? ?? ??????? ?????? ?? URL? ?????? ??? ??????
-    if (!bucketName.startsWith('player')) {
-      const detectedAccountType = accountType || detectAccountTypeFromPath();
-      bucketName = getPlayerBucket(detectedAccountType);
-    }
-    
-    await supabase.storage
-      .from(bucketName)
-      .remove([filePath.replace(`${bucketName}/`, '')]);
+    const { storageManager } = await import('@/lib/storage');
+    await storageManager.delete(bucket, filePath);
   }
 }
 
-// ???? ?????? ??? ??? ???? ??????? ?? ?????????
-
-// ????????
+// دوال مساعدة للواجهات
 export const trainerUpload = {
   profileImage: (file: File, userId: string) => uploadPlayerProfileImage(file, userId, 'trainer'),
   additionalImage: (file: File, userId: string) => uploadPlayerAdditionalImage(file, userId, 'trainer'),
@@ -376,62 +373,55 @@ export const trainerUpload = {
   video: (file: File, trainerId: string, playerId: string) => uploadPlayerVideo(file, trainerId, playerId, 'trainer')
 };
 
-// ???? ????? ???? ?????????? ??????? (???? playerId ?????)
+// النادي يحتاج معاملة خاصة لبعض الفيديوهات
 export async function uploadClubVideo(
-  file: File, 
+  file: File,
   clubId: string
 ): Promise<{ url: string, name: string }> {
   const fileExt = file.name.split('.').pop();
   const fileName = file.name.split('.').slice(0, -1).join('.');
   const filePath = `videos/${clubId}/${Date.now()}.${fileExt}`;
-  
-  console.log('??? ????? ??????:', { 
-    bucket: 'playerclub',
-    filePath, 
+
+  // البوكت الثابت لفيديوهات النادي لأنه يستخدم دالة خاصة
+  const bucket = 'playerclub';
+
+  console.log('رفع فيديو خاص بالنادي:', {
+    bucket,
+    filePath,
     file: { name: file.name, size: file.size, type: file.type }
   });
-  
+
   try {
-    const { error } = await supabase.storage
-      .from('playerclub')
-      .upload(filePath, file, { 
-        upsert: false,
-        cacheControl: '3600',
-        contentType: file.type
-      });
-      
-    if (error) {
-      console.error('??? ??????? ???:', error);
-      throw error;
-    }
+    // استخدام نظام التخزين الموحد
+    const { storageManager } = await import('@/lib/storage');
+
+    const result = await storageManager.upload(bucket, filePath, file, {
+      upsert: false,
+      cacheControl: '3600',
+      contentType: file.type
+    });
+
+    console.log('✅ تم رفع فيديو النادي بنجاح:', result.publicUrl);
+
+    return {
+      url: result.publicUrl,
+      name: fileName
+    };
   } catch (error) {
-    console.error('??? ??????? ???:', error instanceof Error ? error.message : 'Unknown error', error);
+    console.error('❌ خطأ في رفع فيديو النادي:', error instanceof Error ? error.message : 'Unknown error', error);
     throw error;
   }
-  
-  const { data } = supabase.storage
-    .from('playerclub')
-    .getPublicUrl(filePath);
-    
-  console.log('? ?? ??? ??????? ?????:', data.publicUrl);
-    
-  return { 
-    url: data.publicUrl,
-    name: fileName 
-  };
 }
 
-// ???????
+// الواجهات المصدرة
 export const clubUpload = {
   profileImage: (file: File, userId: string) => uploadPlayerProfileImage(file, userId, 'club'),
   additionalImage: (file: File, userId: string) => uploadPlayerAdditionalImage(file, userId, 'club'),
   document: (file: File, userId: string, documentType: string) => uploadPlayerDocument(file, userId, documentType, 'club'),
   video: (file: File, clubId: string, playerId: string) => uploadPlayerVideo(file, clubId, playerId, 'club'),
-  // ???? ????? ???? ?????????? ???? playerId
   videoFile: (file: File, clubId: string) => uploadClubVideo(file, clubId)
 };
 
-// ???????
 export const agentUpload = {
   profileImage: (file: File, userId: string) => uploadPlayerProfileImage(file, userId, 'agent'),
   additionalImage: (file: File, userId: string) => uploadPlayerAdditionalImage(file, userId, 'agent'),
@@ -439,7 +429,6 @@ export const agentUpload = {
   video: (file: File, agentId: string, playerId: string) => uploadPlayerVideo(file, agentId, playerId, 'agent')
 };
 
-// ???????????
 export const academyUpload = {
   profileImage: (file: File, userId: string) => uploadPlayerProfileImage(file, userId, 'academy'),
   additionalImage: (file: File, userId: string) => uploadPlayerAdditionalImage(file, userId, 'academy'),

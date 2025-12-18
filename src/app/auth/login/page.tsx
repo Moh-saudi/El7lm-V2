@@ -91,43 +91,27 @@ export default function LoginPage() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [useOTP, setUseOTP] = useState(false);
 
-  const handleLoginWithOTP = async () => {
-    if (!phone) {
-      toast.error('يرجى إدخال رقم الهاتف');
-      return;
-    }
-    const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`.replace(/\s+/g, '');
 
-    setLoading(true);
-    toast.loading('جاري إرسال رمز التحقق...', { id: 'otp-login' });
-
-    try {
-      let appVerifier = (window as any).recaptchaVerifier;
-      if (!appVerifier) {
-        appVerifier = await setupRecaptcha('recaptcha-container');
-      }
-
-      const confirmation = await sendPhoneOTP(fullPhone, appVerifier);
-      setConfirmationResult(confirmation);
-      setShowOTPModal(true);
-      toast.success('تم إرسال الرمز بنجاح', { id: 'otp-login' });
-    } catch (error: any) {
-      console.error(error);
-      let msg = error.message;
-      if (error.code === 'auth/invalid-phone-number') msg = 'رقم الهاتف غير صحيح';
-      toast.error(msg, { id: 'otp-login' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleVerifyOTP = async (otp: string) => {
     try {
       const result = await verifyPhoneOTP(confirmationResult, otp);
-      toast.success('✅ تم تسجيل الدخول بنجاح');
-      const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      router.replace(dashboardRoute);
+
+      if (result.isNewUser) {
+        toast.success('🎉 تم إنشاء حسابك بنجاح! مرحباً بك في الحلم');
+      } else {
+        toast.success('✅ تم تسجيل الدخول بنجاح');
+      }
+
+      if (result.userData.accountType === 'unknown' || result.userData.accountType === undefined) {
+        setTimeout(() => router.replace('/auth/select-role'), 500);
+      } else {
+        const dashboardRoute = getDashboardRoute(result.userData.accountType);
+        router.replace(dashboardRoute);
+      }
+
     } catch (error: any) {
       console.error('Verify error:', error);
       throw error;
@@ -192,6 +176,10 @@ export default function LoginPage() {
 
   const getDashboardRoute = (accountType: string | undefined) => {
     if (!accountType) return '/auth/login';
+
+    // Redirect new users with unknown role to selection page
+    if (accountType === 'unknown') return '/auth/select-role';
+
     const routes: Record<string, string> = {
       player: '/dashboard/player',
       club: '/dashboard/club',
@@ -255,50 +243,84 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
-        toast.loading('جاري التحقق...', { id: 'login' });
-        const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
-        if (!firebaseEmail) {
-          // رسالة خطأ محسنة مع زر للتسجيل
-          toast.custom((t) => (
-            <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 text-2xl">👤</div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
-                    رقم الهاتف غير مسجل
-                  </h3>
-                  <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
-                    💡 يرجى إنشاء حساب جديد للبدء
-                  </p>
-                  <button
-                    onClick={() => {
-                      toast.dismiss(t.id);
-                      router.push('/auth/register');
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
-                  >
-                    إنشاء حساب جديد
-                  </button>
-                </div>
-                <button
-                  onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
-                  aria-label="إغلاق"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ), { id: 'login', duration: 8000 });
+      }
+
+      const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
+
+      // --- OTP Login Flow ---
+      if (useOTP) {
+        try {
+          toast.loading('جاري إرسال رمز التحقق...', { id: 'login' });
+
+          let appVerifier = (window as any).recaptchaVerifier;
+          if (!appVerifier) {
+            appVerifier = await setupRecaptcha('recaptcha-container-login');
+          }
+
+          const confirmation = await sendPhoneOTP(fullPhone, appVerifier);
+          setConfirmationResult(confirmation);
+          setShowOTPModal(true);
+          toast.success('تم إرسال الرمز بنجاح', { id: 'login' });
+          setLoading(false);
+          return; // Stop here, wait for OTP
+        } catch (error: any) {
+          console.error('Send OTP Error:', error);
+          toast.error(error.message || 'فشل إرسال الرمز', { id: 'login' });
           setLoading(false);
           return;
         }
-        loginEmail = firebaseEmail;
+      }
+      // ----------------------
+
+      toast.loading('جاري التحقق...', { id: 'login' });
+      const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
+      if (!firebaseEmail) {
+        // رسالة خطأ محسنة مع زر للتسجيل
+        toast.custom((t) => (
+          <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 text-2xl">👤</div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
+                  رقم الهاتف غير مسجل
+                </h3>
+                <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
+                  💡 يرجى إنشاء حساب جديد للبدء
+                </p>
+                <button
+                  onClick={() => {
+                    toast.dismiss(t.id);
+                    router.push('/auth/register');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm sm:text-base font-medium transition-colors duration-200 shadow-sm"
+                >
+                  إنشاء حساب جديد
+                </button>
+              </div>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                aria-label="إغلاق"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ), { id: 'login', duration: 8000 });
+        setLoading(false);
+        return;
+      }
+      loginEmail = firebaseEmail;
+
+      if (!password && !useOTP) { // Only check password if NOT using OTP
+        toast.error('يرجى إدخال كلمة المرور');
+        setLoading(false);
+        return;
       }
 
-      if (!password) {
-        toast.error('يرجى إدخال كلمة المرور');
+      // Safety check
+      if (useOTP && loginMethod === 'phone') {
+        // Should have returned earlier, but just in case
         setLoading(false);
         return;
       }
@@ -848,6 +870,14 @@ export default function LoginPage() {
                         />
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-2 py-1 cursor-pointer" onClick={() => setUseOTP(!useOTP)}>
+                      <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${useOTP ? 'bg-purple-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all duration-300 ${useOTP ? 'left-1' : 'left-6'}`}></div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-600 select-none">الدخول السريع (بدون كلمة مرور)</span>
+                    </div>
+
                   </div>
                 ) : (
                   <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-1">
@@ -869,39 +899,41 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">كلمة المرور</label>
-                    <button
-                      type="button"
-                      onClick={() => router.push('/auth/forgot-password')}
-                      className="text-[10px] font-bold text-purple-600 hover:text-purple-700 transition-colors"
-                    >
-                      نسيت؟
-                    </button>
-                  </div>
-                  <div className="relative group">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-10 pl-10 pr-10 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all outline-none text-sm font-semibold text-slate-800 placeholder:text-slate-400"
-                      placeholder="••••••••"
-                      required
-                      autoComplete="current-password"
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors">
-                      <Lock className="w-4 h-4" />
+                {(loginMethod === 'email' || !useOTP) && (
+                  <div className="space-y-1 animate-in fade-in zoom-in duration-300">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">كلمة المرور</label>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/auth/forgot-password')}
+                        className="text-[10px] font-bold text-purple-600 hover:text-purple-700 transition-colors"
+                      >
+                        نسيت؟
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    <div className="relative group">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full h-10 pl-10 pr-10 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all outline-none text-sm font-semibold text-slate-800 placeholder:text-slate-400"
+                        placeholder="••••••••"
+                        required={!useOTP}
+                        autoComplete="current-password"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center justify-between py-1">
                   <label className="flex gap-2 items-center cursor-pointer group select-none">
@@ -920,15 +952,7 @@ export default function LoginPage() {
                     <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-700 transition-colors">تذكرني</span>
                   </label>
 
-                  {loginMethod === 'phone' && (
-                    <button
-                      type="button"
-                      onClick={handleLoginWithOTP}
-                      className="text-[10px] font-bold px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
-                    >
-                      دخول بـ OTP
-                    </button>
-                  )}
+
                 </div>
 
                 <button
@@ -947,8 +971,12 @@ export default function LoginPage() {
                       </>
                     ) : (
                       <>
-                        تسجيل الدخول
-                        <svg className="w-4 h-4 rtl:rotate-180 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        {useOTP && loginMethod === 'phone' ? 'إرسال رمز التحقق' : 'تسجيل الدخول'}
+                        {useOTP && loginMethod === 'phone' ? (
+                          <Phone className="w-4 h-4 ltr:ml-2 rtl:mr-2" />
+                        ) : (
+                          <svg className="w-4 h-4 rtl:rotate-180 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        )}
                       </>
                     )}
                   </span>

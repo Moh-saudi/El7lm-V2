@@ -787,13 +787,16 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       let userData: UserData;
 
       if (isNewUser) {
-        // مستخدم جديد - إنشاء حساب
+        // مستخدم جديد - إنشاء حساب ولكن بدون تحديد دور نهائي
         console.log(migrationData ? '🔄 Migrating user data...' : '🆕 Creating new user from Google Sign-In...');
+
+        // If migrating, we use the known role. If purely new, we use 'unknown' to force role selection via UI
+        const finalRole = migrationData ? (migrationData.accountType || 'player') : 'unknown';
 
         userData = {
           uid: user.uid,
           email: user.email || '',
-          accountType: userAccountType, // استخدام النوع المحدد (سواء افتراضي او من المهاجرة)
+          accountType: finalRole,
           full_name: (migrationData ? (migrationData.full_name || migrationData.name) : null) || user.displayName || '',
           phone: (migrationData ? migrationData.phone : null) || user.phoneNumber || '',
           profile_image: (migrationData ? (migrationData.profile_image || migrationData.profileImage) : null) || user.photoURL || '',
@@ -820,15 +823,15 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         await setDoc(userRef, sanitizeForFirestore(userData));
         console.log('✅ User saved to users collection');
 
-        // حفظ في المجموعة الخاصة بالدور
-        if (userAccountType !== 'admin') {
-          const roleRef = doc(db, userAccountType + 's', user.uid);
+        // Only create role-specific document if we actually know the role (migration case)
+        if (finalRole !== 'unknown' && finalRole !== 'admin') {
+          const roleRef = doc(db, finalRole + 's', user.uid);
           await setDoc(roleRef, sanitizeForFirestore({
             ...userData,
             created_at: new Date(),
             updated_at: new Date()
           }));
-          console.log(`✅ User saved to ${userAccountType}s collection`);
+          console.log(`✅ User saved to ${finalRole}s collection`);
         }
       } else {
         // مستخدم موجود - تحديث البيانات
@@ -1014,10 +1017,14 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         // مستخدم جديد - إنشاء حساب
         console.log('🆕 Creating new user from Phone Auth...');
 
+        // Important: If no specific role is passed (e.g. from generic login), use 'unknown' to force selection
+        // If additionalData has accountType (e.g. from Register page), use it.
+        const finalRole = additionalData.accountType || 'unknown';
+
         userData = {
           uid: user.uid,
           email: user.email || additionalData.email || '',
-          accountType: defaultRole,
+          accountType: finalRole,
           full_name: additionalData.full_name || additionalData.name || 'User',
           phone: user.phoneNumber || '',
           profile_image: '',
@@ -1036,9 +1043,9 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, sanitizeForFirestore(userData));
 
-        // حفظ في المجموعة الخاصة بالدور
-        if (defaultRole !== 'admin') {
-          const roleRef = doc(db, defaultRole + 's', user.uid);
+        // حفظ في المجموعة الخاصة بالدور ONLY IF role is known
+        if (finalRole !== 'unknown' && finalRole !== 'admin') {
+          const roleRef = doc(db, finalRole + 's', user.uid);
           await setDoc(roleRef, sanitizeForFirestore({
             ...userData,
             created_at: new Date(),

@@ -4,13 +4,6 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils/index"
 
-/**
- * متغيرات Button - أنماط وأحجام الأزرار
- * 
- * يستخدم class-variance-authority لإنشاء متغيرات للأزرار
- * يدعم عدة أنماط (default, destructive, outline, secondary, ghost, link)
- * وعدة أحجام (default, sm, lg, icon)
- */
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
@@ -41,36 +34,12 @@ const buttonVariants = cva(
   }
 )
 
-/**
- * Props لمكون Button
- * 
- * @extends React.ButtonHTMLAttributes<HTMLButtonElement>
- * @extends VariantProps<typeof buttonVariants>
- */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  /** استخدام Slot من Radix UI بدلاً من button element */
   asChild?: boolean
 }
 
-/**
- * مكون Button قابل لإعادة الاستخدام
- * 
- * يدعم عدة أنماط وأحجام، ويمكن استخدامه كـ Slot من Radix UI
- * 
- * @param {ButtonProps} props - خصائص Button
- * @param {string} [props.variant='default'] - نمط الزر
- * @param {string} [props.size='default'] - حجم الزر
- * @param {boolean} [props.asChild=false] - استخدام Slot
- * 
- * @example
- * ```tsx
- * <Button variant="destructive" size="lg">
- *   حذف
- * </Button>
- * ```
- */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"

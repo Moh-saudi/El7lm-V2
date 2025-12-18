@@ -106,6 +106,17 @@ service cloud.firestore {
     }
 
     // =========================
+    // 🛡️ Security & Auditing
+    // =========================
+
+    // Security Logs - Allow everyone to create (for logging login attempts), only admins to read
+    match /security_logs/{logId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if false; // Logs should be immutable
+    }
+
+    // =========================
     // 💰 Pricing & Subscriptions
     // =========================
 
