@@ -13,12 +13,12 @@ import { Analytics, getAnalytics } from "firebase/analytics";
 import { FirebaseApp, getApps, initializeApp } from "firebase/app";
 import { Auth, getAuth } from "firebase/auth";
 import {
-    Firestore,
-    doc,
-    enableNetwork,
-    getDoc,
-    getFirestore,
-    initializeFirestore
+  Firestore,
+  doc,
+  enableNetwork,
+  getDoc,
+  getFirestore,
+  initializeFirestore
 } from "firebase/firestore";
 import { FirebaseStorage, getStorage } from "firebase/storage";
 import { logFirebaseError, shouldSuppressFirebaseError } from "./error-handler";
@@ -131,10 +131,10 @@ let storage: FirebaseStorage;
  */
 if (!getApps().length) {
   try {
-    // Skip Firebase initialization during build to prevent memory issues
-    // Only use build config during actual build phase, not in runtime
-    if (process.env.NEXT_PHASE === 'phase-production-build') {
-      console.log('🚫 Skipping Firebase initialization during build phase');
+    // Skip Firebase initialization during build ONLY if config is missing
+    // This allows SSG (Static Site Generation) to work if credentials are provided
+    if (process.env.NEXT_PHASE === 'phase-production-build' && !hasValidConfig) {
+      console.log('⚠️ Firebase config missing during build. Using fallback to prevent crash.');
       // Create minimal fallback config for build
       const buildConfig = {
         apiKey: 'build_api_key',
@@ -176,47 +176,47 @@ if (!getApps().length) {
         throw new Error('Firebase configuration is required for development');
       }
     } else {
-    // Firebase initialization logs removed for cleaner console
+      // Firebase initialization logs removed for cleaner console
 
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
 
-    // Initialize Firestore with robust network settings for flaky networks/proxies
-    db = initializeFirestore(app, {
-      ignoreUndefinedProperties: true,
-      cacheSizeBytes: 50 * 1024 * 1024, // 50MB cache
-      // Reduce WebChannel 400 terminate noise by auto switching to long-polling when needed
-      experimentalAutoDetectLongPolling: true,
-      useFetchStreams: false
-    } as any);
+      // Initialize Firestore with robust network settings for flaky networks/proxies
+      db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true,
+        cacheSizeBytes: 50 * 1024 * 1024, // 50MB cache
+        // Reduce WebChannel 400 terminate noise by auto switching to long-polling when needed
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: false
+      } as any);
 
-    // Note: Firestore network is enabled by default. Avoid toggling it at runtime to prevent race conditions.
+      // Note: Firestore network is enabled by default. Avoid toggling it at runtime to prevent race conditions.
 
-    storage = getStorage(app);
+      storage = getStorage(app);
 
-    // Initialize Analytics in browser only
-    if (typeof window !== 'undefined') {
-      try {
-        analytics = getAnalytics(app);
-      } catch (error) {
-        // إخفاء أخطاء Analytics في وضع التطوير
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Analytics initialization failed (development mode)');
-        } else {
-          console.warn('Analytics initialization failed:', error);
+      // Initialize Analytics in browser only
+      if (typeof window !== 'undefined') {
+        try {
+          analytics = getAnalytics(app);
+        } catch (error) {
+          // إخفاء أخطاء Analytics في وضع التطوير
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Analytics initialization failed (development mode)');
+          } else {
+            console.warn('Analytics initialization failed:', error);
+          }
+          analytics = null;
         }
-        analytics = null;
       }
-    }
 
-    // Firebase initialized successfully
+      // Firebase initialized successfully
 
-    // إضافة error handling للـ Firestore
-    if (db) {
-      enableNetwork(db).catch(err => {
-        console.warn('⚠️ Firestore network enable failed:', err);
-      });
-    }
+      // إضافة error handling للـ Firestore
+      if (db) {
+        enableNetwork(db).catch(err => {
+          console.warn('⚠️ Firestore network enable failed:', err);
+        });
+      }
     }
   } catch (error) {
     if (shouldSuppressFirebaseError(error)) {
@@ -264,15 +264,15 @@ function validateFirebaseConfig() {
   const missingFields = requiredFields.filter(field => {
     const value = firebaseConfig[field as keyof typeof firebaseConfig];
     return !value ||
-           value === 'your_firebase_api_key_here' ||
-           value === 'your_firebase_api_key' ||
-           value === 'your_project.firebaseapp.com' ||
-           value === 'your_project_id' ||
-           value === 'your_project.appspot.com' ||
-           value === 'your_sender_id' ||
-           value === 'your_app_id' ||
-           value === 'your_measurement_id' ||
-           (value && value.startsWith('your_'));
+      value === 'your_firebase_api_key_here' ||
+      value === 'your_firebase_api_key' ||
+      value === 'your_project.firebaseapp.com' ||
+      value === 'your_project_id' ||
+      value === 'your_project.appspot.com' ||
+      value === 'your_sender_id' ||
+      value === 'your_app_id' ||
+      value === 'your_measurement_id' ||
+      (value && value.startsWith('your_'));
   });
 
   if (missingFields.length > 0) {
@@ -385,8 +385,8 @@ const hasValidGeideaConfig = validateGeideaConfig();
 export { analytics, app, auth, db, storage };
 
 // Export configuration for debugging
-    export { firebaseConfig, hasValidConfig, hasValidGeideaConfig, missingVars };
+export { firebaseConfig, hasValidConfig, hasValidGeideaConfig, missingVars };
 
 // Export validation functions
-    export { validateFirebaseConfig, validateGeideaConfig };
+export { validateFirebaseConfig, validateGeideaConfig };
 
