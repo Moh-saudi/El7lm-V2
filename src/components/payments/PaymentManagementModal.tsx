@@ -7,14 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  DollarSign, 
-  Users, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
-  X, 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DollarSign,
+  Users,
+  Calendar,
+  Clock,
+  CheckCircle,
+  X,
   AlertCircle,
   Search,
   Filter,
@@ -27,11 +36,13 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Check,
-  XCircle
+  XCircle,
+  MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface PaymentManagementModalProps {
   isOpen: boolean;
@@ -68,10 +79,10 @@ interface PaymentRecord {
   players?: Array<{ id: string; name: string; }>;
 }
 
-export default function PaymentManagementModal({ 
-  isOpen, 
-  onClose, 
-  tournament 
+export default function PaymentManagementModal({
+  isOpen,
+  onClose,
+  tournament
 }: PaymentManagementModalProps) {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,41 +105,89 @@ export default function PaymentManagementModal({
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const paymentsQuery = query(
-        collection(db, 'tournament_registrations'),
-        where('tournamentId', '==', tournament.id),
-        orderBy('registrationDate', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(paymentsQuery);
-      const paymentsData = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          registrationId: data.registrationId || doc.id,
-          playerName: data.accountName || data.playerName || 'غير محدد',
-          playerEmail: data.accountEmail || data.playerEmail || '',
-          playerPhone: data.accountPhone || data.playerPhone || '',
-          amount: data.paymentAmount || data.amount || 0,
-          playerCount: data.players?.length || data.playerCount || 1,
-          paymentStatus: data.paymentStatus || 'pending',
-          paymentMethod: data.paymentMethod,
-          paymentType: data.paymentType,
-          registrationDate: data.registrationDate?.toDate?.() || new Date(),
-          paymentDate: data.paymentDate?.toDate?.() || null,
-          notes: data.notes || '',
-          receiptUrl: data.receiptUrl || '',
-          receiptNumber: data.receiptNumber || '',
-          mobileWalletProvider: data.mobileWalletProvider || '',
-          mobileWalletNumber: data.mobileWalletNumber || '',
-          geideaOrderId: data.geideaOrderId || '',
-          geideaTransactionId: data.geideaTransactionId || '',
-          geideaPaymentData: data.geideaPaymentData || '',
-          players: data.players || []
-        } as PaymentRecord;
-      });
-      
-      setPayments(paymentsData);
+      const allPayments: PaymentRecord[] = [];
+
+      // 1. Fetch from 'tournament_registrations' (Individual/Old)
+      try {
+        const oldQuery = query(
+          collection(db, 'tournament_registrations'),
+          where('tournamentId', '==', tournament.id),
+          orderBy('registrationDate', 'desc')
+        );
+        const oldSnapshot = await getDocs(oldQuery);
+        const oldPayments = oldSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            registrationId: data.registrationId || doc.id,
+            playerName: data.accountName || data.playerName || 'غير محدد',
+            playerEmail: data.accountEmail || data.playerEmail || '',
+            playerPhone: data.accountPhone || data.playerPhone || '',
+            amount: data.paymentAmount || data.amount || 0,
+            playerCount: data.players?.length || data.playerCount || 1,
+            paymentStatus: data.paymentStatus || 'pending',
+            paymentMethod: data.paymentMethod,
+            paymentType: data.paymentType,
+            registrationDate: data.registrationDate?.toDate?.() || new Date(),
+            paymentDate: data.paymentDate?.toDate?.() || null,
+            notes: data.notes || '',
+            receiptUrl: data.receiptUrl || '',
+            receiptNumber: data.receiptNumber || '',
+            mobileWalletProvider: data.mobileWalletProvider || '',
+            mobileWalletNumber: data.mobileWalletNumber || '',
+            geideaOrderId: data.geideaOrderId || '',
+            geideaTransactionId: data.geideaTransactionId || '',
+            geideaPaymentData: data.geideaPaymentData || '',
+            players: data.players || []
+          } as PaymentRecord;
+        });
+        allPayments.push(...oldPayments);
+      } catch (e) {
+        console.error("Error fetching old payments", e);
+      }
+
+      // 2. Fetch from 'tournamentRegistrations' (Group/New)
+      try {
+        const newQuery = query(
+          collection(db, 'tournamentRegistrations'),
+          where('tournamentId', '==', tournament.id)
+        );
+        const newSnapshot = await getDocs(newQuery);
+        const newPayments = newSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            registrationId: doc.id,
+            playerName: data.teamName || data.clubName || data.accountName || 'فريق',
+            playerEmail: data.accountEmail || '',
+            playerPhone: data.accountPhone || '',
+            amount: data.paymentAmount || 0,
+            playerCount: data.players?.length || 0,
+            paymentStatus: data.paymentStatus || 'pending',
+            paymentMethod: data.paymentMethod,
+            paymentType: 'immediate',
+            registrationDate: data.registrationDate?.toDate?.() || data.createdAt?.toDate?.() || new Date(),
+            paymentDate: data.paymentDate?.toDate?.() || null,
+            notes: data.notes || '',
+            receiptUrl: data.receiptUrl || '',
+            receiptNumber: data.receiptNumber || '',
+            mobileWalletProvider: data.mobileWalletProvider || '',
+            mobileWalletNumber: data.mobileWalletNumber || '',
+            geideaOrderId: data.geideaOrderId || '',
+            geideaTransactionId: data.geideaTransactionId || '',
+            geideaPaymentData: '',
+            players: data.players || []
+          } as PaymentRecord;
+        });
+        allPayments.push(...newPayments);
+      } catch (e) {
+        console.error("Error fetching new payments", e);
+      }
+
+      // Sort by date desc
+      allPayments.sort((a, b) => b.registrationDate.getTime() - a.registrationDate.getTime());
+
+      setPayments(allPayments);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast.error('فشل في تحميل المدفوعات');
@@ -140,7 +199,6 @@ export default function PaymentManagementModal({
   const filterPayments = () => {
     let filtered = payments;
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(payment =>
         payment.playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,7 +207,6 @@ export default function PaymentManagementModal({
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(payment => payment.paymentStatus === statusFilter);
     }
@@ -164,7 +221,7 @@ export default function PaymentManagementModal({
         paymentDate: newStatus === 'paid' ? new Date() : null,
         updatedAt: new Date()
       });
-      
+
       toast.success('تم تحديث حالة الدفع بنجاح');
       fetchPayments();
     } catch (error) {
@@ -175,11 +232,11 @@ export default function PaymentManagementModal({
 
   const getStatusColor = (status: PaymentRecord['paymentStatus']) => {
     switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      case 'refunded': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'paid': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      case 'refunded': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -189,16 +246,6 @@ export default function PaymentManagementModal({
       case 'pending': return 'في الانتظار';
       case 'failed': return 'فشل';
       case 'refunded': return 'مسترد';
-      default: return 'غير محدد';
-    }
-  };
-
-  const getPaymentMethodText = (method?: string) => {
-    switch (method) {
-      case 'mobile_wallet': return 'محفظة إلكترونية';
-      case 'card':
-      case 'geidea': return 'كارت بنكي (جيديا)';
-      case 'later': return 'دفع لاحقاً';
       default: return 'غير محدد';
     }
   };
@@ -213,13 +260,13 @@ export default function PaymentManagementModal({
     }
   };
 
-  const getPaymentMethodColor = (method?: string) => {
+  const getPaymentMethodText = (method?: string) => {
     switch (method) {
-      case 'mobile_wallet': return 'bg-green-100 text-green-800 border-green-300';
+      case 'mobile_wallet': return 'محفظة إلكترونية';
       case 'card':
-      case 'geidea': return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'later': return 'bg-blue-100 text-blue-800 border-blue-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'geidea': return 'كارت بنكي (جيديا)';
+      case 'later': return 'دفع لاحقاً';
+      default: return 'غير محدد';
     }
   };
 
@@ -235,7 +282,7 @@ export default function PaymentManagementModal({
         paymentDate: new Date(),
         updatedAt: new Date()
       });
-      
+
       toast.success('تم الموافقة على الدفع بنجاح');
       fetchPayments();
       setShowReceiptModal(false);
@@ -252,7 +299,7 @@ export default function PaymentManagementModal({
         paymentStatus: 'failed',
         updatedAt: new Date()
       });
-      
+
       toast.success('تم رفض الدفع');
       fetchPayments();
       setShowReceiptModal(false);
@@ -269,505 +316,303 @@ export default function PaymentManagementModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center text-blue-600 flex items-center justify-center gap-2">
-            <DollarSign className="h-8 w-8" />
-            إدارة المدفوعات - {tournament.name}
-          </DialogTitle>
-          <DialogDescription className="text-center text-gray-600">
-            إدارة وتتبع جميع مدفوعات البطولة
-          </DialogDescription>
+      <DialogContent className="max-w-[95vw] sm:max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-gray-50">
+        <DialogHeader className="bg-white px-6 py-4 border-b shrink-0 shadow-sm z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <DollarSign className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  إدارة المدفوعات
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  {tournament.name}
+                </DialogDescription>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Statistics */}
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-              <CardContent className="p-4">
+            <Card className="bg-blue-50 border-blue-200 shadow-sm group hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600">إجمالي المدفوعات</p>
-                    <p className="text-2xl font-bold text-blue-800">{filteredPayments.length}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-blue-600" />
+                  <p className="text-sm font-medium text-blue-600">إجمالي المدفوعات (عدد)</p>
+                  <Users className="h-5 w-5 text-blue-500 opacity-70 group-hover:opacity-100" />
+                </div>
+                <p className="text-2xl font-bold text-blue-900">{filteredPayments.length}</p>
+                <div className="h-1 w-full bg-blue-200 rounded-full mt-1"><div className="h-full bg-blue-500 rounded-full" style={{ width: '100%' }}></div></div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-green-50 border-green-200 shadow-sm group hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-green-600">المبلغ المحصل</p>
+                  <CheckCircle className="h-5 w-5 text-green-500 opacity-70 group-hover:opacity-100" />
+                </div>
+                <p className="text-2xl font-bold text-green-900">{paidAmount.toLocaleString()} ج.م</p>
+                <div className="h-1 w-full bg-green-200 rounded-full mt-1">
+                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${(paidAmount / (totalAmount || 1)) * 100}%` }}></div>
                 </div>
               </CardContent>
             </Card>
-            
-            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-              <CardContent className="p-4">
+
+            <Card className="bg-yellow-50 border-yellow-200 shadow-sm group hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600">المبلغ المدفوع</p>
-                    <p className="text-2xl font-bold text-green-800">{paidAmount} ج.م</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <p className="text-sm font-medium text-yellow-600">في الانتظار</p>
+                  <Clock className="h-5 w-5 text-yellow-500 opacity-70 group-hover:opacity-100" />
                 </div>
+                <p className="text-2xl font-bold text-yellow-900">{pendingAmount.toLocaleString()} ج.م</p>
               </CardContent>
             </Card>
-            
-            <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200">
-              <CardContent className="p-4">
+
+            <Card className="bg-purple-50 border-purple-200 shadow-sm group hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600">في الانتظار</p>
-                    <p className="text-2xl font-bold text-yellow-800">{pendingAmount} ج.م</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <p className="text-sm font-medium text-purple-600">إجمالي المتوقع</p>
+                  <DollarSign className="h-5 w-5 text-purple-500 opacity-70 group-hover:opacity-100" />
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-purple-600">إجمالي المبلغ</p>
-                    <p className="text-2xl font-bold text-purple-800">{totalAmount} ج.م</p>
-                  </div>
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
+                <p className="text-2xl font-bold text-purple-900">{totalAmount.toLocaleString()} ج.م</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-blue-600" />
-                البحث والفلترة
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">البحث</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="ابحث بالاسم أو البريد أو الهاتف..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">حالة الدفع</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="جميع الحالات" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">جميع الحالات</SelectItem>
-                      <SelectItem value="pending">في الانتظار</SelectItem>
-                      <SelectItem value="paid">مدفوع</SelectItem>
-                      <SelectItem value="failed">فشل</SelectItem>
-                      <SelectItem value="refunded">مسترد</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">الإجراءات</Label>
-                  <Button
-                    variant="outline"
-                    onClick={fetchPayments}
-                    className="w-full"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    تحديث
-                  </Button>
-                </div>
+          {/* Filters & Actions */}
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+            <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full md:w-auto">
+              <TabsList className="bg-gray-100">
+                <TabsTrigger value="all">الكل</TabsTrigger>
+                <TabsTrigger value="pending" className="gap-2"><Clock className="h-4 w-4" /> في الانتظار</TabsTrigger>
+                <TabsTrigger value="paid" className="gap-2"><CheckCircle className="h-4 w-4" /> مدفوع</TabsTrigger>
+                <TabsTrigger value="failed" className="gap-2"><XCircle className="h-4 w-4" /> مرفوض</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="relative w-full md:w-80 flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="بحث باسم، بريد، هاتف..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pr-9 bg-gray-50 focus:bg-white border-gray-200"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <Button variant="outline" size="icon" onClick={fetchPayments} title="تحديث" className="bg-white hover:bg-gray-50">
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
 
-          {/* Payments List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                قائمة المدفوعات ({filteredPayments.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">جاري تحميل المدفوعات...</p>
-                </div>
-              ) : filteredPayments.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مدفوعات</h3>
-                  <p className="text-gray-500">لم يتم العثور على مدفوعات تطابق معايير البحث</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredPayments.map((payment) => (
-                    <Card key={payment.id} className="border border-gray-200">
-                      <CardContent className="p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-                          <div>
-                            <p className="font-semibold text-gray-900">{payment.playerName}</p>
-                            <p className="text-sm text-gray-600">{payment.playerEmail}</p>
-                            <p className="text-sm text-gray-600">{payment.playerPhone}</p>
-                          </div>
-                          
-                          <div>
-                            <p className="text-lg font-bold text-gray-900">{payment.amount} ج.م</p>
-                            <p className="text-sm text-gray-600">{payment.playerCount} لاعب</p>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Badge className={getStatusColor(payment.paymentStatus)}>
-                              {getStatusText(payment.paymentStatus)}
-                            </Badge>
-                            {payment.paymentMethod && (
-                              <Badge variant="outline" className={`${getPaymentMethodColor(payment.paymentMethod)} flex items-center gap-1 w-fit`}>
-                                {React.createElement(getPaymentMethodIcon(payment.paymentMethod), { className: 'h-3 w-3' })}
-                                <span className="text-xs">{getPaymentMethodText(payment.paymentMethod)}</span>
-                              </Badge>
-                            )}
-                            {payment.paymentMethod === 'mobile_wallet' && payment.mobileWalletProvider && (
-                              <p className="text-xs text-gray-500">
-                                {payment.mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
-                                 payment.mobileWalletProvider === 'orange' ? 'أورنج' :
-                                 payment.mobileWalletProvider === 'etisalat' ? 'اتصالات' :
-                                 payment.mobileWalletProvider === 'instapay' ? 'انستا باي' :
-                                 payment.mobileWalletProvider}
-                              </p>
-                            )}
-                            {payment.paymentMethod === 'card' || payment.paymentMethod === 'geidea' ? (
-                              <p className="text-xs text-green-600 font-medium">
-                                ✓ دفع آلي
-                              </p>
-                            ) : null}
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              {new Date(payment.registrationDate).toLocaleDateString('en-GB')}
-                            </p>
-                            {payment.paymentDate && (
-                              <p className="text-xs text-gray-500">
-                                دفع: {new Date(payment.paymentDate).toLocaleDateString('en-GB')}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <div>
-                            <p className="text-xs text-gray-500">
-                              {payment.paymentType === 'deferred' ? 'دفع لاحق' : 'دفع فوري'}
-                            </p>
-                          </div>
-                          
-                          <div className="flex flex-col gap-2">
-                            {payment.paymentStatus === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    if (payment.paymentMethod === 'mobile_wallet' && payment.receiptUrl) {
-                                      handleViewReceipt(payment);
-                                    } else {
-                                      handleApprovePayment(payment.id);
-                                    }
-                                  }}
-                                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                                  title="موافقة"
-                                >
-                                  <Check className="h-4 w-4" />
-                                  <span className="mr-1 text-xs">موافقة</span>
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRejectPayment(payment.id)}
-                                  className="border-red-300 text-red-600 hover:bg-red-50"
-                                  title="رفض"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                            {payment.receiptUrl && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleViewReceipt(payment)}
-                                className="border-blue-300 text-blue-600 hover:bg-blue-50 w-full"
-                                title="عرض الإيصال"
-                              >
-                                <FileText className="h-4 w-4 mr-1" />
-                                <span className="text-xs">عرض الإيصال</span>
-                              </Button>
-                            )}
-                            {payment.paymentStatus === 'paid' && (
-                              <Badge className="bg-green-100 text-green-800 w-fit">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                تم الدفع
-                              </Badge>
-                            )}
-                          </div>
+          {/* Payments Table */}
+          <div className="bg-white rounded-xl border shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+            <div className="flex-1 overflow-auto">
+              <Table>
+                <TableHeader className="bg-gray-50 sticky top-0 z-10 border-b">
+                  <TableRow className="hover:bg-transparent border-b-gray-200">
+                    <TableHead className="text-right py-4 w-[250px] font-semibold text-gray-700">المستخدم</TableHead>
+                    <TableHead className="text-right py-4 font-semibold text-gray-700">بيانات التواصل</TableHead>
+                    <TableHead className="text-right py-4 font-semibold text-gray-700">المبلغ</TableHead>
+                    <TableHead className="text-right py-4 font-semibold text-gray-700">طريقة الدفع</TableHead>
+                    <TableHead className="text-right py-4 font-semibold text-gray-700">الحالة</TableHead>
+                    <TableHead className="text-right py-4 font-semibold text-gray-700">التاريخ</TableHead>
+                    <TableHead className="text-center py-4 text-xs w-[100px] font-semibold text-gray-700">إجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <p className="text-gray-500">جاري تحميل البيانات...</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="border-gray-300 text-gray-600 hover:bg-gray-50"
-            >
-              <X className="h-4 w-4 mr-2" />
-              إغلاق
-            </Button>
-            <Button
-              onClick={() => {
-                // TODO: Export to Excel
-                toast.info('قريباً: تصدير إلى Excel');
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              تصدير Excel
-            </Button>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-64 text-center">
+                        <div className="flex flex-col items-center gap-3 opacity-50">
+                          <CreditCard className="h-12 w-12 text-gray-300" />
+                          <p className="text-gray-500">لا توجد مدفوعات تطابق معايير البحث</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((payment) => (
+                      <TableRow key={payment.id} className="group hover:bg-gray-50 transition-colors border-b-gray-100">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 border border-gray-100 shadow-sm bg-gray-50">
+                              <AvatarFallback className="bg-blue-100 text-blue-700 font-bold text-xs">
+                                {payment.playerName.slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-semibold text-gray-900">{payment.playerName}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">{payment.playerCount} لاعب</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="text-xs font-mono text-gray-600">{payment.playerPhone}</div>
+                            <div className="text-xs text-gray-400">{payment.playerEmail}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-bold text-gray-900">{payment.amount.toLocaleString()} <span className="text-xs font-normal text-gray-500">ج.م</span></div>
+                        </TableCell>
+                        <TableCell>
+                          {payment.paymentMethod ? (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                              {React.createElement(getPaymentMethodIcon(payment.paymentMethod), { className: 'h-4 w-4 text-gray-400' })}
+                              <span>
+                                {payment.paymentMethod === 'mobile_wallet' ? 'محفظة' :
+                                  payment.paymentMethod === 'card' ? 'بطاقة' :
+                                    payment.paymentMethod === 'geidea' ? 'جيديا' : 'آجل'}
+                              </span>
+                            </div>
+                          ) : <span className="text-gray-400 text-xs">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={getStatusColor(payment.paymentStatus)}>
+                            {getStatusText(payment.paymentStatus)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs text-gray-500">
+                            <div>{new Date(payment.registrationDate).toLocaleDateString('en-GB')}</div>
+                            <div className="text-[10px] text-gray-400">{new Date(payment.registrationDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-white">
+                                <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {payment.paymentStatus === 'pending' && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleApprovePayment(payment.id)} className="text-green-600 focus:text-green-700 focus:bg-green-50 cursor-pointer">
+                                      <Check className="h-4 w-4 mr-2" /> موافقة
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleRejectPayment(payment.id)} className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer">
+                                      <XCircle className="h-4 w-4 mr-2" /> رفض
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {payment.receiptUrl && (
+                                  <DropdownMenuItem onClick={() => handleViewReceipt(payment)} className="cursor-pointer">
+                                    <FileText className="h-4 w-4 mr-2" /> عرض الإيصال
+                                  </DropdownMenuItem>
+                                )}
+                                {!payment.receiptUrl && (
+                                  <DropdownMenuItem disabled>
+                                    <span className="text-gray-400 text-xs">لا يوجد إيصال</span>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="bg-gray-50 p-4 border-t text-xs text-gray-500 flex justify-between">
+              <span>عرض {filteredPayments.length} من أصل {payments.length}</span>
+            </div>
           </div>
         </div>
       </DialogContent>
 
-      {/* Receipt View Modal */}
+      {/* Receipt Modal - Kept largely the same but cleaned up */}
       <Dialog open={showReceiptModal} onOpenChange={setShowReceiptModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
-              تفاصيل الدفع والإيصال
+              تفاصيل الدفع
             </DialogTitle>
-            <DialogDescription>
-              مراجعة تفاصيل الدفع والإيصال المرفوع
-            </DialogDescription>
           </DialogHeader>
 
           {selectedPayment && (
             <div className="space-y-6">
-              {/* Payment Details */}
-              <Card className="border-2 border-blue-100">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-600" />
-                    معلومات الدفع
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-gray-600">اسم المسجل</Label>
-                      <p className="font-semibold text-gray-900">{selectedPayment.playerName}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">البريد الإلكتروني</Label>
-                      <p className="font-semibold text-gray-900">{selectedPayment.playerEmail}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">رقم الهاتف</Label>
-                      <p className="font-semibold text-gray-900">{selectedPayment.playerPhone}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">عدد اللاعبين</Label>
-                      <p className="font-semibold text-gray-900">{selectedPayment.playerCount} لاعب</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">المبلغ</Label>
-                      <p className="text-xl font-bold text-green-600">{selectedPayment.amount} ج.م</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">طريقة الدفع</Label>
-                      <Badge className={`${getPaymentMethodColor(selectedPayment.paymentMethod)} flex items-center gap-1 w-fit mt-1`}>
-                        {React.createElement(getPaymentMethodIcon(selectedPayment.paymentMethod), { className: 'h-3 w-3' })}
-                        <span>{getPaymentMethodText(selectedPayment.paymentMethod)}</span>
-                      </Badge>
-                    </div>
-                    {selectedPayment.paymentMethod === 'mobile_wallet' && (
-                      <>
-                        {selectedPayment.mobileWalletProvider && (
-                          <div>
-                            <Label className="text-sm text-gray-600">مزود المحفظة</Label>
-                            <p className="font-semibold text-gray-900">
-                              {selectedPayment.mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
-                               selectedPayment.mobileWalletProvider === 'orange' ? 'أورنج' :
-                               selectedPayment.mobileWalletProvider === 'etisalat' ? 'اتصالات' :
-                               selectedPayment.mobileWalletProvider === 'instapay' ? 'انستا باي' :
-                               selectedPayment.mobileWalletProvider}
-                            </p>
-                          </div>
-                        )}
-                        {selectedPayment.mobileWalletNumber && (
-                          <div>
-                            <Label className="text-sm text-gray-600">رقم المحفظة</Label>
-                            <p className="font-semibold text-gray-900">{selectedPayment.mobileWalletNumber}</p>
-                          </div>
-                        )}
-                        {selectedPayment.receiptNumber && (
-                          <div>
-                            <Label className="text-sm text-gray-600">رقم الإيصال</Label>
-                            <p className="font-semibold text-gray-900">{selectedPayment.receiptNumber}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {(selectedPayment.paymentMethod === 'card' || selectedPayment.paymentMethod === 'geidea') && (
-                      <>
-                        {selectedPayment.geideaOrderId && (
-                          <div>
-                            <Label className="text-sm text-gray-600">رقم الطلب (جيديا)</Label>
-                            <p className="font-semibold text-gray-900">{selectedPayment.geideaOrderId}</p>
-                          </div>
-                        )}
-                        {selectedPayment.geideaTransactionId && (
-                          <div>
-                            <Label className="text-sm text-gray-600">رقم المعاملة</Label>
-                            <p className="font-semibold text-gray-900">{selectedPayment.geideaTransactionId}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <div>
-                      <Label className="text-sm text-gray-600">تاريخ التسجيل</Label>
-                      <p className="font-semibold text-gray-900">
-                        {new Date(selectedPayment.registrationDate).toLocaleDateString('ar-EG', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">حالة الدفع</Label>
-                      <Badge className={getStatusColor(selectedPayment.paymentStatus)}>
-                        {getStatusText(selectedPayment.paymentStatus)}
-                      </Badge>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold mb-3 text-sm text-gray-900 border-b pb-2">بيانات المستخدم</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-gray-500">الاسم:</span> <span className="font-medium">{selectedPayment.playerName}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">الهاتف:</span> <span className="font-medium font-mono">{selectedPayment.playerPhone}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">البريد:</span> <span className="font-medium">{selectedPayment.playerEmail}</span></div>
                     </div>
                   </div>
-                  {selectedPayment.notes && (
-                    <div className="mt-4 pt-4 border-t">
-                      <Label className="text-sm text-gray-600">ملاحظات</Label>
-                      <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg mt-1">{selectedPayment.notes}</p>
+
+                  <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                    <h3 className="font-semibold mb-3 text-sm text-blue-900 border-b border-blue-200 pb-2">تفاصيل المعاملة</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-blue-700/70">المبلغ:</span> <span className="font-bold text-blue-700 text-lg">{selectedPayment.amount} ج.م</span></div>
+                      <div className="flex justify-between"><span className="text-blue-700/70">الطريقة:</span> <span className="font-medium">{getPaymentMethodText(selectedPayment.paymentMethod)}</span></div>
+                      {selectedPayment.mobileWalletProvider && (
+                        <div className="flex justify-between"><span className="text-blue-700/70">المحفظة:</span> <span className="font-medium">{selectedPayment.mobileWalletProvider}</span></div>
+                      )}
+                      <div className="flex justify-between items-center"><span className="text-blue-700/70">الحالة:</span>
+                        <Badge variant="outline" className={getStatusColor(selectedPayment.paymentStatus)}>{getStatusText(selectedPayment.paymentStatus)}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedPayment.receiptUrl ? (
+                    <div className="border rounded-lg overflow-hidden bg-gray-900/5 items-center flex justify-center p-2 relative group">
+                      <img
+                        src={selectedPayment.receiptUrl}
+                        alt="Receipt"
+                        className="max-h-[400px] object-contain rounded shadow-sm bg-white"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => window.open(selectedPayment.receiptUrl, '_blank')}>
+                          <ExternalLink className="h-4 w-4 mr-2" /> فتح
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full min-h-[200px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 gap-2">
+                      <FileText className="h-10 w-10 opacity-20" />
+                      <p>لا يوجد إيصال مرفق</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* Receipt Image */}
-              {selectedPayment.receiptUrl && (
-                <Card className="border-2 border-green-100">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <ImageIcon className="h-5 w-5 text-green-600" />
-                      إيصال الدفع
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      <div className="relative bg-gray-100 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                        {selectedPayment.receiptUrl.startsWith('http') ? (
-                          <img 
-                            src={selectedPayment.receiptUrl} 
-                            alt="Receipt"
-                            className="w-full h-auto rounded-lg shadow-lg max-h-[600px] object-contain mx-auto"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              const errorDiv = document.createElement('div');
-                              errorDiv.className = 'text-center py-8 text-gray-500';
-                              errorDiv.textContent = 'فشل في تحميل الصورة';
-                              e.currentTarget.parentElement?.appendChild(errorDiv);
-                            }}
-                          />
-                        ) : (
-                          <div className="text-center py-8">
-                            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600">الإيصال: {selectedPayment.receiptUrl}</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            if (selectedPayment.receiptUrl?.startsWith('http')) {
-                              window.open(selectedPayment.receiptUrl, '_blank');
-                            }
-                          }}
-                          className="flex-1"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          فتح في نافذة جديدة
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            if (selectedPayment.receiptUrl?.startsWith('http')) {
-                              const link = document.createElement('a');
-                              link.href = selectedPayment.receiptUrl;
-                              link.download = `receipt_${selectedPayment.receiptNumber || selectedPayment.id}.jpg`;
-                              link.click();
-                            }
-                          }}
-                          className="flex-1"
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          تحميل الإيصال
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Action Buttons */}
               {selectedPayment.paymentStatus === 'pending' && (
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    onClick={() => handleApprovePayment(selectedPayment.id)}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    الموافقة على الدفع
+                <div className="flex gap-3 justify-end pt-4 border-t">
+                  <Button variant="outline" onClick={() => handleRejectPayment(selectedPayment.id)} className="text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300">
+                    <XCircle className="h-4 w-4 mr-2" /> رفض
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleRejectPayment(selectedPayment.id)}
-                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    رفض الدفع
+                  <Button onClick={() => handleApprovePayment(selectedPayment.id)} className="bg-green-600 hover:bg-green-700">
+                    <Check className="h-4 w-4 mr-2" /> موافقة على الدفع
                   </Button>
                 </div>
               )}
-
-              <div className="flex justify-end pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowReceiptModal(false);
-                    setSelectedPayment(null);
-                  }}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  إغلاق
-                </Button>
-              </div>
             </div>
           )}
         </DialogContent>

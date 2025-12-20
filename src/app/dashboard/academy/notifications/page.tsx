@@ -1,18 +1,8 @@
 'use client';
 
 import React from 'react';
-import NotificationsManager from '@/components/notifications/NotificationsManager';
+import { NotificationFeed } from '@/app/dashboard/admin/notifications/page';
 
 export default function AcademyNotificationsPage() {
-  return (
-    <NotificationsManager
-      title="إشعارات الأكاديمية"
-      description="تابع جميع الإشعارات والتنبيهات المهمة للأكاديمية"
-      showSenderInfo={true}
-      showStats={true}
-      showFilters={true}
-      showTestButtons={false}
-      accountType="academy"
-    />
-  );
+  return <NotificationFeed />;
 }

@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  User, 
-  FileText, 
-  Video, 
-  Search, 
-  BarChart3, 
-  MessageSquare, 
-  CreditCard, 
+import {
+  User,
+  FileText,
+  Video,
+  Search,
+  BarChart3,
+  MessageSquare,
+  CreditCard,
   CheckCircle,
   Menu,
   X,
@@ -22,6 +22,9 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import ReferralWelcomeModal from '@/components/referrals/ReferralWelcomeModal';
+import PlayerOrganizationCard from '@/components/referrals/PlayerOrganizationCard';
 
 export default function PlayerDashboard() {
   // التحقق من نوع الحساب - السماح فقط للاعبين وأولياء الأمور
@@ -30,9 +33,11 @@ export default function PlayerDashboard() {
     redirectTo: '/dashboard'
   });
 
+  const { user, userData } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // كشف نوع الجهاز
   useEffect(() => {
@@ -46,6 +51,26 @@ export default function PlayerDashboard() {
     window.addEventListener('resize', checkDevice);
     return () => window.removeEventListener('resize', checkDevice);
   }, []);
+
+  // عرض Modal الترحيب عند الدخول أول مرة
+  useEffect(() => {
+    if (user && userData && userData.accountType === 'player') {
+      // تحقق إذا اختار المستخدم "لا تظهر مرة أخرى"
+      const neverShow = localStorage.getItem(`never_show_referral_modal_${user.uid}`);
+      if (neverShow === 'true') {
+        return; // لا تظهر المودال أبداً
+      }
+
+      // تحقق إذا لم يتم عرض Modal من قبل
+      const hasSeenWelcome = localStorage.getItem(`welcome_modal_${user.uid}`);
+      if (!hasSeenWelcome) {
+        setTimeout(() => {
+          setShowWelcomeModal(true);
+          localStorage.setItem(`welcome_modal_${user.uid}`, 'true');
+        }, 1000); // انتظر ثانية بعد التحميل
+      }
+    }
+  }, [user, userData]);
 
   // عرض شاشة التحميل أثناء التحقق
   if (isCheckingAuth) {
@@ -128,6 +153,15 @@ export default function PlayerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Referral Welcome Modal */}
+      {showWelcomeModal && user && (
+        <ReferralWelcomeModal
+          playerId={user.uid}
+          playerName={userData?.full_name || user.displayName || 'اللاعب'}
+          onClose={() => setShowWelcomeModal(false)}
+        />
+      )}
+
       {/* Header Section */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
@@ -140,7 +174,7 @@ export default function PlayerDashboard() {
                 إدارة ملفك الشخصي وتتبع تقدمك الرياضي
               </p>
             </div>
-            
+
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -179,6 +213,13 @@ export default function PlayerDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        {/* Player Organization Card - الارتباطات */}
+        {user && (
+          <div className="mb-6 md:mb-8">
+            <PlayerOrganizationCard playerId={user.uid} />
+          </div>
+        )}
+
         {/* Stats Overview */}
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
@@ -189,9 +230,8 @@ export default function PlayerDashboard() {
               <div key={stat.title} className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-2">
                   <stat.icon className="w-5 h-5 text-gray-400" />
-                  <span className={`text-xs md:text-sm font-medium ${
-                    stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span className={`text-xs md:text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                    }`}>
                     {stat.change}
                   </span>
                 </div>
@@ -219,7 +259,7 @@ export default function PlayerDashboard() {
                   <p className="text-sm md:text-base text-gray-600">سجل في البطولات المتاحة وشارك في المنافسات</p>
                 </div>
               </div>
-              <Link 
+              <Link
                 href="/tournaments/unified-registration"
                 className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-300 hover:scale-105 shadow-lg text-sm md:text-base"
               >
@@ -228,7 +268,7 @@ export default function PlayerDashboard() {
                 <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
               </Link>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mt-4 md:mt-6">
               <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
                 <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
@@ -376,13 +416,12 @@ export default function PlayerDashboard() {
                         {event.location}
                       </p>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      event.type === 'match' ? 'bg-red-100 text-red-800' :
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${event.type === 'match' ? 'bg-red-100 text-red-800' :
                       event.type === 'training' ? 'bg-blue-100 text-blue-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                        'bg-green-100 text-green-800'
+                      }`}>
                       {event.type === 'match' ? 'مباراة' :
-                       event.type === 'training' ? 'تدريب' : 'تحليل'}
+                        event.type === 'training' ? 'تدريب' : 'تحليل'}
                     </div>
                   </div>
                 ))}
@@ -409,7 +448,7 @@ export default function PlayerDashboard() {
                   <span className="text-sm text-gray-600">{skill.label}</span>
                   <div className="flex items-center space-x-2">
                     <div className="w-20 md:w-24 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full ${skill.color}`}
                         style={{ width: `${skill.value}%` }}
                       ></div>

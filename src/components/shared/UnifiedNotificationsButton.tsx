@@ -1,344 +1,372 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, MessageCircle, X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, limit, writeBatch } from 'firebase/firestore';
-import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
-import { Badge } from '@/components/ui/badge';
+import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { Bell, Settings, MoreHorizontal, Check, Trash2, Maximize2, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface Notification {
+// --- Types ---
+interface NotificationItem {
   id: string;
-  type: 'interactive' | 'smart' | 'message' | 'system';
   title: string;
   message: string;
-  timestamp: Date;
-  read: boolean;
-  priority: 'low' | 'medium' | 'high';
+  isRead: boolean;
+  createdAt: Date;
+  senderName?: string;
+  senderAvatar?: string;
+  type: string;
+  category: 'system' | 'interaction';
   actionUrl?: string;
-  userId: string;
-  accountType: string;
-}
-
-interface NotificationStats {
-  total: number;
-  unread: number;
-  interactive: number;
-  smart: number;
-  messages: number;
-  system: number;
 }
 
 export default function UnifiedNotificationsButton() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [stats, setStats] = useState<NotificationStats>({
-    total: 0,
-    unread: 0,
-    interactive: 0,
-    smart: 0,
-    messages: 0,
-    system: 0
-  });
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+  const [loading, setLoading] = useState(true);
 
-  // جلب الإشعارات من Firebase
+  // Sound Effect Ref
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // --- Sender Fetching Logic (Cached) ---
+  const senderCache = useRef<Map<string, SenderContext>>(new Map());
+  const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
+    if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
+    try {
+      // Check likely collections first based on ID format if possible, otherwise generic check
+      for (const col of ['users', 'players', 'clubs', 'academies']) {
+        const d = await getDoc(doc(db, col, senderId));
+        if (d.exists()) {
+          const data = d.data();
+          const name = data.displayName || data.name || data.full_name || data.fullName;
+          const avatar = data.photoURL || data.avatar || data.image || data.logo;
+          const res = { senderId, senderName: name, senderAvatar: avatar };
+          senderCache.current.set(senderId, res);
+          return res;
+        }
+      }
+    } catch (e) { console.error(e); }
+    return null;
+  };
+
+  /* 
+  useEffect(() => {
+    // Audio feature temporarily disabled
+    // audioRef.current = new Audio('/sounds/notification.mp3');
+  }, []);
+  */
+
   useEffect(() => {
     if (!user?.uid) return;
 
-    const notificationsRef = collection(db, 'notifications');
-    
-    // استخدام استعلام بدون ترتيب لتجنب مشاكل Firebase Indexing
-    const q = query(
-      notificationsRef,
-      where('userId', '==', user.uid),
-      limit(50)
-    );
+    // Limits
+    const NOTIF_LIMIT = 20;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs: Notification[] = [];
-      const newStats: NotificationStats = {
-        total: 0,
-        unread: 0,
-        interactive: 0,
-        smart: 0,
-        messages: 0,
-        system: 0
-      };
+    const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
+    const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const notification: Notification = {
-          id: doc.id,
-          type: data.type || 'system',
-          title: data.title || '',
-          message: data.message || '',
-          timestamp: data.timestamp?.toDate() || new Date(),
-          read: data.read || false,
-          priority: data.priority || 'medium',
-          actionUrl: data.actionUrl,
-          userId: data.userId,
-          accountType: data.accountType || 'player'
+    const enrichAndMerge = async (docs1: any[], docs2: any[]) => {
+      const rawItems = [
+        ...docs1.map(d => ({ ...d.data(), id: d.id, category: 'system' })),
+        ...docs2.map(d => ({ ...d.data(), id: d.id, category: 'interaction' }))
+      ];
+
+      const processed = await Promise.all(rawItems.map(async (item: any) => {
+        const metadata = normalizeNotificationMetadata(item.metadata);
+        let senderId = item.senderId || metadata?.senderId;
+        let avatar = item.senderAvatar;
+        let name = item.senderName;
+
+        if (senderId && (!name || !avatar)) {
+          const info = await fetchSenderInfo(senderId);
+          if (info) {
+            name = info.senderName || name;
+            avatar = info.senderAvatar || avatar;
+          }
+        }
+        // Fallback Avatar
+        if (!avatar && name) avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
+
+        return {
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          isRead: item.isRead || false,
+          createdAt: item.createdAt?.toDate() || new Date(),
+          senderName: name || 'النظام',
+          senderAvatar: avatar,
+          type: item.type || 'info',
+          category: item.category as any,
+          actionUrl: item.actionUrl || item.link
         };
+      }));
 
-        notifs.push(notification);
-        newStats.total++;
-        
-        if (!notification.read) {
-          newStats.unread++;
-        }
+      const sorted = processed.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, NOTIF_LIMIT);
 
-        switch (notification.type) {
-          case 'interactive':
-            newStats.interactive++;
-            break;
-          case 'smart':
-            newStats.smart++;
-            break;
-          case 'message':
-            newStats.messages++;
-            break;
-          case 'system':
-            newStats.system++;
-            break;
+      // Check for NEW notification to play sound
+      setNotifications(prev => {
+        if (prev.length > 0 && sorted.length > 0 && sorted[0].id !== prev[0]?.id && !sorted[0].isRead) {
+          // Play sound if supported and interacting
+          // audioRef.current?.play().catch(() => {});
         }
+        return sorted;
       });
 
-      // ترتيب البيانات يدوياً لتجنب مشاكل Firebase Indexing
-      const sortedNotifs = notifs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-      // إضافة بيانات تجريبية إذا لم تكن هناك إشعارات
-      if (sortedNotifs.length === 0 && user.accountType === 'trainer') {
-        const demoNotifications: Notification[] = [
-          {
-            id: 'demo-1',
-            type: 'interactive',
-            title: 'جلسة تدريب جديدة',
-            message: 'تم جدولة جلسة تدريب جديدة مع اللاعب أحمد محمد',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 دقيقة مضت
-            read: false,
-            priority: 'high',
-            userId: user.uid,
-            accountType: 'trainer'
-          },
-          {
-            id: 'demo-2',
-            type: 'smart',
-            title: 'تحديث البرنامج التدريبي',
-            message: 'تم تحديث البرنامج التدريبي بناءً على تقدم اللاعب',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // ساعتين مضتا
-            read: false,
-            priority: 'medium',
-            userId: user.uid,
-            accountType: 'trainer'
-          },
-          {
-            id: 'demo-3',
-            type: 'message',
-            title: 'رسالة من الإدارة',
-            message: 'يرجى مراجعة التقارير الأسبوعية قبل نهاية اليوم',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 ساعات مضت
-            read: true,
-            priority: 'medium',
-            userId: user.uid,
-            accountType: 'trainer'
-          }
-        ];
-
-        sortedNotifs.push(...demoNotifications);
-        newStats.total = 3;
-        newStats.unread = 2;
-        newStats.interactive = 1;
-        newStats.smart = 1;
-        newStats.messages = 1;
-      }
-
-      setNotifications(sortedNotifs);
-      setStats(newStats);
+      setUnreadCount(sorted.filter(n => !n.isRead).length);
       setLoading(false);
-    }, (error) => {
-      console.error('خطأ في جلب الإشعارات:', error);
-      setLoading(false);
+    };
+
+    const unsub1 = onSnapshot(q1, async (snap1) => {
+      const snap2 = await import('firebase/firestore').then(mod => mod.getDocs(q2));
+      enrichAndMerge(snap1.docs, snap2.docs);
     });
 
-    return () => unsubscribe();
+    return () => unsub1();
   }, [user]);
 
-  // تحديث حالة القراءة
-  const markAsRead = async (notificationId: string) => {
+  const handleMarkRead = async (id: string, category: string) => {
     try {
-      await UnifiedNotificationService.markNotificationAsRead(notificationId);
-    } catch (error) {
-      console.error('خطأ في تحديث حالة القراءة:', error);
-    }
+      const col = category === 'interaction' ? 'interaction_notifications' : 'notifications';
+      await updateDoc(doc(db, col, id), { isRead: true });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (e) { }
   };
 
-  // تحديث جميع الإشعارات كمقروءة
-  const markAllAsRead = async () => {
-    try {
-      await UnifiedNotificationService.markAllNotificationsAsRead(user.uid);
-    } catch (error) {
-      console.error('خطأ في تحديث جميع الإشعارات:', error);
-    }
+  const markAllRead = async () => {
+    const batch = writeBatch(db);
+    const unread = notifications.filter(n => !n.isRead);
+    unread.forEach(n => {
+      const col = n.category === 'interaction' ? 'interaction_notifications' : 'notifications';
+      const ref = doc(db, col, n.id);
+      batch.update(ref, { isRead: true });
+    });
+    await batch.commit();
+
+    // Optimistic
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
   };
 
-  const getNotificationIcon = (type: string, priority: string) => {
-    const iconClass = priority === 'high' ? 'text-red-500' : 
-                     priority === 'medium' ? 'text-yellow-500' : 'text-blue-500';
-    
-    switch (type) {
-      case 'interactive':
-        return <CheckCircle className={`w-4 h-4 ${iconClass}`} />;
-      case 'smart':
-        return <AlertCircle className={`w-4 h-4 ${iconClass}`} />;
-      case 'message':
-        return <MessageCircle className={`w-4 h-4 ${iconClass}`} />;
-      default:
-        return <Info className={`w-4 h-4 ${iconClass}`} />;
-    }
-  };
+  const filtered = notifications.filter(n => activeTab === 'all' || !n.isRead);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'border-l-red-500 bg-red-50 dark:bg-red-950';
-      case 'medium':
-        return 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950';
-      default:
-        return 'border-l-blue-500 bg-blue-50 dark:bg-blue-950';
-    }
-  };
+  // Determine Dashboard Path
+  const dashboardPath = user?.accountType === 'admin' ? '/dashboard/admin' :
+    user?.accountType === 'club' ? '/dashboard/club' :
+      user?.accountType === 'academy' ? '/dashboard/academy' : '/dashboard/trainer';
 
   return (
-    <div className="relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative"
-      >
-        <Bell className="w-6 h-6" />
-        {stats.unread > 0 && (
-          <Badge 
-            variant="destructive" 
-            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs"
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-10 h-10">
+          <motion.div
+            animate={unreadCount > 0 ? { rotate: [0, -10, 10, -10, 0] } : {}}
+            transition={{ duration: 0.5, repeat: unreadCount > 0 ? Infinity : 0, repeatDelay: 5 }}
           >
-            {stats.unread > 99 ? '99+' : stats.unread}
-          </Badge>
-        )}
-      </Button>
+            <Bell className={cn("w-6 h-6 transition-colors", isOpen ? "text-blue-600 fill-blue-600" : "text-gray-600")} />
+          </motion.div>
 
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-96 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-[1000] max-h-[80vh] overflow-hidden">
-          <Card className="border-0 shadow-none">
-            <CardHeader className="pb-3 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">الإشعارات</CardTitle>
-                <div className="flex items-center gap-2">
-                  {stats.unread > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={markAllAsRead}
-                      className="text-xs"
-                    >
-                      تحديد الكل كمقروء
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              {/* إحصائيات سريعة */}
-              <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
-                <span>إجمالي: {stats.total}</span>
-                <span>غير مقروء: {stats.unread}</span>
-                <span>تفاعلية: {stats.interactive}</span>
-                <span>ذكية: {stats.smart}</span>
-                <span>رسائل: {stats.messages}</span>
-              </div>
-            </CardHeader>
+          <AnimatePresence>
+            {unreadCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute top-1.5 right-1.5 flex h-4 w-4 bg-red-500 rounded-full border-2 border-white items-center justify-center text-[9px] font-bold text-white shadow-sm"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </Button>
+      </PopoverTrigger>
 
-            <CardContent className="p-0">
-              <ScrollArea className="h-96">
-                {loading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-                    <Bell className="w-12 h-12 mb-2 opacity-50" />
-                    <p>لا توجد إشعارات جديدة</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {notifications.map((notification, index) => (
-                      <div key={notification.id}>
-                        <div
-                          className={`p-4 border-l-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                            !notification.read ? 'bg-orange-50 dark:bg-orange-950' : ''
-                          } ${getPriorityColor(notification.priority)}`}
-                          onClick={() => {
-                            if (!notification.read) {
-                              markAsRead(notification.id);
-                            }
-                            if (notification.actionUrl) {
-                              window.location.href = notification.actionUrl;
-                            }
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            {getNotificationIcon(notification.type, notification.priority)}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                                  {notification.title}
-                                </h4>
-                                {!notification.read && (
-                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-500">
-                                  {formatDistanceToNow(notification.timestamp, { 
-                                    addSuffix: true, 
-                                    locale: ar 
-                                  })}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {notification.type === 'interactive' ? 'تفاعلية' :
-                                   notification.type === 'smart' ? 'ذكية' :
-                                   notification.type === 'message' ? 'رسالة' : 'نظام'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {index < notifications.length - 1 && <Separator />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
+      <PopoverContent className="w-[95vw] sm:w-[380px] p-0 shadow-2xl border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden mb-2 sm:mb-0" align="end" sideOffset={8}>
+
+        {/* Header */}
+        <div className="p-3 px-4 flex items-center justify-between border-b border-gray-50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+          <h3 className="font-bold text-lg text-gray-900">الإشعارات</h3>
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 rounded-lg"
+                onClick={markAllRead}
+              >
+                <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                قراءة الكل
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-gray-500 hover:bg-gray-100"
+              title="الإعدادات"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Categories / Tabs */}
+        <div className="flex px-2 pt-1 gap-2 bg-white">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={cn(
+              "px-4 py-2 text-sm font-semibold rounded-full transition-all",
+              activeTab === 'all'
+                ? "bg-blue-50 text-blue-600"
+                : "bg-transparent text-gray-500 hover:bg-gray-50"
+            )}
+          >
+            الكل
+          </button>
+          <button
+            onClick={() => setActiveTab('unread')}
+            className={cn(
+              "px-4 py-2 text-sm font-semibold rounded-full transition-all",
+              activeTab === 'unread'
+                ? "bg-blue-50 text-blue-600"
+                : "bg-transparent text-gray-500 hover:bg-gray-50"
+            )}
+          >
+            غير مقروءة
+          </button>
+        </div>
+
+        {/* Content List */}
+        <ScrollArea className="h-[60vh] sm:h-[420px] bg-white">
+          {loading ? (
+            <div className="p-4 space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[350px] text-center p-6">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4"
+              >
+                <Bell className="w-8 h-8 text-gray-300" />
+              </motion.div>
+              <p className="text-gray-900 font-bold text-lg">لا توجد إشعارات حالياً</p>
+              <p className="text-sm text-gray-500 mt-2 max-w-[200px] leading-relaxed">
+                {activeTab === 'unread' ? "لقد قرأت جميع إشعاراتك، رائع!" : "سنخبرك عندما يصلك شيء جديد."}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              <AnimatePresence initial={false}>
+                {filtered.map((notification) => (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    key={notification.id}
+                    className={cn(
+                      "group relative flex items-start gap-3 p-4 hover:bg-gray-50/80 transition-colors cursor-pointer",
+                      !notification.isRead ? "bg-blue-50/30" : "bg-white"
+                    )}
+                    onClick={() => {
+                      handleMarkRead(notification.id, notification.category);
+                      if (notification.actionUrl) window.location.href = notification.actionUrl;
+                    }}
+                  >
+                    <div className="relative flex-shrink-0 mt-1">
+                      {notification.senderAvatar ? (
+                        <Avatar className="w-12 h-12 border border-gray-100 shadow-sm">
+                          <AvatarImage src={notification.senderAvatar} />
+                          <AvatarFallback>{notification.senderName?.[0]}</AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
+                          {notification.senderName?.[0] || 'N'}
+                        </div>
+                      )}
+
+                      {/* Unread Indicator - Icon Style */}
+                      {!notification.isRead && (
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center">
+                          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="text-[14px] leading-snug break-words">
+                        <span className="font-bold text-gray-900">{notification.senderName}</span>
+                        <span className="text-gray-600 mx-1">{notification.message}</span>
+                      </div>
+                      <span className={cn(
+                        "text-xs font-medium mt-1.5 block",
+                        !notification.isRead ? "text-blue-600" : "text-gray-400"
+                      )}>
+                        {formatDistanceToNow(notification.createdAt, { locale: ar, addSuffix: true })}
+                      </span>
+                    </div>
+
+                    {/* Hover Menu */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMarkRead(notification.id, notification.category); }}>
+                            <Check className="w-4 h-4 ml-2" />
+                            تحديد كمقروء
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); /* Remove */ }}>
+                            <Trash2 className="w-4 h-4 ml-2" />
+                            إزالة من الإشعارات
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="p-3 bg-gray-50/80 border-t border-gray-100">
+          <Link href={`${dashboardPath}/notifications`} onClick={() => setIsOpen(false)}>
+            <Button variant="outline" className="w-full text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 border-gray-200 shadow-sm h-10 font-bold text-sm rounded-lg transition-all">
+              عرض كل الإشعارات
+            </Button>
+          </Link>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

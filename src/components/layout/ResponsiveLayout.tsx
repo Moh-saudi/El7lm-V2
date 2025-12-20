@@ -59,6 +59,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useMediaQuery } from 'react-responsive';
+import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
 
 // ===== Context للتحكم في التخطيط =====
 interface LayoutContextType {
@@ -1092,6 +1093,14 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
             color: 'text-green-600',
             bgColor: 'bg-green-50'
           },
+          {
+            id: 'admin-message-management',
+            label: 'إدارة الرسائل',
+            icon: MessageSquare,
+            href: `/dashboard/admin/message-management`,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50'
+          },
 
           {
             id: 'admin-reports',
@@ -1828,15 +1837,10 @@ const ResponsiveHeader: React.FC = () => {
 
   // حالة للرسائل والإشعارات الحقيقية
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [newNotificationsCount, setNewNotificationsCount] = useState(0);
   const [isMessagesActive, setIsMessagesActive] = useState(false);
-  const [isNotificationsActive, setIsNotificationsActive] = useState(false);
   const [showMessagesDropdown, setShowMessagesDropdown] = useState(false);
-  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
-  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   const getUserDisplayName = () => {
@@ -1989,13 +1993,6 @@ const ResponsiveHeader: React.FC = () => {
   // التعامل مع قائمة الرسائل المنسدلة
   const toggleMessagesDropdown = () => {
     setShowMessagesDropdown(!showMessagesDropdown);
-    setShowNotificationsDropdown(false); // إغلاق قائمة الإشعارات
-  };
-
-  // التعامل مع قائمة الإشعارات المنسدلة
-  const toggleNotificationsDropdown = () => {
-    setShowNotificationsDropdown(!showNotificationsDropdown);
-    setShowMessagesDropdown(false); // إغلاق قائمة الرسائل
   };
 
   // التنقل إلى صفحة الرسائل
@@ -2004,14 +2001,6 @@ const ResponsiveHeader: React.FC = () => {
     setShowMessagesDropdown(false);
     setNewMessagesCount(0);
     router.push('/dashboard/messages');
-  };
-
-  // التنقل إلى صفحة الإشعارات
-  const navigateToNotifications = () => {
-    setIsNotificationsActive(true);
-    setShowNotificationsDropdown(false);
-    setNewNotificationsCount(0);
-    router.push(`/dashboard/${accountType}/notifications`);
   };
 
   // جلب الرسائل الأخيرة من Firebase
@@ -2054,98 +2043,7 @@ const ResponsiveHeader: React.FC = () => {
     }
   };
 
-  // جلب الإشعارات الأخيرة من Firebase
-  const fetchRecentNotifications = async () => {
-    if (!user?.uid) return;
 
-    setNotificationsLoading(true);
-    try {
-      // محاولة جلب من مجموعة interaction_notifications أولاً
-      const interactionNotificationsQuery = query(
-        collection(db, 'interaction_notifications'),
-        where('userId', '==', user.uid),
-        limit(5)
-      );
-
-      const unsubscribe = onSnapshot(interactionNotificationsQuery, (snapshot) => {
-        const notifications = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            title: data.title || 'إشعار جديد',
-            message: data.message || 'لا توجد تفاصيل',
-            time: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-            type: data.type || 'general',
-            read: data.isRead || false,
-            notificationId: doc.id
-          };
-        });
-
-        // ترتيب البيانات يدوياً حسب التاريخ
-        const sortedNotifications = notifications.sort((a, b) => {
-          return b.time.getTime() - a.time.getTime();
-        });
-
-        setRecentNotifications(sortedNotifications);
-        const unreadCount = sortedNotifications.filter(notif => !notif.read).length;
-        setNewNotificationsCount(unreadCount);
-      }, (error) => {
-        console.error('خطأ في جلب interaction_notifications:', error);
-        // إذا فشل، جرب مجموعة notifications العادية
-        fetchRegularNotifications();
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error('خطأ في جلب الإشعارات:', error);
-      // إذا فشل، جرب مجموعة notifications العادية
-      fetchRegularNotifications();
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
-
-  // جلب الإشعارات العادية كبديل
-  const fetchRegularNotifications = async () => {
-    if (!user?.uid) return;
-
-    try {
-      const notificationsQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-      );
-
-      const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
-        const notifications = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            title: data.title || 'إشعار جديد',
-            message: data.message || 'لا توجد تفاصيل',
-            time: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-            type: data.type || 'general',
-            read: data.isRead || false,
-            notificationId: doc.id
-          };
-        });
-
-        // ترتيب البيانات يدوياً حسب التاريخ
-        const sortedNotifications = notifications.sort((a, b) => {
-          return b.time.getTime() - a.time.getTime();
-        });
-
-        setRecentNotifications(sortedNotifications);
-        const unreadCount = sortedNotifications.filter(notif => !notif.read).length;
-        setNewNotificationsCount(unreadCount);
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error('خطأ في جلب notifications العادية:', error);
-    }
-  };
 
   // التعامل مع الرسالة
   const handleMessageClick = async (message: any) => {
@@ -2166,45 +2064,17 @@ const ResponsiveHeader: React.FC = () => {
     }
   };
 
-  // التعامل مع الإشعار
-  const handleNotificationClick = async (notification: any) => {
-    try {
-      // تحديد الإشعار كمقروء
-      if (!notification.read && notification.notificationId) {
-        // محاولة تحديث في interaction_notifications أولاً
-        try {
-          const interactionNotificationRef = doc(db, 'interaction_notifications', notification.notificationId);
-          await updateDoc(interactionNotificationRef, {
-            isRead: true
-          });
-        } catch (error) {
-          // إذا فشل، جرب notifications العادية
-          const notificationRef = doc(db, 'notifications', notification.notificationId);
-          await updateDoc(notificationRef, {
-            isRead: true
-          });
-        }
-      }
 
-      setShowNotificationsDropdown(false);
-      router.push(`/dashboard/${userData?.accountType || 'player'}/notifications`);
-    } catch (error) {
-      console.error('خطأ في تحديث حالة الإشعار:', error);
-      router.push(`/dashboard/${userData?.accountType || 'player'}/notifications`);
-    }
-  };
 
-  // تحديد إذا كانت الصفحة الحالية هي صفحة الرسائل أو الإشعارات
+  // تحديد إذا كانت الصفحة الحالية هي صفحة الرسائل
   useEffect(() => {
     setIsMessagesActive(pathname.includes('/messages'));
-    setIsNotificationsActive(pathname.includes('/notifications'));
   }, [pathname]);
 
   // جلب البيانات عند تحميل المكون
   useEffect(() => {
     if (user?.uid) {
       let unsubscribeMessages: (() => void) | undefined;
-      let unsubscribeNotifications: (() => void) | undefined;
 
       // جلب الرسائل
       fetchRecentMessages().then(unsubscribe => {
@@ -2213,19 +2083,9 @@ const ResponsiveHeader: React.FC = () => {
         console.error('خطأ في جلب الرسائل:', error);
       });
 
-      // جلب الإشعارات
-      fetchRecentNotifications().then(unsubscribe => {
-        unsubscribeNotifications = unsubscribe;
-      }).catch(error => {
-        console.error('خطأ في جلب الإشعارات:', error);
-      });
-
       return () => {
         if (typeof unsubscribeMessages === 'function') {
           unsubscribeMessages();
-        }
-        if (typeof unsubscribeNotifications === 'function') {
-          unsubscribeNotifications();
         }
       };
     }
@@ -2235,9 +2095,8 @@ const ResponsiveHeader: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.messages-dropdown') && !target.closest('.notifications-dropdown')) {
+      if (!target.closest('.messages-dropdown')) {
         setShowMessagesDropdown(false);
-        setShowNotificationsDropdown(false);
       }
     };
 
@@ -2368,103 +2227,8 @@ const ResponsiveHeader: React.FC = () => {
             )}
           </div>
 
-          {/* أيقونة الإشعارات مع القائمة المنسدلة */}
-          <div className="inline-block relative notifications-dropdown">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleNotificationsDropdown}
-              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${isNotificationsActive
-                ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                }`}
-              title={`الإشعارات${newNotificationsCount > 0 ? ` (${newNotificationsCount} جديدة)` : ''}`}
-            >
-              <Bell className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
-              {/* مؤشر الإشعارات الجديدة */}
-              {newNotificationsCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-orange-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
-                  <span className="text-[10px] lg:text-[11px] text-white font-bold">
-                    {newNotificationsCount > 9 ? '9+' : newNotificationsCount}
-                  </span>
-                </div>
-              )}
-              {/* مؤشر الصفحة النشطة */}
-              {isNotificationsActive && (
-                <div className="absolute -bottom-1 left-1/2 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-orange-600 rounded-full shadow-sm transform -translate-x-1/2"></div>
-              )}
-            </Button>
-
-            {/* قائمة الإشعارات المنسدلة */}
-            {showNotificationsDropdown && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-72 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right lg:left-auto lg:right-0 sm:w-80 lg:w-96 bg-white/98">
-                <div className="p-4 border-b border-gray-100 lg:p-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-base font-bold text-gray-900 lg:text-lg">الإشعارات الأخيرة</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={navigateToNotifications}
-                      className="px-2 py-1 text-xs text-orange-600 rounded-lg lg:text-sm hover:text-orange-700 lg:px-3 lg:py-2 hover:bg-orange-50"
-                    >
-                      عرض الكل
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="overflow-y-auto max-w-full max-h-64 lg:max-h-80">
-                  {notificationsLoading ? (
-                    <div className="p-4 text-center text-gray-500 lg:p-6">
-                      <div className="mx-auto mb-3 w-8 h-8 rounded-full border-b-2 border-orange-600 animate-spin"></div>
-                      <p className="text-sm lg:text-base">جاري تحميل الإشعارات...</p>
-                    </div>
-                  ) : recentNotifications.length > 0 ? (
-                    recentNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-orange-50 active:scale-98 ${!notification.read ? 'bg-orange-50 border-r-4 border-r-orange-500' : ''
-                          }`}
-                      >
-                        <div className="flex gap-3 items-start">
-                          <div className={`w-3 h-3 lg:w-4 lg:h-4 rounded-full mt-1.5 lg:mt-2 flex-shrink-0 ${notification.type === 'message' ? 'bg-blue-500' :
-                            notification.type === 'payment' ? 'bg-green-500' :
-                              notification.type === 'system' ? 'bg-gray-500' :
-                                notification.type === 'match' ? 'bg-purple-500' :
-                                  'bg-orange-500'
-                            }`}></div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex gap-2 items-center mb-1">
-                              <p className="text-sm font-semibold text-gray-900 lg:text-base">
-                                {notification.title}
-                              </p>
-                              {!notification.read && (
-                                <div className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            <p className="text-sm leading-relaxed text-gray-600 truncate lg:text-base">
-                              {notification.message}
-                            </p>
-                            <p className="mt-2 text-xs font-medium text-gray-400 lg:text-sm">
-                              {formatTime(notification.time)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-gray-500 lg:p-8">
-                      <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full lg:w-20 lg:h-20">
-                        <Bell className="w-8 h-8 text-gray-300 lg:w-10 lg:h-10" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-600 lg:text-base">لا توجد إشعارات جديدة</p>
-                      <p className="mt-1 text-xs text-gray-400 lg:text-sm">ستظهر الإشعارات الجديدة هنا</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* أيقونة الإشعارات الموحدة */}
+          <UnifiedNotificationsButton />
 
           {/* فاصل */}
           <div className="w-px h-6 bg-gray-300"></div>

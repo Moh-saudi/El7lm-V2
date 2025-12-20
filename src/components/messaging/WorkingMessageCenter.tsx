@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
   getDocs,
   getDoc,
   limit,
@@ -22,14 +22,16 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getPlayerAvatarUrl, getUserAvatarFromSupabase } from '@/lib/supabase/image-utils';
-import { 
-  MessageSquare, 
-  Send, 
-  Search, 
-  Users, 
-  Building2, 
-  GraduationCap, 
-  UserCheck, 
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { NewChatModal } from '@/components/messaging/NewChatModal';
+import {
+  MessageSquare,
+  Send,
+  Search,
+  Users,
+  Building2,
+  GraduationCap,
+  UserCheck,
   Phone,
   Shield,
   Plus,
@@ -38,7 +40,9 @@ import {
   AlertCircle,
   X,
   ArrowLeft,
-  Smile
+  Smile,
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClarity } from '@/hooks/useClarity';
@@ -108,8 +112,7 @@ const WorkingMessageCenter: React.FC = () => {
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsFetched, setContactsFetched] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [newChatSearchTerm, setNewChatSearchTerm] = useState('');
+  const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'player' | 'club' | 'academy' | 'agent' | 'trainer'>('all');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -137,7 +140,7 @@ const WorkingMessageCenter: React.FC = () => {
 
   useEffect(() => {
     setIsClient(true);
-    
+
     // تنظيف أي مستمع قديم عند تغيير المستخدم
     if (conversationsUnsubRef.current) {
       conversationsUnsubRef.current();
@@ -182,13 +185,13 @@ const WorkingMessageCenter: React.FC = () => {
           });
           console.log('✅ تم جلب المحادثات:', conversationsData.length);
           setConversations(conversationsData);
-      setLoading(false);
+          setLoading(false);
         },
         (error) => {
           console.error('❌ خطأ في جلب المحادثات:', error);
           setError('حدث خطأ في جلب المحادثات');
-      setLoading(false);
-    }
+          setLoading(false);
+        }
       );
       conversationsUnsubRef.current = unsub;
       hasSetupConversationsRef.current = true;
@@ -197,10 +200,10 @@ const WorkingMessageCenter: React.FC = () => {
       if (!hasFetchedContactsRef.current && !isFetchingContactsRef.current) {
         // قفل متفائل لمنع الاستدعاء المزدوج في وضع التطوير
         hasFetchedContactsRef.current = true;
-      fetchContacts().finally(() => {
-        setContactsFetched(true);
-      });
-    }
+        fetchContacts().finally(() => {
+          setContactsFetched(true);
+        });
+      }
     } else if (!user) {
       setError('يرجى تسجيل الدخول');
       setLoading(false);
@@ -248,21 +251,21 @@ const WorkingMessageCenter: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-      // إضافة مستمع لإغلاق منتقي الإيموجي عند النقر خارجه
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-          setShowEmojiPicker(false);
-        }
-      };
-
-      if (typeof document !== 'undefined') {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-          document.removeEventListener('mousedown', handleClickOutside);
-        };
+  // إضافة مستمع لإغلاق منتقي الإيموجي عند النقر خارجه
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
       }
-    }, []);
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, []);
 
   // دالة إضافة الإيموجي للرسالة
   const onEmojiClick = (emojiData: any) => {
@@ -289,16 +292,16 @@ const WorkingMessageCenter: React.FC = () => {
 
     try {
       console.log('🔄 إنشاء محادثة جديدة مع:', contact.name);
-      
+
       // استخراج معرف المستند الفعلي من معرف الاتصال
       const actualContactId = contact.id.replace(/^(club_|academy_|agent_|trainer_|player_|admin_)/, '');
-      
+
       // التحقق من وجود محادثة سابقة
       const existingConversationQuery = query(
         collection(db, 'conversations'),
         where('participants', 'array-contains', user.uid)
       );
-      
+
       const existingSnapshot = await getDocs(existingConversationQuery);
       const existingConversation = existingSnapshot.docs.find(doc => {
         const data = doc.data();
@@ -308,7 +311,7 @@ const WorkingMessageCenter: React.FC = () => {
       if (existingConversation) {
         console.log('✅ وجدت محادثة موجودة:', existingConversation.id);
         toast.info('المحادثة موجودة بالفعل');
-        setShowNewChat(false);
+        setNewChatModalOpen(false);
         return;
       }
 
@@ -358,21 +361,21 @@ const WorkingMessageCenter: React.FC = () => {
       };
 
       const conversationRef = await addDoc(collection(db, 'conversations'), newConversationData);
-      
+
       console.log('✅ تم إنشاء محادثة جديدة:', conversationRef.id);
       toast.success(`تم إنشاء محادثة مع ${contact.name}`);
-      
+
       // Track Clarity events
       trackEvent('new_conversation_created');
       setTag('conversation_type', contact.type);
       upgradeSession('new_conversation_created');
-      
-      setShowNewChat(false);
+
+      setNewChatModalOpen(false);
       setSelectedContact(null);
-      
+
       // إعادة تحميل المحادثات
       await fetchData();
-      
+
     } catch (error) {
       console.error('❌ خطأ في إنشاء المحادثة:', error);
       toast.error('فشل في إنشاء المحادثة');
@@ -381,7 +384,7 @@ const WorkingMessageCenter: React.FC = () => {
 
   // دالة إغلاق نافذة المحادثة الجديدة
   const closeNewChat = () => {
-    setShowNewChat(false);
+    setNewChatModalOpen(false);
     setSelectedContact(null);
   };
 
@@ -397,12 +400,12 @@ const WorkingMessageCenter: React.FC = () => {
       setContactsLoading(false);
       return;
     }
-    
+
     if (!userData) {
       console.log('⚠️ لا يمكن جلب جهات الاتصال - بيانات المستخدم غير متوفرة، سيتم المحاولة بدونها');
     }
 
-      // إزالة أي تأخير قد يسبب تراكب الاستدعاءات
+    // إزالة أي تأخير قد يسبب تراكب الاستدعاءات
 
     try {
       console.log('🔄 جلب جهات الاتصال...');
@@ -419,61 +422,61 @@ const WorkingMessageCenter: React.FC = () => {
         );
         const usersSnapshot = await getDocs(usersQueryRef);
         console.log('✅ تم جلب المستخدمين:', usersSnapshot.docs.length);
-        
+
         const processUser = async (userDocSnapshot: any): Promise<Contact | null> => {
-            const data = userDocSnapshot.data();
+          const data = userDocSnapshot.data();
           if (userDocSnapshot.id === user.uid) return null;
-            const accountType = data.accountType;
+          const accountType = data.accountType;
           if (!accountType || !['club', 'academy', 'agent', 'trainer', 'player'].includes(accountType)) return null; // استثناء admin
-            
+
           let contactName: string = 'مستخدم';
           let organizationName: any = null;
-            let isDependent = false;
+          let isDependent = false;
           let parentAccountId: any = null;
           let parentAccountType: any = null;
           let profileData: any = null;
-            
-            try {
-              const profileCollection = accountType === 'admin' ? 'users' : `${accountType}s`;
-              const profileDocRef = doc(db, profileCollection, userDocSnapshot.id);
-              const profileDocSnapshot = await getDoc(profileDocRef);
-              if (profileDocSnapshot.exists()) {
-                profileData = profileDocSnapshot.data() as any;
-                if (accountType === 'player') {
-                  contactName = profileData.full_name || profileData.name || profileData.displayName || data.displayName || data.name || data.full_name || 'لاعب';
-                  if (profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id) {
-                    isDependent = true;
-                    parentAccountId = profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id;
-                    if (profileData.club_id) parentAccountType = 'club';
-                    else if (profileData.academy_id) parentAccountType = 'academy';
-                    else if (profileData.trainer_id) parentAccountType = 'trainer';
-                    else if (profileData.agent_id) parentAccountType = 'agent';
-                  }
-                  organizationName = profileData.current_club || profileData.clubName || profileData.academyName || null;
-                } else if (accountType === 'club') {
-                  contactName = profileData.name || profileData.club_name || profileData.displayName || data.displayName || data.name || 'نادي';
-                  organizationName = profileData.organizationName || profileData.clubName || null;
-                } else if (accountType === 'academy') {
-                  contactName = profileData.name || profileData.academy_name || profileData.displayName || data.displayName || data.name || 'أكاديمية';
-                  organizationName = profileData.organizationName || profileData.academyName || null;
-                } else if (accountType === 'agent') {
-                  contactName = profileData.name || profileData.agent_name || profileData.agency_name || profileData.displayName || data.displayName || data.name || 'وكيل';
-                  organizationName = profileData.organizationName || profileData.agencyName || null;
-                } else if (accountType === 'trainer') {
-                  contactName = profileData.name || profileData.trainer_name || profileData.displayName || data.displayName || data.name || 'مدرب';
-                  organizationName = profileData.organizationName || profileData.specialization || null;
+
+          try {
+            const profileCollection = accountType === 'admin' ? 'users' : `${accountType}s`;
+            const profileDocRef = doc(db, profileCollection, userDocSnapshot.id);
+            const profileDocSnapshot = await getDoc(profileDocRef);
+            if (profileDocSnapshot.exists()) {
+              profileData = profileDocSnapshot.data() as any;
+              if (accountType === 'player') {
+                contactName = profileData.full_name || profileData.name || profileData.displayName || data.displayName || data.name || data.full_name || 'لاعب';
+                if (profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id) {
+                  isDependent = true;
+                  parentAccountId = profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id;
+                  if (profileData.club_id) parentAccountType = 'club';
+                  else if (profileData.academy_id) parentAccountType = 'academy';
+                  else if (profileData.trainer_id) parentAccountType = 'trainer';
+                  else if (profileData.agent_id) parentAccountType = 'agent';
                 }
-              } else {
-                // Fallback to users collection data
-                contactName = data.displayName || data.name || data.full_name || 'مستخدم';
-                organizationName = data.organizationName || data.clubName || data.academyName || data.agencyName || null;
+                organizationName = profileData.current_club || profileData.clubName || profileData.academyName || null;
+              } else if (accountType === 'club') {
+                contactName = profileData.name || profileData.club_name || profileData.displayName || data.displayName || data.name || 'نادي';
+                organizationName = profileData.organizationName || profileData.clubName || null;
+              } else if (accountType === 'academy') {
+                contactName = profileData.name || profileData.academy_name || profileData.displayName || data.displayName || data.name || 'أكاديمية';
+                organizationName = profileData.organizationName || profileData.academyName || null;
+              } else if (accountType === 'agent') {
+                contactName = profileData.name || profileData.agent_name || profileData.agency_name || profileData.displayName || data.displayName || data.name || 'وكيل';
+                organizationName = profileData.organizationName || profileData.agencyName || null;
+              } else if (accountType === 'trainer') {
+                contactName = profileData.name || profileData.trainer_name || profileData.displayName || data.displayName || data.name || 'مدرب';
+                organizationName = profileData.organizationName || profileData.specialization || null;
               }
-          } catch (e) {
-            console.log(`⚠️ خطأ ملف شخصي ${userDocSnapshot.id}:`, e);
+            } else {
+              // Fallback to users collection data
               contactName = data.displayName || data.name || data.full_name || 'مستخدم';
               organizationName = data.organizationName || data.clubName || data.academyName || data.agencyName || null;
             }
-            
+          } catch (e) {
+            console.log(`⚠️ خطأ ملف شخصي ${userDocSnapshot.id}:`, e);
+            contactName = data.displayName || data.name || data.full_name || 'مستخدم';
+            organizationName = data.organizationName || data.clubName || data.academyName || data.agencyName || null;
+          }
+
           let avatarUrl: string | null = null;
           try {
             // Try Supabase first, then fallback to profile data, then users data
@@ -489,29 +492,29 @@ const WorkingMessageCenter: React.FC = () => {
               avatarUrl = getPlayerAvatarUrl(userDataForAvatar, user);
             }
           } catch (e) {
-              console.log(`⚠️ خطأ جلب الصورة ${userDocSnapshot.id}:`, e);
-              avatarUrl = null;
-            }
-            
-            // Use clean contact name without type prefixes
-            let displayName = contactName;
-            if (isDependent && accountType === 'player' && parentAccountType) {
-              const parentTypeNames: any = { club: 'نادي', academy: 'أكاديمية', trainer: 'مدرب', agent: 'وكيل' };
-              displayName = `${contactName} (${parentTypeNames[parentAccountType] || parentAccountType})`;
+            console.log(`⚠️ خطأ جلب الصورة ${userDocSnapshot.id}:`, e);
+            avatarUrl = null;
+          }
+
+          // Use clean contact name without type prefixes
+          let displayName = contactName;
+          if (isDependent && accountType === 'player' && parentAccountType) {
+            const parentTypeNames: any = { club: 'نادي', academy: 'أكاديمية', trainer: 'مدرب', agent: 'وكيل' };
+            displayName = `${contactName} (${parentTypeNames[parentAccountType] || parentAccountType})`;
           }
 
           const c: Contact = {
-              id: `${accountType}_${userDocSnapshot.id}`,
-              name: displayName,
-              type: accountType as any,
-              avatar: avatarUrl,
-              isOnline: data.isOnline || false,
+            id: `${accountType}_${userDocSnapshot.id}`,
+            name: displayName,
+            type: accountType as any,
+            avatar: avatarUrl,
+            isOnline: data.isOnline || false,
             organizationName,
             isDependent,
             parentAccountId,
             parentAccountType
           };
-            console.log(`✅ تم إضافة: ${displayName} (${accountType})${isDependent ? ' - تابع' : ''}`);
+          console.log(`✅ تم إضافة: ${displayName} (${accountType})${isDependent ? ' - تابع' : ''}`);
           return c;
         };
 
@@ -548,7 +551,7 @@ const WorkingMessageCenter: React.FC = () => {
       console.error('❌ خطأ في جلب جهات الاتصال:', error);
       toast.error('حدث خطأ في جلب جهات الاتصال');
     } finally {
-            setContactsLoading(false);
+      setContactsLoading(false);
       isFetchingContactsRef.current = false;
     }
   };
@@ -559,7 +562,7 @@ const WorkingMessageCenter: React.FC = () => {
 
     try {
       console.log('🔄 جلب الرسائل للمحادثة:', conversationId);
-      
+
       const messagesQuery = query(
         collection(db, 'messages'),
         where('conversationId', '==', conversationId),
@@ -572,18 +575,18 @@ const WorkingMessageCenter: React.FC = () => {
           ...doc.data(),
           timestamp: doc.data().timestamp?.toDate() || new Date()
         })) as Message[];
-        
+
         setMessages(messagesData);
         console.log('✅ تم جلب الرسائل:', messagesData.length);
-        
+
         // جلب صور المرسلين بشكل منفصل
         messagesData.forEach(async (message) => {
           if (!message.senderAvatar && message.senderId !== user?.uid) {
             try {
               const avatarUrl = await getUserAvatarFromSupabase(message.senderId, message.senderType);
               if (avatarUrl) {
-                setMessages(prev => 
-                  prev.map(msg => 
+                setMessages(prev =>
+                  prev.map(msg =>
                     msg.id === message.id ? { ...msg, senderAvatar: avatarUrl } : msg
                   )
                 );
@@ -593,7 +596,7 @@ const WorkingMessageCenter: React.FC = () => {
             }
           }
         });
-        
+
         // التمرير إلى أسفل
         setTimeout(scrollToBottom, 100);
       });
@@ -612,7 +615,7 @@ const WorkingMessageCenter: React.FC = () => {
 
     try {
       console.log('📤 إرسال رسالة جديدة:', newMessage);
-      
+
       // Get proper sender name from userData
       const getSenderName = () => {
         if (userData.accountType === 'player') {
@@ -658,7 +661,7 @@ const WorkingMessageCenter: React.FC = () => {
 
       setNewMessage('');
       toast.success('تم إرسال الرسالة');
-      
+
       // Track Clarity events
       trackEvent('message_sent');
       setTag('message_length', newMessage.length.toString());
@@ -672,25 +675,25 @@ const WorkingMessageCenter: React.FC = () => {
   const openConversation = async (conversation: Conversation) => {
     try {
       console.log('🔄 فتح المحادثة:', conversation.id);
-      
+
       setSelectedConversation(conversation);
-      
+
       // جلب الرسائل
       await fetchMessages(conversation.id);
-      
+
       // Track Clarity events
       trackEvent('conversation_opened');
       setTag('conversation_participant_type', conversation.participantTypes[conversation.participants.find(id => id !== user?.uid) || ''] || 'unknown');
-      
+
       // تحديث حالة المحادثة
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === conversation.id 
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === conversation.id
             ? { ...conv, isActive: true }
             : { ...conv, isActive: false }
         )
       );
-      
+
       // جلب صور المشاركين بشكل منفصل
       try {
         const updatedConversation = await fetchConversationAvatars(conversation);
@@ -714,7 +717,7 @@ const WorkingMessageCenter: React.FC = () => {
     if (!conversation.participantAvatars) {
       conversation.participantAvatars = {};
     }
-    
+
     for (const participantId of conversation.participants) {
       if (participantId !== user?.uid && !conversation.participantAvatars[participantId]) {
         try {
@@ -728,13 +731,13 @@ const WorkingMessageCenter: React.FC = () => {
         }
       }
     }
-    
+
     return conversation;
   };
 
   const fetchMessageAvatars = async (messages: Message[]) => {
     const updatedMessages = [...messages];
-    
+
     for (let i = 0; i < updatedMessages.length; i++) {
       const message = updatedMessages[i];
       if (!message.senderAvatar && message.senderId !== user?.uid) {
@@ -748,7 +751,7 @@ const WorkingMessageCenter: React.FC = () => {
         }
       }
     }
-    
+
     return updatedMessages;
   };
 
@@ -812,20 +815,20 @@ const WorkingMessageCenter: React.FC = () => {
         <CardContent>
           <div className="text-center text-gray-600">
             <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">{contactsLoading ? 'جاري تحميل جهات الاتصال...' : 'لا توجد جهات اتصال'}</h3>
-                {!contactsLoading && (
-                  <>
-            <p>لم يتم العثور على جهات اتصال في النظام</p>
-            <Button 
-              onClick={() => {
-                        fetchContacts();
-              }}
-              className="mt-4"
-            >
-              إعادة المحاولة
-            </Button>
-                  </>
-                )}
+            <h3 className="text-lg font-semibold mb-2">{contactsLoading ? 'جاري تحميل جهات الاتصال...' : 'لا توجد جهات اتصال'}</h3>
+            {!contactsLoading && (
+              <>
+                <p>لم يتم العثور على جهات اتصال في النظام</p>
+                <Button
+                  onClick={() => {
+                    fetchContacts();
+                  }}
+                  className="mt-4"
+                >
+                  إعادة المحاولة
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -834,15 +837,15 @@ const WorkingMessageCenter: React.FC = () => {
 
   const filteredConversations = conversations.filter(conversation => {
     if (!searchTerm) return true;
-    
+
     const participantNames = Object.values(conversation.participantNames || {});
     const subject = conversation.subject || '';
     const lastMessage = conversation.lastMessage || '';
-    
+
     const searchLower = searchTerm.toLowerCase();
     return participantNames.some(name => name.toLowerCase().includes(searchLower)) ||
-           subject.toLowerCase().includes(searchLower) ||
-           lastMessage.toLowerCase().includes(searchLower);
+      subject.toLowerCase().includes(searchLower) ||
+      lastMessage.toLowerCase().includes(searchLower);
   });
 
   return (
@@ -882,19 +885,14 @@ const WorkingMessageCenter: React.FC = () => {
               className="text-white hover:bg-white/20 bg-transparent border-none p-3 rounded-full"
               onClick={() => {
                 console.log('🔄 تم النقر على زر محادثة جديدة');
-                console.log('📊 عدد جهات الاتصال الحالية:', contacts.length);
-                setShowNewChat(true);
-                setSearchTerm('');
-                if (!contactsFetched && !contactsLoading) {
-                  fetchContacts();
-                }
+                setNewChatModalOpen(true);
               }}
             >
               <Plus className="h-6 w-6" />
             </Button>
           </div>
         </div>
-        
+
         {/* Search Bar */}
         <div className="p-4 bg-gray-50 border-b">
           <div className="relative">
@@ -908,7 +906,7 @@ const WorkingMessageCenter: React.FC = () => {
             <Search className="h-5 w-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
-        
+
         {/* قائمة المحادثات */}
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.length > 0 ? (
@@ -928,8 +926,8 @@ const WorkingMessageCenter: React.FC = () => {
                   >
                     <div className="relative">
                       <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
-                        <AvatarImage 
-                          src={conversation.participantAvatars?.[conversation.participants.find(id => id !== user?.uid) || ''] || ''} 
+                        <AvatarImage
+                          src={conversation.participantAvatars?.[conversation.participants.find(id => id !== user?.uid) || ''] || ''}
                           alt={conversation.participantNames[conversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
                           className="transition-transform duration-200 hover:scale-105"
                         />
@@ -946,7 +944,7 @@ const WorkingMessageCenter: React.FC = () => {
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                       )}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-bold text-base text-gray-900 truncate">
@@ -959,7 +957,7 @@ const WorkingMessageCenter: React.FC = () => {
                                 const now = new Date();
                                 const messageTime = conversation.lastMessageTime.toDate ? conversation.lastMessageTime.toDate() : new Date(conversation.lastMessageTime);
                                 const diffInHours = (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
-                                
+
                                 if (diffInHours < 1) {
                                   return messageTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
                                 } else if (diffInHours < 24) {
@@ -979,7 +977,7 @@ const WorkingMessageCenter: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 mb-2">
                         <Badge className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border-0">
                           {(() => {
@@ -989,7 +987,7 @@ const WorkingMessageCenter: React.FC = () => {
                           })()}
                         </Badge>
                       </div>
-                      
+
                       {conversation.lastMessage && (
                         <p className="text-sm text-gray-600 truncate">
                           {conversation.lastSenderId === user?.uid && (
@@ -1011,15 +1009,15 @@ const WorkingMessageCenter: React.FC = () => {
                   {searchTerm ? 'لا توجد نتائج' : 'لا توجد محادثات'}
                 </h3>
                 <p className="text-sm mb-4">
-                  {searchTerm 
+                  {searchTerm
                     ? 'جرب البحث بكلمات مختلفة'
                     : 'ابدأ محادثة جديدة مع جهات الاتصال'
                   }
                 </p>
                 {!searchTerm && (
-                  <Button 
+                  <Button
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl"
-                    onClick={() => setShowNewChat(true)}
+                    onClick={() => setNewChatModalOpen(true)}
                   >
                     <Plus className="h-5 w-5 ml-2" />
                     محادثة جديدة
@@ -1046,34 +1044,34 @@ const WorkingMessageCenter: React.FC = () => {
                   >
                     <ArrowLeft className="h-6 w-6" />
                   </Button>
-                  
+
                   <div className="relative">
-                  <Avatar className="h-12 w-12 lg:h-14 lg:w-14 ring-2 ring-white shadow-sm">
-                    <AvatarImage 
-                      src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.uid) || ''] || ''}
-                      alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
-                      className="transition-transform duration-200 hover:scale-105"
-                    />
-                    <AvatarFallback className="bg-white/20 text-white">
-                      <Users className="h-6 w-6 lg:h-7 lg:w-7" />
-                    </AvatarFallback>
-                  </Avatar>
-                  {selectedConversation.isActive && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                  )}
+                    <Avatar className="h-12 w-12 lg:h-14 lg:w-14 ring-2 ring-white shadow-sm">
+                      <AvatarImage
+                        src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.uid) || ''] || ''}
+                        alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                        className="transition-transform duration-200 hover:scale-105"
+                      />
+                      <AvatarFallback className="bg-white/20 text-white">
+                        <Users className="h-6 w-6 lg:h-7 lg:w-7" />
+                      </AvatarFallback>
+                    </Avatar>
+                    {selectedConversation.isActive && (
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    )}
                   </div>
-                  
+
                   <div className="flex-1">
-                  <h3 className="font-bold text-lg lg:text-xl">
-                    {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge className="text-xs px-2 py-1 rounded-full bg-white/20 text-white border-0">
-                      {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.name || 'مستخدم'}
-                    </Badge>
-                    <span className="text-xs text-blue-100">متصل الآن</span>
+                    <h3 className="font-bold text-lg lg:text-xl">
+                      {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className="text-xs px-2 py-1 rounded-full bg-white/20 text-white border-0">
+                        {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.name || 'مستخدم'}
+                      </Badge>
+                      <span className="text-xs text-blue-100">متصل الآن</span>
+                    </div>
                   </div>
-                </div>
                 </div>
                 <Button
                   onClick={closeConversation}
@@ -1095,13 +1093,12 @@ const WorkingMessageCenter: React.FC = () => {
                   return (
                     <div
                       key={`${message.id}-${index}`}
-                      className={`flex items-start gap-3 ${
-                        isCurrentUser ? 'flex-row-reverse' : 'flex-row'
-                      }`}
+                      className={`flex items-start gap-3 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'
+                        }`}
                     >
                       <div className="flex-shrink-0">
                         <Avatar className="w-10 h-10 lg:w-12 lg:h-12 shadow-sm ring-2 ring-white">
-                          <AvatarImage 
+                          <AvatarImage
                             src={message.senderAvatar}
                             className="transition-transform duration-200 hover:scale-105"
                           />
@@ -1110,11 +1107,10 @@ const WorkingMessageCenter: React.FC = () => {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      
+
                       <div
-                        className={`flex flex-col max-w-[75%] lg:max-w-[65%] ${
-                          isCurrentUser ? 'items-end' : 'items-start'
-                        }`}
+                        className={`flex flex-col max-w-[75%] lg:max-w-[65%] ${isCurrentUser ? 'items-end' : 'items-start'
+                          }`}
                       >
                         <div className={`flex items-center gap-2 mb-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
                           <span className="text-sm font-semibold text-gray-800">
@@ -1130,13 +1126,12 @@ const WorkingMessageCenter: React.FC = () => {
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                           )}
                         </div>
-                        
+
                         <div
-                          className={`rounded-2xl px-4 py-3 lg:px-5 lg:py-4 shadow-sm ${
-                            isCurrentUser
-                              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                              : 'bg-white text-gray-900 border border-gray-200'
-                          } max-w-full`}
+                          className={`rounded-2xl px-4 py-3 lg:px-5 lg:py-4 shadow-sm ${isCurrentUser
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                            : 'bg-white text-gray-900 border border-gray-200'
+                            } max-w-full`}
                         >
                           <p className="whitespace-pre-wrap break-words text-base lg:text-lg leading-relaxed">
                             {message.message}
@@ -1169,11 +1164,10 @@ const WorkingMessageCenter: React.FC = () => {
                   />
                   <Button
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full transition-all duration-200 ${
-                      showEmojiPicker 
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
-                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                    } bg-transparent border-none`}
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full transition-all duration-200 ${showEmojiPicker
+                      ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                      } bg-transparent border-none`}
                     title="إضافة إيموجي"
                   >
                     <Smile className="h-5 w-5 lg:h-6 lg:w-6" />
@@ -1187,10 +1181,10 @@ const WorkingMessageCenter: React.FC = () => {
                   <Send className="h-5 w-5 lg:h-6 lg:w-6" />
                 </Button>
               </div>
-              
+
               {/* منتقي الإيموجي */}
               {showEmojiPicker && (
-                <div 
+                <div
                   ref={emojiPickerRef}
                   className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4 z-50 w-80 lg:w-96"
                 >
@@ -1199,10 +1193,10 @@ const WorkingMessageCenter: React.FC = () => {
                     <div className="text-center mb-4 pb-3 border-b">
                       <h4 className="text-base font-bold text-gray-800">اختر الإيموجي</h4>
                     </div>
-                    
+
                     <div className="grid grid-cols-8 gap-2 max-h-64 overflow-y-auto">
                       {[
-                        '😊', '😂', '❤️', '👍', '👎', '🎉', '🔥', '💯', 
+                        '😊', '😂', '❤️', '👍', '👎', '🎉', '🔥', '💯',
                         '😍', '🤔', '😭', '😡', '😱', '😴', '🤗', '😎',
                         '🥰', '😘', '😋', '🤩', '😇', '🤠', '👻', '🤖',
                         '🐱', '🐶', '🦁', '🐼', '🦊', '🐸', '🐵', '🐷',
@@ -1221,7 +1215,7 @@ const WorkingMessageCenter: React.FC = () => {
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* أزرار التحكم */}
                     <div className="mt-4 pt-3 border-t flex gap-3">
                       <Button
@@ -1250,7 +1244,7 @@ const WorkingMessageCenter: React.FC = () => {
               </div>
               <h3 className="text-xl lg:text-2xl font-bold mb-3 text-gray-800">مرحباً بك في مركز الرسائل</h3>
               <p className="text-base lg:text-lg text-gray-600 mb-6">اختر محادثة من القائمة أو ابدأ محادثة جديدة مع جهات الاتصال</p>
-              
+
               <div className="flex flex-col lg:flex-row items-center justify-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -1265,10 +1259,10 @@ const WorkingMessageCenter: React.FC = () => {
                   </span>
                 </div>
               </div>
-              
-              <Button 
+
+              <Button
                 className="mt-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-2xl lg:hidden"
-                onClick={() => setShowNewChat(true)}
+                onClick={() => setNewChatModalOpen(true)}
               >
                 <Plus className="h-5 w-5 ml-2" />
                 بدء محادثة جديدة
@@ -1279,7 +1273,7 @@ const WorkingMessageCenter: React.FC = () => {
       </div>
 
       {/* نافذة إنشاء محادثة جديدة */}
-      {showNewChat && (
+      {false && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md lg:max-w-lg max-h-[90vh] overflow-hidden">
             {/* Header */}
@@ -1328,11 +1322,10 @@ const WorkingMessageCenter: React.FC = () => {
                   <button
                     key={opt.key}
                     onClick={() => setFilterType(opt.key)}
-                    className={`text-sm px-4 py-2 rounded-xl border-2 transition-all duration-200 ${
-                      filterType === opt.key 
-                        ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
-                    }`}
+                    className={`text-sm px-4 py-2 rounded-xl border-2 transition-all duration-200 ${filterType === opt.key
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -1354,55 +1347,55 @@ const WorkingMessageCenter: React.FC = () => {
                       return name.includes(term) || org.includes(term);
                     })
                     .map((contact) => {
-                    const UserIcon = USER_TYPES[contact.type as keyof typeof USER_TYPES]?.icon || Users;
-                    
-                    return (
-                      <div
-                        key={contact.id}
-                        className="flex items-center gap-4 p-4 hover:bg-blue-50 rounded-xl cursor-pointer transition-all duration-200 border border-transparent hover:border-blue-200 active:scale-98"
-                        onClick={() => createNewConversation(contact)}
-                      >
-                        <div className="relative">
-                          <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
-                            <AvatarImage 
-                              src={contact.avatar} 
-                              alt={contact.name}
-                              className="transition-transform duration-200 hover:scale-105"
-                            />
-                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg font-semibold">
-                              <UserIcon className="h-7 w-7" />
-                            </AvatarFallback>
-                          </Avatar>
-                          {contact.isOnline && (
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-bold text-base text-gray-900 truncate">
-                              {contact.name}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <Badge className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border-0">
-                                {USER_TYPES[contact.type as keyof typeof USER_TYPES]?.name}
-                              </Badge>
-                              {contact.type === 'player' && contact.isDependent && (
-                                <Badge className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 border-0">
-                                  تابع
-                                </Badge>
-                              )}
-                            </div>
+                      const UserIcon = USER_TYPES[contact.type as keyof typeof USER_TYPES]?.icon || Users;
+
+                      return (
+                        <div
+                          key={contact.id}
+                          className="flex items-center gap-4 p-4 hover:bg-blue-50 rounded-xl cursor-pointer transition-all duration-200 border border-transparent hover:border-blue-200 active:scale-98"
+                          onClick={() => createNewConversation(contact)}
+                        >
+                          <div className="relative">
+                            <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
+                              <AvatarImage
+                                src={contact.avatar}
+                                alt={contact.name}
+                                className="transition-transform duration-200 hover:scale-105"
+                              />
+                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg font-semibold">
+                                <UserIcon className="h-7 w-7" />
+                              </AvatarFallback>
+                            </Avatar>
+                            {contact.isOnline && (
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                            )}
                           </div>
-                          {contact.organizationName && (
-                            <p className="text-sm text-gray-500 truncate">
-                              {contact.organizationName}
-                            </p>
-                          )}
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-bold text-base text-gray-900 truncate">
+                                {contact.name}
+                              </h4>
+                              <div className="flex items-center gap-2">
+                                <Badge className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border-0">
+                                  {USER_TYPES[contact.type as keyof typeof USER_TYPES]?.name}
+                                </Badge>
+                                {contact.type === 'player' && contact.isDependent && (
+                                  <Badge className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 border-0">
+                                    تابع
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {contact.organizationName && (
+                              <p className="text-sm text-gray-500 truncate">
+                                {contact.organizationName}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="text-center text-gray-500 py-12">
@@ -1421,6 +1414,18 @@ const WorkingMessageCenter: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* New Chat Modal */}
+      <NewChatModal
+        isOpen={newChatModalOpen}
+        onOpenChange={setNewChatModalOpen}
+        onStartChat={(selectedUser) => {
+          console.log('بدء محادثة جديدة مع:', selectedUser);
+          toast.success(`جاري بدء محادثة مع ${selectedUser.name}`);
+          // TODO: Implement conversation creation logic
+          setNewChatModalOpen(false);
+        }}
+      />
     </div>
   );
 };

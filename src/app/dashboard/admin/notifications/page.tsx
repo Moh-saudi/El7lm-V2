@@ -1,462 +1,495 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, limit } from 'firebase/firestore';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import toast from 'react-hot-toast';
-import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
+  getDoc
+} from 'firebase/firestore';
+import {
+  Bell,
+  CheckCircle,
+  MessageSquare,
+  Settings,
+  Shield,
+  Trash2,
+  X,
+  Zap,
+  MoreHorizontal,
+  Heart,
+  UserPlus,
+  ArrowUp,
+  Image as ImageIcon,
+  Reply
+} from 'lucide-react';
+import { motion, AnimatePresence, useScroll, useAnimation, PanInfo } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
+import { ar } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'react-hot-toast';
+import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function AdminNotificationsPage() {
-  const [notifications, setNotifications] = useState([]);
+// --- Types ---
+interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  isRead: boolean;
+  createdAt: any;
+  senderName?: string;
+  senderAvatar?: string;
+  senderAccountType?: string;
+  actionUrl?: string;
+  metadata?: any;
+  category: 'system' | 'interaction';
+  senderId?: string;
+  groupedCount?: number; // For grouped notifications
+  groupedSenders?: Array<{ name: string; avatar: string }>; // For visual stacking
+}
+
+// --- Skeleton Component ---
+const NotificationSkeleton = () => (
+  <div className="p-4 flex gap-4 border-b border-gray-50">
+    <Skeleton className="w-12 h-12 rounded-full" />
+    <div className="flex-1 space-y-2">
+      <Skeleton className="h-4 w-1/3" />
+      <Skeleton className="h-3 w-3/4" />
+    </div>
+  </div>
+);
+
+// --- Reusable Notification Feed Component ---
+export function NotificationFeed() {
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, unread, read
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [showNewPill, setShowNewPill] = useState(false);
 
-  const fetchNotifications = async () => {
+  // Ref for scroll handling
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // --- Stats ---
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
+  // --- Sender Info Utilities (Cached) ---
+  const senderCache = useRef<Map<string, SenderContext>>(new Map());
+
+  const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
+    if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
+
     try {
-      setLoading(true);
-      
-      const notificationsRef = collection(db, 'admin_notifications');
-      let q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(100));
-      
-      if (filter === 'unread') {
-        q = query(notificationsRef, where('isRead', '==', false), orderBy('createdAt', 'desc'), limit(100));
-      } else if (filter === 'read') {
-        q = query(notificationsRef, where('isRead', '==', true), orderBy('createdAt', 'desc'), limit(100));
+      const collections = ['users', 'players', 'clubs', 'academies'];
+      for (const colName of collections) {
+        const d = await getDoc(doc(db, colName, senderId));
+        if (d.exists()) {
+          const data = d.data();
+          const name = data.displayName || data.name || data.full_name || data.fullName;
+          const avatar = data.photoURL || data.avatar || data.image || data.logo || data.profileImage;
+          const type = data.accountType || (colName === 'users' ? undefined : colName.slice(0, -1));
+
+          const result = {
+            senderId,
+            senderName: name || null,
+            senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: type }),
+            senderAccountType: type
+          };
+          senderCache.current.set(senderId, result);
+          return result;
+        }
       }
-      
-      const snapshot = await getDocs(q);
-      const notificationsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
-      }));
-      
-      setNotifications(notificationsData);
-      console.log(`تم جلب ${notificationsData.length} إشعار`);
-    } catch (error) {
-      console.error('خطأ في جلب الإشعارات:', error);
-      toast.error('خطأ في جلب الإشعارات');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error("Error fetching sender info", e);
     }
+    return null;
   };
 
-  const markAsRead = async (notificationId) => {
-    try {
-      const notificationRef = doc(db, 'admin_notifications', notificationId);
-      await updateDoc(notificationRef, {
-        isRead: true,
-        readAt: new Date()
-      });
-      
-      setNotifications(prev => prev.map(notif => 
-        notif.id === notificationId 
-          ? { ...notif, isRead: true, readAt: new Date() }
-          : notif
-      ));
-      
-      toast.success('تم تمييز الإشعار كمقروء');
-    } catch (error) {
-      console.error('خطأ في تحديث الإشعار:', error);
-      toast.error('خطأ في تحديث الإشعار');
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const unreadNotifications = notifications.filter(n => !n.isRead);
-      
-      for (const notification of unreadNotifications) {
-        const notificationRef = doc(db, 'admin_notifications', notification.id);
-        await updateDoc(notificationRef, {
-          isRead: true,
-          readAt: new Date()
-        });
-      }
-      
-      setNotifications(prev => prev.map(notif => ({
-        ...notif,
-        isRead: true,
-        readAt: new Date()
-      })));
-      
-      toast.success(`تم تمييز ${unreadNotifications.length} إشعار كمقروء`);
-    } catch (error) {
-      console.error('خطأ في تحديث الإشعارات:', error);
-      toast.error('خطأ في تحديث الإشعارات');
-    }
-  };
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'new_payment':
-        return '💰';
-      case 'payment_update':
-        return '🔄';
-      case 'system':
-        return '⚙️';
-      default:
-        return '📢';
-    }
-  };
-
-  const getNotificationColor = (type, isRead) => {
-    if (isRead) return 'bg-gray-50';
-    
-    switch (type) {
-      case 'new_payment':
-        return 'bg-green-50 border-l-4 border-green-500';
-      case 'payment_update':
-        return 'bg-blue-50 border-l-4 border-blue-500';
-      case 'system':
-        return 'bg-yellow-50 border-l-4 border-yellow-500';
-      default:
-        return 'bg-gray-50 border-l-4 border-gray-500';
-    }
-  };
-
-  const formatDate = (date) => {
-    return new Intl.DateTimeFormat('ar-EG', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-
-  // إرسال إشعار عبر WhatsApp
-  const sendNotificationViaWhatsApp = (notification) => {
-    if (!notification.paymentData?.playerPhone) {
-      toast.error('رقم الهاتف غير متوفر');
-      return;
-    }
-
-    const message = `📢 إشعار من El7lm Platform\n\n${notification.title}\n\n${notification.message}`;
-    
-    const result = openWhatsAppShare(notification.paymentData.playerPhone, message);
-    
-    if (result.success) {
-      toast.success('تم فتح WhatsApp بنجاح!');
-    } else {
-      toast.error(result.error || 'فشل في فتح WhatsApp');
-    }
-  };
-
-  // اختبار WhatsApp Share
-  const testWhatsAppShareFeature = () => {
-    const result = testWhatsAppShare('اختبار إشعارات WhatsApp من El7lm Platform');
-    
-    if (result.success) {
-      toast.success('تم فتح WhatsApp للاختبار!');
-    } else {
-      toast.error(result.error || 'فشل في اختبار WhatsApp');
-    }
-  };
-
-  // اختبار رقم المستخدم الحالي مع محتوى الرسالة الفعلية
-  const testUserPhone = () => {
-    if (!selectedNotification) {
-      toast.error('يرجى اختيار إشعار أولاً');
-      return;
-    }
-
-    if (!selectedNotification.paymentData?.playerPhone) {
-      toast.error('رقم الهاتف غير متوفر في هذا الإشعار');
-      return;
-    }
-
-    console.log(`🔍 اختبار رقم المستخدم الحالي: "${selectedNotification.paymentData.playerPhone}"`);
-    
-    // إنشاء رسالة شاملة من بيانات الإشعار
-    const message = `📢 إشعار من El7lm Platform
-
-${selectedNotification.title}
-
-${selectedNotification.message}
-
-تفاصيل إضافية:
-- نوع الإشعار: ${selectedNotification.type || 'عام'}
-- تاريخ الإشعار: ${formatDate(selectedNotification.createdAt)}
-- حالة الدفع: ${selectedNotification.paymentData?.status || 'غير محدد'}
-- مبلغ الدفع: ${selectedNotification.paymentData?.amount || 'غير محدد'} ${selectedNotification.paymentData?.currency || 'ج.م'}
-
-شكراً لاستخدامك منصة العلم.
-
-مع تحيات فريق العمل`;
-
-    console.log(`📝 الرسالة المستخدمة: "${message}"`);
-    console.log(`📏 طول الرسالة: ${message.length} حرف`);
-
-    const result = openWhatsAppShare(selectedNotification.paymentData.playerPhone, message);
-    
-    if (result.success) {
-      toast.success('تم فتح WhatsApp برقم المستخدم مع الرسالة الفعلية!');
-      console.log(`✅ تم فتح WhatsApp برقم المستخدم مع الرسالة الفعلية!`);
-    } else {
-      toast.error(result.error || 'فشل في فتح WhatsApp');
-      console.error(`❌ فشل في فتح WhatsApp:`, result.error);
-    }
-  };
-
+  // --- Data Fetching & Real-time Groups ---
   useEffect(() => {
-    fetchNotifications();
-  }, [filter]);
+    if (!user?.uid) return;
+    setLoading(true);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+    const enrichNotification = async (docData: any, docId: string, category: 'system' | 'interaction') => {
+      const data = docData;
+      const metadata = normalizeNotificationMetadata(data.metadata);
+
+      let senderInfo = {
+        senderName: data.senderName || metadata?.senderName || 'مستخدم',
+        senderAvatar: data.senderAvatar || metadata?.senderAvatar || null,
+        senderAccountType: data.senderAccountType || null
+      };
+      const senderId = data.senderId || metadata?.senderId;
+
+      if (senderId) {
+        const fetched = await fetchSenderInfo(senderId);
+        if (fetched) {
+          senderInfo = {
+            senderName: fetched.senderName || senderInfo.senderName,
+            senderAvatar: fetched.senderAvatar || senderInfo.senderAvatar,
+            senderAccountType: fetched.senderAccountType || senderInfo.senderAccountType
+          };
+        }
+      }
+
+      if (!senderInfo.senderAvatar && senderInfo.senderName) {
+        senderInfo.senderAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderInfo.senderName)}&background=0D8ABC&color=FFFFFF`;
+      }
+
+      return {
+        id: docId,
+        ...data,
+        category,
+        isRead: data.isRead || false,
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        metadata,
+        senderId,
+        actionUrl: data.link || data.actionUrl || metadata?.actionUrl || null
+      } as Notification;
+    };
+
+    const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+    const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+
+    let initialLoadComplete = false;
+
+    // Helper to merge and group
+    const processSnapshots = async (sysDocs: any[], intDocs: any[]) => {
+      const p1 = sysDocs.map(d => enrichNotification(d.data(), d.id, 'system'));
+      const p2 = intDocs.map(d => enrichNotification(d.data(), d.id, 'interaction'));
+      const results = await Promise.all([...p1, ...p2]);
+
+      // Sorting
+      const sorted = results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      // --- Intelligent Grouping Logic ---
+      // Group consecutive likes/follows on the same object or type
+      const grouped: Notification[] = [];
+      let currentGroup: Notification | null = null;
+
+      for (const notif of sorted) {
+        // Simplified grouping criteria: Same type + Same Category + Created close in time
+        if (currentGroup &&
+          currentGroup.type === notif.type &&
+          currentGroup.category === notif.category &&
+          ['success', 'warning'].includes(notif.type) // Only group social actions
+        ) {
+          currentGroup.groupedCount = (currentGroup.groupedCount || 1) + 1;
+          if (!currentGroup.groupedSenders) currentGroup.groupedSenders = [{ name: currentGroup.senderName!, avatar: currentGroup.senderAvatar! }];
+          if (currentGroup.groupedSenders.length < 3) {
+            currentGroup.groupedSenders.push({ name: notif.senderName!, avatar: notif.senderAvatar! });
+          }
+        } else {
+          grouped.push(notif);
+          currentGroup = notif;
+        }
+      }
+
+      if (initialLoadComplete && sorted.length > notifications.length) {
+        setShowNewPill(true);
+      }
+      setNotifications(grouped);
+      setLoading(false);
+      initialLoadComplete = true;
+    };
+
+    const unsubAll = onSnapshot(q1, async (snap1) => {
+      const snap2 = await import('firebase/firestore').then(m => m.getDocs(q2));
+      processSnapshots(snap1.docs, snap2.docs);
+    });
+
+    return () => unsubAll();
+  }, [user]);
+
+  // --- Filtering ---
+  const filteredList = useMemo(() => {
+    return notifications.filter(n => {
+      if (activeTab === 'system') return n.category === 'system';
+      if (activeTab === 'mentions') return n.category === 'interaction';
+      return true;
+    });
+  }, [notifications, activeTab]);
+
+  // --- Actions ---
+  const handleMarkRead = async (id: string, category: string) => {
+    try {
+      const col = category === 'interaction' ? 'interaction_notifications' : 'notifications';
+      await updateDoc(doc(db, col, id), { isRead: true });
+      // Optimistic update
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) { }
+  };
+
+  const handleDelete = async (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id)); // Optimistic delete
+    toast.success("تم الحذف");
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowNewPill(false);
+  };
+
+  // --- Render Helpers ---
+  const getActionIcon = (type: string, category: string) => {
+    if (category === 'system') return <Shield className="w-3.5 h-3.5 fill-white text-white" />;
+    switch (type) {
+      case 'success': return <Heart className="w-3.5 h-3.5 fill-white text-white" />;
+      case 'warning': return <UserPlus className="w-3.5 h-3.5 fill-white text-white" />;
+      case 'info': return <MessageSquare className="w-3.5 h-3.5 fill-white text-white" />;
+      default: return <Bell className="w-3.5 h-3.5 fill-white text-white" />;
+    }
+  };
+
+  const getActionColor = (type: string, category: string) => {
+    if (category === 'system') return 'bg-sky-500 shadow-sky-200';
+    switch (type) {
+      case 'success': return 'bg-rose-500 shadow-rose-200';
+      case 'warning': return 'bg-indigo-500 shadow-indigo-200';
+      case 'info': return 'bg-emerald-500 shadow-emerald-200';
+      default: return 'bg-slate-500';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">📢 الإشعارات</h1>
-              <p className="text-gray-600 mt-1 text-sm sm:text-base">إدارة إشعارات النظام</p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              {unreadCount > 0 && (
-                <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  {unreadCount} غير مقروء
-                </div>
-              )}
-              <button
-                onClick={testWhatsAppShareFeature}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto"
-                title="اختبار WhatsApp Share برقم ثابت"
-              >
-                🧪 اختبار WhatsApp
-              </button>
-              
-              <button
-                onClick={testUserPhone}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto"
-                title="اختبار WhatsApp برقم المستخدم الحالي مع الرسالة الفعلية"
-                disabled={!selectedNotification}
-              >
-                📱 اختبار رقم المستخدم
-              </button>
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto"
-                >
-                  تمييز الكل كمقروء
-                </button>
-              )}
-            </div>
-          </div>
+    <div className="min-h-screen bg-white font-sans text-slate-900" dir="rtl">
+
+      {/* 1. New Updates Pill (Sticky) */}
+      <AnimatePresence>
+        {showNewPill && (
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 20, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100]"
+          >
+            <Button
+              onClick={scrollToTop}
+              className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 px-6 h-9 text-sm font-medium gap-2"
+            >
+              <ArrowUp className="w-4 h-4" />
+              إشعارات جديدة
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. Header */}
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-100">
+        <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight">الإشعارات</h1>
+          <Button variant="ghost" size="icon" className="rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-900">
+            <Settings className="w-5 h-5" />
+          </Button>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-          <div className="flex flex-wrap gap-2">
+        {/* Tabs */}
+        <div className="max-w-xl mx-auto flex px-2">
+          {[
+            { id: 'all', label: 'الكل' },
+            { id: 'mentions', label: 'التفاعلات' },
+            { id: 'system', label: 'النظام' }
+          ].map(tab => (
             <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'all' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 pb-3 pt-2 text-sm font-medium relative text-slate-500 hover:text-slate-900 transition-colors"
             >
-              الكل ({notifications.length})
+              {tab.label}
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-full mx-8"
+                />
+              )}
             </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'unread' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              غير مقروء ({unreadCount})
-            </button>
-            <button
-              onClick={() => setFilter('read')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'read' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              مقروء ({notifications.length - unreadCount})
-            </button>
-          </div>
+          ))}
         </div>
+      </div>
 
-        {/* Notifications List */}
-        <div className="bg-white rounded-lg shadow-sm">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="text-gray-600 mt-2">جاري تحميل الإشعارات...</p>
+      {/* 3. Feed */}
+      <div className="max-w-xl mx-auto min-h-screen pb-20">
+        {loading ? (
+          <div className="pt-4">
+            {[1, 2, 3, 4, 5].map(i => <NotificationSkeleton key={i} />)}
+          </div>
+        ) : filteredList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 ring-8 ring-slate-50/50">
+              <Bell className="w-8 h-8 text-slate-300" />
             </div>
-          ) : notifications.length === 0 ? (
-            <div className="p-8 text-center">
-              <div className="text-6xl mb-4">📭</div>
-              <h3 className="text-lg font-medium text-gray-800 mb-2">لا توجد إشعارات</h3>
-              <p className="text-gray-600">لم يتم العثور على أي إشعارات</p>
+            <h3 className="text-lg font-bold text-slate-900">كل شيء هادئ هنا</h3>
+            <p className="text-slate-500 max-w-xs mt-2 leading-relaxed">لم تتلق أي إشعارات جديدة مؤخراً. سنخبرك بمجرد حدوث شيء ما.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {filteredList.map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onMarkRead={handleMarkRead}
+                onDelete={handleDelete}
+                getActionIcon={getActionIcon}
+                getActionColor={getActionColor}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Notification Item Component (Interactions & Animations) ---
+const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, getActionColor }: any) => {
+
+  // Swipe Handler (Simplified for web, typically meaningful on mobile)
+  const handleDragEnd = (event: any, info: PanInfo) => {
+    if (info.offset.x < -100) {
+      onDelete(notification.id); // Swipe Left to delete
+    }
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0 }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+      className={cn(
+        "relative p-4 pl-12 group transition-all cursor-pointer overflow-hidden",
+        notification.isRead ? "bg-white" : "bg-sky-50/30"
+      )}
+      onClick={() => onMarkRead(notification.id, notification.category)}
+    >
+      {/* Status Line */}
+      {!notification.isRead && (
+        <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-blue-600 rounded-tr-xl rounded-br-xl" />
+      )}
+
+      <div className="flex items-start gap-4">
+        {/* Avatar Section */}
+        <div className="relative flex-shrink-0 mt-1">
+          {notification.groupedCount && notification.groupedSenders ? (
+            // Grouped Avatars Stack
+            <div className="relative w-12 h-12">
+              {notification.groupedSenders.slice(0, 2).map((s: any, i: number) => (
+                <Avatar key={i} className={cn(
+                  "absolute w-9 h-9 border-2 border-white shadow-sm transition-transform",
+                  i === 0 ? "top-0 right-0 z-20" : "bottom-0 left-0 z-10 scale-90 opacity-90"
+                )}>
+                  <AvatarImage src={s.avatar} />
+                  <AvatarFallback>{s.name[0]}</AvatarFallback>
+                </Avatar>
+              ))}
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${getNotificationColor(notification.type, notification.isRead)}`}
-                  onClick={() => {
-                    setSelectedNotification(notification);
-                    setShowDetailsDialog(true);
-                    if (!notification.isRead) {
-                      markAsRead(notification.id);
-                    }
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="text-2xl">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className={`text-sm font-medium ${notification.isRead ? 'text-gray-600' : 'text-gray-900'}`}>
-                          {notification.title}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          )}
-                          <span className="text-xs text-gray-500">
-                            {formatDate(notification.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-                      <p className={`text-sm mt-1 ${notification.isRead ? 'text-gray-500' : 'text-gray-700'}`}>
-                        {notification.message}
-                      </p>
-                      {notification.paymentData && (
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="text-xs text-gray-500">
-                            💰 {notification.paymentData.amount?.toLocaleString()} {notification.paymentData.currency} | 
-                            👤 {notification.paymentData.playerName} | 
-                            📱 {notification.paymentData.playerPhone}
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              sendNotificationViaWhatsApp(notification);
-                            }}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                            title="إرسال عبر WhatsApp"
-                          >
-                            📱 WhatsApp
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            // Single Avatar
+            <div className="relative">
+              <Avatar className="w-12 h-12 border-2 border-white shadow-sm">
+                <AvatarImage src={notification.senderAvatar} />
+                <AvatarFallback>{notification.senderName?.[0]}</AvatarFallback>
+              </Avatar>
+              <div className={cn(
+                "absolute -bottom-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm text-white",
+                getActionColor(notification.type, notification.category)
+              )}>
+                {getActionIcon(notification.type, notification.category)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Content Section */}
+        <div className="flex-1 min-w-0 pt-0.5">
+          {/* Header */}
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="text-[15px] leading-6">
+              <span className="font-bold text-slate-900 hover:underline decoration-slate-300 underline-offset-4">
+                {notification.groupedCount
+                  ? `${notification.senderName} و ${notification.groupedCount - 1} آخرين`
+                  : notification.senderName}
+              </span>
+              <span className="text-slate-600 mx-1.5">
+                {notification.title} {/* Action verbs usually stored in title or derived */}
+              </span>
+              <span className="text-slate-400 text-sm font-normal">
+                {formatDistanceToNow(notification.createdAt, { locale: ar, addSuffix: true })}
+              </span>
+            </div>
+
+            {/* Tiny Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onDelete(notification.id)} className="text-rose-600 focus:text-rose-700">
+                  <Trash2 className="w-4 h-4 ml-2" />
+                  حذف
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Message Body */}
+          <p className="text-slate-500 text-[15px] mt-0.5 leading-relaxed line-clamp-2">
+            {notification.message}
+          </p>
+
+          {/* Rich Content Preview (If available - mocked) */}
+          {notification.category === 'interaction' && notification.type === 'success' && (
+            <div className="mt-3 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden max-w-[80%]">
+              <div className="h-32 bg-slate-200 flex items-center justify-center text-slate-400">
+                <ImageIcon className="w-8 h-8" />
+                {/* Image would come from Metadata */}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Action Buttons */}
+          {notification.category === 'interaction' && (
+            <div className="flex items-center gap-2 mt-3">
+              <Button size="sm" variant="outline" className="h-8 rounded-full text-xs font-semibold px-4 border-slate-200 hover:bg-slate-50 hover:text-slate-900">
+                رد
+              </Button>
+              {notification.type === 'warning' && ( // 'Follow' type
+                <Button size="sm" className="h-8 rounded-full text-xs font-semibold px-4 bg-slate-900 hover:bg-slate-800">
+                  متابعة
+                </Button>
+              )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Notification Details Modal */}
-      {showDetailsDialog && selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">
-                {getNotificationIcon(selectedNotification.type)} {selectedNotification.title}
-              </h2>
-              <button
-                onClick={() => setShowDetailsDialog(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">الرسالة</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                  {selectedNotification.message}
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
-                <p className="text-gray-900">
-                  {formatDate(selectedNotification.createdAt)}
-                </p>
-              </div>
-              
-              {selectedNotification.paymentData && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">تفاصيل المدفوعة</label>
-                  <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">العميل:</span>
-                      <span className="font-medium">{selectedNotification.paymentData.playerName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">المبلغ:</span>
-                      <span className="font-medium">{selectedNotification.paymentData.amount?.toLocaleString()} {selectedNotification.paymentData.currency}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">رقم الهاتف:</span>
-                      <span className="font-medium">{selectedNotification.paymentData.playerPhone}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">المصدر:</span>
-                      <span className="font-medium">{selectedNotification.paymentData.paymentMethod}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">الحالة:</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        selectedNotification.paymentData.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        selectedNotification.paymentData.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {selectedNotification.paymentData.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              {selectedNotification.paymentData?.playerPhone && (
-                <>
-                  <button
-                    onClick={() => sendNotificationViaWhatsApp(selectedNotification)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                  >
-                    📱 إرسال عبر WhatsApp
-                  </button>
-                  <button
-                    onClick={testUserPhone}
-                    className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                    title="اختبار WhatsApp برقم المستخدم مع الرسالة الفعلية"
-                  >
-                    📱 اختبار رقم المستخدم
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setShowDetailsDialog(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
+};
+
+export default function AdminNotificationsPage() {
+  return <NotificationFeed />;
 }

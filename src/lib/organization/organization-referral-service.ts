@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
   updateDoc,
   serverTimestamp,
-  increment 
+  increment
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { OrganizationReferral, PlayerJoinRequest, JoinRequestNotification } from '@/types/organization-referral';
@@ -112,6 +112,11 @@ class OrganizationReferralService {
       console.error('خطأ في البحث عن كود الإحالة:', error);
       return null;
     }
+  }
+
+  // التحقق من كود الإحالة (alias for findReferralByCode)
+  async verifyReferralCode(referralCode: string): Promise<OrganizationReferral | null> {
+    return this.findReferralByCode(referralCode);
   }
 
   // إنشاء طلب انضمام
@@ -308,12 +313,12 @@ class OrganizationReferralService {
 
   // إنشاء إشعار للاعب
   private async createPlayerNotification(
-    requestData: PlayerJoinRequest, 
+    requestData: PlayerJoinRequest,
     type: 'approved' | 'rejected',
     processorName: string
   ): Promise<void> {
     try {
-      const message = type === 'approved' 
+      const message = type === 'approved'
         ? `تم قبول طلب انضمامك إلى ${requestData.organizationName}`
         : `تم رفض طلب انضمامك إلى ${requestData.organizationName}`;
 

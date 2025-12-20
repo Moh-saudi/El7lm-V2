@@ -289,18 +289,32 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     if (!user?.uid) return;
     try {
       setLoading(true);
-      // Fallback simple query for now
-      const q = query(collection(db, 'players'), where('club_id', '==', user.uid));
+
+      // Build dynamic query based on account type
+      let q;
+
+      if (accountType === 'club') {
+        q = query(collection(db, 'players'), where('club_id', '==', user.uid));
+      } else if (accountType === 'academy') {
+        q = query(collection(db, 'players'), where('academy_id', '==', user.uid));
+      } else if (accountType === 'trainer') {
+        q = query(collection(db, 'players'), where('trainer_id', '==', user.uid));
+      } else if (accountType === 'agent') {
+        q = query(collection(db, 'players'), where('agent_id', '==', user.uid));
+      } else {
+        // For player account, try to fetch their own data
+        q = query(collection(db, 'players'), where('uid', '==', user.uid));
+      }
 
       const snapshot = await getDocs(q);
       const playersData: PlayerData[] = snapshot.docs.map(doc => {
         const d = doc.data();
         return {
           id: doc.id,
-          name: d.name || 'لاعب',
+          name: d.full_name || d.name || 'لاعب',
           email: d.email,
-          phone: d.phone,
-          position: d.position,
+          phone: d.phone || d.phoneNumber,
+          position: d.primary_position || d.position,
           currentSubscription: {
             status: d.subscription_status || 'none',
             endDate: d.subscription_end ? new Date(d.subscription_end) : undefined,
@@ -310,9 +324,12 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           selectedPackage: 'subscription_6months'
         };
       });
+
+      console.log(`✅ تم جلب ${playersData.length} لاعب لـ ${accountType}`);
       setPlayers(playersData);
     } catch (e) {
-      console.error(e);
+      console.error('❌ خطأ في جلب اللاعبين:', e);
+      toast.error('فشل تحميل بيانات اللاعبين');
     } finally {
       setLoading(false);
     }

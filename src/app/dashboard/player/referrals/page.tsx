@@ -3,18 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { referralService } from '@/lib/referral/referral-service';
+import { organizationReferralService } from '@/lib/organization/organization-referral-service';
+import { PlayerJoinRequest } from '@/types/organization-referral';
 import { POINTS_CONVERSION, BADGES } from '@/types/referral';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  UserPlus, 
-  Copy, 
-  Share2, 
-  Trophy, 
-  DollarSign, 
-  Users, 
+import JoinOrganizationModal from '@/components/referrals/JoinOrganizationModal';
+import {
+  UserPlus,
+  Copy,
+  Share2,
+  Trophy,
+  DollarSign,
+  Users,
   TrendingUp,
   Award,
   Star,
@@ -27,7 +30,9 @@ import {
   Mail,
   Phone,
   Download,
-  QrCode
+  QrCode,
+  Building2,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -53,23 +58,35 @@ interface ReferralStats {
 }
 
 export default function PlayerReferralsPage() {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [playerRewards, setPlayerRewards] = useState<PlayerRewards | null>(null);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [referralCode, setReferralCode] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<PlayerJoinRequest[]>([]);
 
   useEffect(() => {
     if (user?.uid) {
       loadPlayerData();
+      loadJoinRequests();
     }
   }, [user]);
+
+  const loadJoinRequests = async () => {
+    try {
+      const requests = await organizationReferralService.getPlayerJoinRequests(user!.uid);
+      setJoinRequests(requests);
+    } catch (error) {
+      console.error('Error loading join requests:', error);
+    }
+  };
 
   const loadPlayerData = async () => {
     try {
       setLoading(true);
-      
+
       // إنشاء أو جلب نظام مكافآت اللاعب
       const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
       setPlayerRewards(rewards);
@@ -125,10 +142,10 @@ export default function PlayerReferralsPage() {
 
   const getNextBadge = () => {
     if (!playerRewards) return null;
-    
+
     const currentCount = playerRewards.referralCount;
     const earnedBadgeIds = playerRewards.badges.map(b => b.id);
-    
+
     for (const badge of BADGES.REFERRAL_BADGES) {
       if (currentCount < badge.requirement && !earnedBadgeIds.includes(badge.id)) {
         return badge;
@@ -213,6 +230,82 @@ export default function PlayerReferralsPage() {
         </Card>
       </motion.div>
 
+      {/* قسم الانضمام لمنظمة */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Building2 className="w-5 w-5 text-emerald-600" />
+                الانضمام لمنظمة
+              </span>
+              <Button
+                onClick={() => setShowJoinModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                انضم الآن
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              انضم إلى أكاديمية أو نادي للحصول على تدريب احترافي ومتابعة مستمرة وفرص أفضل.
+            </p>
+
+            {joinRequests.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm mb-2">طلباتك:</h4>
+                {joinRequests.slice(0, 3).map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{request.organizationName}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(request.requestedAt as any).toLocaleDateString('ar')}
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        request.status === 'approved'
+                          ? 'bg-green-100 text-green-700'
+                          : request.status === 'pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-red-100 text-red-700'
+                      }
+                    >
+                      {request.status === 'approved'
+                        ? 'مقبول'
+                        : request.status === 'pending'
+                          ? 'قيد المراجعة'
+                          : 'مرفوض'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Join Organization Modal */}
+      {user && userData && (
+        <JoinOrganizationModal
+          playerId={user.uid}
+          playerName={userData.full_name || user.displayName || 'اللاعب'}
+          isOpen={showJoinModal}
+          onClose={() => setShowJoinModal(false)}
+          onSuccess={loadJoinRequests}
+        />
+      )}
+
       {/* كود الإحالة */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -239,7 +332,7 @@ export default function PlayerReferralsPage() {
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               <Button onClick={copyReferralLink} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <Copy className="w-4 h-4 mr-2" />
@@ -304,7 +397,7 @@ export default function PlayerReferralsPage() {
                   </div>
                 </div>
               ))}
-              
+
               {nextBadge && (
                 <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl bg-gray-300">

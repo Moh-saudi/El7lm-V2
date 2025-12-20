@@ -14,10 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Search, 
-  LogOut, 
-  Menu, 
+import {
+  Search,
+  LogOut,
+  Menu,
   X,
   Bell,
   MessageSquare,
@@ -35,9 +35,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import SmartNotifications from '@/components/notifications/SmartNotifications';
 import MessageNotifications from '@/components/messaging/MessageNotifications';
-import InteractionNotifications from '@/components/notifications/InteractionNotifications';
+import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
 import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 
 interface ModernUnifiedHeaderProps {
@@ -69,12 +68,12 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
     console.log('🔍 getUserDisplayName called');
     console.log('🔍 user object:', user);
     console.log('🔍 userData object:', userData);
-    
+
     if (!userData) {
       console.log('❌ No userData available for name');
       return 'مستخدم';
     }
-    
+
     console.log('✅ userData available for name:', {
       accountType: userData.accountType,
       academy_name: userData.academy_name,
@@ -87,7 +86,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
       userDisplayName: user?.displayName,
       email: userData.email
     });
-    
+
     // Handle different account types
     switch (userData.accountType) {
       case 'academy':
@@ -102,22 +101,22 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
           fallback: 'أكاديمية رياضية'
         });
         return academyName;
-      
+
       case 'club':
         const clubName = userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
         console.log('Using club name:', clubName);
         return clubName;
-      
+
       case 'agent':
         const agentName = userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
         console.log('Using agent name:', agentName);
         return agentName;
-      
+
       case 'trainer':
         const trainerName = userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
         console.log('Using trainer name:', trainerName);
         return trainerName;
-      
+
       default: // player, admin, etc.
         const defaultName = userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
         console.log('Using default name:', defaultName);
@@ -138,7 +137,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
   // Get user account type with beautiful labels
   const getAccountTypeInfo = () => {
     if (!userData?.accountType) return { label: 'مستخدم', icon: User, color: 'bg-slate-500' };
-    
+
     const types = {
       'player': { label: 'لاعب', icon: User, color: 'bg-blue-500' },
       'club': { label: 'نادي', icon: Shield, color: 'bg-green-500' },
@@ -147,7 +146,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
       'agent': { label: 'وكيل', icon: Sparkles, color: 'bg-pink-500' },
       'admin': { label: 'مدير', icon: Shield, color: 'bg-red-500' },
     };
-    
+
     return types[userData.accountType as keyof typeof types] || types.player;
   };
 
@@ -177,7 +176,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-lg">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          
+
           {/* Logo and Title */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
@@ -215,18 +214,10 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
 
           {/* Right Side - Notifications, Messages, User Menu */}
           <div className="flex items-center gap-4">
-            
+
             {/* Notifications */}
             <div className="hidden md:flex items-center gap-2">
-              {/* Smart Notifications */}
-              <div className="relative">
-                <SmartNotifications />
-              </div>
-
-              {/* Interaction Notifications */}
-              <div className="relative">
-                <InteractionNotifications />
-              </div>
+              <UnifiedNotificationsButton />
 
               {/* Message Notifications */}
               <div className="relative">
@@ -264,8 +255,8 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="w-10 h-10 ring-2 ring-white/50 shadow-lg">
-                        <AvatarImage 
-                          src={getUserAvatar()} 
+                        <AvatarImage
+                          src={getUserAvatar()}
                           alt={getUserDisplayName()}
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
@@ -279,7 +270,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                         <accountInfo.icon className="w-2 h-2 text-white" />
                       </div>
                     </div>
-                    
+
                     <div className="hidden md:block text-right">
                       <div className="text-sm font-semibold text-slate-800">
                         {getUserDisplayName()}
@@ -290,26 +281,26 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <ChevronDown className="w-4 h-4 text-slate-600 hidden md:block" />
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              
+
               <DropdownMenuContent align="end" className="w-64 bg-white/90 backdrop-blur-lg border-white/30 shadow-2xl rounded-2xl p-2">
                 <DropdownMenuLabel className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                                         <Avatar className="w-12 h-12">
-                       <AvatarImage 
-                         src={getUserAvatar()} 
-                         onError={(e) => {
-                           e.currentTarget.style.display = 'none';
-                         }}
-                       />
-                       <AvatarFallback className={`${accountInfo.color} text-white font-bold`}>
-                         {getUserDisplayName().slice(0, 2).toUpperCase()}
-                       </AvatarFallback>
-                     </Avatar>
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage
+                        src={getUserAvatar()}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <AvatarFallback className={`${accountInfo.color} text-white font-bold`}>
+                        {getUserDisplayName().slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="font-semibold text-slate-800">{getUserDisplayName()}</div>
                       <div className="text-sm text-slate-600">{user?.email}</div>
@@ -319,41 +310,41 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                     </div>
                   </div>
                 </DropdownMenuLabel>
-                
+
                 <DropdownMenuSeparator className="bg-white/30" />
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={() => router.push(`/dashboard/${userData?.accountType || 'player'}/profile`)}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <User className="w-4 h-4" />
                   <span>الملف الشخصي</span>
                 </DropdownMenuItem>
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={() => router.push(`/dashboard/${userData?.accountType || 'player'}/messages`)}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>الرسائل</span>
                 </DropdownMenuItem>
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={() => router.push(`/dashboard/${userData?.accountType || 'player'}/notifications`)}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <Bell className="w-4 h-4" />
                   <span>الإشعارات</span>
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuItem className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer">
                   <Settings className="w-4 h-4" />
                   <span>الإعدادات</span>
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuSeparator className="bg-white/30" />
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={handleLogout}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 rounded-xl cursor-pointer"
                 >
