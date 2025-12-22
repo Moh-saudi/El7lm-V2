@@ -25,6 +25,7 @@ import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import ReferralWelcomeModal from '@/components/referrals/ReferralWelcomeModal';
 import PlayerOrganizationCard from '@/components/referrals/PlayerOrganizationCard';
+import PhoneCollectionModal from '@/components/player/PhoneCollectionModal';
 
 export default function PlayerDashboard() {
   // التحقق من نوع الحساب - السماح فقط للاعبين وأولياء الأمور
@@ -51,6 +52,23 @@ export default function PlayerDashboard() {
     window.addEventListener('resize', checkDevice);
     return () => window.removeEventListener('resize', checkDevice);
   }, []);
+
+  // State for Phone Modal
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+
+  // Check for missing phone number
+  useEffect(() => {
+    if (userData && !isCheckingAuth) {
+      // Check if phone is missing OR an update is requested
+      if (!userData.phone || userData.profileUpdateRequested) {
+        // Slight delay to ensure smooth rendering
+        const timer = setTimeout(() => {
+          setShowPhoneModal(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [userData, isCheckingAuth]);
 
   // عرض Modal الترحيب عند الدخول أول مرة
   useEffect(() => {
@@ -153,12 +171,21 @@ export default function PlayerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Referral Welcome Modal */}
-      {showWelcomeModal && user && (
+      {/* Referral Welcome Modal - Only show if Phone Modal is NOT showing */}
+      {showWelcomeModal && !showPhoneModal && user && (
         <ReferralWelcomeModal
           playerId={user.uid}
           playerName={userData?.full_name || user.displayName || 'اللاعب'}
           onClose={() => setShowWelcomeModal(false)}
+        />
+      )}
+
+      {/* Phone Collection Modal */}
+      {showPhoneModal && (
+        <PhoneCollectionModal
+          isOpen={showPhoneModal}
+          onClose={() => setShowPhoneModal(false)}
+          forceOpen={true}
         />
       )}
 

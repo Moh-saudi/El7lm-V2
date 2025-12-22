@@ -10,7 +10,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import {
   Activity,
   AlertCircle,
@@ -30,6 +30,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  MessageSquare,
   RefreshCcw,
   Search,
   Shield,
@@ -50,6 +51,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  whatsapp?: string;
   countryCode?: string; // كود البلد من صفحة التسجيل (مثل +966, +20)
   accountType: 'user' | 'player' | 'club' | 'academy' | 'agent' | 'trainer';
   isActive: boolean;
@@ -151,6 +153,30 @@ export default function AdminUsersPage() {
   const [newAccountType, setNewAccountType] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
   const [isPermanentDelete, setIsPermanentDelete] = useState(false);
+
+  const handleRequestUpdate = async (userId: string) => {
+    try {
+      if (!window.confirm('هل أنت متأكد من طلب تحديث بيانات هذا المستخدم؟ سيتم إظهار نافذة تحديث البيانات له عند دخوله.')) return;
+
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      const collectionName = user.accountType === 'user' ? 'users' : `${user.accountType || 'player'}s`;
+
+      // Update in specific collection
+      await setDoc(doc(db, collectionName, userId), { profileUpdateRequested: true }, { merge: true });
+
+      // Update in users collection as well to be safe
+      if (collectionName !== 'users') {
+        await setDoc(doc(db, 'users', userId), { profileUpdateRequested: true }, { merge: true });
+      }
+
+      toast.success('تم إرسال طلب تحديث البيانات بنجاح');
+    } catch (error) {
+      console.error('Error requesting update:', error);
+      toast.error('حدث خطأ أثناء إرسال الطلب');
+    }
+  };
 
   // دالة للتحقق من صحة أرقام الهواتف
   const validateUserPhone = (user: User) => {
@@ -945,6 +971,7 @@ export default function AdminUsersPage() {
                   name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
                   email: data.email || '',
                   phone: data.phone || data.phoneNumber || '',
+                  whatsapp: data.whatsapp || '',
                   countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                   accountType: accountType,
                   isActive: data.isActive !== false,
@@ -1005,6 +1032,7 @@ export default function AdminUsersPage() {
                     name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
                     email: data.email || '',
                     phone: data.phone || data.phoneNumber || '',
+                    whatsapp: data.whatsapp || '',
                     countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
                     accountType: accountType,
                     isActive: data.isActive !== false,
@@ -2515,6 +2543,7 @@ export default function AdminUsersPage() {
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الاسم</th>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">البريد الإلكتروني</th>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">الهاتف</th>
+                      <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">واتساب</th>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">النوع</th>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">المنظمة</th>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider">التوثيق</th>
@@ -2614,6 +2643,12 @@ export default function AdminUsersPage() {
                             </div>
                           </td>
                           <td className="p-4">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <MessageSquare className="h-3.5 w-3.5 text-green-500" />
+                              <span className="text-sm font-medium dir-ltr">{user.whatsapp || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
                             <Badge variant="outline" className={`${getAccountTypeColor(user.accountType)} font-medium`}>
                               {getAccountTypeLabel(user.accountType)}
                             </Badge>
@@ -2683,6 +2718,16 @@ export default function AdminUsersPage() {
                                 }}
                               >
                                 <Eye className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                title="طلب تحديث بيانات"
+                                onClick={() => handleRequestUpdate(user.id)}
+                              >
+                                <RefreshCcw className="h-4 w-4" />
                               </Button>
 
                               {/* Verify/Reject Buttons */}

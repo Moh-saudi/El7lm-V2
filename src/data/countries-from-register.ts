@@ -87,7 +87,6 @@ export const COUNTRIES_FROM_REGISTER: Country[] = [
   { name: 'تنزانيا', code: '+255', currency: 'TZS', currencySymbol: 'TSh', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'أوغندا', code: '+256', currency: 'UGX', currencySymbol: 'USh', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'إثيوبيا', code: '+251', currency: 'ETB', currencySymbol: 'Br', phoneLength: 9, phonePattern: '[0-9]{9}' },
-  { name: 'المغرب', code: '+212', currency: 'MAD', currencySymbol: 'د.م', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'إندونيسيا', code: '+62', currency: 'IDR', currencySymbol: 'Rp', phoneLength: 10, phonePattern: '[0-9]{10}' },
   { name: 'ماليزيا', code: '+60', currency: 'MYR', currencySymbol: 'RM', phoneLength: 9, phonePattern: '[0-9]{9}' },
   { name: 'سنغافورة', code: '+65', currency: 'SGD', currencySymbol: '$', phoneLength: 8, phonePattern: '[0-9]{8}' },
