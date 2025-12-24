@@ -108,26 +108,23 @@ export function generatePasswordResetEmail({
                     <tr>
                         <td style="background: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                             <p style="margin: 0 0 10px; color: #4a5568; font-size: 14px; font-weight: 600;">
-                                منصة الحلم للتطوير الرياضي
+                                منصة الحلم الرقمية
                             </p>
                             <p style="margin: 0 0 15px; color: #718096; font-size: 12px;">
-                                نساعدك على تحقيق أحلامك الرياضية
+                                أول متجر إلكتروني لتسويق وبيع اللاعبين في الشرق الأوسط
                             </p>
                             
-                            <!-- Social Links -->
-                            <div style="margin: 20px 0;">
-                                <a href="#" style="display: inline-block; margin: 0 10px;">
-                                    <img src="https://img.icons8.com/color/32/facebook.png" alt="Facebook" style="width: 32px; height: 32px;">
-                                </a>
-                                <a href="#" style="display: inline-block; margin: 0 10px;">
-                                    <img src="https://img.icons8.com/color/32/twitter.png" alt="Twitter" style="width: 32px; height: 32px;">
-                                </a>
-                                <a href="#" style="display: inline-block; margin: 0 10px;">
-                                    <img src="https://img.icons8.com/color/32/instagram-new.png" alt="Instagram" style="width: 32px; height: 32px;">
-                                </a>
+                            <!-- Contact Info -->
+                            <div style="margin: 20px 0; padding: 15px; background: #ffffff; border-radius: 8px;">
+                                <p style="margin: 0 0 5px; color: #2d3748; font-size: 12px;">📱 قطر (واتساب الرسمي): +974 7054 2458</p>
+                                <p style="margin: 0 0 5px; color: #2d3748; font-size: 12px;">📱 مصر: +20 101 779 9580</p>
+                                <p style="margin: 0; color: #2d3748; font-size: 12px;">✉️ info@el7lm.com</p>
                             </div>
 
                             <p style="margin: 15px 0 0; color: #a0aec0; font-size: 11px;">
+                                من شركة ميسك القطرية • www.mesk.qa
+                            </p>
+                            <p style="margin: 5px 0 0; color: #cbd5e0; font-size: 10px;">
                                 © 2024 منصة الحلم. جميع الحقوق محفوظة.
                             </p>
                         </td>
@@ -179,3 +176,6 @@ ${resetLink}
 © 2024 جميع الحقوق محفوظة
     `.trim();
 }
+
+// Alias for backward compatibility
+export const generatePasswordResetPlainText = generatePasswordResetEmailText;

@@ -141,7 +141,7 @@ function SubscriptionStatusContent() {
                 <div>قطر- الدوحة - مركز قطر للمال</div>
                 <div>الرقم الضريبي: 02289</div>
                 <div>البريد: El7lm@mesk.qa</div>
-                <div>هاتف: 97472053188 قطر - 201017799580 مصر</div>
+                <div>هاتف: 97470542458 قطر - 201017799580 مصر</div>
               </div>
             </div>
             <div class="invoice-title">فاتورة اشتراك <span style="font-size:1.3em;">🧾</span></div>

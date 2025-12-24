@@ -37,7 +37,7 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">مقدمة</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  نحن في منصة الحلم (el7lm) تحت مِيسك القابضة ملتزمون بحماية خصوصيتك وحماية بياناتك الشخصية. 
+                  نحن في منصة الحلم (el7lm) تحت مِيسك القابضة ملتزمون بحماية خصوصيتك وحماية بياناتك الشخصية.
                   تشرح هذه السياسة كيفية جمعنا واستخدامنا وحماية معلوماتك عند استخدام خدماتنا.
                 </p>
               </section>
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
                       <li>المعلومات الرياضية والمهارات</li>
                     </ul>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-lg font-medium text-gray-800 mb-2">المعلومات التقنية</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
@@ -140,8 +140,8 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">الاحتفاظ بالبيانات</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  نحتفظ ببياناتك الشخصية طالما كان حسابك نشطاً أو حسب الحاجة لتقديم الخدمات. 
-                  بعد حذف الحساب، نحتفظ ببعض البيانات لفترة محددة للامتثال للمتطلبات القانونية 
+                  نحتفظ ببياناتك الشخصية طالما كان حسابك نشطاً أو حسب الحاجة لتقديم الخدمات.
+                  بعد حذف الحساب، نحتفظ ببعض البيانات لفترة محددة للامتثال للمتطلبات القانونية
                   أو لحل النزاعات.
                 </p>
               </section>
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">خصوصية الأطفال</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  خدماتنا مخصصة للمستخدمين الذين تبلغ أعمارهم 13 عاماً أو أكثر. 
+                  خدماتنا مخصصة للمستخدمين الذين تبلغ أعمارهم 13 عاماً أو أكثر.
                   إذا كان عمرك أقل من 18 عاماً، يجب الحصول على موافقة ولي الأمر قبل استخدام الخدمة.
                 </p>
               </section>
@@ -157,8 +157,8 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">التغييرات على هذه السياسة</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. سنقوم بإشعارك بأي تغييرات مهمة 
-                  عبر البريد الإلكتروني أو من خلال إشعار على المنصة. استمرار استخدامك للخدمة 
+                  قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. سنقوم بإشعارك بأي تغييرات مهمة
+                  عبر البريد الإلكتروني أو من خلال إشعار على المنصة. استمرار استخدامك للخدمة
                   بعد التغييرات يعني موافقتك على السياسة المحدثة.
                 </p>
               </section>
@@ -166,13 +166,13 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">التواصل معنا</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  إذا كان لديك أسئلة حول سياسة الخصوصية أو ممارساتنا في حماية البيانات، 
+                  إذا كان لديك أسئلة حول سياسة الخصوصية أو ممارساتنا في حماية البيانات،
                   يمكنك التواصل معنا:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <ul className="text-gray-600 space-y-2">
                     <li><strong>البريد الإلكتروني:</strong> info@el7lm.com</li>
-                    <li><strong>الهاتف (قطر):</strong> 97472053188</li>
+                    <li><strong>الهاتف (قطر):</strong> 97470542458</li>
                     <li><strong>الهاتف (مصر):</strong> 01017799580</li>
                     <li><strong>العنوان:</strong> الدوحة، قطر</li>
                   </ul>

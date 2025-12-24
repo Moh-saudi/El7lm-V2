@@ -2,25 +2,25 @@
 
 import { collection, doc, getDoc, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import {
-    AlertCircle,
-    ArrowLeft,
-    Award,
-    Check,
-    Clock,
-    CreditCard,
-    Crown,
-    DollarSign,
-    Download,
-    ExternalLink,
-    FileImage,
-    Gift,
-    Home,
-    Printer,
-    RefreshCw,
-    Star,
-    Trophy,
-    Users,
-    X
+  AlertCircle,
+  ArrowLeft,
+  Award,
+  Check,
+  Clock,
+  CreditCard,
+  Crown,
+  DollarSign,
+  Download,
+  ExternalLink,
+  FileImage,
+  Gift,
+  Home,
+  Printer,
+  RefreshCw,
+  Star,
+  Trophy,
+  Users,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -415,7 +415,7 @@ function SubscriptionStatusContent() {
 
       console.log('🔍 جلب بيانات الاشتراك للمستخدم:', user.uid);
       console.log('📧 البريد الإلكتروني:', user.email);
-      console.log('📱 رقم الهاتف:', user.phone);
+      console.log('📱 رقم الهاتف:', user.phoneNumber || 'غير متوفر');
 
       // البحث في مجموعة geidea_payments أولاً (البيانات الحقيقية من Geidea callbacks)
       console.log('1️⃣ البحث في مجموعة geidea_payments (البيانات الحقيقية من Geidea callbacks)...');
@@ -428,7 +428,7 @@ function SubscriptionStatusContent() {
           orderBy('callbackReceivedAt', 'desc'),
           limit(1)
         );
-        
+
         let geideaPaymentsSnapshot;
         try {
           geideaPaymentsSnapshot = await getDocs(geideaPaymentsQuery);
@@ -452,12 +452,12 @@ function SubscriptionStatusContent() {
           // فقط المدفوعات الناجحة
           if (paymentData.status === 'success') {
             // حساب تاريخ انتهاء الاشتراك (3 أشهر من تاريخ الدفع)
-            const paymentDate = paymentData.paidAt 
-              ? new Date(paymentData.paidAt) 
-              : paymentData.callbackReceivedAt 
+            const paymentDate = paymentData.paidAt
+              ? new Date(paymentData.paidAt)
+              : paymentData.callbackReceivedAt
                 ? new Date(paymentData.callbackReceivedAt)
                 : paymentData.createdAt?.toDate?.() || new Date(paymentData.createdAt || Date.now());
-            
+
             const endDate = new Date(paymentDate);
             endDate.setMonth(endDate.getMonth() + 3);
 
@@ -470,8 +470,8 @@ function SubscriptionStatusContent() {
               amount: paymentData.amount || 0,
               currency: paymentData.currency || 'EGP',
               currencySymbol: paymentData.currency === 'EGP' ? 'ج.م' :
-                             paymentData.currency === 'USD' ? '$' :
-                             paymentData.currency === 'SAR' ? 'ر.س' : 'ج.م',
+                paymentData.currency === 'USD' ? '$' :
+                  paymentData.currency === 'SAR' ? 'ر.س' : 'ج.م',
               receipt_url: undefined,
               autoRenew: false,
               transaction_id: paymentData.orderId || paymentData.transactionId || paymentData.merchantReferenceId || 'N/A',
@@ -527,16 +527,16 @@ function SubscriptionStatusContent() {
             end_date: endDate.toISOString(),
             status: 'active',
             payment_method: paymentData.paymentMethod === 'geidea' ? 'بطاقة بنكية (جيديا)' :
-                           paymentData.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' :
-                           paymentData.paymentMethod === 'etisalat_cash' ? 'اتصالات كاش' :
-                           paymentData.paymentMethod === 'instapay' ? 'انستاباي' :
-                           paymentData.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' :
-                           paymentData.paymentMethod || 'بطاقة ائتمان',
+              paymentData.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' :
+                paymentData.paymentMethod === 'etisalat_cash' ? 'اتصالات كاش' :
+                  paymentData.paymentMethod === 'instapay' ? 'انستاباي' :
+                    paymentData.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' :
+                      paymentData.paymentMethod || 'بطاقة ائتمان',
             amount: paymentData.amount || 0,
             currency: paymentData.currency || 'EGP',
             currencySymbol: paymentData.currency === 'EGP' ? 'ج.م' :
-                           paymentData.currency === 'USD' ? '$' :
-                           paymentData.currency === 'SAR' ? 'ر.س' : 'ج.م',
+              paymentData.currency === 'USD' ? '$' :
+                paymentData.currency === 'SAR' ? 'ر.س' : 'ج.م',
             receipt_url: paymentData.receiptUrl,
             autoRenew: false,
             transaction_id: paymentData.sessionId || paymentData.transactionId || 'N/A',
@@ -652,8 +652,8 @@ function SubscriptionStatusContent() {
           }
 
           // البحث برقم الهاتف إذا كان متوفراً
-          if (user.phone) {
-            const phoneQuery = query(collectionRef, where('phone', '==', user.phone));
+          if (user.phoneNumber) {
+            const phoneQuery = query(collectionRef, where('phone', '==', user.phoneNumber));
             const phoneSnapshot = await getDocs(phoneQuery);
 
             if (!phoneSnapshot.empty) {
@@ -754,8 +754,8 @@ function SubscriptionStatusContent() {
       console.log('  - جميع مجموعات المستخدمين');
       console.log('🔍 معرف المستخدم:', user.uid);
       console.log('🔍 البريد الإلكتروني:', user.email);
-      console.log('🔍 رقم الهاتف:', user.phone);
-      console.log('🔍 نوع الحساب:', user.accountType);
+      console.log('🔍 رقم الهاتف:', user.phoneNumber || 'غير متوفر');
+      console.log('🔍 نوع الحساب:', 'يحتاج جلب من Firestore');
 
       // إضافة معلومات تشخيصية إضافية
       console.log('📊 معلومات التشخيص الإضافية:');
@@ -936,7 +936,7 @@ function SubscriptionStatusContent() {
                 <div>قطر- الدوحة - مركز قطر للمال</div>
                 <div>الرقم الضريبي: 02289</div>
                 <div>البريد: el7lm@mesk.qa</div>
-                <div>هاتف: 97472053188 قطر - 201017799580 مصر</div>
+                <div>هاتف: 97470542458 قطر - 201017799580 مصر</div>
               </div>
             </div>
             <div class="invoice-title">فاتورة اشتراك <span style="font-size:1.3em;">🧾</span></div>
@@ -1083,8 +1083,8 @@ function SubscriptionStatusContent() {
             <table class="details-table">
               <tr><th>اسم الباقة</th><td>${subscription?.plan_name || ''}</td></tr>
               <tr><th>المبلغ المدفوع</th><td>${subscription?.amount || 0} ${subscription?.currencySymbol || ''}</td></tr>
-              <tr><th>تاريخ التفعيل</th><td>${subscription?.activated_at ? new Date(subscription.activated_at.seconds * 1000).toLocaleDateString('ar-EG') : 'غير محدد'}</td></tr>
-              <tr><th>تاريخ الانتهاء</th><td>${subscription?.expires_at ? new Date(subscription.expires_at.seconds * 1000).toLocaleDateString('ar-EG') : 'غير محدد'}</td></tr>
+              <tr><th>تاريخ التفعيل</th><td>${subscription?.start_date ? new Date(subscription.start_date).toLocaleDateString('ar-EG') : 'غير محدد'}</td></tr>
+              <tr><th>تاريخ الانتهاء</th><td>${subscription?.end_date ? new Date(subscription.end_date).toLocaleDateString('ar-EG') : 'غير محدد'}</td></tr>
               <tr><th>طريقة الدفع</th><td>${subscription?.payment_method || ''}</td></tr>
               <tr><th>رقم العملية</th><td>${subscription?.transaction_id || ''}</td></tr>
             </table>
@@ -1242,399 +1242,399 @@ function SubscriptionStatusContent() {
 
   return (
     <div className="p-4 md:p-8">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center text-blue-600 hover:text-blue-800"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              العودة
-            </button>
-            <Link
-              href="/dashboard"
-              className="flex items-center text-gray-600 hover:text-gray-800"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              لوحة التحكم
-            </Link>
-          </div>
-          <div className="flex items-center mb-2">
-            <CreditCard className="w-8 h-8 text-blue-600 mr-3" />
-            <h1 className="text-3xl font-bold text-gray-900">حالة الاشتراك</h1>
-          </div>
-          <p className="text-gray-600">عرض تفاصيل اشتراكك الحالي والفواتير</p>
-        </div>
-
-        {/* بطاقة حالة الاشتراك */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className={`p-2 rounded-full ${getStatusColor(subscription.status)}`}>
-                {subscription.status === 'active' && <Check className="w-5 h-5" />}
-                {subscription.status === 'pending' && <Clock className="w-5 h-5" />}
-                {subscription.status === 'expired' && <AlertCircle className="w-5 h-5" />}
-                {subscription.status === 'cancelled' && <X className="w-5 h-5" />}
-              </div>
-              <div className="ml-3">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {subscription.plan_name}
-                </h2>
-                <p className={`text-sm ${getStatusColor(subscription.status)}`}>
-                  {getStatusText(subscription.status)}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">
-                {subscription.amount} {subscription.currencySymbol}
-              </div>
-              <div className="text-sm text-gray-500">
-                {subscription.currency}
-              </div>
-            </div>
-          </div>
-
-          {/* تفاصيل الباقة */}
-          {packageInfo && (
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">{packageInfo.icon}</span>
-                <h3 className="text-lg font-semibold text-gray-900">{packageInfo.title}</h3>
-                {packageInfo.popular && (
-                  <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
-                    الأكثر شعبية
-                  </span>
-                )}
-              </div>
-              <p className="text-gray-600 mb-3">{packageInfo.subtitle}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">المميزات الأساسية:</h4>
-                  <ul className="space-y-1">
-                    {packageInfo.features.slice(0, 4).map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm text-gray-600">
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">المميزات الإضافية:</h4>
-                  <ul className="space-y-1">
-                    {packageInfo.bonusFeatures.slice(0, 3).map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm text-gray-600">
-                        <Gift className="w-4 h-4 text-purple-500 mr-2" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* تفاصيل الاشتراك */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">تفاصيل الاشتراك</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">تاريخ البداية:</span>
-                  <span className="font-medium">
-                    {subscription.start_date ? new Date(subscription.start_date).toLocaleDateString('ar-EG') : '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">تاريخ الانتهاء:</span>
-                  <span className="font-medium">
-                    {subscription.end_date ? new Date(subscription.end_date).toLocaleDateString('ar-EG') : '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">طريقة الدفع:</span>
-                  <span className="font-medium">{subscription.payment_method}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">رقم العملية:</span>
-                  <span className="font-medium">{subscription.transaction_id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">تجديد تلقائي:</span>
-                  <span className="font-medium">{subscription.autoRenew ? 'نعم' : 'لا'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">معلومات العميل</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">الاسم:</span>
-                  <span className="font-medium">{subscription.customer_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">البريد الإلكتروني:</span>
-                  <span className="font-medium">{subscription.customer_email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">رقم الهاتف:</span>
-                  <span className="font-medium">{subscription.customer_phone || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">نوع الحساب:</span>
-                  <span className="font-medium">{subscription.accountType || 'لاعب'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* أزرار الإجراءات */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleDownloadInvoice}
-                className="flex-1 flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                تحميل الفاتورة PDF
-              </button>
-
-              <button
-                onClick={handlePrintInvoice}
-                disabled={printing}
-                className="flex-1 flex items-center justify-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-              >
-                {printing ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Printer className="w-4 h-4 mr-2" />
-                )}
-                {printing ? 'جاري الطباعة...' : 'طباعة الفاتورة'}
-              </button>
-
-              {subscription?.receipt_url && (
-                <button
-                  onClick={() => setShowReceiptDialog(true)}
-                  className="flex-1 flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <FileImage className="w-4 h-4 mr-2" />
-                  عرض الإيصال
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* قسم نقاط الإحالة والحوافز */}
-        {playerRewards && (
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <Trophy className="w-8 h-8 text-purple-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900">نقاط الإحالة والحوافز</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* إجمالي النقاط */}
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <Star className="w-5 h-5 text-yellow-500 mr-2" />
-                  <h3 className="font-semibold text-gray-900">إجمالي النقاط</h3>
-                </div>
-                <div className="text-2xl font-bold text-purple-600">
-                  {playerRewards?.totalPoints?.toLocaleString() || '0'}
-                </div>
-                <p className="text-sm text-gray-600">نقطة</p>
-              </div>
-
-              {/* النقاط المتاحة */}
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <DollarSign className="w-5 h-5 text-green-500 mr-2" />
-                  <h3 className="font-semibold text-gray-900">النقاط المتاحة</h3>
-                </div>
-                <div className="text-2xl font-bold text-green-600">
-                  {playerRewards?.availablePoints?.toLocaleString() || '0'}
-                </div>
-                <p className="text-sm text-gray-600">نقطة</p>
-              </div>
-
-              {/* الأرباح الإجمالية */}
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center mb-2">
-                  <Award className="w-5 h-5 text-blue-500 mr-2" />
-                  <h3 className="font-semibold text-gray-900">الأرباح الإجمالية</h3>
-                </div>
-                <div className="text-2xl font-bold text-blue-600">
-                  ${playerRewards?.totalEarnings?.toFixed(2) || '0.00'}
-                </div>
-                <p className="text-sm text-gray-600">
-                  ≈ {getEarningsInEGP(playerRewards?.totalEarnings || 0)} جنيه مصري
-                </p>
-              </div>
-            </div>
-
-            {/* إحصائيات الإحالة */}
-            {referralStats && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">إحصائيات الإحالة</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center mb-2">
-                      <Users className="w-5 h-5 text-indigo-500 mr-2" />
-                      <h4 className="font-medium text-gray-900">إجمالي الإحالات</h4>
-                    </div>
-                    <div className="text-xl font-bold text-indigo-600">
-                      {referralStats?.totalReferrals || 0}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center mb-2">
-                      <Check className="w-5 h-5 text-green-500 mr-2" />
-                      <h4 className="font-medium text-gray-900">الإحالات المكتملة</h4>
-                    </div>
-                    <div className="text-xl font-bold text-green-600">
-                      {referralStats?.completedReferrals || 0}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* الشارات المكتسبة */}
-            {playerRewards && playerRewards.badges && playerRewards.badges.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">الشارات المكتسبة</h3>
-                <div className="flex flex-wrap gap-3">
-                  {playerRewards.badges.map((badge, index) => (
-                    <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${getBadgeColor(badge.category)}`}>
-                          {getBadgeIcon(badge.category)}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{badge.name}</div>
-                          <div className="text-sm text-gray-600">{badge.description}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* رابط صفحة الإحالة */}
-            <div className="mt-6 text-center">
-              <Link
-                href="/dashboard/referrals"
-                className="inline-flex items-center bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Trophy className="w-5 h-5 mr-2" />
-                إدارة الإحالات والحوافز
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* أزرار الطباعة والتحميل */}
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
           <button
-            onClick={handlePrintInvoice}
-            disabled={printing}
-            className="flex-1 flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            onClick={() => router.back()}
+            className="flex items-center text-blue-600 hover:text-blue-800"
           >
-            {printing ? (
-              <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-            ) : (
-              <Printer className="w-5 h-5 mr-2" />
-            )}
-            {printing ? 'جاري الطباعة...' : 'طباعة الفاتورة'}
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            العودة
           </button>
-
-          <button
-            onClick={handleDownloadInvoice}
-            className="flex-1 flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            تحميل الفاتورة
-          </button>
-
-          {subscription?.receipt_url && (
-            <button
-              onClick={() => setShowReceiptDialog(true)}
-              className="flex-1 flex items-center justify-center bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
-            >
-              <FileImage className="w-5 h-5 mr-2" />
-              عرض الإيصال
-            </button>
-          )}
-        </div>
-
-        {/* رابط للدفع المجمع */}
-        <div className="mt-6 text-center">
           <Link
-            href="/dashboard/shared/bulk-payment"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800"
+            href="/dashboard"
+            className="flex items-center text-gray-600 hover:text-gray-800"
           >
-            <CreditCard className="w-4 h-4 mr-2" />
-            تحديث الاشتراك أو الدفع الجماعي
+            <Home className="w-4 h-4 mr-2" />
+            لوحة التحكم
           </Link>
         </div>
+        <div className="flex items-center mb-2">
+          <CreditCard className="w-8 h-8 text-blue-600 mr-3" />
+          <h1 className="text-3xl font-bold text-gray-900">حالة الاشتراك</h1>
+        </div>
+        <p className="text-gray-600">عرض تفاصيل اشتراكك الحالي والفواتير</p>
+      </div>
 
-        {/* موديول عرض الإيصال */}
-        {showReceiptDialog && subscription?.receipt_url && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
-                <h3 className="text-xl font-bold text-gray-900">إيصال الدفع</h3>
-                <button
-                  onClick={() => setShowReceiptDialog(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
+      {/* بطاقة حالة الاشتراك */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <div className={`p-2 rounded-full ${getStatusColor(subscription.status)}`}>
+              {subscription.status === 'active' && <Check className="w-5 h-5" />}
+              {subscription.status === 'pending' && <Clock className="w-5 h-5" />}
+              {subscription.status === 'expired' && <AlertCircle className="w-5 h-5" />}
+              {subscription.status === 'cancelled' && <X className="w-5 h-5" />}
+            </div>
+            <div className="ml-3">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {subscription.plan_name}
+              </h2>
+              <p className={`text-sm ${getStatusColor(subscription.status)}`}>
+                {getStatusText(subscription.status)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-gray-900">
+              {subscription.amount} {subscription.currencySymbol}
+            </div>
+            <div className="text-sm text-gray-500">
+              {subscription.currency}
+            </div>
+          </div>
+        </div>
+
+        {/* تفاصيل الباقة */}
+        {packageInfo && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4">
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-2">{packageInfo.icon}</span>
+              <h3 className="text-lg font-semibold text-gray-900">{packageInfo.title}</h3>
+              {packageInfo.popular && (
+                <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                  الأكثر شعبية
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600 mb-3">{packageInfo.subtitle}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">المميزات الأساسية:</h4>
+                <ul className="space-y-1">
+                  {packageInfo.features.slice(0, 4).map((feature, index) => (
+                    <li key={index} className="flex items-center text-sm text-gray-600">
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
-
-              <div className="p-6">
-                <div className="text-center mb-4">
-                  <img
-                    src={subscription.receipt_url}
-                    alt="إيصال الدفع"
-                    className="max-w-full h-auto mx-auto rounded-lg shadow-lg max-h-[70vh]"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <button
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = subscription.receipt_url;
-                      link.download = `receipt-${subscription.invoice_number || 'payment'}.jpg`;
-                      link.click();
-                    }}
-                    className="flex-1 flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    تحميل الإيصال
-                  </button>
-
-                  <button
-                    onClick={() => window.open(subscription.receipt_url, '_blank')}
-                    className="flex-1 flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
-                  >
-                    <ExternalLink className="w-5 h-5 mr-2" />
-                    فتح في تبويب جديد
-                  </button>
-                </div>
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">المميزات الإضافية:</h4>
+                <ul className="space-y-1">
+                  {packageInfo.bonusFeatures.slice(0, 3).map((feature, index) => (
+                    <li key={index} className="flex items-center text-sm text-gray-600">
+                      <Gift className="w-4 h-4 text-purple-500 mr-2" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
         )}
+
+        {/* تفاصيل الاشتراك */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">تفاصيل الاشتراك</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">تاريخ البداية:</span>
+                <span className="font-medium">
+                  {subscription.start_date ? new Date(subscription.start_date).toLocaleDateString('ar-EG') : '-'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">تاريخ الانتهاء:</span>
+                <span className="font-medium">
+                  {subscription.end_date ? new Date(subscription.end_date).toLocaleDateString('ar-EG') : '-'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">طريقة الدفع:</span>
+                <span className="font-medium">{subscription.payment_method}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">رقم العملية:</span>
+                <span className="font-medium">{subscription.transaction_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">تجديد تلقائي:</span>
+                <span className="font-medium">{subscription.autoRenew ? 'نعم' : 'لا'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">معلومات العميل</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">الاسم:</span>
+                <span className="font-medium">{subscription.customer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">البريد الإلكتروني:</span>
+                <span className="font-medium">{subscription.customer_email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">رقم الهاتف:</span>
+                <span className="font-medium">{subscription.customer_phone || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">نوع الحساب:</span>
+                <span className="font-medium">{subscription.accountType || 'لاعب'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* أزرار الإجراءات */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleDownloadInvoice}
+              className="flex-1 flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              تحميل الفاتورة PDF
+            </button>
+
+            <button
+              onClick={handlePrintInvoice}
+              disabled={printing}
+              className="flex-1 flex items-center justify-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {printing ? (
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Printer className="w-4 h-4 mr-2" />
+              )}
+              {printing ? 'جاري الطباعة...' : 'طباعة الفاتورة'}
+            </button>
+
+            {subscription?.receipt_url && (
+              <button
+                onClick={() => setShowReceiptDialog(true)}
+                className="flex-1 flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <FileImage className="w-4 h-4 mr-2" />
+                عرض الإيصال
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    );
-  }
+
+      {/* قسم نقاط الإحالة والحوافز */}
+      {playerRewards && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <Trophy className="w-8 h-8 text-purple-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">نقاط الإحالة والحوافز</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* إجمالي النقاط */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex items-center mb-2">
+                <Star className="w-5 h-5 text-yellow-500 mr-2" />
+                <h3 className="font-semibold text-gray-900">إجمالي النقاط</h3>
+              </div>
+              <div className="text-2xl font-bold text-purple-600">
+                {playerRewards?.totalPoints?.toLocaleString() || '0'}
+              </div>
+              <p className="text-sm text-gray-600">نقطة</p>
+            </div>
+
+            {/* النقاط المتاحة */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex items-center mb-2">
+                <DollarSign className="w-5 h-5 text-green-500 mr-2" />
+                <h3 className="font-semibold text-gray-900">النقاط المتاحة</h3>
+              </div>
+              <div className="text-2xl font-bold text-green-600">
+                {playerRewards?.availablePoints?.toLocaleString() || '0'}
+              </div>
+              <p className="text-sm text-gray-600">نقطة</p>
+            </div>
+
+            {/* الأرباح الإجمالية */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex items-center mb-2">
+                <Award className="w-5 h-5 text-blue-500 mr-2" />
+                <h3 className="font-semibold text-gray-900">الأرباح الإجمالية</h3>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">
+                ${playerRewards?.totalEarnings?.toFixed(2) || '0.00'}
+              </div>
+              <p className="text-sm text-gray-600">
+                ≈ {getEarningsInEGP(playerRewards?.totalEarnings || 0)} جنيه مصري
+              </p>
+            </div>
+          </div>
+
+          {/* إحصائيات الإحالة */}
+          {referralStats && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">إحصائيات الإحالة</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center mb-2">
+                    <Users className="w-5 h-5 text-indigo-500 mr-2" />
+                    <h4 className="font-medium text-gray-900">إجمالي الإحالات</h4>
+                  </div>
+                  <div className="text-xl font-bold text-indigo-600">
+                    {referralStats?.totalReferrals || 0}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center mb-2">
+                    <Check className="w-5 h-5 text-green-500 mr-2" />
+                    <h4 className="font-medium text-gray-900">الإحالات المكتملة</h4>
+                  </div>
+                  <div className="text-xl font-bold text-green-600">
+                    {referralStats?.completedReferrals || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* الشارات المكتسبة */}
+          {playerRewards && playerRewards.badges && playerRewards.badges.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">الشارات المكتسبة</h3>
+              <div className="flex flex-wrap gap-3">
+                {playerRewards.badges.map((badge, index) => (
+                  <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                    <div className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${getBadgeColor(badge.category)}`}>
+                        {getBadgeIcon(badge.category)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{badge.name}</div>
+                        <div className="text-sm text-gray-600">{badge.description}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* رابط صفحة الإحالة */}
+          <div className="mt-6 text-center">
+            <Link
+              href="/dashboard/referrals"
+              className="inline-flex items-center bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Trophy className="w-5 h-5 mr-2" />
+              إدارة الإحالات والحوافز
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* أزرار الطباعة والتحميل */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <button
+          onClick={handlePrintInvoice}
+          disabled={printing}
+          className="flex-1 flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {printing ? (
+            <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+          ) : (
+            <Printer className="w-5 h-5 mr-2" />
+          )}
+          {printing ? 'جاري الطباعة...' : 'طباعة الفاتورة'}
+        </button>
+
+        <button
+          onClick={handleDownloadInvoice}
+          className="flex-1 flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+        >
+          <Download className="w-5 h-5 mr-2" />
+          تحميل الفاتورة
+        </button>
+
+        {subscription?.receipt_url && (
+          <button
+            onClick={() => setShowReceiptDialog(true)}
+            className="flex-1 flex items-center justify-center bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
+          >
+            <FileImage className="w-5 h-5 mr-2" />
+            عرض الإيصال
+          </button>
+        )}
+      </div>
+
+      {/* رابط للدفع المجمع */}
+      <div className="mt-6 text-center">
+        <Link
+          href="/dashboard/shared/bulk-payment"
+          className="inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <CreditCard className="w-4 h-4 mr-2" />
+          تحديث الاشتراك أو الدفع الجماعي
+        </Link>
+      </div>
+
+      {/* موديول عرض الإيصال */}
+      {showReceiptDialog && subscription?.receipt_url && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-xl font-bold text-gray-900">إيصال الدفع</h3>
+              <button
+                onClick={() => setShowReceiptDialog(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="text-center mb-4">
+                <img
+                  src={subscription.receipt_url}
+                  alt="إيصال الدفع"
+                  className="max-w-full h-auto mx-auto rounded-lg shadow-lg max-h-[70vh]"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 mt-6">
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = subscription.receipt_url;
+                    link.download = `receipt-${subscription.invoice_number || 'payment'}.jpg`;
+                    link.click();
+                  }}
+                  className="flex-1 flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  تحميل الإيصال
+                </button>
+
+                <button
+                  onClick={() => window.open(subscription.receipt_url, '_blank')}
+                  className="flex-1 flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+                >
+                  <ExternalLink className="w-5 h-5 mr-2" />
+                  فتح في تبويب جديد
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SubscriptionStatusPage() {
   return (

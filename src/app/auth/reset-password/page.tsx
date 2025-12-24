@@ -156,14 +156,27 @@ export default function ResetPasswordPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4" dir="rtl">
             <Card className="w-full max-w-md shadow-2xl shadow-purple-500/10 border border-purple-100">
-                <CardHeader className="text-center">
-                    <div className="mx-auto bg-purple-100 p-3 rounded-full w-fit mb-4">
-                        <ShieldCheck className="h-8 w-8 text-purple-600" />
+                {/* Header with Logo */}
+                <CardHeader className="text-center space-y-4">
+                    {/* Logo/Brand Area */}
+                    <div className="mx-auto bg-gradient-to-br from-purple-600 to-blue-600 p-4 rounded-2xl w-fit mb-2 shadow-lg">
+                        <ShieldCheck className="h-12 w-12 text-white" />
                     </div>
-                    <CardTitle className="text-2xl">تعيين كلمة مرور جديدة</CardTitle>
-                    <CardDescription>
-                        أدخل كلمة المرور الجديدة لحسابك
-                    </CardDescription>
+
+                    {/* Title & Description */}
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 mb-1">منصة الحلم الرقمية</h1>
+                        <p className="text-sm text-gray-500 mb-4">
+                            أول متجر إلكتروني لتسويق وبيع اللاعبين في الشرق الأوسط
+                        </p>
+                    </div>
+
+                    <div className="border-t border-gray-200 pt-4">
+                        <CardTitle className="text-xl">تعيين كلمة مرور جديدة</CardTitle>
+                        <CardDescription className="mt-2">
+                            أدخل كلمة المرور الجديدة لحسابك
+                        </CardDescription>
+                    </div>
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
@@ -247,10 +260,10 @@ export default function ResetPasswordPage() {
                         </div>
                     </CardContent>
 
-                    <CardFooter>
+                    <CardFooter className="flex-col gap-4">
                         <Button
                             type="submit"
-                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                             disabled={loading}
                         >
                             {loading ? (
@@ -265,6 +278,21 @@ export default function ResetPasswordPage() {
                                 </>
                             )}
                         </Button>
+
+                        {/* Footer Info */}
+                        <div className="w-full pt-4 border-t border-gray-200">
+                            <p className="text-xs text-center text-gray-500">
+                                من شركة ميسك القطرية
+                            </p>
+                            <a
+                                href="https://www.mesk.qa"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block text-xs text-center text-blue-600 hover:text-blue-700 hover:underline mt-1"
+                            >
+                                www.mesk.qa
+                            </a>
+                        </div>
                     </CardFooter>
                 </form>
             </Card>

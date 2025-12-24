@@ -1554,5 +1554,171 @@ html, body, * {
 }
 
 /* ==============================================
-   REACT-DAY-PICKER STYLES (REMOVED - NO LONGER NEEDED)
+   REACT-DAY-PICKER CUSTOM STYLES
    ============================================== */
+
+/* تخصيص منتقي التاريخ للغة العربية */
+.rdp {
+  direction: rtl !important;
+  font-family: 'Cairo', sans-serif !important;
+  --rdp-cell-size: 36px;
+  --rdp-accent-color: #2563eb;
+  --rdp-background-color: #e0e7ff;
+  --rdp-accent-color-dark: #1e40af;
+  --rdp-background-color-dark: #1e3a8a;
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 2px solid rgba(0, 0, 0, 0.75);
+}
+
+/* عنوان الشهر والسنة */
+.rdp-caption {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.rdp-caption_label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* قوائم اختيار الشهر والسنة */
+.rdp-caption_dropdowns {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.rdp-dropdown {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rdp-dropdown:hover {
+  border-color: #2563eb;
+  background: #f3f4f6;
+}
+
+.rdp-dropdown:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* أزرار التنقل */
+.rdp-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.rdp-nav_button {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.rdp-nav_button:hover {
+  background: #f3f4f6;
+  color: #2563eb;
+}
+
+.rdp-nav_button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* جدول الأيام */
+.rdp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.rdp-head_cell {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.rdp-cell {
+  text-align: center;
+  padding: 0.125rem;
+}
+
+.rdp-day {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #1f2937;
+  border: 1px solid transparent;
+}
+
+.rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.rdp-day_selected {
+  background: #2563eb !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.rdp-day_today:not(.rdp-day_selected) {
+  background: #f3f4f6;
+  font-weight: 600;
+  border-color: #d1d5db;
+}
+
+.rdp-day_outside {
+  color: #d1d5db;
+}
+
+.rdp-day_disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.rdp-day_disabled:hover {
+  background: transparent;
+}
+
+/* تحسينات للجوال */
+@media (max-width: 640px) {
+  .rdp {
+    font-size: 0.875rem;
+  }
+  
+  .rdp-day {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8rem;
+  }
+  
+  .rdp-head_cell {
+    font-size: 0.7rem;
+  }
+}

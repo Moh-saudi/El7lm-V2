@@ -27,6 +27,8 @@ import {
   Download,
   MessageSquare,
   Share2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 
 import { db } from '@/lib/firebase/config';
@@ -35,6 +37,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { formatPhoneNumber as formatWhatsAppPhone } from '@/lib/whatsapp/babaservice-config';
+import { updatePaymentStatus, activateSubscription, deactivateSubscription } from '@/lib/utils/subscription-manager';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 type InvoiceStatus = 'paid' | 'pending' | 'cancelled' | 'overdue' | string;
 
@@ -54,6 +58,7 @@ interface InvoiceRecord {
   customerPhone?: string;
   planName?: string;
   packageDuration?: string;
+  customerId?: string;
   notes?: string;
   receiptUrl?: string | null;
   invoiceUrl?: string | null;
@@ -530,13 +535,14 @@ const normalizeRecord = (source: string, id: string, data: any): InvoiceRecord =
       data?.plan_name || data?.planName || data?.package_name || data?.packageName || data?.selectedPackage || '',
       data?.packageType || data?.package_type || data?.package_type_name || ''
     ),
+    customerId: data?.userId || data?.user_id || data?.playerId || data?.player_id || '',
     notes: data?.notes || data?.description || data?.memo || '',
-    receiptUrl:
+    receiptUrl: fixReceiptUrl(
       data?.receiptUrl ||
       data?.receiptImage ||
       data?.proofUrl ||
-      data?.attachment ||
-      null,
+      data?.attachment
+    ),
     invoiceUrl:
       data?.invoice_pdf_url ||
       data?.invoiceUrl ||
@@ -548,7 +554,7 @@ const normalizeRecord = (source: string, id: string, data: any): InvoiceRecord =
       paymentId: data?.payment_id || data?.paymentId || id,
       transactionId: data?.transactionId || data?.sessionId || data?.reference || null,
     },
-    raw: data,
+    raw: { ...data, collection: source, id },
   };
 };
 
@@ -2015,6 +2021,48 @@ export default function AdminInvoicesListPage() {
               </div>
 
               <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-gray-100 justify-end">
+                {/* أزرار الإدارة الجديدة */}
+                {selected.status === 'pending' && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await updatePaymentStatus(selected.raw, 'completed', true);
+                        setSelected({ ...selected, status: 'paid' });
+                        toast.success('تم التفعيل بنجاح');
+                      } catch (err) { console.error(err); }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="w-4 h-4 ml-2" />
+                    موافقة وتفعيل
+                  </Button>
+                )}
+
+                {selected.status === 'paid' && (
+                  <Button
+                    onClick={async () => {
+                      if (confirm('هل أنت متأكد من رغبتك في إيقاف هذا الاشتراك؟')) {
+                        try {
+                          const userId = selected.customerId;
+                          if (!userId) {
+                            toast.error('لم يتم العثور على معرف المستخدم');
+                            return;
+                          }
+                          await deactivateSubscription(userId);
+                          setSelected({ ...selected, status: 'cancelled' });
+                        } catch (err) { console.error(err); }
+                      }
+                    }}
+                    variant="outline"
+                    className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  >
+                    <XCircle className="w-4 h-4 ml-2" />
+                    إيقاف الاشتراك
+                  </Button>
+                )}
+
+                <div className="w-px h-8 bg-gray-200 mx-2"></div>
+
                 <Button
                   onClick={() => handlePreviewInvoice(selected)}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all"

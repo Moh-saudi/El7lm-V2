@@ -349,48 +349,57 @@ export default function WhatsAppPasswordReset() {
             // مسح البيانات المؤقتة
             sessionStorage.removeItem('reset_otp');
             sessionStorage.removeItem('reset_otp_time');
-            sessionStorage.removeItem('reset_formatted_phone');
             console.log('🧹 [Step 3/5] تم مسح البيانات المؤقتة');
 
-            // البحث عن البريد الإلكتروني للمستخدم
-            console.log('📧 [Step 4/5] البحث عن البريد الإلكتروني...');
-            const findEmailRes = await fetch('/api/auth/find-user-by-phone', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: fullPhoneNumber })
-            });
+            // استخدام نفس الرقم المُنسَّق الذي استخدمناه في تحديث كلمة المرور
+            const resetFormattedPhone = sessionStorage.getItem('reset_formatted_phone');
+            console.log('📱 [Step 4/5] الرقم المنسق المستخدم:', resetFormattedPhone);
 
-            const emailData = await findEmailRes.json();
+            // الحصول على البريد الإلكتروني من ردّ API تحديث كلمة المرور مباشرة
+            const exactEmail = data.email || data.userEmail;
+            console.log('📧 [Step 4/5] البريد من API:', exactEmail);
 
-            if (emailData.found && emailData.email) {
-                console.log('📧 [Step 4/5] تم العثور على البريد الإلكتروني');
+            // تنظيف sessionStorage
+            sessionStorage.removeItem('reset_formatted_phone');
 
-                // تسجيل الدخول التلقائي
+            if (exactEmail) {
+                console.log('✅ [Step 4/5] تم العثور على البريد الإلكتروني من API');
+
+                // تسجيل الدخول التلقائي باستخدام نفس البريد والرقم السري
                 console.log('🔐 [Step 5/5] تسجيل الدخول التلقائي...');
+                console.log('📧 [Step 5/5] البريد:', exactEmail);
+                console.log('🔐 [Step 5/5] كلمة المرور (أول رقمين):', newPassword.substring(0, 2) + '******');
+
                 const { signInWithEmailAndPassword } = await import('firebase/auth');
 
                 try {
-                    const userCredential = await signInWithEmailAndPassword(auth, emailData.email, newPassword);
-                    console.log('✅ [Step 5/5] تم تسجيل الدخول بنجاح');
+                    const userCredential = await signInWithEmailAndPassword(auth, exactEmail, newPassword);
+                    console.log('✅✅✅ [Step 5/5] تم تسجيل الدخول بنجاح!');
+                    console.log('👤 [Step 5/5] User UID:', userCredential.user.uid);
 
-                    toast.success('🎉 تم تسجيل الدخول بنجاح! جاري التوجيه...');
+                    toast.success('🎉 تم تسجيل الدخول بنجاح! جاري التوجيه للوحة التحكم...');
 
                     // انتظر قليلاً ثم أعد التوجيه للوحة التحكم
                     setTimeout(() => {
-                        // سيتم التوجيه تلقائياً بواسطة auth provider
+                        console.log('🚀 [Step 5/5] إعادة التوجيه للوحة التحكم...');
                         window.location.href = '/dashboard/player';
                     }, 1500);
 
                 } catch (loginError: any) {
-                    console.error('⚠️ [Step 5/5] فشل تسجيل الدخول التلقائي:', loginError);
+                    console.error('❌❌❌ [Step 5/5] فشل تسجيل الدخول التلقائي!');
+                    console.error('❌ [Step 5/5] Error code:', loginError.code);
+                    console.error('❌ [Step 5/5] Error message:', loginError.message);
+                    console.error('❌ [Step 5/5] البريد المستخدم:', exactEmail);
+
                     // إذا فشل تسجيل الدخول التلقائي، وجه للوحة الدخول
                     localStorage.setItem('resetPasswordPhone', fullPhoneNumber);
-                    toast.success('تم تحديث كلمة المرور! ي رجى تسجيل الدخول بكلمة المرور الجديدة');
+                    localStorage.setItem('resetPasswordEmail', exactEmail);
+                    toast.error('تم تحديث كلمة المرور ولكن فشل تسجيل الدخول التلقائي. يرجى تسجيل الدخول يدوياً.');
                     setTimeout(() => router.push('/auth/login?from=reset-password'), 2000);
                 }
             } else {
-                // إذا لم يتم العثور على البريد، وجه لصفحة تسجيل الدخول
-                console.log('⚠️ [Step 4/5] لم يتم العثور على البريد الإلكتروني');
+                // إذا لم يتم العثور على البريد من API
+                console.error('❌ [Step 4/5] لم يتم العثور على البريد الإلكتروني في ردّ API');
                 localStorage.setItem('resetPasswordPhone', fullPhoneNumber);
                 toast.success('تم تحديث كلمة المرور! يرجى تسجيل الدخول بكلمة المرور الجديدة');
                 setTimeout(() => router.push('/auth/login?from=reset-password'), 2000);

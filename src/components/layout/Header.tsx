@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Bell, 
-  Menu, 
-  X, 
-  Search, 
-  User, 
-  Settings, 
+import {
+  Bell,
+  Menu,
+  X,
+  Search,
+  User,
+  Settings,
   LogOut,
   ChevronDown,
   Sun,
@@ -33,12 +33,12 @@ interface HeaderProps {
   title?: string;
 }
 
-export default function Header({ 
-  variant = 'default', 
-  showLanguageSwitcher = true, 
-  showNotifications = true, 
+export default function Header({
+  variant = 'default',
+  showLanguageSwitcher = true,
+  showNotifications = true,
   showUserMenu = true,
-  title 
+  title
 }: HeaderProps) {
   const router = useRouter();
   const { user, userData, signOut } = useAuth();
@@ -160,7 +160,7 @@ export default function Header({
           {/* الجانب الأيمن */}
           <div className="flex items-center space-x-2 md:space-x-4">
             {/* البحث في الموبايل */}
-            <button 
+            <button
               className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors touch-target"
               title="البحث"
             >
@@ -179,112 +179,133 @@ export default function Header({
               </div>
             )}
 
-            {/* قائمة المستخدم */}
-            {showUserMenu && user && (
-              <div className="relative user-menu">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors touch-target"
-                >
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                    {user.photoURL ? (
-                      <img
-                        src={user.photoURL}
-                        alt={getUserDisplayName()}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white font-bold text-sm md:text-base">
-                        {getUserAvatar()}
-                      </span>
+            {/* قائمة المستخدم أو أزرار تسجيل الدخول */}
+            {showUserMenu && (
+              user ? (
+                <div className="relative user-menu">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors touch-target"
+                  >
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt={getUserDisplayName()}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-sm md:text-base">
+                          {getUserAvatar()}
+                        </span>
+                      )}
+                    </div>
+                    {!isMobile && (
+                      <>
+                        <span className="text-sm md:text-base font-medium text-gray-900">
+                          {getUserDisplayName()}
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      </>
                     )}
-                  </div>
-                  {!isMobile && (
-                    <>
-                      <span className="text-sm md:text-base font-medium text-gray-900">
-                        {getUserDisplayName()}
-                      </span>
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                    </>
-                  )}
-                </button>
+                  </button>
 
-                {/* قائمة المستخدم المنسدلة */}
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute left-0 mt-2 w-48 md:w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-                    >
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
-                      </div>
-                      
-                      <div className="py-1">
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            router.push('/dashboard/profile');
-                          }}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
-                        >
-                          <User className="w-4 h-4 mr-3" />
-                          الملف الشخصي
-                        </button>
-                        
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            router.push('/dashboard/settings');
-                          }}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
-                        >
-                          <Settings className="w-4 h-4 mr-3" />
-                          الإعدادات
-                        </button>
-                        
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            router.push('/dashboard/messages');
-                          }}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
-                        >
-                          <MessageSquare className="w-4 h-4 mr-3" />
-                          الرسائل
-                        </button>
-                        
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            router.push('/support');
-                          }}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
-                        >
-                          <HelpCircle className="w-4 h-4 mr-3" />
-                          المساعدة
-                        </button>
-                      </div>
-                      
-                      <div className="border-t border-gray-100 pt-1">
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            handleSignOut();
-                          }}
-                          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors touch-target"
-                        >
-                          <LogOut className="w-4 h-4 mr-3" />
-                          تسجيل الخروج
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                  {/* قائمة المستخدم المنسدلة */}
+                  <AnimatePresence>
+                    {isUserMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute left-0 mt-2 w-48 md:w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+                      >
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
+                          <p className="text-xs text-gray-500">{user.email}</p>
+                        </div>
+
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              router.push('/dashboard/profile');
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
+                          >
+                            <User className="w-4 h-4 mr-3" />
+                            الملف الشخصي
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              router.push('/dashboard/settings');
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
+                          >
+                            <Settings className="w-4 h-4 mr-3" />
+                            الإعدادات
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              router.push('/dashboard/messages');
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-3" />
+                            الرسائل
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              router.push('/support');
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors touch-target"
+                          >
+                            <HelpCircle className="w-4 h-4 mr-3" />
+                            المساعدة
+                          </button>
+                        </div>
+
+                        <div className="border-t border-gray-100 pt-1">
+                          <button
+                            onClick={() => {
+                              setIsUserMenuOpen(false);
+                              handleSignOut();
+                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors touch-target"
+                          >
+                            <LogOut className="w-4 h-4 mr-3" />
+                            تسجيل الخروج
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                // أزرار التسجيل للزوار غير المسجلين
+                <div className="flex items-center gap-2 md:gap-3">
+                  {/* زر تسجيل الدخول */}
+                  <button
+                    onClick={() => router.push('/auth/login')}
+                    className="px-3 py-1.5 md:px-5 md:py-2 text-sm md:text-base font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200 touch-target"
+                  >
+                    تسجيل الدخول
+                  </button>
+
+                  {/* زر إنشاء حساب */}
+                  <button
+                    onClick={() => router.push('/auth/register')}
+                    className="px-3 py-1.5 md:px-5 md:py-2 text-sm md:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md touch-target"
+                  >
+                    {isMobile ? 'تسجيل' : 'إنشاء حساب'}
+                  </button>
+                </div>
+              )
             )}
 
             {/* زر القائمة للموبايل */}
@@ -325,74 +346,101 @@ export default function Header({
                 </div>
               )}
 
-              {/* روابط سريعة */}
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    router.push('/dashboard/profile');
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
-                >
-                  <User className="w-4 h-4 mr-3" />
-                  الملف الشخصي
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    router.push('/dashboard/settings');
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
-                >
-                  <Settings className="w-4 h-4 mr-3" />
-                  الإعدادات
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    router.push('/dashboard/messages');
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
-                >
-                  <MessageSquare className="w-4 h-4 mr-3" />
-                  الرسائل
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    router.push(`/dashboard/${userData?.accountType || 'player'}/notifications`);
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
-                >
-                  <Bell className="w-4 h-4 mr-3" />
-                  الإشعارات
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    router.push('/support');
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
-                >
-                  <HelpCircle className="w-4 h-4 mr-3" />
-                  المساعدة
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    handleSignOut();
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-target"
-                >
-                  <LogOut className="w-4 h-4 mr-3" />
-                  تسجيل الخروج
-                </button>
-              </div>
+              {/* روابط سريعة للمستخدمين المسجلين أو أزرار التسجيل للزوار */}
+              {user ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/dashboard/profile');
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+                  >
+                    <User className="w-4 h-4 mr-3" />
+                    الملف الشخصي
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/dashboard/settings');
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+                  >
+                    <Settings className="w-4 h-4 mr-3" />
+                    الإعدادات
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/dashboard/messages');
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-3" />
+                    الرسائل
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push(`/dashboard/${userData?.accountType || 'player'}/notifications`);
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+                  >
+                    <Bell className="w-4 h-4 mr-3" />
+                    الإشعارات
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/support');
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+                  >
+                    <HelpCircle className="w-4 h-4 mr-3" />
+                    المساعدة
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleSignOut();
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-target"
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
+                    تسجيل الخروج
+                  </button>
+                </div>
+              ) : (
+                // أزرار التسجيل للزوار غير المسجلين
+                <div className="space-y-3 px-4">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/auth/login');
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-all duration-200 touch-target"
+                  >
+                    <User className="w-5 h-5 ml-2" />
+                    تسجيل الدخول
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/auth/register');
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 touch-target"
+                  >
+                    <User className="w-5 h-5 ml-2" />
+                    إنشاء حساب جديد
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

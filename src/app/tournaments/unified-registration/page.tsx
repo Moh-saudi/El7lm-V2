@@ -19,28 +19,28 @@ import { Tournament } from '@/types/tournament';
 import { cn } from "@/lib/utils/index";
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 import {
-    AlertTriangle,
-    ArrowLeft,
-    ArrowRight,
-    Building,
-    Calendar,
-    CheckCircle,
-    Clock,
-    CreditCard,
-    DollarSign,
-    Edit,
-    FileText,
-    MapPin,
-    Plus,
-    Printer,
-    Search,
-    Smartphone,
-    Trophy,
-    User,
-    Users,
-    Mail,
-    MessageSquare,
-    Send
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Building,
+  Calendar,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Edit,
+  FileText,
+  MapPin,
+  Plus,
+  Printer,
+  Search,
+  Smartphone,
+  Trophy,
+  User,
+  Users,
+  Mail,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -152,7 +152,7 @@ const formatGregorianDate = (date: string | Date | null, options?: { includeTime
     const year = dateObj.getFullYear();
 
     let formatted = `${day}/${month}/${year}`;
-    
+
     if (options?.includeTime) {
       const hours = String(dateObj.getHours()).padStart(2, '0');
       const minutes = String(dateObj.getMinutes()).padStart(2, '0');
@@ -195,22 +195,22 @@ const getPlayerDisplayName = (player: any): string => {
   if (!player) {
     return 'لاعب غير محدد';
   }
-  
+
   // دالة مساعدة لاستخراج قيمة نصية من الحقل
   const getStringValue = (value: any): string | null => {
     if (value === null || value === undefined) return null;
-    
+
     // إذا كان string مباشرة
     if (typeof value === 'string') {
       const trimmed = value.trim();
       return trimmed.length > 0 ? trimmed : null;
     }
-    
+
     // إذا كان number، حوله إلى string
     if (typeof value === 'number') {
       return String(value).trim();
     }
-    
+
     // إذا كان object (مثل Firestore Timestamp)، تجاهله
     if (typeof value === 'object') {
       // إذا كان Firestore Timestamp، تجاهله
@@ -239,10 +239,10 @@ const getPlayerDisplayName = (player: any): string => {
         }
       }
     }
-    
+
     return null;
   };
-  
+
   // 1. الحقل الأساسي: full_name (يستخدم في صفحة الملف الشخصي للاعب الفردي وصفحة إدارة اللاعبين)
   const fullName = getStringValue(player.full_name);
   if (fullName && fullName.length > 0) {
@@ -252,7 +252,7 @@ const getPlayerDisplayName = (player: any): string => {
     } else {
     }
   }
-  
+
   // 2. الحقل البديل: name (للتوافق مع البيانات القديمة)
   const name = getStringValue(player.name);
   if (name && name.length > 0) {
@@ -262,7 +262,7 @@ const getPlayerDisplayName = (player: any): string => {
     } else {
     }
   }
-  
+
   // 3. إذا لم يوجد أي منهما، إرجاع قيمة افتراضية
   return 'لاعب غير محدد';
 };
@@ -350,13 +350,13 @@ export default function UnifiedTournamentRegistrationPage() {
       if (userData.accountType === 'player') {
         profileType = 'individual';
       }
-      
+
       console.log('👤 User profile data:', {
         accountType: userData.accountType,
         profileType: profileType,
         name: userData.name
       });
-      
+
       const profileData: UserProfile = {
         id: user.uid,
         name: userData.name || userData.email || 'مستخدم',
@@ -428,7 +428,7 @@ export default function UnifiedTournamentRegistrationPage() {
         // For individual users, fetch their actual player data from the players collection
         const playerDocRef = doc(db, 'players', user.uid);
         const playerDocSnap = await getDoc(playerDocRef);
-        
+
         if (playerDocSnap.exists()) {
           const playerData = { id: playerDocSnap.id, ...playerDocSnap.data() } as Player;
           setAvailablePlayers([playerData]);
@@ -534,7 +534,7 @@ export default function UnifiedTournamentRegistrationPage() {
   const fetchTournaments = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Try with orderBy first, if it fails (no index), fetch without orderBy
       let querySnapshot;
       try {
@@ -579,16 +579,16 @@ export default function UnifiedTournamentRegistrationPage() {
         // Check registration deadline
         const registrationDeadline = new Date(tournament.registrationDeadline);
         const isWithinDeadline = registrationDeadline > now;
-        
+
         // Check available spots
         const hasSpots = tournament.currentParticipants < tournament.maxParticipants;
-        
+
         // Check if allowed for user type
         let isAllowedForUser = true;
         if (userProfile) {
           const feeType = tournament.feeType?.toLowerCase() || '';
           const userType = userProfile.type?.toLowerCase() || '';
-          
+
           if (feeType === 'individual') {
             // Individual tournaments: allow individuals, players, AND clubs/academies (to register their players)
             isAllowedForUser = ['individual', 'player', 'club', 'academy', 'trainer', 'agent', 'marketer', 'parent'].includes(userType);
@@ -599,7 +599,7 @@ export default function UnifiedTournamentRegistrationPage() {
             // If feeType is not set or unknown, allow all users
             isAllowedForUser = true;
           }
-          
+
           // Debug logging
           if (!isAllowedForUser) {
             console.log(`🚫 Tournament "${tournament.name}" (feeType: ${tournament.feeType}) not allowed for user type: ${userProfile.type}`);
@@ -608,10 +608,10 @@ export default function UnifiedTournamentRegistrationPage() {
           // If not logged in, allow all tournaments (filtering happens when trying to register)
           isAllowedForUser = true;
         }
-        
+
         // Calculate registration status
         const canRegister = isWithinDeadline && hasSpots && isAllowedForUser;
-        
+
         return {
           ...tournament,
           canRegister,
@@ -633,7 +633,7 @@ export default function UnifiedTournamentRegistrationPage() {
         noSpots: allActiveTournaments.filter(t => !t.hasSpots).length,
         notAllowed: allActiveTournaments.filter(t => !t.isAllowedForUser).length
       });
-      
+
       // Log each tournament's status
       allActiveTournaments.forEach(t => {
         console.log(`🏆 Tournament: "${t.name}"`, {
@@ -644,7 +644,7 @@ export default function UnifiedTournamentRegistrationPage() {
           canRegister: (t as any).canRegister
         });
       });
-      
+
       // Show all active tournaments (filtering by registration availability happens in UI)
       setTournaments(allActiveTournaments);
     } catch (error) {
@@ -852,8 +852,8 @@ export default function UnifiedTournamentRegistrationPage() {
             </thead>
             <tbody>
               ${selectedPlayers.map((player, index) => {
-                const birthDateFormatted = formatBirthDate(player.birth_date);
-                return `
+      const birthDateFormatted = formatBirthDate(player.birth_date);
+      return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${getPlayerDisplayName(player)}</td>
@@ -864,7 +864,7 @@ export default function UnifiedTournamentRegistrationPage() {
                     <td>${registrationDate}</td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
 
@@ -1141,7 +1141,7 @@ export default function UnifiedTournamentRegistrationPage() {
       setGeideaPaymentData(paymentData);
 
       const orderId = paymentData.orderId || paymentData.merchantReferenceId || paymentData.transactionId || `TOURNAMENT_${selectedTournament?.id}_${Date.now()}`;
-      
+
       // Update registration data with payment info
       setRegistrationData(prev => ({
         ...prev,
@@ -1153,7 +1153,7 @@ export default function UnifiedTournamentRegistrationPage() {
       try {
         const { collection, addDoc } = await import('firebase/firestore');
         const { db } = await import('@/lib/firebase/config');
-        
+
         const paymentRecord = {
           userId: user?.uid,
           tournamentId: selectedTournament?.id,
@@ -1248,7 +1248,7 @@ export default function UnifiedTournamentRegistrationPage() {
       setMobileWalletUploadSuccess(true);
       setMobileWalletReceiptUrl(urlData?.publicUrl || '');
       toast.success('تم رفع إيصال المحفظة الإلكترونية بنجاح! سيتم التاكيد بعد 24 ساعة');
-      
+
       // Auto-navigate to review tab after successful upload
       setTimeout(() => {
         setCurrentTab('review');
@@ -1376,7 +1376,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   <div>قطر- الدوحة - مركز قطر للمال</div>
                   <div>الرقم الضريبي: 02289</div>
                   <div>البريد: el7lm@mesk.qa</div>
-                  <div>هاتف: 97472053188 قطر - 201017799580 مصر</div>
+                  <div>هاتف: 97470542458 قطر - 201017799580 مصر</div>
                 </div>
               </div>
 
@@ -1401,15 +1401,15 @@ export default function UnifiedTournamentRegistrationPage() {
               <div class="section-title">👥 اللاعبين المسجلين</div>
               <div class="player-list">
                 ${selectedPlayers.map((player, index) => {
-                  const birthDateFormatted = formatBirthDate(player.birth_date);
-                  return `
+      const birthDateFormatted = formatBirthDate(player.birth_date);
+      return `
                     <div class="player-item">
                       <strong>${index + 1}. ${getPlayerDisplayName(player)}</strong>
                       ${player.primary_position || player.position ? ` - ${player.primary_position || player.position}` : ''}
                       ${player.birth_date ? ` - تاريخ الميلاد: ${birthDateFormatted}` : ''}
                     </div>
                   `;
-                }).join('')}
+    }).join('')}
               </div>
 
               <div class="section-title">💳 تفاصيل الدفع</div>
@@ -1519,16 +1519,16 @@ export default function UnifiedTournamentRegistrationPage() {
       }
 
       // إنشاء نص الفاتورة للواتساب
-      const paymentMethodText = 
+      const paymentMethodText =
         registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
-        registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
-        registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
-        'دفع لاحقاً';
-      
-      const playersList = registeredPlayers.length > 0 
+          registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+            registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
+              'دفع لاحقاً';
+
+      const playersList = registeredPlayers.length > 0
         ? registeredPlayers.map((player, index) => `${index + 1}. ${getPlayerDisplayName(player)}`).join('\n')
         : selectedPlayers.map((player, index) => `${index + 1}. ${getPlayerDisplayName(player)}`).join('\n');
-      
+
       const whatsappMessage = `🏆 *فاتورة تسجيل البطولة*
 
 📋 *رقم الفاتورة:* ${invoiceData.invoiceNumber}
@@ -1589,7 +1589,7 @@ ${playersList}
 
       // إرسال عبر EmailJS
       const emailjs = (await import('@emailjs/browser')).default;
-      
+
       const templateParams = {
         to_email: userProfile.email,
         user_name: userProfile.name,
@@ -1620,7 +1620,7 @@ ${playersList}
 
     } catch (error: any) {
       console.error('❌ خطأ في إرسال الفاتورة عبر الإيميل:', error);
-      
+
       // Fallback: استخدام mailto link
       const subject = encodeURIComponent(`فاتورة تسجيل البطولة - ${selectedTournament?.name}`);
       const body = encodeURIComponent(`فاتورة تسجيل البطولة\n\nرقم الفاتورة: ${(window as any).lastInvoiceData?.invoiceNumber}\nاسم البطولة: ${selectedTournament?.name}\nالمبلغ: ${calculateTotalAmount()} ${getCurrencySymbol(selectedTournament?.currency || 'EGP')}\nعدد اللاعبين: ${selectedPlayers.length}`);
@@ -1713,1765 +1713,1756 @@ ${playersList}
           </div>
         </div>
 
-      <div className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Tournament Selection */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-8">
-              <CardHeader>
-                <CardTitle className="flex gap-2 items-center">
-                  <Trophy className="w-5 h-5 text-yellow-600" />
-                  البطولات المتاحة
-                </CardTitle>
-                <CardDescription>
-                  اختر البطولة التي تريد التسجيل فيها
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Search and Filter */}
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 transform -translate-y-1/2" />
-                    <Input
-                      placeholder="البحث في البطولات..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pr-10"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant={statusFilter === 'available' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('available')}
-                      className={cn(
-                        "flex-1 text-sm",
-                        statusFilter === 'available'
-                          ? buttonStyles.success
-                          : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
-                      )}
-                    >
-                      متاحة
-                    </Button>
-                    <Button
-                      variant={statusFilter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('all')}
-                      className={cn(
-                        "flex-1 text-sm",
-                        statusFilter === 'all'
-                          ? buttonStyles.primary
-                          : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
-                      )}
-                    >
-                      الكل
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Tournament List */}
-                <div className="overflow-y-auto space-y-3 max-h-96">
-                  {tournaments.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <Trophy className="mx-auto mb-2 w-12 h-12 text-gray-400" />
-                      <p className="mb-2 text-gray-500">لا توجد بطولات متاحة حالياً</p>
-                      {userProfile && (
-                        <p className="text-xs text-gray-400">
-                          {userProfile.type === 'individual' 
-                            ? 'البطولات المتاحة للأفراد ستظهر هنا' 
-                            : 'البطولات المتاحة للأندية والأكاديميات ستظهر هنا'}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    tournaments
-                      .filter(tournament => {
-                        // Search filter
-                        const matchesSearch = tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          tournament.location.toLowerCase().includes(searchTerm.toLowerCase());
-                        
-                        // Status filter
-                        if (statusFilter === 'available') {
-                          return matchesSearch && (tournament as any).canRegister;
-                        }
-                        
-                        return matchesSearch;
-                      })
-                      .map((tournament) => {
-                        const isSelected = selectedTournament?.id === tournament.id;
-                        const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
-                        const tournamentWithStatus = tournament as Tournament & { canRegister?: boolean; isWithinDeadline?: boolean; hasSpots?: boolean; isAllowedForUser?: boolean };
-                        const canRegister = tournamentWithStatus.canRegister !== false;
-
-                        return (
-                          <Card
-                            key={tournament.id}
-                            className={`cursor-pointer transition-all duration-200 ${
-                              isSelected
-                                ? 'bg-yellow-50 ring-2 ring-yellow-500'
-                                : canRegister
-                                  ? 'hover:shadow-md hover:bg-gray-50'
-                                  : 'opacity-75 hover:bg-gray-50'
-                            }`}
-                            onClick={() => {
-                              if (canRegister) {
-                                setSelectedTournament(tournament);
-                                setRegistrationData(prev => ({ ...prev, tournamentId: tournament.id }));
-                              } else {
-                                // Show warning if trying to select unavailable tournament
-                                if (!tournamentWithStatus.isWithinDeadline) {
-                                  toast.warning('انتهى موعد التسجيل في هذه البطولة');
-                                } else if (!tournamentWithStatus.hasSpots) {
-                                  toast.warning('لا توجد أماكن متاحة في هذه البطولة');
-                                } else if (!tournamentWithStatus.isAllowedForUser) {
-                                  toast.warning('هذه البطولة غير متاحة لنوع حسابك');
-                                }
-                              }
-                            }}
-                          >
-                            <CardContent className="p-4">
-                              <div className="space-y-3">
-                                <div className="flex gap-3 items-center">
-                                  {tournament.logo ? (
-                                    <div className="flex-shrink-0">
-                                      <img
-                                        src={tournament.logo}
-                                        alt={`${tournament.name} logo`}
-                                        className="object-cover w-10 h-10 rounded-lg border border-gray-200 shadow-sm lg:w-12 lg:h-12"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-shrink-0 justify-center items-center w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-sm lg:w-12 lg:h-12">
-                                      <Trophy className="w-5 h-5 text-white lg:h-6 lg:w-6" />
-                                    </div>
-                                  )}
-                                  <div className="flex-1">
-                                    <div className="flex justify-between items-center">
-                                      <h4 className="flex-1 font-semibold text-gray-900 truncate">{tournament.name}</h4>
-                                      {isSelected && <CheckCircle className="ml-2 w-5 h-5 text-yellow-600" />}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2 text-sm text-gray-600">
-                                  <div className="flex gap-2 items-center">
-                                    <MapPin className="w-3 h-3" />
-                                    <span className="truncate">{tournament.location}</span>
-                                  </div>
-
-                                  <div className="flex gap-2 items-center">
-                                    <Calendar className="w-3 h-3" />
-                                    <span>{formatGregorianDate(tournament.startDate)}</span>
-                                  </div>
-
-                                  <div className="flex gap-2 items-center">
-                                    <Users className="w-3 h-3" />
-                                    <span>{tournament.currentParticipants}/{tournament.maxParticipants}</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {spotsLeft > 0 ? `${spotsLeft} متبقي` : 'ممتلئة'}
-                                    </Badge>
-                                  </div>
-
-                                  {tournament.isPaid && (
-                                    <div className="flex gap-2 items-center">
-                                      <DollarSign className="w-3 h-3" />
-                                      <span>{tournament.entryFee} {getCurrencySymbol(tournament.currency || 'EGP')} / لاعب</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="flex flex-wrap gap-1">
-                                  {canRegister ? (
-                                    <Badge className="text-xs text-green-800 bg-green-100">متاحة للتسجيل</Badge>
-                                  ) : (
-                                    <>
-                                      {!tournamentWithStatus.isWithinDeadline && (
-                                        <Badge className="text-xs text-red-800 bg-red-100">انتهى التسجيل</Badge>
-                                      )}
-                                      {!tournamentWithStatus.hasSpots && (
-                                        <Badge className="text-xs text-orange-800 bg-orange-100">ممتلئة</Badge>
-                                      )}
-                                      {!tournamentWithStatus.isAllowedForUser && (
-                                        <Badge className="text-xs text-gray-800 bg-gray-100">غير متاحة</Badge>
-                                      )}
-                                    </>
-                                  )}
-                                  <Badge className={`text-xs ${
-                                    tournament.feeType === 'individual' 
-                                      ? 'bg-purple-100 text-purple-800' 
-                                      : 'bg-blue-100 text-blue-800'
-                                  }`}>
-                                    {tournament.feeType === 'individual' ? 'فردي' : 'نادي'}
-                                  </Badge>
-                                  {tournament.categories?.map(category => (
-                                    <Badge key={category} variant="outline" className="text-xs">
-                                      {category}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Registration Form */}
-          <div className="lg:col-span-2">
-            {selectedTournament ? (
-              <Card>
+        <div className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            {/* Tournament Selection */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-8">
                 <CardHeader>
                   <CardTitle className="flex gap-2 items-center">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    التسجيل في: {selectedTournament.name}
+                    <Trophy className="w-5 h-5 text-yellow-600" />
+                    البطولات المتاحة
                   </CardTitle>
                   <CardDescription>
-                    اختر اللاعبين من قائمتك واملأ البيانات المطلوبة
+                    اختر البطولة التي تريد التسجيل فيها
                   </CardDescription>
-
-                  {/* Navigation Instructions */}
-                  <div className="p-4 mt-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex gap-2 items-center mb-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-semibold text-blue-800">تعليمات التنقل</span>
-                    </div>
-                    <p className="text-sm text-blue-700">
-                      استخدم أزرار "التالي" و "السابق" للتنقل بين التبويبات. يجب إكمال كل تبويب قبل الانتقال للتالي.
-                    </p>
-                  </div>
                 </CardHeader>
 
-                <CardContent className="p-4 sm:p-6 lg:p-8">
-                  <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
-                    <TabsList className="grid grid-cols-3 p-1 w-full h-auto bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200">
-                      <TabsTrigger
-                        value="players"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
+                <CardContent className="space-y-4">
+                  {/* Search and Filter */}
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute right-3 top-1/2 w-4 h-4 text-gray-400 transform -translate-y-1/2" />
+                      <Input
+                        placeholder="البحث في البطولات..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pr-10"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant={statusFilter === 'available' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setStatusFilter('available')}
+                        className={cn(
+                          "flex-1 text-sm",
+                          statusFilter === 'available'
+                            ? buttonStyles.success
+                            : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
+                        )}
                       >
-                        <Users className="w-3 h-3 sm:h-4 sm:w-4" />
-                        <span className="text-xs leading-tight sm:text-sm">
-                          <span className="block sm:hidden">اللاعبين</span>
-                          <span className="hidden sm:block">اختيار اللاعبين</span>
-                        </span>
-                        {selectedTournament && selectedPlayers.length > 0 && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        متاحة
+                      </Button>
+                      <Button
+                        variant={statusFilter === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setStatusFilter('all')}
+                        className={cn(
+                          "flex-1 text-sm",
+                          statusFilter === 'all'
+                            ? buttonStyles.primary
+                            : cn(buttonStyles.outline, "border-emerald-200 text-emerald-700")
                         )}
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="payment"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
                       >
-                        <CreditCard className="w-3 h-3 sm:h-4 sm:w-4" />
-                        <span className="text-xs leading-tight sm:text-sm">الدفع</span>
-                        {registrationData.paymentMethod && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        الكل
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Tournament List */}
+                  <div className="overflow-y-auto space-y-3 max-h-96">
+                    {tournaments.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <Trophy className="mx-auto mb-2 w-12 h-12 text-gray-400" />
+                        <p className="mb-2 text-gray-500">لا توجد بطولات متاحة حالياً</p>
+                        {userProfile && (
+                          <p className="text-xs text-gray-400">
+                            {userProfile.type === 'individual'
+                              ? 'البطولات المتاحة للأفراد ستظهر هنا'
+                              : 'البطولات المتاحة للأندية والأكاديميات ستظهر هنا'}
+                          </p>
                         )}
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="review"
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
-                      >
-                        <CheckCircle className="w-3 h-3 sm:h-4 sm:w-4" />
-                        <span className="text-xs leading-tight sm:text-sm">
-                          <span className="block sm:hidden">المراجعة</span>
-                          <span className="hidden sm:block">مراجعة التسجيل</span>
-                        </span>
-                        {registrationData.notes && registrationData.notes.trim() !== '' && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </TabsTrigger>
-                    </TabsList>
+                      </div>
+                    ) : (
+                      tournaments
+                        .filter(tournament => {
+                          // Search filter
+                          const matchesSearch = tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            tournament.location.toLowerCase().includes(searchTerm.toLowerCase());
 
-                    {/* Players Selection Tab */}
-                    <TabsContent value="players" className="space-y-6">
-                      {selectedTournament && (historyPaid.length > 0 || historyPending.length > 0) && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <Card className="border border-green-200">
-                            <CardHeader>
-                              <CardTitle className="text-sm text-green-800 sm:text-base">اللاعبون المدفوع لهم</CardTitle>
-                              <CardDescription className="text-xs">سجلات مكتملة الدفع لهذه البطولة</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              {historyPaid.length === 0 ? (
-                                <p className="text-xs text-gray-500">لا توجد سجلات</p>
-                              ) : (
-                                historyPaid.slice(0, 5).map((reg: any) => (
-                                  <div key={reg.id} className="flex justify-between items-center text-xs">
-                                    <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
-                                    <span className="text-gray-500">{reg?.paymentAmount || 0} {getCurrencySymbol(reg?.currency || selectedTournament?.currency || 'EGP')}</span>
-                                  </div>
-                                ))
-                              )}
-                            </CardContent>
-                          </Card>
-                          <Card className="border border-amber-200">
-                            <CardHeader>
-                              <CardTitle className="text-sm text-amber-800 sm:text-base">اللاعبون المعلّقون</CardTitle>
-                              <CardDescription className="text-xs">سجلات لم تُستكمل عملية الدفع</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              {historyPending.length === 0 ? (
-                                <p className="text-xs text-gray-500">لا توجد سجلات</p>
-                              ) : (
-                                historyPending.slice(0, 5).map((reg: any) => (
-                                  <div key={reg.id} className="flex justify-between items-center text-xs">
-                                    <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
-                                    <span className="text-gray-500">{reg?.paymentAmount || 0} {getCurrencySymbol(reg?.currency || selectedTournament?.currency || 'EGP')}</span>
-                                  </div>
-                                ))
-                              )}
-                            </CardContent>
-                          </Card>
-                        </div>
-                      )}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 sm:text-xl">اختر اللاعبين للتسجيل</h3>
+                          // Status filter
+                          if (statusFilter === 'available') {
+                            return matchesSearch && (tournament as any).canRegister;
+                          }
 
-                        {checkingDuplicates && (
-                          <div className="flex gap-2 items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="w-4 h-4 rounded-full border-b-2 border-blue-600 animate-spin"></div>
-                            <span className="text-sm text-blue-700">جاري فحص التكرار...</span>
-                          </div>
-                        )}
+                          return matchesSearch;
+                        })
+                        .map((tournament) => {
+                          const isSelected = selectedTournament?.id === tournament.id;
+                          const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
+                          const tournamentWithStatus = tournament as Tournament & { canRegister?: boolean; isWithinDeadline?: boolean; hasSpots?: boolean; isAllowedForUser?: boolean };
+                          const canRegister = tournamentWithStatus.canRegister !== false;
 
-                        {!user || !userData ? (
-                          <Card className="bg-yellow-50 border-2 border-yellow-300 border-dashed">
-                            <CardContent className="p-8 text-center">
-                              <User className="mx-auto mb-4 w-12 h-12 text-yellow-600" />
-                              <h4 className="mb-2 font-semibold text-gray-700">يجب تسجيل الدخول أولاً</h4>
-                              <p className="mb-4 text-gray-600">
-                                يجب تسجيل الدخول أو إنشاء حساب جديد لاختيار اللاعبين والتسجيل في البطولة
-                              </p>
-                              <div className="flex gap-3 justify-center">
-                                <Button
-                                  onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
-                                  className={cn(buttonStyles.accent, "gap-2 shadow-md")}
-                                >
-                                  <User className="mr-2 w-4 h-4" />
-                                  تسجيل الدخول
-                                </Button>
-                                <Button
-                                  onClick={() => router.push(`/auth/register?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
-                                  variant="outline"
-                                  className={cn(buttonStyles.outline, "border-amber-300 text-amber-700 hover:text-amber-800 hover:border-amber-400")}
-                                >
-                                  إنشاء حساب جديد
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ) : availablePlayers.length === 0 ? (
-                          <Card className="border-2 border-gray-300 border-dashed">
-                            <CardContent className="p-8 text-center">
-                              <Users className="mx-auto mb-4 w-12 h-12 text-gray-400" />
-                              <h4 className="mb-2 font-semibold text-gray-700">لا توجد لاعبين مسجلين</h4>
-                              <p className="mb-4 text-gray-500">
-                                يجب أن تقوم بإضافة لاعبين أولاً قبل التسجيل في البطولات
-                              </p>
-                              <Button
-                                onClick={() => router.push('/dashboard/players')}
-                                className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
-                              >
-                                <Plus className="mr-2 w-4 h-4" />
-                                إضافة لاعبين
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ) : (
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                            {availablePlayers.map((player) => {
-                              const isSelected = selectedPlayers.find(p => p.id === player.id);
-                              const isPaid = paidPlayerIds.has(player.id);
-
-                              return (
-                                <Card
-                                  key={player.id}
-                                  className={`cursor-pointer transition-all duration-200 ${
-                                    isSelected
-                                      ? 'bg-blue-50 ring-2 ring-blue-500'
-                                      : isPaid ? 'opacity-60' : 'hover:shadow-md hover:bg-gray-50'
-                                  } ${checkingDuplicates ? 'opacity-50 pointer-events-none' : ''} ${isPaid ? 'pointer-events-none' : ''}`}
-                                  onClick={() => !isPaid && togglePlayerSelection(player)}
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="flex gap-3 items-center">
-                                      <Checkbox
-                                        checked={!!isSelected}
-                                        onChange={() => {}}
-                                        disabled={checkingDuplicates || isPaid}
-                                        className="pointer-events-none"
-                                      />
-
-                                      <Avatar className="w-10 h-10">
-                                        <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} />
-                                        <AvatarFallback className="text-blue-800 bg-blue-100">
-                                          {getPlayerDisplayName(player).charAt(0)}
-                                        </AvatarFallback>
-                                      </Avatar>
-
-                                      <div className="flex-1">
-                                        <h4 className="font-medium text-gray-900">{getPlayerDisplayName(player)}</h4>
-                                        <div className="space-y-1 text-sm text-gray-500">
-                                          <p>تاريخ الميلاد: {formatBirthDate(player.birth_date)}</p>
-                                          <p>المركز: {player.primary_position || player.position || 'غير محدد'}</p>
-                                        </div>
+                          return (
+                            <Card
+                              key={tournament.id}
+                              className={`cursor-pointer transition-all duration-200 ${isSelected
+                                  ? 'bg-yellow-50 ring-2 ring-yellow-500'
+                                  : canRegister
+                                    ? 'hover:shadow-md hover:bg-gray-50'
+                                    : 'opacity-75 hover:bg-gray-50'
+                                }`}
+                              onClick={() => {
+                                if (canRegister) {
+                                  setSelectedTournament(tournament);
+                                  setRegistrationData(prev => ({ ...prev, tournamentId: tournament.id }));
+                                } else {
+                                  // Show warning if trying to select unavailable tournament
+                                  if (!tournamentWithStatus.isWithinDeadline) {
+                                    toast.warning('انتهى موعد التسجيل في هذه البطولة');
+                                  } else if (!tournamentWithStatus.hasSpots) {
+                                    toast.warning('لا توجد أماكن متاحة في هذه البطولة');
+                                  } else if (!tournamentWithStatus.isAllowedForUser) {
+                                    toast.warning('هذه البطولة غير متاحة لنوع حسابك');
+                                  }
+                                }
+                              }}
+                            >
+                              <CardContent className="p-4">
+                                <div className="space-y-3">
+                                  <div className="flex gap-3 items-center">
+                                    {tournament.logo ? (
+                                      <div className="flex-shrink-0">
+                                        <img
+                                          src={tournament.logo}
+                                          alt={`${tournament.name} logo`}
+                                          className="object-cover w-10 h-10 rounded-lg border border-gray-200 shadow-sm lg:w-12 lg:h-12"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                          }}
+                                        />
                                       </div>
-
-                                      {isPaid ? (
-                                        <Badge className="text-emerald-800 bg-emerald-100 border border-emerald-200">مدفوع</Badge>
-                                      ) : isSelected && (
-                                        <CheckCircle className="w-5 h-5 text-blue-600" />
-                                      )}
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {selectedPlayers.length > 0 && (
-                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <h4 className="font-semibold text-blue-900">اللاعبين المختارين</h4>
-                                <p className="text-sm text-blue-700">
-                                  تم اختيار {selectedPlayers.length} لاعب للتسجيل
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                {selectedTournament.isPaid && (
-                                  <p className="text-lg font-bold text-blue-900">
-                                    {calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Navigation Buttons */}
-                      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                        <div></div>
-                        <Button
-                          onClick={goToNextTab}
-                          className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
-                        >
-                          التالي
-                          <ArrowRight className="mr-2 w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TabsContent>
-
-                    {/* Payment Tab */}
-                    <TabsContent value="payment" className="space-y-6">
-                      <div className="space-y-6">
-                        <h3 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800">خيارات الدفع</h3>
-
-                        {selectedTournament.isPaid ? (
-                          <div className="space-y-6">
-                            {/* Payment Summary */}
-                            <div className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
-                                <div className="flex gap-3 items-center">
-                                  <div className="p-3 bg-yellow-100 rounded-full">
-                                    <DollarSign className="w-6 h-6 text-yellow-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-gray-600">رسوم اللاعب الواحد</p>
-                                    <p className="text-lg font-bold text-yellow-800">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-3 items-center">
-                                  <div className="p-3 bg-gradient-to-r from-cyan-100 to-blue-100 rounded-full">
-                                    <Users className="w-6 h-6 text-cyan-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-gray-600">عدد اللاعبين</p>
-                                    <p className="text-lg font-bold text-cyan-800">{selectedPlayers.length}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-3 items-center">
-                                  <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-full">
-                                    <CreditCard className="w-6 h-6 text-emerald-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-gray-600">المجموع الكلي</p>
-                                    <p className="text-xl font-bold text-emerald-800">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-3 items-center">
-                                  <div className="p-3 bg-gradient-to-r from-violet-100 to-purple-100 rounded-full">
-                                    <CreditCard className="w-6 h-6 text-violet-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-gray-600">طريقة الدفع</p>
-                                    <p className="text-lg font-bold text-violet-800">
-                                      {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
-                                       registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
-                                       registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
-                                       registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'غير محدد'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Installment Info */}
-                            {selectedTournament.allowInstallments && selectedTournament.installmentsCount && (
-                              <div className="p-4 mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
-                                <div className="flex gap-2 items-center mb-2">
-                                  <CreditCard className="w-5 h-5 text-indigo-600" />
-                                  <h4 className="font-semibold text-indigo-900">الدفع بالتقسيط متاح</h4>
-                                </div>
-                                <p className="mb-3 text-sm text-indigo-700">
-                                  يمكنك تقسيم المبلغ على {selectedTournament.installmentsCount} أقساط
-                                </p>
-                                {selectedTournament.installmentsDetails && (
-                                  <p className="mb-3 text-xs text-indigo-600">{selectedTournament.installmentsDetails}</p>
-                                )}
-                                <div className="p-3 space-y-1 bg-white rounded-lg border border-indigo-200">
-                                  <p className="mb-2 text-xs font-semibold text-indigo-900">مثال على الأقساط:</p>
-                                  {Array.from({ length: selectedTournament.installmentsCount }, (_, i) => {
-                                    const installmentAmount = (selectedTournament.entryFee || 0) / selectedTournament.installmentsCount;
-                                    return (
-                                      <div key={i} className="flex justify-between text-xs">
-                                        <span className="text-gray-600">القسط {i + 1}:</span>
-                                        <span className="font-semibold text-indigo-700">
-                                          {installmentAmount.toFixed(2)} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
-                                        </span>
+                                    ) : (
+                                      <div className="flex flex-shrink-0 justify-center items-center w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-sm lg:w-12 lg:h-12">
+                                        <Trophy className="w-5 h-5 text-white lg:h-6 lg:w-6" />
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Payment Methods */}
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                              <Card
-                                className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'later'
-                                    ? 'border-indigo-500 bg-indigo-50 shadow-lg'
-                                    : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
-                                } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('later')}
-                              >
-                                <CardContent className="p-6 text-center">
-                                  <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-indigo-100 rounded-full">
-                                    <Clock className="w-8 h-8 text-indigo-600" />
-                                  </div>
-                                  <h4 className="mb-2 font-semibold text-gray-900">دفع لاحقاً</h4>
-                                  <p className="text-sm text-gray-600">سجل الآن وادفع لاحقاً</p>
-                                </CardContent>
-                              </Card>
-
-                              <Card
-                                className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'mobile_wallet'
-                                    ? 'border-emerald-500 bg-emerald-50 shadow-lg'
-                                    : 'border-gray-200 hover:border-emerald-300 hover:shadow-md'
-                                } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('mobile_wallet')}
-                              >
-                                <CardContent className="p-6 text-center">
-                                  <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-emerald-100 rounded-full">
-                                    <Smartphone className="w-8 h-8 text-emerald-600" />
-                                  </div>
-                                  <h4 className="mb-2 font-semibold text-gray-900">محفظة إلكترونية</h4>
-                                  <p className="text-sm text-gray-600">فودافون كاش، أورنج، اتصالات</p>
-                                </CardContent>
-                              </Card>
-
-                              <Card
-                                className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'card'
-                                    ? 'border-violet-500 bg-violet-50 shadow-lg'
-                                    : 'border-gray-200 hover:border-violet-300 hover:shadow-md'
-                                } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('card')}
-                              >
-                                <CardContent className="p-6 text-center">
-                                  <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-violet-100 rounded-full">
-                                    <CreditCard className="w-8 h-8 text-violet-600" />
-                                  </div>
-                                  <h4 className="mb-2 font-semibold text-gray-900">دفع بالكارت البنكي</h4>
-                                  <p className="text-sm text-gray-600">فيزا، ماستركارد، جيديا</p>
-                                </CardContent>
-                              </Card>
-
-                              <Card
-                                className={`cursor-pointer transition-all duration-300 border-2 ${
-                                  registrationData.paymentMethod === 'office'
-                                    ? 'border-orange-500 bg-orange-50 shadow-lg'
-                                    : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
-                                } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('office')}
-                              >
-                                <CardContent className="p-6 text-center">
-                                  <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-orange-100 rounded-full">
-                                    <Building className="w-8 h-8 text-orange-600" />
-                                  </div>
-                                  <h4 className="mb-2 font-semibold text-gray-900">الدفع مباشرة في المكتب</h4>
-                                  <p className="text-sm text-gray-600">اترك بياناتك للتواصل معك</p>
-                                </CardContent>
-                              </Card>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-6 text-center bg-green-50 rounded-xl border border-green-200">
-                            <CheckCircle className="mx-auto mb-4 w-12 h-12 text-green-600" />
-                            <h4 className="mb-2 text-lg font-semibold text-green-900">بطولة مجانية</h4>
-                            <p className="text-green-700">هذه البطولة مجانية ولا تتطلب دفع رسوم</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Navigation Buttons */}
-                      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                        <Button
-                          onClick={goToPreviousTab}
-                          variant="outline"
-                          className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
-                        >
-                          <ArrowLeft className="ml-2 w-4 h-4" />
-                          السابق
-                        </Button>
-                        <Button
-                          onClick={goToNextTab}
-                          className={cn(buttonStyles.success, "gap-2 shadow-lg")}
-                        >
-                          التالي
-                          <ArrowRight className="mr-2 w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TabsContent>
-
-                    {/* Review Tab */}
-                    <TabsContent value="review" className="space-y-6">
-                      <div className="space-y-6">
-                        <h3 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-800">مراجعة التسجيل</h3>
-
-                        {/* Tournament Info */}
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex gap-2 items-center">
-                              <Trophy className="w-5 h-5 text-yellow-600" />
-                              معلومات البطولة
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            {/* Tournament Logo and Name */}
-                            <div className="flex gap-4 items-center p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
-                              {selectedTournament.logo ? (
-                                <div className="flex-shrink-0">
-                                  <img
-                                    src={selectedTournament.logo}
-                                    alt={`${selectedTournament.name} logo`}
-                                    className="object-cover w-16 h-16 rounded-lg border-2 border-yellow-300 shadow-md lg:w-20 lg:h-20"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="flex flex-shrink-0 justify-center items-center w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-md lg:w-20 lg:h-20">
-                                  <Trophy className="w-8 h-8 text-white lg:h-10 lg:w-10" />
-                                </div>
-                              )}
-                              <div className="flex-1">
-                                <h3 className="mb-1 text-xl font-bold text-gray-900 lg:text-2xl">
-                                  {selectedTournament.name}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                  {selectedTournament.description}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                              <div>
-                                <Label className="text-sm font-medium text-gray-600">اسم البطولة</Label>
-                                <p className="text-lg font-semibold text-gray-900">{selectedTournament.name}</p>
-                              </div>
-                              <div>
-                                <Label className="text-sm font-medium text-gray-600">الموقع</Label>
-                                <div className="flex gap-2 items-center">
-                                  <p className="text-lg font-semibold text-gray-900">{selectedTournament.location}</p>
-                                  {selectedTournament.locationUrl && (
-                                    <a
-                                      href={selectedTournament.locationUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 transition-colors hover:text-blue-800"
-                                      title="فتح الموقع على الخريطة"
-                                    >
-                                      <MapPin className="w-5 h-5" />
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <Label className="text-sm font-medium text-gray-600">تاريخ البدء</Label>
-                                <p className="text-lg font-semibold text-gray-900">
-                                  {formatGregorianDate(selectedTournament.startDate)}
-                                </p>
-                              </div>
-                              <div>
-                                <Label className="text-sm font-medium text-gray-600">تاريخ الانتهاء</Label>
-                                <p className="text-lg font-semibold text-gray-900">
-                                  {formatGregorianDate(selectedTournament.endDate)}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Selected Players */}
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex gap-2 items-center">
-                              <Users className="w-5 h-5 text-blue-600" />
-                              اللاعبين المختارين ({selectedPlayers.length})
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {selectedPlayers.length === 0 ? (
-                              <div className="py-4 text-center">
-                                <p className="text-gray-500">لم يتم اختيار أي لاعبين</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {selectedPlayers.map((player, index) => (
-                                  <div key={player.id} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                                    <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold text-blue-800 bg-blue-100 rounded-full">
-                                      {index + 1}
-                                    </div>
-                                    <Avatar className="w-8 h-8">
-                                      <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} />
-                                      <AvatarFallback className="text-xs text-blue-800 bg-blue-100">
-                                        {getPlayerDisplayName(player).charAt(0)}
-                                      </AvatarFallback>
-                                    </Avatar>
+                                    )}
                                     <div className="flex-1">
-                                      <p className="font-medium text-gray-900">{getPlayerDisplayName(player)}</p>
-                                      <p className="text-sm text-gray-500">
-                                        {(player.primary_position || player.position) && `${player.primary_position || player.position} • `}
-                                        {player.birth_date && `تاريخ الميلاد: ${formatBirthDate(player.birth_date)}`}
-                                      </p>
+                                      <div className="flex justify-between items-center">
+                                        <h4 className="flex-1 font-semibold text-gray-900 truncate">{tournament.name}</h4>
+                                        {isSelected && <CheckCircle className="ml-2 w-5 h-5 text-yellow-600" />}
+                                      </div>
                                     </div>
-                                    {selectedTournament.isPaid && (
-                                      <div className="text-right">
-                                        <p className="font-semibold text-gray-900">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
+                                  </div>
+
+                                  <div className="space-y-2 text-sm text-gray-600">
+                                    <div className="flex gap-2 items-center">
+                                      <MapPin className="w-3 h-3" />
+                                      <span className="truncate">{tournament.location}</span>
+                                    </div>
+
+                                    <div className="flex gap-2 items-center">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{formatGregorianDate(tournament.startDate)}</span>
+                                    </div>
+
+                                    <div className="flex gap-2 items-center">
+                                      <Users className="w-3 h-3" />
+                                      <span>{tournament.currentParticipants}/{tournament.maxParticipants}</span>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {spotsLeft > 0 ? `${spotsLeft} متبقي` : 'ممتلئة'}
+                                      </Badge>
+                                    </div>
+
+                                    {tournament.isPaid && (
+                                      <div className="flex gap-2 items-center">
+                                        <DollarSign className="w-3 h-3" />
+                                        <span>{tournament.entryFee} {getCurrencySymbol(tournament.currency || 'EGP')} / لاعب</span>
                                       </div>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
 
-                        {/* Payment Summary */}
-                        {selectedTournament.isPaid && selectedPlayers.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {canRegister ? (
+                                      <Badge className="text-xs text-green-800 bg-green-100">متاحة للتسجيل</Badge>
+                                    ) : (
+                                      <>
+                                        {!tournamentWithStatus.isWithinDeadline && (
+                                          <Badge className="text-xs text-red-800 bg-red-100">انتهى التسجيل</Badge>
+                                        )}
+                                        {!tournamentWithStatus.hasSpots && (
+                                          <Badge className="text-xs text-orange-800 bg-orange-100">ممتلئة</Badge>
+                                        )}
+                                        {!tournamentWithStatus.isAllowedForUser && (
+                                          <Badge className="text-xs text-gray-800 bg-gray-100">غير متاحة</Badge>
+                                        )}
+                                      </>
+                                    )}
+                                    <Badge className={`text-xs ${tournament.feeType === 'individual'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : 'bg-blue-100 text-blue-800'
+                                      }`}>
+                                      {tournament.feeType === 'individual' ? 'فردي' : 'نادي'}
+                                    </Badge>
+                                    {tournament.categories?.map(category => (
+                                      <Badge key={category} variant="outline" className="text-xs">
+                                        {category}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Registration Form */}
+            <div className="lg:col-span-2">
+              {selectedTournament ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex gap-2 items-center">
+                      <Users className="w-5 h-5 text-blue-600" />
+                      التسجيل في: {selectedTournament.name}
+                    </CardTitle>
+                    <CardDescription>
+                      اختر اللاعبين من قائمتك واملأ البيانات المطلوبة
+                    </CardDescription>
+
+                    {/* Navigation Instructions */}
+                    <div className="p-4 mt-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex gap-2 items-center mb-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm font-semibold text-blue-800">تعليمات التنقل</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        استخدم أزرار "التالي" و "السابق" للتنقل بين التبويبات. يجب إكمال كل تبويب قبل الانتقال للتالي.
+                      </p>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-4 sm:p-6 lg:p-8">
+                    <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
+                      <TabsList className="grid grid-cols-3 p-1 w-full h-auto bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200">
+                        <TabsTrigger
+                          value="players"
+                          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
+                        >
+                          <Users className="w-3 h-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs leading-tight sm:text-sm">
+                            <span className="block sm:hidden">اللاعبين</span>
+                            <span className="hidden sm:block">اختيار اللاعبين</span>
+                          </span>
+                          {selectedTournament && selectedPlayers.length > 0 && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="payment"
+                          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
+                        >
+                          <CreditCard className="w-3 h-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs leading-tight sm:text-sm">الدفع</span>
+                          {registrationData.paymentMethod && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="review"
+                          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-xs sm:text-sm px-2 py-3 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative"
+                        >
+                          <CheckCircle className="w-3 h-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs leading-tight sm:text-sm">
+                            <span className="block sm:hidden">المراجعة</span>
+                            <span className="hidden sm:block">مراجعة التسجيل</span>
+                          </span>
+                          {registrationData.notes && registrationData.notes.trim() !== '' && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      {/* Players Selection Tab */}
+                      <TabsContent value="players" className="space-y-6">
+                        {selectedTournament && (historyPaid.length > 0 || historyPending.length > 0) && (
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <Card className="border border-green-200">
+                              <CardHeader>
+                                <CardTitle className="text-sm text-green-800 sm:text-base">اللاعبون المدفوع لهم</CardTitle>
+                                <CardDescription className="text-xs">سجلات مكتملة الدفع لهذه البطولة</CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {historyPaid.length === 0 ? (
+                                  <p className="text-xs text-gray-500">لا توجد سجلات</p>
+                                ) : (
+                                  historyPaid.slice(0, 5).map((reg: any) => (
+                                    <div key={reg.id} className="flex justify-between items-center text-xs">
+                                      <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
+                                      <span className="text-gray-500">{reg?.paymentAmount || 0} {getCurrencySymbol(reg?.currency || selectedTournament?.currency || 'EGP')}</span>
+                                    </div>
+                                  ))
+                                )}
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-amber-200">
+                              <CardHeader>
+                                <CardTitle className="text-sm text-amber-800 sm:text-base">اللاعبون المعلّقون</CardTitle>
+                                <CardDescription className="text-xs">سجلات لم تُستكمل عملية الدفع</CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {historyPending.length === 0 ? (
+                                  <p className="text-xs text-gray-500">لا توجد سجلات</p>
+                                ) : (
+                                  historyPending.slice(0, 5).map((reg: any) => (
+                                    <div key={reg.id} className="flex justify-between items-center text-xs">
+                                      <span className="font-medium text-gray-800">{reg?.players?.length || 0} لاعب</span>
+                                      <span className="text-gray-500">{reg?.paymentAmount || 0} {getCurrencySymbol(reg?.currency || selectedTournament?.currency || 'EGP')}</span>
+                                    </div>
+                                  ))
+                                )}
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 sm:text-xl">اختر اللاعبين للتسجيل</h3>
+
+                          {checkingDuplicates && (
+                            <div className="flex gap-2 items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="w-4 h-4 rounded-full border-b-2 border-blue-600 animate-spin"></div>
+                              <span className="text-sm text-blue-700">جاري فحص التكرار...</span>
+                            </div>
+                          )}
+
+                          {!user || !userData ? (
+                            <Card className="bg-yellow-50 border-2 border-yellow-300 border-dashed">
+                              <CardContent className="p-8 text-center">
+                                <User className="mx-auto mb-4 w-12 h-12 text-yellow-600" />
+                                <h4 className="mb-2 font-semibold text-gray-700">يجب تسجيل الدخول أولاً</h4>
+                                <p className="mb-4 text-gray-600">
+                                  يجب تسجيل الدخول أو إنشاء حساب جديد لاختيار اللاعبين والتسجيل في البطولة
+                                </p>
+                                <div className="flex gap-3 justify-center">
+                                  <Button
+                                    onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                    className={cn(buttonStyles.accent, "gap-2 shadow-md")}
+                                  >
+                                    <User className="mr-2 w-4 h-4" />
+                                    تسجيل الدخول
+                                  </Button>
+                                  <Button
+                                    onClick={() => router.push(`/auth/register?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                    variant="outline"
+                                    className={cn(buttonStyles.outline, "border-amber-300 text-amber-700 hover:text-amber-800 hover:border-amber-400")}
+                                  >
+                                    إنشاء حساب جديد
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ) : availablePlayers.length === 0 ? (
+                            <Card className="border-2 border-gray-300 border-dashed">
+                              <CardContent className="p-8 text-center">
+                                <Users className="mx-auto mb-4 w-12 h-12 text-gray-400" />
+                                <h4 className="mb-2 font-semibold text-gray-700">لا توجد لاعبين مسجلين</h4>
+                                <p className="mb-4 text-gray-500">
+                                  يجب أن تقوم بإضافة لاعبين أولاً قبل التسجيل في البطولات
+                                </p>
+                                <Button
+                                  onClick={() => router.push('/dashboard/players')}
+                                  className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
+                                >
+                                  <Plus className="mr-2 w-4 h-4" />
+                                  إضافة لاعبين
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                              {availablePlayers.map((player) => {
+                                const isSelected = selectedPlayers.find(p => p.id === player.id);
+                                const isPaid = paidPlayerIds.has(player.id);
+
+                                return (
+                                  <Card
+                                    key={player.id}
+                                    className={`cursor-pointer transition-all duration-200 ${isSelected
+                                        ? 'bg-blue-50 ring-2 ring-blue-500'
+                                        : isPaid ? 'opacity-60' : 'hover:shadow-md hover:bg-gray-50'
+                                      } ${checkingDuplicates ? 'opacity-50 pointer-events-none' : ''} ${isPaid ? 'pointer-events-none' : ''}`}
+                                    onClick={() => !isPaid && togglePlayerSelection(player)}
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="flex gap-3 items-center">
+                                        <Checkbox
+                                          checked={!!isSelected}
+                                          onChange={() => { }}
+                                          disabled={checkingDuplicates || isPaid}
+                                          className="pointer-events-none"
+                                        />
+
+                                        <Avatar className="w-10 h-10">
+                                          <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} />
+                                          <AvatarFallback className="text-blue-800 bg-blue-100">
+                                            {getPlayerDisplayName(player).charAt(0)}
+                                          </AvatarFallback>
+                                        </Avatar>
+
+                                        <div className="flex-1">
+                                          <h4 className="font-medium text-gray-900">{getPlayerDisplayName(player)}</h4>
+                                          <div className="space-y-1 text-sm text-gray-500">
+                                            <p>تاريخ الميلاد: {formatBirthDate(player.birth_date)}</p>
+                                            <p>المركز: {player.primary_position || player.position || 'غير محدد'}</p>
+                                          </div>
+                                        </div>
+
+                                        {isPaid ? (
+                                          <Badge className="text-emerald-800 bg-emerald-100 border border-emerald-200">مدفوع</Badge>
+                                        ) : isSelected && (
+                                          <CheckCircle className="w-5 h-5 text-blue-600" />
+                                        )}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {selectedPlayers.length > 0 && (
+                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h4 className="font-semibold text-blue-900">اللاعبين المختارين</h4>
+                                  <p className="text-sm text-blue-700">
+                                    تم اختيار {selectedPlayers.length} لاعب للتسجيل
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  {selectedTournament.isPaid && (
+                                    <p className="text-lg font-bold text-blue-900">
+                                      {calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Navigation Buttons */}
+                        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                          <div></div>
+                          <Button
+                            onClick={goToNextTab}
+                            className={cn(buttonStyles.primary, "gap-2 shadow-lg")}
+                          >
+                            التالي
+                            <ArrowRight className="mr-2 w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      {/* Payment Tab */}
+                      <TabsContent value="payment" className="space-y-6">
+                        <div className="space-y-6">
+                          <h3 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800">خيارات الدفع</h3>
+
+                          {selectedTournament.isPaid ? (
+                            <div className="space-y-6">
+                              {/* Payment Summary */}
+                              <div className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+                                  <div className="flex gap-3 items-center">
+                                    <div className="p-3 bg-yellow-100 rounded-full">
+                                      <DollarSign className="w-6 h-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-gray-600">رسوم اللاعب الواحد</p>
+                                      <p className="text-lg font-bold text-yellow-800">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-3 items-center">
+                                    <div className="p-3 bg-gradient-to-r from-cyan-100 to-blue-100 rounded-full">
+                                      <Users className="w-6 h-6 text-cyan-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-gray-600">عدد اللاعبين</p>
+                                      <p className="text-lg font-bold text-cyan-800">{selectedPlayers.length}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-3 items-center">
+                                    <div className="p-3 bg-gradient-to-r from-emerald-100 to-green-100 rounded-full">
+                                      <CreditCard className="w-6 h-6 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-gray-600">المجموع الكلي</p>
+                                      <p className="text-xl font-bold text-emerald-800">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-3 items-center">
+                                    <div className="p-3 bg-gradient-to-r from-violet-100 to-purple-100 rounded-full">
+                                      <CreditCard className="w-6 h-6 text-violet-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-gray-600">طريقة الدفع</p>
+                                      <p className="text-lg font-bold text-violet-800">
+                                        {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
+                                          registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
+                                            registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                              registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' : 'غير محدد'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Installment Info */}
+                              {selectedTournament.allowInstallments && selectedTournament.installmentsCount && (
+                                <div className="p-4 mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
+                                  <div className="flex gap-2 items-center mb-2">
+                                    <CreditCard className="w-5 h-5 text-indigo-600" />
+                                    <h4 className="font-semibold text-indigo-900">الدفع بالتقسيط متاح</h4>
+                                  </div>
+                                  <p className="mb-3 text-sm text-indigo-700">
+                                    يمكنك تقسيم المبلغ على {selectedTournament.installmentsCount} أقساط
+                                  </p>
+                                  {selectedTournament.installmentsDetails && (
+                                    <p className="mb-3 text-xs text-indigo-600">{selectedTournament.installmentsDetails}</p>
+                                  )}
+                                  <div className="p-3 space-y-1 bg-white rounded-lg border border-indigo-200">
+                                    <p className="mb-2 text-xs font-semibold text-indigo-900">مثال على الأقساط:</p>
+                                    {Array.from({ length: selectedTournament.installmentsCount }, (_, i) => {
+                                      const installmentAmount = (selectedTournament.entryFee || 0) / selectedTournament.installmentsCount;
+                                      return (
+                                        <div key={i} className="flex justify-between text-xs">
+                                          <span className="text-gray-600">القسط {i + 1}:</span>
+                                          <span className="font-semibold text-indigo-700">
+                                            {installmentAmount.toFixed(2)} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Payment Methods */}
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                                <Card
+                                  className={`cursor-pointer transition-all duration-300 border-2 ${registrationData.paymentMethod === 'later'
+                                      ? 'border-indigo-500 bg-indigo-50 shadow-lg'
+                                      : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
+                                    } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('later')}
+                                >
+                                  <CardContent className="p-6 text-center">
+                                    <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-indigo-100 rounded-full">
+                                      <Clock className="w-8 h-8 text-indigo-600" />
+                                    </div>
+                                    <h4 className="mb-2 font-semibold text-gray-900">دفع لاحقاً</h4>
+                                    <p className="text-sm text-gray-600">سجل الآن وادفع لاحقاً</p>
+                                  </CardContent>
+                                </Card>
+
+                                <Card
+                                  className={`cursor-pointer transition-all duration-300 border-2 ${registrationData.paymentMethod === 'mobile_wallet'
+                                      ? 'border-emerald-500 bg-emerald-50 shadow-lg'
+                                      : 'border-gray-200 hover:border-emerald-300 hover:shadow-md'
+                                    } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('mobile_wallet')}
+                                >
+                                  <CardContent className="p-6 text-center">
+                                    <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-emerald-100 rounded-full">
+                                      <Smartphone className="w-8 h-8 text-emerald-600" />
+                                    </div>
+                                    <h4 className="mb-2 font-semibold text-gray-900">محفظة إلكترونية</h4>
+                                    <p className="text-sm text-gray-600">فودافون كاش، أورنج، اتصالات</p>
+                                  </CardContent>
+                                </Card>
+
+                                <Card
+                                  className={`cursor-pointer transition-all duration-300 border-2 ${registrationData.paymentMethod === 'card'
+                                      ? 'border-violet-500 bg-violet-50 shadow-lg'
+                                      : 'border-gray-200 hover:border-violet-300 hover:shadow-md'
+                                    } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('card')}
+                                >
+                                  <CardContent className="p-6 text-center">
+                                    <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-violet-100 rounded-full">
+                                      <CreditCard className="w-8 h-8 text-violet-600" />
+                                    </div>
+                                    <h4 className="mb-2 font-semibold text-gray-900">دفع بالكارت البنكي</h4>
+                                    <p className="text-sm text-gray-600">فيزا، ماستركارد، جيديا</p>
+                                  </CardContent>
+                                </Card>
+
+                                <Card
+                                  className={`cursor-pointer transition-all duration-300 border-2 ${registrationData.paymentMethod === 'office'
+                                      ? 'border-orange-500 bg-orange-50 shadow-lg'
+                                      : 'border-gray-200 hover:border-orange-300 hover:shadow-md'
+                                    } ${calculateTotalAmount() <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => calculateTotalAmount() > 0 && handlePaymentMethodChange('office')}
+                                >
+                                  <CardContent className="p-6 text-center">
+                                    <div className="flex justify-center items-center p-4 mx-auto mb-4 w-16 h-16 bg-orange-100 rounded-full">
+                                      <Building className="w-8 h-8 text-orange-600" />
+                                    </div>
+                                    <h4 className="mb-2 font-semibold text-gray-900">الدفع مباشرة في المكتب</h4>
+                                    <p className="text-sm text-gray-600">اترك بياناتك للتواصل معك</p>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-6 text-center bg-green-50 rounded-xl border border-green-200">
+                              <CheckCircle className="mx-auto mb-4 w-12 h-12 text-green-600" />
+                              <h4 className="mb-2 text-lg font-semibold text-green-900">بطولة مجانية</h4>
+                              <p className="text-green-700">هذه البطولة مجانية ولا تتطلب دفع رسوم</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Navigation Buttons */}
+                        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                          <Button
+                            onClick={goToPreviousTab}
+                            variant="outline"
+                            className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
+                          >
+                            <ArrowLeft className="ml-2 w-4 h-4" />
+                            السابق
+                          </Button>
+                          <Button
+                            onClick={goToNextTab}
+                            className={cn(buttonStyles.success, "gap-2 shadow-lg")}
+                          >
+                            التالي
+                            <ArrowRight className="mr-2 w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      {/* Review Tab */}
+                      <TabsContent value="review" className="space-y-6">
+                        <div className="space-y-6">
+                          <h3 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-800">مراجعة التسجيل</h3>
+
+                          {/* Tournament Info */}
                           <Card>
                             <CardHeader>
                               <CardTitle className="flex gap-2 items-center">
-                                <CreditCard className="w-5 h-5 text-green-600" />
-                                ملخص الدفع
+                                <Trophy className="w-5 h-5 text-yellow-600" />
+                                معلومات البطولة
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {/* Tournament Logo and Name */}
+                              <div className="flex gap-4 items-center p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+                                {selectedTournament.logo ? (
+                                  <div className="flex-shrink-0">
+                                    <img
+                                      src={selectedTournament.logo}
+                                      alt={`${selectedTournament.name} logo`}
+                                      className="object-cover w-16 h-16 rounded-lg border-2 border-yellow-300 shadow-md lg:w-20 lg:h-20"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-shrink-0 justify-center items-center w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-md lg:w-20 lg:h-20">
+                                    <Trophy className="w-8 h-8 text-white lg:h-10 lg:w-10" />
+                                  </div>
+                                )}
+                                <div className="flex-1">
+                                  <h3 className="mb-1 text-xl font-bold text-gray-900 lg:text-2xl">
+                                    {selectedTournament.name}
+                                  </h3>
+                                  <p className="text-sm text-gray-600">
+                                    {selectedTournament.description}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-600">اسم البطولة</Label>
+                                  <p className="text-lg font-semibold text-gray-900">{selectedTournament.name}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-600">الموقع</Label>
+                                  <div className="flex gap-2 items-center">
+                                    <p className="text-lg font-semibold text-gray-900">{selectedTournament.location}</p>
+                                    {selectedTournament.locationUrl && (
+                                      <a
+                                        href={selectedTournament.locationUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 transition-colors hover:text-blue-800"
+                                        title="فتح الموقع على الخريطة"
+                                      >
+                                        <MapPin className="w-5 h-5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-600">تاريخ البدء</Label>
+                                  <p className="text-lg font-semibold text-gray-900">
+                                    {formatGregorianDate(selectedTournament.startDate)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-600">تاريخ الانتهاء</Label>
+                                  <p className="text-lg font-semibold text-gray-900">
+                                    {formatGregorianDate(selectedTournament.endDate)}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Selected Players */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex gap-2 items-center">
+                                <Users className="w-5 h-5 text-blue-600" />
+                                اللاعبين المختارين ({selectedPlayers.length})
                               </CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-gray-600">رسوم اللاعب الواحد:</span>
-                                  <span className="font-semibold">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
+                              {selectedPlayers.length === 0 ? (
+                                <div className="py-4 text-center">
+                                  <p className="text-gray-500">لم يتم اختيار أي لاعبين</p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-gray-600">عدد اللاعبين:</span>
-                                  <span className="font-semibold">{selectedPlayers.length}</span>
+                              ) : (
+                                <div className="space-y-3">
+                                  {selectedPlayers.map((player, index) => (
+                                    <div key={player.id} className="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                                      <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold text-blue-800 bg-blue-100 rounded-full">
+                                        {index + 1}
+                                      </div>
+                                      <Avatar className="w-8 h-8">
+                                        <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} />
+                                        <AvatarFallback className="text-xs text-blue-800 bg-blue-100">
+                                          {getPlayerDisplayName(player).charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1">
+                                        <p className="font-medium text-gray-900">{getPlayerDisplayName(player)}</p>
+                                        <p className="text-sm text-gray-500">
+                                          {(player.primary_position || player.position) && `${player.primary_position || player.position} • `}
+                                          {player.birth_date && `تاريخ الميلاد: ${formatBirthDate(player.birth_date)}`}
+                                        </p>
+                                      </div>
+                                      {selectedTournament.isPaid && (
+                                        <div className="text-right">
+                                          <p className="font-semibold text-gray-900">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                                <div className="pt-4 border-t">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-lg font-semibold text-gray-900">المجموع الكلي:</span>
-                                    <span className="text-xl font-bold text-green-600">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
-                                  </div>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-gray-600">طريقة الدفع:</span>
-                                  <Badge
-                                    className={`${
-                                      registrationData.paymentMethod === 'later' ? 'bg-blue-100 text-blue-800' :
-                                      registrationData.paymentMethod === 'mobile_wallet' ? 'bg-green-100 text-green-800' :
-                                      registrationData.paymentMethod === 'card' ? 'bg-purple-100 text-purple-800' :
-                                      registrationData.paymentMethod === 'office' ? 'bg-orange-100 text-orange-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }`}
-                                  >
-                                    {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
-                                     registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
-                                     registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
-                                     registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
-                                     'غير محدد'}
-                                  </Badge>
-                                </div>
-                              </div>
+                              )}
                             </CardContent>
                           </Card>
-                        )}
 
-                        {/* Notes */}
-                        <Card>
-                          <CardHeader>
-                            <CardTitle>ملاحظات إضافية</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <textarea
-                              className="p-3 w-full rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              rows={4}
-                              placeholder="أي ملاحظات أو متطلبات خاصة..."
-                              value={registrationData.notes}
-                              onChange={(e) => setRegistrationData(prev => ({ ...prev, notes: e.target.value }))}
-                            />
-                          </CardContent>
-                        </Card>
+                          {/* Payment Summary */}
+                          {selectedTournament.isPaid && selectedPlayers.length > 0 && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="flex gap-2 items-center">
+                                  <CreditCard className="w-5 h-5 text-green-600" />
+                                  ملخص الدفع
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-4">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">رسوم اللاعب الواحد:</span>
+                                    <span className="font-semibold">{selectedTournament.entryFee} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">عدد اللاعبين:</span>
+                                    <span className="font-semibold">{selectedPlayers.length}</span>
+                                  </div>
+                                  <div className="pt-4 border-t">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-lg font-semibold text-gray-900">المجموع الكلي:</span>
+                                      <span className="text-xl font-bold text-green-600">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">طريقة الدفع:</span>
+                                    <Badge
+                                      className={`${registrationData.paymentMethod === 'later' ? 'bg-blue-100 text-blue-800' :
+                                          registrationData.paymentMethod === 'mobile_wallet' ? 'bg-green-100 text-green-800' :
+                                            registrationData.paymentMethod === 'card' ? 'bg-purple-100 text-purple-800' :
+                                              registrationData.paymentMethod === 'office' ? 'bg-orange-100 text-orange-800' :
+                                                'bg-gray-100 text-gray-800'
+                                        }`}
+                                    >
+                                      {registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' :
+                                        registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
+                                          registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                            registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
+                                              'غير محدد'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                        {/* Payment Information */}
-                        {registrationData.paymentMethod !== 'later' && registrationData.paymentMethod !== 'office' && (
+                          {/* Notes */}
                           <Card>
                             <CardHeader>
-                              <CardTitle>معلومات الدفع</CardTitle>
+                              <CardTitle>ملاحظات إضافية</CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="space-y-3">
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                  <span className="text-gray-600">المبلغ الإجمالي:</span>
-                                  <span className={`font-bold text-lg ${calculateTotalAmount() <= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    {calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
-                                  </span>
-                                </div>
-
-                                {calculateTotalAmount() <= 0 && (
-                                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                                    <div className="flex gap-2 items-center text-red-800">
-                                      <AlertTriangle className="w-5 h-5" />
-                                      <span className="font-medium">تحذير</span>
-                                    </div>
-                                    <p className="mt-1 text-sm text-red-600">
-                                      لا يمكن التسجيل - المبلغ الإجمالي يجب أن يكون أكبر من 0
-                                    </p>
-                                  </div>
-                                )}
-
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                  <span className="text-gray-600">طريقة الدفع:</span>
-                                  <span className="font-medium">
-                                    {registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
-                                     registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
-                                     registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
-                                     registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' : 'غير محدد'}
-                                  </span>
-                                </div>
-
-                                {registrationData.paymentMethod === 'card' && (
-                                  <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
-                                    <p className="text-sm text-violet-800">
-                                      ✅ تم الدفع بنجاح عبر الكارت البنكي
-                                    </p>
-                                  </div>
-                                )}
-
-                                {registrationData.paymentMethod === 'office' as any && (
-                                  <div className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-                                    <div className="flex gap-2 items-center mb-2">
-                                      <Building className="w-5 h-5 text-orange-600" />
-                                      <p className="font-semibold text-orange-900">الدفع مباشرة في المكتب</p>
-                                    </div>
-                                    <p className="text-sm text-orange-800">
-                                      ✅ تم حفظ بياناتك. سيتم التواصل معك قريباً لإتمام عملية الدفع في المكتب.
-                                    </p>
-                                  </div>
-                                )}
-
-                                {registrationData.paymentMethod === 'mobile_wallet' && (
-                                  <div className="space-y-2">
-                                    {mobileWalletProvider && (
-                                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                        <span className="text-gray-600">مزود المحفظة:</span>
-                                        <span className="font-medium text-emerald-600">
-                                          {mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
-                                           mobileWalletProvider === 'orange' ? 'أورنج' :
-                                           mobileWalletProvider === 'etisalat' ? 'اتصالات' :
-                                           mobileWalletProvider === 'instapay' ? 'انستا باي' : mobileWalletProvider}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                      <span className="text-gray-600">رقم المحفظة:</span>
-                                      <span className="font-medium text-emerald-600">01017799580</span>
-                                    </div>
-                                    {mobileWalletReceiptNumber && (
-                                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                        <span className="text-gray-600">رقم الإيصال:</span>
-                                        <span className="font-medium text-emerald-600">{mobileWalletReceiptNumber}</span>
-                                      </div>
-                                    )}
-                                    {mobileWalletReceipt && (
-                                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                        <span className="text-gray-600">ملف الإيصال:</span>
-                                        <span className="font-medium text-emerald-600">{mobileWalletReceipt.name}</span>
-                                      </div>
-                                    )}
-                                    {mobileWalletUploadSuccess && (
-                                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                                        <p className="text-sm text-emerald-800">
-                                          ✅ تم رفع إيصال المحفظة الإلكترونية بنجاح
-                                        </p>
-                                        <p className="mt-1 text-xs text-emerald-600">
-                                          سيتم مراجعة الإيصال والتأكيد خلال 24 ساعة
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                              <textarea
+                                className="p-3 w-full rounded-lg border border-gray-300 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                rows={4}
+                                placeholder="أي ملاحظات أو متطلبات خاصة..."
+                                value={registrationData.notes}
+                                onChange={(e) => setRegistrationData(prev => ({ ...prev, notes: e.target.value }))}
+                              />
                             </CardContent>
                           </Card>
-                        )}
 
-                        {/* Invoice Generation Button */}
-                        <div className="mb-4">
-                          <Button
-                            variant="outline"
-                            onClick={generateTournamentInvoice}
-                            disabled={generatingInvoice || !selectedTournament || selectedPlayers.length === 0}
-                            className={cn(
-                              "w-full",
-                              buttonStyles.outline,
-                              "border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
-                            )}
-                          >
-                            {generatingInvoice ? (
-                              <>
-                                <div className="mr-2 w-4 h-4 rounded-full border-b-2 border-blue-600 animate-spin"></div>
-                                جاري إنشاء الفاتورة...
-                              </>
-                            ) : (
-                              <>
-                                <FileText className="mr-2 w-4 h-4" />
-                                استخراج فاتورة التسجيل
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                          {/* Payment Information */}
+                          {registrationData.paymentMethod !== 'later' && registrationData.paymentMethod !== 'office' && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>معلومات الدفع</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span className="text-gray-600">المبلغ الإجمالي:</span>
+                                    <span className={`font-bold text-lg ${calculateTotalAmount() <= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}
+                                    </span>
+                                  </div>
 
-                        {/* Submit Button */}
-                        <div className="flex flex-col gap-4 sm:flex-row">
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "flex-1",
-                              buttonStyles.outline,
-                              "border-rose-200 text-rose-700 hover:text-rose-800 hover:border-rose-300"
-                            )}
-                            onClick={() => {
-                              setSelectedPlayers([]);
-                              setSelectedTournament(null);
-                              setRegistrationData({
-                                tournamentId: '',
-                                selectedPlayers: [],
-                                paymentMethod: 'later',
-                                notes: ''
-                              });
-                            }}
-                          >
-                            إلغاء التسجيل
-                          </Button>
+                                  {calculateTotalAmount() <= 0 && (
+                                    <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                                      <div className="flex gap-2 items-center text-red-800">
+                                        <AlertTriangle className="w-5 h-5" />
+                                        <span className="font-medium">تحذير</span>
+                                      </div>
+                                      <p className="mt-1 text-sm text-red-600">
+                                        لا يمكن التسجيل - المبلغ الإجمالي يجب أن يكون أكبر من 0
+                                      </p>
+                                    </div>
+                                  )}
 
-                          <Button
-                            className={cn(
-                              "flex-1 shadow-lg transition-transform duration-200",
-                              buttonStyles.accent,
-                              "hover:scale-[1.02]"
-                            )}
-                            disabled={submitting || selectedPlayers.length === 0 || calculateTotalAmount() <= 0}
-                            onClick={async () => {
-                              console.log('🔵 [Submit] Button clicked - Starting registration process');
-                              
-                              // Check if user is authenticated
-                              if (!user || !userData) {
-                                console.log('❌ [Submit] User not authenticated');
-                                toast.error('يجب تسجيل الدخول أولاً لإكمال التسجيل');
-                                router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-                                return;
-                              }
+                                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span className="text-gray-600">طريقة الدفع:</span>
+                                    <span className="font-medium">
+                                      {registrationData.paymentMethod === 'mobile_wallet' ? 'محفظة إلكترونية' :
+                                        registrationData.paymentMethod === 'card' ? 'دفع بالكارت البنكي' :
+                                          registrationData.paymentMethod === 'office' ? 'الدفع مباشرة في المكتب' :
+                                            registrationData.paymentMethod === 'later' ? 'دفع لاحقاً' : 'غير محدد'}
+                                    </span>
+                                  </div>
 
-                              console.log('✅ [Submit] User authenticated:', { userId: user.uid, email: user.email });
+                                  {registrationData.paymentMethod === 'card' && (
+                                    <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
+                                      <p className="text-sm text-violet-800">
+                                        ✅ تم الدفع بنجاح عبر الكارت البنكي
+                                      </p>
+                                    </div>
+                                  )}
 
-                              // التحقق من جميع التبويبات قبل التسجيل
-                              console.log('🔍 [Submit] Validating tabs...');
-                              const playersValid = validatePlayersTab();
-                              const paymentValid = validatePaymentTab();
-                              const reviewValid = validateReviewTab();
-                              
-                              console.log('📊 [Submit] Validation results:', {
-                                playersValid,
-                                paymentValid,
-                                reviewValid,
-                                selectedTournament: selectedTournament?.name,
-                                selectedPlayersCount: selectedPlayers.length,
-                                paymentMethod: registrationData.paymentMethod,
-                                notes: registrationData.notes,
-                                mobileWalletProvider,
-                                mobileWalletUploadSuccess,
-                                geideaPaymentData: !!geideaPaymentData,
-                                hasGeideaOrderId: !!geideaPaymentData?.orderId
-                              });
+                                  {registrationData.paymentMethod === 'office' as any && (
+                                    <div className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                                      <div className="flex gap-2 items-center mb-2">
+                                        <Building className="w-5 h-5 text-orange-600" />
+                                        <p className="font-semibold text-orange-900">الدفع مباشرة في المكتب</p>
+                                      </div>
+                                      <p className="text-sm text-orange-800">
+                                        ✅ تم حفظ بياناتك. سيتم التواصل معك قريباً لإتمام عملية الدفع في المكتب.
+                                      </p>
+                                    </div>
+                                  )}
 
-                              if (!playersValid || !paymentValid || !reviewValid) {
-                                console.log('❌ [Submit] Validation failed - stopping registration');
-                                return;
-                              }
+                                  {registrationData.paymentMethod === 'mobile_wallet' && (
+                                    <div className="space-y-2">
+                                      {mobileWalletProvider && (
+                                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                          <span className="text-gray-600">مزود المحفظة:</span>
+                                          <span className="font-medium text-emerald-600">
+                                            {mobileWalletProvider === 'vodafone' ? 'فودافون كاش' :
+                                              mobileWalletProvider === 'orange' ? 'أورنج' :
+                                                mobileWalletProvider === 'etisalat' ? 'اتصالات' :
+                                                  mobileWalletProvider === 'instapay' ? 'انستا باي' : mobileWalletProvider}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <span className="text-gray-600">رقم المحفظة:</span>
+                                        <span className="font-medium text-emerald-600">01017799580</span>
+                                      </div>
+                                      {mobileWalletReceiptNumber && (
+                                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                          <span className="text-gray-600">رقم الإيصال:</span>
+                                          <span className="font-medium text-emerald-600">{mobileWalletReceiptNumber}</span>
+                                        </div>
+                                      )}
+                                      {mobileWalletReceipt && (
+                                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                          <span className="text-gray-600">ملف الإيصال:</span>
+                                          <span className="font-medium text-emerald-600">{mobileWalletReceipt.name}</span>
+                                        </div>
+                                      )}
+                                      {mobileWalletUploadSuccess && (
+                                        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                          <p className="text-sm text-emerald-800">
+                                            ✅ تم رفع إيصال المحفظة الإلكترونية بنجاح
+                                          </p>
+                                          <p className="mt-1 text-xs text-emerald-600">
+                                            سيتم مراجعة الإيصال والتأكيد خلال 24 ساعة
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
-                              console.log('✅ [Submit] All validations passed - proceeding with registration');
+                          {/* Invoice Generation Button */}
+                          <div className="mb-4">
+                            <Button
+                              variant="outline"
+                              onClick={generateTournamentInvoice}
+                              disabled={generatingInvoice || !selectedTournament || selectedPlayers.length === 0}
+                              className={cn(
+                                "w-full",
+                                buttonStyles.outline,
+                                "border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
+                              )}
+                            >
+                              {generatingInvoice ? (
+                                <>
+                                  <div className="mr-2 w-4 h-4 rounded-full border-b-2 border-blue-600 animate-spin"></div>
+                                  جاري إنشاء الفاتورة...
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="mr-2 w-4 h-4" />
+                                  استخراج فاتورة التسجيل
+                                </>
+                              )}
+                            </Button>
+                          </div>
 
-                              // التحقق من أن الإجمالي ليس 0
-                              const totalAmount = calculateTotalAmount();
-                              if (totalAmount <= 0) {
-                                toast.error('لا يمكن التسجيل - المبلغ الإجمالي يجب أن يكون أكبر من 0');
-                                return;
-                              }
+                          {/* Submit Button */}
+                          <div className="flex flex-col gap-4 sm:flex-row">
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "flex-1",
+                                buttonStyles.outline,
+                                "border-rose-200 text-rose-700 hover:text-rose-800 hover:border-rose-300"
+                              )}
+                              onClick={() => {
+                                setSelectedPlayers([]);
+                                setSelectedTournament(null);
+                                setRegistrationData({
+                                  tournamentId: '',
+                                  selectedPlayers: [],
+                                  paymentMethod: 'later',
+                                  notes: ''
+                                });
+                              }}
+                            >
+                              إلغاء التسجيل
+                            </Button>
 
-                              setSubmitting(true);
-                              try {
-                                // Check for duplicate players
-                                const playerIds = selectedPlayers.map(player => player.id);
-                                const duplicatePlayerIds = await checkForDuplicatePlayers(selectedTournament.id, playerIds);
+                            <Button
+                              className={cn(
+                                "flex-1 shadow-lg transition-transform duration-200",
+                                buttonStyles.accent,
+                                "hover:scale-[1.02]"
+                              )}
+                              disabled={submitting || selectedPlayers.length === 0 || calculateTotalAmount() <= 0}
+                              onClick={async () => {
+                                console.log('🔵 [Submit] Button clicked - Starting registration process');
 
-                                if (duplicatePlayerIds.length > 0) {
-                                  const duplicatePlayers = selectedPlayers.filter(player =>
-                                    duplicatePlayerIds.includes(player.id)
-                                  );
-
-                                  setDuplicatePlayers(duplicatePlayers);
-                                  setShowDuplicateWarning(true);
-                                  setSubmitting(false);
+                                // Check if user is authenticated
+                                if (!user || !userData) {
+                                  console.log('❌ [Submit] User not authenticated');
+                                  toast.error('يجب تسجيل الدخول أولاً لإكمال التسجيل');
+                                  router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
                                   return;
                                 }
 
-                                // Save registration data to database
-                                const registrationToSave = {
-                                  tournamentId: selectedTournament.id,
-                                  tournamentName: selectedTournament.name,
-                                  players: selectedPlayers.map(player => ({
-                                    id: player.id,
-                                    name: getPlayerDisplayName(player),
-                                    email: player.email,
-                                    phone: player.phone,
-                                    birth_date: player.birth_date,
-                                    position: player.primary_position || player.position,
-                                    club: player.club_id,
-                                    avatar: player.profile_image || player.avatar
-                                  })),
-                                  // Account information
-                                  accountType: userData.accountType,
-                                  accountName: userData.name,
-                                  accountEmail: userData.email,
-                                  accountPhone: userData.phone,
-                                  organizationName: userData.organizationName || userData.name,
-                                  organizationType: userData.organizationType || userData.accountType,
-                                  // Payment information
-                                  paymentMethod: registrationData.paymentMethod,
-                                  mobileWalletProvider: mobileWalletProvider,
-                                  mobileWalletNumber: '01017799580',
-                                  receiptUrl: mobileWalletReceiptUrl || (mobileWalletUploadSuccess ? 'uploaded' : ''),
-                                  receiptNumber: mobileWalletReceiptNumber,
-                                  paymentAmount: calculateTotalAmount(),
-                                  paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
-                                  // Geidea payment data (if card payment)
-                                  geideaOrderId: geideaPaymentData?.orderId || geideaPaymentData?.merchantReferenceId || null,
-                                  geideaTransactionId: geideaPaymentData?.transactionId || null,
-                                  geideaPaymentData: geideaPaymentData ? JSON.stringify(geideaPaymentData) : null,
-                                  // Additional info
-                                  notes: registrationData.notes,
-                                  registrationType: userProfile?.type === 'individual' ? 'individual' : 'club',
-                                  registrationDate: new Date(),
-                                  status: 'pending',
-                                  createdBy: user.uid
-                                };
+                                console.log('✅ [Submit] User authenticated:', { userId: user.uid, email: user.email });
 
-                                // Save to tournamentRegistrations collection
-                                const registrationsRef = collection(db, 'tournamentRegistrations');
-                                const registrationDocRef = await addDoc(registrationsRef, registrationToSave);
-                                
-                                console.log('✅ Registration saved to tournamentRegistrations:', {
-                                  docId: registrationDocRef.id,
-                                  tournamentId: selectedTournament.id,
-                                  tournamentName: selectedTournament.name,
-                                  playersCount: selectedPlayers.length,
+                                // التحقق من جميع التبويبات قبل التسجيل
+                                console.log('🔍 [Submit] Validating tabs...');
+                                const playersValid = validatePlayersTab();
+                                const paymentValid = validatePaymentTab();
+                                const reviewValid = validateReviewTab();
+
+                                console.log('📊 [Submit] Validation results:', {
+                                  playersValid,
+                                  paymentValid,
+                                  reviewValid,
+                                  selectedTournament: selectedTournament?.name,
+                                  selectedPlayersCount: selectedPlayers.length,
                                   paymentMethod: registrationData.paymentMethod,
-                                  paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
-                                  receiptUrl: mobileWalletReceiptUrl || 'N/A'
+                                  notes: registrationData.notes,
+                                  mobileWalletProvider,
+                                  mobileWalletUploadSuccess,
+                                  geideaPaymentData: !!geideaPaymentData,
+                                  hasGeideaOrderId: !!geideaPaymentData?.orderId
                                 });
 
-                                // Also save individual player registrations for backward compatibility
-                                for (const player of selectedPlayers) {
-                                  const individualRegistration = {
+                                if (!playersValid || !paymentValid || !reviewValid) {
+                                  console.log('❌ [Submit] Validation failed - stopping registration');
+                                  return;
+                                }
+
+                                console.log('✅ [Submit] All validations passed - proceeding with registration');
+
+                                // التحقق من أن الإجمالي ليس 0
+                                const totalAmount = calculateTotalAmount();
+                                if (totalAmount <= 0) {
+                                  toast.error('لا يمكن التسجيل - المبلغ الإجمالي يجب أن يكون أكبر من 0');
+                                  return;
+                                }
+
+                                setSubmitting(true);
+                                try {
+                                  // Check for duplicate players
+                                  const playerIds = selectedPlayers.map(player => player.id);
+                                  const duplicatePlayerIds = await checkForDuplicatePlayers(selectedTournament.id, playerIds);
+
+                                  if (duplicatePlayerIds.length > 0) {
+                                    const duplicatePlayers = selectedPlayers.filter(player =>
+                                      duplicatePlayerIds.includes(player.id)
+                                    );
+
+                                    setDuplicatePlayers(duplicatePlayers);
+                                    setShowDuplicateWarning(true);
+                                    setSubmitting(false);
+                                    return;
+                                  }
+
+                                  // Save registration data to database
+                                  const registrationToSave = {
                                     tournamentId: selectedTournament.id,
-                                    playerId: player.id,
-                                    playerName: getPlayerDisplayName(player),
-                                    playerEmail: player.email,
-                                    playerPhone: player.phone,
-                                    playerBirthDate: player.birth_date,
-                                    playerClub: player.club_id,
-                                    playerPosition: player.primary_position || player.position,
-                                    registrationDate: new Date(),
-                                    paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
-                                    paymentAmount: calculateTotalAmount(),
-                                    notes: registrationData.notes,
-                                    registrationType: userProfile?.type === 'individual' ? 'individual' : 'club',
-                                    // New fields
+                                    tournamentName: selectedTournament.name,
+                                    players: selectedPlayers.map(player => ({
+                                      id: player.id,
+                                      name: getPlayerDisplayName(player),
+                                      email: player.email,
+                                      phone: player.phone,
+                                      birth_date: player.birth_date,
+                                      position: player.primary_position || player.position,
+                                      club: player.club_id,
+                                      avatar: player.profile_image || player.avatar
+                                    })),
+                                    // Account information
                                     accountType: userData.accountType,
                                     accountName: userData.name,
                                     accountEmail: userData.email,
                                     accountPhone: userData.phone,
                                     organizationName: userData.organizationName || userData.name,
                                     organizationType: userData.organizationType || userData.accountType,
+                                    // Payment information
                                     paymentMethod: registrationData.paymentMethod,
                                     mobileWalletProvider: mobileWalletProvider,
                                     mobileWalletNumber: '01017799580',
                                     receiptUrl: mobileWalletReceiptUrl || (mobileWalletUploadSuccess ? 'uploaded' : ''),
                                     receiptNumber: mobileWalletReceiptNumber,
+                                    paymentAmount: calculateTotalAmount(),
+                                    paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
                                     // Geidea payment data (if card payment)
                                     geideaOrderId: geideaPaymentData?.orderId || geideaPaymentData?.merchantReferenceId || null,
                                     geideaTransactionId: geideaPaymentData?.transactionId || null,
                                     geideaPaymentData: geideaPaymentData ? JSON.stringify(geideaPaymentData) : null,
-                                    clubName: userData.organizationName || userData.name,
-                                    clubContact: userData.phone
+                                    // Additional info
+                                    notes: registrationData.notes,
+                                    registrationType: userProfile?.type === 'individual' ? 'individual' : 'club',
+                                    registrationDate: new Date(),
+                                    status: 'pending',
+                                    createdBy: user.uid
                                   };
 
-                                  const individualRegistrationsRef = collection(db, 'tournament_registrations');
-                                  const individualDocRef = await addDoc(individualRegistrationsRef, individualRegistration);
-                                  
-                                  console.log('✅ Individual registration saved:', {
-                                    docId: individualDocRef.id,
-                                    playerName: getPlayerDisplayName(player),
-                                    tournamentId: selectedTournament.id
+                                  // Save to tournamentRegistrations collection
+                                  const registrationsRef = collection(db, 'tournamentRegistrations');
+                                  const registrationDocRef = await addDoc(registrationsRef, registrationToSave);
+
+                                  console.log('✅ Registration saved to tournamentRegistrations:', {
+                                    docId: registrationDocRef.id,
+                                    tournamentId: selectedTournament.id,
+                                    tournamentName: selectedTournament.name,
+                                    playersCount: selectedPlayers.length,
+                                    paymentMethod: registrationData.paymentMethod,
+                                    paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
+                                    receiptUrl: mobileWalletReceiptUrl || 'N/A'
                                   });
+
+                                  // Also save individual player registrations for backward compatibility
+                                  for (const player of selectedPlayers) {
+                                    const individualRegistration = {
+                                      tournamentId: selectedTournament.id,
+                                      playerId: player.id,
+                                      playerName: getPlayerDisplayName(player),
+                                      playerEmail: player.email,
+                                      playerPhone: player.phone,
+                                      playerBirthDate: player.birth_date,
+                                      playerClub: player.club_id,
+                                      playerPosition: player.primary_position || player.position,
+                                      registrationDate: new Date(),
+                                      paymentStatus: (registrationData.paymentMethod === 'later' || registrationData.paymentMethod === 'office' || registrationData.paymentMethod === 'mobile_wallet') ? 'pending' : 'paid',
+                                      paymentAmount: calculateTotalAmount(),
+                                      notes: registrationData.notes,
+                                      registrationType: userProfile?.type === 'individual' ? 'individual' : 'club',
+                                      // New fields
+                                      accountType: userData.accountType,
+                                      accountName: userData.name,
+                                      accountEmail: userData.email,
+                                      accountPhone: userData.phone,
+                                      organizationName: userData.organizationName || userData.name,
+                                      organizationType: userData.organizationType || userData.accountType,
+                                      paymentMethod: registrationData.paymentMethod,
+                                      mobileWalletProvider: mobileWalletProvider,
+                                      mobileWalletNumber: '01017799580',
+                                      receiptUrl: mobileWalletReceiptUrl || (mobileWalletUploadSuccess ? 'uploaded' : ''),
+                                      receiptNumber: mobileWalletReceiptNumber,
+                                      // Geidea payment data (if card payment)
+                                      geideaOrderId: geideaPaymentData?.orderId || geideaPaymentData?.merchantReferenceId || null,
+                                      geideaTransactionId: geideaPaymentData?.transactionId || null,
+                                      geideaPaymentData: geideaPaymentData ? JSON.stringify(geideaPaymentData) : null,
+                                      clubName: userData.organizationName || userData.name,
+                                      clubContact: userData.phone
+                                    };
+
+                                    const individualRegistrationsRef = collection(db, 'tournament_registrations');
+                                    const individualDocRef = await addDoc(individualRegistrationsRef, individualRegistration);
+
+                                    console.log('✅ Individual registration saved:', {
+                                      docId: individualDocRef.id,
+                                      playerName: getPlayerDisplayName(player),
+                                      tournamentId: selectedTournament.id
+                                    });
+                                  }
+
+                                  console.log('✅ All registrations saved successfully!');
+
+                                  // Generate invoice HTML for sharing
+                                  const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
+                                  const invoiceHtml = generateInvoiceHTML(invoiceNumber);
+
+                                  // Store invoice data for sharing
+                                  const invoiceData = {
+                                    invoiceNumber,
+                                    tournamentName: selectedTournament.name,
+                                    totalAmount: calculateTotalAmount(),
+                                    currency: selectedTournament.currency || 'EGP',
+                                    playersCount: selectedPlayers.length,
+                                    registrationDate: new Date().toLocaleDateString('ar-EG'),
+                                    html: invoiceHtml
+                                  };
+
+                                  // Save invoice data to window for sharing functions
+                                  (window as any).lastInvoiceData = invoiceData;
+
+                                  toast.success('تم التسجيل بنجاح في البطولة!');
+
+                                  // Set registered players and show success state
+                                  setRegisteredPlayers([...selectedPlayers]);
+                                  setRegistrationSuccess(true);
+
+                                } catch (error) {
+                                  console.error('Registration error:', error);
+                                  toast.error('فشل في التسجيل، يرجى المحاولة مرة أخرى');
+                                } finally {
+                                  setSubmitting(false);
                                 }
-
-                                console.log('✅ All registrations saved successfully!');
-                                
-                                // Generate invoice HTML for sharing
-                                const invoiceNumber = `TOUR-${selectedTournament.id}-${Date.now()}`;
-                                const invoiceHtml = generateInvoiceHTML(invoiceNumber);
-                                
-                                // Store invoice data for sharing
-                                const invoiceData = {
-                                  invoiceNumber,
-                                  tournamentName: selectedTournament.name,
-                                  totalAmount: calculateTotalAmount(),
-                                  currency: selectedTournament.currency || 'EGP',
-                                  playersCount: selectedPlayers.length,
-                                  registrationDate: new Date().toLocaleDateString('ar-EG'),
-                                  html: invoiceHtml
-                                };
-                                
-                                // Save invoice data to window for sharing functions
-                                (window as any).lastInvoiceData = invoiceData;
-                                
-                                toast.success('تم التسجيل بنجاح في البطولة!');
-
-                                // Set registered players and show success state
-                                setRegisteredPlayers([...selectedPlayers]);
-                                setRegistrationSuccess(true);
-
-                              } catch (error) {
-                                console.error('Registration error:', error);
-                                toast.error('فشل في التسجيل، يرجى المحاولة مرة أخرى');
-                              } finally {
-                                setSubmitting(false);
-                              }
-                            }}
-                          >
-                            {submitting ? (
-                              <>
-                                <div className="mr-2 w-5 h-5 rounded-full border-b-2 border-white animate-spin"></div>
-                                جاري التسجيل...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="mr-2 w-5 h-5" />
-                                تأكيد التسجيل
-                              </>
-                            )}
-                          </Button>
+                              }}
+                            >
+                              {submitting ? (
+                                <>
+                                  <div className="mr-2 w-5 h-5 rounded-full border-b-2 border-white animate-spin"></div>
+                                  جاري التسجيل...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="mr-2 w-5 h-5" />
+                                  تأكيد التسجيل
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Navigation Buttons */}
-                      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                        <Button
-                          onClick={goToPreviousTab}
-                          variant="outline"
-                          className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
-                        >
-                          <ArrowLeft className="ml-2 w-4 h-4" />
-                          السابق
-                        </Button>
-                        <div></div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Trophy className="mx-auto mb-4 w-16 h-16 text-gray-400" />
-                  <h3 className="mb-2 text-xl font-semibold text-gray-900">اختر بطولة للتسجيل</h3>
-                  <p className="text-gray-600">يرجى اختيار بطولة من القائمة الجانبية لبدء عملية التسجيل</p>
-                </CardContent>
-              </Card>
-            )}
+                        {/* Navigation Buttons */}
+                        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                          <Button
+                            onClick={goToPreviousTab}
+                            variant="outline"
+                            className={cn(buttonStyles.outline, "gap-2 text-slate-600")}
+                          >
+                            <ArrowLeft className="ml-2 w-4 h-4" />
+                            السابق
+                          </Button>
+                          <div></div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Trophy className="mx-auto mb-4 w-16 h-16 text-gray-400" />
+                    <h3 className="mb-2 text-xl font-semibold text-gray-900">اختر بطولة للتسجيل</h3>
+                    <p className="text-gray-600">يرجى اختيار بطولة من القائمة الجانبية لبدء عملية التسجيل</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    {/* Geidea Payment Modal - For Card Payment */}
-    <GeideaPaymentModal
-      visible={showPaymentModal}
-      onRequestClose={() => setShowPaymentModal(false)}
-      onPaymentSuccess={handlePaymentSuccess}
-      onPaymentFailure={handlePaymentFailure}
-      amount={calculateTotalAmount()}
-      currency="EGP"
-      title={`دفع بالكارت البنكي - ${selectedTournament?.name}`}
-      description={`دفع رسوم التسجيل للبطولة: ${selectedTournament?.name} - فيزا، ماستركارد، جيديا`}
-      customerEmail={userProfile?.email || ''}
-      merchantReferenceId={`EL7LMTOURNAMENT_${selectedTournament?.id}_${Date.now()}`}
-      returnUrl={typeof window !== 'undefined' ? '/tournaments/unified-registration?payment=success' : undefined}
-      callbackUrl={undefined}
-    />
+      {/* Geidea Payment Modal - For Card Payment */}
+      <GeideaPaymentModal
+        visible={showPaymentModal}
+        onRequestClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentFailure={handlePaymentFailure}
+        amount={calculateTotalAmount()}
+        currency="EGP"
+        title={`دفع بالكارت البنكي - ${selectedTournament?.name}`}
+        description={`دفع رسوم التسجيل للبطولة: ${selectedTournament?.name} - فيزا، ماستركارد، جيديا`}
+        customerEmail={userProfile?.email || ''}
+        merchantReferenceId={`EL7LMTOURNAMENT_${selectedTournament?.id}_${Date.now()}`}
+        returnUrl={typeof window !== 'undefined' ? '/tournaments/unified-registration?payment=success' : undefined}
+        callbackUrl={undefined}
+      />
 
-    {/* Mobile Wallet Payment Modal */}
-    {showMobileWalletModal && (
-      <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
-        <div className="p-6 mx-4 w-full max-w-md bg-white rounded-xl border border-emerald-200 shadow-2xl">
-          <h3 className="mb-4 text-lg font-semibold text-emerald-700">الدفع بالمحفظة الإلكترونية</h3>
+      {/* Mobile Wallet Payment Modal */}
+      {showMobileWalletModal && (
+        <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
+          <div className="p-6 mx-4 w-full max-w-md bg-white rounded-xl border border-emerald-200 shadow-2xl">
+            <h3 className="mb-4 text-lg font-semibold text-emerald-700">الدفع بالمحفظة الإلكترونية</h3>
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="walletProvider">مزود المحفظة الإلكترونية *</Label>
-              <select
-                id="walletProvider"
-                value={mobileWalletProvider}
-                onChange={(e) => setMobileWalletProvider(e.target.value as 'vodafone' | 'orange' | 'etisalat' | 'instapay')}
-                className="p-3 mt-1 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                required
-                aria-label="اختر مزود المحفظة الإلكترونية"
-              >
-                <option value="">اختر مزود المحفظة</option>
-                <option value="vodafone">فودافون كاش</option>
-                <option value="orange">أورنج</option>
-                <option value="etisalat">اتصالات</option>
-                <option value="instapay">انستا باي</option>
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="walletNumber">رقم المحفظة الإلكترونية *</Label>
-              <Input
-                id="walletNumber"
-                type="tel"
-                value="01017799580"
-                readOnly
-                className="mt-1 bg-gray-100 cursor-not-allowed"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                رقم المحفظة ثابت لجميع الدول
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="walletNotes">ملاحظات إضافية</Label>
-              <Input
-                id="walletNotes"
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder="أي ملاحظات إضافية..."
-                className="mt-1"
-              />
-            </div>
-
-            {/* رفع إيصال المحفظة الإلكترونية */}
-            <div className="pt-4 border-t border-gray-200">
-              <h4 className="mb-3 font-medium text-emerald-700 text-md">رفع إيصال الدفع</h4>
-
-              {!mobileWalletUploadSuccess ? (
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="walletReceiptNumber">رقم الإيصال *</Label>
-                    <Input
-                      id="walletReceiptNumber"
-                      value={mobileWalletReceiptNumber}
-                      onChange={(e) => setMobileWalletReceiptNumber(e.target.value)}
-                      placeholder="أدخل رقم الإيصال..."
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="walletReceiptFile">ملف الإيصال *</Label>
-                    <Input
-                      id="walletReceiptFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={handleMobileWalletReceiptFileSelect}
-                      className="mt-1"
-                      required
-                    />
-                    {mobileWalletReceipt && (
-                      <p className="mt-1 text-sm text-emerald-600">
-                        تم اختيار: {mobileWalletReceipt.name}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* شريط التقدم */}
-                  {mobileWalletUploading && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-emerald-600">
-                        <span>جاري رفع الإيصال...</span>
-                        <span>{mobileWalletUploadProgress}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-200 rounded-full">
-                        <div
-                          className={`bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all duration-300 ${
-                            mobileWalletUploadProgress === 0 ? 'w-0' :
-                            mobileWalletUploadProgress <= 25 ? 'w-1/4' :
-                            mobileWalletUploadProgress <= 50 ? 'w-1/2' :
-                            mobileWalletUploadProgress <= 75 ? 'w-3/4' : 'w-full'
-                          }`}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <div className="flex gap-2 items-center text-emerald-800">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">تم رفع الإيصال بنجاح!</span>
-                  </div>
-                  <p className="mt-2 text-sm text-emerald-600">
-                    رقم الإيصال: <span className="font-medium">{mobileWalletReceiptNumber}</span>
-                  </p>
-                  <p className="text-sm text-emerald-600">
-                    سيتم مراجعة الإيصال والتأكيد خلال 24 ساعة
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Info */}
-            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium text-emerald-700">المبلغ المطلوب:</span>
-                <span className="text-lg font-bold text-emerald-800">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="walletProvider">مزود المحفظة الإلكترونية *</Label>
+                <select
+                  id="walletProvider"
+                  value={mobileWalletProvider}
+                  onChange={(e) => setMobileWalletProvider(e.target.value as 'vodafone' | 'orange' | 'etisalat' | 'instapay')}
+                  className="p-3 mt-1 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  required
+                  aria-label="اختر مزود المحفظة الإلكترونية"
+                >
+                  <option value="">اختر مزود المحفظة</option>
+                  <option value="vodafone">فودافون كاش</option>
+                  <option value="orange">أورنج</option>
+                  <option value="etisalat">اتصالات</option>
+                  <option value="instapay">انستا باي</option>
+                </select>
               </div>
-              <p className="text-sm text-emerald-600">
-                سيتم إرسال طلب الدفع إلى {mobileWalletProvider} على رقم 01017799580
-              </p>
-            </div>
 
-            <div className="flex gap-3">
-              {!mobileWalletUploadSuccess ? (
-                <>
-                  <Button
-                    onClick={handleMobileWalletReceiptUpload}
-                    disabled={!mobileWalletProvider || !mobileWalletReceipt || !mobileWalletReceiptNumber.trim() || mobileWalletUploading}
-                    className={cn(
-                      buttonStyles.success,
-                      "flex-1 shadow-lg disabled:opacity-50"
+              <div>
+                <Label htmlFor="walletNumber">رقم المحفظة الإلكترونية *</Label>
+                <Input
+                  id="walletNumber"
+                  type="tel"
+                  value="01017799580"
+                  readOnly
+                  className="mt-1 bg-gray-100 cursor-not-allowed"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  رقم المحفظة ثابت لجميع الدول
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="walletNotes">ملاحظات إضافية</Label>
+                <Input
+                  id="walletNotes"
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="أي ملاحظات إضافية..."
+                  className="mt-1"
+                />
+              </div>
+
+              {/* رفع إيصال المحفظة الإلكترونية */}
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="mb-3 font-medium text-emerald-700 text-md">رفع إيصال الدفع</h4>
+
+                {!mobileWalletUploadSuccess ? (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="walletReceiptNumber">رقم الإيصال *</Label>
+                      <Input
+                        id="walletReceiptNumber"
+                        value={mobileWalletReceiptNumber}
+                        onChange={(e) => setMobileWalletReceiptNumber(e.target.value)}
+                        placeholder="أدخل رقم الإيصال..."
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="walletReceiptFile">ملف الإيصال *</Label>
+                      <Input
+                        id="walletReceiptFile"
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleMobileWalletReceiptFileSelect}
+                        className="mt-1"
+                        required
+                      />
+                      {mobileWalletReceipt && (
+                        <p className="mt-1 text-sm text-emerald-600">
+                          تم اختيار: {mobileWalletReceipt.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* شريط التقدم */}
+                    {mobileWalletUploading && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm text-emerald-600">
+                          <span>جاري رفع الإيصال...</span>
+                          <span>{mobileWalletUploadProgress}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full">
+                          <div
+                            className={`bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all duration-300 ${mobileWalletUploadProgress === 0 ? 'w-0' :
+                                mobileWalletUploadProgress <= 25 ? 'w-1/4' :
+                                  mobileWalletUploadProgress <= 50 ? 'w-1/2' :
+                                    mobileWalletUploadProgress <= 75 ? 'w-3/4' : 'w-full'
+                              }`}
+                          ></div>
+                        </div>
+                      </div>
                     )}
-                  >
-                    {mobileWalletUploading ? 'جاري الرفع...' : 'رفع الإيصال'}
-                  </Button>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <div className="flex gap-2 items-center text-emerald-800">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-medium">تم رفع الإيصال بنجاح!</span>
+                    </div>
+                    <p className="mt-2 text-sm text-emerald-600">
+                      رقم الإيصال: <span className="font-medium">{mobileWalletReceiptNumber}</span>
+                    </p>
+                    <p className="text-sm text-emerald-600">
+                      سيتم مراجعة الإيصال والتأكيد خلال 24 ساعة
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Info */}
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-emerald-700">المبلغ المطلوب:</span>
+                  <span className="text-lg font-bold text-emerald-800">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</span>
+                </div>
+                <p className="text-sm text-emerald-600">
+                  سيتم إرسال طلب الدفع إلى {mobileWalletProvider} على رقم 01017799580
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                {!mobileWalletUploadSuccess ? (
+                  <>
+                    <Button
+                      onClick={handleMobileWalletReceiptUpload}
+                      disabled={!mobileWalletProvider || !mobileWalletReceipt || !mobileWalletReceiptNumber.trim() || mobileWalletUploading}
+                      className={cn(
+                        buttonStyles.success,
+                        "flex-1 shadow-lg disabled:opacity-50"
+                      )}
+                    >
+                      {mobileWalletUploading ? 'جاري الرفع...' : 'رفع الإيصال'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowMobileWalletModal(false);
+                        setRegistrationData(prev => ({ ...prev, paymentMethod: 'later' }));
+                        setMobileWalletNumber('');
+                        setMobileWalletProvider('');
+                        setPaymentNotes('');
+                        setMobileWalletReceipt(null);
+                        setMobileWalletReceiptNumber('');
+                        setMobileWalletReceiptUrl('');
+                        setMobileWalletUploadSuccess(false);
+                      }}
+                      className={cn(buttonStyles.outline, "flex-1 text-slate-600")}
+                    >
+                      إلغاء
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    variant="outline"
                     onClick={() => {
                       setShowMobileWalletModal(false);
-                      setRegistrationData(prev => ({ ...prev, paymentMethod: 'later' }));
                       setMobileWalletNumber('');
                       setMobileWalletProvider('');
                       setPaymentNotes('');
                       setMobileWalletReceipt(null);
                       setMobileWalletReceiptNumber('');
-                      setMobileWalletReceiptUrl('');
                       setMobileWalletUploadSuccess(false);
                     }}
-                    className={cn(buttonStyles.outline, "flex-1 text-slate-600")}
+                    className={cn(buttonStyles.success, "w-full shadow-lg")}
                   >
-                    إلغاء
+                    إغلاق
                   </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={() => {
-                    setShowMobileWalletModal(false);
-                    setMobileWalletNumber('');
-                    setMobileWalletProvider('');
-                    setPaymentNotes('');
-                    setMobileWalletReceipt(null);
-                    setMobileWalletReceiptNumber('');
-                    setMobileWalletUploadSuccess(false);
-                  }}
-                  className={cn(buttonStyles.success, "w-full shadow-lg")}
-                >
-                  إغلاق
-                </Button>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Registered Players Table - Always visible when players are selected */}
-    {selectedPlayers.length > 0 && (
-      <div className="mt-8 space-y-6">
-        {registrationSuccess && (
-          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+      {/* Registered Players Table - Always visible when players are selected */}
+      {selectedPlayers.length > 0 && (
+        <div className="mt-8 space-y-6">
+          {registrationSuccess && (
+            <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+              <CardHeader>
+                <CardTitle className="flex gap-2 items-center text-green-800">
+                  <CheckCircle className="w-6 h-6" />
+                  تم التسجيل بنجاح في البطولة
+                </CardTitle>
+                <CardDescription className="text-green-700">
+                  تم تسجيل {selectedPlayers.length} لاعب في البطولة بنجاح
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-700">
+                    يمكنك إرسال فاتورة التسجيل عبر الواتساب أو البريد الإلكتروني
+                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button
+                      onClick={sendInvoiceViaWhatsApp}
+                      className={cn(buttonStyles.success, "flex-1 gap-2")}
+                      disabled={!userProfile?.phone}
+                    >
+                      <MessageSquare className="mr-2 w-4 h-4" />
+                      إرسال عبر الواتساب
+                    </Button>
+                    <Button
+                      onClick={sendInvoiceViaEmail}
+                      variant="outline"
+                      className={cn(
+                        buttonStyles.outline,
+                        "flex-1 gap-2 border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
+                      )}
+                      disabled={!userProfile?.email}
+                    >
+                      <Mail className="mr-2 w-4 h-4" />
+                      إرسال عبر الإيميل
+                    </Button>
+                    <Button
+                      onClick={generateTournamentInvoice}
+                      variant="outline"
+                      className={cn(buttonStyles.outline, "flex-1 gap-2 text-slate-700")}
+                    >
+                      <FileText className="mr-2 w-4 h-4" />
+                      تحميل الفاتورة
+                    </Button>
+                  </div>
+                  {(!userProfile?.phone || !userProfile?.email) && (
+                    <p className="text-xs text-gray-500">
+                      {!userProfile?.phone && '⚠️ رقم الهاتف غير متوفر لإرسال الواتساب. '}
+                      {!userProfile?.email && '⚠️ البريد الإلكتروني غير متوفر لإرسال الإيميل.'}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
             <CardHeader>
-              <CardTitle className="flex gap-2 items-center text-green-800">
-                <CheckCircle className="w-6 h-6" />
-                تم التسجيل بنجاح في البطولة
-              </CardTitle>
-              <CardDescription className="text-green-700">
-                تم تسجيل {selectedPlayers.length} لاعب في البطولة بنجاح
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex gap-2 items-center">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  اللاعبين المحددين للتسجيل
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={printRegisteredPlayers}
+                    variant="outline"
+                    className={cn(buttonStyles.outline, "flex gap-2 items-center text-slate-700")}
+                  >
+                    <Printer className="w-4 h-4" />
+                    طباعة التقرير
+                  </Button>
+                  {registrationSuccess && (
+                    <Button
+                      onClick={() => {
+                        setRegistrationSuccess(false);
+                        setRegisteredPlayers([]);
+                        setSelectedPlayers([]);
+                        setSelectedTournament(null);
+                        setRegistrationData({
+                          tournamentId: '',
+                          selectedPlayers: [],
+                          paymentMethod: 'later',
+                          notes: ''
+                        });
+                      }}
+                      variant="outline"
+                      className={cn(
+                        buttonStyles.outline,
+                        "flex gap-2 items-center border-purple-200 text-purple-700 hover:text-purple-800 hover:border-purple-300"
+                      )}
+                    >
+                      <Plus className="w-4 h-4" />
+                      تسجيل جديد
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700">
-                  يمكنك إرسال فاتورة التسجيل عبر الواتساب أو البريد الإلكتروني
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button
-                    onClick={sendInvoiceViaWhatsApp}
-                    className={cn(buttonStyles.success, "flex-1 gap-2")}
-                    disabled={!userProfile?.phone}
-                  >
-                    <MessageSquare className="mr-2 w-4 h-4" />
-                    إرسال عبر الواتساب
-                  </Button>
-                  <Button
-                    onClick={sendInvoiceViaEmail}
-                    variant="outline"
-                    className={cn(
-                      buttonStyles.outline,
-                      "flex-1 gap-2 border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300"
-                    )}
-                    disabled={!userProfile?.email}
-                  >
-                    <Mail className="mr-2 w-4 h-4" />
-                    إرسال عبر الإيميل
-                  </Button>
-                  <Button
-                    onClick={generateTournamentInvoice}
-                    variant="outline"
-                    className={cn(buttonStyles.outline, "flex-1 gap-2 text-slate-700")}
-                  >
-                    <FileText className="mr-2 w-4 h-4" />
-                    تحميل الفاتورة
-                  </Button>
+              {selectedPlayers.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <Users className="mx-auto mb-4 w-12 h-12 text-gray-300" />
+                  <p>لم يتم تحديد أي لاعبين للتسجيل بعد</p>
+                  <p className="text-sm">يرجى اختيار البطولة واللاعبين من التبويبات أعلاه</p>
                 </div>
-                {(!userProfile?.phone || !userProfile?.email) && (
-                  <p className="text-xs text-gray-500">
-                    {!userProfile?.phone && '⚠️ رقم الهاتف غير متوفر لإرسال الواتساب. '}
-                    {!userProfile?.email && '⚠️ البريد الإلكتروني غير متوفر لإرسال الإيميل.'}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              ) : (
+                <>
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <table className="w-full border-collapse border border-gray-300 min-w-[600px]">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">#</th>
+                          <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">اسم اللاعب</th>
+                          <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm sm:table-cell">المركز</th>
+                          <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm md:table-cell">تاريخ الميلاد</th>
+                          <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">رقم الهاتف</th>
+                          <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">البريد الإلكتروني</th>
+                          <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPlayers.map((player, index) => (
+                          <tr key={player.id} className="hover:bg-gray-50">
+                            <td className="px-2 py-3 text-xs text-center border border-gray-300 sm:px-4 sm:text-sm">{index + 1}</td>
+                            <td className="px-2 py-3 border border-gray-300 sm:px-4">
+                              <div className="flex gap-2 items-center sm:gap-3">
+                                <Avatar className="w-6 h-6 sm:h-8 sm:w-8">
+                                  <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} alt={getPlayerDisplayName(player)} />
+                                  <AvatarFallback className="text-xs text-blue-600 bg-blue-100">
+                                    {getPlayerDisplayName(player).charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs font-medium sm:text-sm">{getPlayerDisplayName(player)}</span>
+                              </div>
+                            </td>
+                            <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm sm:table-cell">{player.primary_position || player.position || 'غير محدد'}</td>
+                            <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm md:table-cell">{formatBirthDate(player.birth_date)}</td>
+                            <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">{player.phone || 'غير محدد'}</td>
+                            <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">{player.email || 'غير محدد'}</td>
+                            <td className="px-2 py-3 border border-gray-300 sm:px-4">
+                              <div className="flex gap-1 sm:gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditPlayer(player)}
+                                  className={cn(
+                                    buttonStyles.outline,
+                                    "p-0 w-6 h-6 sm:h-8 sm:w-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                                  )}
+                                >
+                                  <Edit className="w-3 h-3 text-blue-600 sm:h-4 sm:w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => togglePlayerSelection(player)}
+                                  className={cn(
+                                    buttonStyles.outline,
+                                    "p-0 w-6 h-6 sm:h-8 sm:w-8 border-rose-200 text-rose-600 hover:bg-rose-50"
+                                  )}
+                                >
+                                  <span className="text-xs text-red-600">×</span>
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex gap-2 items-center">
-                <Users className="w-5 h-5 text-blue-600" />
-                اللاعبين المحددين للتسجيل
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  onClick={printRegisteredPlayers}
-                  variant="outline"
-                  className={cn(buttonStyles.outline, "flex gap-2 items-center text-slate-700")}
-                >
-                  <Printer className="w-4 h-4" />
-                  طباعة التقرير
-                </Button>
-                {registrationSuccess && (
-                  <Button
-                    onClick={() => {
-                      setRegistrationSuccess(false);
-                      setRegisteredPlayers([]);
-                      setSelectedPlayers([]);
-                      setSelectedTournament(null);
-                      setRegistrationData({
-                        tournamentId: '',
-                        selectedPlayers: [],
-                        paymentMethod: 'later',
-                        notes: ''
-                      });
-                    }}
-                    variant="outline"
-                    className={cn(
-                      buttonStyles.outline,
-                      "flex gap-2 items-center border-purple-200 text-purple-700 hover:text-purple-800 hover:border-purple-300"
-                    )}
-                  >
-                    <Plus className="w-4 h-4" />
-                    تسجيل جديد
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {selectedPlayers.length === 0 ? (
-              <div className="py-8 text-center text-gray-500">
-                <Users className="mx-auto mb-4 w-12 h-12 text-gray-300" />
-                <p>لم يتم تحديد أي لاعبين للتسجيل بعد</p>
-                <p className="text-sm">يرجى اختيار البطولة واللاعبين من التبويبات أعلاه</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
-                  <table className="w-full border-collapse border border-gray-300 min-w-[600px]">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">#</th>
-                    <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">اسم اللاعب</th>
-                    <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm sm:table-cell">المركز</th>
-                    <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm md:table-cell">تاريخ الميلاد</th>
-                    <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">رقم الهاتف</th>
-                    <th className="hidden px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">البريد الإلكتروني</th>
-                    <th className="px-2 py-3 text-xs font-semibold text-right text-gray-700 border border-gray-300 sm:px-4 sm:text-sm">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedPlayers.map((player, index) => (
-                    <tr key={player.id} className="hover:bg-gray-50">
-                      <td className="px-2 py-3 text-xs text-center border border-gray-300 sm:px-4 sm:text-sm">{index + 1}</td>
-                      <td className="px-2 py-3 border border-gray-300 sm:px-4">
-                        <div className="flex gap-2 items-center sm:gap-3">
-                          <Avatar className="w-6 h-6 sm:h-8 sm:w-8">
-                            <AvatarImage src={getSafeAvatarUrl(player.profile_image || player.avatar)} alt={getPlayerDisplayName(player)} />
-                            <AvatarFallback className="text-xs text-blue-600 bg-blue-100">
-                              {getPlayerDisplayName(player).charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium sm:text-sm">{getPlayerDisplayName(player)}</span>
-                        </div>
-                      </td>
-                      <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm sm:table-cell">{player.primary_position || player.position || 'غير محدد'}</td>
-                      <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm md:table-cell">{formatBirthDate(player.birth_date)}</td>
-                      <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">{player.phone || 'غير محدد'}</td>
-                      <td className="hidden px-2 py-3 text-xs border border-gray-300 sm:px-4 sm:text-sm lg:table-cell">{player.email || 'غير محدد'}</td>
-                      <td className="px-2 py-3 border border-gray-300 sm:px-4">
-                        <div className="flex gap-1 sm:gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditPlayer(player)}
-                            className={cn(
-                              buttonStyles.outline,
-                              "p-0 w-6 h-6 sm:h-8 sm:w-8 border-blue-200 text-blue-600 hover:bg-blue-50"
-                            )}
-                          >
-                            <Edit className="w-3 h-3 text-blue-600 sm:h-4 sm:w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => togglePlayerSelection(player)}
-                            className={cn(
-                              buttonStyles.outline,
-                              "p-0 w-6 h-6 sm:h-8 sm:w-8 border-rose-200 text-rose-600 hover:bg-rose-50"
-                            )}
-                          >
-                            <span className="text-xs text-red-600">×</span>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Summary */}
-            <div className="p-4 mt-6 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{selectedPlayers.length}</div>
-                  <div className="text-sm text-blue-700">عدد اللاعبين</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{selectedTournament?.entryFee || 0} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</div>
-                  <div className="text-sm text-blue-700">رسوم التسجيل للاعب</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</div>
-                  <div className="text-sm text-blue-700">المجموع الكلي</div>
-                </div>
-              </div>
-            </div>
+                  {/* Summary */}
+                  <div className="p-4 mt-6 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{selectedPlayers.length}</div>
+                        <div className="text-sm text-blue-700">عدد اللاعبين</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{selectedTournament?.entryFee || 0} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</div>
+                        <div className="text-sm text-blue-700">رسوم التسجيل للاعب</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{calculateTotalAmount()} {getCurrencySymbol(selectedTournament?.currency || 'EGP')}</div>
+                        <div className="text-sm text-blue-700">المجموع الكلي</div>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
-          </CardContent>
-        </Card>
-      </div>
-    )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-    {/* Edit Player Modal */}
-    {showEditModal && editingPlayer && (
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex gap-2 items-center">
-              <Edit className="w-5 h-5 text-blue-600" />
-              تعديل بيانات اللاعب
-            </DialogTitle>
-            <DialogDescription>
-              قم بتعديل بيانات اللاعب: {editingPlayer.full_name || editingPlayer.name}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Edit Player Modal */}
+      {showEditModal && editingPlayer && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex gap-2 items-center">
+                <Edit className="w-5 h-5 text-blue-600" />
+                تعديل بيانات اللاعب
+              </DialogTitle>
+              <DialogDescription>
+                قم بتعديل بيانات اللاعب: {editingPlayer.full_name || editingPlayer.name}
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              <div>
-                <Label htmlFor="editName">اسم اللاعب</Label>
-                <Input
-                  id="editName"
-                  value={editingPlayer.full_name || editingPlayer.name}
-                  onChange={(e) => setEditingPlayer(prev => prev ? {
-                    ...prev,
-                    full_name: e.target.value,
-                    name: e.target.value
-                  } : null)}
-                  className="mt-1"
-                />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div>
+                  <Label htmlFor="editName">اسم اللاعب</Label>
+                  <Input
+                    id="editName"
+                    value={editingPlayer.full_name || editingPlayer.name}
+                    onChange={(e) => setEditingPlayer(prev => prev ? {
+                      ...prev,
+                      full_name: e.target.value,
+                      name: e.target.value
+                    } : null)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="editPosition">المركز</Label>
+                  <Input
+                    id="editPosition"
+                    list="positions"
+                    value={editingPlayer.primary_position || editingPlayer.position || ''}
+                    onChange={(e) => setEditingPlayer(prev => prev ? {
+                      ...prev,
+                      primary_position: e.target.value,
+                      position: e.target.value
+                    } : null)}
+                    className="mt-1"
+                    placeholder="اختر أو اكتب المركز"
+                  />
+                  <datalist id="positions">
+                    {POSITIONS.map((position) => (
+                      <option key={position} value={position} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <Label htmlFor="editBirthDate">تاريخ الميلاد</Label>
+                  <Input
+                    id="editBirthDate"
+                    type="date"
+                    value={editingPlayer.birth_date ? (typeof editingPlayer.birth_date === 'string' ? editingPlayer.birth_date.split('T')[0] : new Date(editingPlayer.birth_date).toISOString().split('T')[0]) : ''}
+                    onChange={(e) => setEditingPlayer(prev => prev ? {
+                      ...prev,
+                      birth_date: e.target.value
+                    } : null)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="editPhone">رقم الهاتف</Label>
+                  <Input
+                    id="editPhone"
+                    value={editingPlayer.phone || ''}
+                    onChange={(e) => setEditingPlayer(prev => prev ? {
+                      ...prev,
+                      phone: e.target.value
+                    } : null)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="editEmail">البريد الإلكتروني</Label>
+                  <Input
+                    id="editEmail"
+                    type="email"
+                    value={editingPlayer.email || ''}
+                    onChange={(e) => setEditingPlayer(prev => prev ? {
+                      ...prev,
+                      email: e.target.value
+                    } : null)}
+                    className="mt-1"
+                  />
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="editPosition">المركز</Label>
-                <Input
-                  id="editPosition"
-                  list="positions"
-                  value={editingPlayer.primary_position || editingPlayer.position || ''}
-                  onChange={(e) => setEditingPlayer(prev => prev ? {
-                    ...prev,
-                    primary_position: e.target.value,
-                    position: e.target.value
-                  } : null)}
-                  className="mt-1"
-                  placeholder="اختر أو اكتب المركز"
-                />
-                <datalist id="positions">
-                  {POSITIONS.map((position) => (
-                    <option key={position} value={position} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div>
-                <Label htmlFor="editBirthDate">تاريخ الميلاد</Label>
-                <Input
-                  id="editBirthDate"
-                  type="date"
-                  value={editingPlayer.birth_date ? (typeof editingPlayer.birth_date === 'string' ? editingPlayer.birth_date.split('T')[0] : new Date(editingPlayer.birth_date).toISOString().split('T')[0]) : ''}
-                  onChange={(e) => setEditingPlayer(prev => prev ? {
-                    ...prev,
-                    birth_date: e.target.value
-                  } : null)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="editPhone">رقم الهاتف</Label>
-                <Input
-                  id="editPhone"
-                  value={editingPlayer.phone || ''}
-                  onChange={(e) => setEditingPlayer(prev => prev ? {
-                    ...prev,
-                    phone: e.target.value
-                  } : null)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label htmlFor="editEmail">البريد الإلكتروني</Label>
-                <Input
-                  id="editEmail"
-                  type="email"
-                  value={editingPlayer.email || ''}
-                  onChange={(e) => setEditingPlayer(prev => prev ? {
-                    ...prev,
-                    email: e.target.value
-                  } : null)}
-                  className="mt-1"
-                />
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingPlayer(null);
+                  }}
+                  className={cn(buttonStyles.outline, "text-slate-600")}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingPlayer) {
+                      updateRegisteredPlayer(editingPlayer);
+                    }
+                  }}
+                  className={cn(buttonStyles.primary, "shadow-md")}
+                >
+                  حفظ التغييرات
+                </Button>
               </div>
             </div>
-
-            <div className="flex gap-2 justify-end pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingPlayer(null);
-                }}
-              className={cn(buttonStyles.outline, "text-slate-600")}
-              >
-                إلغاء
-              </Button>
-              <Button
-                onClick={() => {
-                  if (editingPlayer) {
-                    updateRegisteredPlayer(editingPlayer);
-                  }
-                }}
-              className={cn(buttonStyles.primary, "shadow-md")}
-              >
-                حفظ التغييرات
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Duplicate Players Warning Modal */}
       <Dialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>

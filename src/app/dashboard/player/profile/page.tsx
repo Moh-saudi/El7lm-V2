@@ -1,17 +1,20 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { getCountryByName, SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from "@/lib/firebase/config";
 import { AccountType, uploadPlayerAdditionalImage, uploadPlayerDocument, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
 import { User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Plus, Trash, X, Calendar as CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 // Types
 interface ExtendedUser extends User {
@@ -359,6 +362,8 @@ export default function PlayerProfile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
 
   // Fetch player data
   const fetchPlayerData = useCallback(async () => {
@@ -471,6 +476,23 @@ export default function PlayerProfile() {
       }
     }
   }, [isEditing, editFormData.country, editFormData.city]);
+
+  // إغلاق منتقي التاريخ عند النقر خارجه
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false);
+      }
+    };
+
+    if (showDatePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDatePicker]);
 
   // Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -772,27 +794,27 @@ export default function PlayerProfile() {
             <input
               type="file"
               accept="image/*"
-                            onChange={(e) => e.target.files?.[0] && handleProfileImageUpload(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && handleProfileImageUpload(e.target.files[0])}
               className="flex-1"
               disabled={uploadingImage}
             />
             {uploadingImage && <span className="text-blue-600">جاري الرفع...</span>}
-                         {getImageUrl(editFormData.profile_image) && (
-               <div className="relative w-24 h-24">
-                 <Image
-                   src={getImageUrl(editFormData.profile_image)!}
-                   alt="Profile"
-                   fill
-                   className="object-cover rounded-full"
-                   sizes="96px"
-                   priority
-                   onError={(e) => {
-                     console.warn('Failed to load profile image');
-                     e.currentTarget.style.display = 'none';
-                   }}
-                 />
-               </div>
-             )}
+            {getImageUrl(editFormData.profile_image) && (
+              <div className="relative w-24 h-24">
+                <Image
+                  src={getImageUrl(editFormData.profile_image)!}
+                  alt="Profile"
+                  fill
+                  className="object-cover rounded-full"
+                  sizes="96px"
+                  priority
+                  onError={(e) => {
+                    console.warn('Failed to load profile image');
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
           </div>
         ) : (
           getImageUrl(formData.profile_image) ? (
@@ -831,7 +853,99 @@ export default function PlayerProfile() {
           <label className="block text-sm font-medium text-gray-700">
             تاريخ الميلاد <span className="text-red-500">*</span>
           </label>
-          {renderField('birth_date', 'date')}
+          {isEditing ? (
+            <div className="relative" ref={datePickerRef}>
+              <div
+                className="flex items-center gap-2 p-2 mt-1 w-full text-gray-900 bg-white rounded-md border cursor-pointer hover:border-blue-500 transition-colors"
+                onClick={() => setShowDatePicker(!showDatePicker)}
+              >
+                <CalendarIcon className="w-5 h-5 text-gray-500" />
+                <span className={editFormData.birth_date ? "text-gray-900" : "text-gray-400"}>
+                  {editFormData.birth_date
+                    ? format(new Date(editFormData.birth_date), 'PPP', { locale: ar })
+                    : "اختر تاريخ الميلاد"
+                  }
+                </span>
+              </div>
+
+              {showDatePicker && (
+                <div className="absolute right-0 top-full z-50 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 p-4">
+                  {/* قوائم اختيار السنة والشهر */}
+                  <div className="flex gap-3 mb-4 justify-center">
+                    {/* اختيار السنة */}
+                    <select
+                      value={editFormData.birth_date ? new Date(editFormData.birth_date).getFullYear() : 2010}
+                      onChange={(e) => {
+                        const currentDate = editFormData.birth_date ? new Date(editFormData.birth_date) : new Date(2010, 0, 1);
+                        const newDate = new Date(currentDate);
+                        newDate.setFullYear(parseInt(e.target.value));
+                        setEditFormData(prev => ({
+                          ...prev,
+                          birth_date: format(newDate, 'yyyy-MM-dd')
+                        }));
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-md font-medium text-gray-700 hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
+                    >
+                      {Array.from({ length: new Date().getFullYear() - 3 - 1950 + 1 }, (_, i) => new Date().getFullYear() - 3 - i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+
+                    {/* اختيار الشهر */}
+                    <select
+                      value={editFormData.birth_date ? new Date(editFormData.birth_date).getMonth() : 0}
+                      onChange={(e) => {
+                        const currentDate = editFormData.birth_date ? new Date(editFormData.birth_date) : new Date(2010, 0, 1);
+                        const newDate = new Date(currentDate);
+                        newDate.setMonth(parseInt(e.target.value));
+                        setEditFormData(prev => ({
+                          ...prev,
+                          birth_date: format(newDate, 'yyyy-MM-dd')
+                        }));
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-md font-medium text-gray-700 hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
+                    >
+                      {['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'].map((month, index) => (
+                        <option key={index} value={index}>{month}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <Calendar
+                    mode="single"
+                    selected={editFormData.birth_date ? new Date(editFormData.birth_date) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setEditFormData(prev => ({
+                          ...prev,
+                          birth_date: format(date, 'yyyy-MM-dd')
+                        }));
+                        setShowDatePicker(false);
+                      }
+                    }}
+                    locale={ar}
+                    month={editFormData.birth_date ? new Date(editFormData.birth_date) : new Date(2010, 0)}
+                    onMonthChange={(month) => {
+                      setEditFormData(prev => ({
+                        ...prev,
+                        birth_date: format(month, 'yyyy-MM-dd')
+                      }));
+                    }}
+                    disabled={{
+                      after: new Date(new Date().getFullYear() - 3, 11, 31),
+                      before: new Date(1950, 0, 1)
+                    }}
+                    dir="rtl"
+                    className="rounded-lg border-0 font-arabic [--cell-size:2.5rem]"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-2 mt-1 text-gray-900 bg-gray-100 rounded-md">
+              {formData.birth_date ? format(new Date(formData.birth_date), 'PPP', { locale: ar }) : 'غير محدد'}
+            </div>
+          )}
           {formErrors.birth_date && (
             <span className="text-xs text-red-500">{formErrors.birth_date}</span>
           )}
@@ -1722,9 +1836,8 @@ export default function PlayerProfile() {
               key={star}
               type="button"
               onClick={() => isEditing && handleRatingChange(star)}
-              className={`w-5 h-5 ${
-                star <= rating ? 'text-yellow-400' : 'text-gray-300'
-              } ${isEditing ? 'hover:text-yellow-300 cursor-pointer' : 'cursor-default'}`}
+              className={`w-5 h-5 ${star <= rating ? 'text-yellow-400' : 'text-gray-300'
+                } ${isEditing ? 'hover:text-yellow-300 cursor-pointer' : 'cursor-default'}`}
               disabled={!isEditing}
             >
               ★
@@ -1978,7 +2091,7 @@ export default function PlayerProfile() {
     console.log('- user object:', user);
     console.log('- user exists:', !!user);
     console.log('- user.uid:', user?.uid);
-    console.log('- typeof user.uid:', typeof(user?.uid));
+    console.log('- typeof user.uid:', typeof (user?.uid));
     console.log('- loading state:', loading);
 
     // انتظار أن ينتهي التحميل أولاً
@@ -1993,8 +2106,8 @@ export default function PlayerProfile() {
         files: !!files,
         user: !!user,
         uid: !!user?.uid,
-        userType: typeof(user),
-        uidType: typeof(user?.uid)
+        userType: typeof (user),
+        uidType: typeof (user?.uid)
       });
 
       if (!user) {
@@ -2136,7 +2249,7 @@ export default function PlayerProfile() {
               type="file"
               accept="image/*"
               multiple
-                                onChange={handleAdditionalImageUpload}
+              onChange={handleAdditionalImageUpload}
               className="p-2 w-full text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-300 border-dashed cursor-pointer hover:bg-gray-100"
             />
             <p className="mt-1 text-xs text-gray-500">يمكن اختيار عدة صور مرة واحدة (PNG, JPG, JPEG)</p>
@@ -2264,193 +2377,193 @@ export default function PlayerProfile() {
           )}
         </div>
 
-                 {/* نصائح للفيديوهات */}
-         <div className="p-3 mt-4 bg-yellow-50 rounded-lg border border-yellow-200">
-           <h4 className="mb-2 text-sm font-semibold text-yellow-800">نصائح للفيديوهات:</h4>
-           <ul className="space-y-1 text-xs text-yellow-700">
-             <li>• استخدم روابط من يوتيوب، فيميو، أو أي منصة فيديو أخرى</li>
-             <li>• أضف وصف واضح لكل فيديو (مثل: "مهارات المراوغة"، "أهداف الموسم")</li>
-             <li>• تأكد من أن الفيديو يظهر مهاراتك بوضوح</li>
-             <li>• يفضل أن تكون مدة الفيديو قصيرة ومركزة</li>
-           </ul>
-         </div>
-       </div>
+        {/* نصائح للفيديوهات */}
+        <div className="p-3 mt-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h4 className="mb-2 text-sm font-semibold text-yellow-800">نصائح للفيديوهات:</h4>
+          <ul className="space-y-1 text-xs text-yellow-700">
+            <li>• استخدم روابط من يوتيوب، فيميو، أو أي منصة فيديو أخرى</li>
+            <li>• أضف وصف واضح لكل فيديو (مثل: "مهارات المراوغة"، "أهداف الموسم")</li>
+            <li>• تأكد من أن الفيديو يظهر مهاراتك بوضوح</li>
+            <li>• يفضل أن تكون مدة الفيديو قصيرة ومركزة</li>
+          </ul>
+        </div>
+      </div>
 
-       {/* المستندات الرسمية */}
-       <div className="p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200">
-         <h3 className="mb-4 text-lg font-semibold text-orange-800">المستندات الرسمية</h3>
-         <p className="mb-4 text-sm text-gray-600">أرفق صور من مستنداتك الرسمية (جواز السفر، الشهادات، إلخ)</p>
+      {/* المستندات الرسمية */}
+      <div className="p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200">
+        <h3 className="mb-4 text-lg font-semibold text-orange-800">المستندات الرسمية</h3>
+        <p className="mb-4 text-sm text-gray-600">أرفق صور من مستنداتك الرسمية (جواز السفر، الشهادات، إلخ)</p>
 
-         <div className="space-y-4">
-           {(editFormData.documents || formData.documents || []).map((document, index) => (
-             <div key={index} className="p-4 bg-white rounded-lg border">
-               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                 <div>
-                   <label className="block mb-1 text-sm font-medium text-gray-700">نوع المستند</label>
-                   {isEditing ? (
-                     <select
-                       value={document.type || ''}
-                       onChange={(e) => {
-                         setEditFormData(prev => {
-                           const newDocs = [...(prev.documents || [])];
-                           newDocs[index] = { ...newDocs[index], type: e.target.value };
-                           return { ...prev, documents: newDocs };
-                         });
-                       }}
-                       className="p-2 w-full text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                     >
-                       <option value="">اختر نوع المستند</option>
-                       <option value="passport">جواز السفر</option>
-                       <option value="id">الهوية الشخصية</option>
-                       <option value="birth_certificate">شهادة الميلاد</option>
-                       <option value="education_certificate">الشهادة الدراسية</option>
-                       <option value="medical_certificate">الشهادة الطبية</option>
-                       <option value="sports_license">رخصة رياضية</option>
-                       <option value="other">أخرى</option>
-                     </select>
-                   ) : (
-                     <div className="p-2 text-sm bg-gray-100 rounded">
-                       {(() => {
-                         const types: Record<string, string> = {
-                           passport: 'جواز السفر',
-                           id: 'الهوية الشخصية',
-                           birth_certificate: 'شهادة الميلاد',
-                           education_certificate: 'الشهادة الدراسية',
-                           medical_certificate: 'الشهادة الطبية',
-                           sports_license: 'رخصة رياضية',
-                           other: 'أخرى'
-                         };
-                         return types[document.type] || document.type || 'غير محدد';
-                       })()}
-                     </div>
-                   )}
-                 </div>
+        <div className="space-y-4">
+          {(editFormData.documents || formData.documents || []).map((document, index) => (
+            <div key={index} className="p-4 bg-white rounded-lg border">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">نوع المستند</label>
+                  {isEditing ? (
+                    <select
+                      value={document.type || ''}
+                      onChange={(e) => {
+                        setEditFormData(prev => {
+                          const newDocs = [...(prev.documents || [])];
+                          newDocs[index] = { ...newDocs[index], type: e.target.value };
+                          return { ...prev, documents: newDocs };
+                        });
+                      }}
+                      className="p-2 w-full text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                    >
+                      <option value="">اختر نوع المستند</option>
+                      <option value="passport">جواز السفر</option>
+                      <option value="id">الهوية الشخصية</option>
+                      <option value="birth_certificate">شهادة الميلاد</option>
+                      <option value="education_certificate">الشهادة الدراسية</option>
+                      <option value="medical_certificate">الشهادة الطبية</option>
+                      <option value="sports_license">رخصة رياضية</option>
+                      <option value="other">أخرى</option>
+                    </select>
+                  ) : (
+                    <div className="p-2 text-sm bg-gray-100 rounded">
+                      {(() => {
+                        const types: Record<string, string> = {
+                          passport: 'جواز السفر',
+                          id: 'الهوية الشخصية',
+                          birth_certificate: 'شهادة الميلاد',
+                          education_certificate: 'الشهادة الدراسية',
+                          medical_certificate: 'الشهادة الطبية',
+                          sports_license: 'رخصة رياضية',
+                          other: 'أخرى'
+                        };
+                        return types[document.type] || document.type || 'غير محدد';
+                      })()}
+                    </div>
+                  )}
+                </div>
 
-                 <div>
-                   <label className="block mb-1 text-sm font-medium text-gray-700">اسم المستند</label>
-                   {isEditing ? (
-                     <input
-                       type="text"
-                       value={document.name || ''}
-                       onChange={(e) => {
-                         setEditFormData(prev => {
-                           const newDocs = [...(prev.documents || [])];
-                           newDocs[index] = { ...newDocs[index], name: e.target.value };
-                           return { ...prev, documents: newDocs };
-                         });
-                       }}
-                       placeholder="اسم المستند..."
-                       className="p-2 w-full text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                     />
-                   ) : (
-                     <div className="p-2 text-sm bg-gray-100 rounded">
-                       {document.name || 'غير محدد'}
-                     </div>
-                   )}
-                 </div>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">اسم المستند</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={document.name || ''}
+                      onChange={(e) => {
+                        setEditFormData(prev => {
+                          const newDocs = [...(prev.documents || [])];
+                          newDocs[index] = { ...newDocs[index], name: e.target.value };
+                          return { ...prev, documents: newDocs };
+                        });
+                      }}
+                      placeholder="اسم المستند..."
+                      className="p-2 w-full text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                    />
+                  ) : (
+                    <div className="p-2 text-sm bg-gray-100 rounded">
+                      {document.name || 'غير محدد'}
+                    </div>
+                  )}
+                </div>
 
-                 {/* حقل رفع الملف */}
-                 {isEditing && (
-                   <div>
-                     <label className="block mb-1 text-sm font-medium text-gray-700">رفع الملف</label>
-                     <input
-                       type="file"
-                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                       onChange={(e) => {
-                         const file = e.target.files?.[0];
-                         if (file && user) {
-                           handleDocumentUpload(file, index, document.type || 'document');
-                         }
-                       }}
-                       className="p-2 w-full text-sm bg-orange-50 rounded-md border border-orange-300 border-dashed hover:bg-orange-100"
-                     />
-                     <p className="mt-1 text-xs text-gray-500">
-                       يدعم: PDF, JPG, PNG, DOC, DOCX
-                     </p>
-                   </div>
-                 )}
+                {/* حقل رفع الملف */}
+                {isEditing && (
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">رفع الملف</label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && user) {
+                          handleDocumentUpload(file, index, document.type || 'document');
+                        }
+                      }}
+                      className="p-2 w-full text-sm bg-orange-50 rounded-md border border-orange-300 border-dashed hover:bg-orange-100"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      يدعم: PDF, JPG, PNG, DOC, DOCX
+                    </p>
+                  </div>
+                )}
 
-                 <div>
-                   <label className="block mb-1 text-sm font-medium text-gray-700">رابط المستند</label>
-                   {isEditing ? (
-                     <div className="flex gap-2">
-                       <input
-                         type="url"
-                         value={document.url || ''}
-                         onChange={(e) => {
-                           setEditFormData(prev => {
-                             const newDocs = [...(prev.documents || [])];
-                             newDocs[index] = { ...newDocs[index], url: e.target.value };
-                             return { ...prev, documents: newDocs };
-                           });
-                         }}
-                         placeholder="رابط المستند (اختياري)..."
-                         className="flex-1 p-2 text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                       />
-                       <button
-                         type="button"
-                         onClick={() => {
-                           setEditFormData(prev => ({
-                             ...prev,
-                             documents: prev.documents?.filter((_, i) => i !== index) || []
-                           }));
-                         }}
-                         className="p-2 text-red-600 rounded-md hover:bg-red-50"
-                       >
-                         <Trash className="w-4 h-4" />
-                       </button>
-                     </div>
-                   ) : (
-                     <div className="p-2 text-sm break-all bg-gray-100 rounded">
-                       {document.url ? (
-                         <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                           عرض المستند
-                         </a>
-                       ) : (
-                         'لا يوجد رابط'
-                       )}
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-           ))}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">رابط المستند</label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={document.url || ''}
+                        onChange={(e) => {
+                          setEditFormData(prev => {
+                            const newDocs = [...(prev.documents || [])];
+                            newDocs[index] = { ...newDocs[index], url: e.target.value };
+                            return { ...prev, documents: newDocs };
+                          });
+                        }}
+                        placeholder="رابط المستند (اختياري)..."
+                        className="flex-1 p-2 text-sm rounded-md border focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditFormData(prev => ({
+                            ...prev,
+                            documents: prev.documents?.filter((_, i) => i !== index) || []
+                          }));
+                        }}
+                        className="p-2 text-red-600 rounded-md hover:bg-red-50"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-2 text-sm break-all bg-gray-100 rounded">
+                      {document.url ? (
+                        <a href={document.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          عرض المستند
+                        </a>
+                      ) : (
+                        'لا يوجد رابط'
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
 
-           {(!editFormData.documents?.length && !formData.documents?.length) && (
-             <div className="p-8 text-center text-gray-500 bg-gray-100 rounded-lg border-2 border-dashed">
-               <span>لا توجد مستندات مرفوعة</span>
-               {isEditing && <p className="mt-2 text-sm">استخدم الزر أدناه لإضافة مستند</p>}
-             </div>
-           )}
+          {(!editFormData.documents?.length && !formData.documents?.length) && (
+            <div className="p-8 text-center text-gray-500 bg-gray-100 rounded-lg border-2 border-dashed">
+              <span>لا توجد مستندات مرفوعة</span>
+              {isEditing && <p className="mt-2 text-sm">استخدم الزر أدناه لإضافة مستند</p>}
+            </div>
+          )}
 
-           {isEditing && (
-             <button
-               type="button"
-               onClick={() => {
-                 setEditFormData(prev => ({
-                   ...prev,
-                   documents: [...(prev.documents || []), { type: '', name: '', url: '' }]
-                 }));
-               }}
-               className="flex gap-2 items-center px-4 py-2 text-orange-600 rounded-lg border border-orange-300 hover:bg-orange-50"
-             >
-               <Plus className="w-4 h-4" />
-               إضافة مستند جديد
-             </button>
-           )}
-         </div>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditFormData(prev => ({
+                  ...prev,
+                  documents: [...(prev.documents || []), { type: '', name: '', url: '' }]
+                }));
+              }}
+              className="flex gap-2 items-center px-4 py-2 text-orange-600 rounded-lg border border-orange-300 hover:bg-orange-50"
+            >
+              <Plus className="w-4 h-4" />
+              إضافة مستند جديد
+            </button>
+          )}
+        </div>
 
-         {/* نصائح للمستندات */}
-         <div className="p-3 mt-4 bg-blue-50 rounded-lg border border-blue-200">
-           <h4 className="mb-2 text-sm font-semibold text-blue-800">نصائح للمستندات:</h4>
-           <ul className="space-y-1 text-xs text-blue-700">
-             <li>• تأكد من وضوح النص في صور المستندات</li>
-             <li>• يمكنك رفع المستندات على خدمات التخزين السحابي ووضع الرابط هنا</li>
-             <li>• حافظ على خصوصية المعلومات الحساسة</li>
-             <li>• ينصح برفع نسخ مصورة وليس المستندات الأصلية</li>
-           </ul>
-         </div>
-       </div>
+        {/* نصائح للمستندات */}
+        <div className="p-3 mt-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h4 className="mb-2 text-sm font-semibold text-blue-800">نصائح للمستندات:</h4>
+          <ul className="space-y-1 text-xs text-blue-700">
+            <li>• تأكد من وضوح النص في صور المستندات</li>
+            <li>• يمكنك رفع المستندات على خدمات التخزين السحابي ووضع الرابط هنا</li>
+            <li>• حافظ على خصوصية المعلومات الحساسة</li>
+            <li>• ينصح برفع نسخ مصورة وليس المستندات الأصلية</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 
@@ -3000,16 +3113,14 @@ export default function PlayerProfile() {
                 {Object.entries(STEP_TITLES).map(([step, title]) => (
                   <div
                     key={step}
-                    className={`flex items-center ${
-                      parseInt(step) <= currentStep ? 'text-blue-600' : 'text-gray-400'
-                    }`}
+                    className={`flex items-center ${parseInt(step) <= currentStep ? 'text-blue-600' : 'text-gray-400'
+                      }`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        parseInt(step) <= currentStep
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-500'
-                      }`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${parseInt(step) <= currentStep
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                        }`}
                     >
                       {parseInt(step) + 1}
                     </div>
@@ -3022,7 +3133,7 @@ export default function PlayerProfile() {
 
           {/* Content */}
           <div className="p-6 bg-white rounded-lg shadow-lg">
-                                     {!isEditing ? (
+            {!isEditing ? (
               <>
                 {renderPersonalInfo()}
                 <div className="mt-8">
@@ -3059,49 +3170,49 @@ export default function PlayerProfile() {
                 {currentStep === STEPS.CONTRACTS && renderContracts()}
 
                 {/* Navigation Buttons */}
-               <div className="flex justify-between mt-8">
-                 <div className="flex gap-4">
-                   {currentStep > 0 && (
-                     <Button
-                       onClick={handlePrevious}
-                       variant="outline"
-                       className="flex gap-2 items-center"
-                     >
-                       <ArrowRight className="w-4 h-4" />
-                       السابق
-                     </Button>
-                   )}
-                 </div>
+                <div className="flex justify-between mt-8">
+                  <div className="flex gap-4">
+                    {currentStep > 0 && (
+                      <Button
+                        onClick={handlePrevious}
+                        variant="outline"
+                        className="flex gap-2 items-center"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        السابق
+                      </Button>
+                    )}
+                  </div>
 
-                 <div className="flex gap-4">
-                   <Button
-                     onClick={handleCancel}
-                     variant="outline"
-                     className="text-gray-600 border-gray-300"
-                   >
-                     إلغاء
-                   </Button>
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      className="text-gray-600 border-gray-300"
+                    >
+                      إلغاء
+                    </Button>
 
-                   {currentStep < Object.keys(STEP_TITLES).length - 1 ? (
-                     <Button
-                       onClick={handleNext}
-                       className="flex gap-2 items-center text-white bg-blue-600 hover:bg-blue-700"
-                     >
-                       التالي
-                       <ArrowLeft className="w-4 h-4" />
-                     </Button>
-                   ) : (
-                     <Button
-                       onClick={handleSave}
-                       className="text-white bg-green-600 hover:bg-green-700"
-                     >
-                       حفظ البيانات
-                     </Button>
-                   )}
-                 </div>
-               </div>
-             </>
-           )}
+                    {currentStep < Object.keys(STEP_TITLES).length - 1 ? (
+                      <Button
+                        onClick={handleNext}
+                        className="flex gap-2 items-center text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        التالي
+                        <ArrowLeft className="w-4 h-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleSave}
+                        className="text-white bg-green-600 hover:bg-green-700"
+                      >
+                        حفظ البيانات
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

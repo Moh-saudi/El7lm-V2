@@ -282,11 +282,20 @@ export async function POST(request: NextRequest) {
       const realEmail = authUser?.email;
       console.log('🔑 [reset-password] Using Auth UID:', authUid);
       console.log('📧 [reset-password] Real Email from Auth:', realEmail);
+      console.log('🔐 [reset-password] New password length:', newPassword.length);
+      console.log('🔐 [reset-password] New password (first 2 digits):', newPassword.substring(0, 2) + '******');
 
-      await adminAuth.updateUser(authUid, {
-        password: newPassword,
-      });
-      console.log('✅ [reset-password] Password updated successfully in Firebase Auth');
+      try {
+        await adminAuth.updateUser(authUid, {
+          password: newPassword,
+        });
+        console.log('✅✅✅ [reset-password] PASSWORD UPDATED SUCCESSFULLY in Firebase Auth for UID:', authUid);
+        console.log('📧✅ [reset-password] User can now login with Email:', realEmail);
+        console.log('⏰ [reset-password] Update timestamp:', new Date().toISOString());
+      } catch (updateError: any) {
+        console.error('❌❌❌ [reset-password] FAILED to update password:', updateError);
+        throw new Error(`فشل تحديث كلمة المرور: ${updateError.message}`);
+      }
 
       // تحديث Email في Firestore ليطابق Email الحقيقي في Firebase Auth
       if (realEmail && realEmail !== firebaseEmail && docId && collectionName && adminDb) {
@@ -319,7 +328,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'تم تحديث كلمة المرور بنجاح'
+      message: 'تم تحديث كلمة المرور بنجاح',
+      email: authUser?.email || firebaseEmail, // البريد الذي تم تحديث كلمة المرور له
+      uid: authUser?.uid || uid
     });
 
   } catch (error: any) {

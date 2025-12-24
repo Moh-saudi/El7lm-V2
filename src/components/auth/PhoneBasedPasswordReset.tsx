@@ -150,15 +150,11 @@ export default function PhoneBasedPasswordReset({
                 throw new Error(data.error || 'فشل إنشاء رابط الاسترجاع');
             }
 
-            // Send email with the short link
-            // You can integrate SendGrid, Resend, or any email service here
-            // For now, we'll use Firebase's service but with better messaging
-
-            const { sendPasswordResetEmail } = await import('firebase/auth');
-
-            // Firebase will send its own email, but we've created the infrastructure
-            // for custom emails. To use custom emails, integrate with SendGrid/Resend
-            await sendPasswordResetEmail(auth, emailAddress);
+            // Email is now sent via Resend from the API route
+            // No need to send Firebase email anymore
+            console.log('✅ [Phone Reset] Email sent via Resend to:', emailAddress);
+            console.log('🔗 [Phone Reset] Short link:', data.resetLink);
+            console.log('🔑 [Phone Reset] Token:', data.token);
 
             // Show success with the short link info
             setCurrentStep('success');
@@ -392,61 +388,44 @@ export default function PhoneBasedPasswordReset({
             )}
 
             {/* Step 3: Success */}
-            {currentStep === 'success' && (() => {
-                const shortLink = sessionStorage.getItem('shortResetLink') || '';
-                const token = sessionStorage.getItem('resetToken') || '';
-
-                return (
-                    <div className="space-y-4">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div className="flex items-center">
-                                <CheckCircle className="h-5 w-5 text-green-600 ml-2" />
-                                <div className="flex-1">
-                                    <p className="text-sm text-green-800 font-medium">
-                                        ✅ تم إرسال رابط استرجاع كلمة المرور بنجاح
-                                    </p>
-                                    <p className="text-xs text-green-600 mt-1">
-                                        تحقق من صندوق الوارد في بريدك الإلكتروني
-                                    </p>
-                                </div>
+            {currentStep === 'success' && (
+                <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                            <CheckCircle className="h-5 w-5 text-green-600 ml-2" />
+                            <div className="flex-1">
+                                <p className="text-sm text-green-800 font-medium">
+                                    ✅ تم إرسال رابط استرجاع كلمة المرور بنجاح
+                                </p>
+                                <p className="text-xs text-green-600 mt-1">
+                                    تحقق من صندوق الوارد في بريدك الإلكتروني
+                                </p>
                             </div>
                         </div>
-
-                        {/* Short Link Display */}
-                        {shortLink && (
-                            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-                                <p className="text-xs text-gray-700 font-medium mb-2">
-                                    🔗 الرابط القصير (يمكنك نسخه):
-                                </p>
-                                <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
-                                    <code className="text-xs text-blue-600 break-all direction-ltr text-left block">
-                                        {shortLink}
-                                    </code>
-                                </div>
-                                {token && (
-                                    <>
-                                        <p className="text-xs text-gray-700 font-medium mb-2">
-                                            🔑 الرمز (Token):
-                                        </p>
-                                        <div className="bg-white border border-gray-300 rounded-lg p-3 text-center">
-                                            <code className="text-lg font-bold text-purple-600 tracking-widest">
-                                                {token}
-                                            </code>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        <button
-                            onClick={handleReset}
-                            className="w-full py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                        >
-                            استرجاع كلمة مرور لحساب آخر
-                        </button>
                     </div>
-                );
-            })()}
+
+                    {/* Instructions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 className="text-sm font-medium text-blue-800 mb-2">📧 الخطوات التالية:</h3>
+                        <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                            <li>افتح صندوق البريد الإلكتروني</li>
+                            <li>ابحث عن رسالة من "منصة الحلم"</li>
+                            <li>اضغط على زر "إعادة تعيين كلمة المرور"</li>
+                            <li>أدخل كلمة المرور الجديدة</li>
+                        </ol>
+                        <p className="text-xs text-blue-600 mt-2">
+                            ⏱️ الرابط صالح لمدة ساعة واحدة
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={handleReset}
+                        className="w-full py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                        استرجاع كلمة مرور لحساب آخر
+                    </button>
+                </div>
+            )}
 
             {/* Back to Login */}
             <div className="mt-6 text-center">

@@ -2,11 +2,11 @@
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import {
-    getFCMToken,
-    getNotificationPermission,
-    isNotificationSupported,
-    setupForegroundNotifications,
-    testLocalNotification
+  getFCMToken,
+  getNotificationPermission,
+  isNotificationSupported,
+  setupForegroundNotifications,
+  testLocalNotification
 } from '@/lib/firebase/push-notifications';
 import { Bell, BellOff, Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -29,15 +29,13 @@ export default function PushNotificationSetup() {
       const currentPermission = getNotificationPermission();
       setPermission(currentPermission);
 
-      // عرض prompt إذا لم يتم طلب الإذن بعد
-      if (currentPermission === 'default' && user) {
-        // تأخير عرض الـ prompt لتجنب الإزعاج الفوري
-        const timer = setTimeout(() => {
-          setShowPrompt(true);
-        }, 5000); // 5 ثوانٍ بعد تحميل الصفحة
-
-        return () => clearTimeout(timer);
-      }
+      // تم تعطيل عرض prompt التلقائي - يمكن للمستخدم تفعيله يدوياً من الزر
+      // if (currentPermission === 'default' && user) {
+      //   const timer = setTimeout(() => {
+      //     setShowPrompt(true);
+      //   }, 5000);
+      //   return () => clearTimeout(timer);
+      // }
     }
   }, [user]);
 
@@ -184,16 +182,7 @@ export default function PushNotificationSetup() {
     );
   }
 
-  // زر صغير في الزاوية لإعادة فتح الـ prompt
-  return (
-    <button
-      onClick={() => setShowPrompt(true)}
-      className="fixed bottom-4 left-4 md:left-auto md:right-4 z-50 bg-white rounded-full shadow-lg p-3 hover:shadow-xl transition-all hover:scale-110"
-      aria-label="تفعيل الإشعارات"
-      title="تفعيل الإشعارات الفورية"
-    >
-      <BellOff className="h-5 w-5 text-gray-600" />
-    </button>
-  );
+  // تم تعطيل الزر العائم - المستخدم يفعل الإشعارات مرة واحدة فقط ثم تصل تلقائياً
+  // يمكن إضافة زر التفعيل في صفحة الإعدادات إذا لزم الأمر
+  return null;
 }
-

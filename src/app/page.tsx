@@ -4,28 +4,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AnimatePresence, motion, useAnimation, useInView } from 'framer-motion';
 import {
-    ArrowRight,
-    Award,
-    ChevronDown,
-    Facebook,
-    Globe,
-    Heart,
-    Instagram,
-    Linkedin,
-    Mail,
-    MapPin,
-    Menu,
-    MessageCircle,
-    Moon,
-    Phone,
-    Shield,
-    Star,
-    Sun,
-    Target,
-    TrendingUp,
-    Trophy,
-    UserCheck,
-    X
+  ArrowRight,
+  Award,
+  ChevronDown,
+  Facebook,
+  Globe,
+  Heart,
+  Instagram,
+  Linkedin,
+  Mail,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Moon,
+  Phone,
+  Shield,
+  Star,
+  Sun,
+  Target,
+  TrendingUp,
+  Trophy,
+  UserCheck,
+  X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import nextDynamic from 'next/dynamic';
@@ -561,8 +561,8 @@ export default function AdvancedLandingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: 'visit', route: '/', sessionId: sid })
-      }).catch(() => {});
-    } catch {}
+      }).catch(() => { });
+    } catch { }
   }, []);
 
   // Sample data - realistic numbers for a startup
@@ -715,11 +715,10 @@ export default function AdvancedLandingPage() {
 
   return (
     <div
-      className={`min-h-screen transition-all duration-500 ${
-        isDarkMode
-          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white'
-          : 'bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900'
-      }`}
+      className={`min-h-screen transition-all duration-500 ${isDarkMode
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white'
+        : 'bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900'
+        }`}
       dir={currentLang.dir}
     >
       {/* Header */}
@@ -727,11 +726,10 @@ export default function AdvancedLandingPage() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.8 }}
-        className={`${
-          isDarkMode
-            ? 'bg-gray-900/90 border-gray-700'
-            : 'bg-white/90 border-blue-100'
-        } backdrop-blur-md border-b sticky top-0 z-50 transition-all duration-500`}
+        className={`${isDarkMode
+          ? 'bg-gray-900/90 border-gray-700'
+          : 'bg-white/90 border-blue-100'
+          } backdrop-blur-md border-b sticky top-0 z-50 transition-all duration-500`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -767,9 +765,8 @@ export default function AdvancedLandingPage() {
                   href={item.href}
                   whileHover={{ scale: 1.02 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className={`${
-                    isDarkMode ? 'text-gray-300 hover:text-blue-400' : 'text-gray-700 hover:text-blue-600'
-                  } transition-colors font-medium`}
+                  className={`${isDarkMode ? 'text-gray-300 hover:text-blue-400' : 'text-gray-700 hover:text-blue-600'
+                    } transition-colors font-medium`}
                 >
                   {item.label}
                 </motion.a>
@@ -785,9 +782,8 @@ export default function AdvancedLandingPage() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                   onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                  className={`flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg ${
-                    isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'
-                  } transition-all`}
+                  className={`flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'
+                    } transition-all`}
                 >
                   <span>{currentLang.flag}</span>
                   <span className="text-sm font-medium">{currentLang.name}</span>
@@ -800,9 +796,8 @@ export default function AdvancedLandingPage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className={`absolute top-full ${currentLang.dir === 'rtl' ? 'right-0' : 'left-0'} mt-2 w-40 ${
-                        isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                      } border rounded-lg shadow-lg overflow-hidden`}
+                      className={`absolute top-full ${currentLang.dir === 'rtl' ? 'right-0' : 'left-0'} mt-2 w-40 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                        } border rounded-lg shadow-lg overflow-hidden`}
                     >
                       {Object.entries(languages).map(([code, lang]) => (
                         <motion.button
@@ -812,11 +807,10 @@ export default function AdvancedLandingPage() {
                             setCurrentLanguage(code);
                             setIsLanguageDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 text-sm ${
-                            currentLanguage === code
-                              ? isDarkMode ? 'bg-gray-700' : 'bg-blue-50 text-blue-600'
-                              : isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                          } transition-colors`}
+                          className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 text-sm ${currentLanguage === code
+                            ? isDarkMode ? 'bg-gray-700' : 'bg-blue-50 text-blue-600'
+                            : isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                            } transition-colors`}
                         >
                           <span>{lang.flag}</span>
                           <span>{lang.name}</span>
@@ -833,35 +827,36 @@ export default function AdvancedLandingPage() {
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`p-2 rounded-lg ${
-                  isDarkMode ? 'bg-gray-800 text-yellow-400' : 'bg-gray-100 text-gray-700'
-                } transition-all`}
+                className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-800 text-yellow-400' : 'bg-gray-100 text-gray-700'
+                  } transition-all`}
               >
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </motion.button>
 
-              {/* Auth Buttons */}
+              {/* Auth Buttons - Desktop */}
               <div className="hidden md:flex items-center space-x-3 space-x-reverse">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/auth/login'}
-                  className={`rounded-full ${
-                    isDarkMode
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {t.nav.login}
-                </Button>
-                <Button
-                  onClick={() => window.location.href = '/auth/register'}
-                  className={`rounded-full ${
-                    isDarkMode
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}>
-                  {t.nav.signup}
-                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = '/auth/login'}
+                    className={`rounded-full px-6 py-2 font-semibold transition-all duration-300 ${isDarkMode
+                      ? 'border-2 border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:border-blue-400'
+                      : 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700'
+                      }`}
+                  >
+                    {t.nav.login}
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    onClick={() => window.location.href = '/auth/register'}
+                    className={`rounded-full px-6 py-2 font-semibold shadow-lg transition-all duration-300 ${isDarkMode
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-blue-500/50'
+                      : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-blue-600/50'
+                      }`}>
+                    {t.nav.signup}
+                  </Button>
+                </motion.div>
               </div>
 
               {/* Mobile Menu Button */}
@@ -883,9 +878,8 @@ export default function AdvancedLandingPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className={`lg:hidden ${
-                isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-              } border-t`}
+              className={`lg:hidden ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+                } border-t`}
             >
               <div className="px-4 py-6 space-y-4">
                 {[
@@ -906,33 +900,36 @@ export default function AdvancedLandingPage() {
                     {item.label}
                   </motion.a>
                 ))}
-                <div className="flex flex-col space-y-3 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      window.location.href = '/auth/login';
-                      setIsMenuOpen(false);
-                    }}
-                    className={`rounded-full ${
-                      isDarkMode
-                        ? 'border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {t.nav.login}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      window.location.href = '/auth/register';
-                      setIsMenuOpen(false);
-                    }}
-                    className={`rounded-full ${
-                      isDarkMode
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}>
-                    {t.nav.signup}
-                  </Button>
+                {/* Auth Buttons - Mobile */}
+                <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        window.location.href = '/auth/login';
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full rounded-full py-3 font-semibold transition-all duration-300 ${isDarkMode
+                        ? 'border-2 border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:border-blue-400'
+                        : 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700'
+                        }`}
+                    >
+                      {t.nav.login}
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button
+                      onClick={() => {
+                        window.location.href = '/auth/register';
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full rounded-full py-3 font-semibold shadow-lg transition-all duration-300 ${isDarkMode
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-blue-500/50'
+                        : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-blue-600/50'
+                        }`}>
+                      {t.nav.signup}
+                    </Button>
+                  </motion.div>
                 </div>
               </div>
             </motion.div>
@@ -940,8 +937,8 @@ export default function AdvancedLandingPage() {
         </AnimatePresence>
       </motion.header>
 
-      {/* Top Banner Slider */}
-      {currentTopSlide >= 0 && (
+      {/* Top Banner Slider - Hidden */}
+      {false && currentTopSlide >= 0 && (
         <section className="relative overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
@@ -952,93 +949,92 @@ export default function AdvancedLandingPage() {
               transition={{ duration: 0.5 }}
               className={`bg-gradient-to-r ${topSlides[currentTopSlide].bgColor} text-white py-4 relative overflow-hidden`}
             >
-          {/* Background Animation */}
-          <div className="absolute inset-0 overflow-hidden">
-            <motion.div
-              animate={{
-                x: [-100, 100, -100],
-                opacity: [0.1, 0.3, 0.1]
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: "linear"
-              }}
-              className="absolute top-0 left-0 w-full h-full bg-white/10"
-            />
-          </div>
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              {/* Content */}
-              <div className="flex items-center space-x-4 space-x-reverse">
+              {/* Background Animation */}
+              <div className="absolute inset-0 overflow-hidden">
                 <motion.div
                   animate={{
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 10, 0]
+                    x: [-100, 100, -100],
+                    opacity: [0.1, 0.3, 0.1]
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 8,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "linear"
                   }}
-                  className="text-3xl"
-                >
-                  {topSlides[currentTopSlide].icon}
-                </motion.div>
-                <div className="text-center md:text-right">
-                  <h3 className="text-lg md:text-xl font-bold mb-1">
-                    {topSlides[currentTopSlide].title}
-                  </h3>
-                  <p className="text-sm md:text-base opacity-90">
-                    {topSlides[currentTopSlide].subtitle}
-                  </p>
-                </div>
+                  className="absolute top-0 left-0 w-full h-full bg-white/10"
+                />
               </div>
 
-              {/* Action Button */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                onClick={() => window.location.href = topSlides[currentTopSlide].buttonAction}
-                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 px-6 py-2 rounded-full font-semibold transition-all duration-500 ease-out whitespace-nowrap"
-              >
-                {topSlides[currentTopSlide].buttonText}
-              </motion.button>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  {/* Content */}
+                  <div className="flex items-center space-x-4 space-x-reverse">
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 10, 0]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="text-3xl"
+                    >
+                      {topSlides[currentTopSlide].icon}
+                    </motion.div>
+                    <div className="text-center md:text-right">
+                      <h3 className="text-lg md:text-xl font-bold mb-1">
+                        {topSlides[currentTopSlide].title}
+                      </h3>
+                      <p className="text-sm md:text-base opacity-90">
+                        {topSlides[currentTopSlide].subtitle}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Close Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                onClick={() => setCurrentTopSlide(-1)} // Hide banner
-                className="text-white/70 hover:text-white transition-colors md:absolute md:right-4"
-              >
-                <X className="w-5 h-5" />
-              </motion.button>
-            </div>
+                  {/* Action Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    onClick={() => window.location.href = topSlides[currentTopSlide].buttonAction}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 px-6 py-2 rounded-full font-semibold transition-all duration-500 ease-out whitespace-nowrap"
+                  >
+                    {topSlides[currentTopSlide].buttonText}
+                  </motion.button>
 
-            {/* Slide Indicators */}
-            <div className="flex justify-center mt-3 space-x-2 space-x-reverse">
-              {topSlides.map((_, index) => (
-                <motion.button
-                  key={index}
-                  onClick={() => setCurrentTopSlide(index)}
-                  whileHover={{ scale: 1.2 }}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentTopSlide
-                      ? 'bg-white'
-                      : 'bg-white/50 hover:bg-white/70'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </section>
-  )}
+                  {/* Close Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    onClick={() => setCurrentTopSlide(-1)} // Hide banner
+                    className="text-white/70 hover:text-white transition-colors md:absolute md:right-4"
+                  >
+                    <X className="w-5 h-5" />
+                  </motion.button>
+                </div>
+
+                {/* Slide Indicators */}
+                <div className="flex justify-center mt-3 space-x-2 space-x-reverse">
+                  {topSlides.map((_, index) => (
+                    <motion.button
+                      key={index}
+                      onClick={() => setCurrentTopSlide(index)}
+                      whileHover={{ scale: 1.2 }}
+                      className={`w-2 h-2 rounded-full transition-all ${index === currentTopSlide
+                        ? 'bg-white'
+                        : 'bg-white/50 hover:bg-white/70'
+                        }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </section>
+      )}
 
       {/* Hero Section */}
       <section ref={heroRef} className="relative overflow-hidden py-12 sm:py-16 md:py-20 px-4">
@@ -1054,9 +1050,8 @@ export default function AdvancedLandingPage() {
               repeat: Infinity,
               ease: "linear"
             }}
-            className={`absolute -top-40 ${currentLang.dir === 'rtl' ? '-left-40' : '-right-40'} w-80 h-80 ${
-              isDarkMode ? 'bg-blue-500/20' : 'bg-blue-200/50'
-            } rounded-full blur-3xl`}
+            className={`absolute -top-40 ${currentLang.dir === 'rtl' ? '-left-40' : '-right-40'} w-80 h-80 ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-200/50'
+              } rounded-full blur-3xl`}
           />
           <motion.div
             animate={{
@@ -1068,9 +1063,8 @@ export default function AdvancedLandingPage() {
               repeat: Infinity,
               ease: "linear"
             }}
-            className={`absolute -bottom-40 ${currentLang.dir === 'rtl' ? '-right-40' : '-left-40'} w-80 h-80 ${
-              isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-200/50'
-            } rounded-full blur-3xl`}
+            className={`absolute -bottom-40 ${currentLang.dir === 'rtl' ? '-right-40' : '-left-40'} w-80 h-80 ${isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-200/50'
+              } rounded-full blur-3xl`}
           />
         </div>
 
@@ -1212,9 +1206,8 @@ export default function AdvancedLandingPage() {
               </motion.h1>
               <motion.p
                 variants={itemVariants}
-                className={`text-sm sm:text-base md:text-lg lg:text-xl ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                } max-w-4xl mx-auto leading-relaxed px-4 sm:px-0`}
+                className={`text-sm sm:text-base md:text-lg lg:text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  } max-w-4xl mx-auto leading-relaxed px-4 sm:px-0`}
               >
                 {t.hero.subtitle}
               </motion.p>
@@ -1266,9 +1259,8 @@ export default function AdvancedLandingPage() {
                     }}
                     whileHover={{ scale: 1.02, y: -2 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className={`${
-                      isDarkMode ? 'bg-gray-800/80' : 'bg-white/80'
-                    } backdrop-blur-sm rounded-lg p-2 sm:p-3 shadow-lg border border-blue-200/50`}
+                    className={`${isDarkMode ? 'bg-gray-800/80' : 'bg-white/80'
+                      } backdrop-blur-sm rounded-lg p-2 sm:p-3 shadow-lg border border-blue-200/50`}
                   >
                     <motion.span
                       animate={{
@@ -1290,10 +1282,10 @@ export default function AdvancedLandingPage() {
               </div>
             </motion.div>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - Hidden */}
             <motion.div
               variants={itemVariants}
-              className="
+              className="hidden
                 cta-container
                 flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4
                 justify-center items-center
@@ -1448,9 +1440,8 @@ export default function AdvancedLandingPage() {
                 >
                   {stat.number}
                 </motion.div>
-                <div className={`${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                } font-medium text-lg group-hover:text-blue-600 transition-colors`}>
+                <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  } font-medium text-lg group-hover:text-blue-600 transition-colors`}>
                   {stat.label}
                 </div>
               </motion.div>
@@ -1463,11 +1454,10 @@ export default function AdvancedLandingPage() {
       <section
         ref={featuresRef}
         id="features"
-        className={`py-20 ${
-          isDarkMode
-            ? 'bg-gradient-to-br from-gray-900 to-gray-800'
-            : 'bg-gradient-to-br from-blue-50 to-indigo-50'
-        }`}
+        className={`py-20 ${isDarkMode
+          ? 'bg-gradient-to-br from-gray-900 to-gray-800'
+          : 'bg-gradient-to-br from-blue-50 to-indigo-50'
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -1484,9 +1474,8 @@ export default function AdvancedLandingPage() {
             </motion.h2>
             <motion.p
               variants={itemVariants}
-              className={`text-xl ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-600'
-              } max-w-3xl mx-auto`}
+              className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                } max-w-3xl mx-auto`}
             >
               {t.features.subtitle}
             </motion.p>
@@ -1510,11 +1499,10 @@ export default function AdvancedLandingPage() {
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className="group"
               >
-                <Card className={`${
-                  isDarkMode
-                    ? 'bg-gray-800/80 border-gray-700'
-                    : 'bg-white/90 border-gray-200'
-                } backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-500 h-full overflow-hidden`}>
+                <Card className={`${isDarkMode
+                  ? 'bg-gray-800/80 border-gray-700'
+                  : 'bg-white/90 border-gray-200'
+                  } backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-500 h-full overflow-hidden`}>
                   <CardContent className="p-8 text-center relative">
                     {/* Background decoration */}
                     <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-xl transform translate-x-10 -translate-y-10 group-hover:scale-150 transition-transform duration-500" />
@@ -1536,9 +1524,8 @@ export default function AdvancedLandingPage() {
                     <h3 className="text-xl font-bold mb-4 group-hover:text-blue-600 transition-colors">
                       {feature.title}
                     </h3>
-                    <p className={`${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    } leading-relaxed`}>
+                    <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      } leading-relaxed`}>
                       {feature.description}
                     </p>
 
@@ -1555,9 +1542,8 @@ export default function AdvancedLandingPage() {
       </section>
 
       {/* Sports Opportunities Section - Unified */}
-      <section className={`py-20 ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-600 to-indigo-700'
-      } text-white relative overflow-hidden`}>
+      <section className={`py-20 ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-600 to-indigo-700'
+        } text-white relative overflow-hidden`}>
         {/* Background Elements */}
         <div className="absolute inset-0">
           <motion.div
@@ -1620,9 +1606,8 @@ export default function AdvancedLandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
               whileHover={{ scale: 1.02, y: -5 }}
-              className={`${
-                isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
-              } backdrop-blur-sm rounded-2xl p-8 text-center`}
+              className={`${isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
+                } backdrop-blur-sm rounded-2xl p-8 text-center`}
             >
               <motion.div
                 animate={{ rotate: [0, 360] }}
@@ -1659,9 +1644,8 @@ export default function AdvancedLandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
               whileHover={{ scale: 1.02, y: -5 }}
-              className={`${
-                isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
-              } backdrop-blur-sm rounded-2xl p-8 text-center`}
+              className={`${isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
+                } backdrop-blur-sm rounded-2xl p-8 text-center`}
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
@@ -1702,9 +1686,8 @@ export default function AdvancedLandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.02, y: -5 }}
-              className={`${
-                isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
-              } backdrop-blur-sm rounded-2xl p-8 text-center`}
+              className={`${isDarkMode ? 'bg-gray-800/90' : 'bg-white/15'
+                } backdrop-blur-sm rounded-2xl p-8 text-center`}
             >
               <motion.div
                 animate={{
@@ -1750,9 +1733,8 @@ export default function AdvancedLandingPage() {
             transition={{ delay: 0.6 }}
             className="mt-16"
           >
-            <div className={`${
-              isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
-            } backdrop-blur-sm rounded-2xl p-8`}>
+            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
+              } backdrop-blur-sm rounded-2xl p-8`}>
               <h3 className="text-2xl font-bold text-center mb-8">ما نوفره لك</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 {[
@@ -1781,11 +1763,10 @@ export default function AdvancedLandingPage() {
       </section>
 
       {/* About Us Section */}
-      <section id="about" className={`py-20 ${
-        isDarkMode
-          ? 'bg-gradient-to-br from-gray-900 to-gray-800'
-          : 'bg-gradient-to-br from-indigo-50 to-purple-50'
-      } relative overflow-hidden`}>
+      <section id="about" className={`py-20 ${isDarkMode
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800'
+        : 'bg-gradient-to-br from-indigo-50 to-purple-50'
+        } relative overflow-hidden`}>
         {/* Background Elements */}
         <div className="absolute inset-0">
           <motion.div
@@ -1825,9 +1806,8 @@ export default function AdvancedLandingPage() {
             <h2 className="text-4xl md:text-6xl font-bold mb-6">
               من نحن؟
             </h2>
-            <p className={`text-xl ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-            } max-w-4xl mx-auto leading-relaxed`}>
+            <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+              } max-w-4xl mx-auto leading-relaxed`}>
               منصة الحلم اول متجر الكتروني لتسويق وبيع اللاعبين في الشرق الاوسط - متخصصين في حوكمة الاندية الرياضية
             </p>
           </motion.div>
@@ -1874,11 +1854,9 @@ export default function AdvancedLandingPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
-                    className={`${
-                      isDarkMode ? 'bg-gray-800/50' : 'bg-white/70'
-                    } backdrop-blur-sm rounded-xl border ${
-                      isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                    } overflow-hidden`}
+                    className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/70'
+                      } backdrop-blur-sm rounded-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'
+                      } overflow-hidden`}
                   >
                     <motion.button
                       onClick={() => setExpandedAboutSection(expandedAboutSection === index ? null : index)}
@@ -1912,9 +1890,8 @@ export default function AdvancedLandingPage() {
                           className="overflow-hidden"
                         >
                           <div className="px-6 pb-6">
-                            <p className={`${
-                              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                            } leading-relaxed text-lg`}>
+                            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                              } leading-relaxed text-lg`}>
                               {section.content}
                             </p>
                           </div>
@@ -1934,9 +1911,8 @@ export default function AdvancedLandingPage() {
               transition={{ duration: 0.8 }}
               className="xl:col-span-1 relative"
             >
-              <div className={`${
-                isDarkMode ? 'bg-gray-800' : 'bg-white'
-              } rounded-2xl p-8 shadow-2xl relative overflow-hidden`}>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'
+                } rounded-2xl p-8 shadow-2xl relative overflow-hidden`}>
                 {/* Animated Background */}
                 <div className="absolute inset-0 opacity-10">
                   <motion.div
@@ -2020,11 +1996,10 @@ export default function AdvancedLandingPage() {
                   >
                     <Button
                       onClick={() => window.location.href = '/auth/register'}
-                      className={`w-full ${
-                        isDarkMode
-                          ? 'bg-blue-600 hover:bg-blue-700'
-                          : 'bg-blue-600 hover:bg-blue-700'
-                      } text-white py-3 rounded-xl font-semibold`}
+                      className={`w-full ${isDarkMode
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                        } text-white py-3 rounded-xl font-semibold`}
                     >
                       انضم للمنصة
                     </Button>
@@ -2088,9 +2063,8 @@ export default function AdvancedLandingPage() {
             <h2 className="text-4xl md:text-6xl font-bold mb-6">
               {t.testimonials.title}
             </h2>
-            <p className={`text-xl ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-            } max-w-3xl mx-auto`}>
+            <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+              } max-w-3xl mx-auto`}>
               {t.testimonials.subtitle}
             </p>
           </motion.div>
@@ -2105,11 +2079,10 @@ export default function AdvancedLandingPage() {
               transition={{ duration: 0.5 }}
               className="mb-8"
             >
-              <Card className={`${
-                isDarkMode
-                  ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700'
-                  : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-gray-200'
-              } border-0 shadow-2xl overflow-hidden`}>
+              <Card className={`${isDarkMode
+                ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700'
+                : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-gray-200'
+                } border-0 shadow-2xl overflow-hidden`}>
                 <CardContent className="p-12 text-center">
                   {/* Stars */}
                   <div className="flex justify-center mb-6">
@@ -2130,9 +2103,8 @@ export default function AdvancedLandingPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className={`${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    } mb-8 leading-relaxed text-xl italic font-medium`}
+                    className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      } mb-8 leading-relaxed text-xl italic font-medium`}
                   >
                     "{testimonials[safeCurrentTestimonial]?.content || ''}"
                   </motion.p>
@@ -2169,13 +2141,12 @@ export default function AdvancedLandingPage() {
                   onClick={() => setCurrentTestimonial(index)}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
-                  className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                    index === safeCurrentTestimonial
-                      ? 'bg-blue-600 shadow-lg'
-                      : isDarkMode
-                        ? 'bg-gray-600 hover:bg-gray-500'
-                        : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
+                  className={`w-4 h-4 rounded-full transition-all duration-300 ${index === safeCurrentTestimonial
+                    ? 'bg-blue-600 shadow-lg'
+                    : isDarkMode
+                      ? 'bg-gray-600 hover:bg-gray-500'
+                      : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
                 />
               ))}
             </div>
@@ -2185,11 +2156,9 @@ export default function AdvancedLandingPage() {
               onClick={() => setCurrentTestimonial(prev => prev === 0 ? Math.max(0, testimonials.length - 1) : prev - 1)}
               whileHover={{ scale: 1.1, x: -5 }}
               whileTap={{ scale: 0.9 }}
-              className={`absolute top-1/2 transform -translate-y-1/2 ${
-                currentLang.dir === 'rtl' ? 'right-4' : 'left-4'
-              } p-3 rounded-full ${
-                isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-              } shadow-lg hover:shadow-xl transition-all`}
+              className={`absolute top-1/2 transform -translate-y-1/2 ${currentLang.dir === 'rtl' ? 'right-4' : 'left-4'
+                } p-3 rounded-full ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                } shadow-lg hover:shadow-xl transition-all`}
             >
               <ArrowRight className={`w-6 h-6 ${currentLang.dir === 'rtl' ? '' : 'rotate-180'}`} />
             </motion.button>
@@ -2198,11 +2167,9 @@ export default function AdvancedLandingPage() {
               onClick={() => setCurrentTestimonial(prev => testimonials.length > 0 ? (prev + 1) % testimonials.length : 0)}
               whileHover={{ scale: 1.1, x: 5 }}
               whileTap={{ scale: 0.9 }}
-              className={`absolute top-1/2 transform -translate-y-1/2 ${
-                currentLang.dir === 'rtl' ? 'left-4' : 'right-4'
-              } p-3 rounded-full ${
-                isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-              } shadow-lg hover:shadow-xl transition-all`}
+              className={`absolute top-1/2 transform -translate-y-1/2 ${currentLang.dir === 'rtl' ? 'left-4' : 'right-4'
+                } p-3 rounded-full ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                } shadow-lg hover:shadow-xl transition-all`}
             >
               <ArrowRight className={`w-6 h-6 ${currentLang.dir === 'rtl' ? 'rotate-180' : ''}`} />
             </motion.button>
@@ -2259,11 +2226,10 @@ export default function AdvancedLandingPage() {
       {/* Contact Section */}
       <section
         id="contact"
-        className={`py-20 ${
-          isDarkMode
-            ? 'bg-gradient-to-br from-blue-900 to-indigo-900'
-            : 'bg-gradient-to-br from-blue-600 to-indigo-700'
-        } text-white relative overflow-hidden`}
+        className={`py-20 ${isDarkMode
+          ? 'bg-gradient-to-br from-blue-900 to-indigo-900'
+          : 'bg-gradient-to-br from-blue-600 to-indigo-700'
+          } text-white relative overflow-hidden`}
       >
         {/* Background Animation */}
         <div className="absolute inset-0">
@@ -2317,10 +2283,10 @@ export default function AdvancedLandingPage() {
               },
               {
                 icon: Phone,
-                title: `${t.contact.phone} - ${t.contact.phoneQatar}`,
-                desc: '+974 72053188',
+                title: 'الهاتف - قطر',
+                desc: '+974 7054 2458',
                 action: 'whatsapp',
-                link: 'https://wa.me/97472053188'
+                link: 'https://wa.me/97470542458'
               },
               {
                 icon: Phone,
@@ -2395,9 +2361,8 @@ export default function AdvancedLandingPage() {
             {/* Qatar Address */}
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className={`${
-                isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
-              } backdrop-blur-sm rounded-2xl p-6 text-center`}
+              className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
+                } backdrop-blur-sm rounded-2xl p-6 text-center`}
             >
               <div className="text-3xl mb-4">🇶🇦</div>
               <h3 className="text-xl font-semibold mb-3">مكتب قطر</h3>
@@ -2411,12 +2376,12 @@ export default function AdvancedLandingPage() {
               <div className="flex items-center space-x-2 space-x-reverse justify-center">
                 <Phone className="w-4 h-4" />
                 <a
-                  href="https://wa.me/97472053188"
+                  href="https://wa.me/97470542458"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm opacity-90 hover:opacity-100 transition-opacity underline"
                 >
-                  +974 72053188
+                  +974 7054 2458
                 </a>
               </div>
             </motion.div>
@@ -2424,9 +2389,8 @@ export default function AdvancedLandingPage() {
             {/* Egypt Address */}
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className={`${
-                isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
-              } backdrop-blur-sm rounded-2xl p-6 text-center`}
+              className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/20'
+                } backdrop-blur-sm rounded-2xl p-6 text-center`}
             >
               <div className="text-3xl mb-4">🇪🇬</div>
               <h3 className="text-xl font-semibold mb-3">مكتب مصر</h3>
@@ -2466,7 +2430,7 @@ export default function AdvancedLandingPage() {
                   name: 'TikTok',
                   icon: (
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-.88-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43V7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.43Z"/>
+                      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-.88-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43V7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.43Z" />
                     </svg>
                   ),
                   url: 'https://www.tiktok.com/@meskel7lm',
@@ -2547,11 +2511,10 @@ export default function AdvancedLandingPage() {
               }}
               whileTap={{ scale: 0.95 }}
               onClick={() => window.location.href = '/auth/register'}
-              className={`${
-                isDarkMode
-                  ? 'bg-white text-blue-600 hover:bg-gray-100'
-                  : 'bg-white text-blue-600 hover:bg-gray-100'
-              } px-8 sm:px-10 py-4 sm:py-5 rounded-full text-lg sm:text-xl font-bold shadow-xl transform transition-all inline-flex items-center space-x-3 space-x-reverse w-full sm:w-auto justify-center`}
+              className={`${isDarkMode
+                ? 'bg-white text-blue-600 hover:bg-gray-100'
+                : 'bg-white text-blue-600 hover:bg-gray-100'
+                } px-8 sm:px-10 py-4 sm:py-5 rounded-full text-lg sm:text-xl font-bold shadow-xl transform transition-all inline-flex items-center space-x-3 space-x-reverse w-full sm:w-auto justify-center`}
             >
               <span>{t.contact.startNow}</span>
               <motion.div
@@ -2569,9 +2532,8 @@ export default function AdvancedLandingPage() {
       <ProfessionalAdPopup location="landing" />
 
       {/* Footer */}
-      <footer className={`${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-900'
-      } text-white py-16`}>
+      <footer className={`${isDarkMode ? 'bg-gray-900' : 'bg-gray-900'
+        } text-white py-16`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             <motion.div

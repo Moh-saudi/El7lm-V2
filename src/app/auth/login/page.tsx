@@ -906,9 +906,10 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => router.push('/auth/forgot-password')}
-                        className="text-[10px] font-bold text-purple-600 hover:text-purple-700 transition-colors"
+                        className="flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline transition-all"
                       >
-                        نسيت؟
+                        <span>🔑</span>
+                        <span>نسيت كلمة المرور؟</span>
                       </button>
                     </div>
                     <div className="relative group">

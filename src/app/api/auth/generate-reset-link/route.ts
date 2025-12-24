@@ -9,7 +9,7 @@ function generateShortToken(): string {
 
 export async function POST(request: NextRequest) {
     try {
-        const { email } = await request.json();
+        let { email } = await request.json();
 
         if (!email) {
             return NextResponse.json(
@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Convert to lowercase to avoid case-sensitivity issues
+        email = email.toLowerCase().trim();
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,14 +34,52 @@ export async function POST(request: NextRequest) {
         let userRecord;
         try {
             userRecord = await adminAuth.getUserByEmail(email);
+            console.log('✅ [generate-reset-link] User found in Firebase Auth:', email);
         } catch (error: any) {
             if (error.code === 'auth/user-not-found') {
+                console.log('⚠️ [generate-reset-link] User not found in Firebase Auth:', email);
                 return NextResponse.json(
                     { success: false, error: 'لا توجد حساب مسجل بهذا البريد الإلكتروني' },
                     { status: 404 }
                 );
             }
             throw error;
+        }
+
+        // ADDITIONAL CHECK: Verify user exists in Firestore
+        console.log('🔍 [generate-reset-link] Checking Firestore for email:', email);
+        const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'employees'];
+        let foundInFirestore = false;
+        let userCollection = '';
+        let userDoc: any = null;
+
+        for (const coll of collections) {
+            try {
+                const snapshot = await adminDb
+                    .collection(coll)
+                    .where('email', '==', email)
+                    .limit(1)
+                    .get();
+
+                if (!snapshot.empty) {
+                    foundInFirestore = true;
+                    userCollection = coll;
+                    userDoc = snapshot.docs[0].data();
+                    console.log(`✅ [generate-reset-link] User found in Firestore collection: ${coll}`);
+                    break;
+                }
+            } catch (err) {
+                console.warn(`⚠️ [generate-reset-link] Could not search in ${coll}:`, err);
+            }
+        }
+
+        if (!foundInFirestore) {
+            console.error('❌ [generate-reset-link] User found in Auth but NOT in Firestore!');
+            return NextResponse.json({
+                success: false,
+                error: 'الحساب غير مكتمل في نظامنا. يرجى التواصل مع خدمة العملاء\n\n💬 قطر (واتساب): +974 7054 2458\n💬 مصر: +20 101 779 9580\n✉️ info@el7lm.com',
+                needsSupport: true
+            }, { status: 404 });
         }
 
         // Generate short token
@@ -49,32 +90,66 @@ export async function POST(request: NextRequest) {
         await adminDb.collection('passwordResetTokens').doc(token).set({
             email: email,
             userId: userRecord.uid,
+            collection: userCollection,
             createdAt: Date.now(),
             expiresAt: expiresAt,
             used: false
         });
 
-        // Create reset link
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        console.log('✅ [generate-reset-link] Token created:', token);
+
+        // Create reset link - use production domain if available
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://el7lm.com';
         const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
 
-        // Send beautiful email (we'll use a service or custom SMTP)
-        // For now, we'll use Firebase's sendPasswordResetEmail as fallback
-        // but with custom redirect URL
+        // Send beautiful email using Resend
+        console.log('🔄 [generate-reset-link] Starting email send process...');
+        console.log('📧 [generate-reset-link] Recipient:', email);
+        console.log('🔑 [generate-reset-link] RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
-        // Note: We can integrate SendGrid, Resend, or any email service here
-        // For now, let's create the email content structure
+        try {
+            const { Resend } = await import('resend');
+            console.log('✅ [generate-reset-link] Resend module loaded');
 
-        const emailContent = {
-            to: email,
-            subject: '🔐 إعادة تعيين كلمة المرور - منصة الحلم',
-            resetLink: resetLink,
-            token: token,
-            expiresIn: '60 دقيقة'
-        };
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            console.log('✅ [generate-reset-link] Resend client initialized');
 
-        // TODO: Integrate with email service (SendGrid/Resend)
-        // For now, we'll return the link to be sent via Firebase or custom service
+            // Import email template
+            const { generatePasswordResetEmail, generatePasswordResetPlainText } = await import('@/lib/email/templates/password-reset');
+
+            const emailHtml = generatePasswordResetEmail({
+                userName: userDoc?.full_name || userDoc?.name || 'المستخدم',
+                resetLink: resetLink,
+                token: token,
+                expiresIn: '60 دقيقة'
+            });
+
+            const emailText = generatePasswordResetPlainText({
+                userName: userDoc?.full_name || userDoc?.name || 'المستخدم',
+                resetLink: resetLink,
+                token: token,
+                expiresIn: '60 دقيقة'
+            });
+
+            console.log('🚀 [generate-reset-link] Calling resend.emails.send...');
+            const { data: emailData, error: emailError } = await resend.emails.send({
+                from: 'منصة الحلم <onboarding@resend.dev>',
+                to: email,
+                subject: '🔐 إعادة تعيين كلمة المرور - منصة الحلم',
+                html: emailHtml,
+                text: emailText,
+            });
+
+            if (emailError) {
+                console.error('❌ [generate-reset-link] Resend error:', emailError);
+                // Don't fail - fallback to showing link
+            } else {
+                console.log('✅ [generate-reset-link] Email sent successfully via Resend:', emailData?.id);
+            }
+        } catch (emailSendError) {
+            console.error('❌ [generate-reset-link] Email send failed:', emailSendError);
+            // Don't fail the request - token is still valid
+        }
 
         return NextResponse.json({
             success: true,

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { db } from '@/lib/firebase/config';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
+import { maskPhoneNumber, maskEmail, maskName, applyPaymentPrivacy } from '@/lib/utils/privacy-utils';
+import { fetchPaymentsOptimized } from '@/lib/utils/payments-fetcher';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -10,7 +12,7 @@ import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 
 export default function AdminPaymentsPage() {
   // التحقق من الصلاحيات
-  const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes: ['admin'] });
+  const { isAuthorized, isCheckingAuth, userRole } = useAccountTypeAuth({ allowedTypes: ['admin'] });
   const [payments, setPayments] = useState([]);
   const [filteredPayments, setFilteredPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function AdminPaymentsPage() {
     duration: '',
     price: 0
   });
-  const [messageHistory, setMessageHistory] = useState<{[key: string]: any[]}>({});
+  const [messageHistory, setMessageHistory] = useState<{ [key: string]: any[] }>({});
   const [showMessageHistory, setShowMessageHistory] = useState(false);
 
   // حذف المدفوعات
@@ -80,6 +82,12 @@ export default function AdminPaymentsPage() {
     }
     return false; // ✅ معطل افتراضياً
   });
+
+  // إدارة عرض البيانات الكاملة (للخصوصية والأمان)
+  const [showFullData, setShowFullData] = useState(false);
+
+  // حالة التحديث اليدوي
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // نماذج الرسائل الجاهزة
   const messageTemplates = {
@@ -372,7 +380,7 @@ export default function AdminPaymentsPage() {
           activated_at: subscriptionData.activated_at
         }
       });
-      
+
       await updateDoc(subscriptionRef, subscriptionData).catch(async () => {
         // إذا لم يكن موجود، أنشئه
         console.log('📝 [Admin Payments] إنشاء اشتراك جديد (لم يكن موجوداً)');
@@ -381,7 +389,7 @@ export default function AdminPaymentsPage() {
           id: userId
         });
       });
-      
+
       console.log('✅ [Admin Payments] تم تحديث subscriptions collection بنجاح!');
 
       // تحديث بيانات المستخدم
@@ -864,7 +872,7 @@ export default function AdminPaymentsPage() {
             const data = doc.data();
 
             console.log(`Collection: ${collectionName}, Data:`, data);
-            
+
             // تسجيل خاص لمدفوعات جيديا
             if (data.paymentMethod === 'geidea' || collectionName === 'bulkPayments' || collectionName === 'bulk_payments') {
               console.log(`🔍 [Geidea Payment] Found in ${collectionName}:`, {
@@ -914,7 +922,7 @@ export default function AdminPaymentsPage() {
                     .map((p: any) => p.name || p.playerName || '')
                     .filter((name: string) => name && name.trim() && !name.includes('@'))
                     .map((name: string) => name.trim());
-                  
+
                   if (playerNames.length > 0) {
                     if (playerNames.length <= 3) {
                       // إذا كان 3 لاعبين أو أقل، اعرض جميع الأسماء
@@ -936,8 +944,8 @@ export default function AdminPaymentsPage() {
                 const foundName = data[field].trim();
                 // التحقق من أن القيمة ليست مجرد كلمة "player" أو كلمات مشابهة
                 const lowerName = foundName.toLowerCase();
-                if (lowerName !== 'player' && lowerName !== 'user' && lowerName !== 'customer' && 
-                    lowerName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+                if (lowerName !== 'player' && lowerName !== 'user' && lowerName !== 'customer' &&
+                  lowerName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
                   playerName = foundName;
                   console.log(`Found name in primary field '${field}': ${playerName}`);
                   break;
@@ -963,9 +971,9 @@ export default function AdminPaymentsPage() {
 
                   // التحقق من أن القيمة ليست إيميل وليست كلمة عامة
                   const lowerFoundName = foundName.toLowerCase();
-                  if (!foundName.includes('@') && 
-                      lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                      foundName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+                  if (!foundName.includes('@') &&
+                    lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
+                    foundName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
                     playerName = foundName;
                     console.log(`Found name directly in data: ${field} = ${playerName}`);
                     break;
@@ -985,19 +993,19 @@ export default function AdminPaymentsPage() {
 
                   // البحث في الحقول التي قد تحتوي على أسماء
                   if (lowerKey.includes('name') || lowerKey.includes('user') ||
-                      lowerKey.includes('customer') || lowerKey.includes('player') ||
-                      lowerKey.includes('client') || lowerKey.includes('account')) {
+                    lowerKey.includes('customer') || lowerKey.includes('player') ||
+                    lowerKey.includes('client') || lowerKey.includes('account')) {
 
                     const foundValue = value.toString().trim();
 
                     // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
                     const lowerFoundValue = foundValue.toLowerCase();
                     if (!foundValue.includes('@') &&
-                        lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
-                        foundValue.length > 2 &&
-                        foundValue.length < 50 &&
-                        /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
-                        !/^\d+$/.test(foundValue)) {
+                      lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
+                      foundValue.length > 2 &&
+                      foundValue.length < 50 &&
+                      /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
+                      !/^\d+$/.test(foundValue)) {
 
                       playerName = foundValue;
                       console.log(`Found real name in field: ${key} = ${playerName}`);
@@ -1131,8 +1139,8 @@ export default function AdminPaymentsPage() {
                 if (value && typeof value === 'string' && value.trim() !== '') {
                   const lowerKey = key.toLowerCase();
                   if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                      lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                      lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
+                    lowerKey.includes('contact') || lowerKey.includes('tel') ||
+                    lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                     // التحقق من أن القيمة تحتوي على أرقام
                     if (/\d/.test(value)) {
                       playerPhone = value.toString().trim();
@@ -1170,8 +1178,8 @@ export default function AdminPaymentsPage() {
                     const lowerFoundValue = foundValue.toLowerCase();
                     // التحقق من أن القيمة تبدو كاسم حقيقي وليست كلمة عامة
                     if (!foundValue.includes('@') &&
-                        lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
-                        /[a-zA-Z\u0600-\u06FF]/.test(foundValue) && foundValue.length >= 2 && foundValue.length <= 50) {
+                      lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
+                      /[a-zA-Z\u0600-\u06FF]/.test(foundValue) && foundValue.length >= 2 && foundValue.length <= 50) {
                       playerName = foundValue;
                       console.log(`Found name-like value in field: ${key} = ${playerName}`);
                       break;
@@ -1185,12 +1193,12 @@ export default function AdminPaymentsPage() {
             if (playerId && (playerName === 'غير محدد' || playerPhone === 'غير محدد')) {
               try {
                 console.log(`Searching for player with ID: ${playerId}`);
-                
+
                 // محاولة البحث باستخدام معرف المستند مباشرة أولاً
                 try {
                   const playerDocRef = doc(db, 'players', playerId);
                   const playerDocSnap = await getDoc(playerDocRef);
-                  
+
                   if (playerDocSnap.exists()) {
                     playerData = playerDocSnap.data();
                     console.log('Player data found by document ID:', playerData);
@@ -1198,7 +1206,7 @@ export default function AdminPaymentsPage() {
                 } catch (docError) {
                   console.log('Could not find player by document ID, trying query...');
                 }
-                
+
                 // إذا لم نجد بالبحث المباشر، نبحث باستخدام استعلام
                 if (!playerData) {
                   const playerQuery = await getDocs(query(collection(db, 'players'),
@@ -1221,23 +1229,23 @@ export default function AdminPaymentsPage() {
                       'arabic_name', 'english_name', 'nickname', 'title',
                       'firstName', 'lastName', 'fullName', 'displayName'
                     ];
-                    
+
                     // البحث في جميع الحقول المحتملة
                     for (const field of possibleNameFields) {
                       if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim()) {
                         const foundName = playerData[field].trim();
                         // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
                         const lowerFoundName = foundName.toLowerCase();
-                        if (!foundName.includes('@') && 
-                            lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                            foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+                        if (!foundName.includes('@') &&
+                          lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
+                          foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
                           playerName = foundName;
                           console.log(`Found name in player data field '${field}': ${playerName}`);
                           break;
                         }
                       }
                     }
-                    
+
                     // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
                     if (playerName === 'غير محدد' && (playerData.first_name || playerData.last_name || playerData.firstName || playerData.lastName)) {
                       const firstName = playerData.first_name || playerData.firstName || '';
@@ -1248,7 +1256,7 @@ export default function AdminPaymentsPage() {
                         console.log(`Merged name from first/last name: ${playerName}`);
                       }
                     }
-                    
+
                     // إذا لم نجد بعد، نستخدم القيمة الافتراضية
                     if (playerName === 'غير محدد') {
                       console.log('Could not find name in player data, keeping default');
@@ -1267,8 +1275,8 @@ export default function AdminPaymentsPage() {
                       if (value && typeof value === 'string' && value.trim() !== '') {
                         const lowerKey = key.toLowerCase();
                         if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                            lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                            lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
+                          lowerKey.includes('contact') || lowerKey.includes('tel') ||
+                          lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                           // التحقق من أن القيمة تحتوي على أرقام
                           if (/\d/.test(value)) {
                             playerPhone = value.toString().trim();
@@ -1303,12 +1311,12 @@ export default function AdminPaymentsPage() {
 
                   // محاولة البحث في جدول users إذا لم يتم العثور في players
                   try {
-                    
+
                     // محاولة البحث باستخدام معرف المستند مباشرة أولاً
                     try {
                       const userDocRef = doc(db, 'users', playerId);
                       const userDocSnap = await getDoc(userDocRef);
-                      
+
                       if (userDocSnap.exists()) {
                         userData = userDocSnap.data();
                         console.log('User data found by document ID:', userData);
@@ -1316,7 +1324,7 @@ export default function AdminPaymentsPage() {
                     } catch (docError) {
                       console.log('Could not find user by document ID, trying query...');
                     }
-                    
+
                     // إذا لم نجد بالبحث المباشر، نبحث باستخدام استعلام
                     if (!userData) {
                       const userQuery = await getDocs(query(collection(db, 'users'),
@@ -1339,23 +1347,23 @@ export default function AdminPaymentsPage() {
                           'arabic_name', 'english_name', 'nickname', 'title',
                           'firstName', 'lastName', 'fullName', 'displayName'
                         ];
-                        
+
                         // البحث في جميع الحقول المحتملة
                         for (const field of possibleNameFields) {
                           if (userData[field] && typeof userData[field] === 'string' && userData[field].trim()) {
                             const foundName = userData[field].trim();
                             // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
                             const lowerFoundName = foundName.toLowerCase();
-                            if (!foundName.includes('@') && 
-                                lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                                foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
+                            if (!foundName.includes('@') &&
+                              lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
+                              foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
                               playerName = foundName;
                               console.log(`Found name in user data field '${field}': ${playerName}`);
                               break;
                             }
                           }
                         }
-                        
+
                         // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
                         if (playerName === 'غير محدد' && (userData.first_name || userData.last_name || userData.firstName || userData.lastName)) {
                           const firstName = userData.first_name || userData.firstName || '';
@@ -1366,7 +1374,7 @@ export default function AdminPaymentsPage() {
                             console.log(`Merged name from first/last name: ${playerName}`);
                           }
                         }
-                        
+
                         // إذا لم نجد بعد، نستخدم القيمة الافتراضية
                         if (playerName === 'غير محدد') {
                           console.log('Could not find name in user data, keeping default');
@@ -1385,8 +1393,8 @@ export default function AdminPaymentsPage() {
                           if (value && typeof value === 'string' && value.trim() !== '') {
                             const lowerKey = key.toLowerCase();
                             if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                                lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                                lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
+                              lowerKey.includes('contact') || lowerKey.includes('tel') ||
+                              lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
                               // التحقق من أن القيمة تحتوي على أرقام
                               if (/\d/.test(value)) {
                                 playerPhone = value.toString().trim();
@@ -1432,8 +1440,8 @@ export default function AdminPaymentsPage() {
             // البحث عن اسم المستخدم إذا كان موجوداً
             const userNameFields = ['userName', 'user_name', 'username', 'userName', 'displayName', 'display_name'];
             for (const field of userNameFields) {
-              if (data[field] && typeof data[field] === 'string' && data[field].trim() && 
-                  !data[field].includes('@') && data[field].trim().toLowerCase() !== 'player') {
+              if (data[field] && typeof data[field] === 'string' && data[field].trim() &&
+                !data[field].includes('@') && data[field].trim().toLowerCase() !== 'player') {
                 userName = data[field].trim();
                 console.log(`Found userName in field '${field}': ${userName}`);
                 break;
@@ -1443,8 +1451,8 @@ export default function AdminPaymentsPage() {
             // إذا لم نجد في البيانات المباشرة، نبحث في بيانات اللاعب
             if (!userName && playerData) {
               for (const field of userNameFields) {
-                if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim() && 
-                    !playerData[field].includes('@') && playerData[field].trim().toLowerCase() !== 'player') {
+                if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim() &&
+                  !playerData[field].includes('@') && playerData[field].trim().toLowerCase() !== 'player') {
                   userName = playerData[field].trim();
                   console.log(`Found userName in player data field '${field}': ${userName}`);
                   break;
@@ -1455,8 +1463,8 @@ export default function AdminPaymentsPage() {
             // إذا لم نجد في بيانات اللاعب، نبحث في بيانات المستخدم
             if (!userName && userData) {
               for (const field of userNameFields) {
-                if (userData[field] && typeof userData[field] === 'string' && userData[field].trim() && 
-                    !userData[field].includes('@') && userData[field].trim().toLowerCase() !== 'player') {
+                if (userData[field] && typeof userData[field] === 'string' && userData[field].trim() &&
+                  !userData[field].includes('@') && userData[field].trim().toLowerCase() !== 'player') {
                   userName = userData[field].trim();
                   console.log(`Found userName in user data field '${field}': ${userName}`);
                   break;
@@ -1473,7 +1481,7 @@ export default function AdminPaymentsPage() {
 
             // استخراج طريقة الدفع
             const extractedPaymentMethod = data.paymentMethod || data.method || data.gateway || data.paymentType || collectionName;
-            
+
             // تسجيل خاص لمدفوعات جيديا بعد الاستخراج
             if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea' || collectionName === 'geidea_payments') {
               console.log(`✅ [Geidea Payment] Extracted paymentMethod:`, {
@@ -1908,7 +1916,7 @@ export default function AdminPaymentsPage() {
                 </div>
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800">
-                    <strong>💡 ملاحظة:</strong> تأكد من إضافة هذا الرابط في لوحة تحكم جيديا (Geidea Merchant Dashboard) 
+                    <strong>💡 ملاحظة:</strong> تأكد من إضافة هذا الرابط في لوحة تحكم جيديا (Geidea Merchant Dashboard)
                     في قسم Webhook/Callback Settings. هذا الرابط يستقبل إشعارات الدفع تلقائياً من جيديا.
                   </p>
                 </div>
@@ -1922,7 +1930,7 @@ export default function AdminPaymentsPage() {
               <div className="text-4xl">✅</div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">التحقق من إعدادات جلب المدفوعات من جيديا</h3>
-                
+
                 <div className="space-y-3">
                   {/* التحقق من مجموعة geidea_payments */}
                   <div className="bg-white rounded-lg p-4 border border-green-200">
@@ -1997,7 +2005,7 @@ export default function AdminPaymentsPage() {
                       </div>
                       <div className="text-center p-2 bg-gray-50 rounded">
                         <p className="text-lg font-bold text-green-600">
-                          {payments.filter(p => (p.paymentMethod === 'geidea' || p.collection === 'geidea_payments') && 
+                          {payments.filter(p => (p.paymentMethod === 'geidea' || p.collection === 'geidea_payments') &&
                             (p.status === 'success' || p.status === 'completed' || p.status === 'paid')).length}
                         </p>
                         <p className="text-xs text-gray-600">مدفوعات ناجحة</p>
@@ -2088,11 +2096,10 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
 
-          <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${
-            adminNotificationsEnabled
-              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-              : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-          }`}>
+          <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${adminNotificationsEnabled
+            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+            : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+            }`}>
             <div className="text-center">
               <div className="text-2xl mb-2">{adminNotificationsEnabled ? '🔔' : '🔕'}</div>
               <p className="text-lg font-bold mb-1">{adminNotificationsEnabled ? 'مفعلة' : 'معطلة'}</p>
@@ -2111,21 +2118,19 @@ export default function AdminPaymentsPage() {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setViewMode('cards')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'cards'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'cards'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
               >
                 📋 عرض الكروت
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'table'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'table'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
               >
                 📊 عرض الجدول
               </button>
@@ -2135,11 +2140,10 @@ export default function AdminPaymentsPage() {
                   setAdminNotificationsEnabled(newState);
                   toast.success(newState ? 'تم تفعيل إشعارات المدير' : 'تم إيقاف إشعارات المدير');
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  adminNotificationsEnabled
-                    ? 'bg-green-500 text-white hover:bg-green-600'
-                    : 'bg-red-500 text-white hover:bg-red-600'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${adminNotificationsEnabled
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
                 title={adminNotificationsEnabled ? 'إيقاف إشعارات المدير' : 'تشغيل إشعارات المدير'}
               >
                 {adminNotificationsEnabled ? '🔔 إشعارات مفعلة' : '🔕 إشعارات معطلة'}
@@ -2291,151 +2295,149 @@ export default function AdminPaymentsPage() {
           viewMode === 'cards' ? (
             <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {getCurrentPageData().map((payment) => (
-              <div key={payment.id} className="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col">
-                {/* العنوان والحالة */}
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4 sm:mb-6">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
-                        {payment.playerName}
-                      </h3>
-                      {/* مؤشر الرسائل */}
-                      {hasMessages(payment.id) ? (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <span className="text-green-500 text-sm">💬</span>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">
-                            {getMessageCount(payment.id)} رسالة
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm flex-shrink-0">📭</span>
+                <div key={payment.id} className="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col">
+                  {/* العنوان والحالة */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4 sm:mb-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
+                          {payment.playerName}
+                        </h3>
+                        {/* مؤشر الرسائل */}
+                        {hasMessages(payment.id) ? (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <span className="text-green-500 text-sm">💬</span>
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">
+                              {getMessageCount(payment.id)} رسالة
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm flex-shrink-0">📭</span>
+                        )}
+                      </div>
+                      {payment.userName && (
+                        <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1 truncate">
+                          👤 {payment.userName}
+                        </p>
                       )}
+                      {payment.isBulkPayment && payment.playersCount && payment.playersCount > 1 && (
+                        <p className="text-xs sm:text-sm text-purple-600 font-medium mb-1">
+                          👥 دفع جماعي ({payment.playersCount} لاعب)
+                        </p>
+                      )}
+                      <p className="text-xs sm:text-sm text-gray-500 truncate">{payment.collection}</p>
                     </div>
-                    {payment.userName && (
-                      <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1 truncate">
-                        👤 {payment.userName}
-                      </p>
-                    )}
-                    {payment.isBulkPayment && payment.playersCount && payment.playersCount > 1 && (
-                      <p className="text-xs sm:text-sm text-purple-600 font-medium mb-1">
-                        👥 دفع جماعي ({payment.playersCount} لاعب)
-                      </p>
-                    )}
-                    <p className="text-xs sm:text-sm text-gray-500 truncate">{payment.collection}</p>
-                  </div>
-                  <span className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-                    payment.status === 'completed' || payment.status === 'success' || payment.status === 'paid'
+                    <span className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${payment.status === 'completed' || payment.status === 'success' || payment.status === 'paid'
                       ? 'bg-green-100 text-green-800 border border-green-200'
                       : payment.status === 'pending' || payment.status === 'processing' || payment.status === 'waiting'
-                      ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                      : 'bg-red-100 text-red-800 border border-red-200'
-                  }`}>
-                    {payment.status}
-                  </span>
-                </div>
-
-                {/* تفاصيل الدفعة */}
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 sm:p-4 rounded-lg border border-green-200">
-                    <div className="text-center">
-                      <p className="text-xs sm:text-sm text-green-600 font-medium mb-1">المبلغ</p>
-                      <p className="text-xl sm:text-2xl font-bold text-green-700 break-words">
-                        {payment.amount?.toLocaleString()} {payment.currency}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 sm:p-4 rounded-lg border border-blue-200">
-                    <div className="text-center">
-                      <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1">طريقة الدفع</p>
-                      <p className="text-base sm:text-lg font-bold text-blue-700 break-words truncate">{payment.paymentMethod}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* معلومات إضافية */}
-                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 flex-grow">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-xs sm:text-sm text-gray-600 font-medium">📱 رقم الهاتف:</span>
-                    <span className="font-medium text-xs sm:text-sm text-purple-600 break-words text-right">{payment.playerPhone}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-xs sm:text-sm text-gray-600 font-medium">📅 التاريخ:</span>
-                    <span className="font-medium text-xs sm:text-sm text-gray-700">
-                      {payment.createdAt?.toDate ?
-                        payment.createdAt.toDate().toLocaleDateString('en-GB') :
-                        new Date(payment.createdAt).toLocaleDateString('en-GB')
-                      }
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                      }`}>
+                      {payment.status}
                     </span>
                   </div>
-                </div>
 
-                {/* أزرار الإجراءات */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 mt-auto">
-                  <button
-                    onClick={() => handleDetails(payment)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">👁️</span>
-                    <span className="hidden sm:inline">التفاصيل</span>
-                  </button>
-                  <button
-                    onClick={() => handleReceipt(payment)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">📄</span>
-                    <span className="hidden sm:inline">الإيصال</span>
-                  </button>
-                  <button
-                    onClick={() => handleMessage(payment)}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">💬</span>
-                    <span className="hidden sm:inline">رسالة</span>
-                  </button>
-                  <button
-                    onClick={() => showMessageHistoryDialog(payment)}
-                    className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                      hasMessages(payment.id)
+                  {/* تفاصيل الدفعة */}
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 sm:p-4 rounded-lg border border-green-200">
+                      <div className="text-center">
+                        <p className="text-xs sm:text-sm text-green-600 font-medium mb-1">المبلغ</p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-700 break-words">
+                          {payment.amount?.toLocaleString()} {payment.currency}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 sm:p-4 rounded-lg border border-blue-200">
+                      <div className="text-center">
+                        <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1">طريقة الدفع</p>
+                        <p className="text-base sm:text-lg font-bold text-blue-700 break-words truncate">{payment.paymentMethod}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* معلومات إضافية */}
+                  <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 flex-grow">
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-xs sm:text-sm text-gray-600 font-medium">📱 رقم الهاتف:</span>
+                      <span className="font-medium text-xs sm:text-sm text-purple-600 break-words text-right">{payment.playerPhone}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-xs sm:text-sm text-gray-600 font-medium">📅 التاريخ:</span>
+                      <span className="font-medium text-xs sm:text-sm text-gray-700">
+                        {payment.createdAt?.toDate ?
+                          payment.createdAt.toDate().toLocaleDateString('en-GB') :
+                          new Date(payment.createdAt).toLocaleDateString('en-GB')
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* أزرار الإجراءات */}
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 mt-auto">
+                    <button
+                      onClick={() => handleDetails(payment)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">👁️</span>
+                      <span className="hidden sm:inline">التفاصيل</span>
+                    </button>
+                    <button
+                      onClick={() => handleReceipt(payment)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">📄</span>
+                      <span className="hidden sm:inline">الإيصال</span>
+                    </button>
+                    <button
+                      onClick={() => handleMessage(payment)}
+                      className="bg-purple-500 hover:bg-purple-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">💬</span>
+                      <span className="hidden sm:inline">رسالة</span>
+                    </button>
+                    <button
+                      onClick={() => showMessageHistoryDialog(payment)}
+                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${hasMessages(payment.id)
                         ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                    disabled={!hasMessages(payment.id)}
-                  >
-                    <span className="text-xs">📋</span>
-                    <span className="hidden sm:inline">تاريخ الرسائل</span>
-                  </button>
-                  <button
-                    onClick={() => handleStatusUpdate(payment)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">⚙️</span>
-                    <span className="hidden sm:inline">تحديث</span>
-                  </button>
-                  <button
-                    onClick={() => generateInvoice(payment)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">📄</span>
-                    <span className="hidden sm:inline">PDF</span>
-                  </button>
-                  <button
-                    onClick={() => sendPaymentViaWhatsApp(payment)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                    title="إرسال عبر WhatsApp"
-                  >
-                    <span className="text-xs">📱</span>
-                    <span className="hidden sm:inline">WhatsApp</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeletePayment(payment)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="text-xs">🗑️</span>
-                    <span className="hidden sm:inline">حذف</span>
-                  </button>
+                        }`}
+                      disabled={!hasMessages(payment.id)}
+                    >
+                      <span className="text-xs">📋</span>
+                      <span className="hidden sm:inline">تاريخ الرسائل</span>
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(payment)}
+                      className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">⚙️</span>
+                      <span className="hidden sm:inline">تحديث</span>
+                    </button>
+                    <button
+                      onClick={() => generateInvoice(payment)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">📄</span>
+                      <span className="hidden sm:inline">PDF</span>
+                    </button>
+                    <button
+                      onClick={() => sendPaymentViaWhatsApp(payment)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                      title="إرسال عبر WhatsApp"
+                    >
+                      <span className="text-xs">📱</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeletePayment(payment)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-xs">🗑️</span>
+                      <span className="hidden sm:inline">حذف</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
               ))}
             </div>
           ) : (
@@ -2469,9 +2471,8 @@ export default function AdminPaymentsPage() {
                     {getCurrentPageData().map((payment) => (
                       <tr
                         key={payment.id}
-                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                          selectedRows.includes(payment.id) ? 'bg-blue-50' : ''
-                        }`}
+                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedRows.includes(payment.id) ? 'bg-blue-50' : ''
+                          }`}
                         onClick={() => toggleRowSelection(payment.id)}
                       >
                         <td className="px-4 py-3">
@@ -2497,13 +2498,12 @@ export default function AdminPaymentsPage() {
                           {payment.paymentMethod}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            payment.status === 'completed' || payment.status === 'success' || payment.status === 'paid'
-                              ? 'bg-green-100 text-green-800'
-                              : payment.status === 'pending' || payment.status === 'processing' || payment.status === 'waiting'
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${payment.status === 'completed' || payment.status === 'success' || payment.status === 'paid'
+                            ? 'bg-green-100 text-green-800'
+                            : payment.status === 'pending' || payment.status === 'processing' || payment.status === 'waiting'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
-                          }`}>
+                            }`}>
                             {payment.status}
                           </span>
                         </td>
@@ -2575,11 +2575,10 @@ export default function AdminPaymentsPage() {
                                 e.stopPropagation();
                                 showMessageHistoryDialog(payment);
                               }}
-                              className={`p-1 rounded ${
-                                hasMessages(payment.id)
-                                  ? 'text-indigo-600 hover:bg-indigo-100'
-                                  : 'text-gray-400 cursor-not-allowed'
-                              }`}
+                              className={`p-1 rounded ${hasMessages(payment.id)
+                                ? 'text-indigo-600 hover:bg-indigo-100'
+                                : 'text-gray-400 cursor-not-allowed'
+                                }`}
                               title="تاريخ الرسائل"
                               disabled={!hasMessages(payment.id)}
                             >
@@ -2675,7 +2674,7 @@ export default function AdminPaymentsPage() {
                     }));
 
                     const csv = Object.keys(csvData[0]).join(',') + '\n' +
-                               csvData.map(row => Object.values(row).join(',')).join('\n');
+                      csvData.map(row => Object.values(row).join(',')).join('\n');
 
                     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
@@ -2728,11 +2727,10 @@ export default function AdminPaymentsPage() {
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 text-sm border rounded ${
-                        currentPage === pageNum
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-1 text-sm border rounded ${currentPage === pageNum
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       {pageNum}
                     </button>
@@ -2796,13 +2794,12 @@ export default function AdminPaymentsPage() {
                   </div>
                   <div>
                     <label className="font-medium text-gray-700">الحالة:</label>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedPayment.status === 'completed' || selectedPayment.status === 'success' || selectedPayment.status === 'paid'
-                        ? 'bg-green-100 text-green-800'
-                        : selectedPayment.status === 'pending' || selectedPayment.status === 'processing' || selectedPayment.status === 'waiting'
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedPayment.status === 'completed' || selectedPayment.status === 'success' || selectedPayment.status === 'paid'
+                      ? 'bg-green-100 text-green-800'
+                      : selectedPayment.status === 'pending' || selectedPayment.status === 'processing' || selectedPayment.status === 'waiting'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
-                    }`}>
+                      }`}>
                       {selectedPayment.status}
                     </span>
                   </div>
@@ -3283,28 +3280,26 @@ export default function AdminPaymentsPage() {
                         <div key={message.id || index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                message.type === 'sms'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : message.type === 'whatsapp'
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${message.type === 'sms'
+                                ? 'bg-blue-100 text-blue-800'
+                                : message.type === 'whatsapp'
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-purple-100 text-purple-800'
-                              }`}>
+                                }`}>
                                 {message.type === 'sms' ? '📱 SMS' :
-                                 message.type === 'whatsapp' ? '💬 WhatsApp' :
-                                 '📧 إشعار'}
+                                  message.type === 'whatsapp' ? '💬 WhatsApp' :
+                                    '📧 إشعار'}
                               </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                message.status === 'sent' || message.status === 'delivered'
-                                  ? 'bg-green-100 text-green-800'
-                                  : message.status === 'failed'
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${message.status === 'sent' || message.status === 'delivered'
+                                ? 'bg-green-100 text-green-800'
+                                : message.status === 'failed'
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-yellow-100 text-yellow-800'
-                              }`}>
+                                }`}>
                                 {message.status === 'sent' ? '✅ تم الإرسال' :
-                                 message.status === 'delivered' ? '📨 تم التسليم' :
-                                 message.status === 'failed' ? '❌ فشل الإرسال' :
-                                 '⏳ قيد الإرسال'}
+                                  message.status === 'delivered' ? '📨 تم التسليم' :
+                                    message.status === 'failed' ? '❌ فشل الإرسال' :
+                                      '⏳ قيد الإرسال'}
                               </span>
                             </div>
                             <span className="text-sm text-gray-500">
@@ -3365,7 +3360,7 @@ export default function AdminPaymentsPage() {
               <div className="text-6xl mb-4">⚠️</div>
               <h2 className="text-xl font-bold text-gray-800 mb-2">تأكيد الحذف</h2>
               <p className="text-gray-600 mb-6">
-                هل أنت متأكد من حذف هذه المدفوعة؟<br/>
+                هل أنت متأكد من حذف هذه المدفوعة؟<br />
                 <span className="font-semibold text-red-600">
                   {deletingPayment?.playerName} - {deletingPayment?.amount?.toLocaleString()} {deletingPayment?.currency}
                 </span>
