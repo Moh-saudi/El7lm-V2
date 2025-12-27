@@ -54,7 +54,7 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
   const isProfilePage = pathname.includes('/search/profile/');
   const isReportsPage = pathname.includes('/reports');
   const isEntityProfilePage = pathname.includes('/search/profile/');
-  
+
   // توحيد الشريط الجانبي: لا تُخفِ الشريط في صفحات التقارير إلا للاعب فقط
   const shouldShowSidebar = !isEntityProfilePage && !(isReportsPage && effectiveAccountType === 'player');
 
@@ -130,10 +130,10 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
       <div className="flex flex-col min-h-screen bg-gray-50" style={{ direction: 'rtl' }}>
         {/* الإشعارات المحسنة */}
         <EnhancedNotifications />
-        
+
         {/* الهيدر - ثابت في الأعلى */}
         {!isEntityProfilePage && (
-          <UnifiedHeader 
+          <UnifiedHeader
             variant="default"
             showLanguageSwitcher={true}
             showNotifications={true}
@@ -142,7 +142,7 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
             logo={logo}
           />
         )}
-        
+
         {/* المحتوى الرئيسي - مع مساحة للهيدر والفوتر */}
         <div className="flex flex-1 min-h-0" style={{ direction: 'rtl' }}>
           {/* القائمة الجانبية المحسنة - ثابتة على اليمين */}
@@ -154,12 +154,11 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
               userData={userData}
             />
           )}
-          
+
           {/* المحتوى الرئيسي */}
-          <main 
-            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${
-              shouldShowSidebar ? (collapsed ? 'mr-20' : 'mr-64') : ''
-            }`}
+          <div
+            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${shouldShowSidebar ? (collapsed ? 'mr-20' : 'mr-64') : ''
+              }`}
             style={{ direction: 'rtl' }}
           >
             {/* مساحة للهيدر */}
@@ -173,15 +172,15 @@ const UnifiedDashboardLayout: React.FC<UnifiedDashboardLayoutProps> = ({
                 </div>
               </div>
             </div>
-          </main>
+          </div>
         </div>
 
         {/* نافذة الترحيب */}
-        <WelcomeDialog user={user} pathname={pathname} onClose={() => {}} />
+        <WelcomeDialog user={user} pathname={pathname} onClose={() => { }} />
 
         {/* الفوتر - ثابت في الأسفل */}
         {showFooter && !isEntityProfilePage && <Footer />}
-        
+
         {/* أيقونة الدعم الفني */}
         {showFloatingChat && <FloatingChatWidget />}
       </div>

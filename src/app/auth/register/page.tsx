@@ -52,17 +52,18 @@ const getDashboardRoute = (accountType: string) => {
   }
 };
 
-const FloatingInput = ({ label, icon: Icon, error, ...props }: any) => (
+const FloatingInput = ({ label, icon: Icon, error, id, ...props }: any) => (
   <div className="relative group">
     <input
+      id={id}
       {...props}
       className={`block px-4 pb-2 pt-5 w-full text-sm text-slate-800 bg-slate-50/50 border rounded-xl appearance-none focus:outline-none focus:ring-0 peer transition-all ${error ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-purple-600 focus:bg-white'}`}
       placeholder=" "
     />
-    <label className={`absolute text-sm duration-300 transform -translate-y-3 scale-75 top-3.5 z-10 origin-[top_right] right-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 peer-focus:text-purple-600 ${error ? 'text-red-500' : 'text-slate-400'}`}>
+    <label htmlFor={id} className={`absolute text-sm duration-300 transform -translate-y-3 scale-75 top-3.5 z-10 origin-[top_right] right-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 peer-focus:text-purple-600 ${error ? 'text-red-500' : 'text-slate-400'}`}>
       {label}
     </label>
-    {Icon && <Icon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${error ? 'text-red-400' : 'text-slate-400 peer-focus:text-purple-600'}`} />}
+    {Icon && <Icon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${error ? 'text-red-400' : 'text-slate-400 peer-focus:text-purple-600'}`} aria-hidden="true" />}
   </div>
 );
 
@@ -263,22 +264,24 @@ export default function RegisterPage() {
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">نوع الحساب</span>
                       </div>
 
-                      <div className="flex flex-wrap gap-3 justify-between">
+                      <div className="flex flex-wrap gap-3 justify-between" role="radiogroup" aria-label="اختر دورك">
                         {accountTypes.map(t => (
                           <div key={t.value} className="w-[calc(50%-6px)] sm:w-[calc(33.33%-8px)]">
                             <button
                               type="button"
                               onClick={() => setFormData(p => ({ ...p, accountType: t.value }))}
+                              role="radio"
+                              aria-checked={formData.accountType === t.value}
                               className={`group relative flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border transition-all duration-300 min-h-[90px] w-full ${formData.accountType === t.value
-                                  ? 'border-purple-600 bg-purple-50/50 text-purple-700 ring-1 ring-purple-600/20 shadow-sm'
-                                  : 'border-slate-100 bg-white text-slate-500 hover:border-purple-200'
+                                ? 'border-purple-600 bg-purple-50/50 text-purple-700 ring-1 ring-purple-600/20 shadow-sm'
+                                : 'border-slate-100 bg-white text-slate-500 hover:border-purple-200'
                                 }`}
                             >
                               <div className={`p-2 rounded-xl transition-all duration-300 ${formData.accountType === t.value
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-slate-100 text-slate-400 group-hover:bg-purple-100'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-slate-100 text-slate-400 group-hover:bg-purple-100'
                                 }`}>
-                                <t.icon className="w-4 h-4" />
+                                <t.icon className="w-4 h-4" aria-hidden="true" />
                               </div>
                               <span className="text-[10px] font-black text-center leading-tight">{t.label}</span>
 
@@ -328,10 +331,12 @@ export default function RegisterPage() {
 
                     {formStep === 1 && (
                       <div className="space-y-5">
-                        <FloatingInput name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} required />
+                        <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} required />
 
                         <div className="relative group">
+                          <label htmlFor="reg-country" className="absolute text-xs font-bold text-slate-400 duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[top_right] right-4 peer-focus:text-purple-600 pointer-events-none uppercase tracking-widest">الدولة</label>
                           <select
+                            id="reg-country"
                             name="country"
                             value={formData.country}
                             onChange={handleCountryChange}
@@ -340,14 +345,13 @@ export default function RegisterPage() {
                             <option value="">اختر الدولة</option>
                             {countries.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
                           </select>
-                          <label className="absolute text-xs font-bold text-slate-400 duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[top_right] right-4 peer-focus:text-purple-600 pointer-events-none uppercase tracking-widest">الدولة</label>
-                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors pointer-events-none" />
+                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors pointer-events-none" aria-hidden="true" />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity">
                             {/* Custom arrow can go here */}
                           </div>
                         </div>
 
-                        <FloatingInput name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} required />
+                        <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} required />
 
                         <button
                           type="button"
@@ -369,13 +373,18 @@ export default function RegisterPage() {
                     {formStep === 2 && (
                       <div className="space-y-5 animate-in slide-in-from-right-8 duration-500">
                         <div className="relative">
-                          <FloatingInput name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors">
+                          <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
+                            aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                          >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
 
-                        <FloatingInput name="confirmPassword" label="تأكيد كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} />
+                        <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} />
 
                         <div className="py-2">
                           <button
@@ -389,7 +398,7 @@ export default function RegisterPage() {
 
                           {showOrgCode && (
                             <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
-                              <FloatingInput name="organizationCode" label="كود الانضمام للمنظمة" value={formData.organizationCode} onChange={handleInputChange} icon={Globe} />
+                              <FloatingInput id="reg-org-code" name="organizationCode" label="كود الانضمام للمنظمة" value={formData.organizationCode} onChange={handleInputChange} icon={Globe} />
                             </div>
                           )}
                         </div>
@@ -397,15 +406,16 @@ export default function RegisterPage() {
                         <div className="flex items-start gap-3 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
                           <div className="relative flex items-center pt-0.5">
                             <input
+                              id="terms-checkbox"
                               type="checkbox"
                               checked={formData.agreeToTerms}
                               onChange={(e) => setFormData(p => ({ ...p, agreeToTerms: e.target.checked }))}
                               className="w-5 h-5 rounded-lg border-slate-200 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer accent-purple-600"
                             />
                           </div>
-                          <span className="text-xs text-slate-500 font-medium leading-relaxed">
+                          <label htmlFor="terms-checkbox" className="text-xs text-slate-500 font-medium leading-relaxed">
                             أوافق على <button type="button" onClick={() => setShowTerms(true)} className="text-purple-700 font-black underline decoration-purple-200 underline-offset-4 hover:decoration-purple-600 transition-all">شروط الخدمة</button> و سياسة الخصوصية الخاصة بمنصة الحلم.
-                          </span>
+                          </label>
                         </div>
 
                         <div className="flex gap-3 pt-2">

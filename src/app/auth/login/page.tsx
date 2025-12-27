@@ -107,7 +107,7 @@ export default function LoginPage() {
         toast.success('✅ تم تسجيل الدخول بنجاح');
       }
 
-      if (result.userData.accountType === 'unknown' || result.userData.accountType === undefined) {
+      if ((result.userData.accountType as any) === 'unknown' || result.userData.accountType === undefined) {
         setTimeout(() => router.replace('/auth/select-role'), 500);
       } else {
         const dashboardRoute = getDashboardRoute(result.userData.accountType);
@@ -278,7 +278,7 @@ export default function LoginPage() {
       const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
       if (!firebaseEmail) {
         // رسالة خطأ محسنة مع زر للتسجيل
-        toast.custom((t) => (
+        toast.custom((t: any) => (
           <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 text-2xl">👤</div>
@@ -301,7 +301,7 @@ export default function LoginPage() {
               </div>
               <button
                 onClick={() => toast.dismiss(t.id)}
-                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                 aria-label="إغلاق"
               >
                 ✕
@@ -384,7 +384,7 @@ export default function LoginPage() {
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
 
           // رسالة خطأ محسنة مع زر للتسجيل
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -407,7 +407,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -436,7 +436,7 @@ export default function LoginPage() {
               errorMessage = 'حسابك يحتاج إلى تفعيل';
 
               // رسالة خطأ محسنة مع زر "نسيت كلمة المرور" واضح
-              toast.custom((t) => (
+              toast.custom((t: any) => (
                 <div className={`bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 text-2xl">⚠️</div>
@@ -460,7 +460,7 @@ export default function LoginPage() {
                     </div>
                     <button
                       onClick={() => toast.dismiss(t.id)}
-                      className="flex-shrink-0 text-yellow-400 hover:text-yellow-600 transition-colors text-lg font-bold"
+                      className="flex-shrink-0 text-yellow-400 hover:text-yellow-600 transition-colors text-lg font-bold p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                       aria-label="إغلاق"
                     >
                       ✕
@@ -475,7 +475,7 @@ export default function LoginPage() {
               errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
 
               // رسالة خطأ محسنة مع زر للتسجيل
-              toast.custom((t) => (
+              toast.custom((t: any) => (
                 <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 text-2xl">👤</div>
@@ -498,7 +498,7 @@ export default function LoginPage() {
                     </div>
                     <button
                       onClick={() => toast.dismiss(t.id)}
-                      className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                      className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                       aria-label="إغلاق"
                     >
                       ✕
@@ -518,7 +518,7 @@ export default function LoginPage() {
           errorMessage = 'كلمة المرور غير صحيحة';
 
           // رسالة خطأ محسنة مع زر "نسيت كلمة المرور" واضح
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -542,7 +542,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors text-lg font-bold"
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors text-lg font-bold p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -554,7 +554,7 @@ export default function LoginPage() {
           errorIcon = '⏱️';
           errorMessage = 'تم تجاوز عدد المحاولات المسموحة';
 
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -568,7 +568,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-orange-400 hover:text-orange-600 transition-colors"
+                  className="flex-shrink-0 text-orange-400 hover:text-orange-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -580,7 +580,7 @@ export default function LoginPage() {
           errorIcon = '🌐';
           errorMessage = 'خطأ في الاتصال بالإنترنت';
 
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -594,7 +594,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+                  className="flex-shrink-0 text-blue-400 hover:text-blue-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -606,7 +606,7 @@ export default function LoginPage() {
           errorIcon = '🚫';
           errorMessage = 'تم تعطيل الحساب';
 
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-gray-50 dark:bg-gray-900/20 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -620,7 +620,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -629,7 +629,7 @@ export default function LoginPage() {
             </div>
           ), { id: 'login', duration: 6000 });
         } else {
-          toast.custom((t) => (
+          toast.custom((t: any) => (
             <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -643,7 +643,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                   aria-label="إغلاق"
                 >
                   ✕
@@ -658,7 +658,7 @@ export default function LoginPage() {
         errorIcon = '⚠️';
 
         // عرض رسالة الخطأ في toast
-        toast.custom((t) => (
+        toast.custom((t: any) => (
           <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 text-2xl">{errorIcon}</div>
@@ -681,7 +681,7 @@ export default function LoginPage() {
               </div>
               <button
                 onClick={() => toast.dismiss(t.id)}
-                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
                 aria-label="إغلاق"
               >
                 ✕
@@ -751,8 +751,8 @@ export default function LoginPage() {
       <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-purple-950 to-indigo-950 font-sans relative overflow-hidden" dir="rtl">
 
         {/* Decorative Background Glows */}
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] opacity-60"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" aria-hidden="true"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] opacity-60" aria-hidden="true"></div>
 
         <div className="w-full max-w-[440px] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
@@ -765,7 +765,7 @@ export default function LoginPage() {
 
               <div className="text-center mb-10">
                 <div className="inline-flex justify-center items-center mb-6 w-20 h-20 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl shadow-lg border border-white ring-4 ring-purple-500/5">
-                  <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" />
+                  <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" aria-hidden="true" />
                 </div>
                 <h1 className="text-3xl font-black text-slate-900 mb-2 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
                 <p className="text-slate-500 text-sm font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>
@@ -825,9 +825,10 @@ export default function LoginPage() {
                 {loginMethod === 'phone' ? (
                   <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
                     <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البلد</label>
+                      <label htmlFor="country-select" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البلد</label>
                       <div className="relative">
                         <select
+                          id="country-select"
                           value={countryCode}
                           onChange={(e) => setCountryCode(e.target.value)}
                           className="w-full h-14 px-5 text-sm bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none appearance-none font-black text-slate-800 cursor-pointer"
@@ -841,12 +842,13 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">رقم الهاتف</label>
+                      <label htmlFor="phone-input" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">رقم الهاتف</label>
                       <div className="flex h-14 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/50 focus-within:bg-white focus-within:border-purple-600 focus-within:ring-4 focus-within:ring-purple-600/5 transition-all">
                         <div className="flex items-center justify-center px-4 bg-slate-100/50 border-l border-slate-200 text-slate-700 font-black text-sm" dir="ltr">
                           {countryCode}
                         </div>
                         <input
+                          id="phone-input"
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
@@ -858,7 +860,14 @@ export default function LoginPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 cursor-pointer group" onClick={() => setUseOTP(!useOTP)}>
+                    <div
+                      className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 cursor-pointer group"
+                      onClick={() => setUseOTP(!useOTP)}
+                      onKeyDown={(e) => e.key === 'Enter' || e.key === ' ' ? setUseOTP(!useOTP) : null}
+                      role="switch"
+                      aria-checked={useOTP}
+                      tabIndex={0}
+                    >
                       <div className={`w-11 h-6 rounded-full relative transition-all duration-300 ${useOTP ? 'bg-purple-600' : 'bg-slate-300'}`}>
                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${useOTP ? 'left-1' : 'left-6'}`}></div>
                       </div>
@@ -867,9 +876,10 @@ export default function LoginPage() {
                   </div>
                 ) : (
                   <div className="animate-in fade-in slide-in-from-left-8 duration-500 space-y-2">
-                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البريد الإلكتروني</label>
+                    <label htmlFor="email-input" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البريد الإلكتروني</label>
                     <div className="relative group">
                       <input
+                        id="email-input"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -887,11 +897,12 @@ export default function LoginPage() {
                 {(loginMethod === 'email' || !useOTP) && (
                   <div className="space-y-2 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="flex justify-between items-center pr-1">
-                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider">كلمة المرور</label>
-                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all">نسيت كلمة المرور؟</button>
+                      <label htmlFor="password-input" className="text-xs font-black text-slate-700 uppercase tracking-wider">كلمة المرور</label>
+                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all min-h-[32px] flex items-center">نسيت كلمة المرور؟</button>
                     </div>
                     <div className="relative group">
                       <input
+                        id="password-input"
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -902,7 +913,12 @@ export default function LoginPage() {
                       <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-600 transition-colors">
                         <Lock className="w-5 h-5" />
                       </div>
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                      >
                         {showPassword ? <EyeOff className="w-5 h-4" /> : <Eye className="w-5 h-4" />}
                       </button>
                     </div>
@@ -910,11 +926,11 @@ export default function LoginPage() {
                 )}
 
                 <div className="flex items-center justify-between pt-2">
-                  <label className="flex gap-3 items-center cursor-pointer group select-none">
+                  <label htmlFor="remember-me" className="flex gap-3 items-center cursor-pointer group select-none">
                     <div className="relative flex items-center">
-                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="peer sr-only" />
+                      <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="peer sr-only" />
                       <div className="w-5 h-5 border-2 border-slate-300 rounded-lg bg-white peer-checked:bg-purple-600 peer-checked:border-purple-600 transition-all"></div>
-                      <CheckCircle className="w-3.5 h-3.5 text-white absolute left-0.75 top-0.75 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
+                      <CheckCircle className="w-3.5 h-3.5 text-white absolute left-0.75 top-0.75 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" aria-hidden="true" />
                     </div>
                     <span className="text-xs font-black text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-widest">تذكرني</span>
                   </label>

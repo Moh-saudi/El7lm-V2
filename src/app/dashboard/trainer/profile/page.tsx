@@ -316,7 +316,7 @@ export default function TrainerProfilePage() {
   }
 
   return (
-    <main className="flex-1 min-h-0 p-6 mx-4 my-6 overflow-auto rounded-lg shadow-inner md:p-10 bg-gray-50" dir="rtl">
+    <div className="flex-1 min-h-0 p-6 mx-4 my-6 overflow-auto rounded-lg shadow-inner md:p-10 bg-gray-50" dir="rtl">
       <div className="max-w-4xl px-4 py-10 mx-auto">
         {/* زر العودة */}
         <button
@@ -921,6 +921,6 @@ export default function TrainerProfilePage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 } 

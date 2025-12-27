@@ -27,7 +27,7 @@ import '@/lib/utils/initialize-error-handling';
 try {
   const g: any = globalThis as any;
   if (typeof g.self === 'undefined') g.self = g;
-} catch {}
+} catch { }
 
 export const metadata: Metadata = {
   title: 'El7lm - منصة كرة القدم المتكاملة',
@@ -97,7 +97,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className={`${inter.variable} ${cairo.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="El7lm" />
@@ -392,36 +392,38 @@ export default function RootLayout({
                   <ClarityUserTracker />
                   <GTMDataLayer />
                   {/* <PageRefreshDetector /> */}
-                  {children}
+                  <main id="main-content" className="flex-grow min-h-screen">
+                    {children}
+                  </main>
                 </ClarityProvider>
               </ErrorBoundary>
             </HydrationFix>
           </ReactErrorBoundary>
           <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                  fontFamily: 'Cairo, sans-serif',
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+                fontFamily: 'Cairo, sans-serif',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
                 },
-                success: {
-                  duration: 3000,
-                  iconTheme: {
-                    primary: '#10b981',
-                    secondary: '#fff',
-                  },
+              },
+              error: {
+                duration: 5000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
                 },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#ef4444',
-                    secondary: '#fff',
-                  },
-                },
-              }}
-            />
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

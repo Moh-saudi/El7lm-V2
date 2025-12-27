@@ -8,12 +8,12 @@ import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, setDoc, serverTimestam
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Star, 
-  MessageSquare, 
-  UserPlus, 
+import {
+  ArrowLeft,
+  MapPin,
+  Star,
+  MessageSquare,
+  UserPlus,
   UserCheck,
   Building,
   Briefcase,
@@ -86,7 +86,7 @@ export default function EntityProfilePage() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
   const params = useParams();
-  
+
   const [entity, setEntity] = useState<EntityProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -136,7 +136,7 @@ export default function EntityProfilePage() {
             setIsLoading(false);
             return;
           }
-          
+
           // تحويل البيانات إلى تنسيق EntityProfile
           const profile: EntityProfile = {
             id: docSnap.id,
@@ -159,13 +159,13 @@ export default function EntityProfilePage() {
             reviewsCount: data.reviewsCount ?? 0,
             followersCount: (Array.isArray(data.followers) ? data.followers.length : (data.followersCount ?? 0)),
             connectionsCount: data.stats?.contracts || data.stats?.completed_deals || 0,
-            achievements: data.trophies?.map((t: any) => `${t.name} (${t.year})`) || 
-                          (data.is_fifa_licensed ? ['وكيل معتمد FIFA'] : []) ||
-                          (data.is_certified ? ['مدرب معتمد'] : []) ||
-                          ['خبرة متميزة'],
+            achievements: data.trophies?.map((t: any) => `${t.name} (${t.year})`) ||
+              (data.is_fifa_licensed ? ['وكيل معتمد FIFA'] : []) ||
+              (data.is_certified ? ['مدرب معتمد'] : []) ||
+              ['خبرة متميزة'],
             services: data.programs || ['خدمات متنوعة'],
-            established: data.founded || data.established || 
-                        (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
+            established: data.founded || data.established ||
+              (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
             languages: data.spoken_languages || ['العربية'],
             contactInfo: {
               email: data.email || '',
@@ -206,9 +206,9 @@ export default function EntityProfilePage() {
     try {
       const collectionName =
         entity.type === 'club' ? 'clubs' :
-        entity.type === 'agent' ? 'agents' :
-        entity.type === 'academy' ? 'academies' :
-        entity.type === 'trainer' ? 'trainers' : 'entities';
+          entity.type === 'agent' ? 'agents' :
+            entity.type === 'academy' ? 'academies' :
+              entity.type === 'trainer' ? 'trainers' : 'entities';
 
       const ref = doc(db, collectionName, entity.id);
       const snap = await getDoc(ref);
@@ -231,7 +231,7 @@ export default function EntityProfilePage() {
       console.error('خطأ في المتابعة:', error);
       setEntity(prev => prev ? { ...prev, isFollowing: originalFollowing } : prev);
     } finally {
-    setActionLoading(null);
+      setActionLoading(null);
     }
   };
 
@@ -325,21 +325,21 @@ export default function EntityProfilePage() {
 
       {/* المحتوى الرئيسي */}
       <div className="px-4 py-8 mx-auto max-w-7xl">
-        <main className="flex-1 min-h-0 p-6 mx-4 my-6 overflow-auto rounded-lg shadow-inner md:p-10 bg-gray-50 dark:bg-gray-900">
+        <div className="flex-1 min-h-0 p-6 mx-4 my-6 overflow-auto rounded-lg shadow-inner md:p-10 bg-gray-50 dark:bg-gray-900">
           <div className="max-w-4xl px-4 py-10 mx-auto">
             {/* بطاقة الملف الرئيسية */}
             <Card className="overflow-hidden mb-8">
               {/* صورة الغلاف */}
               <div className="h-64 bg-gradient-to-r from-blue-400 to-purple-500 relative">
                 {entity.coverImage && (
-                  <img 
-                    src={entity.coverImage} 
+                  <img
+                    src={entity.coverImage}
                     alt={entity.name}
                     className="w-full h-full object-cover"
                   />
                 )}
                 <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-                
+
                 {/* شارات الحالة */}
                 <div className="absolute top-4 right-4 flex gap-2">
                   {entity.verified && (
@@ -353,14 +353,14 @@ export default function EntityProfilePage() {
                     مميز
                   </Badge>
                 </div>
-                
+
                 {/* معلومات الملف الشخصي */}
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-end gap-4">
                     {/* صورة الملف الشخصي */}
                     <div className="relative">
-                      <img 
-                        src={entity.profileImage} 
+                      <img
+                        src={entity.profileImage}
                         alt={entity.name}
                         className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
                       />
@@ -368,7 +368,7 @@ export default function EntityProfilePage() {
                         <EntityIcon className="w-5 h-5 text-white" />
                       </div>
                     </div>
-                    
+
                     {/* معلومات أساسية */}
                     <div className="flex-1 text-white">
                       <h1 className="text-3xl font-bold mb-2">{entity.name}</h1>
@@ -383,10 +383,10 @@ export default function EntityProfilePage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* أزرار الإجراءات */}
                     <div className="flex gap-2">
-                      <Button 
+                      <Button
                         onClick={handleFollow}
                         disabled={actionLoading === 'follow'}
                         variant={entity.isFollowing ? "outline" : "default"}
@@ -406,8 +406,8 @@ export default function EntityProfilePage() {
                           </>
                         )}
                       </Button>
-                      
-                      <Button 
+
+                      <Button
                         onClick={handleMessage}
                         className="bg-white text-gray-900 hover:bg-gray-100"
                       >
@@ -418,7 +418,7 @@ export default function EntityProfilePage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* إحصائيات سريعة */}
               <div className="p-6 bg-white">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -502,7 +502,7 @@ export default function EntityProfilePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {entity.contactInfo.phone && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Phone className="w-5 h-5 text-gray-500" />
@@ -512,7 +512,7 @@ export default function EntityProfilePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {entity.website && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Globe className="w-5 h-5 text-gray-500" />
@@ -540,7 +540,7 @@ export default function EntityProfilePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {entity.established && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Calendar className="w-5 h-5 text-gray-500" />
@@ -550,7 +550,7 @@ export default function EntityProfilePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {entity.languages && entity.languages.length > 0 && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Languages className="w-5 h-5 text-gray-500" />
@@ -567,7 +567,7 @@ export default function EntityProfilePage() {
                 <Card className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">الإجراءات</h3>
                   <div className="space-y-3">
-                    <Button 
+                    <Button
                       onClick={handleFollow}
                       disabled={actionLoading === 'follow'}
                       variant={entity.isFollowing ? "outline" : "default"}
@@ -587,8 +587,8 @@ export default function EntityProfilePage() {
                         </>
                       )}
                     </Button>
-                    
-                    <Button 
+
+                    <Button
                       onClick={handleMessage}
                       variant="outline"
                       className="w-full"
@@ -596,8 +596,8 @@ export default function EntityProfilePage() {
                       <MessageSquare className="w-4 h-4 mr-2" />
                       إرسال رسالة
                     </Button>
-                    
-                    <Button 
+
+                    <Button
                       variant="outline"
                       className="w-full"
                     >
@@ -609,7 +609,7 @@ export default function EntityProfilePage() {
               </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );
