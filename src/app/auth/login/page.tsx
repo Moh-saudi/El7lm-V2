@@ -3,6 +3,8 @@
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { sendEmailVerification } from 'firebase/auth';
 import {
+  ArrowRight,
+  CheckCircle,
   Eye,
   EyeOff,
   Loader2,
@@ -735,57 +737,53 @@ export default function LoginPage() {
       {/* OTP Modal */}
       {showOTPModal && (
         <WhatsAppOTPVerification
-          confirmationResult={confirmationResult}
-          isVerify={true}
-          onVerifySuccess={handleVerifyOTP}
+          phoneNumber={phone}
+          isOpen={showOTPModal}
+          onVerificationSuccess={() => { }}
+          onVerificationFailed={(err) => toast.error(err)}
           onClose={() => setShowOTPModal(false)}
-          phone={phone}
+          onOTPVerify={handleVerifyOTP}
+          title="تفعيل الدخول"
+          subtitle="أدخل الرمز المرسل لهاتفك"
         />
       )}
 
-      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-purple-950 to-slate-950 font-sans relative overflow-hidden" dir="rtl">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-purple-950 to-indigo-950 font-sans relative overflow-hidden" dir="rtl">
 
-        {/* Animated Background Elements - Subtle Depth */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-[-20%] left-[50%] -translate-x-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full mix-blend-multiply filter blur-[100px] animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full mix-blend-multiply filter blur-[80px] opacity-40"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.05]"></div>
-        </div>
+        {/* Decorative Background Glows */}
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] opacity-60"></div>
 
-        {/* Main Card */}
-        <div className="w-full max-w-[400px] relative z-10 perspective-1000">
+        <div className="w-full max-w-[440px] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
-          {/* Card Container */}
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-white/20 overflow-hidden relative transform transition-all hover:scale-[1.005] duration-500">
+          <div className="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.6)] border border-white/20 overflow-hidden relative transition-all duration-500">
 
-            {/* Decorative Top Line */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"></div>
+            {/* Top Slim Gradient Bar */}
+            <div className="h-2 w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600"></div>
 
-            <div className="p-8">
+            <div className="p-8 md:p-10">
 
-              {/* Header */}
-              <div className="text-center mb-8 relative">
-                <div className="inline-flex justify-center items-center mb-4 w-16 h-16 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl shadow-inner border border-white">
-                  <Shield className="w-8 h-8 text-purple-600" />
+              <div className="text-center mb-10">
+                <div className="inline-flex justify-center items-center mb-6 w-20 h-20 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl shadow-lg border border-white ring-4 ring-purple-500/5">
+                  <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" />
                 </div>
-                <h1 className="text-2xl font-extrabold text-slate-800 mb-1 font-cairo tracking-tight">مرحباً بك مجدداً</h1>
-                <p className="text-slate-500 text-xs font-medium">سجل دخولك لمتابعة رحلة حلمك</p>
+                <h1 className="text-3xl font-black text-slate-900 mb-2 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
+                <p className="text-slate-500 text-sm font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>
               </div>
 
-              {/* Google Sign In - Prominent Top Placement */}
-              <div className="mb-6">
+              {/* Google Login - Premium Style */}
+              <div className="mb-8">
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={googleLoading || loading}
-                  className="w-full h-12 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-3 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-purple-200 hover:shadow-md hover:shadow-purple-500/5 active:bg-slate-100 disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
+                  className="w-full h-14 text-sm font-black rounded-2xl transition-all flex items-center justify-center gap-3 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group"
                 >
                   {googleLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
                   ) : (
                     <>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-50/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -797,235 +795,163 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <div className="relative flex items-center mb-6">
-                <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-3 text-[10px] font-bold tracking-wider text-slate-400 uppercase">أو أدخل بياناتك</span>
-                <div className="flex-grow border-t border-slate-200"></div>
+              <div className="relative flex items-center mb-8">
+                <div className="flex-grow border-t border-slate-100"></div>
+                <span className="flex-shrink mx-4 text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">أو عبر البيانات</span>
+                <div className="flex-grow border-t border-slate-100"></div>
               </div>
 
-              {/* Tabs - Glass Pill Style */}
-              <div className="p-1.5 bg-slate-100/80 rounded-2xl mb-6 relative border border-slate-200/50 flex">
+              {/* Login Method Toggle - Modern Glass Pill */}
+              <div className="p-1.5 bg-slate-100/80 rounded-[1.25rem] mb-8 relative border border-slate-200/50 flex">
                 <button
                   onClick={() => setLoginMethod('phone')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 relative z-10 ${loginMethod === 'phone' ? 'text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black rounded-xl transition-all duration-500 relative z-10 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Phone className={`w-3.5 h-3.5 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-400'}`} />
                   رقم الهاتف
                 </button>
                 <button
                   onClick={() => setLoginMethod('email')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 relative z-10 ${loginMethod === 'email' ? 'text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black rounded-xl transition-all duration-500 relative z-10 ${loginMethod === 'email' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Mail className={`w-3.5 h-3.5 ${loginMethod === 'email' ? 'text-white' : 'text-slate-400'}`} />
                   البريد الإلكتروني
                 </button>
-
-                {/* Selected Tab Background */}
-                <div
-                  className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-900 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${loginMethod === 'phone' ? 'right-1.5' : 'right-[calc(50%+3px)]'
-                    }`}
-                ></div>
+                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-900 rounded-[0.9rem] transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) shadow-lg ${loginMethod === 'phone' ? 'translate-x-0' : 'translate-x-[calc(-100%-6px)]'}`}></div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-6">
+
                 {loginMethod === 'phone' ? (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">البلد</label>
-                      <div className="relative group">
+                  <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البلد</label>
+                      <div className="relative">
                         <select
                           value={countryCode}
                           onChange={(e) => setCountryCode(e.target.value)}
-                          className="w-full h-10 px-4 text-xs bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all outline-none appearance-none font-semibold text-slate-700 cursor-pointer"
+                          className="w-full h-14 px-5 text-sm bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none appearance-none font-black text-slate-800 cursor-pointer"
                         >
-                          {countries.map((country) => (
-                            <option key={country.code} value={country.code}>
-                              {country.name} ({country.code})
-                            </option>
-                          ))}
+                          {countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
                         </select>
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-purple-500 transition-colors">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">رقم الهاتف</label>
-                      <div className="flex h-10 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 focus-within:bg-white focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-500/10 transition-all">
-                        <div className="flex items-center justify-center w-14 bg-slate-100 border-l border-slate-200 text-slate-500 font-bold text-xs dir-ltr">
-                          <span dir="ltr">{countryCode}</span>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">رقم الهاتف</label>
+                      <div className="flex h-14 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/50 focus-within:bg-white focus-within:border-purple-600 focus-within:ring-4 focus-within:ring-purple-600/5 transition-all">
+                        <div className="flex items-center justify-center px-4 bg-slate-100/50 border-l border-slate-200 text-slate-700 font-black text-sm" dir="ltr">
+                          {countryCode}
                         </div>
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                          className="flex-1 px-4 bg-transparent border-none text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:ring-0 outline-none"
+                          className="flex-1 px-5 bg-transparent border-none text-sm font-black text-slate-800 placeholder:text-slate-400 focus:ring-0 outline-none"
                           placeholder="50xxxxxxx"
-                          required
                           dir="ltr"
-                          autoComplete="tel"
+                          required
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 py-1 cursor-pointer" onClick={() => setUseOTP(!useOTP)}>
-                      <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${useOTP ? 'bg-purple-600' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all duration-300 ${useOTP ? 'left-1' : 'left-6'}`}></div>
+                    <div className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 cursor-pointer group" onClick={() => setUseOTP(!useOTP)}>
+                      <div className={`w-11 h-6 rounded-full relative transition-all duration-300 ${useOTP ? 'bg-purple-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${useOTP ? 'left-1' : 'left-6'}`}></div>
                       </div>
-                      <span className="text-xs font-bold text-slate-600 select-none">الدخول السريع (بدون كلمة مرور)</span>
+                      <span className="text-xs font-black text-purple-900 select-none">الدخول السريع (رمز تحقق للهاتف)</span>
                     </div>
-
                   </div>
                 ) : (
-                  <div className="animate-in fade-in slide-in-from-left-4 duration-300 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">البريد الإلكتروني</label>
+                  <div className="animate-in fade-in slide-in-from-left-8 duration-500 space-y-2">
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البريد الإلكتروني</label>
                     <div className="relative group">
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-10 pl-4 pr-10 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all outline-none text-sm font-semibold text-slate-800 placeholder:text-slate-400"
+                        className="w-full h-14 pr-12 pl-4 bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none text-sm font-black text-slate-800"
                         placeholder="name@example.com"
                         required
-                        autoComplete="email"
                       />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors">
-                        <Mail className="w-4 h-4" />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-600 transition-colors">
+                        <Mail className="w-5 h-5" />
                       </div>
                     </div>
                   </div>
                 )}
 
                 {(loginMethod === 'email' || !useOTP) && (
-                  <div className="space-y-1 animate-in fade-in zoom-in duration-300">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">كلمة المرور</label>
-                      <button
-                        type="button"
-                        onClick={() => router.push('/auth/forgot-password')}
-                        className="flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline transition-all"
-                      >
-                        <span>🔑</span>
-                        <span>نسيت كلمة المرور؟</span>
-                      </button>
+                  <div className="space-y-2 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex justify-between items-center pr-1">
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-wider">كلمة المرور</label>
+                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all">نسيت كلمة المرور؟</button>
                     </div>
                     <div className="relative group">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full h-10 pl-10 pr-10 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all outline-none text-sm font-semibold text-slate-800 placeholder:text-slate-400"
+                        className="w-full h-14 pr-12 pl-12 bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none text-sm font-black text-slate-800"
                         placeholder="••••••••"
                         required={!useOTP}
-                        autoComplete="current-password"
                       />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors">
-                        <Lock className="w-4 h-4" />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-600 transition-colors">
+                        <Lock className="w-5 h-5" />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        {showPassword ? <EyeOff className="w-5 h-4" /> : <Eye className="w-5 h-4" />}
                       </button>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between py-1">
-                  <label className="flex gap-2 items-center cursor-pointer group select-none">
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex gap-3 items-center cursor-pointer group select-none">
                     <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="w-4 h-4 border-2 border-slate-300 rounded bg-white peer-checked:bg-purple-600 peer-checked:border-purple-600 peer-hover:border-purple-400 transition-all"></div>
-                      <svg className="w-2.5 h-2.5 text-white absolute left-1 top-1 opacity-0 peer-checked:opacity-100 transition-transform duration-200 scale-50 peer-checked:scale-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="peer sr-only" />
+                      <div className="w-5 h-5 border-2 border-slate-300 rounded-lg bg-white peer-checked:bg-purple-600 peer-checked:border-purple-600 transition-all"></div>
+                      <CheckCircle className="w-3.5 h-3.5 text-white absolute left-0.75 top-0.75 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-700 transition-colors">تذكرني</span>
+                    <span className="text-xs font-black text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-widest">تذكرني</span>
                   </label>
-
-
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`relative w-full h-11 text-sm font-bold text-white rounded-xl transition-all shadow-lg hover:shadow-purple-500/25 hover:-translate-y-0.5 active:translate-y-0 overflow-hidden ${loading
-                    ? 'bg-slate-300 cursor-not-allowed shadow-none transform-none'
-                    : 'bg-slate-900 hover:bg-slate-800'
-                    }`}
+                  className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl text-sm font-black shadow-2xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 relative overflow-hidden group"
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        جاري المعالجة...
-                      </>
-                    ) : (
-                      <>
-                        {useOTP && loginMethod === 'phone' ? 'إرسال رمز التحقق' : 'تسجيل الدخول'}
-                        {useOTP && loginMethod === 'phone' ? (
-                          <Phone className="w-4 h-4 ltr:ml-2 rtl:mr-2" />
-                        ) : (
-                          <svg className="w-4 h-4 rtl:rotate-180 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                        )}
-                      </>
-                    )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative z-10 flex items-center gap-2">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (useOTP && loginMethod === 'phone' ? 'إرسال رمز التحقق' : 'تسجيل الدخول')}
+                    {!loading && <ArrowRight className="w-4 h-4 rtl:rotate-180" />}
                   </span>
                 </button>
 
-                <div className="pt-2 text-center">
-                  <p className="text-sm text-gray-500">
-                    ليس لديك حساب؟{' '}
-                    <button
-                      type="button"
-                      onClick={() => router.push('/auth/register')}
-                      className="font-bold text-purple-600 hover:text-purple-700 transition-colors hover:underline decoration-2 underline-offset-4"
-                    >
-                      إنشاء حساب جديد
-                    </button>
+                <div className="text-center pt-8 border-t border-slate-100">
+                  <p className="text-sm text-slate-400 font-medium tracking-tight">
+                    ليس لديك حساب حتى الآن؟
+                    <button type="button" onClick={() => router.push('/auth/register')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-black px-5 py-2 rounded-full mr-3 transition-all hover:scale-105">إنشاء حساب جديد</button>
                   </p>
                 </div>
               </form>
             </div>
-
-            <div className="py-3 bg-slate-50 border-t border-slate-100 text-center">
-              <p className="text-xs text-slate-500 font-medium">
-                ليس لديك حساب؟{' '}
-                <button
-                  type="button"
-                  onClick={() => router.push('/auth/register')}
-                  className="font-bold text-purple-600 hover:text-purple-700 transition-colors"
-                >
-                  انشئ حسابك المجاني
-                </button>
-              </p>
-            </div>
           </div>
 
-          {/* Footer Links */}
-          <div className="mt-6 text-center space-y-2">
-            <div className="flex justify-center gap-4 text-[10px] text-white/40 font-medium">
-              <a href="#" className="hover:text-white transition-colors">شروط الاستخدام</a>
-              <a href="#" className="hover:text-white transition-colors">سياسة الخصوصية</a>
+          <div className="mt-10 text-center space-y-4">
+            <div className="flex justify-center gap-6 text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">
+              <a href="#" className="hover:text-white transition-colors">الشروط</a>
+              <a href="#" className="hover:text-white transition-colors">الخصوصية</a>
               <a href="#" className="hover:text-white transition-colors">المساعدة</a>
             </div>
-            <p className="text-[10px] text-white/20">© 2024 El7lm.</p>
+            <p className="text-[10px] text-white/20 font-black tracking-widest">منصة الحلم © 2024 - جميع الحقوق محفوظة</p>
           </div>
-
         </div>
       </div>
-
-
     </>
   );
 }
