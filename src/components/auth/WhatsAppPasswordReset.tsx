@@ -12,39 +12,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { formatPhoneNumber } from '@/lib/whatsapp/babaservice-config';
-
-// Full country list from the registration page
-const countries = [
-    { name: 'السعودية', code: '+966' },
-    { name: 'الإمارات', code: '+971' },
-    { name: 'الكويت', code: '+965' },
-    { name: 'قطر', code: '+974' },
-    { name: 'البحرين', code: '+973' },
-    { name: 'عمان', code: '+968' },
-    { name: 'مصر', code: '+20' },
-    { name: 'الأردن', code: '+962' },
-    { name: 'لبنان', code: '+961' },
-    { name: 'العراق', code: '+964' },
-    { name: 'سوريا', code: '+963' },
-    { name: 'المغرب', code: '+212' },
-    { name: 'الجزائر', code: '+213' },
-    { name: 'تونس', code: '+216' },
-    { name: 'ليبيا', code: '+218' },
-    { name: 'السودان', code: '+249' },
-    { name: 'السنغال', code: '+221' },
-    { name: 'ساحل العاج', code: '+225' },
-    { name: 'جيبوتي', code: '+253' },
-    { name: 'إسبانيا', code: '+34' },
-    { name: 'فرنسا', code: '+33' },
-    { name: 'إنجلترا', code: '+44' },
-    { name: 'البرتغال', code: '+351' },
-    { name: 'إيطاليا', code: '+39' },
-    { name: 'اليونان', code: '+30' },
-    { name: 'قبرص', code: '+357' },
-    { name: 'تركيا', code: '+90' },
-    { name: 'تايلاند', code: '+66' },
-    { name: 'اليمن', code: '+967' },
-];
+import { BABASERVICE_CONFIG } from '@/lib/whatsapp/babaservice-config';
+import { COUNTRIES_FROM_REGISTER } from '@/data/countries-from-register';
 
 type Step = 'phone' | 'otp' | 'password';
 
@@ -168,7 +137,7 @@ export default function WhatsAppPasswordReset() {
                     name: checkData.userName || 'مستخدم',
                     purpose: 'password_reset',
                     channel: 'auto', // سيحاول WhatsApp أولاً، ثم SMS إذا فشل
-                    instanceId: '68F243B3A8D8D'
+                    instanceId: BABASERVICE_CONFIG.INSTANCE_ID || '68F243B3A8D8D'
                 }),
             });
 
@@ -437,7 +406,7 @@ export default function WhatsAppPasswordReset() {
                                     className="w-full p-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition"
                                     aria-label="اختر الدولة"
                                 >
-                                    {countries.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
+                                    {COUNTRIES_FROM_REGISTER.slice(0, 30).map(c => <option key={`${c.code}-${c.name}`} value={c.code}>{c.name} ({c.code})</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">

@@ -7,6 +7,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Phone, Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COUNTRIES_FROM_REGISTER, Country } from '@/data/countries-from-register';
+import { toast } from 'sonner';
 
 interface PhoneBasedPasswordResetProps {
     onSuccess?: () => void;
@@ -59,6 +60,7 @@ export default function PhoneBasedPasswordReset({
 
             // البحث في جميع المجموعات الممكنة
             const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
+            let foundEmail = '';
             let found = false;
 
             for (const collectionName of collections) {
@@ -75,7 +77,8 @@ export default function PhoneBasedPasswordReset({
 
                     setUserId(userDoc.id);
                     setUserCollection(collectionName);
-                    setUserEmail(userData.email || '');
+                    foundEmail = userData.email || '';
+                    setUserEmail(foundEmail);
 
                     found = true;
                     break;
@@ -88,13 +91,12 @@ export default function PhoneBasedPasswordReset({
                 return;
             }
 
-            // إذا كان لديه بريد محفوظ، انتقل مباشرة لإرسال الرابط
-            if (userEmail) {
-                await sendResetEmail(userEmail);
-            } else {
-                // اطلب منه إدخال بريد جديد
-                setCurrentStep('email');
+            // دائماً ننتقل لخطوة طلب البريد الإلكتروني للتأكيد أو الإدخال
+            if (foundEmail) {
+                setEmail(foundEmail);
             }
+
+            setCurrentStep('email');
 
         } catch (err: any) {
             console.error('Phone verification error:', err);
@@ -150,11 +152,12 @@ export default function PhoneBasedPasswordReset({
                 throw new Error(data.error || 'فشل إنشاء رابط الاسترجاع');
             }
 
-            // Email is now sent via Resend from the API route
-            // No need to send Firebase email anymore
-            console.log('✅ [Phone Reset] Email sent via Resend to:', emailAddress);
-            console.log('🔗 [Phone Reset] Short link:', data.resetLink);
-            console.log('🔑 [Phone Reset] Token:', data.token);
+            if (data.emailSent) {
+                toast.success('✅ تم إرسال رابط إعادة التعيين للبريد الإلكتروني');
+            } else {
+                toast.warning('⚠️ تم إنشاء الرابط ولكن فشل الإرسال التلقائي. يرجى التواصل مع الدعم.');
+                console.error('❌ Resend Error:', data.resendError);
+            }
 
             // Show success with the short link info
             setCurrentStep('success');
@@ -394,41 +397,55 @@ export default function PhoneBasedPasswordReset({
                         <div className="flex items-center">
                             <CheckCircle className="h-5 w-5 text-green-600 ml-2" />
                             <div className="flex-1">
-                                <p className="text-sm text-green-800 font-medium">
-                                    ✅ تم إرسال رابط استرجاع كلمة المرور بنجاح
+                                <p className="text-sm text-green-800 font-medium text-right">
+                                    ✅ تم إنشاء طلب الاسترجاع بنجاح
                                 </p>
-                                <p className="text-xs text-green-600 mt-1">
+                                <p className="text-xs text-green-600 mt-1 text-right">
                                     تحقق من صندوق الوارد في بريدك الإلكتروني
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Instructions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    {/* Fallback Display for Testing */}
+                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-right" dir="rtl">
+                        <p className="text-sm font-bold text-yellow-800 mb-2">إصدار تجريبي (للمساعدة اليدوية):</p>
+                        <div className="space-y-3">
+                            <div className="text-xs text-gray-600">
+                                <span className="font-bold">رابط الاسترجاع:</span>
+                                <div className="mt-1 p-2 bg-white border border-gray-200 rounded break-all select-all font-mono text-[10px]">
+                                    {sessionStorage.getItem('shortResetLink')}
+                                </div>
+                            </div>
+                            <div className="text-xs text-gray-600">
+                                <span className="font-bold">رمز التحقق:</span>
+                                <span className="mr-2 px-2 py-1 bg-white border border-gray-200 rounded font-bold text-purple-600">
+                                    {sessionStorage.getItem('resetToken')}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-right">
                         <h3 className="text-sm font-medium text-blue-800 mb-2">📧 الخطوات التالية:</h3>
-                        <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                        <ol className="text-xs text-blue-700 space-y-2 list-decimal list-inside pr-0">
                             <li>افتح صندوق البريد الإلكتروني</li>
                             <li>ابحث عن رسالة من "منصة الحلم"</li>
-                            <li>اضغط على زر "إعادة تعيين كلمة المرور"</li>
-                            <li>أدخل كلمة المرور الجديدة</li>
+                            <li>استخدم الرابط أو الرمز أعلاه للمتابعة</li>
                         </ol>
-                        <p className="text-xs text-blue-600 mt-2">
-                            ⏱️ الرابط صالح لمدة ساعة واحدة
-                        </p>
                     </div>
 
                     <button
                         onClick={handleReset}
-                        className="w-full py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        className="w-full py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors mt-4"
                     >
                         استرجاع كلمة مرور لحساب آخر
                     </button>
                 </div>
             )}
 
-            {/* Back to Login */}
-            <div className="mt-6 text-center">
+            {/* Back to Login Footer */}
+            <div className="mt-8 text-center pt-6 border-t border-gray-100">
                 <button
                     onClick={onCancel}
                     className="flex items-center justify-center text-sm text-blue-600 hover:text-blue-800 transition-colors mx-auto"
@@ -438,21 +455,10 @@ export default function PhoneBasedPasswordReset({
                 </button>
             </div>
 
-            {/* Instructions */}
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-800 mb-2">ملاحظات هامة:</h3>
-                <ul className="text-xs text-gray-600 space-y-1">
-                    <li>• الرابط صالح لمدة ساعة واحدة فقط</li>
-                    <li>• تحقق من مجلد الرسائل غير المرغوب فيها (Spam)</li>
-                    <li>• لا تشارك الرابط مع أي شخص آخر</li>
-                    <li>• يمكنك إعادة المحاولة إذا لم تتلق الرسالة</li>
-                </ul>
-            </div>
-
-            {/* Future Feature Notice */}
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                <p className="text-xs text-purple-700 text-center">
-                    🔜 قريباً: خدمة استرجاع كلمة المرور عبر الواتساب
+            {/* Disclaimer */}
+            <div className="mt-6 text-center">
+                <p className="text-[10px] text-gray-400">
+                    من شركة ميسك القطرية • جميع الحقوق محفوظة © 2024
                 </p>
             </div>
         </div>

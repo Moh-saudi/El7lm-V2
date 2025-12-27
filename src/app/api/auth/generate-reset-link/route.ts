@@ -102,19 +102,13 @@ export async function POST(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://el7lm.com';
         const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
 
-        // Send beautiful email using Resend
-        console.log('🔄 [generate-reset-link] Starting email send process...');
-        console.log('📧 [generate-reset-link] Recipient:', email);
-        console.log('🔑 [generate-reset-link] RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+        let emailSent = false;
+        let resendError = null;
 
         try {
             const { Resend } = await import('resend');
-            console.log('✅ [generate-reset-link] Resend module loaded');
-
             const resend = new Resend(process.env.RESEND_API_KEY);
-            console.log('✅ [generate-reset-link] Resend client initialized');
 
-            // Import email template
             const { generatePasswordResetEmail, generatePasswordResetPlainText } = await import('@/lib/email/templates/password-reset');
 
             const emailHtml = generatePasswordResetEmail({
@@ -131,9 +125,8 @@ export async function POST(request: NextRequest) {
                 expiresIn: '60 دقيقة'
             });
 
-            console.log('🚀 [generate-reset-link] Calling resend.emails.send...');
             const { data: emailData, error: emailError } = await resend.emails.send({
-                from: 'منصة الحلم <onboarding@resend.dev>',
+                from: 'منصة الحلم <noreply@el7lm.com>',
                 to: email,
                 subject: '🔐 إعادة تعيين كلمة المرور - منصة الحلم',
                 html: emailHtml,
@@ -141,22 +134,25 @@ export async function POST(request: NextRequest) {
             });
 
             if (emailError) {
-                console.error('❌ [generate-reset-link] Resend error:', emailError);
-                // Don't fail - fallback to showing link
+                console.error('❌ [generate-reset-link] Resend error details:', emailError);
+                resendError = emailError;
             } else {
-                console.log('✅ [generate-reset-link] Email sent successfully via Resend:', emailData?.id);
+                console.log('✅ [generate-reset-link] Email sent successfully:', emailData?.id);
+                emailSent = true;
             }
-        } catch (emailSendError) {
-            console.error('❌ [generate-reset-link] Email send failed:', emailSendError);
-            // Don't fail the request - token is still valid
+        } catch (err: any) {
+            console.error('❌ [generate-reset-link] Critical Email Error:', err.message);
+            resendError = { message: err.message };
         }
 
         return NextResponse.json({
             success: true,
+            emailSent,
+            resendError,
             resetLink: resetLink,
             token: token,
             expiresAt: expiresAt,
-            message: 'تم إنشاء رابط إعادة التعيين بنجاح'
+            message: emailSent ? 'تم إرسال رابط إعادة التعيين بنجاح' : 'تم إنشاء الرابط ولكن فشل الإرسال التلقائي'
         });
 
     } catch (error: any) {

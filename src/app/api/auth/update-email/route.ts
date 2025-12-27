@@ -35,6 +35,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // IMPORTANT: Also update in Firebase Auth
+        // This is necessary so that 'generate-reset-link' can find the user by email
+        try {
+            const { adminAuth } = await import('@/lib/firebase/admin');
+            await adminAuth.updateUser(userId, {
+                email: email,
+                emailVerified: false // They'll verify it by clicking the reset link essentially
+            });
+            console.log(`✅ [update-email] Updated Firebase Auth for user ${userId} with email ${email}`);
+        } catch (authError: any) {
+            console.warn(`⚠️ [update-email] Could not update Firebase Auth:`, authError.message);
+            // We don't fail here because Firestore is updated, but we log the warning
+            // If it's 'auth/email-already-exists', it means another account has this email
+        }
+
         return NextResponse.json({ success: true });
 
     } catch (error: any) {

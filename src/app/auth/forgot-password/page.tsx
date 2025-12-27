@@ -9,7 +9,7 @@ import PhoneBasedPasswordReset from '@/components/auth/PhoneBasedPasswordReset';
 import dynamic from 'next/dynamic';
 
 // Lazy load the old WhatsApp-based component
-const WhatsAppPasswordReset = dynamic(() => import('./WhatsAppPasswordReset'), {
+const WhatsAppPasswordReset = dynamic(() => import('@/components/auth/WhatsAppPasswordReset'), {
   loading: () => <div className="text-center p-8 text-white">جاري التحميل...</div>
 });
 
