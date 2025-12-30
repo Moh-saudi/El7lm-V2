@@ -19,10 +19,10 @@ export function validateImageFile(file: File): { isValid: boolean; error?: strin
   // التحقق من نوع الملف
   const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
   const isDocument = SUPPORTED_DOCUMENT_TYPES.includes(file.type);
-  
+
   if (!isImage && !isDocument) {
     const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-    
+
     toast.error(`نوع الملف غير مدعوم! 
     📄 نوع الملف المحدد: ${file.type}
     📊 حجم الملف: ${fileSizeMB} MB
@@ -39,7 +39,7 @@ export function validateImageFile(file: File): { isValid: boolean; error?: strin
         lineHeight: '1.4'
       }
     });
-    
+
     return { isValid: false, error: 'نوع ملف غير مدعوم' };
   }
 
@@ -47,9 +47,9 @@ export function validateImageFile(file: File): { isValid: boolean; error?: strin
   if (file.size > MAX_FILE_SIZE) {
     const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
     const maxSizeMB = (MAX_FILE_SIZE / 1024 / 1024).toFixed(0);
-    
+
     console.error(`❌ ملف كبير جداً: ${fileSizeMB}MB (الحد الأقصى: ${maxSizeMB}MB)`);
-    
+
     toast.error(`حجم الملف كبير جداً! 
     📊 حجم الملف: ${fileSizeMB} ميجابايت
     ⚠️ الحد الأقصى المسموح: ${maxSizeMB} ميجابايت
@@ -66,7 +66,7 @@ export function validateImageFile(file: File): { isValid: boolean; error?: strin
         lineHeight: '1.4'
       }
     });
-    
+
     return { isValid: false, error: 'حجم الملف كبير جداً' };
   }
 
@@ -78,11 +78,11 @@ export function validateImageFile(file: File): { isValid: boolean; error?: strin
  */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -101,7 +101,7 @@ export function generateUniqueFileName(originalName: string, userId: string, typ
 export function createImagePreview(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       if (e.target?.result) {
         resolve(e.target.result as string);
@@ -109,11 +109,11 @@ export function createImagePreview(file: File): Promise<string> {
         reject(new Error('فشل في قراءة الملف'));
       }
     };
-    
+
     reader.onerror = () => {
       reject(new Error('خطأ في قراءة الملف'));
     };
-    
+
     reader.readAsDataURL(file);
   });
 }
@@ -127,13 +127,13 @@ export function showUploadSuccessMessage(type: 'profile' | 'cover' | 'document',
     cover: 'صورة الغلاف',
     document: 'المستند'
   };
-  
+
   const typeName = typeNames[type];
-  
-  const successMessage = bucketUsed === 'trainer' 
+
+  const successMessage = bucketUsed === 'trainer'
     ? `🎯 تم رفع ${typeName} بنجاح في Trainer bucket الأساسي!`
     : `✅ تم رفع ${typeName} بنجاح في ${bucketUsed}!`;
-    
+
   toast.success(successMessage, {
     duration: 4000,
     style: {
@@ -147,7 +147,7 @@ export function showUploadSuccessMessage(type: 'profile' | 'cover' | 'document',
  */
 export function showUploadErrorMessage(error: string) {
   console.error('💥 خطأ في رفع الملف:', error);
-  
+
   toast.error(`فشل في رفع الملف
   ❌ السبب: ${error}
   
@@ -175,27 +175,27 @@ export const compressImage = (file: File, quality: number = 0.8): Promise<File> 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
-    
+
     img.onload = () => {
       // تحديد الأبعاد المثلى
       const maxWidth = 800;
       const maxHeight = 600;
-      
+
       let { width, height } = img;
-      
+
       // إعادة تحجيم الصورة إذا كانت كبيرة
       if (width > maxWidth || height > maxHeight) {
         const ratio = Math.min(maxWidth / width, maxHeight / height);
         width *= ratio;
         height *= ratio;
       }
-      
+
       canvas.width = width;
       canvas.height = height;
-      
+
       // رسم الصورة المضغوطة
       ctx?.drawImage(img, 0, 0, width, height);
-      
+
       canvas.toBlob((blob) => {
         if (blob) {
           const compressedFile = new File([blob], file.name, {
@@ -208,7 +208,7 @@ export const compressImage = (file: File, quality: number = 0.8): Promise<File> 
         }
       }, 'image/jpeg', quality);
     };
-    
+
     img.src = URL.createObjectURL(file);
   });
 };
@@ -221,14 +221,14 @@ export const generateVideoThumbnail = (videoUrl: string, time: number = 1): Prom
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     video.addEventListener('loadedmetadata', () => {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
+
       video.currentTime = time;
     });
-    
+
     video.addEventListener('seeked', () => {
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -238,9 +238,9 @@ export const generateVideoThumbnail = (videoUrl: string, time: number = 1): Prom
         reject(new Error('Could not get canvas context'));
       }
     });
-    
+
     video.addEventListener('error', reject);
-    
+
     video.src = videoUrl;
     video.load();
   });
@@ -252,7 +252,7 @@ export const generateVideoThumbnail = (videoUrl: string, time: number = 1): Prom
 export const lazyLoadImage = (src: string, placeholder?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    
+
     img.onload = () => resolve(src);
     img.onerror = () => {
       if (placeholder) {
@@ -261,7 +261,7 @@ export const lazyLoadImage = (src: string, placeholder?: string): Promise<string
         reject(new Error('Image failed to load'));
       }
     };
-    
+
     img.src = src;
   });
 };
@@ -272,11 +272,11 @@ export const lazyLoadImage = (src: string, placeholder?: string): Promise<string
 export const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => {
   const byteCharacters = atob(base64.split(',')[1]);
   const byteNumbers = new Array(byteCharacters.length);
-  
+
   for (let i = 0; i < byteCharacters.length; i++) {
     byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
-  
+
   const byteArray = new Uint8Array(byteNumbers);
   return new Blob([byteArray], { type: mimeType });
 };
@@ -286,17 +286,17 @@ export const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): B
  */
 export const deepExtractImageUrl = (obj: unknown, depth: number = 0): string | null => {
   if (depth > 5) return null; // زيادة عمق البحث
-  
+
   // إذا كان نص عادي وصالح
   if (typeof obj === 'string' && obj.trim()) {
     const trimmed = obj.trim();
     // التحقق من أنه URL صالح
-    if (trimmed.startsWith('http') || trimmed.startsWith('/') || 
-        trimmed.startsWith('data:') || trimmed.includes('.')) {
+    if (trimmed.startsWith('http') || trimmed.startsWith('/') ||
+      trimmed.startsWith('data:') || trimmed.includes('.')) {
       return trimmed;
     }
   }
-  
+
   // إذا كان Array، ابحث في العناصر
   if (Array.isArray(obj)) {
     for (const item of obj) {
@@ -305,7 +305,7 @@ export const deepExtractImageUrl = (obj: unknown, depth: number = 0): string | n
     }
     return null;
   }
-  
+
   if (typeof obj === 'object' && obj !== null) {
     // البحث في الخصائص المعروفة بترتيب الأولوية
     const knownKeys = [
@@ -313,22 +313,22 @@ export const deepExtractImageUrl = (obj: unknown, depth: number = 0): string | n
       'imageUrl', 'image_url', 'photoURL', 'photo_url',
       'fullPath', 'mediaLink', 'publicUrl', 'secure_url'
     ];
-    
+
     for (const key of knownKeys) {
       if (obj.hasOwnProperty(key) && (obj as Record<string, unknown>)[key] != null) {
         const result = deepExtractImageUrl((obj as Record<string, unknown>)[key], depth + 1);
         if (result) return result;
       }
     }
-    
+
     // البحث في جميع الخصائص الأخرى
     for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (value != null && !knownKeys.includes(key)) {
         // إذا كان string مباشر وصالح
         if (typeof value === 'string' && value.trim()) {
           const trimmed = value.trim();
-          if (trimmed.startsWith('http') || trimmed.startsWith('/') || 
-              trimmed.startsWith('data:') || trimmed.includes('.')) {
+          if (trimmed.startsWith('http') || trimmed.startsWith('/') ||
+            trimmed.startsWith('data:') || trimmed.includes('.')) {
             return trimmed;
           }
         }
@@ -340,29 +340,26 @@ export const deepExtractImageUrl = (obj: unknown, depth: number = 0): string | n
       }
     }
   }
-  
+
   return null;
 };
 
 /**
  * إنشاء URL آمن للصورة مع معالجة الأخطاء والبحث العميق
  */
-export const createSafeImageUrl = (
-  imageUrl: string | object | null | undefined, 
-  fallback: string = '/images/default-avatar.png'
-): string => {
+export const createSafeImageUrl = (imageUrl: string | object | null | undefined, fallback: string = '/default-player-avatar.png'): string => {
   if (!imageUrl) {
     return fallback;
   }
-  
+
   // إذا كان نص عادي
   if (typeof imageUrl === 'string') {
     const trimmed = imageUrl.trim();
     if (!trimmed) return fallback;
-    
+
     // التحقق من URL صالح (مطلق أو نسبي)
-    if (trimmed.startsWith('http') || trimmed.startsWith('/') || 
-        trimmed.startsWith('data:') || trimmed.includes('.')) {
+    if (trimmed.startsWith('http') || trimmed.startsWith('/') ||
+      trimmed.startsWith('data:') || trimmed.includes('.')) {
       try {
         // محاولة إنشاء URL للتحقق من الصحة (للمطلقة فقط)
         if (trimmed.startsWith('http')) {
@@ -377,10 +374,10 @@ export const createSafeImageUrl = (
         return fallback;
       }
     }
-    
+
     return fallback;
   }
-  
+
   // إذا كان كائن معقد، استخدم البحث العميق
   if (typeof imageUrl === 'object') {
     try {
@@ -388,15 +385,15 @@ export const createSafeImageUrl = (
       if (extractedUrl) {
         return createSafeImageUrl(extractedUrl, fallback); // استدعاء متكرر للتحقق من الصحة
       }
-      
+
       // معلومات تشخيصية محسنة (تم تقليل مستوى التحذير)
-      const keys = Array.isArray(imageUrl) ? 
-        `[Array with ${imageUrl.length} items]` : 
+      const keys = Array.isArray(imageUrl) ?
+        `[Array with ${imageUrl.length} items]` :
         Object.keys(imageUrl).join(', ');
-        
+
       // تحويل إلى debug بدلاً من warn لتقليل الضجيج في console
       console.debug('Could not extract URL from complex object, using fallback. Object keys:', keys);
-      
+
       // محاولة أخيرة للعثور على أي string يحتوي على http أو /
       const jsonStr = JSON.stringify(imageUrl);
       const urlMatches = [
@@ -404,21 +401,21 @@ export const createSafeImageUrl = (
         /"(\/[^"\s]+\.(jpg|jpeg|png|gif|webp))"/, // مسار نسبي بامتداد صورة
         /"(data:image[^"]+)"/, // Base64 image data
       ];
-      
+
       for (const pattern of urlMatches) {
         const match = jsonStr.match(pattern);
         if (match && match[1]) {
           return match[1];
         }
       }
-      
+
       return fallback;
     } catch (error) {
       console.error('Error processing image object:', error);
       return fallback;
     }
   }
-  
+
   return fallback;
 };
 
@@ -429,10 +426,10 @@ export const getOptimalVideoQuality = (): 'low' | 'medium' | 'high' => {
   if (!(navigator as any).connection) {
     return 'medium'; // القيمة الافتراضية
   }
-  
+
   const connection = (navigator as any).connection;
   const effectiveType = connection.effectiveType;
-  
+
   switch (effectiveType) {
     case 'slow-2g':
     case '2g':
@@ -451,10 +448,10 @@ export const getOptimalVideoQuality = (): 'low' | 'medium' | 'high' => {
 export const preloadVideo = (videoUrl: string): Promise<HTMLVideoElement> => {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
-    
+
     video.addEventListener('canplaythrough', () => resolve(video));
     video.addEventListener('error', reject);
-    
+
     video.preload = 'metadata';
     video.src = videoUrl;
     video.load();
@@ -478,7 +475,7 @@ export const formatDuration = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainingSeconds = Math.floor(seconds % 60);
-  
+
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   } else {
@@ -499,23 +496,23 @@ export const cleanupVideoResources = (videoElement: HTMLVideoElement) => {
  * تحسين تحميل الصور للأجهزة المختلفة
  */
 export const getResponsiveImageUrl = (
-  baseUrl: string, 
+  baseUrl: string,
   deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop'
 ): string => {
-  if (!baseUrl) return '/images/default-avatar.png';
-  
+  if (!baseUrl) return '/default-player-avatar.png';
+
   const qualityParams = {
     mobile: 'w_400,h_400,c_fill,q_auto:low',
-    tablet: 'w_600,h_600,c_fill,q_auto:good', 
+    tablet: 'w_600,h_600,c_fill,q_auto:good',
     desktop: 'w_800,h_800,c_fill,q_auto:best'
   };
-  
+
   // إذا كان URL يحتوي على معاملات Cloudinary، أضف التحسينات
   if (baseUrl.includes('cloudinary.com')) {
     const insertIndex = baseUrl.indexOf('/upload/') + 8;
     return baseUrl.slice(0, insertIndex) + qualityParams[deviceType] + '/' + baseUrl.slice(insertIndex);
   }
-  
+
   return baseUrl;
 };
 
@@ -524,7 +521,7 @@ export const getResponsiveImageUrl = (
  */
 export const detectDeviceType = (): 'mobile' | 'tablet' | 'desktop' => {
   const width = window.innerWidth;
-  
+
   if (width < 768) {
     return 'mobile';
   } else if (width < 1024) {

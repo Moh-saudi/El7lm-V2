@@ -10,24 +10,24 @@ import { db } from '@/lib/firebase/config';
 import { retryOperation } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 // import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { 
-  User, 
-  MapPin, 
-  Calendar, 
-  Phone, 
-  Mail, 
-  Globe, 
-  Award, 
-  Target, 
-  BookOpen, 
-  Heart, 
-  Activity, 
-  Zap, 
-  Star, 
-  TrendingUp, 
-  Users, 
-  Building2, 
-  GraduationCap, 
+import {
+  User,
+  MapPin,
+  Calendar,
+  Phone,
+  Mail,
+  Globe,
+  Award,
+  Target,
+  BookOpen,
+  Heart,
+  Activity,
+  Zap,
+  Star,
+  TrendingUp,
+  Users,
+  Building2,
+  GraduationCap,
   Briefcase,
   Eye,
   EyeOff,
@@ -50,28 +50,28 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Tooltip as UiTooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
+import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from '@/components/ui/tooltip';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 // import { useTranslations } from '@/lib/translations/context';
@@ -83,6 +83,7 @@ import { getPlayerOrganization, getOrganizationDetails } from '@/utils/player-or
 import PlayerResume from '@/components/player/PlayerResume';
 import { FileText } from 'lucide-react';
 import { PlayerFormData, Achievement, Injury, ContractHistory, AgentHistory } from '@/types/player';
+import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 // import { PlayerVideo } from '@/types/common';
 import 'dayjs/locale/ar';
 
@@ -90,11 +91,11 @@ import 'dayjs/locale/ar';
 dayjs.locale('ar');
 
 // دالة التحقق من صحة رابط الصورة
-const getValidImageUrl = (url: string | null | undefined, fallback: string = '/images/default-avatar.png'): string => {
+const getValidImageUrl = (url: string | null | undefined, fallback: string = '/default-player-avatar.png'): string => {
   if (!url || typeof url !== 'string' || url.trim() === '') {
     return fallback;
   }
-  
+
   // فلترة الروابط المكسورة المعروفة من Supabase
   const brokenSupabaseUrls = [
     'ekyerljzfokqimbabzxm.supabase.co/storage/v1/object/public/avatars/yf0b8T8xuuMfP8QAfvS9TLOJjVt2',
@@ -102,15 +103,16 @@ const getValidImageUrl = (url: string | null | undefined, fallback: string = '/i
     'test-url.com',
     'example.com'
   ];
-  
+
   const isBrokenUrl = brokenSupabaseUrls.some(brokenUrl => url.includes(brokenUrl));
-  
+
   if (isBrokenUrl) {
     console.log(`🚫 تم فلترة رابط مكسور: ${url}`);
     return fallback;
   }
-  
-  return url;
+
+  // استخدام المحول الموحد الذي يدعم Cloudflare R2
+  return getSupabaseImageUrl(url, 'avatars');
 };
 
 // دالة حساب العمر (محسّنة مع إصلاح تاريخ المستقبل ومعالجة Firestore)
@@ -127,10 +129,10 @@ const calculateAge = (birthDate: any) => {
     console.log('❌ calculateAge: لا يوجد تاريخ ميلاد');
     return null;
   }
-  
+
   try {
     let d: Date;
-    
+
     // التعامل مع Invalid Date أولاً
     if (birthDate instanceof Date && isNaN(birthDate.getTime())) {
       console.warn('⚠️ calculateAge: تم استقبال Invalid Date، محاولة إنشاء تاريخ افتراضي');
@@ -149,7 +151,7 @@ const calculateAge = (birthDate: any) => {
         const currentYear = new Date().getFullYear();
         d = new Date(currentYear - 20, 4, 1);
       }
-    } 
+    }
     // التعامل مع Firebase Timestamp مع seconds
     else if (typeof birthDate === 'object' && birthDate !== null && ((birthDate as any).seconds || (birthDate as any)._seconds)) {
       const seconds = (birthDate as any).seconds || (birthDate as any)._seconds;
@@ -160,12 +162,12 @@ const calculateAge = (birthDate: any) => {
     else if (birthDate instanceof Date && !isNaN(birthDate.getTime())) {
       d = birthDate;
       console.log('✅ calculateAge: التاريخ هو Date object صحيح:', d);
-    } 
+    }
     // التعامل مع string أو number
     else if (typeof birthDate === 'string' || typeof birthDate === 'number') {
       d = new Date(birthDate);
       console.log('✅ calculateAge: تم تحويل string/number إلى Date:', d);
-      
+
       // التحقق من نجاح التحويل
       if (isNaN(d.getTime())) {
         console.warn('⚠️ calculateAge: فشل تحويل string/number، استخدام تاريخ افتراضي');
@@ -188,7 +190,7 @@ const calculateAge = (birthDate: any) => {
         d = new Date(currentYear - 20, 4, 1);
       }
     }
-    
+
     // التحقق من صحة التاريخ النهائي
     if (isNaN(d.getTime())) {
       console.error('❌ calculateAge: التاريخ لا يزال غير صالح بعد جميع المحاولات');
@@ -196,13 +198,13 @@ const calculateAge = (birthDate: any) => {
       d = new Date(currentYear - 20, 4, 1);
       console.log('🔧 calculateAge: استخدام تاريخ افتراضي أخير:', d);
     }
-    
+
     const today = new Date();
-    
+
     // إصلاح التواريخ المستقبلية - معالجة محسنة
     if (d.getFullYear() >= 2024) {
       console.warn('⚠️ calculateAge: تاريخ الميلاد يحتوي على سنة مستقبلية:', d.getFullYear());
-      
+
       // تصحيح: إذا كان 2025 اجعله 2005، إذا كان 2024 اجعله 2004، إلخ
       const originalYear = d.getFullYear();
       const correctedYear = originalYear - 20;
@@ -210,29 +212,29 @@ const calculateAge = (birthDate: any) => {
       console.log('✅ calculateAge: تم تصحيح التاريخ من', originalYear, 'إلى', correctedYear);
       console.log('📅 calculateAge: التاريخ المصحح النهائي:', d);
     }
-    
+
     // حساب العمر
     let age = today.getFullYear() - d.getFullYear();
     const monthDiff = today.getMonth() - d.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
       age--;
     }
-    
+
     // التحقق من منطقية العمر
     if (age < 0) {
       console.warn('⚠️ calculateAge: عمر سالب، تصحيح إلى موجب');
       age = Math.abs(age);
     }
-    
+
     if (age > 100) {
       console.warn('⚠️ calculateAge: عمر كبير جداً:', age, 'استخدام عمر افتراضي');
       age = 20; // عمر افتراضي معقول
     }
-    
+
     console.log('✅ calculateAge: العمر المحسوب النهائي:', age, 'سنة للتاريخ:', d.toLocaleDateString());
     return age;
-    
+
   } catch (error) {
     console.error('❌ calculateAge: خطأ في حساب العمر:', error, 'للتاريخ:', birthDate);
     return null; // إرجاع null بدلاً من 20 لمعرفة المشكلة
@@ -274,10 +276,10 @@ function PlayerReportPage() {
   const params = useParams();
   const [user, loading, authError] = useAuthState(auth);
   const [player, setPlayer] = useState<PlayerFormData | null>(null);
-  
+
   // الحصول على معرف اللاعب من الرابط
   const playerIdFromUrl = params?.playerId as string;
-  
+
   // إضافة تشخيصات مفصلة (بعد الرسم لتقليل الضجيج ومنع تداخل HMR)
   useEffect(() => {
     console.group('🔍 تشخيص صفحة تقارير اللاعب');
@@ -294,17 +296,17 @@ function PlayerReportPage() {
     });
     console.groupEnd();
   }, [params, searchParams, user, loading, authError]);
-  
+
   // تحديد معرف اللاعب المطلوب عرضه
   const targetPlayerId = playerIdFromUrl || searchParams?.get('view');
-  
+
   // إضافة تشخيصات
   console.log('🔍 تشخيص صفحة التقارير:');
   console.log('  - معرف اللاعب من الرابط:', playerIdFromUrl);
   console.log('  - معرف اللاعب المستهدف:', targetPlayerId);
   console.log('  - المستخدم الحالي:', user?.uid);
   console.log('  - معاملات البحث الكاملة:', searchParams?.toString());
-  
+
   // معالجة حالة التحميل
   if (loading) {
     return (
@@ -332,7 +334,7 @@ function PlayerReportPage() {
       </div>
     );
   }
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -341,7 +343,7 @@ function PlayerReportPage() {
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
-  
+
   // معلومات إضافية للعرض المحسن
   const [currentUserInfo, setCurrentUserInfo] = useState<any>(null);
   const [playerOrganization, setPlayerOrganization] = useState<any>(null);
@@ -354,18 +356,18 @@ function PlayerReportPage() {
       console.log('⚠️ [createSafeChartData] بيانات المهارات غير صحيحة:', skillsObject);
       return [];
     }
-    
+
     const entries = Object.entries(skillsObject);
     if (entries.length === 0) {
       console.log('⚠️ [createSafeChartData] لا توجد مهارات مسجلة');
       return [];
     }
-    
+
     const chartData = entries.map(([key, value]) => ({
       skill: skillsMapping[key] || key,
       value: Number(value) || 0
     }));
-    
+
     console.log('✅ [createSafeChartData] تم إنشاء بيانات المخطط:', chartData);
     return chartData;
   };
@@ -411,7 +413,7 @@ function PlayerReportPage() {
   const technicalSkillsData = createSafeChartData(player?.technical_skills, technicalSkillsMapping);
   const physicalSkillsData = createSafeChartData(player?.physical_skills, physicalSkillsMapping);
   const socialSkillsData = createSafeChartData(player?.social_skills, socialSkillsMapping);
-  
+
   // إضافة تشخيص للمهارات
   useEffect(() => {
     if (player) {
@@ -433,7 +435,7 @@ function PlayerReportPage() {
   // دالة جلب معلومات الحساب الحالي
   const fetchCurrentUserInfo = async () => {
     console.log('👤 [fetchCurrentUserInfo] بدء جلب معلومات المستخدم الحالي');
-    
+
     if (!user?.uid) {
       console.warn('⚠️ [fetchCurrentUserInfo] لا يوجد مستخدم مسجل');
       return;
@@ -442,11 +444,11 @@ function PlayerReportPage() {
     try {
       for (const [key, orgType] of Object.entries(ORGANIZATION_TYPES)) {
         console.log(`🔍 [fetchCurrentUserInfo] البحث في ${orgType.collection}`);
-        
+
         try {
           const userDocRef = doc(db, orgType.collection, user.uid);
           const userDoc = await getDoc(userDocRef);
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log(`✅ [fetchCurrentUserInfo] تم العثور على الحساب:`, {
@@ -454,7 +456,7 @@ function PlayerReportPage() {
               name: userData.name || userData.full_name,
               hasLogo: !!userData.logo
             });
-            
+
             const userInfo = {
               ...userData,
               id: userDoc.id,
@@ -462,7 +464,7 @@ function PlayerReportPage() {
               icon: orgType.icon,
               color: orgType.color
             };
-            
+
             setCurrentUserInfo(userInfo);
             console.log('✅ [fetchCurrentUserInfo] تم تحديث معلومات المستخدم:', userInfo);
             break;
@@ -483,9 +485,9 @@ function PlayerReportPage() {
   const getSupabaseImageUrl = (path: string, organizationType?: string) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    
+
     console.log(`🎨 معالجة مسار الصورة: ${path} لنوع المنظمة: ${organizationType}`);
-    
+
     // تحديد البوكت المناسب حسب نوع المنظمة
     const bucketMapping: Record<string, string[]> = {
       'نادي': ['clubavatar', 'club-logos'],
@@ -493,13 +495,13 @@ function PlayerReportPage() {
       'مدرب': ['traineravatar', 'trainer-logos', 'clubavatar'],
       'وكيل لاعبين': ['agentavatar', 'agent-logos', 'clubavatar']
     };
-    
-    const possibleBuckets = organizationType ? 
-      (bucketMapping[organizationType] || ['clubavatar']) : 
+
+    const possibleBuckets = organizationType ?
+      (bucketMapping[organizationType] || ['clubavatar']) :
       ['clubavatar', 'academyavatar', 'traineravatar', 'agentavatar'];
-    
+
     console.log(`🗂️ البوكتات المحتملة:`, possibleBuckets);
-    
+
     // جرب البوكتات بالترتيب حتى تجد واحد يعمل
     for (const bucket of possibleBuckets) {
       try {
@@ -513,7 +515,7 @@ function PlayerReportPage() {
         continue;
       }
     }
-    
+
     // إذا فشلت جميع البوكتات، ارجع المسار الأصلي
     console.log(`❌ فشل في جميع البوكتات، استخدام المسار الأصلي: ${path}`);
     return path;
@@ -558,7 +560,7 @@ function PlayerReportPage() {
   // دالة جلب معلومات المنظمة التابع لها اللاعب
   const fetchPlayerOrganization = async () => {
     console.log('🏢 [fetchPlayerOrganization] بدء جلب معلومات المنظمة');
-    
+
     if (!player) {
       console.warn('⚠️ [fetchPlayerOrganization] لا توجد بيانات لاعب متاحة');
       setOrganizationLoading(false);
@@ -568,16 +570,16 @@ function PlayerReportPage() {
 
     try {
       setOrganizationLoading(true);
-      
+
       // استخدام دالة getPlayerOrganization من utils
       const organization = getPlayerOrganization(player);
       console.log('✅ [fetchPlayerOrganization] نتيجة getPlayerOrganization:', organization);
-      
+
       if (organization.id) {
         // جلب تفاصيل المنظمة من Firebase
         const orgDetails = await getOrganizationDetails(organization.id, organization.type);
         console.log('✅ [fetchPlayerOrganization] تفاصيل المنظمة:', orgDetails);
-        
+
         if (orgDetails) {
           const organizationInfo = {
             id: orgDetails.id,
@@ -590,7 +592,7 @@ function PlayerReportPage() {
             emoji: organization.emoji,
             typeArabic: organization.typeArabic
           };
-          
+
           setPlayerOrganization(organizationInfo);
           console.log('✅ [fetchPlayerOrganization] تم تحديث معلومات المنظمة:', organizationInfo);
         } else {
@@ -601,7 +603,7 @@ function PlayerReportPage() {
         console.log('ℹ️ [fetchPlayerOrganization] اللاعب مستقل - لا يتبع لأي منظمة');
         setPlayerOrganization(null);
       }
-      
+
     } catch (error) {
       console.error('❌ [fetchPlayerOrganization] خطأ في جلب معلومات المنظمة:', error);
       setPlayerOrganization(null);
@@ -1022,15 +1024,15 @@ function PlayerReportPage() {
 
     return (
       <div className="space-y-6">
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {player?.objectives && Object.entries(player.objectives).map(([key, value]: [string, boolean | string]) => {
             const label = objectiveLabels[key as keyof typeof objectiveLabels] || key;
             const displayValue = typeof value === 'boolean' ? (value ? 'نعم ✅' : 'لا ❌') : value || '--';
-            const bgColor = typeof value === 'boolean' 
+            const bgColor = typeof value === 'boolean'
               ? (value ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200')
               : 'bg-blue-50 border-blue-200';
             const textColor = typeof value === 'boolean'
-              ? (value ? 'text-green-700' : 'text-gray-700') 
+              ? (value ? 'text-green-700' : 'text-gray-700')
               : 'text-blue-700';
             const valueColor = typeof value === 'boolean'
               ? (value ? 'text-green-900' : 'text-gray-900')
@@ -1040,15 +1042,15 @@ function PlayerReportPage() {
               <div key={key} className={`p-4 rounded-lg border-2 ${bgColor}`}>
                 <div className={`mb-2 font-semibold ${textColor}`}>
                   {label}
-          </div>
+                </div>
                 <div className={`text-lg font-bold ${valueColor}`}>
                   {displayValue}
-          </div>
-        </div>
+                </div>
+              </div>
             );
           })}
         </div>
-        
+
         {/* عرض ملخص الأهداف */}
         {player?.objectives && (
           <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
@@ -1069,8 +1071,8 @@ function PlayerReportPage() {
             </div>
           </div>
         )}
-    </div>
-  );
+      </div>
+    );
   };
 
   const renderMedia = () => {
@@ -1087,7 +1089,7 @@ function PlayerReportPage() {
     // تجميع كل الصور من مصادر مختلفة مع إزالة التكرارات
     const allImages: { url: string; label: string; type: 'profile' | 'additional' }[] = [];
     const seenUrls = new Set<string>();
-    
+
     // إضافة الصورة الشخصية مع فلترة الروابط المكسورة
     if (player?.profile_image_url) {
       const validProfileImage = getValidImageUrl(player.profile_image_url);
@@ -1101,15 +1103,15 @@ function PlayerReportPage() {
     } else {
       console.log('❌ [renderMedia] لا توجد صورة شخصية');
     }
-    
+
     // إضافة الصور الإضافية مع تحقق محسن وإزالة التكرارات
     if (player?.additional_images && player.additional_images.length > 0) {
       console.log('✅ [renderMedia] تم العثور على صور إضافية:', player.additional_images);
       player.additional_images.forEach((image, index) => {
         console.log(`📷 [renderMedia] معالجة الصورة الإضافية ${index + 1}:`, image);
-        
+
         let imageUrl = '';
-        
+
         // تحقق من البنية المختلفة للصورة
         if (typeof image === 'string') {
           imageUrl = image;
@@ -1128,15 +1130,15 @@ function PlayerReportPage() {
             console.log(`❌ لم يتم العثور على رابط للصورة ${index + 1}:`, image);
           }
         }
-        
+
         if (imageUrl && imageUrl.trim() !== '') {
           // تطبيق فلترة الروابط المكسورة مع تحقق إضافي لروابط Supabase المعطلة
           const validImageUrl = getValidImageUrl(imageUrl);
-          
+
           // تحقق إضافي من الروابط المعطلة
-          const isBrokenSupabaseUrl = imageUrl.includes('ekyerljzfokqimbabzxm.supabase.co') && 
-                                     imageUrl.includes('/avatars/yf0b8T8xuuMfP8QAfvS9TLOJjVt2');
-          
+          const isBrokenSupabaseUrl = imageUrl.includes('ekyerljzfokqimbabzxm.supabase.co') &&
+            imageUrl.includes('/avatars/yf0b8T8xuuMfP8QAfvS9TLOJjVt2');
+
           if (validImageUrl !== '/images/default-avatar.png' && !isBrokenSupabaseUrl && !seenUrls.has(validImageUrl)) {
             allImages.push({ url: validImageUrl, label: `صورة إضافية ${index + 1}`, type: 'additional' });
             seenUrls.add(validImageUrl);
@@ -1150,19 +1152,19 @@ function PlayerReportPage() {
       });
     } else {
       console.log('❌ [renderMedia] لا توجد صور إضافية');
-             console.log('🔍 تحقق من البيانات:', {
-         additional_images: player?.additional_images,
-         hasAdditionalImages: !!player?.additional_images,
-         additionalImagesLength: player?.additional_images?.length || 0
-       });
+      console.log('🔍 تحقق من البيانات:', {
+        additional_images: player?.additional_images,
+        hasAdditionalImages: !!player?.additional_images,
+        additionalImagesLength: player?.additional_images?.length || 0
+      });
     }
 
     console.log('📷 [renderMedia] إجمالي الصور (بعد الفلترة):', allImages);
 
     return (
-    <div className="space-y-8">
+      <div className="space-y-8">
 
-        
+
         {/* قسم جميع الصور */}
         <div>
           <div className="flex justify-between items-center mb-4">
@@ -1175,17 +1177,17 @@ function PlayerReportPage() {
           </div>
 
           {allImages.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {allImages.map((image, index) => (
                 <div key={`image-${index}`} className="overflow-hidden relative rounded-lg shadow-md aspect-square group">
-                <img
-                  src={image.url}
+                  <img
+                    src={image.url}
                     alt={image.label}
                     className="object-cover w-full h-full transition-opacity cursor-pointer hover:opacity-90"
-                  onClick={() => {
-                    setSelectedImage(image.url);
-                    setSelectedImageIdx(index);
-                  }}
+                    onClick={() => {
+                      setSelectedImage(image.url);
+                      setSelectedImageIdx(index);
+                    }}
                     onLoad={() => console.log(`✅ تم تحميل ${image.label} بنجاح`)}
                     onError={(e) => {
                       console.error(`❌ فشل في تحميل ${image.label}:`, e);
@@ -1219,8 +1221,8 @@ function PlayerReportPage() {
                     </div>
                   )}
 
-              </div>
-            ))}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="py-12 text-center bg-gray-50 rounded-lg border-2 border-gray-300 border-dashed">
@@ -1231,31 +1233,31 @@ function PlayerReportPage() {
               <p className="mb-4 text-gray-500">أضف صورة شخصية وصور إضافية لإظهار مهاراتك وإنجازاتك</p>
               <div className="text-sm text-gray-400">
                 💡 يمكنك إضافة الصور من صفحة تعديل الملف الشخصي
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
         </div>
 
-      {/* قسم الفيديوهات المحسن */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold">الفيديوهات</h3>
-          <div className="flex gap-3 items-center">
-            {player?.videos && player.videos.length > 0 && (
-              <span className="px-3 py-1 text-sm text-blue-800 bg-blue-100 rounded-full">
-                {player.videos.length} فيديو
-              </span>
-            )}
+        {/* قسم الفيديوهات المحسن */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">الفيديوهات</h3>
+            <div className="flex gap-3 items-center">
+              {player?.videos && player.videos.length > 0 && (
+                <span className="px-3 py-1 text-sm text-blue-800 bg-blue-100 rounded-full">
+                  {player.videos.length} فيديو
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        
-        {player?.videos && player.videos.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+          {player?.videos && player.videos.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {player.videos.map((video: any, index: number) => {
                 console.log(`🎬 [renderMedia] فيديو ${index + 1}:`, video);
                 console.log(`🔗 رابط الفيديو:`, video.url);
                 console.log(`📝 وصف الفيديو:`, video.desc);
-                
+
                 // التحقق من صحة رابط الفيديو
                 if (!video.url || video.url.trim() === '') {
                   console.log(`❌ رابط الفيديو ${index + 1} فارغ`);
@@ -1265,76 +1267,81 @@ function PlayerReportPage() {
                     </div>
                   );
                 }
-                
+
                 // التحقق من صحة رابط الفيديو (YouTube, Vimeo, أو رابط مباشر)
                 const isValidVideoUrl = (url: string) => {
                   const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
                   const vimeoRegex = /^(https?:\/\/)?(www\.)?(vimeo\.com)\/.+/;
                   const directVideoRegex = /\.(mp4|webm|ogg|mov|avi|mkv)$/i;
-                  
-                  return youtubeRegex.test(url) || vimeoRegex.test(url) || directVideoRegex.test(url);
+
+                  // السماح أيضاً بالمسارات النسبية بما أنها ستوجه لـ Cloudflare
+                  const isRelativePath = !url.startsWith('http') && url.includes('.');
+
+                  return youtubeRegex.test(url) || vimeoRegex.test(url) || directVideoRegex.test(url) || isRelativePath;
                 };
+
+                const videoUrl = video.url.startsWith('http') ? video.url : getSupabaseImageUrl(video.url, 'videos');
 
                 if (!isValidVideoUrl(video.url)) {
                   console.log(`❌ رابط الفيديو ${index + 1} غير صالح:`, video.url);
-                return (
+                  return (
                     <div key={index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-yellow-700">رابط الفيديو {index + 1} غير صالح</p>
                       <p className="text-sm text-yellow-600 mt-1">الرابط: {video.url}</p>
                     </div>
                   );
                 }
-                
+
                 return (
-                              <div key={index} className="overflow-hidden bg-white rounded-lg border border-gray-200 shadow-md" data-video-index={index}>
+                  <div key={index} className="overflow-hidden bg-white rounded-lg border border-gray-200 shadow-md" data-video-index={index}>
                     <div className="relative bg-gray-100 aspect-video">
-                  <div className="flex justify-center items-center w-full h-full bg-gray-200">
-                    <div className="text-center text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
-                        </svg>
-                      <p className="text-sm">فيديو {index + 1}</p>
-                      <p className="text-xs mt-1">اضغط على الرابط أدناه للمشاهدة</p>
+                      <div className="flex justify-center items-center w-full h-full bg-gray-200">
+                        <div className="text-center text-gray-500">
+                          <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-sm">فيديو {index + 1}</p>
+                          <p className="text-xs mt-1">اضغط على الرابط أدناه للمشاهدة</p>
+                        </div>
                       </div>
-                  </div>
                       {/* عرض رابط الفيديو للتشخيص */}
                       <div className="absolute top-2 left-2 px-2 py-1 text-xs text-white bg-black bg-opacity-50 rounded">
                         Video {index + 1}
                       </div>
-                </div>
-                <div className="p-4">
-                  <p className="mb-2 text-sm text-gray-700">
-                    {video.desc || 'لا يوجد وصف'}
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">فيديو {index + 1}</span>
+                    </div>
+                    <div className="p-4">
+                      <p className="mb-2 text-sm text-gray-700">
+                        {video.desc || 'لا يوجد وصف'}
+                      </p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">فيديو {index + 1}</span>
                         <div className="flex gap-2">
-                    <a
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                    >
-                      مشاهدة في نافذة جديدة
-                    </a>
+                          <a
+                            href={videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            مشاهدة في نافذة جديدة
+                          </a>
 
-                  </div>
-                </div>
-              </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
-          </div>
-        ) : (
-          <div className="py-12 text-center bg-gray-50 rounded-lg border-2 border-gray-300 border-dashed">
-            <svg className="mx-auto mb-4 w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            </div>
+          ) : (
+            <div className="py-12 text-center bg-gray-50 rounded-lg border-2 border-gray-300 border-dashed">
+              <svg className="mx-auto mb-4 w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
-            </svg>
-            <h3 className="mb-2 text-lg font-medium text-gray-900">لا توجد فيديوهات</h3>
-            <p className="mb-4 text-gray-500">لم يتم إضافة أي فيديوهات بعد</p>
-          </div>
-        )}
-      </div>
+              </svg>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">لا توجد فيديوهات</h3>
+              <p className="mb-4 text-gray-500">لم يتم إضافة أي فيديوهات بعد</p>
+            </div>
+          )}
+        </div>
 
         {/* قسم المستندات الجديد */}
         <div>
@@ -1360,10 +1367,10 @@ function PlayerReportPage() {
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-semibold text-gray-900 truncate">{doc.name}</h4>
                       <p className="mt-1 text-xs text-gray-500">النوع: {doc.type}</p>
-                      <a 
-                        href={doc.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                      <a
+                        href={doc.url.startsWith('http') ? doc.url : getSupabaseImageUrl(doc.url, 'documents')}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex gap-1 items-center mt-2 text-xs text-blue-600 hover:text-blue-700 hover:underline"
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1386,8 +1393,8 @@ function PlayerReportPage() {
             </div>
           )}
         </div>
-    </div>
-  );
+      </div>
+    );
   };
 
   const renderContracts = () => (
@@ -1611,25 +1618,25 @@ function PlayerReportPage() {
     let isMounted = true;
 
     const fetchPlayerData = async () => {
-        console.log('🔍 [fetchPlayerData] بدء جلب بيانات اللاعب');
-        console.log('📋 [fetchPlayerData] المعاملات:', {
-          targetPlayerId,
-          playerIdFromUrl,
-          userId: user?.uid,
-          hasUser: !!user
-        });
+      console.log('🔍 [fetchPlayerData] بدء جلب بيانات اللاعب');
+      console.log('📋 [fetchPlayerData] المعاملات:', {
+        targetPlayerId,
+        playerIdFromUrl,
+        userId: user?.uid,
+        hasUser: !!user
+      });
 
-        if (!targetPlayerId) {
-          console.error('❌ [fetchPlayerData] لا يوجد معرف لاعب محدد');
-          setError("لم يتم تحديد اللاعب المطلوب");
-          setIsLoading(false);
+      if (!targetPlayerId) {
+        console.error('❌ [fetchPlayerData] لا يوجد معرف لاعب محدد');
+        setError("لم يتم تحديد اللاعب المطلوب");
+        setIsLoading(false);
         return;
       }
 
       try {
         setIsLoading(true);
-          setError(null);
-          const playerId = targetPlayerId;
+        setError(null);
+        const playerId = targetPlayerId;
 
         if (!playerId) {
           console.error('❌ [fetchPlayerData] معرف اللاعب غير محدد');
@@ -1639,44 +1646,44 @@ function PlayerReportPage() {
         }
 
         console.log('🔍 [fetchPlayerData] محاولة جلب بيانات اللاعب:', playerId);
-      
+
         // دالة مساعدة لجلب document من collection مع retry
-      const fetchPlayerDoc = async (collectionName: string, docId: string) => {
+        const fetchPlayerDoc = async (collectionName: string, docId: string) => {
           console.log(`🔍 [fetchPlayerDoc] البحث في ${collectionName} عن ${docId}`);
           try {
-          const docRef = doc(db, collectionName, docId);
-          const docSnap = await getDoc(docRef);
+            const docRef = doc(db, collectionName, docId);
+            const docSnap = await getDoc(docRef);
             console.log(`✅ [fetchPlayerDoc] تم جلب document من ${collectionName}:`, docSnap.exists());
-          return { docSnap, collectionName };
+            return { docSnap, collectionName };
           } catch (error) {
             console.error(`❌ [fetchPlayerDoc] خطأ في جلب من ${collectionName}:`, error);
             throw error;
           }
         };
-      
-                 // البحث في المجموعات بالترتيب مع إضافة retry logic
-         const collections = ['players', 'users', 'player'];
-         let playerDoc = null;
-         let dataSource = '';
-         
-         for (const collectionName of collections) {
-           try {
-             console.log(`🔍 [fetchPlayerData] محاولة جلب من ${collectionName}...`);
-             const result = await retryOperation(async () => {
-               return await fetchPlayerDoc(collectionName, playerId);
-             }, 3, 1000);
-             
-             if (result.docSnap.exists()) {
-            playerDoc = result.docSnap;
-            dataSource = result.collectionName;
-               console.log(`✅ [fetchPlayerData] تم العثور على اللاعب في ${dataSource}`);
-               break;
-             } else {
-               console.log(`⚠️ [fetchPlayerData] اللاعب غير موجود في ${collectionName}`);
-             }
+
+        // البحث في المجموعات بالترتيب مع إضافة retry logic
+        const collections = ['players', 'users', 'player'];
+        let playerDoc = null;
+        let dataSource = '';
+
+        for (const collectionName of collections) {
+          try {
+            console.log(`🔍 [fetchPlayerData] محاولة جلب من ${collectionName}...`);
+            const result = await retryOperation(async () => {
+              return await fetchPlayerDoc(collectionName, playerId);
+            }, 3, 1000);
+
+            if (result.docSnap.exists()) {
+              playerDoc = result.docSnap;
+              dataSource = result.collectionName;
+              console.log(`✅ [fetchPlayerData] تم العثور على اللاعب في ${dataSource}`);
+              break;
+            } else {
+              console.log(`⚠️ [fetchPlayerData] اللاعب غير موجود في ${collectionName}`);
+            }
           } catch (error) {
-             console.log(`⚠️ [fetchPlayerData] فشل في جلب من ${collectionName}:`, error);
-             continue;
+            console.log(`⚠️ [fetchPlayerData] فشل في جلب من ${collectionName}:`, error);
+            continue;
           }
         }
 
@@ -1720,26 +1727,26 @@ function PlayerReportPage() {
             firstName: data.firstName,
             lastName: data.lastName,
             displayName: data.displayName,
-            
+
             // حقول التاريخ
             birth_date: data.birth_date,
             birthDate: data.birthDate,
             dateOfBirth: data.dateOfBirth,
             birthday: data.birthday,
             dob: data.dob,
-            
+
             // حقول الجنسية
             nationality: data.nationality,
             countryOfOrigin: data.countryOfOrigin,
             nationalityCountry: data.nationalityCountry,
             citizenship: data.citizenship,
-            
+
             // حقول الدولة
             country: data.country,
             countryOfResidence: data.countryOfResidence,
             homeCountry: data.homeCountry,
             residenceCountry: data.residenceCountry,
-            
+
             // حقول المدينة
             city: data.city,
             town: data.town,
@@ -1747,7 +1754,7 @@ function PlayerReportPage() {
             residenceCity: data.residenceCity,
             homeCity: data.homeCity,
             currentCity: data.currentCity,
-            
+
             // حقول الهاتف
             phone: data.phone,
             phone_number: data.phone_number,
@@ -1755,26 +1762,26 @@ function PlayerReportPage() {
             contact: data.contact,
             phoneNumber: data.phoneNumber,
             mobileNumber: data.mobileNumber,
-            
+
             // حقول الواتساب
             whatsapp: data.whatsapp,
             whatsapp_number: data.whatsapp_number,
             whatsApp: data.whatsApp,
             whatsappNumber: data.whatsappNumber,
             whatsappPhone: data.whatsappPhone,
-            
+
             // حقول البريد الإلكتروني
             email: data.email,
             email_address: data.email_address,
             emailAddress: data.emailAddress,
             contactEmail: data.contactEmail,
-            
+
             // حقول العنوان
             address: data.address,
             fullAddress: data.fullAddress,
             homeAddress: data.homeAddress,
             residenceAddress: data.residenceAddress,
-            
+
             // حقول النبذة
             brief: data.brief,
             bio: data.bio,
@@ -1802,7 +1809,7 @@ function PlayerReportPage() {
           id: playerId,
           source: dataSource,
           targetPlayerId: targetPlayerId, // إضافة معرف اللاعب المستهدف للتشخيص
-          
+
           // معالجة البيانات الشخصية الأساسية - محسنة
           full_name: (() => {
             const nameFields = [data.full_name, data.name, data.firstName + ' ' + data.lastName, data.displayName];
@@ -1914,44 +1921,16 @@ function PlayerReportPage() {
           social_skills: data.social_skills || {},
           // معالجة الأهداف
           objectives: data.objectives || {},
-          // معالجة الوسائط - فحص جميع الحقول المحتملة للصورة
-          profile_image_url: (() => {
-            // فحص جميع الحقول المحتملة للصورة بالترتيب
-            const imageFields = [
-              data.profile_image_url,
-              data.profile_image,
-              data.avatar,
-              data.photoURL,
-              data.profilePicture,
-              data.image
-            ];
-            
-            for (const field of imageFields) {
-              if (field) {
-                // إذا كان string، استخدمه مباشرة
-                if (typeof field === 'string' && field.trim() !== '') {
-                  console.log('✅ [fetchPlayerData] تم العثور على صورة في حقل:', field);
-                  return field;
-                }
-                // إذا كان object مع url، استخدم الـ url
-                if (typeof field === 'object' && field !== null && field.url) {
-                  console.log('✅ [fetchPlayerData] تم العثور على صورة في object:', field.url);
-                  return field.url;
-                }
-              }
-            }
-            
-            console.log('⚠️ [fetchPlayerData] لم يتم العثور على صورة في أي حقل');
-            return '';
-          })(),
+          // معالجة الوسائط - استخدام دالة getPlayerAvatarUrl الموحدة
+          profile_image_url: getPlayerAvatarUrl(data) || '',
           additional_images: data.additional_images || [],
           videos: data.videos || [],
           documents: data.documents || []
         };
 
         if (isMounted) {
-        setPlayer(processedData);
-        setIsLoading(false);
+          setPlayer(processedData);
+          setIsLoading(false);
           console.log('✅ [fetchPlayerData] تم تحديث حالة اللاعب بنجاح:', {
             playerName: processedData.full_name,
             playerId: processedData.id,
@@ -1992,13 +1971,13 @@ function PlayerReportPage() {
         }
 
       } catch (error) {
-          console.error('❌ [fetchPlayerData] خطأ في جلب بيانات اللاعب:', error);
-          if (isMounted) {
-            const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
-            setError(`حدث خطأ أثناء جلب بيانات اللاعب: ${errorMessage}`);
-        setIsLoading(false);
-      }
+        console.error('❌ [fetchPlayerData] خطأ في جلب بيانات اللاعب:', error);
+        if (isMounted) {
+          const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
+          setError(`حدث خطأ أثناء جلب بيانات اللاعب: ${errorMessage}`);
+          setIsLoading(false);
         }
+      }
     };
 
     fetchPlayerData();
@@ -2019,7 +1998,7 @@ function PlayerReportPage() {
         isCorrectPlayer: player.id === targetPlayerId,
         source: (player as any).source
       });
-      
+
       // التحقق من أن البيانات صحيحة
       if (player.id !== targetPlayerId) {
         console.warn('⚠️ [useEffect] تحذير: البيانات المعروضة ليست للاعب المطلوب!', {
@@ -2027,7 +2006,7 @@ function PlayerReportPage() {
           targetPlayerId: targetPlayerId
         });
       }
-      
+
       // جلب المعلومات الإضافية بشكل متوازي
       Promise.all([
         fetchCurrentUserInfo(),
@@ -2058,7 +2037,7 @@ function PlayerReportPage() {
         targetPlayerId,
         isCorrectPlayer: player.id === targetPlayerId
       });
-      
+
       // التحقق من أن البيانات صحيحة
       if (player.id !== targetPlayerId) {
         console.error('❌ [useEffect] خطأ: البيانات المعروضة ليست للاعب المطلوب!', {
@@ -2066,7 +2045,7 @@ function PlayerReportPage() {
           displayedPlayerName: player.full_name,
           targetPlayerId: targetPlayerId
         });
-        
+
         // إعادة تحميل البيانات الصحيحة
         console.log('🔄 [useEffect] إعادة تحميل البيانات الصحيحة...');
         setIsLoading(true);
@@ -2097,7 +2076,7 @@ function PlayerReportPage() {
       organizationLoading: organizationLoading,
       hasPlayerOrganization: !!playerOrganization
     });
-    
+
     // إذا تم تحديث currentUserInfo ولدينا لاعب ولم نحدد المنظمة بعد
     if (currentUserInfo && player && !playerOrganization && !organizationLoading) {
       console.log('🔄 إعادة تشغيل fetchPlayerOrganization بعد تحديث currentUserInfo');
@@ -2108,7 +2087,7 @@ function PlayerReportPage() {
   // دالة توليد رابط الملف الشخصي للمنظمة
   const getOrganizationProfileUrl = (organization: any): string => {
     if (!organization || !organization.type || !organization.id) return '';
-    
+
     switch (organization.type) {
       case 'club':
         return `/dashboard/club/profile?id=${organization.id}`;
@@ -2154,7 +2133,7 @@ function PlayerReportPage() {
                 <div className="pl-3 text-sm font-medium text-gray-500 border-l border-gray-300">
                   تتصفح بحساب:
                 </div>
-                
+
                 <div className="flex gap-3 items-center px-4 py-2 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm">
                   <div className={`p-2 rounded-full ${currentUserInfo.color} text-white shadow-sm`}>
                     {React.createElement(currentUserInfo.icon, { className: "w-5 h-5" })}
@@ -2167,7 +2146,7 @@ function PlayerReportPage() {
                       {currentUserInfo.type} • نشط
                     </div>
                   </div>
-                  
+
                   {/* أيقونة التحقق */}
                   <div className="flex justify-center items-center w-6 h-6 bg-green-500 rounded-full">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -2198,7 +2177,7 @@ function PlayerReportPage() {
               </div>
               <h2 className="mb-2 text-xl font-semibold text-red-600">⚠️ خطأ في تحميل البيانات</h2>
               <p className="mb-4 text-sm leading-relaxed text-gray-600">{error}</p>
-              
+
               {/* تفاصيل إضافية للمطورين */}
               <div className="p-3 mb-4 text-xs text-left bg-gray-50 rounded-lg">
                 <div className="font-mono">
@@ -2207,7 +2186,7 @@ function PlayerReportPage() {
                   <div>🔗 View Mode: {playerIdFromUrl ? 'عرض لاعب آخر' : 'عرض الملف الشخصي'}</div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-2 space-x-reverse">
                 <button
                   onClick={() => {
@@ -2255,7 +2234,7 @@ function PlayerReportPage() {
                     <p className="text-sm text-blue-100">جميع البيانات التالية خاصة باللاعب المعروض</p>
                   </div>
                 </div>
-                
+
                 {/* زر السيرة الذاتية */}
                 <div className="flex gap-2">
                   <button
@@ -2278,41 +2257,32 @@ function PlayerReportPage() {
             <div className="overflow-hidden mb-8 bg-white rounded-xl border border-gray-200 shadow-lg">
               <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
                 <div className="absolute inset-0 bg-black/20"></div>
-                
+
                 {/* تسمية توضيحية لبيانات اللاعب */}
                 <div className="absolute top-4 left-4">
                   <div className="px-3 py-1 text-xs font-medium text-gray-700 rounded-full shadow-sm backdrop-blur-sm bg-white/90">
                     📋 بيانات اللاعب
                   </div>
                 </div>
-                
+
                 <div className="absolute right-0 bottom-0 left-0 p-6">
                   <div className="flex gap-6 items-end">
                     {/* صورة اللاعب مع لوجو الجهة التابع لها */}
                     <div className="relative">
                       <div className="overflow-hidden w-32 h-32 bg-white rounded-full border-4 border-white shadow-lg">
-                        {(() => {
-                          const validImageUrl = getValidImageUrl(player?.profile_image_url);
-                          return validImageUrl !== '/images/default-avatar.png' ? (
-                            <img
-                              src={validImageUrl}
-                              alt={player?.full_name}
-                              className="object-cover w-full h-full"
-                              onError={(e) => {
-                                if (!e.currentTarget.dataset.errorHandled) {
-                                  e.currentTarget.dataset.errorHandled = 'true';
-                                  e.currentTarget.src = '/images/default-avatar.png';
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="flex justify-center items-center w-full h-full bg-gradient-to-br from-blue-400 to-purple-500">
-                              <User className="w-16 h-16 text-white" />
-                            </div>
-                          );
-                        })()}
+                        <img
+                          src={getValidImageUrl(player?.profile_image_url)}
+                          alt={player?.full_name || 'لاعب'}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (!target.src.includes('/default-player-avatar.png')) {
+                              target.src = '/default-player-avatar.png';
+                            }
+                          }}
+                        />
                       </div>
-                      
+
                       {/* لوجو الجهة التابع لها مع تحسينات */}
                       {!organizationLoading && playerOrganization && (
                         <button
@@ -2339,14 +2309,13 @@ function PlayerReportPage() {
                               }}
                             />
                           ) : null}
-                          <div 
-                            className={`w-full h-full rounded-full ${playerOrganization.color} flex items-center justify-center text-white group-hover:shadow-md ${
-                              playerOrganization.logoUrl ? 'hidden' : 'flex'
-                            }`}
+                          <div
+                            className={`w-full h-full rounded-full ${playerOrganization.color} flex items-center justify-center text-white group-hover:shadow-md ${playerOrganization.logoUrl ? 'hidden' : 'flex'
+                              }`}
                           >
                             {React.createElement(playerOrganization.icon, { className: "w-6 h-6" })}
                           </div>
-                          
+
                           {/* نص توضيحي صغير */}
                           <div className="absolute -bottom-1 left-1/2 opacity-0 transition-opacity transform -translate-x-1/2 translate-y-full group-hover:opacity-100">
                             <div className="px-2 py-1 text-xs text-white whitespace-nowrap rounded bg-black/80">
@@ -2355,7 +2324,7 @@ function PlayerReportPage() {
                           </div>
                         </button>
                       )}
-                      
+
                       {/* شارة اللاعب المستقل - محسنة */}
                       {!organizationLoading && !playerOrganization && (
                         <div
@@ -2363,7 +2332,7 @@ function PlayerReportPage() {
                           title="لاعب مستقل - غير تابع لأي جهة"
                         >
                           <User className="w-6 h-6 text-white" />
-                          
+
                           {/* نص توضيحي */}
                           <div className="absolute -bottom-1 left-1/2 opacity-0 transition-opacity transform -translate-x-1/2 translate-y-full group-hover:opacity-100">
                             <div className="px-2 py-1 text-xs text-white whitespace-nowrap rounded bg-black/80">
@@ -2372,7 +2341,7 @@ function PlayerReportPage() {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* مؤشر التحميل */}
                       {organizationLoading && (
                         <div className="flex absolute -right-2 -bottom-2 justify-center items-center w-12 h-12 bg-blue-500 rounded-full border-white shadow-lg border-3">
@@ -2380,7 +2349,7 @@ function PlayerReportPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* معلومات اللاعب */}
                     <div className="flex-1 mb-4 text-white">
                       <h1 className="mb-2 text-3xl font-bold">{player?.full_name}</h1>
@@ -2416,24 +2385,23 @@ function PlayerReportPage() {
                     <Building2 className="w-5 h-5 text-blue-600" />
                     الجهة التابع لها اللاعب
                   </h3>
-                  
+
                   {/* مؤشر الحالة */}
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    !organizationLoading && playerOrganization 
-                      ? 'bg-green-100 text-green-800' 
-                      : !organizationLoading && !playerOrganization
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${!organizationLoading && playerOrganization
+                    ? 'bg-green-100 text-green-800'
+                    : !organizationLoading && !playerOrganization
                       ? 'bg-gray-100 text-gray-800'
                       : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {!organizationLoading && playerOrganization 
-                      ? `✅ تابع ل${playerOrganization.typeArabic}` 
+                    }`}>
+                    {!organizationLoading && playerOrganization
+                      ? `✅ تابع ل${playerOrganization.typeArabic}`
                       : !organizationLoading && !playerOrganization
-                      ? '🔸 مستقل'
-                      : '⏳ جاري التحقق'
+                        ? '🔸 مستقل'
+                        : '⏳ جاري التحقق'
                     }
                   </div>
                 </div>
-                
+
                 {!organizationLoading && playerOrganization ? (
                   <div className="space-y-4">
                     <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
@@ -2453,9 +2421,8 @@ function PlayerReportPage() {
                               }}
                             />
                           ) : null}
-                          <div className={`w-14 h-14 p-3 rounded-full ${playerOrganization.color} text-white shadow-lg ${
-                            playerOrganization.logoUrl ? 'hidden' : 'flex'
-                          } items-center justify-center border-2 border-white`}>
+                          <div className={`w-14 h-14 p-3 rounded-full ${playerOrganization.color} text-white shadow-lg ${playerOrganization.logoUrl ? 'hidden' : 'flex'
+                            } items-center justify-center border-2 border-white`}>
                             {React.createElement(playerOrganization.icon, { className: "w-7 h-7" })}
                           </div>
                         </div>
@@ -2511,7 +2478,7 @@ function PlayerReportPage() {
                         </button>
                       </div>
                     </div>
-                    
+
                     {/* معلومات إضافية عن الجهة */}
                     <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
                       {playerOrganization.email && (
@@ -2544,8 +2511,8 @@ function PlayerReportPage() {
                     {playerOrganization.description && (
                       <div className="pt-3 border-t border-gray-100">
                         <p className="p-3 text-sm leading-relaxed text-gray-600 bg-gray-50 rounded-lg">
-                          {playerOrganization.description.length > 150 
-                            ? playerOrganization.description.slice(0, 150) + '...' 
+                          {playerOrganization.description.length > 150
+                            ? playerOrganization.description.slice(0, 150) + '...'
                             : playerOrganization.description}
                         </p>
                       </div>
@@ -2594,8 +2561,8 @@ function PlayerReportPage() {
                   جهة الاتصال الرسمية
                 </h3>
                 {player?.official_contact && (
-                  player.official_contact.name || 
-                  player.official_contact.phone || 
+                  player.official_contact.name ||
+                  player.official_contact.phone ||
                   player.official_contact.email
                 ) ? (
                   <div className="space-y-3">
@@ -2609,7 +2576,7 @@ function PlayerReportPage() {
                     {player.official_contact.phone && (
                       <div className="flex gap-3 items-center">
                         <Phone className="w-4 h-4 text-gray-400" />
-                        <a 
+                        <a
                           href={`tel:${player.official_contact.phone}`}
                           className="text-blue-600 hover:underline"
                         >
@@ -2620,7 +2587,7 @@ function PlayerReportPage() {
                     {player.official_contact.email && (
                       <div className="flex gap-3 items-center">
                         <Mail className="w-4 h-4 text-gray-400" />
-                        <a 
+                        <a
                           href={`mailto:${player.official_contact.email}`}
                           className="text-blue-600 hover:underline"
                         >
@@ -2648,18 +2615,17 @@ function PlayerReportPage() {
                       key={tab.name}
                       data-tab={tab.name === 'السيرة الذاتية' ? 'resume' : `tab-${idx}`}
                       onClick={() => setCurrentTab(idx)}
-                      className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                        currentTab === idx
-                          ? 'border-blue-500 text-blue-600 bg-blue-50'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${currentTab === idx
+                        ? 'border-blue-500 text-blue-600 bg-blue-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       {tab.name}
                     </button>
                   ))}
                 </div>
               </div>
-              
+
               <div className="p-6">
                 {TABS[currentTab]?.render?.() || <div>التبويب غير متوفر</div>}
               </div>

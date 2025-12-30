@@ -55,6 +55,9 @@ export default function DashboardLayout({
     return <AuthRedirect />;
   }
 
+  // التحقق مما إذا كانت الصفحة الحالية تتطلب ملء الشاشة بدون padding (مثل فيديوهات اللاعبين)
+  const noPadding = pathname.includes('player-videos') || pathname.includes('shared-videos');
+
   return (
     <>
       {/* مؤشر عدم الاتصال - معطل مؤقتاً */}
@@ -76,8 +79,9 @@ export default function DashboardLayout({
       <ResponsiveLayoutWrapper
         accountType={accountType}
         showSidebar={true}
-        showHeader={true}
-        showFooter={true}
+        showHeader={!noPadding}
+        showFooter={!noPadding}
+        noPadding={noPadding}
       >
         {children}
       </ResponsiveLayoutWrapper>

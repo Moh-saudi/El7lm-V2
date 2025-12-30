@@ -2302,6 +2302,7 @@ interface ResponsiveLayoutProps {
   showSidebar?: boolean;
   showHeader?: boolean;
   showFooter?: boolean;
+  noPadding?: boolean;
 }
 
 const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
@@ -2309,7 +2310,8 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   accountType = 'player',
   showSidebar = true,
   showHeader = true,
-  showFooter = true
+  showFooter = true,
+  noPadding = false
 }) => {
   const { isSidebarOpen, isSidebarCollapsed, isMobile, isTablet, isDesktop, isClient } = useLayout();
 
@@ -2327,24 +2329,25 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className={`flex flex-col min-h-screen ${noPadding ? 'bg-black h-screen overflow-hidden' : 'bg-gray-50'}`}>
       {/* Header */}
       {showHeader && <ResponsiveHeader />}
 
       {/* Main Content */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 h-full">
         {/* Sidebar */}
         {showSidebar && <ResponsiveSidebar accountType={accountType} />}
 
         {/* Content */}
         <main
-          className={`overflow-auto flex-1 min-h-0 transition-all duration-300 ease-in-out ${getMainContentMargin()} rtl`}
+          className={`overflow-auto flex-1 min-h-0 transition-all duration-300 ease-in-out ${getMainContentMargin()} rtl ${noPadding ? 'p-0 h-full flex flex-col overflow-hidden' : 'p-4 lg:p-6'}`}
         >
-          <div className="p-4 lg:p-6">
+          <div className={`${noPadding ? 'h-full flex-1 flex flex-col' : 'h-full'}`}>
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={noPadding ? { opacity: 0 } : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className={`${noPadding ? 'h-full flex-1 flex flex-col' : 'h-full'}`}
             >
               {children}
             </motion.div>
@@ -2365,6 +2368,7 @@ interface ResponsiveLayoutWrapperProps {
   showSidebar?: boolean;
   showHeader?: boolean;
   showFooter?: boolean;
+  noPadding?: boolean;
 }
 
 export const ResponsiveLayoutWrapper: React.FC<ResponsiveLayoutWrapperProps> = (props) => {

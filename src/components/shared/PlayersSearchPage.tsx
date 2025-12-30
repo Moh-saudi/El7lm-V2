@@ -10,23 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import {
-    Calendar,
-    Eye,
-    Filter,
-    Flag,
-    MapPin,
-    Maximize2,
-    Minimize2,
-    RefreshCw,
-    Search,
-    Smartphone,
-    Star,
-    Sword,
-    Trophy,
-    User,
-    Users,
-    Zap
+  Calendar,
+  Eye,
+  Filter,
+  Flag,
+  MapPin,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Search,
+  Smartphone,
+  Star,
+  Sword,
+  Trophy,
+  User,
+  Users,
+  Zap
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -123,6 +124,8 @@ interface Player {
   isActive?: boolean;
   createdAt?: any;
   created_at?: any;
+  phone?: string;
+  whatsapp?: string;
 }
 
 interface PaginationProps {
@@ -220,11 +223,10 @@ const Pagination: React.FC<PaginationProps> = ({
                 variant={currentPage === page ? "default" : "outline"}
                 size="sm"
                 onClick={() => onPageChange(page as number)}
-                className={`min-w-[40px] ${
-                  currentPage === page
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                }`}
+                className={`min-w-[40px] ${currentPage === page
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                  }`}
               >
                 {page}
               </Button>
@@ -268,27 +270,27 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     return isNaN(page) || page < 1 ? 1 : page;
   };
-  
+
   const [currentPage, setCurrentPage] = useState(() => getInitialPage());
   const [playersPerPage, setPlayersPerPage] = useState(12);
   const isUpdatingFromUser = React.useRef(false);
   const hasInitializedFilters = useRef(false);
   const filtersSignatureRef = useRef<string>('');
-  
+
   // استعادة رقم الصفحة من URL عند تغيير searchParams (مثل العودة من صفحة أخرى)
   useEffect(() => {
     // تجاهل التحديثات التي تأتي من المستخدم
     if (isUpdatingFromUser.current) {
       return;
     }
-    
+
     // قراءة رقم الصفحة من URL مباشرة
-    const pageParam = typeof window !== 'undefined' 
+    const pageParam = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('page')
       : searchParams.get('page');
     const page = pageParam ? parseInt(pageParam, 10) : 1;
     const validPage = isNaN(page) || page < 1 ? 1 : page;
-    
+
     console.log('📄 استعادة رقم الصفحة من URL:', { pageParam, validPage, currentPage, searchParamsString: searchParams.toString() });
     setCurrentPage(validPage);
   }, [searchParams]); // استمع لتغييرات searchParams فقط
@@ -305,7 +307,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
   // UI State
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     basic: false,
     age: false,
     additional: false
@@ -314,7 +316,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   // تحديث URL عند تغيير الصفحة
   const updatePageInURL = useCallback((page: number) => {
     if (typeof window === 'undefined') return;
-    
+
     const params = new URLSearchParams(window.location.search);
     if (page > 1) {
       params.set('page', page.toString());
@@ -322,12 +324,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       params.delete('page');
     }
     const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
-    
+
     // إعادة تعيين isUpdatingFromUser بعد تحديث URL
     setTimeout(() => {
       isUpdatingFromUser.current = false;
     }, 100);
-    
+
     router.replace(newUrl, { scroll: false });
   }, [router]);
 
@@ -483,7 +485,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         } else if (typeof player.birth_date === 'string') {
           birthDate = new Date(player.birth_date);
         }
-      } catch (e) {}
+      } catch (e) { }
     } else if (player.birthDate) {
       try {
         if (player.birthDate.toDate) {
@@ -493,7 +495,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         } else if (typeof player.birthDate === 'string') {
           birthDate = new Date(player.birthDate);
         }
-      } catch (e) {}
+      } catch (e) { }
     } else if (player.dateOfBirth) {
       try {
         if (player.dateOfBirth.toDate) {
@@ -503,7 +505,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         } else if (typeof player.dateOfBirth === 'string') {
           birthDate = new Date(player.dateOfBirth);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (birthDate && !isNaN(birthDate.getTime())) {
@@ -613,9 +615,9 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       // جميع الفلاتر تم تطبيقها بنجاح
       return true;
     });
-  }, [players, debouncedSearchTerm, filterPosition, filterCountry, 
-      filterNationality, filterAgeMin, filterAgeMax, filterBirthYear, 
-      filterSkillLevel, filterPhone, calculatePlayerAge, getBirthYear]);
+  }, [players, debouncedSearchTerm, filterPosition, filterCountry,
+    filterNationality, filterAgeMin, filterAgeMax, filterBirthYear,
+    filterSkillLevel, filterPhone, calculatePlayerAge, getBirthYear]);
 
   const filtersSignature = useMemo(() => JSON.stringify({
     debouncedSearchTerm,
@@ -628,7 +630,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
     filterSkillLevel,
     filterPhone
   }), [debouncedSearchTerm, filterPosition, filterCountry, filterNationality,
-      filterAgeMin, filterAgeMax, filterBirthYear, filterSkillLevel, filterPhone]);
+    filterAgeMin, filterAgeMax, filterBirthYear, filterSkillLevel, filterPhone]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -757,10 +759,10 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   const uniqueBirthYears = useMemo(() => {
     const years = new Set<number>();
     const currentYear = new Date().getFullYear();
-    
+
     players.forEach(player => {
       let birthYear: number | null = null;
-      
+
       // محاولة استخراج عام الميلاد من مختلف الحقول
       if (player.birth_date) {
         try {
@@ -802,12 +804,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         // حساب عام الميلاد من العمر
         birthYear = currentYear - player.age;
       }
-      
+
       if (birthYear && birthYear > 1950 && birthYear <= currentYear) {
         years.add(birthYear);
       }
     });
-    
+
     return Array.from(years).sort((a, b) => b - a); // ترتيب تنازلي
   }, [players]);
 
@@ -917,91 +919,91 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 </button>
                 {expandedSections.basic && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                  {/* Position Filter */}
-                  <div className="group">
-                    <Label htmlFor="position-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
-                        <Sword className="h-3 w-3 text-white" />
-                      </div>
-                      المركز
-                    </Label>
-                    <Select value={filterPosition} onValueChange={setFilterPosition}>
-                      <SelectTrigger className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                        <SelectValue placeholder="اختر المركز" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="all" className="pl-2">🌍 جميع المراكز</SelectItem>
-                        {uniquePositions.map(position => (
-                          <SelectItem key={position} value={position} className="flex items-center gap-2 pl-2">
-                            <span className="text-base flex-shrink-0">{getPositionEmoji(position)}</span>
-                            <span className="flex-1">{position}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Position Filter */}
+                    <div className="group">
+                      <Label htmlFor="position-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
+                          <Sword className="h-3 w-3 text-white" />
+                        </div>
+                        المركز
+                      </Label>
+                      <Select value={filterPosition} onValueChange={setFilterPosition}>
+                        <SelectTrigger className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                          <SelectValue placeholder="اختر المركز" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all" className="pl-2">🌍 جميع المراكز</SelectItem>
+                          {uniquePositions.map(position => (
+                            <SelectItem key={position} value={position} className="flex items-center gap-2 pl-2">
+                              <span className="text-base flex-shrink-0">{getPositionEmoji(position)}</span>
+                              <span className="flex-1">{position}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Country Filter */}
-                  <div className="group">
-                    <Label htmlFor="country-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded shadow-sm">
-                        <MapPin className="h-3 w-3 text-white" />
-                      </div>
-                      البلد
-                    </Label>
-                    <Select value={filterCountry} onValueChange={setFilterCountry}>
-                      <SelectTrigger className="bg-white border border-gray-200 hover:border-green-400 focus:border-green-500 focus:ring-1 focus:ring-green-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                        <SelectValue placeholder="اختر البلد">
-                          {filterCountry !== 'all' && (
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">{getCountryFlag(filterCountry)}</span>
-                              <span>{filterCountry}</span>
-                            </span>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="all" className="pl-2">🌍 جميع البلدان</SelectItem>
-                        {uniqueCountries.map(country => (
-                          <SelectItem key={country} value={country} className="flex items-center gap-2 py-2 pl-2">
-                            <span className="text-xl flex-shrink-0">{getCountryFlag(country)}</span>
-                            <span className="flex-1">{country}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Country Filter */}
+                    <div className="group">
+                      <Label htmlFor="country-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded shadow-sm">
+                          <MapPin className="h-3 w-3 text-white" />
+                        </div>
+                        البلد
+                      </Label>
+                      <Select value={filterCountry} onValueChange={setFilterCountry}>
+                        <SelectTrigger className="bg-white border border-gray-200 hover:border-green-400 focus:border-green-500 focus:ring-1 focus:ring-green-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                          <SelectValue placeholder="اختر البلد">
+                            {filterCountry !== 'all' && (
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">{getCountryFlag(filterCountry)}</span>
+                                <span>{filterCountry}</span>
+                              </span>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all" className="pl-2">🌍 جميع البلدان</SelectItem>
+                          {uniqueCountries.map(country => (
+                            <SelectItem key={country} value={country} className="flex items-center gap-2 py-2 pl-2">
+                              <span className="text-xl flex-shrink-0">{getCountryFlag(country)}</span>
+                              <span className="flex-1">{country}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Nationality Filter */}
-                  <div className="group">
-                    <Label htmlFor="nationality-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-orange-400 to-red-400 rounded shadow-sm">
-                        <Flag className="h-3 w-3 text-white" />
-                      </div>
-                      الجنسية
-                    </Label>
-                    <Select value={filterNationality} onValueChange={setFilterNationality}>
-                      <SelectTrigger className="bg-white border border-gray-200 hover:border-orange-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                        <SelectValue placeholder="اختر الجنسية">
-                          {filterNationality !== 'all' && (
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">{getCountryFlag(filterNationality)}</span>
-                              <span>{filterNationality}</span>
-                            </span>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="all" className="pl-2">🌍 جميع الجنسيات</SelectItem>
-                        {uniqueNationalities.map(nationality => (
-                          <SelectItem key={nationality} value={nationality} className="flex items-center gap-2 py-2 pl-2">
-                            <span className="text-xl flex-shrink-0">{getCountryFlag(nationality)}</span>
-                            <span className="flex-1">{nationality}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Nationality Filter */}
+                    <div className="group">
+                      <Label htmlFor="nationality-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-orange-400 to-red-400 rounded shadow-sm">
+                          <Flag className="h-3 w-3 text-white" />
+                        </div>
+                        الجنسية
+                      </Label>
+                      <Select value={filterNationality} onValueChange={setFilterNationality}>
+                        <SelectTrigger className="bg-white border border-gray-200 hover:border-orange-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                          <SelectValue placeholder="اختر الجنسية">
+                            {filterNationality !== 'all' && (
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">{getCountryFlag(filterNationality)}</span>
+                                <span>{filterNationality}</span>
+                              </span>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all" className="pl-2">🌍 جميع الجنسيات</SelectItem>
+                          {uniqueNationalities.map(nationality => (
+                            <SelectItem key={nationality} value={nationality} className="flex items-center gap-2 py-2 pl-2">
+                              <span className="text-xl flex-shrink-0">{getCountryFlag(nationality)}</span>
+                              <span className="flex-1">{nationality}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1022,68 +1024,68 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 </button>
                 {expandedSections.age && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                  {/* Age Range Filters */}
-                  <div className="group">
-                    <Label htmlFor="age-min-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-blue-400 to-cyan-400 rounded shadow-sm">
-                        <User className="h-3 w-3 text-white" />
-                      </div>
-                      الحد الأدنى للعمر
-                    </Label>
-                    <Input
-                      id="age-min-filter"
-                      type="number"
-                      placeholder="مثال: 18"
-                      min="0"
-                      max="100"
-                      value={filterAgeMin}
-                      onChange={(e) => setFilterAgeMin(e.target.value)}
-                      className="bg-white border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
-                    />
-                  </div>
+                    {/* Age Range Filters */}
+                    <div className="group">
+                      <Label htmlFor="age-min-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-blue-400 to-cyan-400 rounded shadow-sm">
+                          <User className="h-3 w-3 text-white" />
+                        </div>
+                        الحد الأدنى للعمر
+                      </Label>
+                      <Input
+                        id="age-min-filter"
+                        type="number"
+                        placeholder="مثال: 18"
+                        min="0"
+                        max="100"
+                        value={filterAgeMin}
+                        onChange={(e) => setFilterAgeMin(e.target.value)}
+                        className="bg-white border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                      />
+                    </div>
 
-                  <div className="group">
-                    <Label htmlFor="age-max-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
-                        <User className="h-3 w-3 text-white" />
-                      </div>
-                      الحد الأقصى للعمر
-                    </Label>
-                    <Input
-                      id="age-max-filter"
-                      type="number"
-                      placeholder="مثال: 30"
-                      min="0"
-                      max="100"
-                      value={filterAgeMax}
-                      onChange={(e) => setFilterAgeMax(e.target.value)}
-                      className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
-                    />
-                  </div>
+                    <div className="group">
+                      <Label htmlFor="age-max-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
+                          <User className="h-3 w-3 text-white" />
+                        </div>
+                        الحد الأقصى للعمر
+                      </Label>
+                      <Input
+                        id="age-max-filter"
+                        type="number"
+                        placeholder="مثال: 30"
+                        min="0"
+                        max="100"
+                        value={filterAgeMax}
+                        onChange={(e) => setFilterAgeMax(e.target.value)}
+                        className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                      />
+                    </div>
 
-                  {/* Birth Year Filter */}
-                  <div className="group">
-                    <Label htmlFor="birth-year-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-indigo-400 to-purple-400 rounded shadow-sm">
-                        <Calendar className="h-3 w-3 text-white" />
-                      </div>
-                      عام الميلاد
-                    </Label>
-                    <Select value={filterBirthYear} onValueChange={setFilterBirthYear}>
-                      <SelectTrigger className="bg-white border border-gray-200 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                        <SelectValue placeholder="اختر عام الميلاد" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="all" className="pl-2">📅 جميع الأعوام</SelectItem>
-                        {uniqueBirthYears.map(year => (
-                          <SelectItem key={year} value={year.toString()} className="flex items-center gap-2 pl-2">
-                            <span className="text-base flex-shrink-0">📆</span>
-                            <span className="flex-1">{year}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    {/* Birth Year Filter */}
+                    <div className="group">
+                      <Label htmlFor="birth-year-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-indigo-400 to-purple-400 rounded shadow-sm">
+                          <Calendar className="h-3 w-3 text-white" />
+                        </div>
+                        عام الميلاد
+                      </Label>
+                      <Select value={filterBirthYear} onValueChange={setFilterBirthYear}>
+                        <SelectTrigger className="bg-white border border-gray-200 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                          <SelectValue placeholder="اختر عام الميلاد" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all" className="pl-2">📅 جميع الأعوام</SelectItem>
+                          {uniqueBirthYears.map(year => (
+                            <SelectItem key={year} value={year.toString()} className="flex items-center gap-2 pl-2">
+                              <span className="text-base flex-shrink-0">📆</span>
+                              <span className="flex-1">{year}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1104,52 +1106,52 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 </button>
                 {expandedSections.additional && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  {/* Skill Level Filter */}
-                  {uniqueSkillLevels.length > 0 && (
-                    <div className="group">
-                      <Label htmlFor="skill-level-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                        <div className="p-1 bg-gradient-to-br from-yellow-400 to-orange-400 rounded shadow-sm">
-                          <Star className="h-3 w-3 text-white" />
-                        </div>
-                        مستوى المهارة
-                      </Label>
-                      <Select value={filterSkillLevel} onValueChange={setFilterSkillLevel}>
-                        <SelectTrigger className="bg-white border border-gray-200 hover:border-yellow-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                          <SelectValue placeholder="اختر مستوى المهارة" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="pl-2">⭐ جميع المستويات</SelectItem>
-                          {uniqueSkillLevels.map(level => (
-                            <SelectItem key={level} value={level} className="flex items-center gap-2 pl-2">
-                              <span className="text-base flex-shrink-0">⭐</span>
-                              <span className="flex-1">{level}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Phone Filter */}
-                  <div className="group">
-                    <Label htmlFor="phone-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
-                      <div className="p-1 bg-gradient-to-br from-teal-400 to-cyan-400 rounded shadow-sm">
-                        <Smartphone className="h-3 w-3 text-white" />
+                    {/* Skill Level Filter */}
+                    {uniqueSkillLevels.length > 0 && (
+                      <div className="group">
+                        <Label htmlFor="skill-level-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                          <div className="p-1 bg-gradient-to-br from-yellow-400 to-orange-400 rounded shadow-sm">
+                            <Star className="h-3 w-3 text-white" />
+                          </div>
+                          مستوى المهارة
+                        </Label>
+                        <Select value={filterSkillLevel} onValueChange={setFilterSkillLevel}>
+                          <SelectTrigger className="bg-white border border-gray-200 hover:border-yellow-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
+                            <SelectValue placeholder="اختر مستوى المهارة" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            <SelectItem value="all" className="pl-2">⭐ جميع المستويات</SelectItem>
+                            {uniqueSkillLevels.map(level => (
+                              <SelectItem key={level} value={level} className="flex items-center gap-2 pl-2">
+                                <span className="text-base flex-shrink-0">⭐</span>
+                                <span className="flex-1">{level}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      رقم الهاتف
-                    </Label>
-                    <div className="relative">
-                      <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-teal-500 h-3.5 w-3.5 z-10" />
-                      <Input
-                        id="phone-filter"
-                        type="text"
-                        placeholder="ابحث برقم الهاتف..."
-                        value={filterPhone}
-                        onChange={(e) => setFilterPhone(e.target.value)}
-                        className="pr-10 bg-white border border-gray-200 hover:border-teal-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
-                      />
+                    )}
+
+                    {/* Phone Filter */}
+                    <div className="group">
+                      <Label htmlFor="phone-filter" className="flex items-center gap-1.5 mb-1.5 text-xs font-medium text-gray-700">
+                        <div className="p-1 bg-gradient-to-br from-teal-400 to-cyan-400 rounded shadow-sm">
+                          <Smartphone className="h-3 w-3 text-white" />
+                        </div>
+                        رقم الهاتف
+                      </Label>
+                      <div className="relative">
+                        <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-teal-500 h-3.5 w-3.5 z-10" />
+                        <Input
+                          id="phone-filter"
+                          type="text"
+                          placeholder="ابحث برقم الهاتف..."
+                          value={filterPhone}
+                          onChange={(e) => setFilterPhone(e.target.value)}
+                          className="pr-10 bg-white border border-gray-200 hover:border-teal-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
+                        />
+                      </div>
                     </div>
-                  </div>
                   </div>
                 )}
               </div>
@@ -1168,7 +1170,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                       ملاحظة مهمة
                     </h4>
                     <p className="text-xs text-blue-50 leading-relaxed">
-                      جميع الفلاتر تعمل معاً - يمكنك اختيار لاعب من دولة معينة مع عمر محدد في نفس الوقت. 
+                      جميع الفلاتر تعمل معاً - يمكنك اختيار لاعب من دولة معينة مع عمر محدد في نفس الوقت.
                       النتائج ستظهر فقط اللاعبين الذين يطابقون <strong className="text-white font-semibold">جميع</strong> الفلاتر المختارة.
                     </p>
                   </div>
@@ -1201,7 +1203,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
             {pagedPlayers.map((player) => {
               const playerAccountType = getPlayerAccountType(player);
-              const imageUrl = getValidImageUrl(player.profile_image_url);
+              const imageUrl = getPlayerAvatarUrl(player);
 
               return (
                 <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
@@ -1214,13 +1216,18 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                           className="w-full h-full object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
+                            target.src = '/default-player-avatar.png'; // Fallback to professional 3D avatar
+                            // target.style.display = 'none'; // Old behavior was to hide
                           }}
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-200 flex items-center justify-center">
-                        <User className="h-10 w-10 sm:h-12 sm:w-12 md:h-16 md:w-16 text-gray-400" />
+                      <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-100 flex items-center justify-center overflow-hidden">
+                        <img
+                          src="/default-player-avatar.png"
+                          alt="placeholder"
+                          className="w-full h-full object-contain opacity-80"
+                        />
                       </div>
                     )}
 

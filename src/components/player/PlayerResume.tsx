@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ar';
 
 dayjs.locale('ar');
+import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 
 interface PlayerResumeProps {
   player: any;
@@ -29,17 +30,17 @@ const calculateAge = (birthDate: any) => {
     } else {
       d = new Date(birthDate);
     }
-    
+
     if (isNaN(d.getTime())) return null;
-    
+
     const today = new Date();
     let age = today.getFullYear() - d.getFullYear();
     const monthDiff = today.getMonth() - d.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
       age--;
     }
-    
+
     return age;
   } catch (error) {
     return null;
@@ -59,7 +60,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
       }
 
       console.log('بدء إنشاء PDF...');
-      
+
       // إظهار رسالة تحميل
       const loadingMessage = document.createElement('div');
       loadingMessage.style.cssText = `
@@ -79,7 +80,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
 
       // انتظار قصير للتأكد من أن العنصر جاهز
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // انتظار تحميل جميع الصور
       const images = resumeRef.current.querySelectorAll('img');
       const imagePromises = Array.from(images).map(img => {
@@ -92,9 +93,9 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           }
         });
       });
-      
+
       await Promise.all(imagePromises);
-      
+
       // إنشاء canvas من العنصر
       const canvas = await html2canvas(resumeRef.current, {
         scale: 3, // زيادة الجودة للصور
@@ -115,21 +116,21 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           });
         }
       });
-      
+
       console.log('تم إنشاء Canvas بنجاح');
-      
+
       // تحويل canvas إلى صورة بجودة عالية
       const imgData = canvas.toDataURL('image/png', 1.0);
-      
+
       // إنشاء صورة مؤقتة لضمان تحميل الصور
       const tempImg = new Image();
       tempImg.src = imgData;
-      
+
       await new Promise((resolve, reject) => {
         tempImg.onload = resolve;
         tempImg.onerror = reject;
       });
-      
+
       // إنشاء PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210; // عرض A4 بالمليمتر
@@ -137,11 +138,11 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
-      
+
       // إضافة الصورة للصفحة الأولى
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
-      
+
       // إضافة صفحات إضافية إذا لزم الأمر
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
@@ -149,28 +150,28 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
-      
+
       // حفظ الملف
       const fileName = `${player?.full_name || 'player'}-resume.pdf`;
       pdf.save(fileName);
-      
+
       console.log('تم إنشاء PDF بنجاح:', fileName);
-      
+
       // إزالة رسالة التحميل
       document.body.removeChild(loadingMessage);
-      
+
       // إظهار رسالة نجاح
       alert(`تم إنشاء PDF بنجاح!\nاسم الملف: ${fileName}\nيرجى التحقق من مجلد التنزيلات.`);
-      
+
     } catch (error) {
       console.error('خطأ في إنشاء PDF:', error);
-      
+
       // إزالة رسالة التحميل إذا كانت موجودة
       const loadingMessage = document.querySelector('div[style*="position: fixed"]');
       if (loadingMessage) {
         document.body.removeChild(loadingMessage);
       }
-      
+
       alert('خطأ في إنشاء PDF. يرجى المحاولة مرة أخرى.\n\nالتفاصيل: ' + (error as Error).message);
     }
   };
@@ -196,19 +197,19 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             onClick={async () => {
               try {
                 if (!resumeRef.current) return;
-                
+
                 const canvas = await html2canvas(resumeRef.current, {
                   scale: 1,
                   useCORS: true,
                   allowTaint: true,
                   backgroundColor: '#ffffff'
                 });
-                
+
                 const link = document.createElement('a');
                 link.download = `${player?.full_name || 'player'}-resume.png`;
                 link.href = canvas.toDataURL();
                 link.click();
-                
+
                 alert('تم تنزيل الصورة بنجاح!');
               } catch (error) {
                 alert('خطأ في تنزيل الصورة: ' + (error as Error).message);
@@ -223,8 +224,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
 
         {/* زر المشاركة */}
         <div className="flex justify-center">
-          <ShareModal 
-            playerId={player?.id} 
+          <ShareModal
+            playerId={player?.id}
             playerName={player?.full_name || 'لاعب'}
             trigger={
               <Button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -237,7 +238,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
       </div>
 
       {/* السيرة الذاتية */}
-      <div 
+      <div
         ref={resumeRef}
         className="bg-white p-8 max-w-4xl mx-auto shadow-lg print:shadow-none print:p-0"
         style={{ fontFamily: 'Arial, sans-serif' }}
@@ -245,26 +246,40 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         {/* Header */}
         <div className="border-b-4 border-blue-600 pb-6 mb-8">
           <div className="flex items-center gap-6">
-            {/* صورة اللاعب أو الحرف الأول */}
-            {player?.profile_image ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-200 shadow-lg print:border-blue-600">
-                <img 
-                  src={typeof player.profile_image === 'string' 
-                    ? player.profile_image 
-                    : (player.profile_image as { url: string })?.url} 
-                  alt="صورة اللاعب" 
-                  className="w-full h-full object-cover"
-                  style={{ 
-                    breakInside: 'avoid',
-                    pageBreakInside: 'avoid'
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold border-4 border-blue-200 print:border-blue-600">
-                {player?.full_name?.charAt(0) || 'P'}
-              </div>
-            )}
+            {/* صورة اللاعب - محسنة لتستخدم نظام التحويل الموحد */}
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-200 shadow-lg print:border-blue-600">
+              <img
+                src={(() => {
+                  const imageValue = player?.profile_image_url || player?.profile_image;
+                  if (!imageValue) return '/default-player-avatar.png';
+
+                  // إذا كان كائن (object)
+                  let path = '';
+                  if (typeof imageValue === 'string') {
+                    path = imageValue;
+                  } else if (typeof imageValue === 'object' && imageValue !== null) {
+                    path = (imageValue as any).url || (imageValue as any).path || '';
+                  }
+
+                  if (!path) return '/default-player-avatar.png';
+
+                  // استخدام المحول الموحد للروابط
+                  return getSupabaseImageUrl(path, 'avatars');
+                })()}
+                alt="صورة اللاعب"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes('/default-player-avatar.png')) {
+                    target.src = '/default-player-avatar.png';
+                  }
+                }}
+                style={{
+                  breakInside: 'avoid',
+                  pageBreakInside: 'avoid'
+                }}
+              />
+            </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {player?.full_name || 'اسم اللاعب'}
@@ -288,7 +303,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               </div>
             </div>
           </div>
-          
+
           {/* معلومات المنصة والتاريخ */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center text-xs text-gray-600">
@@ -330,7 +345,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               <span>{player?.country || 'غير متاح'}</span>
             </div>
           </div>
-          
+
           {/* النبذة المختصرة في قسم الاتصال */}
           {player?.brief && (
             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
@@ -357,11 +372,11 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 {/* صورة الجهة التابعة */}
                 {playerOrganization.logo || playerOrganization.logoUrl ? (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-200 shadow-sm print:border-blue-600">
-                    <img 
-                      src={playerOrganization.logo || playerOrganization.logoUrl} 
-                      alt={`صورة ${playerOrganization.name}`} 
+                    <img
+                      src={playerOrganization.logo || playerOrganization.logoUrl}
+                      alt={`صورة ${playerOrganization.name}`}
                       className="w-full h-full object-cover"
-                      style={{ 
+                      style={{
                         breakInside: 'avoid',
                         pageBreakInside: 'avoid'
                       }}
@@ -383,12 +398,12 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                     <span className="text-2xl">{playerOrganization.emoji}</span>
                   </div>
                 )}
-                
+
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900 text-lg">{playerOrganization.name}</h3>
                   <p className="text-gray-600">{playerOrganization.typeArabic}</p>
                 </div>
-                
+
                 {/* معلومات إضافية */}
                 <div className="text-right">
                   <div className="text-sm text-gray-600">
@@ -435,7 +450,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               </div>
             </div>
           </div>
-          
+
           {/* النبذة المختصرة */}
           {player?.brief && (
             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
@@ -494,9 +509,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                       {[1, 2, 3, 4, 5].map((star) => (
                         <div
                           key={star}
-                          className={`w-3 h-3 rounded-full ${
-                            star <= Number(value) ? 'bg-yellow-400' : 'bg-gray-300'
-                          }`}
+                          className={`w-3 h-3 rounded-full ${star <= Number(value) ? 'bg-yellow-400' : 'bg-gray-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -516,9 +530,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                       {[1, 2, 3, 4, 5].map((star) => (
                         <div
                           key={star}
-                          className={`w-3 h-3 rounded-full ${
-                            star <= Number(value) ? 'bg-green-400' : 'bg-gray-300'
-                          }`}
+                          className={`w-3 h-3 rounded-full ${star <= Number(value) ? 'bg-green-400' : 'bg-gray-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -538,9 +551,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                       {[1, 2, 3, 4, 5].map((star) => (
                         <div
                           key={star}
-                          className={`w-3 h-3 rounded-full ${
-                            star <= Number(value) ? 'bg-purple-400' : 'bg-gray-300'
-                          }`}
+                          className={`w-3 h-3 rounded-full ${star <= Number(value) ? 'bg-purple-400' : 'bg-gray-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -632,7 +644,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             <FileText className="w-5 h-5 text-blue-600" />
             الصور والفيديوهات
           </h2>
-          
+
           {/* الصور */}
           {(player?.profile_image || (player?.additional_images && player.additional_images.length > 0)) && (
             <div className="mb-6">
@@ -641,13 +653,13 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 {/* الصورة الشخصية */}
                 {player?.profile_image && (
                   <div className="relative">
-                    <img 
-                      src={typeof player.profile_image === 'string' 
-                        ? player.profile_image 
-                        : (player.profile_image as { url: string })?.url} 
-                      alt="الصورة الشخصية" 
-                      className="w-full h-32 object-cover rounded-lg border-2 border-blue-200 shadow-sm print:border-blue-600" 
-                      style={{ 
+                    <img
+                      src={typeof player.profile_image === 'string'
+                        ? player.profile_image
+                        : (player.profile_image as { url: string })?.url}
+                      alt="الصورة الشخصية"
+                      className="w-full h-32 object-cover rounded-lg border-2 border-blue-200 shadow-sm print:border-blue-600"
+                      style={{
                         breakInside: 'avoid',
                         pageBreakInside: 'avoid'
                       }}
@@ -672,16 +684,16 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                     </div>
                   </div>
                 )}
-                
+
                 {/* الصور الإضافية */}
-                {player?.additional_images && player.additional_images.length > 0 && 
+                {player?.additional_images && player.additional_images.length > 0 &&
                   player.additional_images.map((img: any, idx: number) => (
                     <div key={idx} className="relative">
-                      <img 
-                        src={typeof img === 'string' ? img : img.url} 
-                        alt={`صورة إضافية ${idx + 1}`} 
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm print:border-gray-600" 
-                        style={{ 
+                      <img
+                        src={typeof img === 'string' ? img : img.url}
+                        alt={`صورة إضافية ${idx + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm print:border-gray-600"
+                        style={{
                           breakInside: 'avoid',
                           pageBreakInside: 'avoid'
                         }}
@@ -754,13 +766,13 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           )}
 
           {/* رسالة إذا لم توجد صور أو فيديوهات */}
-          {!player?.profile_image && 
-           !player?.additional_images?.length && 
-           !player?.videos?.length && (
-            <div className="bg-gray-50 p-4 rounded-lg text-center">
-              <p className="text-gray-500">لا توجد صور أو فيديوهات متاحة</p>
-            </div>
-          )}
+          {!player?.profile_image &&
+            !player?.additional_images?.length &&
+            !player?.videos?.length && (
+              <div className="bg-gray-50 p-4 rounded-lg text-center">
+                <p className="text-gray-500">لا توجد صور أو فيديوهات متاحة</p>
+              </div>
+            )}
         </div>
 
         {/* المعلومات الطبية */}
@@ -817,8 +829,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         </div>
       </div>
 
-             {/* أنماط الطباعة */}
-       <style jsx>{`
+      {/* أنماط الطباعة */}
+      <style jsx>{`
          @media print {
            @page {
              margin: 0.8cm;

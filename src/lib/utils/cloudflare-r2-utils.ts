@@ -13,27 +13,24 @@ export function fixReceiptUrl(url: any): string | null {
 
     // 1. إذا كان الرابط قديماً من Supabase
     if (correctedUrl.includes('supabase.co')) {
-        // استخراج المسار بعد كلمة 'public/' أو 'object/'
-        const parts = correctedUrl.split('/public/');
-        let pathPart = parts.length > 1 ? parts[1] : null;
+        // البحث عن المسار الفعلي بعد object/
+        const objectMarker = '/object/';
+        const markerIndex = correctedUrl.indexOf(objectMarker);
 
-        if (!pathPart) {
-            // محاولة البحث عن المسار بعد 'object/' وتجاوز الـ bucket name
-            const objectParts = correctedUrl.split('/object/');
-            if (objectParts.length > 1) {
-                const pathSegments = objectParts[1].split('/');
-                // السجمنت 0 هو الـ bucket (مثلاً wallet)، نبدأ من السجمنت 1
-                pathPart = pathSegments.slice(2).join('/');
-                if (!pathPart && pathSegments.length >= 2) {
-                    // في حالة المسارات البسيطة
-                    pathPart = pathSegments.slice(1).join('/');
-                }
+        if (markerIndex !== -1) {
+            // المسار بعد /object/ هو شيء مثل public/avatars/file.png أو avatars/file.png
+            let pathPart = correctedUrl.substring(markerIndex + objectMarker.length);
+
+            // إزالة 'public/' أو 'authenticated/' من البداية إذا وجدت
+            if (pathPart.startsWith('public/')) {
+                pathPart = pathPart.substring(7);
+            } else if (pathPart.startsWith('authenticated/')) {
+                pathPart = pathPart.substring(14);
             }
-        }
 
-        if (pathPart) {
-            // التأكد من عدم وجود تكرار في الـ bucket name إذا أردنا
-            return `${CLOUDFLARE_BASE}/${pathPart}`;
+            if (pathPart) {
+                return `${CLOUDFLARE_BASE}/${pathPart}`;
+            }
         }
     }
 
