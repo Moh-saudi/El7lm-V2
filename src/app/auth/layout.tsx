@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'El7lm - تسجيل الدخول',
-  description: 'تسجيل الدخول إلى منصة El7lm',
+  title: 'El7lm - Authentication',
+  description: 'Sign in to El7lm Platform',
 }
 
 export default function AuthLayout({

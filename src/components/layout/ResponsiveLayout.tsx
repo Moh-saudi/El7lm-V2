@@ -23,7 +23,6 @@ import {
   Award,
   BarChart3,
   Bell,
-  Brain,
   Briefcase,
   Building,
   ChevronDown,
@@ -36,15 +35,12 @@ import {
   Headphones,
   Home,
   LogOut,
-  Mail,
   Menu,
   MessageSquare,
   Play,
   Search,
-  Send,
   Settings,
   Shield,
-  ShoppingBag,
   Star,
   Target,
   TrendingUp,
@@ -60,8 +56,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useMediaQuery } from 'react-responsive';
 import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
+import UnifiedMessagesButton from '@/components/shared/UnifiedMessagesButton';
+import { cn } from '@/lib/utils';
 
-// ===== Context للتحكم في التخطيط =====
+
+// Layout Context
 interface LayoutContextType {
   isSidebarOpen: boolean;
   isSidebarCollapsed: boolean;
@@ -85,7 +84,7 @@ export const useLayout = () => {
   return context;
 };
 
-// ===== Provider للتحكم في التخطيط =====
+// ===== Layout Provider =====
 interface LayoutProviderProps {
   children: React.ReactNode;
 }
@@ -95,26 +94,24 @@ export const LayoutProvider: React.FC<LayoutProviderProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
-  // استخدام react-responsive للكشف عن حجم الشاشة
+  // Use react-responsive to detect screen size
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 });
   const isDesktop = useMediaQuery({ minWidth: 1024 });
 
-  // التأكد من أن المكون يعمل على العميل فقط
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // إدارة حالة السايدبار حسب حجم الشاشة
   useEffect(() => {
-    if (!isClient) return; // لا نطبق التغييرات حتى يعمل على العميل
+    if (!isClient) return;
 
     if (isMobile) {
       setIsSidebarOpen(false);
       setIsSidebarCollapsed(false);
     } else if (isTablet) {
       setIsSidebarOpen(true);
-      setIsSidebarCollapsed(false); // تغيير من true إلى false
+      setIsSidebarCollapsed(false); // Change from true to false
     } else {
       setIsSidebarOpen(true);
       setIsSidebarCollapsed(false);
@@ -126,7 +123,7 @@ export const LayoutProvider: React.FC<LayoutProviderProps> = ({ children }) => {
       setIsSidebarOpen(!isSidebarOpen);
     } else {
       setIsSidebarCollapsed(!isSidebarCollapsed);
-      // تأكد من أن السايدبار مفتوح على الشاشات الكبيرة
+      // Ensure sidebar is open on large screens
       if (isSidebarCollapsed) {
         setIsSidebarOpen(true);
       }
@@ -175,7 +172,7 @@ export const LayoutProvider: React.FC<LayoutProviderProps> = ({ children }) => {
   );
 };
 
-// ===== مكون السايدبار المحسن =====
+// ===== Professional Sidebar Component =====
 interface ResponsiveSidebarProps {
   accountType?: string;
 }
@@ -183,7 +180,6 @@ interface ResponsiveSidebarProps {
 const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: propAccountType = 'player' }) => {
   const { user, userData, logout } = useAuth();
 
-  // تحديد نوع الحساب من userData أو من prop
   const accountType = userData?.accountType || propAccountType;
   const router = useRouter();
   const pathname = usePathname();
@@ -203,7 +199,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['main']));
   const [clubLogo, setClubLogo] = useState<string | null>(null);
 
-  // معلومات أنواع الحسابات
+  // Account type information
   const ACCOUNT_TYPE_INFO = {
     player: {
       title: 'منصة اللاعب',
@@ -282,7 +278,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const accountInfo = ACCOUNT_TYPE_INFO[accountType as keyof typeof ACCOUNT_TYPE_INFO] || ACCOUNT_TYPE_INFO.player;
   const IconComponent = accountInfo.icon;
 
-  // تحديد عرض السايدبار - أحجام مصغرة
+  // Determine sidebar width - compact sizes
   const getSidebarWidth = () => {
     if (isMobile) return 'w-72';
     if (isSidebarCollapsed) {
@@ -293,15 +289,15 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     return 'w-64';
   };
 
-  // تحديد ما إذا كان يجب إظهار النصوص
+  // Determine if text should be shown
   const shouldShowText = () => {
     if (isMobile) return true;
     if (isTablet) return !isSidebarCollapsed;
     return !isSidebarCollapsed;
   };
 
-  // الحصول على مجموعات القائمة
-  // الصلاحيات الافتراضية لكل دور وظيفي (من employees/page.tsx)
+  // Get menu groups
+  // Default permissions for each role (from employees/page.tsx)
   const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
     support: {
       canViewUsers: true,
@@ -377,7 +373,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     }
   };
 
-  // الحصول على صلاحيات الموظف
+  // Get employee permissions
   const getEmployeePermissions = useMemo((): RolePermissions | null => {
     if (!userData || accountType !== 'admin') {
       return null;
@@ -391,7 +387,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       allKeys: Object.keys(userData)
     });
 
-    // إذا كان موظفاً (لديه employeeId أو employeeRole أو role)
+    // If employee (has employeeId or employeeRole or role)
     if (userData.employeeId || userData.employeeRole || userData.role) {
       const role = (userData.employeeRole || userData.role) as EmployeeRole;
 
@@ -408,17 +404,17 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       }
     }
 
-    // إذا كان admin حقيقي (ليس موظف)
+    // If real admin (not employee)
     console.log('✅ ResponsiveSidebar - Real admin detected (not employee) - showing all items');
-    return null; // null يعني عرض كل شيء
+    return null; // null means show everything
   }, [userData, accountType]);
 
-  // التحقق من صلاحية لعنصر القائمة
+  // Check permission for menu item
   const hasPermissionForMenuItem = (menuItemId: string, permissions: RolePermissions | null): boolean => {
-    // إذا لم تكن صلاحيات محددة (ليس موظف)، اظهر كل شيء
+    // If no specific permissions (not employee), show everything
     if (!permissions) return true;
 
-    // mapping بين عناصر القائمة والصلاحيات المطلوبة
+    // Mapping between menu items and required permissions
     const menuItemPermissions: Record<string, keyof RolePermissions> = {
       'admin-users-management': 'canViewUsers',
       'admin-employees': 'canManageEmployees',
@@ -434,7 +430,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-reports': 'canViewReports',
       'admin-clarity': 'canViewReports',
       'admin-support': 'canViewSupport',
-      'admin-system': 'canManageEmployees', // يحتاج صلاحية إدارة الموظفين
+      'admin-system': 'canManageEmployees', // Requires employee management permission
       'admin-beon-v3': 'canManageEmployees',
       'admin-whatsapp-test': 'canManageSupport',
       'admin-tournaments': 'canManageContent',
@@ -452,966 +448,165 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
 
     const requiredPermission = menuItemPermissions[menuItemId];
     if (!requiredPermission) {
-      // العناصر التي لا تحتاج صلاحيات خاصة (مثل profile, messages) تظهر دائماً
+      // Items that don't need special permissions (like profile, messages) always show
       return true;
     }
 
     return permissions[requiredPermission] === true;
   };
 
-  // فلترة عناصر المجموعة بناءً على الصلاحيات
+  // Filter group items based on permissions
   const filterGroupItems = (items: any[], permissions: RolePermissions | null): any[] => {
     if (!permissions) return items;
     return items.filter(item => hasPermissionForMenuItem(item.id, permissions));
   };
 
   const getMenuGroups = () => {
-    const baseGroup = {
+    // 1. Main Group - for everyone
+    const mainGroup = {
       id: 'main',
-      title: 'القائمة الرئيسية',
+      title: 'لوحة التحكم',
       icon: Home,
       items: [
-        {
-          id: 'dashboard',
-          label: 'الرئيسية',
-          icon: Home,
-          href: `/dashboard/${accountType}`,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50'
-        },
-        {
-          id: 'profile',
-          label: 'الملف الشخصي',
-          icon: User,
-          href: `/dashboard/${accountType}/profile`,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50'
-        },
-        {
-          id: 'messages',
-          label: 'الرسائل',
-          icon: MessageSquare,
-          href: `/dashboard/messages`,
-          color: 'text-cyan-600',
-          bgColor: 'bg-cyan-50'
-        },
-        {
-          id: 'notifications',
-          label: 'الإشعارات',
-          icon: Bell,
-          href: `/dashboard/${accountType}/notifications`,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50'
-        }
+        { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/${accountType}`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/${accountType}/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
       ]
     };
 
-    const subscriptionGroup = {
-      id: 'subscription',
-      title: 'الاشتراكات والمدفوعات',
-      icon: CreditCard,
-      items: [
-        {
-          id: 'subscription-status',
-          label: 'حالة الاشتراك',
-          icon: Star,
-          href: `/dashboard/subscription`,
-          color: 'text-yellow-600',
-          bgColor: 'bg-yellow-50'
-        },
-        {
-          id: 'payment',
-          label: 'الدفع',
-          icon: CreditCard,
-          href: accountType === 'admin' ? `/dashboard/admin/payments` : `/dashboard/shared/bulk-payment`,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50'
-        }
-      ]
-    };
-
-    const academyGroup = {
-      id: 'academy',
-      title: 'التدريب والتعليم',
-      icon: GraduationCap,
-      items: [
-        {
-          id: 'dream-academy',
-          label: 'أكاديمية الحلم',
-          icon: GraduationCap,
-          href: `/dashboard/dream-academy`,
-          color: 'text-indigo-600',
-          bgColor: 'bg-indigo-50'
-        }
-      ]
-    };
-
-    const sharedGroup = {
-      id: 'shared',
-      title: 'الصفحات المشتركة',
+    // 2. User Management and Identity - Admin ONLY
+    const identityGroup = accountType === 'admin' ? {
+      id: 'identity-mgmt',
+      title: 'إدارة الهوية',
       icon: Users,
       items: [
-        {
-          id: 'shared-bulk-payment',
-          label: 'الدفع الجماعي',
-          icon: CreditCard,
-          href: `/dashboard/shared/bulk-payment`,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50'
-        }
+        { id: 'admin-users-management', label: 'المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-green-600', bgColor: 'bg-green-50' },
+        { id: 'admin-employees', label: 'الموظفين والصلاحيات', icon: UserCheck, href: `/dashboard/admin/employees`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
+        { id: 'admin-customer-management', label: 'إدارة العملاء', icon: UserPlus, href: `/dashboard/admin/customer-management`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+        { id: 'admin-check-phone', label: 'فحص الهواتف', icon: Search, href: `/dashboard/admin/users/check-phone`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+      ]
+    } : null;
+
+    // 3. Financial Management - Context-aware per account type
+    const financialGroup = {
+      id: 'finance-mgmt',
+      title: 'المالية والاشتراكات',
+      icon: DollarSign,
+      items: [
+        ...(accountType === 'admin' ? [
+          { id: 'admin-payments', label: 'المدفوعات العامة', icon: CreditCard, href: `/dashboard/admin/payments`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          { id: 'admin-geidea-transactions', label: 'حسابات جيديا', icon: CreditCard, href: `/dashboard/admin/geidea-transactions`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+          { id: 'admin-pricing', label: 'الأسعار والعروض', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+          { id: 'admin-invoices', label: 'الفواتير والحسابات', icon: FileText, href: `/dashboard/admin/invoices`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        ] : [
+          { id: 'subscription-status', label: 'حالة اشتراكي', icon: Star, href: `/dashboard/subscription`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/${accountType}/billing`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+          { id: 'shared-bulk-payment', label: 'خدمة الدفع', icon: CreditCard, href: `/dashboard/shared/bulk-payment`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+        ])
       ]
     };
 
-    const tournamentsGroup = {
-      id: 'tournaments',
-      title: 'البطولات',
+    // 4. Operations and Technology - Admin ONLY
+    const operationsGroup = accountType === 'admin' ? {
+      id: 'ops-tech',
+      title: 'العمليات والنظام',
+      icon: Settings,
+      items: [
+        { id: 'admin-system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'admin-notification-center', label: 'مركز التنبيهات', icon: Bell, href: `/dashboard/admin/notification-center`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+        { id: 'admin-support', label: 'الدعم الفني والرسائل', icon: Headphones, href: `/dashboard/admin/support`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'admin-clarity', label: 'تحليلات Clarity', icon: BarChart3, href: `/dashboard/admin/clarity`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'admin-reports', label: 'تقارير الأداء', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        { id: 'admin-beon-v3', label: 'إدارة BeOn', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+      ]
+    } : null;
+
+    // 5. Content and Marketing - Admin and Marketer ONLY
+    const marketingGroup = (accountType === 'admin' || accountType === 'marketer') ? {
+      id: 'marketing-mgmt',
+      title: 'التسويق والإعلام',
+      icon: TrendingUp,
+      items: [
+        { id: 'admin-ads', label: 'إدارة الإعلانات', icon: TrendingUp, href: `/dashboard/admin/ads`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+        { id: 'admin-videos', label: 'مكتبة الميديا', icon: Video, href: `/dashboard/admin/media`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+        { id: 'admin-tournaments', label: 'تنظيم البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'admin-careers', label: 'طلبات التوظيف', icon: Briefcase, href: `/dashboard/admin/careers`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+      ]
+    } : null;
+
+    // 6. Sports Career - For players and team managers
+    const sportsGroup = (['player', 'club', 'academy', 'trainer', 'agent'].includes(accountType)) ? {
+      id: 'sports-mgmt',
+      title: accountType === 'player' ? 'مسيرتي الرياضية' : 'إدارة الفريق',
       icon: Trophy,
       items: [
-        {
-          id: 'unified-tournament-registration',
-          label: 'البطولات',
-          icon: Trophy,
-          href: `/tournaments/unified-registration`,
-          color: 'text-white',
-          bgColor: 'bg-gradient-to-r from-yellow-500 to-orange-500',
-          isHighlighted: true
-        }
+        ...(accountType === 'player' ? [
+          { id: 'player-videos', label: 'فيديوهاتي', icon: Video, href: `/dashboard/player/videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          { id: 'player-stats', label: 'إحصائياتي', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          { id: 'player-reports', label: 'تقارير الكشافين', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+          { id: 'player-referrals', label: 'كود الإحالة (Referral)', icon: Users, href: `/dashboard/player/referrals`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
+        ] : [
+          { id: 'team-players', label: 'قائمة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          { id: 'player-videos-mgmt', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          { id: 'referrals-mgmt', label: 'الإحالات والعقود', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        ])
+      ]
+    } : null;
+
+    // 7. Opportunities and Discovery - Available for all
+    const discoveryGroup = {
+      id: 'discovery-mgmt',
+      title: 'اكتشاف الفرص',
+      icon: Search,
+      items: [
+        { id: 'search-opportunities', label: 'البحث عن فرص', icon: Search, href: `/dashboard/${['admin', 'marketer', 'parent'].includes(accountType) ? 'player' : accountType}/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/${['admin', 'marketer', 'parent'].includes(accountType) ? 'player' : accountType}/search-players`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+        { id: 'shared-videos', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/player/shared-videos`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'tournaments-unified', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-white', bgColor: 'bg-gradient-to-r from-yellow-500 to-orange-500', isHighlighted: true },
       ]
     };
 
-    // إضافة قوائم مخصصة حسب نوع الحساب - الصفحات الموجودة فعلياً
-    const accountSpecificGroups = [];
+    // 8. Education Platform - Dream Academy
+    const dreamAcademyGroup = {
+      id: 'dream-academy-mgmt',
+      title: 'أكاديمية الحلم',
+      icon: GraduationCap,
+      items: [
+        { id: 'dream-academy-home', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        ...(accountType === 'admin' ? [{ id: 'admin-dream-academy-mgmt', label: 'إدارة الأكاديمية', icon: Settings, href: `/dashboard/admin/dream-academy`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' }] : [])
+      ]
+    };
 
-    // قائمة اللاعب - إعادة ترتيب منطقي
-    if (accountType === 'player') {
-      accountSpecificGroups.push({
-        id: 'player-content',
-        title: 'المحتوى الشخصي',
-        icon: Video,
-        items: [
-          {
-            id: 'player-videos',
-            label: 'فيديوهاتي',
-            icon: Video,
-            href: `/dashboard/player/videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'player-stats',
-            label: 'إحصائياتي',
-            icon: BarChart3,
-            href: `/dashboard/player/stats`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'player-reports',
-            label: 'تقاريري',
-            icon: FileText,
-            href: `/dashboard/player/reports`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          }
-        ]
-      });
+    const allGroups = [
+      mainGroup,
+      identityGroup,
+      sportsGroup,
+      financialGroup,
+      discoveryGroup,
+      dreamAcademyGroup,
+      marketingGroup,
+      operationsGroup,
+    ].filter(Boolean) as any[];
 
-      accountSpecificGroups.push({
-        id: 'player-services',
-        title: 'الخدمات',
-        icon: ShoppingBag,
-        items: [
-          {
-            id: 'player-academy',
-            label: 'الأكاديمية',
-            icon: GraduationCap,
-            href: `/dashboard/player/academy`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'player-store',
-            label: 'المتجر',
-            icon: ShoppingBag,
-            href: `/dashboard/player/store`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'player-search',
-            label: 'البحث عن الفرص والأندية والأكاديميات',
-            icon: Search,
-            href: `/dashboard/player/search`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          },
-          {
-            id: 'player-search-players',
-            label: 'البحث عن لاعبين',
-            icon: Users,
-            href: `/dashboard/player/search-players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'player-shared-videos',
-            label: 'فيديوهات اللاعبين المشتركة',
-            icon: Play,
-            href: `/dashboard/player/shared-videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'player-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'player-financial',
-        title: 'المالية',
-        icon: DollarSign,
-        items: [
-          {
-            id: 'player-billing',
-            label: 'الفواتير',
-            icon: CreditCard,
-            href: `/dashboard/player/billing`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-          {
-            id: 'player-referrals',
-            label: 'الإحالات',
-            icon: Users,
-            href: `/dashboard/player/referrals`,
-            color: 'text-teal-600',
-            bgColor: 'bg-teal-50'
-          }
-        ]
-      });
-    }
-
-    // قائمة النادي - إعادة ترتيب منطقي
-    if (accountType === 'club') {
-      accountSpecificGroups.push({
-        id: 'club-players',
-        title: 'إدارة اللاعبين',
-        icon: Users,
-        items: [
-          {
-            id: 'club-players-list',
-            label: 'قائمة اللاعبين',
-            icon: Users,
-            href: `/dashboard/club/players`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'club-search-players',
-            label: 'البحث عن لاعبين',
-            icon: Search,
-            href: `/dashboard/club/search-players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'club-referrals',
-            label: 'الإحالات',
-            icon: Users,
-            href: `/dashboard/club/referrals`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'club-player-videos',
-            label: 'فيديوهات اللاعبين',
-            icon: Video,
-            href: `/dashboard/club/player-videos`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'club-player-evaluation',
-            label: 'تقييم اللاعبين',
-            icon: Target,
-            href: `/dashboard/club/player-evaluation`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          },
-          {
-            id: 'club-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'club-business',
-        title: 'الأعمال التجارية',
-        icon: Users,
-        items: [
-          {
-            id: 'club-contracts',
-            label: 'العقود',
-            icon: FileText,
-            href: `/dashboard/club/contracts`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          },
-          {
-            id: 'club-negotiations',
-            label: 'المفاوضات',
-            icon: Users,
-            href: `/dashboard/club/negotiations`,
-            color: 'text-teal-600',
-            bgColor: 'bg-teal-50'
-          },
-          {
-            id: 'club-market-values',
-            label: 'القيم السوقية',
-            icon: DollarSign,
-            href: `/dashboard/club/market-values`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'club-marketing',
-        title: 'التسويق والتحليل',
-        icon: TrendingUp,
-        items: [
-          {
-            id: 'club-marketing-tools',
-            label: 'التسويق',
-            icon: TrendingUp,
-            href: `/dashboard/club/marketing`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'club-ai-analysis',
-            label: 'تحليل الذكاء الاصطناعي',
-            icon: Brain,
-            href: `/dashboard/club/ai-analysis`,
-            color: 'text-red-600',
-            bgColor: 'bg-red-50'
-          }
-        ]
-      });
-    }
-
-    // قائمة المدرب - إعادة ترتيب منطقي
-    if (accountType === 'trainer') {
-      accountSpecificGroups.push({
-        id: 'trainer-players',
-        title: 'إدارة اللاعبين',
-        icon: Users,
-        items: [
-          {
-            id: 'trainer-players-list',
-            label: 'قائمة لاعبي',
-            icon: Users,
-            href: `/dashboard/trainer/players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'trainer-search-players',
-            label: 'البحث عن لاعبين',
-            icon: Search,
-            href: `/dashboard/trainer/search-players`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'trainer-player-videos',
-            label: 'فيديوهات اللاعبين',
-            icon: Video,
-            href: `/dashboard/trainer/player-videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'trainer-referrals',
-            label: 'الإحالات',
-            icon: Users,
-            href: `/dashboard/trainer/referrals`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'trainer-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-    }
-
-    // قائمة الأكاديمية - إعادة ترتيب منطقي
-    if (accountType === 'academy') {
-      accountSpecificGroups.push({
-        id: 'academy-players',
-        title: 'إدارة اللاعبين',
-        icon: Users,
-        items: [
-          {
-            id: 'academy-players-list',
-            label: 'لاعبي الأكاديمية',
-            icon: Users,
-            href: `/dashboard/academy/players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'academy-search-players',
-            label: 'البحث عن لاعبين',
-            icon: Search,
-            href: `/dashboard/academy/search-players`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'academy-player-videos',
-            label: 'فيديوهات اللاعبين',
-            icon: Video,
-            href: `/dashboard/academy/player-videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'academy-referrals',
-            label: 'الإحالات',
-            icon: Users,
-            href: `/dashboard/academy/referrals`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'academy-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-    }
-
-    // قائمة الوكيل - إعادة ترتيب منطقي
-    if (accountType === 'agent') {
-      accountSpecificGroups.push({
-        id: 'agent-players',
-        title: 'إدارة اللاعبين',
-        icon: Users,
-        items: [
-          {
-            id: 'agent-players-list',
-            label: 'قائمة لاعبي',
-            icon: Users,
-            href: `/dashboard/agent/players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'agent-search-players',
-            label: 'البحث عن لاعبين',
-            icon: Search,
-            href: `/dashboard/agent/search-players`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'agent-player-videos',
-            label: 'فيديوهات اللاعبين',
-            icon: Video,
-            href: `/dashboard/agent/player-videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'agent-referrals',
-            label: 'الإحالات',
-            icon: Users,
-            href: `/dashboard/agent/referrals`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'agent-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-    }
-
-    // قائمة الإدارة - إعادة ترتيب منطقي
-    if (accountType === 'admin') {
-      accountSpecificGroups.push({
-        id: 'admin-users',
-        title: 'إدارة المستخدمين',
-        icon: Users,
-        items: [
-          {
-            id: 'admin-users-management',
-            label: 'إدارة المستخدمين',
-            icon: Users,
-            href: `/dashboard/admin/users`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'admin-employees',
-            label: 'الموظفين',
-            icon: UserCheck,
-            href: `/dashboard/admin/employees`,
-            color: 'text-teal-600',
-            bgColor: 'bg-teal-50'
-          },
-          {
-            id: 'admin-email-migration',
-            label: 'ترحيل البريد الإلكتروني',
-            icon: Mail,
-            href: `/dashboard/admin/email-migration`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          },
-          {
-            id: 'admin-check-phone',
-            label: 'فحص رقم الهاتف',
-            icon: Search,
-            href: `/dashboard/admin/users/check-phone`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'admin-financial',
-        title: 'الإدارة المالية',
-        icon: DollarSign,
-        items: [
-          {
-            id: 'admin-payments',
-            label: 'المدفوعات',
-            icon: CreditCard,
-            href: `/dashboard/admin/payments`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'admin-geidea-transactions',
-            label: 'معاملات جيديا',
-            icon: CreditCard,
-            href: `/dashboard/admin/geidea-transactions`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'admin-geidea-settings',
-            label: 'إعدادات جيديا',
-            icon: Settings,
-            href: `/dashboard/admin/geidea-settings`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          },
-          {
-            id: 'admin-subscriptions',
-            label: 'الاشتراكات',
-            icon: Star,
-            href: `/dashboard/admin/subscriptions`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          },
-          {
-            id: 'admin-pricing',
-            label: 'إدارة الأسعار والعروض',
-            icon: DollarSign,
-            href: `/dashboard/admin/pricing-management`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-
-          {
-            id: 'admin-invoices',
-            label: 'الفواتير',
-            icon: FileText,
-            href: `/dashboard/admin/invoices`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'admin-operations',
-        title: 'العمليات',
-        icon: Settings,
-        items: [
-          {
-            id: 'admin-notifications',
-            label: 'الإشعارات',
-            icon: Bell,
-            href: `/dashboard/admin/notifications`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          },
-          {
-            id: 'admin-notification-center',
-            label: 'مركز الإشعارات',
-            icon: Bell,
-            href: `/dashboard/admin/notification-center`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'admin-send-notifications',
-            label: 'إرسال الإشعارات',
-            icon: Send,
-            href: `/dashboard/admin/send-notifications`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'admin-message-management',
-            label: 'إدارة الرسائل',
-            icon: MessageSquare,
-            href: `/dashboard/admin/message-management`,
-            color: 'text-emerald-600',
-            bgColor: 'bg-emerald-50'
-          },
-
-          {
-            id: 'admin-reports',
-            label: 'التقارير',
-            icon: FileText,
-            href: `/dashboard/admin/reports`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'admin-clarity',
-            label: 'Clarity Analytics',
-            icon: BarChart3,
-            href: `/dashboard/admin/clarity`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          },
-          {
-            id: 'admin-customer-management',
-            label: 'إدارة العملاء',
-            icon: UserPlus,
-            href: `/dashboard/admin/customer-management`,
-            color: 'text-teal-600',
-            bgColor: 'bg-teal-50'
-          },
-          {
-            id: 'admin-careers',
-            label: 'الوظائف',
-            icon: Briefcase,
-            href: `/dashboard/admin/careers`,
-            color: 'text-pink-600',
-            bgColor: 'bg-pink-50'
-          },
-          {
-            id: 'admin-support',
-            label: 'الدعم الفني',
-            icon: Headphones,
-            href: `/dashboard/admin/support`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-          {
-            id: 'admin-beon-v3',
-            label: 'إدارة BeOn V3',
-            icon: MessageSquare,
-            href: `/dashboard/admin/beon-v3`,
-            color: 'text-emerald-600',
-            bgColor: 'bg-emerald-50'
-          },
-          {
-            id: 'admin-whatsapp-test',
-            label: 'اختبار WhatsApp API',
-            icon: MessageSquare,
-            href: `/dashboard/admin/whatsapp-test`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'admin-tournaments',
-            label: 'إدارة البطولات',
-            icon: Award,
-            href: `/dashboard/admin/tournaments`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-          {
-            id: 'admin-system',
-            label: 'النظام',
-            icon: Settings,
-            href: `/dashboard/admin/system`,
-            color: 'text-red-600',
-            bgColor: 'bg-red-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'admin-marketing',
-        title: 'التسويق والإعلانات',
-        icon: TrendingUp,
-        items: [
-          {
-            id: 'admin-ads',
-            label: 'إدارة الإعلانات',
-            icon: TrendingUp,
-            href: `/dashboard/admin/ads`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          },
-          {
-            id: 'admin-videos',
-            label: 'إدارة الفيديوهات',
-            icon: Video,
-            href: `/dashboard/admin/media`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'admin-academy',
-        title: 'أكاديمية الحلم',
-        icon: GraduationCap,
-        items: [
-          {
-            id: 'admin-dream-academy',
-            label: 'إدارة الأكاديمية',
-            icon: GraduationCap,
-            href: `/dashboard/admin/dream-academy`,
-            color: 'text-cyan-600',
-            bgColor: 'bg-cyan-50'
-          }
-        ]
-      });
-    }
-
-    // قائمة المسوق - إعادة ترتيب منطقي
-    if (accountType === 'marketer') {
-      accountSpecificGroups.push({
-        id: 'marketer-dashboard',
-        title: 'لوحة التسويق',
-        icon: TrendingUp,
-        items: [
-          {
-            id: 'marketer-main',
-            label: 'لوحة التسويق',
-            icon: BarChart3,
-            href: `/dashboard/marketer`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'marketer-content',
-        title: 'إدارة المحتوى',
-        icon: Video,
-        items: [
-          {
-            id: 'marketer-videos',
-            label: 'فيديوهات اللاعبين',
-            icon: Video,
-            href: `/dashboard/marketer/videos`,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50'
-          },
-          {
-            id: 'marketer-players',
-            label: 'إدارة اللاعبين',
-            icon: Users,
-            href: `/dashboard/marketer/players`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          },
-          {
-            id: 'marketer-search',
-            label: 'البحث عن لاعبين',
-            icon: Search,
-            href: `/dashboard/marketer/search`,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-50'
-          },
-          {
-            id: 'marketer-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'marketer-services',
-        title: 'الخدمات',
-        icon: ShoppingBag,
-        items: [
-          {
-            id: 'marketer-dream-academy',
-            label: 'أكاديمية الحلم',
-            icon: GraduationCap,
-            href: `/dashboard/marketer/dream-academy`,
-            color: 'text-cyan-600',
-            bgColor: 'bg-cyan-50'
-          },
-          {
-            id: 'marketer-subscription',
-            label: 'الاشتراكات',
-            icon: CreditCard,
-            href: `/dashboard/marketer/subscription`,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'marketer-financial',
-        title: 'المالية',
-        icon: DollarSign,
-        items: [
-          {
-            id: 'marketer-billing',
-            label: 'الفواتير',
-            icon: CreditCard,
-            href: `/dashboard/marketer/billing`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-          {
-            id: 'marketer-payment',
-            label: 'المدفوعات',
-            icon: DollarSign,
-            href: `/dashboard/marketer/payment`,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50'
-          }
-        ]
-      });
-
-      accountSpecificGroups.push({
-        id: 'marketer-communication',
-        title: 'التواصل',
-        icon: MessageSquare,
-        items: [
-          {
-            id: 'marketer-messages',
-            label: 'الرسائل',
-            icon: MessageSquare,
-            href: `/dashboard/marketer/messages`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'marketer-notifications',
-            label: 'الإشعارات',
-            icon: Bell,
-            href: `/dashboard/marketer/notifications`,
-            color: 'text-red-600',
-            bgColor: 'bg-red-50'
-          }
-        ]
-      });
-    }
-
-    // قائمة الوالد - إعادة ترتيب منطقي
-    if (accountType === 'parent') {
-      accountSpecificGroups.push({
-        id: 'parent-dashboard',
-        title: 'لوحة الوالد',
-        icon: User,
-        items: [
-          {
-            id: 'parent-main',
-            label: 'لوحة الوالد',
-            icon: BarChart3,
-            href: `/dashboard/parent`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          },
-          {
-            id: 'parent-tournaments',
-            label: 'البطولات',
-            icon: Award,
-            href: `/tournaments/unified-registration`,
-            color: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-          },
-        ]
-      });
-    }
-
-    const allGroups = [baseGroup, subscriptionGroup, academyGroup, tournamentsGroup, sharedGroup, ...accountSpecificGroups];
-
-    // فلترة العناصر بناءً على صلاحيات الموظف
     if (accountType === 'admin' && getEmployeePermissions) {
-      const filteredGroups = allGroups.map(group => ({
+      return allGroups.map(group => ({
         ...group,
         items: filterGroupItems(group.items, getEmployeePermissions)
-      })).filter(group => group.items.length > 0); // إزالة المجموعات الفارغة
-
-      console.log('✅ ResponsiveSidebar - Filtered menu groups:', {
-        totalGroups: allGroups.length,
-        filteredGroups: filteredGroups.length,
-        removedGroups: allGroups.length - filteredGroups.length,
-        employeePermissions: getEmployeePermissions
-      });
-
-      return filteredGroups;
+      })).filter(group => group.items.length > 0);
     }
 
     return allGroups;
   };
 
+
   const menuGroups = useMemo(() => getMenuGroups(), [accountType, userData, getEmployeePermissions]);
   const showText = useMemo(() => shouldShowText(), [isMobile, isTablet, isSidebarCollapsed]);
   const sidebarWidth = useMemo(() => getSidebarWidth(), [isMobile, isTablet, isSidebarCollapsed]);
 
-  // جلب صورة النادي من Firestore إذا كان accountType === 'club'
   useEffect(() => {
-    console.log('🔄 ResponsiveSidebar: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
-
     if (accountType !== 'club' || !user?.uid) {
-      console.log('🔄 ResponsiveSidebar: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
       return;
     }
 
-    console.log('🔄 ResponsiveSidebar: Starting to fetch club logo for user:', user.uid);
     const clubRef = doc(db, 'clubs', user.uid);
 
     // استخدام onSnapshot للاستماع للتحديثات الفورية
@@ -1419,39 +614,23 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       clubRef,
       (clubDoc) => {
         try {
-          console.log('🔄 ResponsiveSidebar: Club document snapshot received, exists:', clubDoc.exists());
           if (clubDoc.exists()) {
             const data = clubDoc.data();
-            console.log('🔄 ResponsiveSidebar: Club data:', {
-              hasLogo: !!data.logo,
-              logo: data.logo,
-              logoType: typeof data.logo,
-              logoStartsWithHttp: data.logo?.startsWith('http')
-            });
-
             if (data.logo) {
-              // إذا كان logo رابط كامل، استخدمه مباشرة
               if (data.logo.startsWith('http')) {
-                console.log('✅ ResponsiveSidebar: Using logo as full URL:', data.logo);
                 setClubLogo(data.logo);
               } else {
-                // إذا كان مسار، استخدم getSupabaseImageUrl مع bucket clubavatar (المخصص للنادي)
-                console.log('🔄 ResponsiveSidebar: Logo is a path, converting with clubavatar bucket:', data.logo);
                 const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
-                console.log('🔄 ResponsiveSidebar: Converted logo URL:', logoUrl);
                 if (logoUrl && logoUrl !== '') {
                   setClubLogo(logoUrl);
                 } else {
-                  console.log('⚠️ ResponsiveSidebar: Logo URL is empty, setting to null');
                   setClubLogo(null);
                 }
               }
             } else {
-              console.log('⚠️ ResponsiveSidebar: No logo field in club data');
               setClubLogo(null);
             }
           } else {
-            console.log('⚠️ ResponsiveSidebar: Club document does not exist');
             setClubLogo(null);
           }
         } catch (error) {
@@ -1465,7 +644,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       }
     );
 
-    // تنظيف المستمع عند إلغاء التثبيت
+    // Cleanup listener on unmount
     return () => {
       console.log('🔄 ResponsiveSidebar: Unsubscribing from club logo updates');
       unsubscribe();
@@ -1473,7 +652,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   }, [accountType, user?.uid]);
 
   const getUserAvatar = () => {
-    // إذا كان النوع نادي وكانت هناك صورة من Firestore، استخدمها
+    // If club type and logo exists in Firestore, use it
     if (accountType === 'club' && clubLogo) {
       console.log('✅ ResponsiveSidebar: Using club logo from Firestore:', clubLogo);
       return clubLogo;
@@ -1483,16 +662,14 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       console.log('⚠️ ResponsiveSidebar: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
     }
 
-    // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
-    const avatarUrl = getPlayerAvatarUrl(userData, user);
-    console.log('🔄 ResponsiveSidebar: getPlayerAvatarUrl returned:', avatarUrl);
-    return avatarUrl;
+    // Use optimized function to find image in Supabase
+    return getPlayerAvatarUrl(userData, user);
   };
 
   const getUserDisplayName = () => {
     if (!userData) return 'مستخدم';
 
-    // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
+    // Search all potential fields for name based on account type
     switch (userData.accountType) {
       case 'player':
         return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
@@ -1525,10 +702,10 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       try {
         await logout();
         setShowLogoutScreen(true);
-        console.log('✅ تم تسجيل الخروج بنجاح وتم عرض شاشة تسجيل الخروج');
+        console.log('✅ Logout successful, displaying logout screen');
       } catch (error) {
-        console.error('❌ خطأ في تسجيل الخروج:', error);
-        // حتى لو فشل تسجيل الخروج، نعرض شاشة تسجيل الخروج
+        console.error('❌ Logout error:', error);
+        // Even if logout fails, show logout screen
         setShowLogoutScreen(true);
       }
     }
@@ -1544,7 +721,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     setExpandedGroups(newExpandedGroups);
   };
 
-  // تحديد العنصر النشط
+  // Determine active item
   useEffect(() => {
     for (const group of menuGroups) {
       const currentItem = group.items.find(item => item.href === pathname);
@@ -1556,7 +733,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     }
   }, [pathname]);
 
-  // لا تعرض السايدبار حتى يتم تحميل المكون على العميل
+  // Don't show sidebar until component mounted on client
   if (!isClient) {
     return null;
   }
@@ -1828,61 +1005,48 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   );
 };
 
-// ===== مكون الهيدر المحسن =====
+// ===== Professional Header Component =====
 const ResponsiveHeader: React.FC = () => {
+
   const { user, userData } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { toggleSidebar, isMobile, isTablet, isDesktop, isSidebarCollapsed, isClient } = useLayout();
 
-  // حالة للرسائل والإشعارات الحقيقية
-  const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [isMessagesActive, setIsMessagesActive] = useState(false);
-  const [showMessagesDropdown, setShowMessagesDropdown] = useState(false);
-  const [recentMessages, setRecentMessages] = useState<any[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
   const [clubLogo, setClubLogo] = useState<string | null>(null);
 
   const getUserDisplayName = () => {
     if (!userData) return 'مستخدم';
-
-    // البحث في جميع الحقول المحتملة للاسم حسب نوع الحساب
     switch (userData.accountType) {
-      case 'player':
-        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
-      case 'club':
-        return userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
-      case 'academy':
-        return userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'أكاديمية رياضية';
-      case 'agent':
-        return userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
-      case 'trainer':
-        return userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
-      default:
-        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+      case 'player': return userData.full_name || userData.name || 'لاعب';
+      case 'club': return userData.club_name || userData.name || 'نادي';
+      case 'academy': return userData.academy_name || userData.name || 'أكاديمية';
+      default: return userData.full_name || userData.name || user?.displayName || 'مستخدم';
     }
   };
 
   const getUserAvatar = () => {
-    // إذا كان النوع نادي وكانت هناك صورة من Firestore، استخدمها
-    if (accountType === 'club' && clubLogo) {
-      console.log('✅ ResponsiveHeader: Using club logo from Firestore:', clubLogo);
-      return clubLogo;
-    }
-
-    if (accountType === 'club') {
-      console.log('⚠️ ResponsiveHeader: Club account but no logo found, clubLogo:', clubLogo, 'falling back to getPlayerAvatarUrl');
-    }
-
-    // استخدام الدالة المحسّنة للبحث عن الصورة في Supabase
-    const avatarUrl = getPlayerAvatarUrl(userData, user);
-    console.log('🔄 ResponsiveHeader: getPlayerAvatarUrl returned:', avatarUrl);
-    return avatarUrl;
+    if (accountType === 'club' && clubLogo) return clubLogo;
+    return getPlayerAvatarUrl(userData, user);
   };
 
-  // تحديد margin للهيدر ليتناسق مع السايدبار - أحجام مصغرة
+  const resolvedAccountType = useMemo(() => {
+    if (userData?.accountType) return userData.accountType;
+
+    const pathSegments = pathname.split('/');
+    if (pathSegments.length >= 3 && pathSegments[1] === 'dashboard') {
+      const segment = pathSegments[2];
+      // Check if it's one of the known types
+      const knownTypes = ['player', 'admin', 'club', 'academy', 'trainer', 'agent', 'marketer', 'dream-academy'];
+      if (knownTypes.includes(segment)) return segment;
+    }
+    return 'player';
+  }, [userData?.accountType, pathname]);
+
+  const accountType = resolvedAccountType;
+
   const getHeaderMargin = () => {
-    if (!isClient) return ''; // لا نطبق margin في الـ server
+    if (!isClient) return ''; // Don't apply margin on server
     if (isMobile) return '';
     if (isSidebarCollapsed) {
       if (isTablet) return 'mr-14'; // 56px - يتطابق مع motion.div
@@ -1892,27 +1056,11 @@ const ResponsiveHeader: React.FC = () => {
     return 'mr-64'; // 256px - يتطابق مع motion.div
   };
 
-  // الحصول على نوع الحساب من المسار
-  const getAccountTypeFromPath = () => {
-    const pathSegments = pathname.split('/');
-    if (pathSegments.length >= 3 && pathSegments[1] === 'dashboard') {
-      return pathSegments[2];
-    }
-    return 'player';
-  };
-
-  const accountType = getAccountTypeFromPath();
-
-  // جلب صورة النادي من Firestore إذا كان accountType === 'club'
   useEffect(() => {
-    console.log('🔄 ResponsiveHeader: useEffect triggered - accountType:', accountType, 'user?.uid:', user?.uid, 'clubLogo:', clubLogo);
-
     if (accountType !== 'club' || !user?.uid) {
-      console.log('🔄 ResponsiveHeader: Skipping club logo fetch - accountType:', accountType, 'uid:', user?.uid);
       return;
     }
 
-    console.log('🔄 ResponsiveHeader: Starting to fetch club logo for user:', user.uid);
     const clubRef = doc(db, 'clubs', user.uid);
 
     // استخدام onSnapshot للاستماع للتحديثات الفورية
@@ -1920,39 +1068,23 @@ const ResponsiveHeader: React.FC = () => {
       clubRef,
       (clubDoc) => {
         try {
-          console.log('🔄 ResponsiveHeader: Club document snapshot received, exists:', clubDoc.exists());
           if (clubDoc.exists()) {
             const data = clubDoc.data();
-            console.log('🔄 ResponsiveHeader: Club data:', {
-              hasLogo: !!data.logo,
-              logo: data.logo,
-              logoType: typeof data.logo,
-              logoStartsWithHttp: data.logo?.startsWith('http')
-            });
-
             if (data.logo) {
-              // إذا كان logo رابط كامل، استخدمه مباشرة
               if (data.logo.startsWith('http')) {
-                console.log('✅ ResponsiveHeader: Using logo as full URL:', data.logo);
                 setClubLogo(data.logo);
               } else {
-                // إذا كان مسار، استخدم getSupabaseImageUrl مع bucket clubavatar (المخصص للنادي)
-                console.log('🔄 ResponsiveHeader: Logo is a path, converting with clubavatar bucket:', data.logo);
                 const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
-                console.log('🔄 ResponsiveHeader: Converted logo URL:', logoUrl);
                 if (logoUrl && logoUrl !== '') {
                   setClubLogo(logoUrl);
                 } else {
-                  console.log('⚠️ ResponsiveHeader: Logo URL is empty, setting to null');
                   setClubLogo(null);
                 }
               }
             } else {
-              console.log('⚠️ ResponsiveHeader: No logo field in club data');
               setClubLogo(null);
             }
           } else {
-            console.log('⚠️ ResponsiveHeader: Club document does not exist');
             setClubLogo(null);
           }
         } catch (error) {
@@ -1966,298 +1098,119 @@ const ResponsiveHeader: React.FC = () => {
       }
     );
 
-    // تنظيف المستمع عند إلغاء التثبيت
+    // Cleanup listener on unmount
     return () => {
       console.log('🔄 ResponsiveHeader: Unsubscribing from club logo updates');
       unsubscribe();
     };
   }, [accountType, user?.uid]);
 
-  // دالة لتنسيق الوقت
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'الآن';
-    if (diffInMinutes < 60) return `منذ ${diffInMinutes} دقيقة`;
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `منذ ${diffInHours} ساعة`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `منذ ${diffInDays} يوم`;
-
-    return date.toLocaleDateString('ar-EG');
-  };
-
-  // التعامل مع قائمة الرسائل المنسدلة
-  const toggleMessagesDropdown = () => {
-    setShowMessagesDropdown(!showMessagesDropdown);
-  };
-
-  // التنقل إلى صفحة الرسائل
-  const navigateToMessages = () => {
-    setIsMessagesActive(true);
-    setShowMessagesDropdown(false);
-    setNewMessagesCount(0);
-    router.push('/dashboard/messages');
-  };
-
-  // جلب الرسائل الأخيرة من Firebase
-  const fetchRecentMessages = async () => {
-    if (!user?.uid) return;
-
-    setMessagesLoading(true);
-    try {
-      const messagesQuery = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid),
-        orderBy('updatedAt', 'desc'),
-        limit(5)
-      );
-
-      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        const messages = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const otherParticipantId = data.participants.find((id: string) => id !== user.uid);
-          return {
-            id: doc.id,
-            sender: data.participantNames?.[otherParticipantId] || 'مستخدم',
-            message: data.lastMessage || 'لا توجد رسائل',
-            time: data.lastMessageTime?.toDate ? data.lastMessageTime.toDate() : new Date(),
-            unread: data.unreadCount?.[user.uid] > 0,
-            conversationId: doc.id
-          };
-        });
-
-        setRecentMessages(messages);
-        const unreadCount = messages.filter(msg => msg.unread).length;
-        setNewMessagesCount(unreadCount);
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error('خطأ في جلب الرسائل:', error);
-    } finally {
-      setMessagesLoading(false);
-    }
-  };
-
-
-
-  // التعامل مع الرسالة
-  const handleMessageClick = async (message: any) => {
-    try {
-      // تحديد الرسالة كمقروءة
-      if (message.unread && message.conversationId) {
-        const conversationRef = doc(db, 'conversations', message.conversationId);
-        await updateDoc(conversationRef, {
-          [`unreadCount.${user?.uid}`]: 0
-        });
-      }
-
-      setShowMessagesDropdown(false);
-      router.push('/dashboard/messages');
-    } catch (error) {
-      console.error('خطأ في تحديث حالة الرسالة:', error);
-      router.push('/dashboard/messages');
-    }
-  };
-
-
-
-  // تحديد إذا كانت الصفحة الحالية هي صفحة الرسائل
+  // Fetch notification data or other header requirements
   useEffect(() => {
-    setIsMessagesActive(pathname.includes('/messages'));
-  }, [pathname]);
-
-  // جلب البيانات عند تحميل المكون
-  useEffect(() => {
-    if (user?.uid) {
-      let unsubscribeMessages: (() => void) | undefined;
-
-      // جلب الرسائل
-      fetchRecentMessages().then(unsubscribe => {
-        unsubscribeMessages = unsubscribe;
-      }).catch(error => {
-        console.error('خطأ في جلب الرسائل:', error);
-      });
-
-      return () => {
-        if (typeof unsubscribeMessages === 'function') {
-          unsubscribeMessages();
-        }
-      };
-    }
-  }, [user?.uid]);
-
-  // إغلاق القوائم المنسدلة عند النقر خارجها
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.messages-dropdown')) {
-        setShowMessagesDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    // Additional logic can be added here
   }, []);
 
+  // Account theming information based on type
+  const getAccountTheming = () => {
+    switch (accountType) {
+      case 'admin': return { label: 'منصة الإدارة', color: 'text-red-600', bg: 'bg-red-500/10' };
+      case 'academy': return { label: 'منصة الأكاديمية', color: 'text-indigo-600', bg: 'bg-indigo-500/10' };
+      case 'club': return { label: 'منصة النادي', color: 'text-emerald-600', bg: 'bg-emerald-500/10' };
+      case 'trainer': return { label: 'منصة المدرب', color: 'text-pink-600', bg: 'bg-pink-500/10' };
+      default: return { label: 'منصة اللاعب', color: 'text-blue-600', bg: 'bg-blue-500/10' };
+    }
+  };
+
+  const theme = getAccountTheming();
+
   return (
-    <header className={`sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm transition-all duration-300 ease-in-out ${getHeaderMargin()}`}>
-      <div className="flex relative justify-between items-center px-4 py-3 lg:px-6">
-        <div className="flex gap-4 items-center">
+    <header className={cn(
+      "sticky top-0 z-40 transition-all duration-700 ease-in-out",
+      "bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl",
+      "border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm",
+      getHeaderMargin()
+    )}>
+      <div className="flex relative justify-between items-center px-4 h-16 lg:px-10 max-w-[2200px] mx-auto">
+        {/* Left Side: Navigation & Title */}
+        <div className="flex gap-6 items-center">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="hover:bg-gray-100"
-            title={isMobile ? "إظهار القائمة الجانبية" : (isSidebarCollapsed ? "إظهار القائمة الجانبية" : "إخفاء القائمة الجانبية")}
+            className="group relative h-11 w-11 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all duration-500 active:scale-90"
           >
-            {isMobile ? <Menu className="w-5 h-5" /> : (isSidebarCollapsed ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)}
+            <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/5 rounded-2xl transition-all duration-500" />
+            {isMobile ? (
+              <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 transition-colors" />
+            ) : (
+              isSidebarCollapsed ?
+                <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 transition-colors" /> :
+                <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 transition-colors" />
+            )}
           </Button>
 
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">لوحة التحكم</h1>
-            <p className="text-sm text-gray-600">
-              مرحباً بك في {accountType === 'admin' ? 'منصة الإدارة' :
-                accountType === 'academy' ? 'منصة الأكاديمية' :
-                  accountType === 'club' ? 'منصة النادي' :
-                    accountType === 'trainer' ? 'منصة المدرب' :
-                      accountType === 'agent' ? 'منصة الوكيل' :
-                        accountType === 'marketer' ? 'منصة المسوق' :
-                          'منصة اللاعب'}
-            </p>
+          <div className="hidden sm:flex flex-col">
+            <h1 className="text-[19px] font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              {userData?.full_name?.split(' ')[0] || 'أهلاً بك'} 👋
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={cn("text-[10px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md", theme.bg, theme.color)}>
+                {theme.label}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex overflow-visible gap-2 items-center lg:gap-3">
-          {/* أيقونة الرسائل مع القائمة المنسدلة */}
-          <div className="inline-block relative messages-dropdown">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMessagesDropdown}
-              className={`relative transition-all duration-300 ease-out group h-10 w-10 lg:h-11 lg:w-11 ${isMessagesActive
-                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                }`}
-              title={`الرسائل${newMessagesCount > 0 ? ` (${newMessagesCount} جديدة)` : ''}`}
-            >
-              <MessageSquare className="w-5 h-5 transition-transform duration-300 ease-out lg:w-6 lg:h-6 group-hover:scale-105" />
-              {/* مؤشر الرسائل الجديدة */}
-              {newMessagesCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] lg:min-w-[22px] lg:h-[22px] bg-red-500 rounded-full animate-pulse flex items-center justify-center shadow-lg border-2 border-white">
-                  <span className="text-[10px] lg:text-[11px] text-white font-bold">
-                    {newMessagesCount > 9 ? '9+' : newMessagesCount}
-                  </span>
-                </div>
-              )}
-              {/* مؤشر الصفحة النشطة */}
-              {isMessagesActive && (
-                <div className="absolute -bottom-1 left-1/2 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-blue-600 rounded-full shadow-sm transform -translate-x-1/2"></div>
-              )}
-            </Button>
+        {/* Center: Search Bar (Premium Mockup) */}
+        <div className="hidden lg:flex flex-1 max-w-md mx-8">
+          <div className="relative w-full group">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+              <Search className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="البحث عن لاعبين، أندية، أو عمليات..."
+              className="w-full h-11 pr-11 pl-4 bg-slate-100/50 dark:bg-slate-800/50 border border-transparent focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500/30 rounded-2xl text-sm font-medium text-slate-900 dark:text-white transition-all outline-none"
+            />
+          </div>
+        </div>
 
-            {/* قائمة الرسائل المنسدلة */}
-            {showMessagesDropdown && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-72 min-w-max rounded-xl border border-gray-200 shadow-2xl backdrop-blur-sm transform origin-top-right lg:left-auto lg:right-0 sm:w-80 lg:w-96 bg-white/98">
-                <div className="p-4 border-b border-gray-100 lg:p-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-base font-bold text-gray-900 lg:text-lg">الرسائل الأخيرة</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={navigateToMessages}
-                      className="px-2 py-1 text-xs text-blue-600 rounded-lg lg:text-sm hover:text-blue-700 lg:px-3 lg:py-2 hover:bg-blue-50"
-                    >
-                      عرض الكل
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="overflow-y-auto max-w-full max-h-64 lg:max-h-80">
-                  {messagesLoading ? (
-                    <div className="p-4 text-center text-gray-500 lg:p-6">
-                      <div className="mx-auto mb-3 w-8 h-8 rounded-full border-b-2 border-blue-600 animate-spin"></div>
-                      <p className="text-sm lg:text-base">جاري تحميل الرسائل...</p>
-                    </div>
-                  ) : recentMessages.length > 0 ? (
-                    recentMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        onClick={() => handleMessageClick(message)}
-                        className={`p-3 lg:p-4 border-b border-gray-50 cursor-pointer transition-all duration-200 hover:bg-blue-50 active:scale-98 ${message.unread ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
-                          }`}
-                      >
-                        <div className="flex gap-3 justify-between items-start">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex gap-2 items-center mb-1">
-                              <p className="text-sm font-semibold text-gray-900 truncate lg:text-base">
-                                {message.sender}
-                              </p>
-                              {message.unread && (
-                                <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            <p className="text-sm leading-relaxed text-gray-600 truncate lg:text-base">
-                              {message.message}
-                            </p>
-                            <p className="mt-2 text-xs font-medium text-gray-400 lg:text-sm">
-                              {formatTime(message.time)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-gray-500 lg:p-8">
-                      <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full lg:w-20 lg:h-20">
-                        <MessageSquare className="w-8 h-8 text-gray-300 lg:w-10 lg:h-10" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-600 lg:text-base">لا توجد رسائل جديدة</p>
-                      <p className="mt-1 text-xs text-gray-400 lg:text-sm">ستظهر الرسائل الجديدة هنا</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+        {/* Right Side: Actions & Profile */}
+        <div className="flex overflow-visible gap-4 items-center">
+          <div className="flex items-center gap-2 pr-1">
+            <UnifiedMessagesButton />
+            <UnifiedNotificationsButton />
           </div>
 
-          {/* أيقونة الإشعارات الموحدة */}
-          <UnifiedNotificationsButton />
+          <div className="hidden sm:block w-px h-6 bg-slate-200/60 dark:bg-slate-800/60 mx-1"></div>
 
-          {/* فاصل */}
-          <div className="w-px h-6 bg-gray-300"></div>
-
-          {/* صورة المستخدم */}
-          <div className="flex gap-2 items-center">
-            <Avatar className="w-8 h-8 transition-transform duration-500 ease-out cursor-pointer hover:scale-105">
-              <AvatarImage
-                key={getUserAvatar() || 'default'}
-                src={getUserAvatar() || undefined}
-                alt={getUserDisplayName()}
-                onError={(e) => {
-                  console.error('❌ ResponsiveHeader: Error loading avatar image:', getUserAvatar());
-                  e.currentTarget.style.display = 'none';
-                }}
-                onLoad={() => {
-                  console.log('✅ ResponsiveHeader: Avatar image loaded successfully:', getUserAvatar());
-                }}
-              />
-              <AvatarFallback className="font-bold text-blue-600 bg-blue-100">
-                {getUserDisplayName().slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {!isMobile && (
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
-                <p className="text-xs text-gray-500 capitalize">{accountType}</p>
+          <div className="flex items-center gap-3 pr-2 group cursor-pointer transition-all active:scale-95">
+            <div className="hidden md:flex flex-col items-end">
+              <p className="text-sm font-black text-slate-900 dark:text-white leading-tight group-hover:text-blue-600 transition-colors">
+                {getUserDisplayName()}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] font-black text-green-500 uppercase tracking-widest ring-1 ring-green-500/20 px-1.5 py-0.5 rounded-full bg-green-500/5">
+                  نشط الآن
+                </span>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
               </div>
-            )}
+            </div>
+
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[1.2rem] opacity-0 group-hover:opacity-20 blur-md transition-all duration-500" />
+              <Avatar className="h-11 w-11 rounded-[1.1rem] border-2 border-white dark:border-slate-800 shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-3">
+                <AvatarImage
+                  key={getUserAvatar() || 'default'}
+                  src={getUserAvatar() || undefined}
+                  alt={getUserDisplayName()}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-sm">
+                  {getUserDisplayName().slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           </div>
         </div>
       </div>
@@ -2265,13 +1218,13 @@ const ResponsiveHeader: React.FC = () => {
   );
 };
 
-// ===== مكون الفوتر المحسن =====
+// ===== Professional Footer Component =====
 const ResponsiveFooter: React.FC = () => {
   const { isMobile, isTablet, isDesktop, isSidebarCollapsed, isClient } = useLayout();
 
-  // تحديد margin للفوتر ليتناسق مع السايدبار - أحجام مصغرة
+  // Determine footer margin to align with sidebar - compact sizes
   const getFooterMargin = () => {
-    if (!isClient) return ''; // لا نطبق margin في الـ server
+    if (!isClient) return ''; // Don't apply margin on server
     if (isMobile) return '';
     if (isSidebarCollapsed) {
       if (isTablet) return 'mr-14'; // 56px - يتطابق مع motion.div
@@ -2282,20 +1235,40 @@ const ResponsiveFooter: React.FC = () => {
   };
 
   return (
-    <footer className={`px-4 py-4 bg-white border-t border-gray-200 transition-all duration-300 ease-in-out lg:px-6 ${getFooterMargin()}`}>
-      <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          © 2024 منصة الحلم. جميع الحقوق محفوظة.
+    <footer className={cn(
+      "px-6 py-6 transition-all duration-700 ease-in-out",
+      "bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60",
+      getFooterMargin()
+    )}>
+      <div className="max-w-[2200px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <span className="text-white font-black text-xl">H</span>
+          </div>
+          <div>
+            <p className="text-sm font-black text-slate-900 dark:text-white">منصة الحلم 2024</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">جميع الحقوق محفوظة لشركة ميسك القطرية</p>
+          </div>
         </div>
-        <div className="flex gap-4 items-center text-sm text-gray-600">
-          <span>الإصدار 1.0.0</span>
+
+        <div className="flex gap-8 items-center">
+          <div className="flex gap-6">
+            <a href="#" className="text-xs font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">الشروط</a>
+            <a href="#" className="text-xs font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">الخصوصية</a>
+            <a href="#" className="text-xs font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">الدعم</a>
+          </div>
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.1em]">Vers v1.0.0-PRO</span>
+          </div>
         </div>
       </div>
     </footer>
   );
 };
 
-// ===== المكون الرئيسي للتخطيط =====
+// ===== Main Layout Component =====
 interface ResponsiveLayoutProps {
   children: React.ReactNode;
   accountType?: string;
@@ -2315,7 +1288,7 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
 }) => {
   const { isSidebarOpen, isSidebarCollapsed, isMobile, isTablet, isDesktop, isClient } = useLayout();
 
-  // تحديد margin للمحتوى الرئيسي - أحجام مصغرة
+  // Determine main content margin - compact sizes
   const getMainContentMargin = () => {
     if (!isClient) return '';
     if (!showSidebar) return '';
@@ -2361,7 +1334,7 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   );
 };
 
-// ===== المكون الرئيسي المصدر =====
+// ===== Exported Main Layout Wrapper =====
 interface ResponsiveLayoutWrapperProps {
   children: React.ReactNode;
   accountType?: string;

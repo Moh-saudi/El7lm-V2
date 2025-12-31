@@ -70,38 +70,38 @@ interface PromotionalOffer {
     code?: string;
     offerType?: 'flash_sale' | 'seasonal' | 'partnership' | 'early_bird';
 
-    // الخصم
+    // Discount
     discountType: 'percentage' | 'fixed';
     discountValue: number;
 
-    // التواريخ
+    // Dates
     startDate: string | Date;
     endDate: string | Date;
 
-    // الحالة
+    // Status
     isActive: boolean;
     status?: 'draft' | 'scheduled' | 'active' | 'expired' | 'paused';
 
-    // نطاق العرض (Scope)
+    // Offer Scope
     scope: 'all' | 'accountTypes' | 'specificAccounts' | 'countries';
-    targetAccountTypes?: ('club' | 'academy' | 'trainer' | 'agent' | 'player')[]; // عند scope = accountTypes
-    targetAccountIds?: string[];  // عند scope = specificAccounts
-    targetCountries?: string[];   // عند scope = countries
+    targetAccountTypes?: ('club' | 'academy' | 'trainer' | 'agent' | 'player')[]; // if scope = accountTypes
+    targetAccountIds?: string[];  // if scope = specificAccounts
+    targetCountries?: string[];   // if scope = countries
 
-    // الباقات المطبقة
-    applicablePlans: string[];  // [] = جميع الباقات، أو IDs محددة
+    // Applicable Plans
+    applicablePlans: string[];  // [] = all plans, or specific IDs
 
-    // حدود الاستخدام
+    // Usage Limits
     usageLimitType: 'unlimited' | 'total' | 'perUser';
-    totalUsageLimit?: number;     // عند usageLimitType = total
-    perUserLimit?: number;        // عند usageLimitType = perUser (عادة 1)
+    totalUsageLimit?: number;     // if usageLimitType = total
+    perUserLimit?: number;        // if usageLimitType = perUser (usually 1)
     usageCount?: number;          // العدد الحالي للاستخدامات
 
-    // شروط إضافية
-    minPlayers?: number;          // حد أدنى لعدد اللاعبين
-    minAmount?: number;           // حد أدنى للمبلغ (بالدولار)
+    // Additional conditions
+    minPlayers?: number;          // Min player count
+    minAmount?: number;           // Min amount (USD)
 
-    // عرض
+    // display
     displayBadge?: string;
     displayColor?: string;
 }
@@ -157,7 +157,7 @@ export default function PricingAdminPage() {
     }, []);
 
     const handleApplyRecommendedPlans = async () => {
-        if (!confirm('سيتم تحديث الباقات الحالية (Kickoff, Pro, Dream) بالبيانات الجديدة. هل أنت متأكد؟')) return;
+        if (!confirm('This will update Kickoff, Pro, and Dream plans. Are you sure?')) return;
         setLoading(true);
         try {
             const plansToUpdate = [
@@ -249,11 +249,11 @@ export default function PricingAdminPage() {
                 await PricingService.updatePlan(plan as any);
             }
 
-            toast.success('تم تحديث الباقات بنجاح');
+            toast.success('Plans updated successfully');
             loadData();
         } catch (error) {
             console.error(error);
-            toast.error('حدث خطأ أثناء تحديث الباقات');
+            toast.error('Error updating plans');
         } finally {
             setLoading(false);
         }
@@ -262,15 +262,15 @@ export default function PricingAdminPage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            console.log('📦 جاري تحميل الباقات من Firebase...');
+            console.log('📦 Loading plans from Firebase...');
             const plansData = await PricingService.getAllPlans();
 
             if (!plansData || plansData.length === 0) {
-                console.log('⚠️ لا توجد باقات - استخدم زر التهيئة');
+                console.log('⚠️ No plans found - use init button');
                 setPlans([]);
             } else {
-                console.log(`✅ تم تحميل ${plansData.length} باقة بنجاح`);
-                // تحويل البيانات من PricingService format إلى format الصفحة
+                console.log(`✅ Loaded ${plansData.length} plans successfully`);
+                // Convert from PricingService format to page format
                 const convertedPlans = plansData.map(plan => ({
                     id: plan.id,
                     name: plan.title,
@@ -303,11 +303,11 @@ export default function PricingAdminPage() {
                 }));
 
                 setPlans(convertedPlans);
-                console.log('📊 البيانات جاهزة للعرض');
+                console.log('📊 Data ready for display');
             }
 
-            // تحميل العروض الترويجية
-            console.log('🎁 جاري تحميل العروض الترويجية...');
+            // Load promotional offers
+            console.log('🎁 Loading promotional offers...');
             const offersRef = collection(db, 'promotional_offers');
             const offersQuery = query(offersRef, orderBy('createdAt', 'desc'));
             const offersSnapshot = await getDocs(offersQuery);
@@ -325,19 +325,10 @@ export default function PricingAdminPage() {
             });
 
             setOffers(offersData);
-            console.log(`✅ تم تحميل ${offersData.length} عرض ترويجي`);
-            console.log('📋 IDs العروض:', offersData.map(o => o.id));
-            if (offersData.length > 0) {
-                console.log('📑 تفاصيل العرض الأول:', {
-                    id: offersData[0].id,
-                    title: offersData[0].title,
-                    isActive: offersData[0].isActive,
-                    docExists: true
-                });
-            }
+            console.log(`✅ Loaded ${offersData.length} offers`);
 
-            // تحميل الشركاء
-            console.log('🤝 جاري تحميل الشركاء...');
+            // Load partners
+            console.log('🤝 Loading partners...');
             const partnersRef = collection(db, 'partners');
             const partnersQuery = query(partnersRef, orderBy('createdAt', 'desc'));
             const partnersSnapshot = await getDocs(partnersQuery);
@@ -348,11 +339,11 @@ export default function PricingAdminPage() {
             })) as Partner[];
 
             setPartners(partnersData);
-            console.log(`✅ تم تحميل ${partnersData.length} شريك`);
+            console.log(`✅ Loaded ${partnersData.length} partners`);
 
         } catch (error) {
-            console.error('❌ خطأ في تحميل البيانات:', error);
-            toast.error('فشل تحميل البيانات من Firebase');
+            console.error('❌ Error loading data:', error);
+            toast.error('Failed to load data from Firebase');
             setPlans([]);
             setOffers([]);
         } finally {
@@ -634,27 +625,27 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
             };
 
             await PricingService.updatePlan(planToSave as any);
-            toast.success('✅ تم حفظ التعديلات بنجاح');
-            onUpdate(); // إعادة تحميل البيانات
+            toast.success('✅ Changes saved successfully');
+            onUpdate(); // Reload data
         } catch (error) {
-            console.error('خطأ في حفظ الباقة:', error);
-            toast.error('❌ فشل في حفظ التعديلات');
+            console.error('Error saving plan:', error);
+            toast.error('❌ Failed to save changes');
         }
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذه الباقة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+        if (!window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
             return;
         }
 
         setIsDeleting(true);
         try {
             await PricingService.deletePlan(plan.id);
-            toast.success('✅ تم حذف الباقة بنجاح');
+            toast.success('✅ Plan deleted successfully');
             onUpdate();
         } catch (error) {
-            console.error('خطأ في حذف الباقة:', error);
-            toast.error('❌ فشل حذف الباقة');
+            console.error('Error deleting plan:', error);
+            toast.error('❌ Failed to delete plan');
         } finally {
             setIsDeleting(false);
         }

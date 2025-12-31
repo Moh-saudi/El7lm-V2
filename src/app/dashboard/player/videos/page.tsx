@@ -5,68 +5,80 @@ import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/config';
-import { motion } from 'framer-motion';
-import { 
-  VideoIcon, 
-  Save, 
-  AlertCircle, 
-  CheckCircle, 
-  Loader,
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Video as VideoIcon,
+  Save,
+  AlertCircle,
+  Loader2,
   FileVideo,
   Upload,
   Youtube,
-  Share2
+  Info,
+  ChevronRight,
+  TrendingUp,
+  LayoutGrid,
+  Zap,
+  ShieldCheck,
+  Smartphone,
+  Sparkles
 } from 'lucide-react';
 import type { Video } from '@/types/player';
 import VideoManager from '@/components/video/VideoManager';
 import { Button } from '@/components/ui/button';
 import { actionLogService } from '@/lib/admin/action-logs';
+import { toast, Toaster } from 'react-hot-toast';
 
-export default function VideosPage(props: any) {
+export default function VideosPage() {
   const router = useRouter();
-  const t = (key: string) => key;
-  const locale = 'ar';
-  const isRTL = true;
-  const [user, loading, authError] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const MAX_VIDEOS = 10;
 
-  // جلب الفيديوهات من Firebase
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+  };
+
   useEffect(() => {
     const fetchVideos = async () => {
       if (!user) {
-        console.log('المستخدم غير مسجل دخول، إعادة توجيه...');
         router.push('/auth/login');
         return;
       }
 
       try {
-        console.log('جاري جلب الفيديوهات للمستخدم:', user.uid);
         setIsLoading(true);
         const playerDoc = await getDoc(doc(db, 'players', user.uid));
-        
+
         if (playerDoc.exists()) {
           const data = playerDoc.data();
-          console.log('تم العثور على بيانات اللاعب:', data);
-          // تأكد أن كل فيديو له desc نصي وليس undefined
           const safeVideos = (data.videos || []).map((v: any) => ({
             url: v.url,
-            desc: v.desc ?? ''
+            desc: v.desc ?? '',
+            title: v.title ?? '',
+            thumbnail: v.thumbnail ?? '',
+            category: v.category ?? 'skills',
+            duration: v.duration ?? '00:00',
+            created_at: v.created_at
           }));
-          console.log('الفيديوهات المحملة:', safeVideos);
           setVideos(safeVideos);
-        } else {
-          console.log('لا توجد بيانات للاعب، إنشاء قائمة فارغة');
-          setVideos([]);
         }
       } catch (error) {
-        console.error('خطأ في جلب الفيديوهات:', error);
-        setSaveMessage({ type: 'error', text: 'حدث خطأ أثناء جلب الفيديوهات' });
-        setVideos([]);
+        console.error('Error fetching videos:', error);
+        toast.error('حدث خطأ أثناء تحميل الفيديوهات');
       } finally {
         setIsLoading(false);
       }
@@ -77,20 +89,16 @@ export default function VideosPage(props: any) {
     }
   }, [user, loading, router]);
 
-  // حفظ الفيديوهات في Firebase
   const handleSaveVideos = async () => {
     if (!user) return;
 
     try {
       setIsSaving(true);
-      
-      // حفظ الفيديوهات في Firebase
       await updateDoc(doc(db, 'players', user.uid), {
         videos: videos,
         updated_at: new Date()
       });
-      
-      // التأكد من تسجيل رفع الفيديوهات الجديدة وإرسال إشعار للمستخدم
+
       const newVideos = videos
         .map((v, idx) => ({ v, idx }))
         .filter(({ v }) => v.url && !(v as any).status);
@@ -101,37 +109,34 @@ export default function VideosPage(props: any) {
           videoId,
           playerId: user.uid,
           playerName: user.displayName || user.email || 'مستخدم',
-          videoTitle: v.desc || v.url,
-          notificationTitle: 'تم رفع الفيديو',
-          notificationMessage: 'تم رفع الفيديو وهو الآن قيد المراجعة من فريقنا.'
+          videoTitle: v.title || v.desc || v.url,
+          notificationTitle: 'تم رفع فيديو جديد',
+          notificationMessage: `تمت إضافة فيديو "${v.title || 'مهارة جديدة'}" وهو بانتظار المراجعة.`
         });
       }
-      
+
       setHasUnsavedChanges(false);
-      setSaveMessage({ type: 'success', text: 'تم حفظ التغييرات بنجاح' });
-      
-      // إخفاء الرسالة بعد 3 ثواني
-      setTimeout(() => setSaveMessage(null), 3000);
+      toast.success('تم حفظ مكتبة المهارات بنجاح! ✨', {
+        style: {
+          borderRadius: '20px',
+          background: '#0f172a',
+          color: '#fff',
+          padding: '16px 24px',
+        }
+      });
     } catch (error) {
-      console.error('خطأ في حفظ الفيديوهات:', error);
-      setSaveMessage({ type: 'error', text: 'حدث خطأ أثناء حفظ الفيديوهات' });
+      console.error('Error saving videos:', error);
+      toast.error('فشل في حفظ التغييرات');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // تحديث الفيديوهات
   const handleUpdateVideos = (newVideos: Video[]) => {
-    // تأكد أن كل فيديو له desc نصي وليس undefined
-    const safeVideos = newVideos.map((v: any) => ({
-      url: v.url,
-      desc: v.desc ?? ''
-    }));
-    setVideos(safeVideos);
+    setVideos(newVideos);
     setHasUnsavedChanges(true);
   };
 
-  // التحقق من وجود تغييرات غير محفوظة عند مغادرة الصفحة
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -139,141 +144,247 @@ export default function VideosPage(props: any) {
         e.returnValue = '';
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
   if (loading || isLoading) {
     return (
-        <div className="flex items-center justify-center min-h-96">
-          <div className="flex flex-col items-center gap-4">
-            <Loader className="w-8 h-8 text-blue-600 animate-spin" />
-            <p className="text-gray-600">جاري التحميل...</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mb-6"
+        >
+          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        </motion.div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">جاري تجهيز استوديو المهارات...</h3>
+        <p className="text-slate-400 font-medium">نحن نعد لك واجهة المبدعين الخاصة بك</p>
+      </div>
     );
   }
 
-  // محتوى الصفحة الرئيسي (عرض الفيديوهات)
   return (
-    <div className="container p-4 mx-auto">
-      {/* الكروت الإحصائية */}
-      <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
-        <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow">
-          <FileVideo className="w-8 h-8 text-blue-500" />
-          <div>
-            <div className="text-sm text-gray-500">عدد الفيديوهات المرفوعة</div>
-            <div className="text-2xl font-bold">{videos.length}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow">
-          <Upload className="w-8 h-8 text-green-500" />
-          <div>
-            <div className="text-sm text-gray-500">الحد الأقصى للرفع</div>
-            <div className="text-2xl font-bold">{MAX_VIDEOS}</div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#fcfdfe] text-slate-900" dir="rtl">
+      <Toaster position="top-center" />
 
-      {/* ملاحظات وتعليمات */}
-      <div className="p-4 mb-6 border-l-4 border-yellow-400 rounded bg-yellow-50">
-        <ul className="space-y-1 text-sm text-yellow-800 list-disc list-inside">
-          <li>الحد الأقصى للفيديوهات: {MAX_VIDEOS}</li>
-          <li>الصيغ المدعومة: MP4, AVI, MOV</li>
-          <li>الجودة المطلوبة: 720p على الأقل</li>
-          <li>يجب أن يكون الفيديو واضحاً ويظهر مهاراتك</li>
-        </ul>
-      </div>
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-white border-b border-slate-100 pt-8 sm:pt-12 pb-10 sm:pb-16 mb-6 sm:mb-10">
+        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent opacity-60"></div>
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 lg:gap-12"
+          >
+            <div className="max-w-xl">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600 font-black text-[10px] sm:text-[11px] uppercase tracking-[0.15em] mb-6 shadow-xl shadow-blue-500/20 text-white"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                معرض المهارات الاحترافي
+              </motion.div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 mb-4 tracking-tight leading-tight">استوديو <span className="text-blue-600">المبدعين</span> ⚽</h1>
+              <p className="text-slate-500 text-base sm:text-lg leading-relaxed font-medium">هنا مساحتك الخاصة لإبهار العالم. الفيديوهات التي ترفعها هي بوابتك للاحتراف حيث يراها أهم الكشافين والأندية حول العالم.</p>
+            </div>
 
-      {/* تعليمات رفع الفيديو */}
-      <div className="p-6 mb-6 bg-white rounded-lg shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-800">كيفية رفع الفيديو</h3>
-        
-        {/* يوتيوب */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Youtube className="w-12 h-12 text-red-600" />
-            <h4 className="text-lg font-medium text-blue-600">رفع فيديو من يوتيوب</h4>
-          </div>
-          <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-            <li>اذهب إلى فيديو يوتيوب الخاص بك</li>
-            <li>اضغط على زر "مشاركة" أسفل الفيديو</li>
-            <li>انسخ رابط الفيديو</li>
-            <li>الصق الرابط في حقل "رابط الفيديو" أدناه</li>
-            <li>أضف وصفاً للفيديو</li>
-            <li>حدد نوع الفيديو (مهارات، مباراة، تدريب)</li>
-            <li>اضغط على "حفظ الفيديو"</li>
-          </ol>
-        </div>
-
-        {/* تيك توك */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Share2 className="w-12 h-12 text-black" />
-            <h4 className="text-lg font-medium text-blue-600">رفع فيديو من تيك توك</h4>
-          </div>
-          <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-            <li>افتح تطبيق تيك توك</li>
-            <li>اذهب إلى الفيديو المطلوب</li>
-            <li>اضغط على زر "مشاركة"</li>
-            <li>اختر "نسخ الرابط"</li>
-            <li>الصق الرابط في حقل "رابط الفيديو" أدناه</li>
-            <li>أضف الوصف والنوع واضغط "حفظ"</li>
-          </ol>
-        </div>
-
-        {/* إضافة الفيديو في المنصة */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <FileVideo className="w-12 h-12 text-blue-600" />
-            <h4 className="text-lg font-medium text-blue-600">رفع فيديو مباشر</h4>
-          </div>
-          <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-            <li>اضغط على "إضافة فيديو جديد"</li>
-            <li>اختر ملف الفيديو من جهازك</li>
-            <li>أضف وصفاً ونوع الفيديو</li>
-            <li>اضغط على "رفع الفيديو"</li>
-          </ol>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <Button
+                onClick={handleSaveVideos}
+                disabled={isSaving || !hasUnsavedChanges}
+                className={`w-full sm:w-auto px-10 py-7 rounded-[1.8rem] shadow-2xl transition-all duration-500 flex items-center justify-center gap-3 border-none ${hasUnsavedChanges
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white scale-105 ring-8 ring-blue-500/10'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
+                  }`}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <Save className="w-6 h-6" />
+                )}
+                <span className="font-black text-base">حفظ كل التغييرات</span>
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* مدير الفيديوهات */}
-      <VideoManager 
-        videos={videos}
-        onUpdate={handleUpdateVideos}
-        maxVideos={MAX_VIDEOS}
-      />
-
-      {/* زر الحفظ */}
-      <div className="flex justify-center mt-6">
-        <Button 
-          onClick={handleSaveVideos}
-          disabled={isSaving}
-          className="px-8 py-3 text-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+      <div className="container mx-auto px-4 sm:px-6 pb-24 lg:pb-32">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10"
         >
-          {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-        </Button>
+          {/* Main Content Area */}
+          <div className="lg:col-span-8 space-y-8 sm:space-y-12">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <motion.div
+                variants={itemVariants}
+                className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] transition-all duration-500 relative overflow-hidden group"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-1000"></div>
+                <div className="relative z-10 flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm transition-colors group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-6 duration-500">
+                    <VideoIcon className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-1">المقاطع المرفوعة</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">{videos.length}</span>
+                      <span className="text-slate-400 text-lg font-bold">/ {MAX_VIDEOS}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                variants={itemVariants}
+                className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] transition-all duration-500 relative overflow-hidden group"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-1000"></div>
+                <div className="relative z-10 flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm transition-colors group-hover:bg-emerald-600 group-hover:text-white group-hover:rotate-6 duration-500">
+                    <TrendingUp className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-widest mb-1">معدل الاحتراف</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter">مثالي</span>
+                      <div className="p-1 bg-emerald-100 rounded-full">
+                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Video Manager Component */}
+            <motion.div
+              variants={itemVariants}
+              className="bg-white p-2 rounded-[3.5rem] border border-slate-100 shadow-xl lg:shadow-2xl overflow-hidden"
+            >
+              <VideoManager
+                videos={videos}
+                onUpdate={handleUpdateVideos}
+                maxVideos={MAX_VIDEOS}
+              />
+            </motion.div>
+          </div>
+
+          {/* Sidebar Area */}
+          <div className="lg:col-span-4 space-y-8">
+            <motion.div
+              variants={itemVariants}
+              className="bg-slate-950 rounded-[3rem] p-8 sm:p-10 text-white relative overflow-hidden shadow-2xl"
+            >
+              <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/30 blur-[100px] rounded-full -mr-36 -mt-36"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-600/10 blur-[80px] rounded-full -ml-24 -mb-24"></div>
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-10">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                    <Info className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-black tracking-tight">قواعد النجاح 💡</h3>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="flex gap-5">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-[1.25rem] bg-white/5 border border-white/10 flex items-center justify-center text-sm font-black text-blue-400">01</div>
+                    <div className="pt-1">
+                      <h4 className="font-black text-base text-white mb-2 flex items-center gap-2">
+                        روابط الشبكات 📱
+                      </h4>
+                      <p className="text-sm text-slate-400 leading-relaxed font-medium">يمكنك لصق روابط YouTube أو TikTok مباشرة. نحن نتكفل بالباقي لعرضها بأفضل طريقة.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-5">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-[1.25rem] bg-white/5 border border-white/10 flex items-center justify-center text-sm font-black text-blue-400">02</div>
+                    <div className="pt-1">
+                      <h4 className="font-black text-base text-white mb-2 flex items-center gap-2">
+                        الرفع المباشر 📤
+                      </h4>
+                      <p className="text-sm text-slate-400 leading-relaxed font-medium">نقبل ملفات MP4 تصل مساحتها إلى 100MB للملف الواحد. تأكد من ثبات الصورة.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-5">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-[1.25rem] bg-white/5 border border-white/10 flex items-center justify-center text-sm font-black text-blue-400">03</div>
+                    <div className="pt-1">
+                      <h4 className="font-black text-base text-white mb-2 flex items-center gap-2">
+                        الجودة هي السر ✨
+                      </h4>
+                      <p className="text-sm text-slate-400 leading-relaxed font-medium">الفيديوهات المصورة بالعرض (Landscape) وبدقة 1080p تعطي انطباعاً أكثر احترافية.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-12 p-6 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-blue-400 mb-3 uppercase tracking-[0.2em]">
+                    <AlertCircle className="w-3.5 h-3.5" /> تنبيه الخصوصية
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed font-medium">جميع الفيديوهات تخضع للمراجعة للتأكد من المحتوى الرياضي المناسب قبل النشر النهائي.</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={itemVariants}
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-[3rem] p-1 flex flex-col justify-between overflow-hidden shadow-2xl shadow-blue-600/40 relative group"
+            >
+              <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+              <div className="bg-white/5 p-10 rounded-[2.8rem] relative z-10">
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
+                  <Smartphone className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-white text-2xl font-black mb-3 tracking-tight">هل تريد مونتاجاً احترافياً؟ 🎬</h3>
+                <p className="text-blue-100/80 text-sm mb-10 leading-relaxed font-medium">فريقنا يمكنه مساعدتك في تجميع أفضل مهاراتك في فيديو واحد يبهر الكشافين.</p>
+                <button className="w-full bg-white text-blue-800 font-black py-5 rounded-2xl hover:bg-blue-50 transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95">
+                  اطلب الخدمة الآن
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
 
-      {/* رسائل الحفظ */}
-      {saveMessage && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          saveMessage.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`}>
-          <div className="flex items-center gap-2">
-            {saveMessage.type === 'success' ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <AlertCircle className="w-5 h-5" />
-            )}
-            {saveMessage.text}
-          </div>
-        </div>
-      )}
-
-      {/* مساحة إضافية في الأسفل لتجنب إخفاء المحتوى تحت الفوتر */}
-      <div className="h-32"></div>
+      {/* Floating Save Reminder */}
+      <AnimatePresence>
+        {hasUnsavedChanges && !isSaving && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-10 inset-x-4 sm:left-1/2 sm:-translate-x-1/2 z-[90] sm:w-auto"
+          >
+            <div className="bg-white/90 backdrop-blur-2xl border border-blue-100 p-5 rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.15)] flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-12 min-w-0 sm:min-w-[500px]">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 animate-bounce">
+                  <Zap className="w-6 h-6 fill-current" />
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-black text-slate-900 leading-none mb-1.5">تعديلات قيد الانتظار!</p>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">احفظ مجهودك قبل أن تذهب</p>
+                </div>
+              </div>
+              <Button
+                onClick={handleSaveVideos}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl px-12 py-7 shadow-2xl shadow-blue-500/30 transition-all hover:scale-105"
+              >
+                تأكيد الحفظ
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-} 
+}

@@ -10,18 +10,21 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
 import {
+  Award,
   BarChart3,
   Bell,
   Briefcase,
   ChevronLeft,
   ChevronRight,
   Crown,
+  DollarSign,
   FileText,
   Globe,
   GraduationCap,
   Heart,
   Home,
   LogOut,
+  Mail,
   MessageSquare,
   Search,
   Settings,
@@ -423,47 +426,49 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       player: [
         { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/player/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'messages', label: 'الرسائل', icon: MessageSquare, href: `/dashboard/player/messages`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-        { id: 'reports', label: 'التقارير', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-        { id: 'videos', label: 'الفيديوهات', icon: Video, href: `/dashboard/player/videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/player/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'videos', label: 'فيديوهاتي', icon: Video, href: `/dashboard/player/videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/player/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        { id: 'search', label: 'البحث', icon: Search, href: `/dashboard/player/search`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'stats', label: 'الإحصائيات', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-        { id: 'bulk-payment', label: 'الدفع الجماعي', icon: Target, href: `/dashboard/player/bulk-payment`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'reports', label: 'تقاريري', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+        { id: 'stats', label: 'إحصائياتي', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+        { id: 'search', label: 'البحث عن أندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/player/search-players`, color: 'text-green-600', bgColor: 'bg-green-50' },
+        { id: 'tournaments', label: 'البطولات', icon: Award, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/player/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-        // إضافة رابط حالة الاشتراك للاعبين
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/player/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
+        { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/player/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
       ],
       club: [
         { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/club/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'messages', label: 'الرسائل', icon: MessageSquare, href: `/dashboard/club/messages`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+        { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/club/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'players', label: 'اللاعبين', icon: Users, href: `/dashboard/club/players`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'search-players', label: 'البحث عن اللاعبين', icon: Search, href: `/dashboard/club/search-players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/club/player-videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'tournaments', label: 'البطولات', icon: Award, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'contracts', label: 'العقود', icon: FileText, href: `/dashboard/club/contracts`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'marketing', label: 'التسويق', icon: Target, href: `/dashboard/club/marketing`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'ai-analysis', label: 'تحليل الذكاء الاصطناعي', icon: Zap, href: `/dashboard/club/ai-analysis`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'market-values', label: 'قيم السوق', icon: BarChart3, href: `/dashboard/club/market-values`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'negotiations', label: 'المفاوضات', icon: Heart, href: `/dashboard/club/negotiations`, color: 'text-rose-600', bgColor: 'bg-rose-50' },
         { id: 'player-evaluation', label: 'تقييم اللاعبين', icon: Star, href: `/dashboard/club/player-evaluation`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-        { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/club/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'bulk-payment', label: 'الدفع الجماعي', icon: Target, href: `/dashboard/club/bulk-payment`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/club/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/club/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'change-password', label: 'تغيير كلمة المرور', icon: Shield, href: `/dashboard/club/change-password`, color: 'text-red-600', bgColor: 'bg-red-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/club/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'الإحالات', icon: Users, href: `/dashboard/club/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       academy: [
         { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/academy/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'messages', label: 'الرسائل', icon: MessageSquare, href: `/dashboard/academy/messages`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+        { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/academy/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'players', label: 'اللاعبين', icon: Users, href: `/dashboard/academy/players`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'search-players', label: 'البحث عن اللاعبين', icon: Search, href: `/dashboard/academy/search-players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/academy/player-videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
-        { id: 'bulk-payment', label: 'الدفع الجماعي', icon: Target, href: `/dashboard/academy/bulk-payment`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'tournaments', label: 'البطولات', icon: Award, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/academy/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/academy/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/academy/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'الإحالات', icon: Users, href: `/dashboard/academy/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       trainer: [
@@ -493,22 +498,20 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       admin: [
         { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/admin/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'messages', label: 'الرسائل', icon: MessageSquare, href: `/dashboard/admin/messages`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+        { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/admin/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'users', label: 'المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        { id: 'convert-players', label: 'تحويل اللاعبين التابعين', icon: User, href: `/dashboard/admin/convert-dependent-players`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'employees', label: 'الموظفين', icon: User, href: `/dashboard/admin/employees`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'email-migration', label: 'ترحيل البريد الإلكتروني', icon: Mail, href: `/dashboard/admin/email-migration`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-        { id: 'reports', label: 'التقارير', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-        { id: 'clarity', label: 'Clarity Analytics', icon: BarChart3, href: `/dashboard/admin/clarity`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'payments', label: 'المدفوعات', icon: Target, href: `/dashboard/admin/payments`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'subscriptions', label: 'الاشتراكات', icon: Star, href: `/dashboard/admin/subscriptions`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'pricing', label: 'إدارة الأسعار', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+        { id: 'invoices', label: 'الفواتير', icon: FileText, href: `/dashboard/admin/invoices`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'reports', label: 'التقارير', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'support', label: 'الدعم الفني', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'tournaments', label: 'البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'system', label: 'النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        // { id: 'beon-v3', label: 'إدارة BeOn V3', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' }, // Removed - service deprecated
-        { id: 'whatsapp-test', label: 'اختبار WhatsApp API', icon: MessageSquare, href: `/dashboard/admin/whatsapp-test`, color: 'text-green-600', bgColor: 'bg-green-50' },
-        { id: 'dream-academy-categories', label: 'فئات الأكاديمية (ديناميكي)', icon: GraduationCap, href: `/dashboard/admin/dream-academy/categories`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'الإحالات', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
       ]
     };
 
@@ -603,15 +606,15 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
           <div className="relative">
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
               <AvatarImage
-                key={getUserAvatar() || 'default'}
-                src={getUserAvatar() || undefined}
+                key={getUserAvatar || 'default'}
+                src={getUserAvatar || undefined}
                 alt={getUserDisplayName()}
                 onError={(e) => {
-                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar());
+                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar);
                   e.currentTarget.style.display = 'none';
                 }}
                 onLoad={() => {
-                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar());
+                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar);
                 }}
               />
               <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>

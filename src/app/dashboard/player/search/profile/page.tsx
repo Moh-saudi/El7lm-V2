@@ -17,11 +17,11 @@ import { Button } from "@/components/ui/button";
 
 import { Badge } from "@/components/ui/badge";
 
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Star, 
-  UserPlus, 
+import {
+  ArrowLeft,
+  MapPin,
+  Star,
+  UserPlus,
   UserCheck,
   Building,
   Briefcase,
@@ -42,6 +42,7 @@ import {
   Share2
 } from 'lucide-react';
 import SendMessageButton from '@/components/messaging/SendMessageButton';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 
 
@@ -149,8 +150,8 @@ export default function EntityProfilePage() {
 
   const searchParams = useSearchParams();
 
-  
-  
+
+
   const [entity, setEntity] = useState<EntityProfile | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -255,15 +256,15 @@ export default function EntityProfilePage() {
 
           const data = docSnap.data();
 
-          
-          
+
+
           // تحويل البيانات إلى تنسيق EntityProfile
 
           const profile: EntityProfile = {
 
             id: docSnap.id,
 
-            name: data.name || data.full_name || 'غير محدد',
+            name: data.name || data.full_name || data.display_name || data.fullName || 'غير محدد',
 
             type: entityType as any,
 
@@ -273,9 +274,26 @@ export default function EntityProfilePage() {
 
             website: data.website || '',
 
-            profileImage: data.logo || data.profile_photo || '/images/default-avatar.png',
+            profileImage: fixReceiptUrl(
+              data.profile_image ||
+              data.logo ||
+              data.profile_photo ||
+              data.profileImage ||
+              data.photoURL ||
+              data.avatar ||
+              data.image ||
+              data.profile_image_url ||
+              data.profile_picture ||
+              data.brand_logo ||
+              data.business_logo
+            ) || '/images/default-avatar.png',
 
-            coverImage: data.coverImage || '/images/hero-1.jpg',
+            coverImage: fixReceiptUrl(
+              data.coverImage ||
+              data.backCover ||
+              data.header_image ||
+              data.banner
+            ) || '/images/hero-1.jpg',
 
             location: {
 
@@ -301,19 +319,19 @@ export default function EntityProfilePage() {
 
             connectionsCount: data.stats?.contracts || data.stats?.completed_deals || 0,
 
-            achievements: data.trophies?.map((t: any) => `${t.name} (${t.year})`) || 
+            achievements: data.trophies?.map((t: any) => `${t.name} (${t.year})`) ||
 
-                          (data.is_fifa_licensed ? ['وكيل معتمد FIFA'] : []) ||
+              (data.is_fifa_licensed ? ['وكيل معتمد FIFA'] : []) ||
 
-                          (data.is_certified ? ['مدرب معتمد'] : []) ||
+              (data.is_certified ? ['مدرب معتمد'] : []) ||
 
-                          ['خبرة متميزة'],
+              ['خبرة متميزة'],
 
             services: data.programs || ['خدمات متنوعة'],
 
-            established: data.founded || data.established || 
+            established: data.founded || data.established ||
 
-                        (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
+              (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
 
             languages: data.spoken_languages || ['العربية'],
 
@@ -381,8 +399,8 @@ export default function EntityProfilePage() {
 
     setActionLoading('follow');
 
-    
-    
+
+
     try {
 
       // هنا يمكن إضافة منطق حفظ المتابعة في قاعدة البيانات
@@ -527,9 +545,9 @@ export default function EntityProfilePage() {
 
         <div className="mb-6">
 
-          <Button 
+          <Button
 
-            variant="outline" 
+            variant="outline"
 
             onClick={() => router.back()}
 
@@ -557,9 +575,9 @@ export default function EntityProfilePage() {
 
             {entity.coverImage && (
 
-              <img 
+              <img
 
-                src={entity.coverImage} 
+                src={entity.coverImage}
 
                 alt={entity.name}
 
@@ -570,7 +588,7 @@ export default function EntityProfilePage() {
             )}
 
             <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-            
+
             {/* شارات الحالة */}
             <div className="absolute top-4 right-4 flex gap-2">
               {entity.verified && (
@@ -602,9 +620,9 @@ export default function EntityProfilePage() {
 
                   {entity.profileImage ? (
 
-                    <img 
+                    <img
 
-                      src={entity.profileImage} 
+                      src={entity.profileImage}
 
                       alt={entity.name}
 
@@ -638,19 +656,17 @@ export default function EntityProfilePage() {
 
                     variant={entity.isFollowing ? "default" : "outline"}
 
-                    className={`w-full md:w-48 transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                    className={`w-full md:w-48 transition-all duration-300 transform hover:scale-105 active:scale-95 ${actionLoading === 'follow'
 
-                      actionLoading === 'follow'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 animate-pulse'
 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 animate-pulse'
-
-                        : entity.isFollowing
+                      : entity.isFollowing
 
                         ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
 
                         : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white'
 
-                    }`}
+                      }`}
 
                   >
 
@@ -742,8 +758,8 @@ export default function EntityProfilePage() {
 
                   </div>
 
-                  
-                  
+
+
                   <div className="flex items-center gap-2 text-gray-600">
 
                     <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
@@ -960,11 +976,11 @@ export default function EntityProfilePage() {
 
                     <div className="text-sm text-gray-600">
 
-                      {entity.type === 'club' ? 'لاعب' : 
+                      {entity.type === 'club' ? 'لاعب' :
 
-                       entity.type === 'academy' ? 'طالب' : 
+                        entity.type === 'academy' ? 'طالب' :
 
-                       entity.type === 'agent' ? 'لاعب ممثل' : 'متدرب'}
+                          entity.type === 'agent' ? 'لاعب ممثل' : 'متدرب'}
 
                     </div>
 
@@ -1000,7 +1016,7 @@ export default function EntityProfilePage() {
 
           <div className="space-y-6 hover:space-y-8 transition-all duration-300">
 
-                        {/* معلومات الاتصال */}
+            {/* معلومات الاتصال */}
 
             <Card className="p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
 
@@ -1142,6 +1158,6 @@ export default function EntityProfilePage() {
 
   );
 
-} 
+}
 
 

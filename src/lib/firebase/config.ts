@@ -182,13 +182,12 @@ if (!getApps().length) {
       auth = getAuth(app);
 
       // Initialize Firestore with robust network settings for flaky networks/proxies
-      db = initializeFirestore(app, {
+      db = initializeFirestore(app, ({
         ignoreUndefinedProperties: true,
         cacheSizeBytes: 50 * 1024 * 1024, // 50MB cache
-        // Reduce WebChannel 400 terminate noise by auto switching to long-polling when needed
         experimentalAutoDetectLongPolling: true,
         useFetchStreams: false
-      } as any);
+      } as any));
 
       // Note: Firestore network is enabled by default. Avoid toggling it at runtime to prevent race conditions.
 

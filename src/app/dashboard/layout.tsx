@@ -9,9 +9,7 @@ import { useMemo } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import dynamic from 'next/dynamic';
-// import OfflineIndicator from '@/components/ui/OfflineIndicator'; // تم حذف المكون
 
-// Lazy load ad components
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
 
 export default function DashboardLayout({
@@ -21,30 +19,25 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { user, userData: authUserData, loading: authLoading } = useAuth();
-  const showOfflineBanner = process.env.NEXT_PUBLIC_SHOW_OFFLINE_BANNER === 'true';
 
-  // تحديد نوع الحساب
   const accountType = useMemo(() => {
     if (!authUserData?.accountType) return 'player';
     return authUserData.accountType;
   }, [authUserData?.accountType]);
 
-  // عرض شاشة تحميل إذا كانت المصادقة تحمل
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600 font-medium">جاري تحميل لوحة التحكم...</p>
+          <p className="text-gray-600 font-medium">Loading Dashboard...</p>
         </div>
       </div>
     );
   }
 
-  // استيراد المكون الجديد ديناميكياً
   const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
 
-  // إعادة التوجيه لصفحة تسجيل الدخول إذا لم يكن هناك مستخدم
   if (!user) {
     if (typeof window !== 'undefined') {
       setTimeout(() => {
@@ -55,14 +48,10 @@ export default function DashboardLayout({
     return <AuthRedirect />;
   }
 
-  // التحقق مما إذا كانت الصفحة الحالية تتطلب ملء الشاشة بدون padding (مثل فيديوهات اللاعبين)
   const noPadding = pathname.includes('player-videos') || pathname.includes('shared-videos');
 
   return (
     <>
-      {/* مؤشر عدم الاتصال - معطل مؤقتاً */}
-      {/* {showOfflineBanner && <OfflineIndicator />} */}
-
       <ToastContainer
         position="top-center"
         autoClose={3000}
@@ -78,7 +67,6 @@ export default function DashboardLayout({
 
       <ResponsiveLayoutWrapper
         accountType={accountType}
-        showSidebar={true}
         showHeader={!noPadding}
         showFooter={!noPadding}
         noPadding={noPadding}
@@ -89,7 +77,6 @@ export default function DashboardLayout({
       <FloatingChatWidget />
       <PushNotificationSetup />
 
-      {/* Display ads based on account type */}
       <ProfessionalAdPopup location={accountType as any} />
     </>
   );

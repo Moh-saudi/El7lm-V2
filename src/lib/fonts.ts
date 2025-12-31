@@ -1,16 +1,10 @@
-/**
- * تحسين تحميل الخطوط
- * حل مشاكل تحميل الخطوط من Google Fonts
- */
-
 import { Inter, Cairo } from 'next/font/google';
 
-// إعداد خط Inter مع تحسينات
 export const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
-  preload: false, // تعطيل preload لتجنب مشاكل التحميل
+  preload: false,
   fallback: [
     'system-ui',
     '-apple-system',
@@ -21,15 +15,14 @@ export const inter = Inter({
     'Arial',
     'sans-serif',
   ],
-  adjustFontFallback: false, // تعطيل adjustFontFallback لتجنب مشاكل التحميل
+  adjustFontFallback: false,
 });
 
-// إعداد خط Cairo مع تحسينات
 export const cairo = Cairo({
   subsets: ['arabic'],
   variable: '--font-cairo',
   display: 'swap',
-  preload: false, // تعطيل preload لتجنب مشاكل التحميل
+  preload: false,
   fallback: [
     'system-ui',
     '-apple-system',
@@ -40,13 +33,11 @@ export const cairo = Cairo({
     'Arial',
     'sans-serif',
   ],
-  adjustFontFallback: false, // تعطيل adjustFontFallback لتجنب مشاكل التحميل
+  adjustFontFallback: false,
 });
 
-// دالة لتحسين تحميل الخطوط
 export const optimizeFontLoading = () => {
   if (typeof window !== 'undefined') {
-    // تحسين تحميل الخطوط في المتصفح
     const link = document.createElement('link');
     link.rel = 'preconnect';
     link.href = 'https://fonts.googleapis.com';
@@ -55,27 +46,23 @@ export const optimizeFontLoading = () => {
     const link2 = document.createElement('link');
     link2.rel = 'preconnect';
     link2.href = 'https://fonts.gstatic.com';
-    link2.crossOrigin = 'anonymous';
+    (link2 as any).crossOrigin = 'anonymous';
     document.head.appendChild(link2);
   }
 };
 
-// دالة للتحقق من تحميل الخطوط
 export const checkFontLoading = () => {
   if (typeof window !== 'undefined') {
-    // التحقق من تحميل الخطوط
     const checkFont = (fontFamily: string) => {
-      return document.fonts.check(`16px ${fontFamily}`);
+      return (document as any).fonts.check(`16px ${fontFamily}`);
     };
 
-    // التحقق من تحميل خط Cairo
     if (!checkFont('Cairo')) {
-      console.warn('خط Cairo لم يتم تحميله بعد');
+      console.warn('Cairo font not loaded yet');
     }
 
-    // التحقق من تحميل خط Inter
     if (!checkFont('Inter')) {
-      console.warn('خط Inter لم يتم تحميله بعد');
+      console.warn('Inter font not loaded yet');
     }
   }
 };

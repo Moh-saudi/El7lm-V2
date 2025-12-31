@@ -71,7 +71,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
 
     if (!userData) {
       console.log('❌ No userData available for name');
-      return 'مستخدم';
+      return 'user';
     }
 
     console.log('✅ userData available for name:', {
@@ -90,7 +90,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
     // Handle different account types
     switch (userData.accountType) {
       case 'academy':
-        const academyName = userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'أكاديمية رياضية';
+        const academyName = userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'Sports Academy';
         console.log('🎓 Using academy name:', academyName);
         console.log('🎓 Source breakdown:', {
           academy_name: userData.academy_name,
@@ -103,22 +103,22 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
         return academyName;
 
       case 'club':
-        const clubName = userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
+        const clubName = userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'Sports Club';
         console.log('Using club name:', clubName);
         return clubName;
 
       case 'agent':
-        const agentName = userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
+        const agentName = userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'Sports Agent';
         console.log('Using agent name:', agentName);
         return agentName;
 
       case 'trainer':
-        const trainerName = userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
+        const trainerName = userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'Coach';
         console.log('Using trainer name:', trainerName);
         return trainerName;
 
       default: // player, admin, etc.
-        const defaultName = userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+        const defaultName = userData.full_name || userData.name || userData.displayName || user?.displayName || 'User';
         console.log('Using default name:', defaultName);
         return defaultName;
     }
@@ -136,15 +136,15 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
 
   // Get user account type with beautiful labels
   const getAccountTypeInfo = () => {
-    if (!userData?.accountType) return { label: 'مستخدم', icon: User, color: 'bg-slate-500' };
+    if (!userData?.accountType) return { label: 'User', icon: User, color: 'bg-slate-500' };
 
     const types = {
-      'player': { label: 'لاعب', icon: User, color: 'bg-blue-500' },
-      'club': { label: 'نادي', icon: Shield, color: 'bg-green-500' },
-      'academy': { label: 'أكاديمية', icon: Star, color: 'bg-orange-500' },
-      'trainer': { label: 'مدرب', icon: Crown, color: 'bg-purple-500' },
-      'agent': { label: 'وكيل', icon: Sparkles, color: 'bg-pink-500' },
-      'admin': { label: 'مدير', icon: Shield, color: 'bg-red-500' },
+      'player': { label: 'Player', icon: User, color: 'bg-blue-500' },
+      'club': { label: 'Club', icon: Shield, color: 'bg-green-500' },
+      'academy': { label: 'Academy', icon: Star, color: 'bg-orange-500' },
+      'trainer': { label: 'Coach', icon: Crown, color: 'bg-purple-500' },
+      'agent': { label: 'Agent', icon: Sparkles, color: 'bg-pink-500' },
+      'admin': { label: 'Admin', icon: Shield, color: 'bg-red-500' },
     };
 
     return types[userData.accountType as keyof typeof types] || types.player;
@@ -160,7 +160,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
   };
 
   const handleLogout = async () => {
-    const confirmed = window.confirm('هل أنت متأكد من تسجيل الخروج؟');
+    const confirmed = window.confirm('Are you sure you want to log out?');
     if (confirmed) {
       await logout();
       router.push('/');
@@ -168,8 +168,8 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
   };
 
   const toggleLanguage = () => {
-    // تم إلغاء تغيير اللغة مؤقتاً
-    console.log('تم إلغاء تغيير اللغة مؤقتاً');
+    // Language switching temporarily disabled
+    console.log('Language switching temporarily disabled');
   };
 
   return (
@@ -189,7 +189,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {title}
                 </h1>
-                <p className="text-sm text-slate-600">منصة الأحلام الرياضية</p>
+                <p className="text-sm text-slate-600">El7lm Sports Platform</p>
               </div>
             </div>
           </div>
@@ -318,7 +318,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <User className="w-4 h-4" />
-                  <span>الملف الشخصي</span>
+                  <span>Profile</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -326,7 +326,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>الرسائل</span>
+                  <span>Messages</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -334,12 +334,12 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer"
                 >
                   <Bell className="w-4 h-4" />
-                  <span>الإشعارات</span>
+                  <span>Notifications</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 rounded-xl cursor-pointer">
                   <Settings className="w-4 h-4" />
-                  <span>الإعدادات</span>
+                  <span>Settings</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator className="bg-white/30" />
@@ -349,7 +349,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
                   className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 rounded-xl cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>تسجيل الخروج</span>
+                  <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -390,19 +390,19 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2 p-3 hover:bg-white/60 rounded-xl">
                 <Bell className="w-5 h-5" />
-                <span>الإشعارات</span>
+                <span>Notifications</span>
               </div>
               <div className="flex items-center gap-2 p-3 hover:bg-white/60 rounded-xl">
                 <MessageSquare className="w-5 h-5" />
-                <span>الرسائل</span>
+                <span>Messages</span>
               </div>
               <div className="flex items-center gap-2 p-3 hover:bg-white/60 rounded-xl" onClick={toggleLanguage}>
                 <Globe className="w-5 h-5" />
-                <span>{locale === 'ar' ? 'English' : 'عربي'}</span>
+                <span>{locale === 'ar' ? 'English' : 'Arabic'}</span>
               </div>
               <div className="flex items-center gap-2 p-3 hover:bg-white/60 rounded-xl" onClick={() => setIsDarkMode(!isDarkMode)}>
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                <span>تغيير المظهر</span>
+                <span>Theme</span>
               </div>
             </div>
           </div>

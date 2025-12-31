@@ -1,11 +1,6 @@
-// إصلاح مشاكل الاتصال بـ Firebase
-// هذا الملف يحتوي على حلول لمشاكل الاتصال المختلفة
-
+import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from './config';
 
-/**
- * إعادة محاولة الاتصال بـ Firebase مع backoff
- */
 export const retryFirebaseConnection = async (
   operation: () => Promise<any>,
   maxRetries: number = 3,
@@ -15,88 +10,73 @@ export const retryFirebaseConnection = async (
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔄 محاولة الاتصال بـ Firebase (${attempt}/${maxRetries})`);
+      console.log(`🔄 Retrying Firebase connection (${attempt}/${maxRetries})`);
       const result = await operation();
-      console.log('✅ نجح الاتصال بـ Firebase');
+      console.log('✅ Firebase connection successful');
       return result;
     } catch (error: any) {
       lastError = error;
-      console.warn(`⚠️ فشل الاتصال (${attempt}/${maxRetries}):`, error.message);
+      console.warn(`⚠️ Connection failed (${attempt}/${maxRetries}):`, error.message);
 
-      // إذا كان الخطأ بسبب AdBlocker أو مشاكل الشبكة، لا نعيد المحاولة
       if (
         error.message.includes('ERR_BLOCKED_BY_CLIENT') ||
         error.message.includes('net::ERR_BLOCKED_BY_CLIENT') ||
         error.message.includes('Failed to fetch') ||
         error.message.includes('NetworkError')
       ) {
-        console.warn('🚫 تم حظر الاتصال بواسطة AdBlocker أو مشاكل الشبكة');
+        console.warn('🚫 Connection blocked by AdBlocker or Network issues');
         break;
       }
 
-      // انتظار قبل المحاولة التالية
       if (attempt < maxRetries) {
-        const waitTime = delay * Math.pow(2, attempt - 1); // Exponential backoff
-        console.log(`⏳ انتظار ${waitTime}ms قبل المحاولة التالية...`);
+        const waitTime = delay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Waiting ${waitTime}ms before next attempt...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
 
-  throw lastError || new Error('فشل في الاتصال بـ Firebase بعد جميع المحاولات');
+  throw lastError || new Error('Failed to connect to Firebase after all attempts');
 };
 
-/**
- * فحص حالة الاتصال بـ Firebase
- */
 export const checkFirebaseConnection = async (): Promise<boolean> => {
   try {
-    // محاولة قراءة بسيطة من Firestore
-    const testRef = db.collection('_test_connection').limit(1);
-    await testRef.get();
+    const testRef = query(collection(db, '_test_connection'), limit(1));
+    await getDocs(testRef);
     return true;
   } catch (error: any) {
-    console.warn('❌ فشل في فحص الاتصال بـ Firebase:', error.message);
+    if (error?.code === 'permission-denied') return true;
+    console.warn('❌ Firebase connection check failed:', error.message);
     return false;
   }
 };
 
-/**
- * معالجة أخطاء Firebase الشائعة
- */
 export const handleFirebaseError = (error: any): string => {
   const errorMessage = error.message || error.toString();
 
-  // أخطاء AdBlocker
   if (errorMessage.includes('ERR_BLOCKED_BY_CLIENT')) {
-    return 'تم حظر الاتصال بواسطة AdBlocker. يرجى تعطيل AdBlocker لهذا الموقع.';
+    return 'Connection blocked by AdBlocker. Please disable it for this site.';
   }
 
-  // أخطاء الشبكة
   if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-    return 'مشكلة في الاتصال بالإنترنت. يرجى التحقق من اتصالك.';
+    return 'Internet connection issue. Please check your connectivity.';
   }
 
-  // أخطاء Firebase محددة
   if (errorMessage.includes('permission-denied')) {
-    return 'ليس لديك صلاحية للوصول إلى هذه البيانات.';
+    return 'Permission denied.';
   }
 
   if (errorMessage.includes('unavailable')) {
-    return 'خدمة Firebase غير متاحة حالياً. يرجى المحاولة لاحقاً.';
+    return 'Firebase service currently unavailable. Please try again later.';
   }
 
   if (errorMessage.includes('deadline-exceeded')) {
-    return 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
+    return 'Connection timed out. Please try again.';
   }
 
-  // خطأ عام
-  return 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.';
+  return 'An unexpected error occurred. Please try again.';
 };
 
-/**
- * إعداد مراقب الاتصال
- */
 export const setupConnectionMonitor = () => {
   if (typeof window === 'undefined') return;
 
@@ -104,38 +84,33 @@ export const setupConnectionMonitor = () => {
   let connectionCheckInterval: NodeJS.Timeout | null = null;
 
   const handleOnline = () => {
-    console.log('🌐 تم استعادة الاتصال بالإنترنت');
+    console.log('🌐 Online status restored');
     isOnline = true;
 
-    // فحص الاتصال بـ Firebase
     checkFirebaseConnection().then(connected => {
       if (connected) {
-        console.log('✅ تم استعادة الاتصال بـ Firebase');
-        // يمكن إضافة إعادة تحميل البيانات هنا
+        console.log('✅ Firebase connection restored');
       }
     });
   };
 
   const handleOffline = () => {
-    console.log('📴 فقدان الاتصال بالإنترنت');
+    console.log('📴 Offline status detected');
     isOnline = false;
   };
 
-  // مراقبة حالة الاتصال
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 
-  // فحص دوري للاتصال
   connectionCheckInterval = setInterval(async () => {
     if (isOnline) {
       const connected = await checkFirebaseConnection();
       if (!connected) {
-        console.warn('⚠️ فقدان الاتصال بـ Firebase');
+        console.warn('⚠️ Lost connection to Firebase');
       }
     }
-  }, 30000); // كل 30 ثانية
+  }, 30000);
 
-  // تنظيف
   return () => {
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
@@ -145,25 +120,15 @@ export const setupConnectionMonitor = () => {
   };
 };
 
-/**
- * إعداد معالج أخطاء Firebase
- */
 export const setupFirebaseErrorHandler = () => {
   if (typeof window === 'undefined') return;
 
-  // معالجة أخطاء Firebase غير المعالجة
   const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason;
 
     if (error && typeof error === 'object' && error.code) {
-      // خطأ Firebase
       const message = handleFirebaseError(error);
-      console.error('🚨 خطأ Firebase غير معالج:', message);
-
-      // يمكن إضافة إشعار للمستخدم هنا
-      // toast.error(message);
-
-      // منع الخطأ من الظهور في الكونسول
+      console.error('🚨 Unhandled Firebase error:', message);
       event.preventDefault();
     }
   };
@@ -175,11 +140,8 @@ export const setupFirebaseErrorHandler = () => {
   };
 };
 
-/**
- * تهيئة إصلاحات الاتصال
- */
 export const initializeConnectionFixes = () => {
-  console.log('🔧 تهيئة إصلاحات الاتصال بـ Firebase...');
+  console.log('🔧 Initializing Firebase connection fixes...');
 
   const cleanupConnectionMonitor = setupConnectionMonitor();
   const cleanupErrorHandler = setupFirebaseErrorHandler();

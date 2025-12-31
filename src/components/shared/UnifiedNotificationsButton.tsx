@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
-import { Bell, Settings, MoreHorizontal, Check, Trash2, Maximize2, CheckCheck } from 'lucide-react';
+import { Bell, Settings, MoreHorizontal, Check, Trash2, CheckCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,7 +19,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Types ---
 interface NotificationItem {
   id: string;
   title: string;
@@ -34,22 +33,17 @@ interface NotificationItem {
 }
 
 export default function UnifiedNotificationsButton() {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [loading, setLoading] = useState(true);
 
-  // Sound Effect Ref
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // --- Sender Fetching Logic (Cached) ---
   const senderCache = useRef<Map<string, SenderContext>>(new Map());
   const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
     if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
     try {
-      // Check likely collections first based on ID format if possible, otherwise generic check
       for (const col of ['users', 'players', 'clubs', 'academies']) {
         const d = await getDoc(doc(db, col, senderId));
         if (d.exists()) {
@@ -65,19 +59,10 @@ export default function UnifiedNotificationsButton() {
     return null;
   };
 
-  /* 
-  useEffect(() => {
-    // Audio feature temporarily disabled
-    // audioRef.current = new Audio('/sounds/notification.mp3');
-  }, []);
-  */
-
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Limits
     const NOTIF_LIMIT = 20;
-
     const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
     const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
 
@@ -100,7 +85,6 @@ export default function UnifiedNotificationsButton() {
             avatar = info.senderAvatar || avatar;
           }
         }
-        // Fallback Avatar
         if (!avatar && name) avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
 
         return {
@@ -109,86 +93,79 @@ export default function UnifiedNotificationsButton() {
           message: item.message,
           isRead: item.isRead || false,
           createdAt: item.createdAt?.toDate() || new Date(),
-          senderName: name || 'النظام',
+          senderName: name || 'System',
           senderAvatar: avatar,
           type: item.type || 'info',
           category: item.category as any,
-          actionUrl: item.actionUrl || item.link
+          actionUrl: item.actionUrl || item.link || metadata?.link
         };
       }));
 
-      const sorted = processed.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, NOTIF_LIMIT);
-
-      // Check for NEW notification to play sound
-      setNotifications(prev => {
-        if (prev.length > 0 && sorted.length > 0 && sorted[0].id !== prev[0]?.id && !sorted[0].isRead) {
-          // Play sound if supported and interacting
-          // audioRef.current?.play().catch(() => {});
-        }
-        return sorted;
-      });
-
-      setUnreadCount(sorted.filter(n => !n.isRead).length);
+      processed.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setNotifications(processed);
+      setUnreadCount(processed.filter(n => !n.isRead).length);
       setLoading(false);
     };
 
-    const unsub1 = onSnapshot(q1, async (snap1) => {
-      const snap2 = await import('firebase/firestore').then(mod => mod.getDocs(q2));
-      enrichAndMerge(snap1.docs, snap2.docs);
-    });
+    let unsub1: any, unsub2: any;
+    let d1: any[] = [], d2: any[] = [];
 
-    return () => unsub1();
+    unsub1 = onSnapshot(q1, (s) => { d1 = s.docs; enrichAndMerge(d1, d2); });
+    unsub2 = onSnapshot(q2, (s) => { d2 = s.docs; enrichAndMerge(d1, d2); });
+
+    return () => { unsub1?.(); unsub2?.(); };
   }, [user]);
 
-  const handleMarkRead = async (id: string, category: string) => {
+  const markAllRead = async () => {
+    if (!user?.uid) return;
     try {
-      const col = category === 'interaction' ? 'interaction_notifications' : 'notifications';
-      await updateDoc(doc(db, col, id), { isRead: true });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (e) { }
+      const batch = writeBatch(db);
+      notifications.filter(n => !n.isRead).forEach(n => {
+        const coll = n.category === 'system' ? 'notifications' : 'interaction_notifications';
+        batch.update(doc(db, coll, n.id), { isRead: true });
+      });
+      await batch.commit();
+    } catch (e) { console.error(e); }
   };
 
-  const markAllRead = async () => {
-    const batch = writeBatch(db);
-    const unread = notifications.filter(n => !n.isRead);
-    unread.forEach(n => {
-      const col = n.category === 'interaction' ? 'interaction_notifications' : 'notifications';
-      const ref = doc(db, col, n.id);
-      batch.update(ref, { isRead: true });
-    });
-    await batch.commit();
-
-    // Optimistic
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+  const markRead = async (id: string, category: string) => {
+    try {
+      const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
+      await updateDoc(doc(db, coll, id), { isRead: true });
+    } catch (e) { console.error(e); }
   };
 
   const filtered = notifications.filter(n => activeTab === 'all' || !n.isRead);
-
-  // Determine Dashboard Path
-  const dashboardPath = user?.accountType === 'admin' ? '/dashboard/admin' :
-    user?.accountType === 'club' ? '/dashboard/club' :
-      user?.accountType === 'academy' ? '/dashboard/academy' : '/dashboard/trainer';
+  const dashboardPath = userData?.accountType === 'admin' ? '/dashboard/admin' :
+    userData?.accountType === 'club' ? '/dashboard/club' :
+      userData?.accountType === 'academy' ? '/dashboard/academy' : '/dashboard/trainer';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-10 h-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "group relative w-10 h-10 md:w-11 md:h-11 rounded-2xl transition-all duration-300",
+            isOpen ? "bg-blue-500/10 text-blue-600 shadow-inner" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+          )}
+        >
           <motion.div
-            animate={unreadCount > 0 ? { rotate: [0, -10, 10, -10, 0] } : {}}
-            transition={{ duration: 0.5, repeat: unreadCount > 0 ? Infinity : 0, repeatDelay: 5 }}
+            animate={unreadCount > 0 ? { rotate: [0, -10, 10, -10, 10, 0] } : {}}
+            transition={{ duration: 0.5, repeat: unreadCount > 0 ? 3 : 0, repeatDelay: 5 }}
+            className="relative"
           >
-            <Bell className={cn("w-6 h-6 transition-colors", isOpen ? "text-blue-600 fill-blue-600" : "text-gray-600")} />
+            <Bell className={cn("w-5 h-5 md:w-6 md:h-6 transition-all", isOpen && "fill-blue-600")} />
           </motion.div>
 
           <AnimatePresence>
             {unreadCount > 0 && (
               <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="absolute top-1.5 right-1.5 flex h-4 w-4 bg-red-500 rounded-full border-2 border-white items-center justify-center text-[9px] font-bold text-white shadow-sm"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="absolute top-1.5 right-1.5 flex h-5 w-5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg border-2 border-white dark:border-slate-900 items-center justify-center text-[9px] font-black text-white shadow-lg"
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </motion.span>
@@ -197,157 +174,144 @@ export default function UnifiedNotificationsButton() {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[95vw] sm:w-[380px] p-0 shadow-2xl border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden mb-2 sm:mb-0" align="end" sideOffset={8}>
-
-        {/* Header */}
-        <div className="p-3 px-4 flex items-center justify-between border-b border-gray-50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h3 className="font-bold text-lg text-gray-900">الإشعارات</h3>
-          <div className="flex gap-1">
+      <PopoverContent
+        className="w-[95vw] sm:w-[420px] p-0 shadow-premium border-white/20 dark:border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-slate-950/95"
+        align="end"
+        sideOffset={12}
+        collisionPadding={16}
+      >
+        <div className="p-5 px-6 flex items-center justify-between border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-cyan-500/5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <Bell className="w-4 h-4 text-blue-600" />
+            </div>
+            <h3 className="font-black text-lg text-slate-900 dark:text-white">Notifications</h3>
+          </div>
+          <div className="flex gap-2">
             {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 rounded-lg"
-                onClick={markAllRead}
-              >
+              <Button onClick={markAllRead} variant="ghost" size="sm" className="h-8 text-[11px] font-black text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
                 <CheckCheck className="w-3.5 h-3.5 mr-1" />
-                قراءة الكل
+                Mark all as read
               </Button>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-gray-500 hover:bg-gray-100"
-              title="الإعدادات"
+              className="h-9 w-9 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Settings className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {/* Categories / Tabs */}
-        <div className="flex px-2 pt-1 gap-2 bg-white">
+        <div className="flex p-2 m-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl">
           <button
             onClick={() => setActiveTab('all')}
             className={cn(
-              "px-4 py-2 text-sm font-semibold rounded-full transition-all",
+              "flex-1 py-1.5 text-xs font-black rounded-xl transition-all",
               activeTab === 'all'
-                ? "bg-blue-50 text-blue-600"
-                : "bg-transparent text-gray-500 hover:bg-gray-50"
+                ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
             )}
           >
-            الكل
+            All
           </button>
           <button
             onClick={() => setActiveTab('unread')}
             className={cn(
-              "px-4 py-2 text-sm font-semibold rounded-full transition-all",
+              "flex-1 py-1.5 text-xs font-black rounded-xl transition-all",
               activeTab === 'unread'
-                ? "bg-blue-50 text-blue-600"
-                : "bg-transparent text-gray-500 hover:bg-gray-50"
+                ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
             )}
           >
-            غير مقروءة
+            Unread ({unreadCount})
           </button>
         </div>
 
-        {/* Content List */}
-        <ScrollArea className="h-[60vh] sm:h-[420px] bg-white">
+        <ScrollArea className="h-[60vh] sm:h-[480px]">
           {loading ? (
-            <div className="p-4 space-y-4">
+            <div className="p-6 space-y-6">
               {[1, 2, 3].map(i => (
-                <div key={i} className="flex gap-3">
-                  <Skeleton className="w-12 h-12 rounded-full" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
+                <div key={i} className="flex gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div className="space-y-2 flex-1 pt-1">
+                    <div className="h-4 w-3/4 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
+                    <div className="h-3 w-1/2 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
                   </div>
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[350px] text-center p-6">
+            <div className="flex flex-col items-center justify-center h-[400px] text-center p-8">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4"
+                className="w-24 h-24 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-[2rem] flex items-center justify-center mb-6 shadow-premium shadow-blue-500/5"
               >
-                <Bell className="w-8 h-8 text-gray-300" />
+                <Sparkles className="w-10 h-10 text-blue-300 dark:text-blue-800" />
               </motion.div>
-              <p className="text-gray-900 font-bold text-lg">لا توجد إشعارات حالياً</p>
-              <p className="text-sm text-gray-500 mt-2 max-w-[200px] leading-relaxed">
-                {activeTab === 'unread' ? "لقد قرأت جميع إشعاراتك، رائع!" : "سنخبرك عندما يصلك شيء جديد."}
+              <h4 className="text-slate-900 dark:text-white font-black text-xl mb-2">No notifications</h4>
+              <p className="text-sm text-slate-500 max-w-[220px] leading-relaxed font-medium">
+                {activeTab === 'unread' ? "You're all caught up!" : "New updates will appear here."}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-100/50 dark:divide-white/5">
               <AnimatePresence initial={false}>
-                {filtered.map((notification) => (
+                {filtered.map((notif) => (
                   <motion.div
                     layout
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    key={notification.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, x: 50 }}
+                    key={notif.id}
                     className={cn(
-                      "group relative flex items-start gap-3 p-4 hover:bg-gray-50/80 transition-colors cursor-pointer",
-                      !notification.isRead ? "bg-blue-50/30" : "bg-white"
+                      "group relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all",
+                      !notif.isRead && "bg-blue-500/5"
                     )}
-                    onClick={() => {
-                      handleMarkRead(notification.id, notification.category);
-                      if (notification.actionUrl) window.location.href = notification.actionUrl;
-                    }}
                   >
-                    <div className="relative flex-shrink-0 mt-1">
-                      {notification.senderAvatar ? (
-                        <Avatar className="w-12 h-12 border border-gray-100 shadow-sm">
-                          <AvatarImage src={notification.senderAvatar} />
-                          <AvatarFallback>{notification.senderName?.[0]}</AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-                          {notification.senderName?.[0] || 'N'}
-                        </div>
-                      )}
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 border-white dark:border-slate-800 shadow-premium transition-transform group-hover:scale-105">
+                        <AvatarImage src={notif.senderAvatar} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-black">
+                          {notif.senderName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
 
-                      {/* Unread Indicator - Icon Style */}
-                      {!notification.isRead && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center">
-                          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                        </div>
-                      )}
+                      {notif.type === 'success' && <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-lg border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-lg"><Check className="w-3 h-3 text-white" /></div>}
                     </div>
 
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="text-[14px] leading-snug break-words">
-                        <span className="font-bold text-gray-900">{notification.senderName}</span>
-                        <span className="text-gray-600 mx-1">{notification.message}</span>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-black text-slate-900 dark:text-slate-100 truncate pr-2">{notif.title}</span>
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex-shrink-0">
+                          {formatDistanceToNow(notif.createdAt, { locale: ar, addSuffix: true })}
+                        </span>
                       </div>
-                      <span className={cn(
-                        "text-xs font-medium mt-1.5 block",
-                        !notification.isRead ? "text-blue-600" : "text-gray-400"
-                      )}>
-                        {formatDistanceToNow(notification.createdAt, { locale: ar, addSuffix: true })}
-                      </span>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed line-clamp-2 mb-3">{notif.message}</p>
+
+                      <div className="flex items-center gap-2">
+                        {notif.actionUrl && (
+                          <Link href={notif.actionUrl} onClick={() => { setIsOpen(false); markRead(notif.id, notif.category); }} className="text-[11px] font-black text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors">
+                            View Details
+                          </Link>
+                        )}
+                        {!notif.isRead && (
+                          <button onClick={() => markRead(notif.id, notif.category)} className="text-[11px] font-black text-slate-400 hover:text-slate-600 px-2 py-1.5 transition-colors">
+                            Mark as Read
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Hover Menu */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                    <div className="absolute top-5 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-200">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreHorizontal className="w-4 h-4 text-slate-400" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMarkRead(notification.id, notification.category); }}>
-                            <Check className="w-4 h-4 ml-2" />
-                            تحديد كمقروء
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); /* Remove */ }}>
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            إزالة من الإشعارات
-                          </DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-white/10 shadow-premium">
+                          <DropdownMenuItem className="text-xs font-bold text-red-600 focus:text-red-700"><Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Notification</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -358,11 +322,12 @@ export default function UnifiedNotificationsButton() {
           )}
         </ScrollArea>
 
-        {/* Footer */}
-        <div className="p-3 bg-gray-50/80 border-t border-gray-100">
+        {/* Global Footer */}
+        <div className="p-4 bg-gradient-to-t from-slate-50/50 to-transparent dark:from-slate-900/50">
           <Link href={`${dashboardPath}/notifications`} onClick={() => setIsOpen(false)}>
-            <Button variant="outline" className="w-full text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 border-gray-200 shadow-sm h-10 font-bold text-sm rounded-lg transition-all">
-              عرض كل الإشعارات
+            <Button variant="outline" className="w-full flex items-center justify-between px-6 h-12 rounded-2xl font-black text-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition-all group">
+              <span>عرض جميع التنبيهات</span>
+              <Bell className="w-4 h-4 group-hover:scale-110 transition-transform" />
             </Button>
           </Link>
         </div>

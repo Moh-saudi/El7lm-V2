@@ -1,5 +1,5 @@
-import { 
-  BaseEntity, 
+import {
+  BaseEntity,
   DateOrTimestamp,
   MediaFile,
   Address,
@@ -141,6 +141,9 @@ export interface Image {
 export interface Video {
   url: string;
   desc?: string;
+  title?: string;
+  thumbnail?: string;
+  category?: 'match' | 'skills' | 'training' | 'other';
 }
 
 export interface Achievement {
@@ -175,7 +178,7 @@ export interface Player extends BaseEntity, PlayerFormData {
   // Legacy field names for backward compatibility
   created_at?: DateOrTimestamp;
   updated_at?: DateOrTimestamp;
-  
+
   // Additional properties for PlayersSearchPage
   displayName?: string;
   accountType?: string;

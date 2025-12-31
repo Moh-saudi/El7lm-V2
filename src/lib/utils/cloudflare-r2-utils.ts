@@ -7,7 +7,14 @@
 const CLOUDFLARE_BASE = 'https://assets.el7lm.com';
 
 export function fixReceiptUrl(url: any): string | null {
-    if (!url || typeof url !== 'string') return url || null;
+    if (!url) return null;
+
+    // Handle case where url might be an object { url: '...' } or { uri: '...' }
+    if (typeof url === 'object') {
+        url = url.url || url.uri || url.path || url.src || null;
+    }
+
+    if (!url || typeof url !== 'string') return null;
 
     let correctedUrl = url.trim();
 

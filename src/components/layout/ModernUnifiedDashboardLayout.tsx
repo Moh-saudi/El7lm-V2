@@ -23,6 +23,8 @@ interface ModernUnifiedDashboardLayoutProps {
   showFloatingChat?: boolean;
   showSearch?: boolean;
   searchPlaceholder?: string;
+  noPadding?: boolean;
+  showHeader?: boolean;
 }
 
 const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> = ({
@@ -33,14 +35,14 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
   showFooter = true,
   showFloatingChat = true,
   showSearch = true,
-  searchPlaceholder = "ابحث عن أي شيء..."
+  searchPlaceholder = "ابحث عن أي شيء...",
+  noPadding = false,
+  showHeader = true
 }) => {
   const { user, userData, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [dontShowAgain, setDontShowAgain] = useState(true);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
 
   // Give AuthProvider time to sync after login/logout
@@ -73,24 +75,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
   // إظهار القائمة الجانبية في صفحة ملف اللاعب أيضاً. نخفيها فقط لملفات الكيانات العامة.
   const shouldShowSidebar = !isEntityProfilePage;
 
-  // نافذة ترحيب بأكاديمية الحلم (مرة لكل مستخدم) - لا تظهر داخل صفحة الأكاديمية
-  useEffect(() => {
-    try {
-      if (!user) return;
-      if (pathname.includes('/dashboard/dream-academy')) return;
-      const key = `dream_academy_welcome_v1_${user.uid}`;
-      const seen = typeof window !== 'undefined' ? localStorage.getItem(key) : '1';
-      if (!seen) setShowWelcome(true);
-    } catch { }
-  }, [user, pathname]);
 
-  const markWelcomeSeen = () => {
-    try {
-      if (!user) return;
-      const key = `dream_academy_welcome_v1_${user.uid}`;
-      localStorage.setItem(key, '1');
-    } catch { }
-  };
 
   // Loading state - wait for auth to complete
   if (loading || !authCheckComplete) {
@@ -121,7 +106,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
         <EnhancedNotifications />
 
         {/* الهيدر الحديث - يظهر باستثناء صفحات ملفات الكيانات العامة */}
-        {!isEntityProfilePage && (
+        {!isEntityProfilePage && showHeader && (
           <ModernUnifiedHeader
             showSearch={showSearch}
             searchPlaceholder={searchPlaceholder}
@@ -155,7 +140,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
               <div className={showFooter ? 'pb-20' : 'pb-4'}>
                 <div className="w-full min-h-full">
                   {/* Container للمحتوى */}
-                  <div className="min-h-full p-6">
+                  <div className={`min-h-full ${noPadding ? 'p-0' : 'p-6'}`}>
                     {children}
                   </div>
                 </div>
@@ -164,34 +149,7 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
           </main>
         </div>
 
-        {/* نافذة ترحيبية عصرية بأكاديمية الحلم */}
-        <Dialog open={showWelcome} onOpenChange={(open) => { setShowWelcome(open); if (!open && dontShowAgain) markWelcomeSeen(); }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>مرحباً بك في أكاديمية الحلم</DialogTitle>
-              <DialogDescription>
-                تعلّم اللغات المتخصصة في كرة القدم، طوّر مهاراتك الحياتية، واستفد من جلسات لايف كوتش خاصة مدفوعة. محتوى مُختار بعناية مع قوائم تشغيل يوتيوب ومزايا تفاعلية داخل منصتنا.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-2 text-sm text-gray-600 leading-7">
-              <ul className="list-disc pr-6 space-y-1">
-                <li>فئات ديناميكية تُدار من لوحة الإدارة</li>
-                <li>إحصائيات مشاهدات وإعجابات خاصة بالمنصة</li>
-                <li>جلسات خاصة مدفوعة بعملات متعددة وطرق دفع متنوعة</li>
-              </ul>
-            </div>
-            <div className="flex items-center justify-between mt-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={dontShowAgain} onChange={(e) => setDontShowAgain(e.target.checked)} />
-                لا تُظهر هذه الرسالة مرة أخرى
-              </label>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { if (dontShowAgain) markWelcomeSeen(); setShowWelcome(false); }}>لاحقاً</Button>
-                <Button className="bg-gradient-to-r from-sky-500 to-blue-600 text-white" onClick={() => { if (dontShowAgain) markWelcomeSeen(); router.push('/dashboard/dream-academy'); }}>الدخول الآن</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+
 
         {/* الفوتر - يظهر باستثناء صفحات ملفات الكيانات العامة */}
         {showFooter && !isEntityProfilePage && <Footer />}

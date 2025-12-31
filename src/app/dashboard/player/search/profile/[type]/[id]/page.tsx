@@ -33,6 +33,7 @@ import {
   Languages,
   Share2
 } from 'lucide-react';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 // أنواع البيانات
 interface EntityProfile {
@@ -119,6 +120,12 @@ export default function EntityProfilePage() {
           case 'trainer':
             collectionName = 'trainers';
             break;
+          case 'scout':
+            collectionName = 'scouts';
+            break;
+          case 'sponsor':
+            collectionName = 'sponsors';
+            break;
           default:
             setError('نوع الكيان غير مدعوم');
             return;
@@ -140,13 +147,30 @@ export default function EntityProfilePage() {
           // تحويل البيانات إلى تنسيق EntityProfile
           const profile: EntityProfile = {
             id: docSnap.id,
-            name: data.name || data.full_name || 'غير محدد',
+            name: data.name || data.full_name || data.display_name || data.fullName || 'غير محدد',
             type: entityType as any,
             email: data.email || '',
             phone: data.phone || '',
             website: data.website || '',
-            profileImage: data.logo || data.profile_photo || '/images/default-avatar.png',
-            coverImage: data.coverImage || '/images/hero-1.jpg',
+            profileImage: fixReceiptUrl(
+              data.profile_image ||
+              data.logo ||
+              data.profile_photo ||
+              data.profileImage ||
+              data.photoURL ||
+              data.avatar ||
+              data.image ||
+              data.profile_image_url ||
+              data.profile_picture ||
+              data.brand_logo ||
+              data.business_logo
+            ) || '/images/default-avatar.png',
+            coverImage: fixReceiptUrl(
+              data.coverImage ||
+              data.backCover ||
+              data.header_image ||
+              data.banner
+            ) || '/images/hero-1.jpg',
             location: {
               country: data.country || data.nationality || '',
               city: data.city || data.current_location?.split(' - ')[1] || data.current_location || '',
