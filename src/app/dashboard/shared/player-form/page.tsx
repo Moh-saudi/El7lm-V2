@@ -3,13 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from "@/lib/firebase/config";
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
 import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity } from '@/data/countries-from-register';
 import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
-import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
+import { createPlayerLoginAccount, checkPlayerHasLoginAccount } from '@/lib/utils/player-login-account';
 import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -725,13 +725,68 @@ export default function SharedPlayerForm({
     return Object.keys(allErrors).length === 0;
   };
 
+  const checkDataUniqueness = async (email: string, phone: string) => {
+    if (!email && !phone) return { unique: true };
+
+    const collectionsToCheck = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
+
+    for (const coll of collectionsToCheck) {
+      if (email) {
+        const qEmail = query(collection(db, coll), where('email', '==', email));
+        const snapEmail = await getDocs(qEmail);
+
+        // Filter out current player in case of edit mode
+        const existingDocs = snapEmail.docs.filter(d => mode === 'add' || d.id !== playerId);
+
+        if (existingDocs.length > 0) {
+          return {
+            unique: false,
+            field: 'email',
+            message: `الإيميل (${email}) مسجل مسبقاً في قائمة ${coll === 'users' ? 'المستخدمين' : coll === 'players' ? 'اللاعبين' : 'المنظمات'}.`
+          };
+        }
+      }
+
+      if (phone) {
+        const qPhone = query(collection(db, coll), where('phone', '==', phone));
+        const snapPhone = await getDocs(qPhone);
+
+        // Filter out current player in case of edit mode
+        const existingDocs = snapPhone.docs.filter(d => mode === 'add' || d.id !== playerId);
+
+        if (existingDocs.length > 0) {
+          return {
+            unique: false,
+            field: 'phone',
+            message: `رقم الهاتف (${phone}) مسجل مسبقاً في قائمة ${coll === 'users' ? 'المستخدمين' : coll === 'players' ? 'اللاعبين' : 'المنظمات'}.`
+          };
+        }
+      }
+    }
+
+    return { unique: true };
+  };
+
   const handleNext = async () => {
     // Validate current step
     let errors: FormErrors = {};
 
     if (currentStep === STEPS.PERSONAL) {
       errors = validatePersonalInfo(formData);
-    } else if (currentStep === STEPS.SPORTS) {
+
+      if (Object.keys(errors).length === 0) {
+        setIsSaving(true); // استخدام مؤشر التحميل
+        const { unique, field, message } = await checkDataUniqueness(formData.email, formData.phone);
+        setIsSaving(false);
+
+        if (!unique) {
+          toast.error(message);
+          setFormErrors({ [field as string]: 'بيانات مكررة' });
+          return;
+        }
+      }
+    }
+    else if (currentStep === STEPS.SPORTS) {
       errors = validateSports(formData);
     }
 
@@ -771,6 +826,15 @@ export default function SharedPlayerForm({
       console.log('[player-form] البيانات المرسلة إلى الحفظ:', updateData);
 
       if (mode === 'add') {
+        // التحقق النهائي من تفرد البيانات (إيميل وهاتف) في جميع المجموعات
+        const { unique, message } = await checkDataUniqueness(updateData.email, updateData.phone);
+        if (!unique) {
+          toast.error(message);
+          setError(message);
+          setIsSaving(false);
+          return;
+        }
+
         // إضافة لاعب جديد مع الحقول المناسبة حسب نوع الحساب
         const playerData = {
           ...updateData,
@@ -975,16 +1039,14 @@ export default function SharedPlayerForm({
               {Object.entries(STEP_TITLES).map(([step, title]) => (
                 <div
                   key={step}
-                  className={`flex items-center ${
-                    parseInt(step) <= currentStep ? 'text-blue-600' : 'text-gray-400'
-                  }`}
+                  className={`flex items-center ${parseInt(step) <= currentStep ? 'text-blue-600' : 'text-gray-400'
+                    }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      parseInt(step) <= currentStep
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-500'
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${parseInt(step) <= currentStep
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-500'
+                      }`}
                   >
                     {parseInt(step) + 1}
                   </div>
@@ -2470,22 +2532,22 @@ export default function SharedPlayerForm({
 
             {/* باقي الخطوات غير المطورة */}
             {currentStep !== STEPS.PERSONAL &&
-             currentStep !== STEPS.EDUCATION &&
-             currentStep !== STEPS.MEDICAL &&
-             currentStep !== STEPS.SPORTS &&
-             currentStep !== STEPS.SKILLS &&
-             currentStep !== STEPS.OBJECTIVES &&
-             currentStep !== STEPS.MEDIA &&
-             currentStep !== STEPS.CONTRACTS && (
-              <div className="text-center py-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  المرحلة {currentStep + 1}: {STEP_TITLES[currentStep]}
-                </h3>
-                <p className="text-gray-600">
-                  جميع المراحل مكتملة! يمكنك حفظ البيانات الآن.
-                </p>
-              </div>
-            )}
+              currentStep !== STEPS.EDUCATION &&
+              currentStep !== STEPS.MEDICAL &&
+              currentStep !== STEPS.SPORTS &&
+              currentStep !== STEPS.SKILLS &&
+              currentStep !== STEPS.OBJECTIVES &&
+              currentStep !== STEPS.MEDIA &&
+              currentStep !== STEPS.CONTRACTS && (
+                <div className="text-center py-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    المرحلة {currentStep + 1}: {STEP_TITLES[currentStep]}
+                  </h3>
+                  <p className="text-gray-600">
+                    جميع المراحل مكتملة! يمكنك حفظ البيانات الآن.
+                  </p>
+                </div>
+              )}
 
             {/* خيار إنشاء حساب تسجيل دخول - يظهر فقط في وضع الإضافة */}
             {mode === 'add' && (

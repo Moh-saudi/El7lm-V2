@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { countries } from '@/lib/constants/countries';
 
 const isValidEmail = (email: string): boolean => {
@@ -154,9 +155,20 @@ export default function RegisterPage() {
     try {
       if (registrationMethod === 'email') {
         console.log('Creating Email Account...');
-        await registerUser(formData.email, formData.password, formData.accountType as any, {
+        const res = await registerUser(formData.email, formData.password, formData.accountType as any, {
           full_name: formData.name, country: formData.country, countryCode: formData.countryCode, organizationCode: formData.organizationCode, phone: ''
         });
+
+        // Auto-create join request if code is provided
+        if (formData.organizationCode && formData.accountType === 'player' && res) {
+          try {
+            await organizationReferralService.createJoinRequest(res.uid, res, formData.organizationCode);
+            console.log('✅ Auto-join request created for code:', formData.organizationCode);
+          } catch (joinErr) {
+            console.warn('⚠️ Could not create auto-join request:', joinErr);
+            // Don't fail the whole registration if this fails
+          }
+        }
 
         // Send Verify Email
         if (auth.currentUser) {
@@ -454,7 +466,39 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <WhatsAppOTPVerification phoneNumber={pendingPhone || ''} name={formData.name} isOpen={showPhoneVerification} onVerificationSuccess={() => { }} onVerificationFailed={setError} onClose={() => setShowPhoneVerification(false)} onOTPVerify={async (otp) => { verifyPhoneOTP(confirmationResult, otp, formData.accountType as any, { full_name: formData.name, country: formData.country, countryCode: formData.countryCode, phone: pendingPhone }); }} title="تفعيل الهاتف" subtitle="أدخل الرمز المرسل" otpExpirySeconds={300} maxAttempts={3} language="ar" t={t} />
+          <WhatsAppOTPVerification
+            phoneNumber={pendingPhone || ''}
+            name={formData.name}
+            isOpen={showPhoneVerification}
+            onVerificationSuccess={() => { }}
+            onVerificationFailed={setError}
+            onClose={() => setShowPhoneVerification(false)}
+            onOTPVerify={async (otp) => {
+              const res = await verifyPhoneOTP(confirmationResult, otp, formData.accountType as any, {
+                full_name: formData.name,
+                country: formData.country,
+                countryCode: formData.countryCode,
+                phone: pendingPhone,
+                organizationCode: formData.organizationCode
+              });
+
+              // Auto-create join request if code is provided
+              if (formData.organizationCode && formData.accountType === 'player' && res?.userData) {
+                try {
+                  await organizationReferralService.createJoinRequest(res.user.uid, res.userData, formData.organizationCode);
+                  console.log('✅ Auto-join request created for code:', formData.organizationCode);
+                } catch (joinErr) {
+                  console.warn('⚠️ Could not create auto-join request:', joinErr);
+                }
+              }
+            }}
+            title="تفعيل الهاتف"
+            subtitle="أدخل الرمز المرسل"
+            otpExpirySeconds={300}
+            maxAttempts={3}
+            language="ar"
+            t={t}
+          />
           <div id="recaptcha-container"></div>
         </div>
       </div>

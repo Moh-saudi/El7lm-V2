@@ -435,7 +435,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/player/search-players`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'tournaments', label: 'البطولات', icon: Award, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/player/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/player/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/player/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/player/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
       ],
@@ -455,7 +455,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'player-evaluation', label: 'تقييم اللاعبين', icon: Star, href: `/dashboard/club/player-evaluation`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/club/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/club/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'الإحالات', icon: Users, href: `/dashboard/club/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/club/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       academy: [
@@ -468,7 +468,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'tournaments', label: 'البطولات', icon: Award, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/academy/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/academy/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'الإحالات', icon: Users, href: `/dashboard/academy/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/academy/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       trainer: [
@@ -480,7 +480,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'bulk-payment', label: 'تحصيل الاشتراكات', icon: Target, href: `/dashboard/trainer/bulk-payment`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/trainer/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/trainer/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/trainer/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/trainer/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       agent: [
@@ -492,7 +492,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'bulk-payment', label: 'تحصيل الاشتراكات', icon: Target, href: `/dashboard/agent/bulk-payment`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'subscription-status', label: 'حالة الاشتراك', icon: TrendingUp, href: '/dashboard/agent/subscription-status', color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'billing', label: 'الفواتير', icon: FileText, href: `/dashboard/agent/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'الإحالات والمكافآت', icon: Users, href: `/dashboard/agent/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/agent/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
       ],
       admin: [
@@ -511,7 +511,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
-        { id: 'referrals', label: 'سجل الإحالات والمكافآت', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+        { id: 'referrals', label: 'إدارة سفراء الحلم', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
       ]
     };
 

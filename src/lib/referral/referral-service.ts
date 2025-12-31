@@ -1,29 +1,29 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  updateDoc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
   serverTimestamp,
   increment,
   writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { 
-  Referral, 
-  PlayerRewards, 
-  Badge, 
-  BADGES, 
+import {
+  Referral,
+  PlayerRewards,
+  Badge,
+  BADGES,
   POINTS_CONVERSION,
-  ReferralStats 
+  ReferralStats
 } from '@/types/referral';
 
 class ReferralService {
-  
+
   // إنشاء كود إحالة فريد
   generateReferralCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -68,7 +68,7 @@ class ReferralService {
   async addPointsToPlayer(playerId: string, points: number, reason: string): Promise<void> {
     try {
       const rewardsRef = doc(db, 'player_rewards', playerId);
-      
+
       await updateDoc(rewardsRef, {
         totalPoints: increment(points),
         availablePoints: increment(points),
@@ -126,16 +126,16 @@ class ReferralService {
         where('referralCode', '==', referralCode),
         where('status', '==', 'pending')
       );
-      
+
       const referralSnapshot = await getDocs(referralQuery);
-      
+
       if (referralSnapshot.empty) {
         throw new Error('كود الإحالة غير صحيح أو منتهي الصلاحية');
       }
 
       const referralDoc = referralSnapshot.docs[0];
       const referralData = referralDoc.data() as Referral;
-      
+
       // التحقق من عدم استخدام الكود لنفس اللاعب
       if (referralData.referrerId === newPlayerId) {
         throw new Error('لا يمكن استخدام كود الإحالة لنفس اللاعب');
@@ -150,14 +150,14 @@ class ReferralService {
 
       // إضافة نقاط للاعب المحيل
       await this.addPointsToPlayer(
-        referralData.referrerId, 
+        referralData.referrerId,
         POINTS_CONVERSION.REFERRAL_POINTS,
         'إحالة لاعب جديد'
       );
 
       // إضافة نقاط للاعب الجديد
       await this.addPointsToPlayer(
-        newPlayerId, 
+        newPlayerId,
         POINTS_CONVERSION.REFERRED_BONUS_POINTS,
         'مكافأة انضمام عبر إحالة'
       );
@@ -182,17 +182,17 @@ class ReferralService {
     try {
       const rewardsRef = doc(db, 'player_rewards', playerId);
       const rewardsDoc = await getDoc(rewardsRef);
-      
+
       if (!rewardsDoc.exists()) return;
 
       const rewards = rewardsDoc.data() as PlayerRewards;
       const currentBadges = rewards.badges.map(b => b.id);
-      
+
       let badgesToAward: Badge[] = [];
 
       if (category === 'referral') {
         const referralCount = rewards.referralCount;
-        
+
         for (const badge of BADGES.REFERRAL_BADGES) {
           if (referralCount >= badge.requirement && !currentBadges.includes(badge.id)) {
             badgesToAward.push({
@@ -218,15 +218,15 @@ class ReferralService {
   // جلب إحصائيات الإحالات للاعب
   async getPlayerReferralStats(playerId: string): Promise<ReferralStats> {
     try {
-      // جلب الإحالات المكتملة
+      // جلب الإحالات (سنقوم بالفلترة في الذاكرة لتجنب الحاجة لفهرس مركب)
       const referralsQuery = query(
         collection(db, 'referrals'),
-        where('referrerId', '==', playerId),
-        where('status', '==', 'completed')
+        where('referrerId', '==', playerId)
       );
-      
+
       const referralsSnapshot = await getDocs(referralsQuery);
-      const referrals = referralsSnapshot.docs.map(doc => doc.data() as Referral);
+      const allReferrals = referralsSnapshot.docs.map(doc => doc.data() as Referral);
+      const referrals = allReferrals.filter(ref => ref.status === 'completed');
 
       // جلب نظام مكافآت اللاعب
       const rewardsRef = doc(db, 'player_rewards', playerId);
@@ -256,6 +256,21 @@ class ReferralService {
     }
   }
 
+  // جلب أكواد الإحالة الخاصة بالمستخدم
+  async getUserReferralCodes(userId: string): Promise<Referral[]> {
+    try {
+      const q = query(
+        collection(db, 'referrals'),
+        where('referrerId', '==', userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Referral));
+    } catch (error) {
+      console.error('خطأ في جلب أكواد الإحالة للمستخدم:', error);
+      return [];
+    }
+  }
+
   // جلب أفضل المحيلين
   async getTopReferrers(limit: number = 10): Promise<ReferralStats['topReferrers']> {
     try {
@@ -264,17 +279,17 @@ class ReferralService {
         orderBy('referralCount', 'desc'),
         orderBy('totalEarnings', 'desc')
       );
-      
+
       const rewardsSnapshot = await getDocs(rewardsQuery);
       const topReferrers = [];
 
-      for (const doc of rewardsSnapshot.docs.slice(0, limit)) {
-        const rewards = doc.data() as PlayerRewards;
-        
+      for (const rewardDoc of rewardsSnapshot.docs.slice(0, limit)) {
+        const rewards = rewardDoc.data() as PlayerRewards;
+
         // جلب اسم اللاعب
         const playerDoc = await getDoc(doc(db, 'players', rewards.playerId));
-        const playerData = playerDoc.exists() ? playerDoc.data() : null;
-        
+        const playerData = playerDoc.exists() ? playerDoc.data() as any : null;
+
         topReferrers.push({
           playerId: rewards.playerId,
           playerName: playerData?.full_name || playerData?.name || 'لاعب مجهول',
@@ -303,7 +318,7 @@ class ReferralService {
     email: string;
   } {
     const referralLink = this.createReferralLink(referralCode);
-    
+
     const message = `مرحباً! أنا ${playerName} وأدعوك للانضمام إلى منصة كرة القدم الرائدة! 🏆
 
 🎯 احصل على:

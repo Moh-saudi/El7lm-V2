@@ -483,6 +483,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         { id: 'admin-employees', label: 'فريق العمل والصلاحيات', icon: UserCheck, href: `/dashboard/admin/employees`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
         { id: 'admin-customer-management', label: 'إدارة العملاء', icon: UserPlus, href: `/dashboard/admin/customer-management`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'admin-check-phone', label: 'فحص الهواتف', icon: Search, href: `/dashboard/admin/users/check-phone`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        { id: 'admin-referrals-mgmt', label: 'سفراء الحلم', icon: Award, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
       ]
     } : null;
 
@@ -543,11 +544,11 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           { id: 'player-videos', label: 'فيديوهاتي', icon: Video, href: `/dashboard/player/videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
           { id: 'player-stats', label: 'إحصائياتي', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-green-600', bgColor: 'bg-green-50' },
           { id: 'player-reports', label: 'تقارير الكشافين', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-          { id: 'player-referrals', label: 'كود الإحالة (Referral)', icon: Users, href: `/dashboard/player/referrals`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
+          { id: 'player-referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/player/referrals`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
         ] : [
           { id: 'team-players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-green-600', bgColor: 'bg-green-50' },
           { id: 'player-videos-mgmt', label: 'بنك فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-          { id: 'referrals-mgmt', label: 'سجل الإحالات والعقود', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+          { id: 'referrals-mgmt', label: 'سفراء الحلم', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         ])
       ]
     } : null;
