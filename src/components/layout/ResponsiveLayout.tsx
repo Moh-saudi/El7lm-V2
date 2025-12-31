@@ -479,8 +479,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       title: 'إدارة الهوية',
       icon: Users,
       items: [
-        { id: 'admin-users-management', label: 'المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-green-600', bgColor: 'bg-green-50' },
-        { id: 'admin-employees', label: 'الموظفين والصلاحيات', icon: UserCheck, href: `/dashboard/admin/employees`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
+        { id: 'admin-users-management', label: 'إدارة المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-green-600', bgColor: 'bg-green-50' },
+        { id: 'admin-employees', label: 'فريق العمل والصلاحيات', icon: UserCheck, href: `/dashboard/admin/employees`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
         { id: 'admin-customer-management', label: 'إدارة العملاء', icon: UserPlus, href: `/dashboard/admin/customer-management`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'admin-check-phone', label: 'فحص الهواتف', icon: Search, href: `/dashboard/admin/users/check-phone`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
       ]
@@ -493,9 +493,9 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       icon: DollarSign,
       items: [
         ...(accountType === 'admin' ? [
-          { id: 'admin-payments', label: 'المدفوعات العامة', icon: CreditCard, href: `/dashboard/admin/payments`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          { id: 'admin-payments', label: 'السجل المالي', icon: CreditCard, href: `/dashboard/admin/payments`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
           { id: 'admin-geidea-transactions', label: 'حسابات جيديا', icon: CreditCard, href: `/dashboard/admin/geidea-transactions`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-          { id: 'admin-pricing', label: 'الأسعار والعروض', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+          { id: 'admin-pricing', label: 'إدارة الخطط والأسعار', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
           { id: 'admin-invoices', label: 'الفواتير والحسابات', icon: FileText, href: `/dashboard/admin/invoices`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         ] : [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Star, href: `/dashboard/subscription`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
@@ -513,7 +513,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       items: [
         { id: 'admin-system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'admin-notification-center', label: 'مركز التنبيهات', icon: Bell, href: `/dashboard/admin/notification-center`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        { id: 'admin-support', label: 'الدعم الفني والرسائل', icon: Headphones, href: `/dashboard/admin/support`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+        { id: 'admin-support', label: 'مركز الدعم والبلاغات', icon: Headphones, href: `/dashboard/admin/support`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'admin-clarity', label: 'تحليلات Clarity', icon: BarChart3, href: `/dashboard/admin/clarity`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'admin-reports', label: 'تقارير الأداء', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'admin-beon-v3', label: 'إدارة BeOn', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
@@ -545,9 +545,9 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
           { id: 'player-reports', label: 'تقارير الكشافين', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
           { id: 'player-referrals', label: 'كود الإحالة (Referral)', icon: Users, href: `/dashboard/player/referrals`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
         ] : [
-          { id: 'team-players', label: 'قائمة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-green-600', bgColor: 'bg-green-50' },
-          { id: 'player-videos-mgmt', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-          { id: 'referrals-mgmt', label: 'الإحالات والعقود', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+          { id: 'team-players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          { id: 'player-videos-mgmt', label: 'بنك فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          { id: 'referrals-mgmt', label: 'سجل الإحالات والعقود', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
         ])
       ]
     } : null;
@@ -558,7 +558,16 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       title: 'اكتشاف الفرص',
       icon: Search,
       items: [
-        { id: 'search-opportunities', label: 'البحث عن فرص', icon: Search, href: `/dashboard/${['admin', 'marketer', 'parent'].includes(accountType) ? 'player' : accountType}/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+        ...(accountType === 'player' || accountType === 'admin' ? [
+          {
+            id: 'search-opportunities',
+            label: 'البحث عن فرص',
+            icon: Search,
+            href: `/dashboard/${accountType === 'admin' ? 'player' : accountType}/search`,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50'
+          }
+        ] : []),
         { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/${['admin', 'marketer', 'parent'].includes(accountType) ? 'player' : accountType}/search-players`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'shared-videos', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/player/shared-videos`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'tournaments-unified', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-white', bgColor: 'bg-gradient-to-r from-yellow-500 to-orange-500', isHighlighted: true },
