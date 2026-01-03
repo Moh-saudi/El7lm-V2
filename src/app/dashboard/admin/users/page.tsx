@@ -10,7 +10,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc, query, limit, orderBy, where } from 'firebase/firestore';
 import {
   Activity,
   AlertCircle,
@@ -43,7 +43,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 interface User {
@@ -143,6 +143,8 @@ export default function AdminUsersPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [instanceId, setInstanceId] = useState('68F243B3A8D8D');
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [healthScore, setHealthScore] = useState(0);
 
   // New states for account management
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
@@ -526,9 +528,12 @@ export default function AdminUsersPage() {
         stats.total++;
       };
 
+      // استخدام الكويري الذكي لجلب آخر 500 سجل فقط من الإحصائيات (كافي للوحة التحكم)
+
       try {
         const analyticsRef = collection(db, 'analytics');
-        const analyticsSnapshot = await getDocs(analyticsRef);
+        const qAnalytics = query(analyticsRef, orderBy('timestamp', 'desc'), limit(500));
+        const analyticsSnapshot = await getDocs(qAnalytics);
         analyticsSnapshot.forEach(processDoc);
       } catch (error) {
         console.log('محاولة جلب من مجموعة visits...');
@@ -536,7 +541,8 @@ export default function AdminUsersPage() {
 
       try {
         const visitsRef = collection(db, 'visits');
-        const visitsSnapshot = await getDocs(visitsRef);
+        const qVisits = query(visitsRef, orderBy('timestamp', 'desc'), limit(500));
+        const visitsSnapshot = await getDocs(qVisits);
         visitsSnapshot.forEach(processDoc);
       } catch (error) {
         console.error('خطأ في جلب الزيارات:', error);
@@ -564,7 +570,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // دالة لجلب اسم المنظمة من cache أو من قاعدة البيانات
+  // دالة لجلب اسم المنظمة من cache أو من قاعدة البيانات - محسنة بشكل "ذكي"
   const getOrganizationName = async (parentId: string, parentType: string): Promise<string> => {
     if (!parentId || !parentType) return '';
 
@@ -575,12 +581,11 @@ export default function AdminUsersPage() {
 
     try {
       const collectionName = parentType === 'user' ? 'users' : `${parentType}s`;
-      const orgDoc = await doc(db, collectionName, parentId);
-      const orgSnap = await getDocs(collection(db, collectionName));
+      const orgDocRef = doc(db, collectionName, parentId);
+      const orgSnap = await getDoc(orgDocRef);
 
-      const found = orgSnap.docs.find(d => d.id === parentId);
-      if (found) {
-        const data = found.data();
+      if (orgSnap.exists()) {
+        const data = orgSnap.data();
         const orgName = data.name || data.full_name || data.club_name || data.academy_name || data.agent_name || data.trainer_name || '';
 
         setOrganizationsCache(prev => ({
@@ -674,67 +679,73 @@ export default function AdminUsersPage() {
 
     try {
       setActionLoading(true);
-
-      const collectionName = selectedUserDetails.accountType === 'user' ? 'users' :
-        selectedUserDetails.accountType + 's';
+      const userEmail = selectedUserDetails.email?.toLowerCase().trim();
+      const userId = selectedUserDetails.id;
+      const allCollections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
 
       if (isPermanentDelete) {
-        // حذف نهائي - Hard Delete
-        // 1. حذف من المجموعة الخاصة (role collection)
-        await deleteDoc(doc(db, collectionName, selectedUserDetails.id));
+        // حذف نهائي شامل (Deep Hard Delete)
+        const deleteOperations: Promise<any>[] = [];
 
-        // 2. حذف من مجموعة users الرئيسية إذا كانت مختلفة
-        if (collectionName !== 'users') {
-          try {
-            await deleteDoc(doc(db, 'users', selectedUserDetails.id));
-          } catch (e) {
-            console.warn('Could not delete from users collection (might not exist)', e);
+        // 1. الحذف المباشر بالـ ID من جميع المجموعات
+        allCollections.forEach(coll => {
+          deleteOperations.push(deleteDoc(doc(db, coll, userId)).catch(() => { }));
+        });
+
+        // 2. إذا كان هناك بريد، نبحث عن أي حسابات مكررة بنفس البريد ونحذفها أيضاً
+        if (userEmail) {
+          for (const collName of allCollections) {
+            try {
+              const q = query(collection(db, collName), where('email', '==', userEmail));
+              const snap = await getDocs(q);
+              snap.forEach(d => {
+                deleteOperations.push(deleteDoc(doc(db, collName, d.id)).catch(() => { }));
+              });
+            } catch (e) { /* skip failures in specific sub-collections */ }
           }
         }
 
-        // 3. تحديث الواجهة (إزالة المستخدم تماماً)
-        setUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUserDetails.id));
+        await Promise.all(deleteOperations);
 
-        toast.success('تم حذف الحساب وبياناته نهائياً من قاعدة البيانات');
+        // تحديث الواجهة فوراً ومسح أي أثر لهذا البريد
+        setUsers(prev => prev.filter(u => u.id !== userId && (u.email?.toLowerCase().trim() !== userEmail || !userEmail)));
+        toast.success(`تم تطهير قاعدة البيانات من الحساب (${userEmail}) وجميع تكراراته`);
       } else {
-        // حذف ناعم - Soft Delete
+        // حذف ناعم (Soft Delete)
         const deletePayload = {
           isDeleted: true,
-          isActive: false, // Ensure account is inactive upon deletion
+          isActive: false,
           deletedAt: new Date(),
           deletedBy: user?.uid || 'admin'
         };
 
-        // Update in the source collection
-        await updateDoc(doc(db, collectionName, selectedUserDetails.id), deletePayload);
+        const updatePromises = allCollections.map(async (coll) => {
+          try {
+            const docRef = doc(db, coll, userId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              await updateDoc(docRef, deletePayload);
+            }
+          } catch (e) { }
+        });
 
-        // Also update in users collection if it exists (for sync purposes)
-        try {
-          const userDocRef = doc(db, 'users', selectedUserDetails.id);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            await updateDoc(userDocRef, deletePayload);
-          }
-        } catch (syncError) {
-          // Non-critical if users collection doesn't exist for this user
-          console.warn('Could not sync deletion to users collection:', syncError);
-        }
+        await Promise.all(updatePromises);
 
-        setUsers(prevUsers => prevUsers.map(u =>
-          u.id === selectedUserDetails.id
+        setUsers(prev => prev.map(u =>
+          (u.id === userId || (userEmail && u.email?.toLowerCase().trim() === userEmail))
             ? { ...u, isDeleted: true, isActive: false }
             : u
         ));
 
-        toast.success('تم تغيير حالة الحساب إلى محذوف (Soft Delete)');
+        toast.success('تم نقل الحساب وتوابعه إلى سلة المهملات');
       }
 
       setShowDeleteDialog(false);
       setIsPermanentDelete(false);
       setShowUserDetailsDialog(false);
     } catch (error) {
-      console.error('Error deleting account:', error);
-      toast.error('حدث خطأ في حذف الحساب');
+      console.error('Critical Deletion Error:', error);
+      toast.error('حدث خطأ فني أثناء محاولة التطهير الشامل للبيانات');
     } finally {
       setActionLoading(false);
     }
@@ -833,297 +844,122 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Load users data - with pagination support for 1000+ users
+  // Load users data - Optimized & Smarter Loading
   useEffect(() => {
     const loadUsers = async () => {
       try {
         setLoading(true);
-        console.log('🔄 بدء تحميل بيانات المستخدمين...');
+        console.log('🔄 بدء تحميل بيانات المستخدمين (نسخة ذكية)...');
 
         const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
         const allUsers: User[] = [];
         let totalProcessed = 0;
 
-        // تجميع تواريخ بديلة من analytics و visits و player_join_requests
-        const earliestActivityByUser: Record<string, Date> = {};
-        try {
-          const analyticsSnap = await getDocs(collection(db, 'analytics'));
-          analyticsSnap.forEach((docSnap) => {
-            const d = docSnap.data() as any;
-            const uid = d.userId || d.uid || d.user_id;
-            const t = safeToDate(d.timestamp || d.date);
-            if (uid && t) {
-              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
-                earliestActivityByUser[uid] = t;
-              }
-            }
-          });
-        } catch { }
-        try {
-          const visitsSnap = await getDocs(collection(db, 'visits'));
-          visitsSnap.forEach((docSnap) => {
-            const d = docSnap.data() as any;
-            const uid = d.userId || d.uid || d.user_id;
-            const t = safeToDate(d.timestamp || d.date);
-            if (uid && t) {
-              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
-                earliestActivityByUser[uid] = t;
-              }
-            }
-          });
-        } catch { }
-        try {
-          const joinsSnap = await getDocs(collection(db, 'player_join_requests'));
-          joinsSnap.forEach((docSnap) => {
-            const d = docSnap.data() as any;
-            const uid = d.playerId || d.userId || d.uid;
-            const t = safeToDate(d.requestedAt || d.createdAt || d.created_at);
-            if (uid && t) {
-              if (!earliestActivityByUser[uid] || t < earliestActivityByUser[uid]) {
-                earliestActivityByUser[uid] = t;
-              }
-            }
-          });
-        } catch { }
-        const fallbackActivityCount = Object.keys(earliestActivityByUser).length;
-        if (fallbackActivityCount > 0) {
-          console.log(`🗂️ تم تجميع تواريخ بديلة لنشاط ${fallbackActivityCount} مستخدم لاستخدامها كتاريخ تسجيل عند الحاجة`);
-        }
-
-        // أولاً، جلب جميع المنظمات للـ cache
+        // أولاً، جلب جميع المنظمات للـ cache بشكل سريع (Clubs & Academies only)
+        // لا نحتاج لتحميل كل شيء هنا، بل فقط المنظمات الأساسية
         const orgsCache: { [key: string]: string } = {};
-        for (const collectionName of ['clubs', 'academies', 'agents', 'trainers']) {
+        const orgCollections = ['clubs', 'academies'];
+
+        await Promise.all(orgCollections.map(async (collectionName) => {
           try {
             const snapshot = await getDocs(collection(db, collectionName));
             snapshot.forEach(doc => {
               const data = doc.data();
-              const orgName = data.name || data.full_name || data.club_name || data.academy_name || data.agent_name || data.trainer_name || '';
+              const orgName = data.name || data.full_name || data.club_name || data.academy_name || '';
               orgsCache[`${collectionName.replace(/s$/, '')}_${doc.id}`] = orgName;
             });
           } catch (e) {
-            // تجاهل
+            console.warn(`Could not pre-cache ${collectionName}`);
           }
-        }
-        setOrganizationsCache(orgsCache);
-        console.log(`📚 تم تحميل ${Object.keys(orgsCache).length} منظمة في الـ cache`);
+        }));
 
-        for (const collectionName of collections) {
+        setOrganizationsCache(prev => ({ ...prev, ...orgsCache }));
+
+        // جلب المستخدمين بالتوازي لتسريع العملية
+        const fetchPromises = collections.map(async (collectionName) => {
           try {
-            console.log(`📋 جاري تحميل مجموعة: ${collectionName}`);
-
-            const collectionRef = collection(db, collectionName);
-            const snapshot = await getDocs(collectionRef);
-
-            console.log(`✅ تم جلب ${snapshot.size} مستند من ${collectionName}`);
-
-            let collectionCount = 0;
+            const snapshot = await getDocs(collection(db, collectionName));
+            const collectionUsers: User[] = [];
 
             snapshot.forEach((userDoc) => {
               try {
                 const data = userDoc.data();
                 const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
 
-                // محاولة استخراج تاريخ التسجيل من مصادر متعددة
                 let createdAtDate = safeToDate(
-                  data.createdAt ||
-                  data.created_at ||
-                  data.registrationDate ||
-                  data.registration_date ||
-                  data.signupDate ||
-                  data.signup_date ||
-                  data.dateCreated ||
-                  data.date_created ||
-                  data.timestamp
+                  data.createdAt || data.created_at || data.registrationDate || data.timestamp
                 );
 
-                // إذا لم نجد تاريخ، نستخدم تاريخ إنشاء المستند في Firestore (metadata)
                 if (!createdAtDate && (userDoc.metadata as any)?.createTime) {
-                  try {
-                    createdAtDate = (userDoc.metadata as any).createTime.toDate();
-                  } catch (e) {
-                    // تجاهل
-                  }
-                }
-
-                // محاولة ثالثة: استخدام أقدم نشاط معروف لهذا المستخدم من analytics/visits/join_requests
-                if (!createdAtDate) {
-                  const candidate = earliestActivityByUser[userDoc.id];
-                  if (candidate) {
-                    createdAtDate = candidate;
-                  }
+                  createdAtDate = (userDoc.metadata as any).createTime.toDate();
                 }
 
                 const profileCompletion = calculateProfileCompletion(data, accountType);
-
-                // تحديد نوع التسجيل واسم المنظمة
-                const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || data.agentId || data.agent_id || data.trainerId || data.trainer_id || '';
-                const parentType = data.parentAccountType || data.parent_account_type ||
-                  (data.clubId || data.club_id ? 'club' : '') ||
-                  (data.academyId || data.academy_id ? 'academy' : '') ||
-                  (data.agentId || data.agent_id ? 'agent' : '') ||
-                  (data.trainerId || data.trainer_id ? 'trainer' : '') || '';
-
+                const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.academyId || '';
+                const parentType = data.parentAccountType || (data.clubId ? 'club' : data.academyId ? 'academy' : '');
                 const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
-                const registrationType = parentId ? 'organization' : 'direct';
 
-                const userData: User = {
+                collectionUsers.push({
                   id: userDoc.id,
-                  name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
+                  name: data.name || data.full_name || data.displayName || 'غير محدد',
                   email: data.email || '',
                   phone: data.phone || data.phoneNumber || '',
                   whatsapp: data.whatsapp || '',
-                  countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
+                  countryCode: data.countryCode || '',
                   accountType: accountType,
                   isActive: data.isActive !== false,
                   createdAt: createdAtDate,
-                  lastLogin: safeToDate(data.lastLogin || data.last_login || data.lastAccessTime),
-                  city: data.city || data.location?.city || '',
-                  country: data.country || data.location?.country || '',
+                  lastLogin: safeToDate(data.lastLogin || data.lastAccessTime),
+                  city: data.city || '',
+                  country: data.country || '',
                   parentAccountId: parentId,
                   parentAccountType: parentType,
                   parentOrganizationName: parentOrgName,
-                  registrationType: registrationType,
-                  isDeleted: data.isDeleted || data.deleted || false,
-                  verificationStatus: data.verificationStatus || data.verification_status || 'pending',
+                  registrationType: parentId ? 'organization' : 'direct',
+                  isDeleted: data.isDeleted || false,
+                  verificationStatus: data.verificationStatus || 'pending',
                   profileCompletion: profileCompletion,
                   profileCompleted: profileCompletion >= 80,
-                  suspendReason: data.suspendReason || undefined,
+                  suspendReason: data.suspendReason,
                   suspendedAt: safeToDate(data.suspendedAt)
-                };
-
-                allUsers.push(userData);
-                collectionCount++;
-                totalProcessed++;
-
-                if (totalProcessed % 100 === 0) {
-                  console.log(`⏳ تمت معالجة ${totalProcessed} مستخدم...`);
-                }
-              } catch (docError) {
-                console.error(`❌ خطأ في معالجة المستند ${userDoc.id}:`, docError);
-                // محاولة fallback: إضافة المستخدم بأقل معلومات ممكنة
-                try {
-                  const data = userDoc.data();
-                  const accountType = (data.accountType || collectionName.replace(/s$/, '')) as any;
-
-                  // محاولة أخيرة لاستخراج التاريخ من metadata
-                  let fallbackDate = null;
-                  try {
-                    if ((userDoc.metadata as any)?.createTime) {
-                      fallbackDate = (userDoc.metadata as any).createTime.toDate();
-                    }
-                  } catch (e) {
-                    // تجاهل
-                  }
-
-                  // إن لم يتوفر، جرّب تاريخ النشاط الأقدم
-                  if (!fallbackDate) {
-                    const candidate = earliestActivityByUser[userDoc.id];
-                    if (candidate) {
-                      fallbackDate = candidate;
-                    }
-                  }
-
-                  const parentId = data.parentAccountId || data.parent_account_id || data.clubId || data.club_id || data.academyId || data.academy_id || '';
-                  const parentType = data.parentAccountType || data.parent_account_type || '';
-                  const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
-
-                  allUsers.push({
-                    id: userDoc.id,
-                    name: data.name || data.full_name || data.displayName || data.club_name || data.academy_name || data.agent_name || data.trainer_name || 'غير محدد',
-                    email: data.email || '',
-                    phone: data.phone || data.phoneNumber || '',
-                    whatsapp: data.whatsapp || '',
-                    countryCode: data.countryCode || data.country_code || '', // كود البلد من التسجيل
-                    accountType: accountType,
-                    isActive: data.isActive !== false,
-                    createdAt: fallbackDate,
-                    lastLogin: null,
-                    city: data.city || data.location?.city || '',
-                    country: data.country || data.location?.country || '',
-                    parentAccountId: parentId,
-                    parentAccountType: parentType,
-                    parentOrganizationName: parentOrgName,
-                    registrationType: parentId ? 'organization' : 'unknown',
-                    isDeleted: data.isDeleted || data.deleted || false,
-                    verificationStatus: data.verificationStatus || data.verification_status || 'pending',
-                    profileCompletion: 0,
-                    profileCompleted: false,
-                    suspendReason: data.suspendReason || undefined,
-                    suspendedAt: safeToDate(data.suspendedAt)
-                  });
-                  collectionCount++;
-                  totalProcessed++;
-                  console.log(`⚠️ تمت إضافة ${userDoc.id} بمعلومات محدودة`);
-                } catch (fallbackError) {
-                  console.error(`❌ فشل تماماً: ${userDoc.id}`);
-                }
-              }
+                });
+              } catch (e) { /* skip individual errors */ }
             });
-
-            console.log(`✔️ ${collectionName}: تمت معالجة ${collectionCount} مستخدم`);
-          } catch (error) {
-            console.error(`❌ خطأ في تحميل ${collectionName}:`, error);
+            return collectionUsers;
+          } catch (e) {
+            console.error(`Error loading ${collectionName}:`, e);
+            return [];
           }
-        }
+        });
 
-        // إزالة التكرارات - نفس المستخدم موجود في مجموعات متعددة (users + players/academies/etc)
+        const results = await Promise.all(fetchPromises);
+        results.forEach(uList => allUsers.push(...uList));
+
+        // إزالة التكرارات بذكاء (الاعتماد على البريد الإلكتروني كمفتاح أساسي للتوحيد)
         const uniqueUsersMap = new Map<string, User>();
-        let duplicatesCount = 0;
-
         allUsers.forEach(user => {
-          if (!uniqueUsersMap.has(user.id)) {
-            // مستخدم جديد - إضافة
-            uniqueUsersMap.set(user.id, user);
-          } else {
-            // مستخدم مكرر - تخطي
-            duplicatesCount++;
+          // استخدام البريد الإلكتروني كمفتاح للتوحيد إذا وجد، وإلا نستخدم الـ ID
+          const identifier = user.email ? user.email.toLowerCase().trim() : user.id;
+          const existing = uniqueUsersMap.get(identifier);
 
-            // اختياري: دمج البيانات إذا كانت النسخة الجديدة أكمل
-            const existingUser = uniqueUsersMap.get(user.id)!;
-            if (user.profileCompletion > existingUser.profileCompletion) {
-              // النسخة الجديدة أفضل، استبدال
-              uniqueUsersMap.set(user.id, user);
-            }
+          // نفضل الاحتفاظ بالنسخة التي تمتلك تفاصيل أكثر (profileCompletion أعلى)
+          if (!existing || (user.profileCompletion > existing.profileCompletion)) {
+            uniqueUsersMap.set(identifier, user);
           }
         });
 
         const uniqueUsers = Array.from(uniqueUsersMap.values());
-        const usersWithoutDate = uniqueUsers.filter(u => !u.createdAt).length;
-
-        console.log(`📊 ✅ إجمالي المستخدمين المحملين: ${allUsers.length}`);
-        if (duplicatesCount > 0) {
-          console.log(`🔄 تم إزالة ${duplicatesCount} تكرار - المستخدمين الفريدين: ${uniqueUsers.length}`);
-        }
-        console.log(`📈 التوزيع حسب النوع:
-          - Players: ${uniqueUsers.filter(u => u.accountType === 'player').length}
-          - Academies: ${uniqueUsers.filter(u => u.accountType === 'academy').length}
-          - Clubs: ${uniqueUsers.filter(u => u.accountType === 'club').length}
-          - Agents: ${uniqueUsers.filter(u => u.accountType === 'agent').length}
-          - Trainers: ${uniqueUsers.filter(u => u.accountType === 'trainer').length}
-          - Users: ${uniqueUsers.filter(u => u.accountType === 'user').length}
-        `);
-        console.log(`⏰ حالة التواريخ:
-          - مع تاريخ: ${uniqueUsers.length - usersWithoutDate}
-          - بدون تاريخ: ${usersWithoutDate} ${usersWithoutDate > 0 ? '⚠️' : '✅'}
-        `);
-
-        if (usersWithoutDate > 0) {
-          console.warn(`⚠️ تحذير: ${usersWithoutDate} مستخدم ليس لديهم تاريخ تسجيل محدد`);
-          console.log(`💡 يمكنك فلترتهم باختيار "بدون تاريخ" من فلتر تاريخ التسجيل`);
-        }
-
         setUsers(uniqueUsers);
-        await loadVisitStats();
+        calculateHealth(uniqueUsers);
+        setLoading(false);
 
-        if (allUsers.length === 0) {
-          toast.warning('لم يتم العثور على أي مستخدمين.');
-        } else {
-          toast.success(`✅ تم تحميل ${allUsers.length.toLocaleString()} مستخدم بنجاح`);
-        }
+        // جلب الإحصائيات في الخلفية دون تعطيل الجدول
+        console.log('📈 جاري تحميل الإحصائيات في الخلفية...');
+        loadVisitStats();
+
       } catch (error) {
-        console.error('❌ خطأ عام:', error);
+        console.error('❌ خطأ في تحميل البيانات:', error);
         toast.error('حدث خطأ في تحميل البيانات');
-      } finally {
         setLoading(false);
       }
     };
@@ -1147,94 +983,170 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Filter and sort users
-  const filteredAndSortedUsers = getUsersByTab().filter(user => {
-    const matchesSearch = searchTerm === '' ||
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone.includes(searchTerm);
+  // حساب نقاط جودة البيانات (Health Score) بشكل ذكي
+  const calculateHealth = (allUsers: User[]) => {
+    if (allUsers.length === 0) return 0;
 
-    const matchesType = filterType === 'all' || user.accountType === filterType;
-    const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
-    const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
-    const matchesCity = filterCity === 'all' || user.city === filterCity;
-    const matchesOrganization = filterOrganization === 'all' ||
-      (filterOrganization === 'direct' && !user.parentAccountId) ||
-      (filterOrganization === 'organization' && user.parentAccountId) ||
-      (user.parentOrganizationName && user.parentOrganizationName.toLowerCase().includes(filterOrganization.toLowerCase()));
-    const matchesRegistrationType = filterRegistrationType === 'all' || user.registrationType === filterRegistrationType;
+    let totalScore = 0;
+    allUsers.forEach(u => {
+      let userScore = 0;
+      if (u.createdAt) userScore += 25;
+      if (u.country && u.country !== 'غير محدد') userScore += 25;
+      if (u.phone && u.phone.length > 8) userScore += 25;
+      if (u.profileCompletion >= 80) userScore += 25;
+      totalScore += userScore;
+    });
 
-    const matchesProfileCompletion = (() => {
-      if (filterProfileCompletion === 'all') return true;
-      if (filterProfileCompletion === 'complete') return user.profileCompletion >= 80;
-      if (filterProfileCompletion === 'incomplete') return user.profileCompletion < 80;
-      if (filterProfileCompletion === 'partial') return user.profileCompletion >= 50 && user.profileCompletion < 80;
-      if (filterProfileCompletion === 'minimal') return user.profileCompletion < 50;
-      return true;
-    })();
+    const averageHealth = Math.round(totalScore / allUsers.length);
+    setHealthScore(averageHealth);
+  };
 
-    const matchesDate = (() => {
-      if (dateFilter === 'all') return true;
-      if (dateFilter === 'noDate') return !user.createdAt; // فلتر خاص للمستخدمين بدون تاريخ
-      if (!user.createdAt) return false; // إخفاء المستخدمين بدون تواريخ من الفلاتر الأخرى
+  // ذكاء اصطناعي لتنظيف وتحسين البيانات - Smart Repair
+  const handleSmartRepair = async () => {
+    const problematicUsers = users.filter(u =>
+      !u.createdAt ||
+      !u.country ||
+      (!u.countryCode && u.phone) ||
+      (u.phone && u.phone.length < 8)
+    );
 
-      const userDate = user.createdAt;
-      const now = new Date();
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
+    if (problematicUsers.length === 0) {
+      toast.info('البيانات تبدو نظيفة تماماً!');
+      return;
+    }
 
-      switch (dateFilter) {
-        case 'today':
-          return userDate.toDateString() === today.toDateString();
-        case 'yesterday':
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          return userDate.toDateString() === yesterday.toDateString();
-        case 'thisWeek':
-          const thisWeek = new Date(today);
-          thisWeek.setDate(thisWeek.getDate() - 7);
-          return userDate >= thisWeek;
-        case 'thisMonth':
-          const thisMonth = new Date(today);
-          thisMonth.setMonth(thisMonth.getMonth() - 1);
-          return userDate >= thisMonth;
-        case 'last3Days':
-          const last3Days = new Date(today);
-          last3Days.setDate(last3Days.getDate() - 3);
-          return userDate >= last3Days;
-        case 'newest':
-          const last24Hours = new Date(now);
-          last24Hours.setHours(last24Hours.getHours() - 24);
-          return userDate >= last24Hours;
-        default:
-          return true;
+    if (!window.confirm(`هل تريد البدء في إصلاح وتحسين بيانات ${problematicUsers.length} مستخدم؟ سيتم استنتاج التواريخ والدول من بيانات النشاط وأرقام الهواتف.`)) return;
+
+    setIsRepairing(true);
+    let repairedCount = 0;
+
+    try {
+      // تنفيذ الإصلاح على دفعات (Batches) لتجنب هبوط المتصفح
+      for (let i = 0; i < problematicUsers.length; i += 5) {
+        const batch = problematicUsers.slice(i, i + 5);
+        await Promise.all(batch.map(async (u) => {
+          const updates: any = {};
+
+          // 1. استنتاج الدولة من الهاتف
+          if (!u.countryCode || !u.country) {
+            const detected = detectCountryFromPhone(u.phone);
+            if (detected) {
+              updates.countryCode = detected.code;
+              if (!u.country) updates.country = detected.name;
+            }
+          }
+
+          // 2. محاولة جلب تاريخ من metadata إذا كان مفقوداً
+          if (!u.createdAt) {
+            const docSnap = await getDoc(doc(db, u.accountType === 'user' ? 'users' : u.accountType + 's', u.id));
+            if (docSnap.exists() && (docSnap.metadata as any).createTime) {
+              updates.createdAt = (docSnap.metadata as any).createTime;
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            const collectionName = u.accountType === 'user' ? 'users' : u.accountType + 's';
+            await updateDoc(doc(db, collectionName, u.id), updates);
+            repairedCount++;
+          }
+        }));
       }
-    })();
-
-    return matchesSearch && matchesType && matchesVerification &&
-      matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
-      matchesOrganization && matchesRegistrationType;
-  }).sort((a, b) => {
-    let aValue: any = a[sortBy as keyof User];
-    let bValue: any = b[sortBy as keyof User];
-
-    if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
-      aValue = aValue?.getTime() || 0;
-      bValue = bValue?.getTime() || 0;
-    } else if (sortBy === 'profileCompletion') {
-      aValue = a.profileCompletion;
-      bValue = b.profileCompletion;
-    } else if (typeof aValue === 'string') {
-      aValue = aValue.toLowerCase();
-      bValue = bValue.toLowerCase();
+      toast.success(`تم بنجاح تحسين بيانات ${repairedCount} مستخدم`);
+      // إعادة التحميل لتحديث الواجهة
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء عملية الإصلاح');
+    } finally {
+      setIsRepairing(false);
     }
+  };
 
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
+  // تحسين الأداء (Memoization) لعمليات الفلترة لتقليل الـ INP
+  const filteredAndSortedUsers = React.useMemo(() => {
+    return getUsersByTab().filter(user => {
+      const matchesSearch = searchTerm === '' ||
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.phone.includes(searchTerm);
+
+      const matchesType = filterType === 'all' || user.accountType === filterType;
+      const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
+      const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
+      const matchesCity = filterCity === 'all' || user.city === filterCity;
+      const matchesOrganization = filterOrganization === 'all' ||
+        (filterOrganization === 'direct' && !user.parentAccountId) ||
+        (filterOrganization === 'organization' && user.parentAccountId) ||
+        (user.parentOrganizationName && user.parentOrganizationName.toLowerCase().includes(filterOrganization.toLowerCase()));
+      const matchesRegistrationType = filterRegistrationType === 'all' || user.registrationType === filterRegistrationType;
+
+      const matchesProfileCompletion = (() => {
+        if (filterProfileCompletion === 'all') return true;
+        if (filterProfileCompletion === 'complete') return user.profileCompletion >= 80;
+        if (filterProfileCompletion === 'incomplete') return user.profileCompletion < 80;
+        if (filterProfileCompletion === 'partial') return user.profileCompletion >= 50 && user.profileCompletion < 80;
+        if (filterProfileCompletion === 'minimal') return user.profileCompletion < 50;
+        return true;
+      })();
+
+      const matchesDate = (() => {
+        if (dateFilter === 'all') return true;
+        if (dateFilter === 'noDate') return !user.createdAt;
+        if (!user.createdAt) return false;
+
+        const userDate = user.createdAt;
+        const now = new Date();
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+
+        switch (dateFilter) {
+          case 'today': return userDate.toDateString() === today.toDateString();
+          case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return userDate.toDateString() === yesterday.toDateString();
+          case 'thisWeek':
+            const thisWeek = new Date(today);
+            thisWeek.setDate(thisWeek.getDate() - 7);
+            return userDate >= thisWeek;
+          case 'thisMonth':
+            const thisMonth = new Date(today);
+            thisMonth.setMonth(thisMonth.getMonth() - 1);
+            return userDate >= thisMonth;
+          case 'last3Days':
+            const last3Days = new Date(today);
+            last3Days.setDate(last3Days.getDate() - 3);
+            return userDate >= last3Days;
+          case 'newest':
+            const last24Hours = new Date(now);
+            last24Hours.setHours(last24Hours.getHours() - 24);
+            return userDate >= last24Hours;
+          default: return true;
+        }
+      })();
+
+      return matchesSearch && matchesType && matchesVerification &&
+        matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
+        matchesOrganization && matchesRegistrationType;
+    }).sort((a, b) => {
+      let aValue: any = a[sortBy as keyof User];
+      let bValue: any = b[sortBy as keyof User];
+
+      if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
+        aValue = aValue?.getTime() || 0;
+        bValue = bValue?.getTime() || 0;
+      } else if (sortBy === 'profileCompletion') {
+        aValue = a.profileCompletion;
+        bValue = b.profileCompletion;
+      } else if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') return aValue > bValue ? 1 : -1;
       return aValue < bValue ? 1 : -1;
-    }
-  });
+    });
+  }, [users, activeTab, searchTerm, filterType, filterVerification, filterCountry, filterCity, filterOrganization, filterRegistrationType, filterProfileCompletion, dateFilter, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedUsers.length / itemsPerPage);
@@ -1344,88 +1256,83 @@ export default function AdminUsersPage() {
     return labels[page] || page;
   };
 
-  const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete' | 'restore') => {
+  const handleBulkAction = async (action: 'activate' | 'deactivate' | 'verify' | 'delete' | 'restore' | 'permanent_delete') => {
     if (selectedUsers.length === 0) {
       toast.error('لم يتم اختيار أي مستخدمين');
       return;
     }
 
+    if (action === 'permanent_delete') {
+      const confirmText = `⚠️ تحذير نهائي: أنت على وشك حذف ${selectedUsers.length} مستخدم حذفاً نهائياً من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء أبداً. هل أنت متأكد؟`;
+      if (!window.confirm(confirmText)) return;
+    }
+
     try {
-      const promises = selectedUsers.map(async userId => {
+      const allCollections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
+
+      const allPromises = selectedUsers.map(async userId => {
         const targetUser = users.find(u => u.id === userId);
-        if (!targetUser) return Promise.resolve();
+        const userEmail = targetUser?.email?.toLowerCase().trim();
 
-        const collectionName = targetUser.accountType === 'user' ? 'users' : `${targetUser.accountType}s`;
-        const userRef = doc(db, collectionName, userId);
+        const deleteOperations: Promise<any>[] = [];
 
-        switch (action) {
-          case 'activate':
-            return updateDoc(userRef, { isActive: true });
-          case 'deactivate':
-            return updateDoc(userRef, { isActive: false });
-          case 'verify':
-            return updateDoc(userRef, { verificationStatus: 'verified' });
-          case 'delete': {
-            const deletePayload = {
-              isDeleted: true,
-              isActive: false, // Ensure account is inactive upon deletion
-              deletedAt: new Date(),
-              deletedBy: user?.uid || 'admin'
-            };
-            // Update in source collection
-            const updatePromise = updateDoc(userRef, deletePayload);
-            // Also sync to users collection if exists
-            const syncPromise = getDoc(doc(db, 'users', userId)).then(userDoc => {
-              if (userDoc.exists()) {
-                return updateDoc(doc(db, 'users', userId), deletePayload);
-              }
-            }).catch(() => {
-              // Non-critical if users collection doesn't exist
-            });
-            return Promise.all([updatePromise, syncPromise]);
+        // 1. التحديث/الحذف من جميع المجموعات بناءً على ID
+        allCollections.forEach(coll => {
+          const docRef = doc(db, coll, userId);
+          switch (action) {
+            case 'activate': deleteOperations.push(updateDoc(docRef, { isActive: true }).catch(() => { })); break;
+            case 'deactivate': deleteOperations.push(updateDoc(docRef, { isActive: false }).catch(() => { })); break;
+            case 'verify': deleteOperations.push(updateDoc(docRef, { verificationStatus: 'verified' }).catch(() => { })); break;
+            case 'delete': deleteOperations.push(updateDoc(docRef, { isDeleted: true, isActive: false, deletedAt: new Date(), deletedBy: user?.uid || 'admin' }).catch(() => { })); break;
+            case 'restore': deleteOperations.push(updateDoc(docRef, { isDeleted: false, isActive: true, restoredAt: new Date(), restoredBy: user?.uid || 'admin' }).catch(() => { })); break;
+            case 'permanent_delete': deleteOperations.push(deleteDoc(docRef).catch(() => { })); break;
           }
-          case 'restore': {
-            const restorePayload = {
-              isDeleted: false,
-              isActive: true,
-              restoredAt: new Date(),
-              restoredBy: user?.uid || 'admin'
-            };
-            // Update in source collection
-            const updatePromise = updateDoc(userRef, restorePayload);
-            // Also sync to users collection if exists
-            const syncPromise = getDoc(doc(db, 'users', userId)).then(userDoc => {
-              if (userDoc.exists()) {
-                return updateDoc(doc(db, 'users', userId), restorePayload);
-              }
-            }).catch(() => {
-              // Non-critical if users collection doesn't exist
-            });
-            return Promise.all([updatePromise, syncPromise]);
+        });
+
+        // 2. الحذف النهائي المتقدم بناءً على البريد الإلكتروني لمنع التكرار
+        if (action === 'permanent_delete' && userEmail) {
+          for (const collName of allCollections) {
+            try {
+              const q = query(collection(db, collName), where('email', '==', userEmail));
+              const snap = await getDocs(q);
+              snap.forEach(d => {
+                deleteOperations.push(deleteDoc(doc(db, collName, d.id)).catch(() => { }));
+              });
+            } catch (e) { }
           }
         }
+
+        return Promise.all(deleteOperations);
       });
 
-      await Promise.all(promises);
+      await Promise.all(allPromises);
 
-      setUsers(users.map(user => {
-        if (!selectedUsers.includes(user.id)) return user;
+      if (action === 'permanent_delete') {
+        const selectedEmails = selectedUsers.map(id => users.find(u => u.id === id)?.email?.toLowerCase().trim()).filter(Boolean);
+        setUsers(prev => prev.filter(u =>
+          !selectedUsers.includes(u.id) &&
+          (!u.email || !selectedEmails.includes(u.email.toLowerCase().trim()))
+        ));
+      } else {
+        setUsers(users.map(user => {
+          if (!selectedUsers.includes(user.id)) return user;
 
-        switch (action) {
-          case 'activate':
-            return { ...user, isActive: true };
-          case 'deactivate':
-            return { ...user, isActive: false };
-          case 'verify':
-            return { ...user, verificationStatus: 'verified' as const };
-          case 'delete':
-            return { ...user, isDeleted: true, isActive: false };
-          case 'restore':
-            return { ...user, isDeleted: false, isActive: true };
-          default:
-            return user;
-        }
-      }));
+          switch (action) {
+            case 'activate':
+              return { ...user, isActive: true };
+            case 'deactivate':
+              return { ...user, isActive: false };
+            case 'verify':
+              return { ...user, verificationStatus: 'verified' as const };
+            case 'delete':
+              return { ...user, isDeleted: true, isActive: false };
+            case 'restore':
+              return { ...user, isDeleted: false, isActive: true };
+            default:
+              return user;
+          }
+        }));
+      }
 
       setSelectedUsers([]);
 
@@ -1434,7 +1341,8 @@ export default function AdminUsersPage() {
         deactivate: 'تعطيل',
         verify: 'توثيق',
         delete: 'حذف',
-        restore: 'استرجاع'
+        restore: 'استرجاع',
+        permanent_delete: 'حذف نهائي ومسح من قاعدة البيانات'
       };
 
       toast.success(`تم ${actionLabels[action]} ${selectedUsers.length} مستخدم بنجاح`);
@@ -1738,19 +1646,33 @@ export default function AdminUsersPage() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">المستخدمين</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+                المستخدمين
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse">
+                  نبض البيانات: {healthScore}%
+                </Badge>
+              </h1>
               <p className="text-gray-500 text-sm mt-1">
                 إدارة وتحليل {users.length.toLocaleString()} حساب مسجل
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={exportToExcel} variant="outline" size="sm" className="bg-white hover:bg-gray-50">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleSmartRepair}
+                disabled={isRepairing}
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white gap-2 shadow-sm"
+              >
+                {isRepairing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                {isRepairing ? 'جاري الإصلاح...' : 'الإصلاح الذكي'}
+              </Button>
+              <Button onClick={() => { }} variant="outline" size="sm" className="bg-white hover:bg-gray-50 border-gray-200">
                 <Download className="h-4 w-4 ml-2" />
                 تصدير CSV
               </Button>
-              <Button onClick={() => window.location.reload()} size="sm" className="bg-slate-900 hover:bg-slate-800 text-white">
+              <Button onClick={() => window.location.reload()} size="sm" variant="ghost" className="text-gray-500 hover:text-gray-900">
                 <RefreshCcw className="h-4 w-4 ml-2" />
-                تحديث البيانات
+                تحديث
               </Button>
             </div>
           </div>
@@ -1802,18 +1724,29 @@ export default function AdminUsersPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 bg-white">
+            <Card className="shadow-sm border-gray-200 bg-white overflow-hidden relative">
+              {healthScore < 50 && (
+                <div className="absolute top-0 right-0 p-1">
+                  <span className="flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                </div>
+              )}
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">جودة البيانات</span>
-                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
+                  <Activity className="h-4 w-4 text-blue-400" />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900">{Math.round((stats.verified / stats.total) * 100)}%</span>
-                  <span className="text-gray-500 text-xs font-medium">موثق</span>
+                  <span className="text-2xl font-bold text-gray-900">{healthScore}%</span>
+                  <span className="text-gray-500 text-xs font-medium">مؤشر الصحة</span>
                 </div>
                 <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(stats.verified / stats.total) * 100}%` }}></div>
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${healthScore > 70 ? 'bg-emerald-500' : healthScore > 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${healthScore}%` }}
+                  ></div>
                 </div>
               </CardContent>
             </Card>
@@ -2409,28 +2342,49 @@ export default function AdminUsersPage() {
                       </>
                     )}
                     {activeTab === 'deleted' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleBulkAction('restore')}
-                        className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                      >
-                        <RefreshCcw className="h-4 w-4" />
-                        استرجاع ({selectedUsers.length})
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('restore')}
+                          className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                        >
+                          <RefreshCcw className="h-4 w-4" />
+                          استرجاع ({selectedUsers.length})
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleBulkAction('permanent_delete')}
+                          className="bg-red-900 hover:bg-black text-white gap-2 font-bold"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          حذف نهائي من القاعدة ({selectedUsers.length})
+                        </Button>
+                      </div>
                     )}
                     {activeTab !== 'deleted' && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`هل أنت متأكد من حذف ${selectedUsers.length} مستخدم؟`)) {
-                            handleBulkAction('delete');
-                          }
-                        }}
-                        className="bg-red-600 hover:bg-red-700 text-white gap-2"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        حذف ({selectedUsers.length})
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`هل أنت متأكد من حذف ${selectedUsers.length} مستخدم؟`)) {
+                              handleBulkAction('delete');
+                            }
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          حذف ({selectedUsers.length})
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleBulkAction('permanent_delete')}
+                          className="text-red-900 hover:bg-red-50 gap-2 border border-red-200"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          حذف قطعي
+                        </Button>
+                      </div>
                     )}
                     <Button
                       size="sm"

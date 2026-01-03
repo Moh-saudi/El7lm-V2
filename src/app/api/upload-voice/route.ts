@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
         // رفع الملف إلى Cloudflare R2
         const uploadCommand = new PutObjectCommand({
-            Bucket: mainBucket || 'el7lmplatform',
+            Bucket: mainBucket || 'assets',
             Key: fileName,
             Body: buffer,
             ContentType: file.type,

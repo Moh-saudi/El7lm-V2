@@ -18,10 +18,10 @@ export default function Dashboard() {
 
     if (userData?.accountType) {
       const accountType = userData.accountType;
-      
+
       // Valid account types
       const validTypes = ['player', 'club', 'agent', 'academy', 'trainer', 'admin', 'marketer', 'parent'];
-      
+
       if (validTypes.includes(accountType)) {
         // Redirect parent accounts to player dashboard
         if (accountType === 'parent') {
@@ -29,8 +29,12 @@ export default function Dashboard() {
         } else {
           router.push(`/dashboard/${accountType}`);
         }
+      } else if (accountType === 'unknown') {
+        // Explicitly handle 'unknown' - redirect to role selection
+        console.log('Redirecting to role selection for unknown account type');
+        router.push('/auth/select-role');
       } else {
-        // Invalid account type - redirect to player dashboard as fallback
+        // Other invalid account types - redirect to player dashboard as fallback
         console.warn(`Invalid account type: ${accountType}, redirecting to player dashboard`);
         router.push('/dashboard/player');
       }

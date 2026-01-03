@@ -1,110 +1,84 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Checkbox
+  Checkbox
 } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { detectCountryFromPhone } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import {
-    addDoc,
-    collection,
-    collectionGroup,
-    getDocs,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    where
+  addDoc,
+  collection,
+  collectionGroup,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
 import {
-    AlertCircle,
-    Bell,
-    Briefcase,
-    Building,
-    Calendar,
-    Check,
-    CheckCircle,
-    Clock,
-    Crown,
-    Eye,
-    GraduationCap,
-    Info,
-    MessageSquare,
-    Phone,
-    Search,
-    Send,
-    Settings,
-    Smartphone,
-    Target,
-    TrendingUp,
-    User,
-    Users,
-    X,
-    Zap
+  AlertCircle,
+  Bell,
+  Briefcase,
+  Building,
+  Calendar,
+  Check,
+  CheckCircle,
+  Clock,
+  Crown,
+  Eye,
+  GraduationCap,
+  Info,
+  MessageSquare,
+  Phone,
+  Search,
+  Send,
+  Settings,
+  Smartphone,
+  Target,
+  TrendingUp,
+  User as UserIcon,
+  Users,
+  X,
+  Zap,
+  Layout,
+  Layers,
+  Sparkles,
+  MousePointer2,
+  ChevronRight,
+  Monitor,
+  SendHorizontal
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface User {
-  id: string;
-  displayName: string;
-  email: string;
-  phone?: string;
-  accountType: string;
-  isActive: boolean;
-  avatar?: string;
-  createdAt?: Date | null;
-}
-
-interface NotificationForm {
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  targetType: 'all' | 'specific' | 'account_type' | 'custom_numbers';
-  accountTypes: string[];
-  customNumbers: string;
-  selectedUsers: string[];
-  sendMethods: {
-    inApp: boolean;
-    sms: boolean;
-    whatsapp: boolean;
-  };
-  scheduleType: 'immediate' | 'scheduled';
-  scheduledDate?: string;
-  scheduledTime?: string;
-}
-
-interface MessageTemplate {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  category: string;
-  description: string;
-}
+import { messageTemplates } from '@/lib/notifications/templates';
+import { MessageTemplate, NotificationUser, NotificationForm } from './types';
 
 export default function SendNotificationsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<NotificationUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<NotificationUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountType, setSelectedAccountType] = useState<string>('all');
   const [showUserSelector, setShowUserSelector] = useState(false);
@@ -122,6 +96,7 @@ export default function SendNotificationsPage() {
   const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'this_month' | 'range'>('all');
   const [dateStart, setDateStart] = useState<string>('');
   const [dateEnd, setDateEnd] = useState<string>('');
+  const [previewMode, setPreviewMode] = useState<'app' | 'whatsapp' | 'sms'>('app');
   const [form, setForm] = useState<NotificationForm>({
     title: '',
     message: '',
@@ -136,7 +111,9 @@ export default function SendNotificationsPage() {
       sms: false,
       whatsapp: false
     },
-    scheduleType: 'immediate'
+    scheduleType: 'immediate',
+    scheduledDate: new Date().toISOString().split('T')[0],
+    scheduledTime: new Date().getHours().toString().padStart(2, '0') + ':' + new Date().getMinutes().toString().padStart(2, '0')
   });
 
   // Helpers
@@ -169,7 +146,7 @@ export default function SendNotificationsPage() {
     return null;
   };
 
-  const isInDateFilter = (user: User): boolean => {
+  const isInDateFilter = (user: NotificationUser): boolean => {
     if (dateFilterType === 'all') return true;
     const createdAt = user.createdAt ? new Date(user.createdAt) : null;
     if (!createdAt) return false;
@@ -224,35 +201,35 @@ export default function SendNotificationsPage() {
       parents: 'parent', parent: 'parent',
     };
 
-    const combinedMap = new Map<string, User>();
+    const combinedMap = new Map<string, NotificationUser>();
     let isInitial = true;
 
     const upsertDocs = (docs: any[], collectionName: string) => {
       for (const d of docs) {
-      const data: any = d.data();
-      const id = d.id;
-      const accountType = (collectionToType[collectionName] || data.accountType || '').trim();
-      const displayName = data.displayName || data.full_name || data.name || '';
-      const email = data.email || data.official_contact?.email || '';
-      const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
-      const isActive = data.isActive !== false;
-      const createdAt: Date | null = resolveCreatedAt(data);
+        const data: any = d.data();
+        const id = d.id;
+        const accountType = (collectionToType[collectionName] || data.accountType || '').trim();
+        const displayName = data.displayName || data.full_name || data.name || '';
+        const email = data.email || data.official_contact?.email || '';
+        const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
+        const isActive = data.isActive !== false;
+        const createdAt: Date | null = resolveCreatedAt(data);
 
-      const userEntry: User = {
-        id,
-        displayName,
-        email,
-        phone,
-        accountType: (accountType || collectionName) as string,
-        isActive,
-        avatar: data.avatar || data.photoURL || '',
-        createdAt,
-      };
+        const userEntry: NotificationUser = {
+          id,
+          displayName,
+          email,
+          phone,
+          accountType: (accountType || collectionName) as string,
+          isActive,
+          avatar: data.avatar || data.photoURL || '',
+          createdAt,
+        };
 
-      // users collection يأخذ أولوية الدمج
-      if (!combinedMap.has(id) || collectionName === 'users') {
-        combinedMap.set(id, userEntry);
-      }
+        // users collection يأخذ أولوية الدمج
+        if (!combinedMap.has(id) || collectionName === 'users') {
+          combinedMap.set(id, userEntry);
+        }
       }
       const arr = Array.from(combinedMap.values()).filter(u => u.isActive);
       setUsers(arr);
@@ -262,17 +239,17 @@ export default function SendNotificationsPage() {
     const unsubs: Array<() => void> = [];
     try {
       for (const col of collections) {
-      const q = query(collection(db, col));
-      const unsub = onSnapshot(q, (snapshot) => upsertDocs(snapshot.docs, col));
-      unsubs.push(unsub);
+        const q = query(collection(db, col));
+        const unsub = onSnapshot(q, (snapshot) => upsertDocs(snapshot.docs, col));
+        unsubs.push(unsub);
       }
       // players collectionGroup (لاعبون تابعون لجهات)
       try {
-      const cg = collectionGroup(db, 'players');
-      const unsubCg = onSnapshot(cg, (snapshot) => upsertDocs(snapshot.docs, 'players'));
-      unsubs.push(unsubCg);
+        const cg = collectionGroup(db, 'players');
+        const unsubCg = onSnapshot(cg, (snapshot) => upsertDocs(snapshot.docs, 'players'));
+        unsubs.push(unsubCg);
       } catch (e) {
-      console.warn('collectionGroup(players) snapshot not available:', e);
+        console.warn('collectionGroup(players) snapshot not available:', e);
       }
     } catch (e) {
       console.error('Realtime listeners error:', e);
@@ -282,7 +259,7 @@ export default function SendNotificationsPage() {
     isInitial = false;
     return () => {
       for (const u of unsubs) {
-      try { u(); } catch {}
+        try { u(); } catch { }
       }
     };
   }, []);
@@ -294,9 +271,9 @@ export default function SendNotificationsPage() {
     // فلترة حسب البحث
     if (searchTerm) {
       filtered = filtered.filter(user =>
-      user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone?.includes(searchTerm)
+        user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.phone?.includes(searchTerm)
       );
     }
 
@@ -318,7 +295,7 @@ export default function SendNotificationsPage() {
     try {
       const usersQuery = query(collection(db, 'users'), where('isActive', '==', true));
       const snapshot = await getDocs(usersQuery);
-      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })) as User[];
+      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })) as NotificationUser[];
       setUsers(usersData);
       setFilteredUsers(usersData);
     } catch (error) {
@@ -338,8 +315,8 @@ export default function SendNotificationsPage() {
     setForm(prev => ({
       ...prev,
       sendMethods: {
-      ...prev.sendMethods,
-      [method]: value
+        ...prev.sendMethods,
+        [method]: value
       }
     }));
   };
@@ -348,8 +325,8 @@ export default function SendNotificationsPage() {
     setForm(prev => ({
       ...prev,
       accountTypes: checked
-      ? [...prev.accountTypes, accountType]
-      : prev.accountTypes.filter(type => type !== accountType)
+        ? [...prev.accountTypes, accountType]
+        : prev.accountTypes.filter(type => type !== accountType)
     }));
   };
 
@@ -357,8 +334,8 @@ export default function SendNotificationsPage() {
     setForm(prev => ({
       ...prev,
       selectedUsers: checked
-      ? [...prev.selectedUsers, userId]
-      : prev.selectedUsers.filter(id => id !== userId)
+        ? [...prev.selectedUsers, userId]
+        : prev.selectedUsers.filter(id => id !== userId)
     }));
   };
 
@@ -377,34 +354,34 @@ export default function SendNotificationsPage() {
   };
 
   const getTargetUsers = () => {
-    const applyDate = (arr: User[]) => dateFilterType === 'all' ? arr : arr.filter(isInDateFilter);
+    const applyDate = (arr: NotificationUser[]) => dateFilterType === 'all' ? arr : arr.filter(isInDateFilter);
     switch (form.targetType) {
       case 'all':
-      return applyDate(users);
+        return applyDate(users);
       case 'account_type':
-      return applyDate(users.filter(user => form.accountTypes.includes(user.accountType)));
+        return applyDate(users.filter(user => form.accountTypes.includes(user.accountType)));
       case 'specific':
-      return applyDate(users.filter(user => form.selectedUsers.includes(user.id)));
+        return applyDate(users.filter(user => form.selectedUsers.includes(user.id)));
       case 'custom_numbers':
-      const numbers = form.customNumbers.split('\n').map(n => n.trim()).filter(n => n);
-      return applyDate(users.filter(user => user.phone && numbers.includes(user.phone)));
+        const numbers = form.customNumbers.split('\n').map(n => n.trim()).filter(n => n);
+        return applyDate(users.filter(user => user.phone && numbers.includes(user.phone)));
       default:
-      return [];
+        return [];
     }
   };
 
   // دالة لحساب الترتيب لكل مستخدم بناءً على نوع الحساب
-  const calculateUserRanking = (targetUser: User, allUsersOfSameType: User[]): { ranking: number; total: number } => {
+  const calculateUserRanking = (targetUser: NotificationUser, allUsersOfSameType: NotificationUser[]): { ranking: number; total: number } => {
     // ترتيب المستخدمين حسب معايير متعددة
     const sortedUsers = [...allUsersOfSameType].sort((a, b) => {
       // معيار 1: تاريخ الإنشاء (الأقدم أولاً)
       const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      
+
       // معيار 2: اكتمال الملف الشخصي (يمكن إضافة حساب أكثر دقة)
       const aComplete = a.displayName && a.email && a.phone ? 1 : 0;
       const bComplete = b.displayName && b.email && b.phone ? 1 : 0;
-      
+
       // ترتيب حسب: اكتمال الملف أولاً، ثم التاريخ
       if (aComplete !== bComplete) {
         return bComplete - aComplete; // الأكمل أولاً
@@ -421,19 +398,19 @@ export default function SendNotificationsPage() {
   };
 
   // دالة لاستبدال المتغيرات في الرسالة بالقيم الفعلية
-  const replaceMessageVariables = (message: string, targetUser: User): string => {
+  const replaceMessageVariables = (message: string, targetUser: NotificationUser): string => {
     let finalMessage = message;
-    
+
     // حساب الترتيب والإجمالي
     const usersOfSameType = users.filter(u => u.accountType === targetUser.accountType && u.isActive);
     const { ranking, total } = calculateUserRanking(targetUser, usersOfSameType);
-    
+
     // استبدال المتغيرات
     finalMessage = finalMessage.replace(/{ranking}/g, ranking.toString());
     finalMessage = finalMessage.replace(/{total}/g, total.toString());
     finalMessage = finalMessage.replace(/{user_name}/g, targetUser.displayName || 'المستخدم');
     finalMessage = finalMessage.replace(/{account_type}/g, getAccountTypeLabel(targetUser.accountType));
-    
+
     return finalMessage;
   };
 
@@ -459,7 +436,7 @@ export default function SendNotificationsPage() {
 
     const targetUsers = getTargetUsers();
     console.log('👥 المستخدمين المستهدفين:', targetUsers.length);
-    
+
     if (targetUsers.length === 0) {
       toast.error('لا يوجد مستخدمين مستهدفين');
       console.error('❌ لا يوجد مستخدمين مستهدفين');
@@ -483,27 +460,27 @@ export default function SendNotificationsPage() {
       });
 
       const notificationData = {
-      title: form.title,
-      message: form.message,
-      type: form.type,
-      priority: form.priority,
-      isRead: false,
-      scope: 'system',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      metadata: {
-        senderId: senderInfo.senderId || user?.uid,
-        senderName: senderInfo.senderName || 'الإدارة',
-        senderAccountType: senderInfo.senderAccountType || 'admin',
-        senderAvatar: senderInfo.senderAvatar,
-        senderBucket: senderInfo.senderBucket,
-        targetType: form.targetType,
-        accountTypes: form.accountTypes,
-        sendMethods: form.sendMethods,
-        scheduledFor: form.scheduleType === 'scheduled'
-          ? new Date(`${form.scheduledDate}T${form.scheduledTime}`)
-          : null
-      }
+        title: form.title,
+        message: form.message,
+        type: form.type,
+        priority: form.priority,
+        isRead: false,
+        scope: 'system',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        metadata: {
+          senderId: senderInfo.senderId || user?.uid,
+          senderName: senderInfo.senderName || 'الإدارة',
+          senderAccountType: senderInfo.senderAccountType || 'admin',
+          senderAvatar: senderInfo.senderAvatar,
+          senderBucket: senderInfo.senderBucket,
+          targetType: form.targetType,
+          accountTypes: form.accountTypes,
+          sendMethods: form.sendMethods,
+          scheduledFor: form.scheduleType === 'scheduled'
+            ? new Date(`${form.scheduledDate}T${form.scheduledTime}`)
+            : null
+        }
       };
 
       // حفظ الإشعارات في Firebase مع استبدال المتغيرات لكل مستخدم
@@ -511,7 +488,7 @@ export default function SendNotificationsPage() {
         // استبدال المتغيرات في الرسالة (ranking, total, etc.)
         const personalizedMessage = replaceMessageVariables(form.message, targetUser);
         const personalizedTitle = replaceMessageVariables(form.title, targetUser);
-        
+
         const notification = normalizeNotificationPayload({
           ...notificationData,
           title: personalizedTitle,
@@ -535,7 +512,7 @@ export default function SendNotificationsPage() {
               // استبدال المتغيرات في الرسالة
               const personalizedMessage = replaceMessageVariables(form.message, targetUser);
               const personalizedTitle = replaceMessageVariables(form.title, targetUser);
-              
+
               const smsRes = await fetch('/api/whatsapp/babaservice/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -545,7 +522,7 @@ export default function SendNotificationsPage() {
                   type: 'sms'
                 })
               });
-              
+
               if (smsRes.ok) {
                 const result = await smsRes.json();
                 if (result.success) {
@@ -559,7 +536,7 @@ export default function SendNotificationsPage() {
               return false;
             }
           });
-          
+
         try {
           await Promise.all(smsPromises);
           console.log('📱 تم إرسال جميع رسائل SMS');
@@ -611,7 +588,7 @@ export default function SendNotificationsPage() {
               // استبدال المتغيرات في الرسالة
               const personalizedMessage = replaceMessageVariables(form.message, targetUser);
               const personalizedTitle = replaceMessageVariables(form.title, targetUser);
-              
+
               const whatsappRes = await fetch('/api/whatsapp/babaservice/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -621,7 +598,7 @@ export default function SendNotificationsPage() {
                   type: 'whatsapp'
                 })
               });
-              
+
               if (whatsappRes.ok) {
                 const result = await whatsappRes.json();
                 if (result.success) {
@@ -635,7 +612,7 @@ export default function SendNotificationsPage() {
               return false;
             }
           });
-          
+
         try {
           await Promise.all(whatsappPromises);
           console.log('📱 تم إرسال جميع رسائل WhatsApp');
@@ -685,20 +662,20 @@ export default function SendNotificationsPage() {
 
       // إعادة تعيين النموذج
       setForm({
-      title: '',
-      message: '',
-      type: 'info',
-      priority: 'medium',
-      targetType: 'all',
-      accountTypes: [],
-      customNumbers: '',
-      selectedUsers: [],
-      sendMethods: {
-        inApp: true,
-        sms: false,
-        whatsapp: false
-      },
-      scheduleType: 'immediate'
+        title: '',
+        message: '',
+        type: 'info',
+        priority: 'medium',
+        targetType: 'all',
+        accountTypes: [],
+        customNumbers: '',
+        selectedUsers: [],
+        sendMethods: {
+          inApp: true,
+          sms: false,
+          whatsapp: false
+        },
+        scheduleType: 'immediate'
       });
 
     } catch (error: any) {
@@ -726,90 +703,90 @@ export default function SendNotificationsPage() {
       const detectedCountry = detectCountryFromPhone(phoneNumber);
 
       if (detectedCountry) {
-      const countryCode = detectedCountry.code.replace(/\D/g, '');
-      const localNumber = formattedPhone.replace(/^0+/, '');
-      formattedPhone = countryCode + localNumber;
+        const countryCode = detectedCountry.code.replace(/\D/g, '');
+        const localNumber = formattedPhone.replace(/^0+/, '');
+        formattedPhone = countryCode + localNumber;
 
-      console.log('🔍 تم اكتشاف البلد من الرقم:', {
-        detectedCountry: detectedCountry.name,
-        countryCode: detectedCountry.code,
-        originalPhone: phoneNumber,
-        formattedPhone: formattedPhone
-      });
+        console.log('🔍 تم اكتشاف البلد من الرقم:', {
+          detectedCountry: detectedCountry.name,
+          countryCode: detectedCountry.code,
+          originalPhone: phoneNumber,
+          formattedPhone: formattedPhone
+        });
       } else {
-      // افتراضي: مصر
-      const localNumber = formattedPhone.replace(/^0+/, '');
-      formattedPhone = '20' + localNumber;
+        // افتراضي: مصر
+        const localNumber = formattedPhone.replace(/^0+/, '');
+        formattedPhone = '20' + localNumber;
 
-      console.log('⚠️ استخدام البلد الافتراضي (مصر):', {
-        originalPhone: phoneNumber,
-        formattedPhone: formattedPhone
-      });
+        console.log('⚠️ استخدام البلد الافتراضي (مصر):', {
+          originalPhone: phoneNumber,
+          formattedPhone: formattedPhone
+        });
       }
 
       const whatsappPhone = formattedPhone.startsWith('+') ? formattedPhone : `+${formattedPhone}`;
       const whatsappMessageText = `*${whatsappMessage.title}*\n\n${whatsappMessage.body}\n\n---\nمنصة الحلم`;
 
       console.log('📧 إرسال رسالة WhatsApp:', {
-      originalPhone: phoneNumber,
-      formattedPhone: formattedPhone,
-      whatsappPhone: whatsappPhone,
-      messageLength: whatsappMessageText.length,
-      instanceId: instanceId
+        originalPhone: phoneNumber,
+        formattedPhone: formattedPhone,
+        whatsappPhone: whatsappPhone,
+        messageLength: whatsappMessageText.length,
+        instanceId: instanceId
       });
 
       // فحص حالة Instance ID أولاً
       console.log('🔍 فحص حالة Instance ID...');
       try {
-      const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
-      const statusResult = await statusResponse.json();
-      console.log('📊 حالة API:', statusResult);
+        const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
+        const statusResult = await statusResponse.json();
+        console.log('📊 حالة API:', statusResult);
 
-      const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
-      const configResult = await configResponse.json();
-      console.log('⚙️ تكوين API:', configResult);
+        const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
+        const configResult = await configResponse.json();
+        console.log('⚙️ تكوين API:', configResult);
       } catch (error) {
-      console.error('❌ خطأ في فحص حالة API:', error);
+        console.error('❌ خطأ في فحص حالة API:', error);
       }
 
       const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phoneNumbers: [whatsappPhone],
-        message: whatsappMessageText,
-        type: 'admin_notification',
-        instance_id: instanceId !== 'موجود' ? instanceId : undefined
-      })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumbers: [whatsappPhone],
+          message: whatsappMessageText,
+          type: 'admin_notification',
+          instance_id: instanceId !== 'موجود' ? instanceId : undefined
+        })
       });
 
       const whatsappResult = await whatsappResponse.json();
       console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
 
       if (whatsappResult.success) {
-      toast.success(`✅ تم إرسال الرسالة عبر WhatsApp بنجاح`);
-      toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
+        toast.success(`✅ تم إرسال الرسالة عبر WhatsApp بنجاح`);
+        toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
 
-      if (whatsappResult.data?.results?.[0]?.data) {
-        console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
-      }
+        if (whatsappResult.data?.results?.[0]?.data) {
+          console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
+        }
 
-      setShowWhatsAppDialog(false);
-      setWhatsappMessage({ title: '', body: '' });
-      setPhoneNumber('');
+        setShowWhatsAppDialog(false);
+        setWhatsappMessage({ title: '', body: '' });
+        setPhoneNumber('');
       } else {
-      toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
+        toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
 
-      if (whatsappResult.data?.errors?.[0]?.error) {
-        console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
-        toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
+        if (whatsappResult.data?.errors?.[0]?.error) {
+          console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
+          toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
 
-        if (whatsappResult.data.errors[0].error.includes('instance') ||
+          if (whatsappResult.data.errors[0].error.includes('instance') ||
             whatsappResult.data.errors[0].error.includes('Instance') ||
             whatsappResult.data.errors[0].error.includes('connection')) {
-          toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
+            toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
+          }
         }
-      }
       }
 
     } catch (error) {
@@ -840,14 +817,14 @@ export default function SendNotificationsPage() {
 
   const getAccountTypeIcon = (accountType: string) => {
     switch (accountType) {
-      case 'player': return <User className="w-4 h-4 text-blue-600" />;
+      case 'player': return <UserIcon className="w-4 h-4 text-blue-600" />;
       case 'trainer': return <Target className="w-4 h-4 text-green-600" />;
       case 'club': return <Building className="w-4 h-4 text-purple-600" />;
       case 'academy': return <GraduationCap className="w-4 h-4 text-orange-600" />;
       case 'agent': return <Briefcase className="w-4 h-4 text-indigo-600" />;
       case 'marketer': return <TrendingUp className="w-4 h-4 text-pink-600" />;
       case 'admin': return <Crown className="w-4 h-4 text-yellow-600" />;
-      default: return <User className="w-4 h-4 text-gray-600" />;
+      default: return <UserIcon className="w-4 h-4 text-gray-600" />;
     }
   };
 
@@ -863,727 +840,6 @@ export default function SendNotificationsPage() {
       default: return accountType;
     }
   };
-
-  // نماذج الرسائل الجاهزة
-  const messageTemplates: MessageTemplate[] = [
-    // نماذج الدفع والاشتراكات
-    {
-      id: 'payment-confirmation',
-      title: 'تأكيد دفع الإيصال',
-      message: 'تم تأكيد دفع إيصال الاشتراك بنجاح! شكراً لك على ثقتك في منصة الحلم. اضغط هنا للتجديد.',
-      type: 'success',
-      priority: 'medium',
-      category: 'دفع واشتراكات',
-      description: 'تأكيد دفع إيصال الاشتراك'
-    },
-    {
-      id: 'subscription-renewal',
-      title: 'تجديد الاشتراك',
-      message: 'حان موعد تجديد اشتراكك! احرص على التجديد للاستمرار في الاستمتاع بجميع المميزات. اضغط هنا للتجديد.',
-      type: 'warning',
-      priority: 'high',
-      category: 'دفع واشتراكات',
-      description: 'تذكير بتجديد الاشتراك'
-    },
-    {
-      id: 'payment-failed',
-      title: 'فشل في الدفع',
-      message: 'عذراً، حدث خطأ في عملية الدفع. يرجى التحقق من بيانات البطاقة والمحاولة مرة أخرى. اضغط هنا للمحاولة.',
-      type: 'error',
-      priority: 'high',
-      category: 'دفع واشتراكات',
-      description: 'إشعار فشل الدفع'
-    },
-
-    // نماذج الملف الشخصي
-    {
-      id: 'profile-views',
-      title: 'مشاهدات الملف الشخصي',
-      message: '🎉 تم مشاهدة ملفك الشخصي من قبل مدربين وأندية! ملفك يلفت الانتباه. اضغط هنا لتحسين ملفك.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الملف الشخصي',
-      description: 'إشعار مشاهدات الملف الشخصي'
-    },
-    {
-      id: 'profile-ranking',
-      title: 'الترتيب الحالي للملف',
-      message: '📊 ترتيب ملفك الشخصي: {ranking} من أصل {total}. استمر في تطوير مهاراتك! اضغط هنا للتحسين.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الملف الشخصي',
-      description: 'إشعار الترتيب الحالي'
-      },
-    {
-      id: 'incomplete-profile',
-      title: 'استكمال بيانات الملف الشخصي',
-      message: '⚠️ ملفك الشخصي غير مكتمل! استكمل بياناتك للحصول على فرص أفضل. اضغط هنا للإكمال.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الملف الشخصي',
-      description: 'تذكير باستكمال البيانات'
-      },
-    {
-      id: 'profile-updated',
-      title: 'تم تحديث الملف الشخصي',
-      message: '✅ تم تحديث ملفك الشخصي بنجاح! البيانات الجديدة ستظهر للمدربين والأندية. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'low',
-      category: 'الملف الشخصي',
-      description: 'تأكيد تحديث الملف'
-      },
-
-      // نماذج الاختبارات
-    {
-      id: 'test-invitation',
-      title: 'دعوة للاختبارات - منصة الحلم',
-      message: '🏆 تم إرسال دعوة لك للمشاركة في اختبارات منصة الحلم! فرصة رائعة لإظهار مهاراتك. اضغط هنا للمشاركة.',
-      type: 'success',
-      priority: 'high',
-      category: 'الاختبارات',
-      description: 'دعوة للمشاركة في الاختبارات'
-      },
-    {
-      id: 'test-reminder',
-      title: 'تذكير بالاختبار',
-      message: '⏰ تذكير: لديك اختبار غداً في الساعة {time}. تأكد من الاستعداد الجيد! اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الاختبارات',
-      description: 'تذكير بموعد الاختبار'
-      },
-    {
-      id: 'test-results',
-      title: 'نتائج الاختبار',
-      message: '📋 نتائج اختبارك جاهزة! يمكنك الاطلاع عليها في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الاختبارات',
-      description: 'إشعار جاهزية النتائج'
-      },
-
-      // نماذج رسائل تشجيعية
-    {
-      id: 'motivational-1',
-      title: 'رسالة تشجيعية',
-      message: '💪 أنت تمتلك موهبة رائعة! استمر في التدريب والعمل الجاد، وستحقق أحلامك قريباً. اضغط هنا للتقدم.',
-      type: 'success',
-      priority: 'medium',
-      category: 'رسائل تشجيعية',
-      description: 'رسالة تحفيزية عامة'
-      },
-    {
-      id: 'motivational-2',
-      title: 'تطوير المهارات',
-      message: '🌟 كل يوم تدريب هو خطوة نحو التميز! استمر في تطوير مهاراتك وستصبح لاعباً استثنائياً. اضغط هنا للتحسين.',
-      type: 'success',
-      priority: 'medium',
-      category: 'رسائل تشجيعية',
-      description: 'تشجيع على تطوير المهارات'
-      },
-    {
-      id: 'motivational-3',
-      title: 'النجاح قريب',
-      message: '🎯 النجاح ليس بعيداً! استمر في العمل الجاد والتدريب المستمر، وستحقق أهدافك. اضغط هنا للأهداف.',
-      type: 'success',
-      priority: 'medium',
-      category: 'رسائل تشجيعية',
-      description: 'تشجيع على الاستمرار'
-      },
-
-      // نماذج الدعوة للأصدقاء
-    {
-      id: 'referral-program',
-      title: 'احصل على عائد مالي - دعوة الأصدقاء',
-      message: '💰 احصل على عائد مالي من خلال دعوة أصدقائك! لكل صديق تدعوه، تحصل على {amount} ريال. اضغط هنا للدعوة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'دعوة الأصدقاء',
-      description: 'برنامج الدعوة والعائد المالي'
-      },
-    {
-      id: 'referral-success',
-      title: 'تم تسجيل صديقك بنجاح',
-      message: '🎉 تم تسجيل صديقك بنجاح! سيتم إضافة {amount} ريال إلى رصيدك قريباً. اضغط هنا للرصيد.',
-      type: 'success',
-      priority: 'medium',
-      category: 'دعوة الأصدقاء',
-      description: 'تأكيد تسجيل صديق'
-      },
-    {
-      id: 'referral-bonus',
-      title: 'تم إضافة المكافأة',
-      message: '💵 تم إضافة مكافأة دعوة الأصدقاء إلى رصيدك! استمر في دعوة المزيد من الأصدقاء. اضغط هنا للمزيد.',
-      type: 'success',
-      priority: 'medium',
-      category: 'دعوة الأصدقاء',
-      description: 'إشعار إضافة المكافأة'
-      },
-
-      // نماذج عامة
-    {
-      id: 'welcome-message',
-      title: 'مرحباً بك في منصة الحلم',
-      message: '🌟 مرحباً بك في منصة الحلم! نحن سعداء بانضمامك إلينا. نتمنى لك رحلة تدريبية ممتعة. اضغط هنا للاستكشاف.',
-      type: 'success',
-      priority: 'medium',
-      category: 'رسائل عامة',
-      description: 'رسالة ترحيب للمستخدمين الجدد'
-      },
-    {
-      id: 'maintenance-notice',
-      title: 'إشعار صيانة النظام',
-      message: '🔧 سيتم إجراء صيانة للنظام يوم {date} من الساعة {start} إلى {end}. نعتذر عن الإزعاج. اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'رسائل عامة',
-      description: 'إشعار صيانة النظام'
-      },
-    {
-      id: 'new-feature',
-      title: 'ميزة جديدة متاحة',
-      message: '✨ ميزة جديدة متاحة الآن! {feature_name}. جربها الآن واستمتع بالتجربة المحسنة. اضغط هنا للتجربة.',
-      type: 'info',
-      priority: 'medium',
-      category: 'رسائل عامة',
-      description: 'إشعار ميزة جديدة'
-      },
-    {
-      id: 'achievement-unlocked',
-      title: 'إنجاز جديد!',
-      message: '🏆 مبروك! لقد حققت إنجاز {achievement_name}! استمر في التقدم. اضغط هنا للإنجازات.',
-      type: 'success',
-      priority: 'medium',
-      category: 'رسائل عامة',
-      description: 'إشعار إنجاز جديد'
-      },
-
-      // نماذج التدريب والتطوير
-    {
-      id: 'training-schedule',
-      title: 'جدول التدريب الأسبوعي',
-      message: '📅 جدول تدريبك الأسبوعي جاهز! تحقق من المواعيد الجديدة وكن مستعداً للتدريب. اضغط هنا للجدول.',
-      type: 'info',
-      priority: 'medium',
-      category: 'التدريب والتطوير',
-      description: 'إشعار جدول التدريب'
-      },
-    {
-      id: 'training-reminder',
-      title: 'تذكير بموعد التدريب',
-      message: '⏰ تذكير: لديك تدريب غداً في الساعة {time} مع المدرب {coach_name}. كن مستعداً! اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'التدريب والتطوير',
-      description: 'تذكير بموعد التدريب'
-      },
-    {
-      id: 'training-cancelled',
-      title: 'إلغاء موعد التدريب',
-      message: '❌ تم إلغاء موعد التدريب المقرر يوم {date}. سيتم إعادة جدولته قريباً. اضغط هنا للجدولة.',
-      type: 'warning',
-      priority: 'high',
-      category: 'التدريب والتطوير',
-      description: 'إشعار إلغاء التدريب'
-      },
-    {
-      id: 'training-completed',
-      title: 'تم إكمال التدريب',
-      message: '✅ تم إكمال جلسة التدريب بنجاح! استمر في العمل الجاد لتطوير مهاراتك. اضغط هنا للتقدم.',
-      type: 'success',
-      priority: 'medium',
-      category: 'التدريب والتطوير',
-      description: 'تأكيد إكمال التدريب'
-      },
-
-      // نماذج المسابقات والبطولات
-    {
-      id: 'competition-invitation',
-      title: 'دعوة للمسابقة',
-      message: '🏆 تم إرسال دعوة لك للمشاركة في مسابقة {competition_name}! فرصة رائعة لإظهار مهاراتك. اضغط هنا للمشاركة.',
-      type: 'success',
-      priority: 'high',
-      category: 'المسابقات والبطولات',
-      description: 'دعوة للمشاركة في مسابقة'
-      },
-    {
-      id: 'competition-reminder',
-      title: 'تذكير بالمسابقة',
-      message: '⏰ تذكير: المسابقة {competition_name} غداً! تأكد من الاستعداد الجيد. اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'المسابقات والبطولات',
-      description: 'تذكير بموعد المسابقة'
-      },
-    {
-      id: 'competition-results',
-      title: 'نتائج المسابقة',
-      message: '📊 نتائج مسابقة {competition_name} جاهزة! تحقق من ترتيبك في الموقع. اضغط هنا للنتائج.',
-      type: 'info',
-      priority: 'medium',
-      category: 'المسابقات والبطولات',
-      description: 'إشعار نتائج المسابقة'
-      },
-
-      // نماذج العروض والخصومات
-    {
-      id: 'special-offer',
-      title: 'عرض خاص!',
-      message: '🎉 عرض خاص! احصل على خصم {discount}% على جميع الاشتراكات لمدة محدودة فقط. اضغط هنا للاستفادة.',
-      type: 'success',
-      priority: 'high',
-      category: 'العروض والخصومات',
-      description: 'عرض خاص وخصومات'
-      },
-    {
-      id: 'limited-offer',
-      title: 'عرض محدود',
-      message: '⏰ عرض محدود! احصل على {offer_description} بسعر مخفض. العرض ينتهي قريباً! اضغط هنا للاستفادة.',
-      type: 'warning',
-      priority: 'high',
-      category: 'العروض والخصومات',
-      description: 'عرض محدود الوقت'
-      },
-    {
-      id: 'loyalty-reward',
-      title: 'مكافأة الولاء',
-      message: '💎 مكافأة خاصة للعملاء المخلصين! احصل على {reward_description} مجاناً. اضغط هنا للاستلام.',
-      type: 'success',
-      priority: 'medium',
-      category: 'العروض والخصومات',
-      description: 'مكافأة الولاء'
-      },
-
-      // نماذج الدعم والمساعدة
-    {
-      id: 'support-ticket',
-      title: 'تم فتح تذكرة الدعم',
-      message: '🎫 تم فتح تذكرة الدعم رقم #{ticket_number}. سنقوم بالرد عليك في أقرب وقت ممكن. اضغط هنا للمتابعة.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الدعم والمساعدة',
-      description: 'تأكيد فتح تذكرة الدعم'
-      },
-    {
-      id: 'support-response',
-      title: 'رد على تذكرة الدعم',
-      message: '📧 تم الرد على تذكرة الدعم رقم #{ticket_number}. تحقق من الرد الجديد. اضغط هنا للرد.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الدعم والمساعدة',
-      description: 'إشعار رد الدعم'
-      },
-    {
-      id: 'support-resolved',
-      title: 'تم حل المشكلة',
-      message: '✅ تم حل مشكلتك بنجاح! إذا كنت بحاجة لمزيد من المساعدة، لا تتردد في التواصل معنا. اضغط هنا للتواصل.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الدعم والمساعدة',
-      description: 'تأكيد حل المشكلة'
-      },
-
-      // نماذج الأمان والحماية
-    {
-      id: 'login-alert',
-      title: 'تنبيه تسجيل الدخول',
-      message: '🔒 تم تسجيل الدخول إلى حسابك من جهاز جديد. إذا لم تكن أنت، يرجى تغيير كلمة المرور. اضغط هنا للتغيير.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الأمان والحماية',
-      description: 'تنبيه تسجيل دخول جديد'
-      },
-    {
-      id: 'password-changed',
-      title: 'تم تغيير كلمة المرور',
-      message: '🔐 تم تغيير كلمة المرور بنجاح! إذا لم تقم بهذا التغيير، يرجى التواصل مع الدعم. اضغط هنا للتواصل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الأمان والحماية',
-      description: 'إشعار تغيير كلمة المرور'
-      },
-    {
-      id: 'account-verified',
-      title: 'تم التحقق من الحساب',
-      message: '✅ تم التحقق من حسابك بنجاح! يمكنك الآن الاستمتاع بجميع المميزات. اضغط هنا للاستكشاف.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الأمان والحماية',
-      description: 'تأكيد التحقق من الحساب'
-      },
-
-    // نماذج خدمة العملاء والدعم
-    {
-      id: 'customer-support-contact',
-      title: 'تواصل مع خدمة العملاء',
-      message: '📞 نحن هنا لمساعدتك! للاستفسارات أو المساعدة، تواصل معنا على: 01000940321 (خدمة عملاء مصر). اضغط هنا للتواصل.',
-      type: 'info',
-      priority: 'medium',
-      category: 'خدمة العملاء',
-      description: 'معلومات التواصل مع خدمة العملاء'
-    },
-    {
-      id: 'customer-support-hours',
-      title: 'أوقات عمل خدمة العملاء',
-      message: '⏰ خدمة العملاء متاحة من الأحد إلى الخميس من 9 صباحاً حتى 6 مساءً. للتواصل: 01000940321. اضغط هنا للتواصل.',
-      type: 'info',
-      priority: 'low',
-      category: 'خدمة العملاء',
-      description: 'إشعار بأوقات عمل خدمة العملاء'
-    },
-    {
-      id: 'customer-support-urgent',
-      title: 'دعم فوري - خدمة العملاء',
-      message: '🚨 تحتاج مساعدة فورية؟ تواصل معنا الآن على 01000940321 (خدمة عملاء مصر). فريقنا جاهز لمساعدتك! اضغط هنا للتواصل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'خدمة العملاء',
-      description: 'طلب دعم فوري'
-    },
-
-    // نماذج إشعارات الرفض والموافقة
-    {
-      id: 'media-approved',
-      title: 'تم الموافقة على المحتوى',
-      message: '✅ تمت الموافقة على محتواك! شكراً لمشاركتك. يمكنك الآن الاطلاع على المحتوى في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'المحتوى والوسائط',
-      description: 'إشعار الموافقة على المحتوى'
-    },
-    {
-      id: 'media-rejected',
-      title: 'تم رفض المحتوى',
-      message: '❌ تم رفض محتواك. يرجى مراجعة الشروط والمحاولة مرة أخرى. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
-      type: 'error',
-      priority: 'high',
-      category: 'المحتوى والوسائط',
-      description: 'إشعار رفض المحتوى'
-    },
-    {
-      id: 'media-pending',
-      title: 'محتوى قيد المراجعة',
-      message: '⏳ المحتوى الخاص بك قيد المراجعة. سنقوم بالرد عليك قريباً. للاستفسار: 01000940321. اضغط هنا للمتابعة.',
-      type: 'info',
-      priority: 'medium',
-      category: 'المحتوى والوسائط',
-      description: 'إشعار محتوى قيد المراجعة'
-    },
-
-    // نماذج التذكيرات والإشعارات المهمة
-    {
-      id: 'account-suspension-warning',
-      title: 'تنبيه: حسابك معرض للإيقاف',
-      message: '⚠️ حسابك معرض للإيقاف المؤقت بسبب عدم الالتزام بالشروط. يرجى مراجعة ملفك. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
-      type: 'error',
-      priority: 'critical',
-      category: 'التذكيرات المهمة',
-      description: 'تنبيه إيقاف الحساب'
-    },
-    {
-      id: 'account-activated',
-      title: 'تم تفعيل حسابك',
-      message: '🎉 تم تفعيل حسابك بنجاح! يمكنك الآن استخدام جميع المميزات. للاستفسار: 01000940321. اضغط هنا للبدء.',
-      type: 'success',
-      priority: 'high',
-      category: 'التذكيرات المهمة',
-      description: 'إشعار تفعيل الحساب'
-    },
-    {
-      id: 'account-deactivated',
-      title: 'تم إيقاف حسابك مؤقتاً',
-      message: '⛔ تم إيقاف حسابك مؤقتاً. للاستفسار عن السبب أو استعادة الحساب، تواصل معنا: 01000940321. اضغط هنا للتواصل.',
-      type: 'error',
-      priority: 'critical',
-      category: 'التذكيرات المهمة',
-      description: 'إشعار إيقاف الحساب'
-    },
-
-    // نماذج إشعارات الملفات والوثائق
-    {
-      id: 'document-uploaded',
-      title: 'تم رفع الوثيقة',
-      message: '📄 تم رفع وثيقتك بنجاح! جاري مراجعتها. سنقوم بإشعارك عند الانتهاء. للاستفسار: 01000940321. اضغط هنا للمتابعة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الملفات والوثائق',
-      description: 'تأكيد رفع الوثيقة'
-    },
-    {
-      id: 'document-approved',
-      title: 'تم اعتماد الوثيقة',
-      message: '✅ تم اعتماد وثيقتك بنجاح! يمكنك الآن استخدامها في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الملفات والوثائق',
-      description: 'إشعار اعتماد الوثيقة'
-    },
-    {
-      id: 'document-rejected',
-      title: 'تم رفض الوثيقة',
-      message: '❌ تم رفض وثيقتك. يرجى التأكد من صحة البيانات وإعادة الرفع. للاستفسار: 01000940321. اضغط هنا للمراجعة.',
-      type: 'error',
-      priority: 'high',
-      category: 'الملفات والوثائق',
-      description: 'إشعار رفض الوثيقة'
-    },
-
-    // نماذج إشعارات الرسائل والتواصل
-    {
-      id: 'new-message',
-      title: 'رسالة جديدة',
-      message: '💬 لديك رسالة جديدة من {sender_name}. اضغط هنا للاطلاع على الرسالة والرد.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الرسائل والتواصل',
-      description: 'إشعار رسالة جديدة'
-    },
-    {
-      id: 'offer-received',
-      title: 'عرض جديد',
-      message: '🎁 تلقيت عرضاً جديداً! تحقق من التفاصيل في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'high',
-      category: 'الرسائل والتواصل',
-      description: 'إشعار عرض جديد'
-    },
-    {
-      id: 'connection-request',
-      title: 'طلب اتصال جديد',
-      message: '🤝 تلقيت طلب اتصال من {sender_name}. اضغط هنا للموافقة أو الرفض.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الرسائل والتواصل',
-      description: 'إشعار طلب اتصال'
-    },
-
-    // نماذج إشعارات التقييمات والمراجعات
-    {
-      id: 'rating-received',
-      title: 'تقييم جديد',
-      message: '⭐ تلقيت تقييماً جديداً! شكراً لك. يمكنك الاطلاع على التقييم في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'low',
-      category: 'التقييمات والمراجعات',
-      description: 'إشعار تقييم جديد'
-    },
-    {
-      id: 'review-request',
-      title: 'طلب تقييم',
-      message: '📝 نحن نرغب في معرفة رأيك! ساعدنا في تحسين الخدمة من خلال تقييم تجربتك. اضغط هنا للتقييم.',
-      type: 'info',
-      priority: 'medium',
-      category: 'التقييمات والمراجعات',
-      description: 'طلب تقييم الخدمة'
-    },
-
-    // نماذج إشعارات الأحداث والمناسبات
-    {
-      id: 'event-invitation',
-      title: 'دعوة لحضور حدث',
-      message: '🎪 تم إرسال دعوة لك لحضور حدث {event_name}! فرصة رائعة للتعلم والاستمتاع. اضغط هنا للمشاركة.',
-      type: 'success',
-      priority: 'high',
-      category: 'الأحداث والمناسبات',
-      description: 'دعوة لحضور حدث'
-    },
-    {
-      id: 'event-reminder',
-      title: 'تذكير بالحدث',
-      message: '📅 تذكير: حدث {event_name} غداً في الساعة {time}. لا تفوت الفرصة! اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الأحداث والمناسبات',
-      description: 'تذكير بموعد حدث'
-    },
-    {
-      id: 'event-cancelled',
-      title: 'تم إلغاء الحدث',
-      message: '❌ تم إلغاء حدث {event_name}. نعتذر عن الإزعاج. سيتم إعادة جدولته قريباً. للاستفسار: 01000940321.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الأحداث والمناسبات',
-      description: 'إشعار إلغاء حدث'
-    },
-
-    // نماذج إشعارات البرامج والخطط
-    {
-      id: 'program-enrolled',
-      title: 'تم التسجيل في البرنامج',
-      message: '🎓 تم تسجيلك في برنامج {program_name} بنجاح! نتمنى لك رحلة تعليمية ممتعة. اضغط هنا للبدء.',
-      type: 'success',
-      priority: 'high',
-      category: 'البرامج والخطط',
-      description: 'تأكيد التسجيل في برنامج'
-    },
-    {
-      id: 'program-completed',
-      title: 'تم إكمال البرنامج',
-      message: '🏅 مبروك! لقد أكملت برنامج {program_name} بنجاح. يمكنك الآن الحصول على شهادة الإتمام. اضغط هنا للشهادة.',
-      type: 'success',
-      priority: 'high',
-      category: 'البرامج والخطط',
-      description: 'إشعار إكمال برنامج'
-    },
-    {
-      id: 'program-reminder',
-      title: 'تذكير بموعد البرنامج',
-      message: '⏰ تذكير: لديك جلسة في برنامج {program_name} غداً. تأكد من الاستعداد! اضغط هنا للتفاصيل.',
-      type: 'warning',
-      priority: 'medium',
-      category: 'البرامج والخطط',
-      description: 'تذكير بموعد برنامج'
-    },
-
-    // نماذج إشعارات الشهادات والاعتمادات
-    {
-      id: 'certificate-ready',
-      title: 'شهادة جاهزة',
-      message: '📜 شهادتك جاهزة الآن! يمكنك تحميلها من ملفك الشخصي. للاستفسار: 01000940321. اضغط هنا للتحميل.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الشهادات والاعتمادات',
-      description: 'إشعار جاهزية الشهادة'
-    },
-    {
-      id: 'certificate-verified',
-      title: 'تم التحقق من الشهادة',
-      message: '✅ تم التحقق من شهادتك بنجاح! يمكنك الآن استخدامها في ملفك الشخصي. اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الشهادات والاعتمادات',
-      description: 'تأكيد التحقق من الشهادة'
-    },
-
-    // نماذج إشعارات التحديثات والتطويرات
-    {
-      id: 'app-update',
-      title: 'تحديث التطبيق متاح',
-      message: '🔄 تحديث جديد للتطبيق متاح الآن! احصل على آخر المميزات والتحسينات. اضغط هنا للتحديث.',
-      type: 'info',
-      priority: 'medium',
-      category: 'التحديثات والتطويرات',
-      description: 'إشعار تحديث التطبيق'
-    },
-    {
-      id: 'feature-update',
-      title: 'تحديث ميزة',
-      message: '✨ تم تحديث ميزة {feature_name}! جرب الميزات الجديدة الآن. اضغط هنا للاستكشاف.',
-      type: 'info',
-      priority: 'low',
-      category: 'التحديثات والتطويرات',
-      description: 'إشعار تحديث ميزة'
-    },
-
-    // نماذج إشعارات الطوارئ والمهام العاجلة
-    {
-      id: 'urgent-action-required',
-      title: 'إجراء عاجل مطلوب',
-      message: '🚨 يرجى تنفيذ إجراء عاجل: {action_description}. للاستفسار: 01000940321. اضغط هنا للتنفيذ.',
-      type: 'error',
-      priority: 'critical',
-      category: 'الطوارئ والمهام العاجلة',
-      description: 'طلب إجراء عاجل'
-    },
-    {
-      id: 'deadline-approaching',
-      title: 'اقتراب الموعد النهائي',
-      message: '⏰ تنبيه: الموعد النهائي لـ {task_name} يقترب! يرجى الإكمال قبل انتهاء الوقت. اضغط هنا للإكمال.',
-      type: 'warning',
-      priority: 'high',
-      category: 'الطوارئ والمهام العاجلة',
-      description: 'تذكير بالموعد النهائي'
-    },
-
-    // نماذج إشعارات التهنئة والمناسبات
-    {
-      id: 'birthday-greeting',
-      title: 'عيد ميلاد سعيد!',
-      message: '🎂 عيد ميلاد سعيد! نتمنى لك عاماً مليئاً بالنجاح والفرح. استمر في السعي لتحقيق أحلامك!',
-      type: 'success',
-      priority: 'low',
-      category: 'التهنئة والمناسبات',
-      description: 'تهنئة بعيد الميلاد'
-    },
-    {
-      id: 'achievement-congratulations',
-      title: 'تهنئة بالإنجاز',
-      message: '🎉 مبروك على إنجازك الرائع! استمر في التقدم والنجاح. نحن فخورون بك!',
-      type: 'success',
-      priority: 'medium',
-      category: 'التهنئة والمناسبات',
-      description: 'تهنئة بالإنجاز'
-    },
-
-    // نماذج إشعارات الاستطلاعات والاستبيانات
-    {
-      id: 'survey-request',
-      title: 'طلب المشاركة في استطلاع',
-      message: '📊 نحن نرغب في معرفة رأيك! شاركنا في استطلاع قصير لمساعدتنا في تحسين الخدمة. اضغط هنا للمشاركة.',
-      type: 'info',
-      priority: 'low',
-      category: 'الاستطلاعات والاستبيانات',
-      description: 'طلب المشاركة في استطلاع'
-    },
-    {
-      id: 'survey-thanks',
-      title: 'شكراً لمشاركتك',
-      message: '🙏 شكراً لمشاركتك في الاستطلاع! رأيك مهم جداً لنا. للاستفسار: 01000940321.',
-      type: 'success',
-      priority: 'low',
-      category: 'الاستطلاعات والاستبيانات',
-      description: 'شكر على المشاركة'
-    },
-
-    // نماذج إشعارات الإعلانات والتسويق
-    {
-      id: 'new-partner',
-      title: 'شريك جديد',
-      message: '🤝 مرحباً بك كشريك جديد في منصة الحلم! نتمنى لك تجربة رائعة. للاستفسار: 01000940321. اضغط هنا للبدء.',
-      type: 'success',
-      priority: 'medium',
-      category: 'الإعلانات والتسويق',
-      description: 'ترحيب بشريك جديد'
-    },
-    {
-      id: 'partnership-benefits',
-      title: 'مميزات الشراكة',
-      message: '💼 استمتع بمميزات الشراكة الحصرية! احصل على خصومات وعروض خاصة. للاستفسار: 01000940321. اضغط هنا للمميزات.',
-      type: 'info',
-      priority: 'medium',
-      category: 'الإعلانات والتسويق',
-      description: 'إشعار مميزات الشراكة'
-    },
-
-    // نماذج إشعارات التقييمات والتحسينات
-    {
-      id: 'profile-featured',
-      title: 'ملفك مميز الآن',
-      message: '⭐ تم تمييز ملفك الشخصي! ملفك يظهر في الصفحة الرئيسية. استمر في التميز! اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'high',
-      category: 'التقييمات والتحسينات',
-      description: 'إشعار تمييز الملف'
-    },
-    {
-      id: 'rank-improved',
-      title: 'تحسن ترتيبك',
-      message: '📈 مبروك! تحسن ترتيبك في المنصة. استمر في التقدم لتحقيق المزيد من النجاح! اضغط هنا للمراجعة.',
-      type: 'success',
-      priority: 'medium',
-      category: 'التقييمات والتحسينات',
-      description: 'إشعار تحسن الترتيب'
-    },
-    {
-      id: 'top-ten-ranking',
-      title: 'أنت من العشرة الأوائل!',
-      message: '🏆 حسابك الآن في ترتيب رقم {ranking} - أنت من العشرة الأوائل! يمكن للأندية والأكاديميات العالمية مشاهدتك الآن. اضغط هنا.',
-      type: 'success',
-      priority: 'high',
-      category: 'الملف الشخصي',
-      description: 'إشعار ترتيب من العشرة الأوائل'
-    }
-    ];
 
   const filteredTemplates = selectedCategory === 'all'
     ? messageTemplates
@@ -1608,861 +864,866 @@ export default function SendNotificationsPage() {
 
   const targetUsers = getTargetUsers();
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 sm:mb-8">
-        <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
-          <Bell className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">إرسال الإشعارات</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">إرسال إشعارات مخصصة للمستخدمين عبر طرق متعددة</p>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] selection:bg-blue-100 selection:text-blue-700">
+      {/* Background Blobs for Atmosphere */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
+        <div className="absolute top-[20%] -left-[10%] w-[35%] h-[35%] bg-indigo-400/10 blur-[100px] rounded-full" />
+        <div className="absolute -bottom-[10%] right-[20%] w-[30%] h-[30%] bg-purple-400/10 blur-[80px] rounded-full" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
-        {/* Form */}
-        <div className="xl:col-span-3 space-y-4 sm:space-y-6">
-          {/* Date Filter Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                فلترة بالتاريخ
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  onClick={() => { setDateFilterType('all'); setDateStart(''); setDateEnd(''); }}
-                  className={`text-xs sm:text-sm border ${dateFilterType === 'all'
-                    ? 'bg-gray-700 text-white hover:bg-gray-800 border-transparent'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}`}
+      <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        {/* Modern Header Section */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white shadow-2xl shadow-blue-900/5"
+        >
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <div className="p-4 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-200">
+                <SendHorizontal className="w-8 h-8 text-white" />
+              </div>
+              <div className="absolute -top-2 -right-2 p-1.5 bg-yellow-400 rounded-lg shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-yellow-900" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                مركز <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">التواصل الذكي</span>
+              </h1>
+              <p className="text-gray-500 font-medium mt-1 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                تحكم كامل في حملاتك الترويجية وإشعارات النظام
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              className="bg-white/50 backdrop-blur-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 rounded-2xl px-6 h-12 border border-white transition-all duration-300 font-black text-xs uppercase tracking-widest shadow-sm"
+              onClick={() => setForm({
+                title: '',
+                message: '',
+                type: 'info',
+                priority: 'medium',
+                targetType: 'all',
+                accountTypes: [],
+                customNumbers: '',
+                selectedUsers: [],
+                sendMethods: { inApp: true, sms: false, whatsapp: false },
+                scheduleType: 'immediate',
+                scheduledDate: new Date().toISOString().split('T')[0],
+                scheduledTime: new Date().getHours().toString().padStart(2, '0') + ':' + new Date().getMinutes().toString().padStart(2, '0')
+              })}
+            >
+              <Zap className="w-4 h-4 ml-2 opacity-50" />
+              تصفير
+            </Button>
+            <Button
+              onClick={() => setShowWhatsAppDialog(true)}
+              className="bg-gradient-to-r from-emerald-500 via-green-600 to-emerald-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-2xl px-8 h-12 shadow-xl shadow-green-500/20 border-t border-white/20 transition-all font-black"
+            >
+              <MessageSquare className="w-4 h-4 ml-2" />
+              واتساب سريع
+            </Button>
+          </div>
+        </motion.div>
+
+        <Tabs defaultValue="compose" className="space-y-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <TabsList className="bg-white/70 backdrop-blur-md p-1.5 h-16 rounded-2xl border border-white shadow-sm w-full md:w-auto flex gap-1">
+              {[
+                { value: 'compose', icon: Layers, label: 'محتوى الرسالة' },
+                { value: 'targeting', icon: Target, label: 'الجمهور المستهدف' },
+                { value: 'methods', icon: Smartphone, label: 'قنوات الإرسال' }
+              ].map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="px-8 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white h-full transition-all duration-300 gap-2 flex items-center font-bold"
                 >
-                  الكل
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => { setDateFilterType('today'); setDateStart(''); setDateEnd(''); }}
-                  className={`text-xs sm:text-sm border ${dateFilterType === 'today'
-                    ? 'bg-green-600 text-white hover:bg-green-700 border-transparent'
-                    : 'bg-white text-green-700 hover:bg-green-50 border-green-300'}`}
-                >
-                  اليوم
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => { setDateFilterType('this_month'); setDateStart(''); setDateEnd(''); }}
-                  className={`text-xs sm:text-sm border ${dateFilterType === 'this_month'
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent'
-                    : 'bg-white text-indigo-700 hover:bg-indigo-50 border-indigo-300'}`}
-                >
-                  هذا الشهر
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setDateFilterType('range')}
-                  className={`text-xs sm:text-sm border ${dateFilterType === 'range'
-                    ? 'bg-amber-600 text-white hover:bg-amber-700 border-transparent'
-                    : 'bg-white text-amber-700 hover:bg-amber-50 border-amber-300'}`}
-                >
-                  نطاق تاريخ
-                </Button>
-              </div>
-              {dateFilterType === 'range' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="notif-date-start" className="block text-xs text-gray-600 mb-1">من تاريخ</label>
-                    <Input id="notif-date-start" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
-                  </div>
-                  <div>
-                    <label htmlFor="notif-date-end" className="block text-xs text-gray-600 mb-1">إلى تاريخ</label>
-                    <Input id="notif-date-end" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">مطابقون: {filteredUsers.length}</Badge>
-                <Button type="button" variant="outline" size="sm" onClick={selectAllUsers} className="text-xs">تحديد كل المطابقين</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={deselectAllUsers} className="text-xs">إلغاء التحديد</Button>
-              </div>
-            </CardContent>
-          </Card>
-                       {/* Message Templates */}
-           <Card>
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
-                 <MessageSquare className="w-5 h-5 text-green-600" />
-                 نماذج الرسائل الجاهزة
-               </CardTitle>
-               <CardDescription>
-                 اختر من نماذج الرسائل الجاهزة أو أنشئ رسالة مخصصة
-               </CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-4">
-                                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 flex-1 sm:flex-none"
-                  >
-                    {showTemplates ? 'إخفاء النماذج' : 'عرض النماذج الجاهزة'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setForm(prev => ({
-                        ...prev,
-                        title: '',
-                        message: '',
-                        type: 'info',
-                        priority: 'medium'
-                      }));
-                    }}
-                    className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 flex-1 sm:flex-none"
-                  >
-                    رسالة مخصصة
-                  </Button>
-                </div>
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-               {showTemplates && (
-                 <div className="space-y-4">
-                   {/* Category Filter */}
-                   <div>
-                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                       تصفية حسب الفئة
-                     </label>
-                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                       <SelectTrigger>
-                         <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent>
-                         {categories.map((category) => (
-                           <SelectItem key={category} value={category}>
-                             {category === 'all' ? 'جميع الفئات' : category}
-                           </SelectItem>
-                         ))}
-                       </SelectContent>
-                     </Select>
-                   </div>
+            <div className="flex items-center gap-2 bg-blue-50/50 px-4 py-2 rounded-xl border border-blue-100">
+              <Users className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-bold text-blue-800">إجمالي المستخدمين: {users.length}</span>
+            </div>
+          </div>
 
-                                         {/* Templates Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 sm:max-h-96 overflow-y-auto">
-                     {filteredTemplates.map((template) => (
-                       <div
-                         key={template.id}
-                         className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                         onClick={() => handleTemplateSelect(template)}
-                       >
-                         <div className="flex items-start justify-between mb-2">
-                           <div className="flex items-center gap-2">
-                             {getTypeIcon(template.type)}
-                             <span className="font-medium text-sm">{template.title}</span>
-                           </div>
-                           <Badge className={getPriorityColor(template.priority)}>
-                             {template.priority === 'critical' ? 'حرج' :
-                              template.priority === 'high' ? 'عالية' :
-                              template.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
-                           </Badge>
-                         </div>
-                         <p className="text-xs text-gray-600 mb-2">{template.description}</p>
-                                                     <div className="space-y-1">
-                            <p className="text-xs text-gray-500 line-clamp-2">{template.message}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-400">
-                                {template.message.length} حرف
-                              </span>
-                              <span className={`text-xs ${template.message.length > 1000 ? 'text-red-500' : 'text-green-500'}`}>
-                                {template.message.length > 1000 ? 'تجاوز الحد' : 'ضمن الحد'}
-                              </span>
-                            </div>
-                          </div>
-                         <div className="mt-2">
-                           <Badge variant="outline" className="text-xs">
-                             {template.category}
-                           </Badge>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </div>
-               )}
-             </CardContent>
-           </Card>
-
-           {/* Basic Info */}
-           <Card>
-             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  معلومات الإشعار
-                </CardTitle>
-               <CardDescription>
-                 أدخل تفاصيل الإشعار الذي تريد إرساله
-               </CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  عنوان الإشعار *
-                </label>
-                <Input
-                  placeholder="أدخل عنوان الإشعار"
-                  value={form.title}
-                  onChange={(e) => handleFormChange('title', e.target.value)}
-                />
-              </div>
-
-                               <div>
-                 <div className="flex items-center justify-between mb-2">
-                   <label className="text-sm font-medium text-gray-700">
-                     رسالة الإشعار *
-                   </label>
-                   <span className={`text-xs ${form.message.length > 1000 ? 'text-red-600' : 'text-gray-500'}`}>
-                     {form.message.length}/1000 حرف
-                   </span>
-                 </div>
-                 <Textarea
-                   placeholder="أدخل رسالة الإشعار (الحد الأقصى 1000 حرف)"
-                   value={form.message}
-                   onChange={(e) => {
-                     if (e.target.value.length <= 1000) {
-                       handleFormChange('message', e.target.value);
-                     }
-                   }}
-                   rows={4}
-                   className={form.message.length > 1000 ? 'border-red-500' : ''}
-                 />
-                 {form.message.length > 1000 && (
-                   <p className="text-xs text-red-600 mt-1">
-                     تجاوزت الحد الأقصى للحروف. يرجى تقصير الرسالة.
-                   </p>
-                 )}
-               </div>
-
-                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    نوع الإشعار
-                  </label>
-                  <Select value={form.type} onValueChange={(value) => handleFormChange('type', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="info">معلومات</SelectItem>
-                      <SelectItem value="success">نجاح</SelectItem>
-                      <SelectItem value="warning">تحذير</SelectItem>
-                      <SelectItem value="error">خطأ</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    الأولوية
-                  </label>
-                  <Select value={form.priority} onValueChange={(value) => handleFormChange('priority', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">منخفضة</SelectItem>
-                      <SelectItem value="medium">متوسطة</SelectItem>
-                      <SelectItem value="high">عالية</SelectItem>
-                      <SelectItem value="critical">حرجة</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Target Selection */}
-          <Card>
-            <CardHeader>
-                               <CardTitle className="flex items-center gap-2">
-                 <Target className="w-5 h-5 text-purple-600" />
-                 تحديد المستهدفين
-               </CardTitle>
-              <CardDescription>
-                اختر المستخدمين الذين تريد إرسال الإشعار إليهم
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Date Filter - integrated here for maintainability */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-gray-800">فلترة بالتاريخ</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => { setDateFilterType('all'); setDateStart(''); setDateEnd(''); }}
-                    className={`text-xs sm:text-sm border ${dateFilterType === 'all'
-                      ? 'bg-gray-700 text-white hover:bg-gray-800 border-transparent'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}`}
-                  >
-                    الكل
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => { setDateFilterType('today'); setDateStart(''); setDateEnd(''); }}
-                    className={`text-xs sm:text-sm border ${dateFilterType === 'today'
-                      ? 'bg-green-600 text-white hover:bg-green-700 border-transparent'
-                      : 'bg-white text-green-700 hover:bg-green-50 border-green-300'}`}
-                  >
-                    اليوم
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => { setDateFilterType('this_month'); setDateStart(''); setDateEnd(''); }}
-                    className={`text-xs sm:text-sm border ${dateFilterType === 'this_month'
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent'
-                      : 'bg-white text-indigo-700 hover:bg-indigo-50 border-indigo-300'}`}
-                  >
-                    هذا الشهر
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setDateFilterType('range')}
-                    className={`text-xs sm:text-sm border ${dateFilterType === 'range'
-                      ? 'bg-amber-600 text-white hover:bg-amber-700 border-transparent'
-                      : 'bg-white text-amber-700 hover:bg-amber-50 border-amber-300'}`}
-                  >
-                    نطاق تاريخ
-                  </Button>
-                </div>
-                {dateFilterType === 'range' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label htmlFor="notif-date-start" className="block text-xs text-gray-600 mb-1">من تاريخ</label>
-                      <Input id="notif-date-start" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
-                    </div>
-                    <div>
-                      <label htmlFor="notif-date-end" className="block text-xs text-gray-600 mb-1">إلى تاريخ</label>
-                      <Input id="notif-date-end" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-                    </div>
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">مطابقون: {filteredUsers.length}</Badge>
-                  <Button type="button" variant="outline" size="sm" onClick={selectAllUsers} className="text-xs">تحديد كل المطابقين</Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={deselectAllUsers} className="text-xs">إلغاء التحديد</Button>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  نوع الاستهداف
-                </label>
-                <Select value={form.targetType} onValueChange={(value) => handleFormChange('targetType', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع المستخدمين</SelectItem>
-                    <SelectItem value="account_type">حسب نوع الحساب</SelectItem>
-                    <SelectItem value="specific">مستخدمين محددين</SelectItem>
-                    <SelectItem value="custom_numbers">أرقام هاتف مخصصة</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {form.targetType === 'account_type' && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    أنواع الحسابات
-                  </label>
-                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {['player', 'trainer', 'club', 'academy', 'agent', 'marketer', 'admin'].map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={type}
-                          checked={form.accountTypes.includes(type)}
-                          onCheckedChange={(checked) => handleAccountTypeChange(type, checked as boolean)}
-                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white transition-colors"
-                        />
-                        <label htmlFor={type} className="text-sm flex items-center gap-2 hover:text-blue-600 cursor-pointer transition-colors">
-                          {getAccountTypeIcon(type)}
-                          {getAccountTypeLabel(type)}
-                        </label>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            <div className="xl:col-span-8 space-y-6">
+              <TabsContent value="compose" className="mt-0 space-y-6">
+                {/* Templates Section */}
+                <Card className="border-none shadow-xl shadow-blue-900/5 bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden border border-white">
+                  <CardHeader className="bg-gradient-to-r from-gray-50/50 to-white/50 border-b border-gray-100 p-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
+                          <Layout className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl font-black text-gray-900">المكتبة الذكية</CardTitle>
+                          <CardDescription className="text-gray-500 font-medium">استخدم النماذج الجاهزة لتسريع عملية التواصل</CardDescription>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {form.targetType === 'specific' && (
-                <div>
-                                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                     <label className="text-sm font-medium text-gray-700">
-                       اختيار المستخدمين
-                     </label>
-                                            <div className="flex flex-col sm:flex-row gap-2">
-                       <Button
-                         variant="default"
-                         size="sm"
-                         onClick={selectAllUsers}
-                         className="text-xs bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
-                       >
-                         <Check className="w-3 h-3 ml-1 text-white" />
-                         تحديد الكل
-                       </Button>
-                       <Button
-                         variant="destructive"
-                         size="sm"
-                         onClick={deselectAllUsers}
-                         className="text-xs bg-red-600 hover:bg-red-700 text-white flex-1 sm:flex-none"
-                       >
-                         <X className="w-3 h-3 ml-1 text-white" />
-                         إلغاء الكل
-                       </Button>
-                     </div>
-                  </div>
-
-                  {/* Search and Filter */}
-                  <div className="space-y-3 mb-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-500" />
-                      <Input
-                        placeholder="البحث في المستخدمين..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-
-                    <div>
-                      <Select value={selectedAccountType} onValueChange={setSelectedAccountType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="فلترة حسب نوع الحساب" />
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-full md:w-56 h-12 bg-white rounded-xl border-gray-100 shadow-sm font-bold">
+                          <SelectValue placeholder="فئة النموذج" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">جميع الأنواع</SelectItem>
-                          <SelectItem value="player">لاعب</SelectItem>
-                          <SelectItem value="trainer">مدرب</SelectItem>
-                          <SelectItem value="club">نادي</SelectItem>
-                          <SelectItem value="academy">أكاديمية</SelectItem>
-                          <SelectItem value="agent">وكيل</SelectItem>
-                          <SelectItem value="marketer">مسوق</SelectItem>
-                          <SelectItem value="admin">مدير</SelectItem>
+                        <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="font-bold py-3 uppercase tracking-tight">
+                              {cat === 'all' ? 'جميع التصنيفات' : cat}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
+                  </CardHeader>
+                  <CardContent className="p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
+                      {filteredTemplates.map((template) => (
+                        <motion.div
+                          whileHover={{ y: -4, scale: 1.01 }}
+                          whileTap={{ scale: 0.98 }}
+                          key={template.id}
+                          onClick={() => handleTemplateSelect(template)}
+                          className="group p-6 rounded-[1.5rem] border border-gray-100 bg-white hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer transition-all duration-300 relative overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 p-1.5 bg-blue-50 text-blue-600 rounded-bl-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MousePointer2 className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-[10px] font-black tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
+                              {template.category}
+                            </span>
+                            <Badge className={`text-[10px] h-5 font-black uppercase tracking-tighter ${getPriorityColor(template.priority)}`}>
+                              {template.priority}
+                            </Badge>
+                          </div>
+                          <h4 className="font-extrabold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">{template.title}</h4>
+                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 font-medium">{template.message}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
-                                       {/* Users List */}
-                   <div className="border rounded-lg max-h-80 sm:max-h-96 overflow-y-auto">
-                    {filteredUsers.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
-                        لا يوجد مستخدمين
+                {/* Message Editor */}
+                <Card className="border-none shadow-xl shadow-blue-900/5 bg-white/80 backdrop-blur-md rounded-3xl border border-white">
+                  <CardHeader className="bg-gradient-to-r from-gray-50/50 to-white/50 border-b border-gray-100 p-8">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl">
+                        <Sparkles className="w-6 h-6" />
                       </div>
-                    ) : (
-                      <div className="divide-y">
-                        {filteredUsers.map((user) => (
-                          <div
-                            key={user.id}
-                            className="p-3 hover:bg-gray-50 transition-colors"
-                          >
-                                                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                               <div className="flex items-center gap-3 flex-1">
-                                <Checkbox
-                                  checked={form.selectedUsers.includes(user.id)}
-                                  onCheckedChange={(checked) => handleUserSelection(user.id, checked as boolean)}
-                                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white transition-colors"
-                                />
-                                <div className="flex items-center gap-2">
-                                  {getAccountTypeIcon(user.accountType)}
-                                  <div>
-                                    <div className="font-medium text-sm">
-                                      {user.displayName || 'بدون اسم'}
+                      <CardTitle className="text-xl font-black text-gray-900">محرر المحتوى</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-8">
+                    <div className="space-y-4">
+                      <Label className="text-gray-900 font-black text-sm uppercase tracking-wider">عنوان الرسالة</Label>
+                      <div className="relative group">
+                        <Input
+                          value={form.title}
+                          onChange={(e) => handleFormChange('title', e.target.value)}
+                          placeholder="مثال: خصم حصري لمشتركي منصة الحلم"
+                          className="h-14 font-bold rounded-2xl border-gray-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 transition-all bg-white group-hover:border-blue-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider">نص الرسالة</Label>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${form.message.length > 800 ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500'}`}>
+                            {form.message.length} / 1000 حرف
+                          </span>
+                        </div>
+                      </div>
+                      <div className="relative group">
+                        <Textarea
+                          value={form.message}
+                          onChange={(e) => handleFormChange('message', e.target.value)}
+                          placeholder="اكتب رسالتك هنا... استخدم المتغيرات {user_name} لتخصيص التجربة"
+                          className="min-h-[200px] font-bold rounded-2xl border-gray-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 transition-all bg-white resize-none p-6 group-hover:border-blue-200"
+                        />
+                        {/* Variable toolbar suggestion */}
+                        <div className="absolute bottom-4 left-4 flex gap-2">
+                          {['{user_name}', '{ranking}', '{total}'].map(v => (
+                            <button
+                              key={v}
+                              onClick={() => handleFormChange('message', form.message + ` ${v}`)}
+                              className="text-[10px] font-black bg-gray-50 hover:bg-white border border-gray-100 hover:border-blue-200 text-gray-500 px-3 py-1.5 rounded-lg transition-all"
+                            >
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                      <div className="space-y-4">
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider">نوع الرسالة</Label>
+                        <Select value={form.type} onValueChange={(v) => handleFormChange('type', v)}>
+                          <SelectTrigger className="h-14 bg-white rounded-2xl border-gray-100 font-bold group">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                            <SelectItem value="info" className="py-3 font-bold">إرشادية (Info)</SelectItem>
+                            <SelectItem value="success" className="py-3 font-bold text-green-600">نجاح (Success)</SelectItem>
+                            <SelectItem value="warning" className="py-3 font-bold text-yellow-600">تنبيه (Warning)</SelectItem>
+                            <SelectItem value="error" className="py-3 font-bold text-red-600">خطأ (Error)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-4">
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider">الأولوية</Label>
+                        <Select value={form.priority} onValueChange={(v) => handleFormChange('priority', v)}>
+                          <SelectTrigger className="h-14 bg-white rounded-2xl border-gray-100 font-bold group">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                            <SelectItem value="low" className="py-3 font-bold text-blue-500">منخفضة</SelectItem>
+                            <SelectItem value="medium" className="py-3 font-bold text-gray-600">متوسطة</SelectItem>
+                            <SelectItem value="high" className="py-3 font-bold text-orange-600">عالية</SelectItem>
+                            <SelectItem value="critical" className="py-3 font-bold text-red-600">عاجلة جداً</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="targeting" className="mt-0 space-y-6">
+                <Card className="border-none shadow-xl shadow-blue-900/5 bg-white/80 backdrop-blur-md rounded-3xl border border-white">
+                  <CardHeader className="bg-gradient-to-r from-gray-50/50 to-white/50 border-b border-gray-100 p-8">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-purple-100 text-purple-600 rounded-2xl">
+                        <Target className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-black text-gray-900">إدارة الجمهور</CardTitle>
+                        <CardDescription className="text-gray-500 font-medium font-medium">حدد بدقة الفئة المستهدفة لهذه الحملة</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div className="space-y-4">
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                          <MousePointer2 className="w-3.5 h-3.5 text-blue-500" />
+                          إستراتيجية الاستهداف
+                        </Label>
+                        <Select value={form.targetType} onValueChange={(v) => handleFormChange('targetType', v)}>
+                          <SelectTrigger className="h-14 bg-white rounded-2xl border-gray-100 font-bold group shadow-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                            <SelectItem value="all" className="py-3 font-bold">كل مستخدمي المنصة الموثقين</SelectItem>
+                            <SelectItem value="account_type" className="py-3 font-bold">استهداف فئات حسابات محددة</SelectItem>
+                            <SelectItem value="specific" className="py-3 font-bold">اختيار يدوي لمستخدمين محددين</SelectItem>
+                            <SelectItem value="custom_numbers" className="py-3 font-bold">قائمة أرقام خارجية (Batch)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                          نطاق التسجيل
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { value: 'all', label: 'الكل' },
+                            { value: 'today', label: 'اليوم' },
+                            { value: 'this_month', label: 'هذا الشهر' },
+                            { value: 'range', label: 'مخصص' }
+                          ].map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => setDateFilterType(opt.value as any)}
+                              className={`h-11 font-black text-xs rounded-xl transition-all border ${dateFilterType === opt.value ? 'bg-gradient-to-r from-blue-700 to-indigo-700 border-none text-white shadow-xl shadow-blue-500/30' : 'bg-white/50 backdrop-blur-sm border-gray-100 text-gray-400 hover:border-blue-200 hover:text-blue-600'}`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {dateFilterType === 'range' && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-blue-50/30 rounded-[1.5rem] border border-blue-100"
+                        >
+                          <div className="space-y-4">
+                            <Label className="text-[10px] font-black uppercase text-blue-500">من تاريخ</Label>
+                            <Input
+                              type="date"
+                              value={dateStart}
+                              onChange={(e) => setDateStart(e.target.value)}
+                              className="h-12 bg-white rounded-xl border-blue-100 font-bold"
+                            />
+                          </div>
+                          <div className="space-y-4">
+                            <Label className="text-[10px] font-black uppercase text-blue-500">إلى تاريخ</Label>
+                            <Input
+                              type="date"
+                              value={dateEnd}
+                              onChange={(e) => setDateEnd(e.target.value)}
+                              className="h-12 bg-white rounded-xl border-blue-100 font-bold"
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {form.targetType === 'account_type' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-8 bg-gray-50/50 rounded-[2rem] border border-gray-100"
+                      >
+                        <Label className="mb-6 block font-black text-gray-900 text-sm flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-purple-600" />
+                          اختر نوع الحسابات المستهدفة
+                        </Label>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          {['player', 'trainer', 'club', 'academy', 'agent', 'marketer', 'admin'].map((type) => (
+                            <motion.div
+                              whileHover={{ scale: 1.02 }}
+                              key={type}
+                              className={`flex items-center space-x-3 rtl:space-x-reverse bg-white p-4 rounded-2xl border transition-all cursor-pointer ${form.accountTypes.includes(type) ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-sm ring-1 ring-purple-500' : 'border-gray-100 text-gray-600 hover:border-purple-200'}`}
+                              onClick={() => handleAccountTypeChange(type, !form.accountTypes.includes(type))}
+                            >
+                              <Checkbox
+                                id={`type-${type}`}
+                                checked={form.accountTypes.includes(type)}
+                                onCheckedChange={(checked) => handleAccountTypeChange(type, !!checked)}
+                                className="border-gray-300 data-[state=checked]:bg-purple-600"
+                              />
+                              <label htmlFor={`type-${type}`} className="text-sm font-black cursor-pointer flex items-center gap-2 lowercase">
+                                {getAccountTypeIcon(type)}
+                                <span>{getAccountTypeLabel(type)}</span>
+                              </label>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {form.targetType === 'specific' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
+                      >
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                          <div className="relative flex-1 group w-full">
+                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-hover:text-blue-500 transition-colors" />
+                            <Input
+                              placeholder="ابحث عن مستخدم بالاسم، البريد، أو الرقم..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="pr-12 h-14 rounded-2xl border-gray-100 bg-white font-bold group-hover:border-blue-200 transition-all"
+                            />
+                          </div>
+                          <div className="flex gap-2 w-full md:w-auto">
+                            <Button
+                              onClick={selectAllUsers}
+                              variant="outline"
+                              className="h-14 flex-1 md:w-48 rounded-2xl font-black text-xs border-gray-100 bg-white/50 backdrop-blur-sm hover:bg-blue-600 hover:text-white hover:border-none transition-all uppercase tracking-widest"
+                            >
+                              تحديد الكل ({filteredUsers.length})
+                            </Button>
+                            <Button
+                              onClick={deselectAllUsers}
+                              variant="outline"
+                              className="h-14 rounded-2xl px-6 border-gray-100 bg-white/50 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-red-50 hover:border-red-100 transition-all"
+                            >
+                              <X className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="border border-gray-100 rounded-3xl overflow-hidden max-h-[450px] overflow-y-auto bg-white/50 backdrop-blur-sm shadow-inner custom-scrollbar">
+                          <div className="divide-y divide-gray-50">
+                            {filteredUsers.length > 0 ? filteredUsers.map((u) => (
+                              <div key={u.id} className="p-5 flex items-center justify-between hover:bg-blue-50/50 transition-all group">
+                                <div className="flex items-center gap-4">
+                                  <Checkbox
+                                    checked={form.selectedUsers.includes(u.id)}
+                                    onCheckedChange={(c) => handleUserSelection(u.id, !!c)}
+                                    className="h-5 w-5 rounded-lg border-gray-300"
+                                  />
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                      {u.avatar ? (
+                                        <img src={u.avatar} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white shadow-sm" />
+                                      ) : (
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-gray-100 to-gray-50 flex items-center justify-center text-gray-400 font-black text-lg border border-gray-200">
+                                          {u.displayName?.[0] || 'U'}
+                                        </div>
+                                      )}
+                                      <div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-lg shadow-sm">
+                                        {getAccountTypeIcon(u.accountType)}
+                                      </div>
                                     </div>
-                                    <div className="text-xs text-gray-500">
-                                      {user.email || '—'}
+                                    <div>
+                                      <p className="font-black text-gray-900 leading-tight group-hover:text-blue-700 transition-colors">{u.displayName || 'مستخدم غير معروف'}</p>
+                                      <p className="text-[10px] font-bold text-gray-400 mt-0.5">{u.phone || u.email || 'بدون بيانات'}</p>
                                     </div>
                                   </div>
                                 </div>
+                                <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter bg-gray-100 text-gray-500 px-3 h-6 rounded-lg">{getAccountTypeLabel(u.accountType)}</Badge>
                               </div>
-                              <div className="flex items-center gap-2">
-                                                        <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-200">
-                        {getAccountTypeLabel(user.accountType)}
-                      </Badge>
-                                   <div className="flex items-center gap-1 text-xs text-gray-500">
-                                     <Phone className="w-3 h-3 text-green-600" />
-                                  {user.phone || '—'}
-                                   </div>
+                            )) : (
+                              <div className="py-20 text-center space-y-4">
+                                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+                                  <Users className="w-8 h-8 text-gray-200" />
+                                </div>
+                                <p className="text-gray-400 font-bold">لم يتم العثور على مستخدمين يطابقون بحثك</p>
                               </div>
-                            </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
 
-                  {form.selectedUsers.length > 0 && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                      <div className="text-sm font-medium text-blue-900">
-                        تم تحديد {form.selectedUsers.length} مستخدم
+                    {form.targetType === 'custom_numbers' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4"
+                      >
+                        <Label className="text-gray-900 font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-orange-500" />
+                          سجل الأرقام الدولية المستهدفة
+                        </Label>
+                        <Textarea
+                          placeholder="أدخل الأرقام هنا، رقم في كل سطر...&#10;+966500000000&#10;+201000000000"
+                          value={form.customNumbers}
+                          onChange={(e) => handleFormChange('customNumbers', e.target.value)}
+                          className="min-h-[250px] font-mono text-sm leading-loose p-8 rounded-[2rem] border-gray-100 bg-gray-50/50 resize-none focus:bg-white transition-all shadow-inner"
+                        />
+                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest px-4">
+                          <Info className="w-3.5 h-3.5" />
+                          تنسيق E.164 مطلوب (يجب أن يبدأ بـ + ثم رمز الدولة)
+                        </div>
+                      </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="methods" className="mt-0 space-y-6">
+                <Card className="border-none shadow-xl shadow-blue-900/5 bg-white/80 backdrop-blur-md rounded-3xl border border-white">
+                  <CardHeader className="bg-gradient-to-r from-gray-50/50 to-white/50 border-b border-gray-100 p-8">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
+                        <Monitor className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-black text-gray-900">إستراتيجية الإرسال</CardTitle>
+                        <CardDescription className="text-gray-500 font-medium font-medium">اختر القنوات المفضلة وجدولة العمليات</CardDescription>
                       </div>
                     </div>
-                  )}
+                  </CardHeader>
+                  <CardContent className="p-8 space-y-12">
+                    <div className="space-y-6">
+                      <Label className="text-gray-900 font-black text-sm uppercase tracking-wider block text-center mb-4">قنوات التواصل النشطة</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                          { key: 'inApp', icon: Bell, label: 'Push App', color: 'blue', desc: 'إشعار داخل التطبيق' },
+                          { key: 'whatsapp', icon: MessageSquare, label: 'WhatsApp', color: 'green', desc: 'رسالة فورية مشفرة' },
+                          { key: 'sms', icon: Smartphone, label: 'SMS Box', color: 'orange', desc: 'رسالة نصية عالمية' }
+                        ].map(method => (
+                          <motion.div
+                            whileHover={{ y: -5, scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            key={method.key}
+                            onClick={() => handleSendMethodChange(method.key as any, !form.sendMethods[method.key as keyof typeof form.sendMethods])}
+                            className={`p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer relative overflow-hidden group text-center ${form.sendMethods[method.key as keyof typeof form.sendMethods] ? `border-${method.color}-500 bg-${method.color}-50/50 shadow-2xl shadow-${method.color}-500/10` : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                          >
+                            <div className={`p-5 rounded-3xl w-fit mx-auto mb-6 transition-all shadow-lg ${form.sendMethods[method.key as keyof typeof form.sendMethods] ? `bg-${method.color}-500 text-white shadow-${method.color}-500/20` : 'bg-gray-50 text-gray-400'}`}>
+                              <method.icon className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-black mb-1 transition-colors group-hover:text-gray-900 tracking-tight">{method.label}</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter opacity-80">{method.desc}</p>
+
+                            {form.sendMethods[method.key as keyof typeof form.sendMethods] && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className={`absolute top-4 left-4 p-1.5 bg-${method.color}-500 text-white rounded-full shadow-lg`}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </motion.div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-12 border-t border-gray-100">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="space-y-1">
+                          <Label className="text-gray-900 font-black text-lg">توقيت التنفيذ</Label>
+                          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">تحكم في لحظة وصول الرسائل لقاعدة عملائك</p>
+                        </div>
+                        <div className="bg-gray-100/50 p-1.5 rounded-2xl flex gap-1 border border-gray-100 w-fit">
+                          <button
+                            onClick={() => handleFormChange('scheduleType', 'immediate')}
+                            className={`px-8 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest flex items-center gap-2 ${form.scheduleType === 'immediate' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/20' : 'text-gray-400 hover:text-gray-600'}`}
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            الآن
+                          </button>
+                          <button
+                            onClick={() => handleFormChange('scheduleType', 'scheduled')}
+                            className={`px-8 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest flex items-center gap-2 ${form.scheduleType === 'scheduled' ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-xl shadow-purple-500/20' : 'text-gray-400 hover:text-gray-600'}`}
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            جدولة
+                          </button>
+                        </div>
+                      </div>
+
+                      <AnimatePresence>
+                        {form.scheduleType === 'scheduled' && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.98, y: 10 }}
+                            className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-gradient-to-tr from-purple-500/5 to-indigo-500/5 rounded-[2.5rem] border border-purple-100 shadow-inner"
+                          >
+                            <div className="space-y-4">
+                              <Label className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                تاريخ العملية
+                              </Label>
+                              <Input
+                                type="date"
+                                value={form.scheduledDate}
+                                onChange={(e) => handleFormChange('scheduledDate', e.target.value)}
+                                className="h-16 rounded-2xl border-purple-100 focus:border-purple-300 font-black bg-white/70 shadow-sm"
+                              />
+                            </div>
+                            <div className="space-y-4">
+                              <Label className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                ساعة التنفيذ
+                              </Label>
+                              <Input
+                                type="time"
+                                value={form.scheduledTime}
+                                onChange={(e) => handleFormChange('scheduledTime', e.target.value)}
+                                className="h-16 rounded-2xl border-purple-100 focus:border-purple-300 font-black bg-white/70 shadow-sm"
+                              />
+                            </div>
+                            <div className="col-span-full py-4 px-6 bg-white/50 rounded-2xl border border-white/80 text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                              معلومة: سيتم تشغيل المهمة المجدولة تلقائياً في الوقوف المحدد بتوقيت خادم المنصة.
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+
+            {/* Sidebar Simulation Control Center */}
+            <div className="xl:col-span-4 space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="sticky top-8 space-y-6"
+              >
+                {/* Simulation Panel Card */}
+                <Card className="border-none shadow-2xl rounded-[2.5rem] bg-slate-900/90 backdrop-blur-3xl overflow-hidden border border-white/10 ring-1 ring-white/5">
+                  <div className="p-8 border-b border-white/5 bg-white/5">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">محاكي البث المباشر</span>
+                      </div>
+                      <Monitor className="w-4 h-4 text-white/30" />
+                    </div>
+
+                    {/* Device Toggle - High End Buttons */}
+                    <div className="grid grid-cols-3 gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
+                      {[
+                        { id: 'app', icon: Layout, label: 'App' },
+                        { id: 'whatsapp', icon: MessageSquare, label: 'WA' },
+                        { id: 'sms', icon: Smartphone, label: 'SMS' }
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          onClick={() => setPreviewMode(mode.id as any)}
+                          className={`flex flex-col items-center justify-center py-3 rounded-xl transition-all gap-1.5 ${previewMode === mode.id ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'}`}
+                        >
+                          <mode.icon className="w-4 h-4" />
+                          <span className="text-[9px] font-black uppercase tracking-tighter">{mode.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-8">
+                    {/* Simulator Stage */}
+                    <div className="relative mx-auto w-full aspect-[9/16] max-w-[280px] bg-[#0A0A0B] rounded-[3rem] border-[8px] border-slate-800 shadow-3xl overflow-hidden ring-1 ring-white/20">
+                      {/* Notch / Dynamic Island */}
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-black rounded-full z-50 flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-blue-500/50" />
+                      </div>
+
+                      {/* Content Based on Preview Mode */}
+                      <div className="absolute inset-0 bg-white">
+                        {previewMode === 'app' ? (
+                          <div className="h-full flex flex-col pt-12">
+                            {/* App Status Bar */}
+                            <div className="px-6 flex justify-between items-center mb-4">
+                              <span className="text-[10px] font-bold">9:41</span>
+                              <div className="flex gap-1">
+                                <div className="w-3 h-3 bg-black rounded-sm" />
+                                <div className="w-3 h-3 bg-black rounded-full" />
+                              </div>
+                            </div>
+
+                            {/* Notification Body */}
+                            <div className="p-4 space-y-4">
+                              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs">A</div>
+                                <div className="flex-1">
+                                  <div className="h-2 w-16 bg-slate-200 rounded mb-1.5" />
+                                  <div className="h-1.5 w-full bg-slate-100 rounded" />
+                                </div>
+                              </div>
+
+                              <motion.div
+                                key="app-preview"
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                className="relative p-5 bg-white rounded-2xl border-2 border-blue-500 shadow-xl shadow-blue-500/10"
+                              >
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-700 text-white flex items-center justify-center shadow-lg">
+                                    <Zap className="w-5 h-5" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-black text-slate-900 truncate">{form.title || 'عنوان الإشعار'}</p>
+                                    <Badge className={`text-[8px] h-4 mt-0.5 ${getPriorityColor(form.priority)}`}>{form.priority}</Badge>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-6 font-medium">
+                                  {form.message || 'اكتب محتواك هنا لرؤية المحاكاة...'}
+                                </p>
+                              </motion.div>
+                            </div>
+                          </div>
+                        ) : previewMode === 'whatsapp' ? (
+                          <div className="h-full bg-[#E5DDD5]">
+                            <div className="h-16 bg-[#075E54] flex items-center gap-3 px-4 pt-4">
+                              <div className="w-8 h-8 rounded-full bg-white/20" />
+                              <div className="flex-1 h-3 bg-white/20 rounded" />
+                            </div>
+                            <div className="p-4 flex flex-col items-end gap-3">
+                              <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="max-w-[85%] bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none shadow-sm relative"
+                              >
+                                {form.title && (
+                                  <p className="text-[10px] font-black text-[#075E54] mb-1">*{form.title}*</p>
+                                )}
+                                <p className="text-[11px] text-slate-800 leading-snug whitespace-pre-wrap">
+                                  {form.message || 'اكتب رسالة واتساب...'}
+                                </p>
+                                <div className="flex justify-end mt-1">
+                                  <p className="text-[8px] text-slate-400">9:41 AM</p>
+                                </div>
+                              </motion.div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-full bg-slate-50 flex flex-col items-center pt-20 px-6">
+                            <div className="w-full bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative">
+                              <div className="absolute -left-2 top-4 w-4 h-4 bg-white border-l border-b border-slate-200 rotate-45" />
+                              <p className="text-[11px] font-black text-blue-600 mb-1">Platform SMS</p>
+                              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                {form.message || 'نص الرسالة القصيرة يظهر هنا...'}
+                              </p>
+                            </div>
+                            <p className="mt-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">وصلت للتو • SMS</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Controls Sidebar Footer */}
+                  <div className="p-8 pt-0 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">الجمهور المستهدف</p>
+                        <p className="text-xl font-black text-white">{targetUsers.length}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">تحذير الأولوية</p>
+                        <div className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg inline-block ${getPriorityColor(form.priority)}`}>
+                          {form.priority}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="lg"
+                      onClick={sendNotification}
+                      disabled={loading || !form.title || !form.message || targetUsers.length === 0}
+                      className="w-full h-16 rounded-[1.5rem] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-700 hover:via-indigo-700 hover:to-violet-700 text-white font-black shadow-3xl shadow-blue-500/40 transition-all active:scale-95 disabled:opacity-30 border-t border-white/20 group"
+                    >
+                      {loading ? (
+                        <div className="flex items-center gap-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />
+                          <span className="animate-pulse tracking-widest uppercase text-xs">تجهيز الإرسال...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                          <span className="text-lg">بدء العملية لـ {targetUsers.length}</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+
+                {/* System Navigation Hub */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Link href="/dashboard/admin/notification-center" className="block group">
+                    <div className="p-5 rounded-[2rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 hover:bg-slate-900 hover:border-slate-900 transition-all duration-500">
+                      <Clock className="w-6 h-6 text-blue-600 mb-3 group-hover:text-blue-400 transition-colors" />
+                      <h4 className="font-black text-slate-900 text-xs mb-1 group-hover:text-white transition-colors">السجل التاريخي</h4>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight group-hover:text-slate-500 transition-colors">آخر 30 حملة إرسال</p>
+                    </div>
+                  </Link>
+                  <Link href="/dashboard/admin/message-management" className="block group">
+                    <div className="p-5 rounded-[2rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 hover:bg-slate-900 hover:border-slate-900 transition-all duration-500">
+                      <TrendingUp className="w-6 h-6 text-emerald-600 mb-3 group-hover:text-emerald-400 transition-colors" />
+                      <h4 className="font-black text-slate-900 text-xs mb-1 group-hover:text-white transition-colors">تحليل التفاعل</h4>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight group-hover:text-slate-500 transition-colors">نسبة المشاهدة والفتح</p>
+                    </div>
+                  </Link>
                 </div>
-              )}
-
-              {form.targetType === 'custom_numbers' && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    أرقام الهاتف (سطر واحد لكل رقم)
-                  </label>
-                  <Textarea
-                    placeholder="+201234567890&#10;+201234567891&#10;+201234567892"
-                    value={form.customNumbers}
-                    onChange={(e) => handleFormChange('customNumbers', e.target.value)}
-                    rows={4}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Send Methods */}
-          <Card>
-            <CardHeader>
-                               <CardTitle className="flex items-center gap-2">
-                 <Settings className="w-5 h-5 text-orange-600" />
-                 طرق الإرسال
-               </CardTitle>
-              <CardDescription>
-                اختر طرق إرسال الإشعار
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="inApp"
-                    checked={form.sendMethods.inApp}
-                    onCheckedChange={(checked) => handleSendMethodChange('inApp', checked as boolean)}
-                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white transition-colors"
-                  />
-                                       <label htmlFor="inApp" className="text-sm flex items-center gap-2 hover:text-blue-600 cursor-pointer transition-colors">
-                     <Bell className="w-4 h-4 text-blue-600" />
-                     في التطبيق
-                   </label>
-                 </div>
-
-                 <div className="flex items-center space-x-2">
-                   <Checkbox
-                     id="sms"
-                     checked={form.sendMethods.sms}
-                     onCheckedChange={(checked) => handleSendMethodChange('sms', checked as boolean)}
-                     className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white transition-colors"
-                   />
-                   <label htmlFor="sms" className="text-sm flex items-center gap-2 hover:text-blue-600 cursor-pointer transition-colors">
-                     <Smartphone className="w-4 h-4 text-green-600" />
-                     SMS
-                   </label>
-                 </div>
-
-                 <div className="flex items-center space-x-2">
-                   <Checkbox
-                     id="whatsapp"
-                     checked={form.sendMethods.whatsapp}
-                     onCheckedChange={(checked) => handleSendMethodChange('whatsapp', checked as boolean)}
-                     className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white transition-colors"
-                   />
-                   <label htmlFor="whatsapp" className="text-sm flex items-center gap-2 hover:text-blue-600 cursor-pointer transition-colors">
-                     <MessageSquare className="w-4 h-4 text-green-600" />
-                     WhatsApp
-                   </label>
-                </div>
+              </motion.div>
+            </div>
+          </div>
+        </Tabs>
+      </div>
+      {/* WhatsApp Direct Message Dialog */}
+      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
+        <DialogContent className="sm:max-w-md bg-white/90 backdrop-blur-2xl border-none shadow-2xl rounded-[2rem] p-0 overflow-hidden">
+          <div className="bg-gradient-to-tr from-green-600 to-emerald-600 p-8 text-white relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" />
+            <DialogHeader className="relative z-10">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                <MessageSquare className="w-6 h-6 text-white" />
               </div>
-            </CardContent>
-          </Card>
+              <DialogTitle className="text-2xl font-black tracking-tight">واتساب مباشر</DialogTitle>
+              <DialogDescription className="text-green-50 font-medium">إرسال سريع لقاعدة البيانات أو الأرقام الخارجية</DialogDescription>
+            </DialogHeader>
+          </div>
 
-          {/* Send Buttons */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {/* WhatsApp Direct Message Button */}
-                <Button
-                  onClick={() => setShowWhatsAppDialog(true)}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold"
-                  size="lg"
-                >
-                  <MessageSquare className="w-5 h-5 ml-2" />
-                  إرسال رسالة WhatsApp مباشرة
-                </Button>
+          <div className="p-8 space-y-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">رقم الهاتف المستهدف</Label>
+              <Input
+                id="phone"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="التنسيق العالمي: 966500000000"
+                className="h-14 rounded-2xl border-gray-100 font-bold focus:ring-green-500/10 focus:border-green-500"
+              />
+            </div>
 
-                {/* Regular Send Button */}
-                <Button
-                   onClick={() => {
-                     console.log('🔘 تم النقر على زر الإرسال');
-                     sendNotification();
-                   }}
-                   disabled={loading || !form.title || !form.message || form.message.length > 1000 || getTargetUsers().length === 0}
-                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                   size="lg"
-                   type="button"
-                 >
-                {loading ? (
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">عنوان التنبيه</Label>
+              <Input
+                id="title"
+                value={whatsappMessage.title}
+                onChange={(e) => setWhatsappMessage(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="أدخل عنواناً للمحادثة"
+                className="h-14 rounded-2xl border-gray-100 font-bold focus:ring-green-500/10 focus:border-green-500"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">محتوى النص</Label>
+              <Textarea
+                id="body"
+                value={whatsappMessage.body}
+                onChange={(e) => setWhatsappMessage(prev => ({ ...prev, body: e.target.value }))}
+                placeholder="اكتب رسالتك الذكية هنا..."
+                className="min-h-[120px] rounded-2xl border-gray-100 font-bold focus:ring-green-500/10 focus:border-green-500 resize-none p-4"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowWhatsAppDialog(false)}
+                className="h-14 rounded-2xl flex-1 font-black text-gray-400 hover:bg-gray-50 uppercase tracking-widest text-xs"
+              >
+                إلغاء العملية
+              </Button>
+              <Button
+                onClick={sendWhatsAppMessage}
+                disabled={sendingWhatsApp || !phoneNumber || !whatsappMessage.body}
+                className="h-14 rounded-2xl px-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black shadow-2xl shadow-green-900/20 border-t border-white/20 flex-[2] transition-all transform active:scale-95"
+              >
+                {sendingWhatsApp ? (
                   <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    جاري الإرسال...
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                    <span className="tracking-widest">إرسال...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Send className="w-4 h-4 text-white" />
-                    {getTargetUsers().length === 0 ? 'لا يوجد مستهدفين' : `إرسال الإشعار (${getTargetUsers().length})`}
+                    <Send className="w-4 h-4 ml-2" />
+                    <span>إرسال الآن</span>
                   </div>
                 )}
               </Button>
-              {(!form.title || !form.message || form.message.length > 1000 || getTargetUsers().length === 0) && !loading && (
-                <div className="text-xs text-red-600 mt-2 space-y-1">
-                  {!form.title && <p>• يرجى إدخال عنوان الإشعار</p>}
-                  {!form.message && <p>• يرجى إدخال رسالة الإشعار</p>}
-                  {form.message.length > 1000 && <p>• الرسالة طويلة جداً ({form.message.length}/1000)</p>}
-                  {getTargetUsers().length === 0 && <p>• لا يوجد مستخدمين مستهدفين</p>}
-                </div>
-              )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Preview & Stats */}
-        <div className="xl:col-span-1 space-y-4 sm:space-y-6">
-          {/* Preview */}
-          <Card>
-            <CardHeader>
-                               <CardTitle className="flex items-center gap-2">
-                 <Eye className="w-5 h-5 text-indigo-600" />
-                 معاينة الإشعار
-               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {form.title && form.message ? (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      {getTypeIcon(form.type)}
-                      <span className="font-medium text-sm">{form.title}</span>
-                    </div>
-                    <Badge className={getPriorityColor(form.priority)}>
-                      {form.priority === 'critical' ? 'حرج' :
-                       form.priority === 'high' ? 'عالية' :
-                       form.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
-                    </Badge>
-                  </div>
-                                       <p className="text-xs sm:text-sm text-gray-600">{form.message}</p>
-                   <div className="flex items-center justify-between text-xs text-gray-500">
-                     <div className="flex items-center gap-2">
-                       <Clock className="w-3 h-3 text-orange-600" />
-                       {form.scheduleType === 'immediate' ? 'إرسال فوري' : 'إرسال مجدول'}
-                     </div>
-                     <span className={`${form.message.length > 1000 ? 'text-red-500' : 'text-green-500'}`}>
-                       {form.message.length}/1000 حرف
-                     </span>
-                   </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">أدخل العنوان والرسالة لمعاينة الإشعار</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Stats */}
-          <Card>
-            <CardHeader>
-                               <CardTitle className="flex items-center gap-2">
-                 <Zap className="w-5 h-5 text-yellow-600" />
-                 إحصائيات الإرسال
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <span className="text-xs sm:text-sm text-gray-600">المستخدمين المستهدفين:</span>
-                <Badge className="bg-blue-100 text-blue-800 border-blue-200 font-semibold text-xs">{targetUsers.length}</Badge>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <span className="text-xs sm:text-sm text-gray-600">الإرسال في التطبيق:</span>
-                <Badge className={`text-xs ${form.sendMethods.inApp ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                  {form.sendMethods.inApp ? 'مفعل' : 'معطل'}
-                </Badge>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <span className="text-xs sm:text-sm text-gray-600">إرسال SMS:</span>
-                <Badge className={`text-xs ${form.sendMethods.sms ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                  {form.sendMethods.sms ? 'مفعل' : 'معطل'}
-                </Badge>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <span className="text-xs sm:text-sm text-gray-600">إرسال WhatsApp:</span>
-                <Badge className={`text-xs ${form.sendMethods.whatsapp ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                  {form.sendMethods.whatsapp ? 'مفعل' : 'معطل'}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-
-                       {/* Templates Stats */}
-           <Card>
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
-                 <MessageSquare className="w-5 h-5 text-green-600" />
-                 إحصائيات النماذج
-               </CardTitle>
-             </CardHeader>
-                             <CardContent className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <span className="text-xs sm:text-sm text-gray-600">إجمالي النماذج:</span>
-                  <Badge className="bg-green-100 text-green-800 border-green-200 font-semibold text-xs">
-                    {messageTemplates.length}
-                  </Badge>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <span className="text-xs sm:text-sm text-gray-600">عدد الفئات:</span>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 font-semibold text-xs">
-                    {categories.length - 1}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs sm:text-sm font-medium text-gray-700">النماذج حسب الفئة:</span>
-                  {categories.slice(1).map((category) => {
-                    const count = messageTemplates.filter(t => t.category === category).length;
-                    return (
-                      <div key={category} className="flex justify-between text-xs">
-                        <span className="text-gray-600 truncate">{category}:</span>
-                        <span className="font-medium mr-2">{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-           </Card>
-
-           {/* Target Users List */}
-           {targetUsers.length > 0 && (
-             <Card>
-               <CardHeader className="flex flex-row items-center justify-between">
-                                    <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-pink-600" />
-                    المستخدمين المستهدفين ({targetUsers.length})
-                  </CardTitle>
-                 <Button
-                   type="button"
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setIsTargetListExpanded(v => !v)}
-                   className="text-xs"
-                 >
-                   {isTargetListExpanded ? 'إخفاء' : 'عرض الكل'}
-                 </Button>
-               </CardHeader>
-               <CardContent>
-                 <div className={`${isTargetListExpanded ? 'max-h-96' : 'max-h-48 sm:max-h-60'} space-y-2 overflow-y-auto`}>
-                   {targetUsers.map((user) => (
-                     <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm p-2 bg-gray-50 rounded gap-1">
-                       <div className="flex items-center gap-2">
-                         {getAccountTypeIcon(user.accountType)}
-                         <span className="truncate">
-                           {user.phone || 'بدون هاتف'} • {user.displayName || 'بدون اسم'} • {user.email || 'بدون بريد'}
-                         </span>
-                       </div>
-                       <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-200">
-                         {getAccountTypeLabel(user.accountType)}
-                       </Badge>
-                     </div>
-                   ))}
-                 </div>
-               </CardContent>
-             </Card>
-           )}
-        </div>
-      </div>
-      </div>
-
-    {/* WhatsApp Direct Message Dialog */}
-      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-green-600" />
-            إرسال رسالة WhatsApp مباشرة
-          </DialogTitle>
-          <DialogDescription>
-            أرسل رسالة سريعة عبر WhatsApp لأي رقم هاتف
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="phone">رقم الهاتف</Label>
-            <Input
-              id="phone"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="966501234567 أو 01012345678"
-              className="mt-1"
-            />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="title">عنوان الرسالة</Label>
-            <Input
-              id="title"
-              value={whatsappMessage.title}
-              onChange={(e) => setWhatsappMessage(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="عنوان الرسالة"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="body">محتوى الرسالة</Label>
-            <Textarea
-              id="body"
-              value={whatsappMessage.body}
-              onChange={(e) => setWhatsappMessage(prev => ({ ...prev, body: e.target.value }))}
-              placeholder="اكتب محتوى الرسالة هنا..."
-              className="mt-1"
-              rows={4}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={sendWhatsAppMessage}
-              disabled={sendingWhatsApp}
-              className="flex-1 bg-green-600 hover:bg-green-700"
-            >
-              {sendingWhatsApp ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
-                  جاري الإرسال...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 ml-2" />
-                  إرسال الرسالة
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowWhatsAppDialog(false)}
-            >
-              إلغاء
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
+        </DialogContent>
       </Dialog>
     </div>
   );

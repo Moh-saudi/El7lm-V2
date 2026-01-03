@@ -31,7 +31,9 @@ export const resolveAvatarUrl = (
   options?: { bucket?: string | null; senderAccountType?: string | null; metadata?: Record<string, any> }
 ): string | null => {
   if (!avatar) return null;
-  if (avatar.startsWith('http') || avatar.startsWith('data:')) {
+
+  // Return early for data URLs or already fixed Cloudflare URLs
+  if (avatar.startsWith('data:') || avatar.includes('assets.el7lm.com')) {
     return avatar;
   }
 
@@ -94,12 +96,12 @@ export const normalizeNotificationPayload = (
     ...payload.metadata,
     ...(senderInfo
       ? {
-          senderId: senderInfo.senderId,
-          senderName: senderInfo.senderName,
-          senderAccountType: senderInfo.senderAccountType,
-          senderAvatar: senderInfo.senderAvatar,
-          senderBucket: senderInfo.senderBucket
-        }
+        senderId: senderInfo.senderId,
+        senderName: senderInfo.senderName,
+        senderAccountType: senderInfo.senderAccountType,
+        senderAvatar: senderInfo.senderAvatar,
+        senderBucket: senderInfo.senderBucket
+      }
       : {})
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import SimpleLoader from '@/components/shared/SimpleLoader';
-import { UserData } from '@/types';
+import { UserData, UserRole } from '@/types';
 import {
   createUserWithEmailAndPassword,
   EmailAuthProvider,
@@ -33,9 +33,6 @@ import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { checkAccountStatus, updateLastLogin } from './account-status-checker';
 import { auth, db } from './config';
-
-// Define user role types
-type UserRole = 'player' | 'club' | 'academy' | 'agent' | 'trainer' | 'admin' | 'marketer' | 'parent';
 
 // User data interface
 interface AuthContextType {
@@ -439,7 +436,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                       allFields: Object.keys(data)
                     });
 
-                    // التأكد من وجود accountType
+                    // التأكد من وجود accountType وعدم السماح بـ unknown
                     const finalData: UserData = {
                       ...data,
                       accountType: data.accountType || 'player',
@@ -760,7 +757,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
           foundData = userDoc.data();
-          userAccountType = foundData.accountType || defaultRole;
+          userAccountType = (foundData.accountType && foundData.accountType !== 'unknown') ? (foundData.accountType as UserRole) : defaultRole;
           isNewUser = false;
           console.log('✅ Found existing user in users collection');
         } else if (user.email) {
@@ -790,8 +787,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         // مستخدم جديد - إنشاء حساب ولكن بدون تحديد دور نهائي
         console.log(migrationData ? '🔄 Migrating user data...' : '🆕 Creating new user from Google Sign-In...');
 
-        // If migrating, we use the known role. If purely new, we use 'unknown' to force role selection via UI
-        const finalRole = migrationData ? (migrationData.accountType || 'player') : 'unknown';
+        // If migrating, we use the known role. If purely new, we use the provided defaultRole
+        // Ensure we never use 'unknown' here
+        const baseRole = migrationData ? (migrationData.accountType as UserRole) : defaultRole;
+        const finalRole = (baseRole && (baseRole as any) !== 'unknown') ? baseRole : 'player';
 
         userData = {
           uid: user.uid,
@@ -811,6 +810,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           currencySymbol: migrationData?.currencySymbol || '',
           ...(migrationData || {}) // دمج البيانات القديمة
         };
+
+        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
+        if (!userData.accountType || userData.accountType === 'unknown') {
+          userData.accountType = finalRole;
+        }
 
         // التأكد من أن UID هو الجديد
         userData.uid = user.uid;
@@ -851,6 +855,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           updated_at: new Date(),
           ...foundData
         };
+
+        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
+        if (!userData.accountType || userData.accountType === 'unknown') {
+          userData.accountType = userAccountType;
+        }
 
         // تحديث آخر دخول
         try {
@@ -1005,7 +1014,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
           foundData = userDoc.data();
-          userAccountType = foundData.accountType || defaultRole;
+          userAccountType = (foundData.accountType && foundData.accountType !== 'unknown') ? (foundData.accountType as UserRole) : defaultRole;
           isNewUser = false;
           console.log('✅ Found existing user in users collection');
         }
@@ -1019,7 +1028,8 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
         // Important: If no specific role is passed (e.g. from generic login), use 'unknown' to force selection
         // If additionalData has accountType (e.g. from Register page), use it.
-        const finalRole = additionalData.accountType || 'unknown';
+        // Use additionalData.accountType if provided (Register page), fallback to defaultRole
+        const finalRole = additionalData.accountType || defaultRole;
 
         userData = {
           uid: user.uid,
@@ -1038,6 +1048,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           currencySymbol: additionalData.currencySymbol || '',
           ...additionalData
         };
+
+        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
+        if (!userData.accountType || userData.accountType === 'unknown') {
+          userData.accountType = finalRole;
+        }
 
         // حفظ في مجموعة users
         const userRef = doc(db, 'users', user.uid);

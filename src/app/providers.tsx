@@ -1,15 +1,20 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { FirebaseAuthProvider } from '@/lib/firebase/auth-provider';
-// import { TranslationProvider } from '@/lib/i18n';
 import { MantineProvider } from '@mantine/core';
+import { initializeConsoleFilter } from '@/utils/console-filter';
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
+  useEffect(() => {
+    // Initialize console filter only on the client
+    initializeConsoleFilter();
+  }, []);
+
   return (
     <MantineProvider>
       <FirebaseAuthProvider>
@@ -17,4 +22,4 @@ export function Providers({ children }: ProvidersProps) {
       </FirebaseAuthProvider>
     </MantineProvider>
   );
-} 
+}

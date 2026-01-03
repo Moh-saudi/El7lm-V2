@@ -137,8 +137,9 @@ export default function UnifiedNotificationsButton() {
 
   const filtered = notifications.filter(n => activeTab === 'all' || !n.isRead);
   const dashboardPath = userData?.accountType === 'admin' ? '/dashboard/admin' :
-    userData?.accountType === 'club' ? '/dashboard/club' :
-      userData?.accountType === 'academy' ? '/dashboard/academy' : '/dashboard/trainer';
+    userData?.accountType === 'player' ? '/dashboard/player' :
+      userData?.accountType === 'club' ? '/dashboard/club' :
+        userData?.accountType === 'academy' ? '/dashboard/academy' : '/dashboard/trainer';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>

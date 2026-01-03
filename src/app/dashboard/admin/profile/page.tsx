@@ -120,7 +120,7 @@ export default function AdminProfile() {
 
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop();
-      const bucketName = 'el7lmplatform'; // Cloudflare R2 bucket name
+      const bucketName = 'assets'; // Cloudflare R2 bucket name
       const filePath = `avatars/admin-avatars/${user.uid}/${timestamp}.${fileExt}`;
 
       // استخدام نظام التخزين الموحد (يدعم Cloudflare R2 و Supabase)

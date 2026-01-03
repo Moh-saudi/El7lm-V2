@@ -33,7 +33,7 @@ export async function deleteUserMedia(userId: string) {
     for (const bucket of buckets) {
         try {
             // List files with user prefix
-            // In our single-bucket design, this lists files in el7lmplatform/{bucket}/{userId}/
+            // In our single-bucket design, this lists files in assets/{bucket}/{userId}/
             const files = await storageManager.list(bucket, userId);
 
             if (files && files.length > 0) {

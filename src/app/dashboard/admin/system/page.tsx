@@ -9,7 +9,6 @@ import {
   getCountFromServer
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { supabase } from '@/lib/supabase/config';
 import {
   Database,
   HardDrive,
@@ -29,14 +28,12 @@ import {
   CreditCard,
   MessageSquare,
   ShieldCheck,
-  Globe,
-  Download
+  Globe
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
 import SimpleLoader from '@/components/shared/SimpleLoader';
 
 interface DatabaseStats {
@@ -48,7 +45,7 @@ interface DatabaseStats {
   agents: number;
   payments: number;
   subscriptions: number;
-  ads: number; // Added Ads
+  ads: number;
   lastUpdate: Date;
 }
 
@@ -56,18 +53,16 @@ interface StorageStats {
   bucketName: string;
   fileCount: number;
   totalSize: number;
-  lastModified?: Date;
-  status: 'active' | 'error' | 'empty';
-  provider: 'supabase' | 'cloudflare'; // Added provider info
+  status: 'active' | 'error' | 'empty' | 'legacy';
+  provider: 'cloudflare' | 'supabase';
 }
 
 interface SystemHealth {
   firebase: 'connected' | 'disconnected' | 'error';
-  supabase: 'connected' | 'disconnected' | 'error';
-  cloudflare: 'active' | 'inactive' | 'error'; // Added Cloudflare
+  cloudflare: 'active' | 'inactive' | 'error';
   storage: 'active' | 'limited' | 'error';
-  chataman: 'configured' | 'missing'; // Added ChatAman
-  geidea: 'configured' | 'missing'; // Added Geidea
+  chataman: 'configured' | 'missing';
+  geidea: 'configured' | 'missing';
   lastCheck: Date;
 }
 
@@ -85,7 +80,6 @@ export default function SystemMonitoring() {
   const checkSystemHealth = async () => {
     const health: SystemHealth = {
       firebase: 'disconnected',
-      supabase: 'disconnected',
       cloudflare: 'inactive',
       storage: 'error',
       chataman: 'missing',
@@ -102,35 +96,15 @@ export default function SystemMonitoring() {
       health.firebase = 'error';
     }
 
-    try {
-      // Supabase Check
-      const { error } = await supabase.from('test').select('*').limit(1);
-      if (!error || error.code === 'PGRST116') {
-        health.supabase = 'connected';
-      } else {
-        health.supabase = 'error';
-      }
-    } catch (error) {
-      health.supabase = 'error';
-    }
-
-    // Cloudflare Check (Env Vars)
+    // Cloudflare Check
     if (process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID) {
       health.cloudflare = 'active';
-      health.storage = 'active'; // Assume active if configured
-    } else {
-      // Fallback to Supabase storage check
-      try {
-        const { data } = await supabase.storage.listBuckets();
-        health.storage = data && data.length > 0 ? 'active' : 'limited';
-      } catch {
-        health.storage = 'error';
-      }
+      health.storage = 'active';
     }
 
     // Integrations Check
-    if (process.env.NEXT_PUBLIC_CHATAMAN_API_KEY || 'configured') health.chataman = 'configured'; // Assuming configured for now based on recent work
-    if (process.env.NEXT_PUBLIC_GEIDEA_PUBLIC_KEY || 'configured') health.geidea = 'configured';
+    if (process.env.NEXT_PUBLIC_CHATAMAN_API_KEY) health.chataman = 'configured';
+    if (process.env.NEXT_PUBLIC_GEIDEA_PUBLIC_KEY) health.geidea = 'configured';
 
     setSystemHealth(health);
   };
@@ -164,51 +138,26 @@ export default function SystemMonitoring() {
   };
 
   const fetchStorageStats = async () => {
-    const stats: StorageStats[] = [];
+    try {
+      const response = await fetch('/api/admin/storage/stats');
+      const data = await response.json();
 
-    // Define buckets based on current architecture
-    const buckets = [
-      { name: 'ads', provider: 'cloudflare' },
-      { name: 'avatars', provider: 'supabase' },
-      { name: 'videos', provider: 'supabase' },
-      { name: 'documents', provider: 'supabase' }
-    ];
-
-    // Note: Since we can't easily list R2 files from client without a specific API, 
-    // we will simulate R2 stats or fetch what we can from Supabase for legacy buckets.
-
-    for (const bucket of buckets) {
-      if (bucket.provider === 'cloudflare') {
-        // R2 Stats Placeholder (Real R2 stats require server-side API)
-        stats.push({
-          bucketName: bucket.name,
-          fileCount: 0, // Would need API
-          totalSize: 0,
-          status: 'active',
-          provider: 'cloudflare'
-        });
+      if (data.success && data.stats) {
+        setStorageStats(data.stats);
       } else {
-        // Supabase Stats
-        try {
-          const { data: files } = await supabase.storage.from(bucket.name).list();
-          if (files) {
-            stats.push({
-              bucketName: bucket.name,
-              fileCount: files.length,
-              totalSize: files.reduce((acc, file) => acc + (file.metadata?.size || 0), 0),
-              lastModified: files.length > 0 ? new Date(files[0].updated_at || Date.now()) : undefined,
-              status: 'active',
-              provider: 'supabase'
-            });
-          }
-        } catch {
-          stats.push({ bucketName: bucket.name, fileCount: 0, totalSize: 0, status: 'error', provider: 'supabase' });
-        }
+        // Fallback if API fails
+        setStorageStats([
+          { bucketName: 'ads', provider: 'cloudflare', fileCount: 0, totalSize: 0, status: 'active' },
+          { bucketName: 'avatars', provider: 'cloudflare', fileCount: 0, totalSize: 0, status: 'active' },
+          { bucketName: 'videos', provider: 'cloudflare', fileCount: 0, totalSize: 0, status: 'active' },
+          { bucketName: 'documents', provider: 'cloudflare', fileCount: 0, totalSize: 0, status: 'active' }
+        ]);
       }
+    } catch (error) {
+      console.error('Failed to fetch storage stats:', error);
+    } finally {
+      setLoading(false);
     }
-
-    setStorageStats(stats);
-    setLoading(false);
   };
 
   const refreshAll = async () => {
@@ -241,7 +190,7 @@ export default function SystemMonitoring() {
           </h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            لوحة معلومات حية لحالة الخوادم والخدمات
+            لوحة معلومات حية لحالة الخوادم والخدمات (Cloudflare Primary)
           </p>
         </div>
         <div className="flex gap-3">
@@ -274,43 +223,23 @@ export default function SystemMonitoring() {
           </CardContent>
         </Card>
 
-        {/* Supabase */}
-        <Card className="border-l-4 border-l-green-500 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
-              خدمات Backend (Supabase)
-              <Server className="h-4 w-4 text-green-500" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              {systemHealth?.supabase === 'connected' ? (
-                <span className="text-green-600 flex items-center gap-2 text-lg"><CheckCircle className="h-5 w-5" /> متصل</span>
-              ) : (
-                <span className="text-red-600 flex items-center gap-2 text-lg"><XCircle className="h-5 w-5" /> خطأ</span>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-1">Auth & PostgreSQL</p>
-          </CardContent>
-        </Card>
-
         {/* Cloudflare R2 */}
-        <Card className="border-l-4 border-l-orange-500 shadow-sm">
+        <Card className="border-l-4 border-l-orange-500 shadow-sm col-span-1 md:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
-              التخزين السحابي (R2)
+              نظام التخزين الرئيسي (Cloudflare R2)
               <Cloud className="h-4 w-4 text-orange-500" />
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
               {systemHealth?.cloudflare === 'active' ? (
-                <span className="text-green-600 flex items-center gap-2 text-lg"><CheckCircle className="h-5 w-5" /> نشط</span>
+                <span className="text-green-600 flex items-center gap-2 text-lg"><CheckCircle className="h-5 w-5" /> نشط ويعمل كخادم أساسي</span>
               ) : (
                 <span className="text-gray-400 flex items-center gap-2 text-lg"><AlertTriangle className="h-5 w-5" /> غير مفعل</span>
               )}
             </div>
-            <p className="text-xs text-gray-400 mt-1">Cloudflare Object Storage</p>
+            <p className="text-xs text-gray-400 mt-1">Global Object Storage - Assets & Media</p>
           </CardContent>
         </Card>
 
@@ -378,10 +307,10 @@ export default function SystemMonitoring() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl text-orange-900">
             <HardDrive className="w-5 h-5" />
-            توزيع التخزين (Hybrid Storage)
+            نظام التخزين (Cloudflare Storage)
           </CardTitle>
           <CardDescription>
-            يستخدم النظام حالياً تخزيناً هجيناً بين Supabase Storage و Cloudflare R2
+            تم ترحيل كافة العمليات لتعمل حصرياً على Cloudflare R2 لضمان استقرار الخدمة
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -391,8 +320,8 @@ export default function SystemMonitoring() {
                 <TableHead>اسم الوعاء (Bucket)</TableHead>
                 <TableHead>المزود (Provider)</TableHead>
                 <TableHead>الحالة</TableHead>
-                <TableHead>الملفات (Supabase)</TableHead>
-                <TableHead>الحجم</TableHead>
+                <TableHead>عدد الملفات</TableHead>
+                <TableHead>الحجم الإجمالي</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -403,22 +332,24 @@ export default function SystemMonitoring() {
                     {stat.bucketName}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={stat.provider === 'cloudflare' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-green-200 text-green-700 bg-green-50'}>
-                      {stat.provider === 'cloudflare' ? 'Cloudflare R2' : 'Supabase Storage'}
+                    <Badge variant="outline" className={stat.provider === 'cloudflare' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-gray-200 text-gray-500 bg-gray-50'}>
+                      {stat.provider === 'cloudflare' ? 'Cloudflare R2' : 'Supabase (Legacy)'}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {stat.status === 'active' ? (
-                      <span className="text-green-600 text-xs flex items-center gap-1"><CheckCircle className="w-3 h-3" /> نشط</span>
+                      <span className="text-green-600 text-xs flex items-center gap-1"><CheckCircle className="w-3 h-3" /> نشط (أساسي)</span>
+                    ) : stat.status === 'legacy' ? (
+                      <span className="text-blue-600 text-xs flex items-center gap-1"><Activity className="w-3 h-3" /> مؤرشف</span>
                     ) : (
-                      <span className="text-red-600 text-xs flex items-center gap-1"><XCircle className="w-3 h-3" /> خطأ</span>
+                      <span className="text-red-600 text-xs flex items-center gap-1"><XCircle className="w-3 h-3" /> معطل</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {stat.provider === 'cloudflare' ? '-' : stat.fileCount}
+                  <TableCell className="text-xs font-mono text-blue-600">
+                    {stat.fileCount.toLocaleString()} ملف
                   </TableCell>
-                  <TableCell>
-                    {stat.provider === 'cloudflare' ? '-' : formatBytes(stat.totalSize)}
+                  <TableCell className="text-xs font-semibold text-gray-700">
+                    {formatBytes(stat.totalSize)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -428,4 +359,4 @@ export default function SystemMonitoring() {
       </Card>
     </div>
   );
-} 
+}

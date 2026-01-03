@@ -57,7 +57,7 @@ export class CloudflareStorageProvider implements StorageProvider {
                 const arrayBuffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer;
                 const blob = new Blob([arrayBuffer]);
                 formData.append('file', blob, 'file');
-            } else {
+            } else if (file instanceof Blob) {
                 formData.append('file', file);
             }
 
@@ -137,12 +137,12 @@ export class CloudflareStorageProvider implements StorageProvider {
             console.log(`📂 [Cloudflare R2] Listing files in ${bucket}/${path}`);
 
             // تحديد البوكت والمسار الفعليين
-            // في حالتنا، نستخدم بوكت واحد (el7lmplatform) مع مجلدات
+            // في حالتنا، نستخدم بوكت واحد (assets) مع مجلدات
             let targetBucket = bucket;
             let prefix = path;
 
             // إذا كان البوكت الممرر ليس البوكت الرئيسي، نعتبره مجلد
-            const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
+            const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
 
             if (bucket !== mainBucket) {
                 // ندمج اسم البوكت القديم مع المسار ليصبحا Prefix

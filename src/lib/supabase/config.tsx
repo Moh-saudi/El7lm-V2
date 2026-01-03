@@ -51,8 +51,9 @@ export const supabase = (() => {
 // دالة للحصول على عميل Supabase مع المصادقة
 export const getSupabaseClient = () => supabase;
 
-// دالة للتحقق من اتصال Supabase
+// دالة للتحقق من اتصال Supabase - Disabled as instance is defunct
 export const checkSupabaseConnection = async (): Promise<boolean> => {
+  /*
   try {
     const { error } = await supabase.from('test').select('*').limit(1);
     return !error || error.code === 'PGRST116'; // PGRST116 = table doesn't exist (which is fine)
@@ -60,6 +61,8 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     console.warn('Supabase connection test failed:', error);
     return false;
   }
+  */
+  return false;
 };
 
 // Types for better TypeScript support

@@ -11,6 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import dynamic from 'next/dynamic';
 
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
+const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
 
 export default function DashboardLayout({
   children,
@@ -35,8 +36,6 @@ export default function DashboardLayout({
       </div>
     );
   }
-
-  const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
 
   if (!user) {
     if (typeof window !== 'undefined') {

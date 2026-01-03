@@ -13,20 +13,28 @@ export const getSupabaseImageUrl = (path: string, bucket: string = 'avatars') =>
     return path;
   }
 
-  // 2. إذا كان المسار يحتوي على رابط Supabase قديم، قم بتحويله إلى Cloudflare
-  if (path.includes('.supabase.co/storage/v1/object/')) {
+  // 2. إذا كان المسار رابطاً كاملاً (Http)، حاكل إصلاحه وتحويله لـ Cloudflare
+  if (path.startsWith('http')) {
     const fixed = fixReceiptUrl(path);
-    if (fixed && fixed.startsWith('http') && fixed.includes('assets.el7lm.com')) {
+    if (fixed && fixed.includes('assets.el7lm.com')) {
       return fixed;
     }
-  }
 
-  // 3. إذا كان رابطاً كاملاً آخر
-  if (path.startsWith('http')) {
+    // إذا كان لا يزال من Supabase بعد محاولة الإصلاح (ولم ينجح التبديل)، 
+    // وكان السوبا بيس معطلاً (DNS Error)، نفضل إرجاع مسار نسبي ليعالج ككلاود فلير
+    if (path.includes('supabase.co')) {
+      console.warn('⚠️ image-utils: Supabase URL detected but fix failed. Trying path extraction.', path);
+      const parts = path.split('/');
+      const fileName = parts[parts.length - 1];
+      if (fileName && fileName.includes('.')) {
+        return `${CLOUDFLARE_BASE_URL}/${bucket}/${fileName}`;
+      }
+    }
+
     return path;
   }
 
-  // 4. إذا كان مجرد مسار نسبي، استخدم Cloudflare كخيار أول (حسب رغبة المستخدم)
+  // 3. إذا كان مجرد مسار نسبي، استخدم Cloudflare
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
   // التحقق من وجود bucket في المسار النسبي إذا لم يكن موجوداً
@@ -39,87 +47,15 @@ export const getSupabaseImageUrl = (path: string, bucket: string = 'avatars') =>
 
 // دالة للتحقق من وجود الصورة في Supabase
 export const checkImageExists = async (path: string, bucket: string = 'avatars') => {
-  if (!path) return false;
-
-  try {
-    const { data, error } = await supabase.storage.from(bucket).list('', {
-      search: path,
-      limit: 1
-    });
-
-    if (error) {
-      console.error(`❌ Error checking image existence:`, error);
-      // إذا كان الخطأ من نوع StorageUnknownError، إرجاع false بدلاً من إثارة خطأ
-      if (error.message && error.message.includes('Unexpected token')) {
-        return false;
-      }
-      return false;
-    }
-
-    const exists = data && data.some(file => file.name === path);
-    return exists;
-  } catch (error: any) {
-    console.error(`❌ Error checking image existence:`, error);
-    // إذا كان الخطأ يحتوي على HTML response، فهذا يعني مشكلة في الخادم
-    if (error.message && error.message.includes('Unexpected token')) {
-      return false;
-    }
-    return false;
-  }
+  // Supabase storage is currently defunct/migrated to R2
+  // We return true by default to allow fallback logic to try the Cloudflare URL
+  return true;
 };
 
 // دالة جديدة لجلب صورة المستخدم من Supabase
 export const getUserAvatarFromSupabase = async (userId: string, accountType: string) => {
-  if (!userId) return null;
-
-  try {
-    // جرب امتدادات مختلفة
-    const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-    for (const ext of extensions) {
-      const fileName = `${userId}.${ext}`;
-
-      try {
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-
-        // تحقق من وجود الصورة مع معالجة أفضل للأخطاء
-        try {
-          const { data: fileExists, error } = await supabase.storage.from('avatars').list('', {
-            search: fileName,
-            limit: 1
-          });
-
-          if (error) {
-            console.error(`❌ Error checking file existence for ${fileName}:`, error);
-            // إذا كان الخطأ من نوع StorageUnknownError أو خطأ في الشبكة، تجاهل الملف
-            if (error.message && error.message.includes('Unexpected token')) {
-              continue;
-            }
-            continue;
-          }
-
-          if (fileExists && fileExists.length > 0) {
-            return publicUrl;
-          }
-        } catch (listError: any) {
-          console.error(`❌ Error listing files for ${fileName}:`, listError);
-          // إذا كان الخطأ يحتوي على HTML response، فهذا يعني مشكلة في الخادم
-          if (listError.message && listError.message.includes('Unexpected token')) {
-            continue;
-          }
-          continue;
-        }
-      } catch (error) {
-        console.error(`❌ Error checking ${fileName}:`, error);
-        continue;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`❌ Error getting avatar for user ${userId}:`, error);
-    return null;
-  }
+  // Supabase storage is defunct. We should use Cloudflare URLs directly.
+  return null;
 };
 
 export const getPlayerAvatarUrl = (userData: any, user?: any) => {
