@@ -182,6 +182,23 @@ export default function RegisterPage() {
       } else {
         const raw = formData.phone.replace(/^0+/, '');
         const full = `${formData.countryCode}${raw}`;
+
+        // Check if phone exists
+        try {
+          const checkRes = await fetch('/api/auth/check-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneNumber: full }),
+          });
+          const checkData = await checkRes.json();
+          if (checkRes.ok && checkData.exists) {
+            setError(`رقم الهاتف مسجل بالفعل باسم ${checkData.userName}. يرجى تسجيل الدخول.`);
+            toast.error('هذا الرقم موجود بالفعل');
+            setLoading(false);
+            return;
+          }
+        } catch (e) { /* continue if check fails */ }
+
         let appVerifier = (window as any).recaptchaVerifier;
         if (!appVerifier) appVerifier = await setupRecaptcha('recaptcha-container');
         const conf = await sendPhoneOTP(full, appVerifier);
@@ -367,16 +384,45 @@ export default function RegisterPage() {
 
                         <button
                           type="button"
-                          onClick={() => {
-                            if (formData.name && formData.country && isValidEmail(formData.email)) setFormStep(2);
-                            else setError('يرجى إكمال جميع البيانات بشكل صحيح');
+                          onClick={async () => {
+                            if (!formData.name || !formData.country || !isValidEmail(formData.email)) {
+                              setError('يرجى إكمال جميع البيانات بشكل صحيح');
+                              return;
+                            }
+
+                            setLoading(true);
+                            setError('');
+                            try {
+                              const checkRes = await fetch('/api/auth/check-user', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
+                              });
+                              const checkData = await checkRes.json();
+                              if (checkRes.ok && checkData.exists) {
+                                setError(`البريد الإلكتروني مسجل بالفعل باسم ${checkData.userName}. يرجى تسجيل الدخول.`);
+                                toast.error('هذا الحساب موجود بالفعل');
+                                return;
+                              }
+                              setFormStep(2);
+                            } catch (e) {
+                              // If check fails, we still allow moving forward
+                              setFormStep(2);
+                            } finally {
+                              setLoading(false);
+                            }
                           }}
-                          className="w-full bg-slate-900 group relative text-white font-black h-14 rounded-2xl text-sm shadow-xl shadow-slate-200 mt-4 overflow-hidden active:scale-95 transition-all"
+                          disabled={loading}
+                          className="w-full bg-slate-900 group relative text-white font-black h-14 rounded-2xl text-sm shadow-xl shadow-slate-200 mt-4 overflow-hidden active:scale-95 transition-all disabled:opacity-70"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           <span className="relative z-10 flex items-center justify-center gap-2">
-                            التالي
-                            <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                              <>
+                                التالي
+                                <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                              </>
+                            )}
                           </span>
                         </button>
                       </div>

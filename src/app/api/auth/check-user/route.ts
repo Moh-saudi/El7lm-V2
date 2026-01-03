@@ -66,6 +66,50 @@ function generatePhoneVariants(phoneNumber: string): string[] {
   return [...new Set(variants)].filter(v => v.length >= 8); // الحد الأدنى 8 أرقام
 }
 
+// دالة البحث عن المستخدم بواسطة البريد الإلكتروني
+async function findUserByEmail(email: string): Promise<{
+  exists: boolean;
+  userName?: string;
+  accountType?: string;
+  uid?: string;
+}> {
+  if (!email || !adminDb) return { exists: false };
+
+  for (const collectionName of COLLECTIONS_TO_SEARCH) {
+    try {
+      const q = adminDb.collection(collectionName).where('email', '==', email).limit(1);
+      const snapshot = await q.get();
+
+      if (!snapshot.empty) {
+        const userData = snapshot.docs[0].data();
+        return {
+          exists: true,
+          userName: userData.full_name || userData.name || userData.displayName || 'مستخدم',
+          accountType: userData.accountType || collectionName.slice(0, -1),
+          uid: snapshot.docs[0].id
+        };
+      }
+    } catch (e) { }
+  }
+
+  // التحقق من Firebase Auth مباشرة
+  try {
+    const { adminAuth } = await import('@/lib/firebase/admin');
+    if (adminAuth) {
+      const userRecord = await adminAuth.getUserByEmail(email);
+      if (userRecord) {
+        return {
+          exists: true,
+          userName: userRecord.displayName || 'مستخدم مسجل',
+          uid: userRecord.uid
+        };
+      }
+    }
+  } catch (e) { }
+
+  return { exists: false };
+}
+
 // دالة البحث عن المستخدم بواسطة رقم الهاتف
 async function findUserByPhone(phoneNumber: string): Promise<{
   exists: boolean;
@@ -124,20 +168,26 @@ async function findUserByPhone(phoneNumber: string): Promise<{
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phoneNumber } = body;
+    const { phoneNumber, email } = body;
 
-    console.log('🔍 [check-user] Checking user existence for phone:', phoneNumber);
+    console.log('🔍 [check-user] Checking user existence:', { phoneNumber, email });
 
     // التحقق من البيانات
-    if (!phoneNumber) {
+    if (!phoneNumber && !email) {
       return NextResponse.json(
-        { success: false, error: 'رقم الهاتف مطلوب', exists: false },
+        { success: false, error: 'رقم الهاتف أو البريد الإلكتروني مطلوب', exists: false },
         { status: 400 }
       );
     }
 
     // البحث عن المستخدم
-    const result = await findUserByPhone(phoneNumber);
+    let result = { exists: false } as any;
+
+    if (email) {
+      result = await findUserByEmail(email);
+    } else if (phoneNumber) {
+      result = await findUserByPhone(phoneNumber);
+    }
 
     if (result.exists) {
       return NextResponse.json({

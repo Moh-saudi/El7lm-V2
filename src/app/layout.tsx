@@ -16,8 +16,7 @@ import './globals.css';
 import { Providers } from './providers';
 import '@/lib/utils/initialize-location-fix';
 import '@/lib/firebase/connection-fix';
-import '@/lib/utils/react-error-suppressor';
-import '@/lib/utils/initialize-error-handling';
+import '@/utils/console-filter';
 
 export const metadata: Metadata = {
   title: 'El7lm - منصة كرة القدم المتكاملة',

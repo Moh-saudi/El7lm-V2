@@ -1398,7 +1398,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
             console.error('❌ Reactivation failed:', reactivationError);
           }
 
-          errorMessage = 'هذا الحساب موجود مسبقاً. إذا كان الحساب قد تم حذفه، يرجى التواصل مع الإدارة لإعادة تفعيله أو تسجيل الدخول.';
+          errorMessage = 'هذا البريد الإلكتروني مسجل بالفعل. يرجى محاولة تسجيل الدخول بدلاً من ذلك. إذا نسيت كلمة المرور، استخدم خيار \"هل نسيت كلمة المرور؟\". إذا كنت قد سجلت مسبقاً باستخدام Google، يرجى استخدامه للدخول.';
           break;
         case 'auth/weak-password':
           errorMessage = 'Password is too weak. Please use at least 8 characters';
