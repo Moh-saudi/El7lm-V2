@@ -679,7 +679,9 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
       return { user, userData };
     } catch (error: any) {
-      console.error('Login error:', error);
+      if (error && error.code !== 'auth/invalid-credential' && error.code !== 'auth/wrong-password') {
+        console.error('Login system error:', error.message || error);
+      }
 
       // إعادة رمي الخطأ الأصلي مع الاحتفاظ بـ error.code
       // هذا يسمح لصفحة تسجيل الدخول بالتعرف على نوع الخطأ
@@ -1374,12 +1376,8 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('🎉 Registration completed successfully');
       return userData;
     } catch (error: any) {
-      console.error('❌ Registration error:', error);
-      console.error('❌ Error type:', typeof error);
-      console.error('❌ Error constructor:', error.constructor.name);
-      if (error && error.code) console.error('Firebase error code:', error.code);
-      if (error && error.message) console.error('Firebase error message:', error.message);
-      if (error && error.response) console.error('Firebase error response:', error.response);
+      console.error('❌ Registration error:', error.message || error);
+      if (error && error.code) console.error('Firebase code:', error.code);
 
       let errorMessage = 'Registration failed';
 
