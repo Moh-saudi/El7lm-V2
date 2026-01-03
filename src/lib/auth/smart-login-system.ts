@@ -274,17 +274,14 @@ export class SmartLoginSystem {
    * التحقق من قوة كلمة المرور - أرقام فقط
    */
   validatePasswordStrength(password: string): { isStrong: boolean; message: string } {
-    // التحقق من أن كلمة المرور أرقام فقط
-    const isNumbersOnly = /^\d+$/.test(password);
-    if (!isNumbersOnly) {
-      return { isStrong: false, message: 'يجب أن تحتوي كلمة المرور على أرقام فقط' };
-    }
-
+    // التحقق من قوة كلمة المرور - 8 أحرف على الأقل
     if (password.length < 8) {
-      return { isStrong: false, message: 'يجب أن تتكون كلمة المرور من 8 أرقام على الأقل' };
+      return { isStrong: false, message: 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل' };
     }
 
-    // منع الأرقام المتسلسلة والمتكررة
+    const isNumbersOnly = /^\d+$/.test(password);
+
+    // منع الأرقام المتسلسلة والمتكررة إذا كانت كلمة المرور أرقام فقط
     const weakPatterns = [
       /^(\d)\1+$/, // نفس الرقم متكرر
       /^(0123456789|9876543210)/, // أرقام متسلسلة
@@ -293,8 +290,8 @@ export class SmartLoginSystem {
       /^111111/, /^000000/, /^666666/, /^888888/
     ];
 
-    if (weakPatterns.some(pattern => pattern.test(password))) {
-      return { isStrong: false, message: 'كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة (مثال: 19901234، 05012345)' };
+    if (isNumbersOnly && weakPatterns.some(pattern => pattern.test(password))) {
+      return { isStrong: false, message: 'كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة' };
     }
 
     return { isStrong: true, message: 'كلمة مرور مقبولة' };

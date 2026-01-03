@@ -253,19 +253,15 @@ export default function WhatsAppPasswordReset() {
             return;
         }
 
-        // التحقق من كلمة المرور - أرقام فقط
-        const isNumbersOnly = /^\d+$/.test(newPassword);
-        if (!isNumbersOnly) {
-            toast.error('يجب أن تحتوي كلمة المرور على أرقام فقط');
-            return;
-        }
-
+        // التحقق من قوة كلمة المرور - 8 أحرف على الأقل
         if (newPassword.length < 8) {
-            toast.error('يجب أن تتكون كلمة المرور من 8 أرقام على الأقل');
+            toast.error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
             return;
         }
 
-        // منع الأرقام المتسلسلة والمتكررة
+        const isNumbersOnly = /^\d+$/.test(newPassword);
+
+        // منع الأرقام المتسلسلة والمتكررة إذا كانت كلمة المرور أرقام فقط
         const weakPatterns = [
             /^(\d)\1+$/, // نفس الرقم متكرر (111111)
             /^(0123456789|9876543210)/, // أرقام متسلسلة
@@ -274,8 +270,8 @@ export default function WhatsAppPasswordReset() {
             /^111111/, /^000000/, /^666666/, /^888888/
         ];
 
-        if (weakPatterns.some(pattern => pattern.test(newPassword))) {
-            toast.error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة (مثال صحيح: 19901234، 05012345)');
+        if (isNumbersOnly && weakPatterns.some(pattern => pattern.test(newPassword))) {
+            toast.error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
             return;
         }
 
@@ -534,10 +530,10 @@ export default function WhatsAppPasswordReset() {
                             <div className="space-y-2 text-xs text-gray-500 pt-2">
                                 <div className="flex items-center">
                                     <ShieldAlert className="w-4 h-4 ml-2 flex-shrink-0" />
-                                    <span>8 أرقام على الأقل (أرقام فقط)</span>
+                                    <span>8 أحرف على الأقل</span>
                                 </div>
-                                <div className="text-green-600 text-xs">
-                                    ✅ أمثلة صحيحة: 19901234، 05012345678، 20249876
+                                <div className="text-green-600 text-xs text-right">
+                                    ✅ يفضل استخدام مزيج من الأرقام والحروف لبناء كلمة مرور قوية
                                 </div>
                                 <div className="text-red-500 text-xs">
                                     ⚠️ ممنوع: 12345678، 11111111، 00000000

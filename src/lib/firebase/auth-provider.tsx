@@ -1267,14 +1267,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         throw new Error('Email, password, and role are required');
       }
 
-      // Validate password strength - أرقام فقط
       const isNumbersOnly = /^\d+$/.test(password);
-      if (!isNumbersOnly) {
-        throw new Error('يجب أن تحتوي كلمة المرور على أرقام فقط');
-      }
-
+      // Validate password strength - 8 characters minimum
       if (password.length < 8) {
-        throw new Error('يجب أن تتكون كلمة المرور من 8 أرقام على الأقل');
+        throw new Error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
       }
 
       // Additional password validation
@@ -1291,7 +1287,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         /^111111/, /^000000/, /^666666/, /^888888/
       ];
 
-      if (weakPatterns.some(pattern => pattern.test(password))) {
+      if (isNumbersOnly && weakPatterns.some(pattern => pattern.test(password))) {
         throw new Error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
       }
 
