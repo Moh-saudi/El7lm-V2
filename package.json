@@ -36,6 +36,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.39.0",
+    "@vidstack/react": "^1.12.0",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -50,6 +51,7 @@
     "jspdf": "^2.5.1",
     "lodash": "^4.17.21",
     "lucide-react": "^0.562.0",
+    "media-icons": "^1.1.0",
     "next": "^14.2.35",
     "papaparse": "^5.4.1",
     "prisma": "^5.7.0",
@@ -73,6 +75,7 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.5.4",
     "uuid": "^9.0.1",
+    "vidstack": "^1.12.0",
     "world-countries": "^5.1.0",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"

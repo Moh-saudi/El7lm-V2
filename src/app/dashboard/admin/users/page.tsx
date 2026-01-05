@@ -53,7 +53,7 @@ interface User {
   phone: string;
   whatsapp?: string;
   countryCode?: string; // كود البلد من صفحة التسجيل (مثل +966, +20)
-  accountType: 'user' | 'player' | 'club' | 'academy' | 'agent' | 'trainer';
+  accountType: 'user' | 'player' | 'club' | 'academy' | 'agent' | 'trainer' | 'marketer' | 'parent';
   isActive: boolean;
   createdAt: Date | null;
   lastLogin: Date | null;
@@ -851,7 +851,7 @@ export default function AdminUsersPage() {
         setLoading(true);
         console.log('🔄 بدء تحميل بيانات المستخدمين (نسخة ذكية)...');
 
-        const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
+        const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
         const allUsers: User[] = [];
         let totalProcessed = 0;
 
@@ -969,8 +969,8 @@ export default function AdminUsersPage() {
     }
   }, [user, userData]);
 
-  // Filter users by tab
-  const getUsersByTab = () => {
+  // Filter users by tab - using useMemo for stable reference
+  const usersByTab = React.useMemo(() => {
     switch (activeTab) {
       case 'active':
         return users.filter(u => u.isActive && !u.isDeleted);
@@ -981,7 +981,7 @@ export default function AdminUsersPage() {
       default:
         return users;
     }
-  };
+  }, [users, activeTab]);
 
   // حساب نقاط جودة البيانات (Health Score) بشكل ذكي
   const calculateHealth = (allUsers: User[]) => {
@@ -1064,12 +1064,31 @@ export default function AdminUsersPage() {
 
   // تحسين الأداء (Memoization) لعمليات الفلترة لتقليل الـ INP
   const filteredAndSortedUsers = React.useMemo(() => {
-    return getUsersByTab().filter(user => {
-      const matchesSearch = searchTerm === '' ||
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.phone.includes(searchTerm);
+    const normalizedSearch = searchTerm.toLowerCase().trim();
+    const isSearchActive = normalizedSearch.length > 0;
 
+    // 1. تحديد القائمة الأولية: إما كل المستخدمين (للبحث) أو التبويب الحالي
+    let resultUsers = isSearchActive ? users : usersByTab;
+
+    // 2. تطبيق فلتر البحث إذا كان نشطاً
+    if (isSearchActive) {
+      const normalizedPhoneSearch = normalizedSearch.replace(/\D/g, '');
+      resultUsers = resultUsers.filter(user => {
+        const phoneMatch = user.phone && (
+          user.phone.includes(normalizedSearch) ||
+          (normalizedPhoneSearch.length > 3 && user.phone.replace(/\D/g, '').includes(normalizedPhoneSearch))
+        );
+
+        const nameMatch = user.name.toLowerCase().includes(normalizedSearch);
+        const emailMatch = user.email.toLowerCase().includes(normalizedSearch);
+        const idMatch = user.id && user.id.toLowerCase().includes(normalizedSearch);
+
+        return nameMatch || emailMatch || idMatch || phoneMatch;
+      });
+    }
+
+    // 3. تطبيق باقي الفلاتر (Type, Verification, etc.)
+    return resultUsers.filter(user => {
       const matchesType = filterType === 'all' || user.accountType === filterType;
       const matchesVerification = filterVerification === 'all' || user.verificationStatus === filterVerification;
       const matchesCountry = filterCountry === 'all' || user.country === filterCountry;
@@ -1125,8 +1144,8 @@ export default function AdminUsersPage() {
         }
       })();
 
-      return matchesSearch && matchesType && matchesVerification &&
-        matchesDate && matchesProfileCompletion && matchesCountry && matchesCity &&
+      return matchesType && matchesVerification && matchesDate &&
+        matchesProfileCompletion && matchesCountry && matchesCity &&
         matchesOrganization && matchesRegistrationType;
     }).sort((a, b) => {
       let aValue: any = a[sortBy as keyof User];
@@ -1146,7 +1165,7 @@ export default function AdminUsersPage() {
       if (sortOrder === 'asc') return aValue > bValue ? 1 : -1;
       return aValue < bValue ? 1 : -1;
     });
-  }, [users, activeTab, searchTerm, filterType, filterVerification, filterCountry, filterCity, filterOrganization, filterRegistrationType, filterProfileCompletion, dateFilter, sortBy, sortOrder]);
+  }, [users, usersByTab, searchTerm, filterType, filterVerification, filterCountry, filterCity, filterOrganization, filterRegistrationType, filterProfileCompletion, dateFilter, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedUsers.length / itemsPerPage);
@@ -1187,6 +1206,8 @@ export default function AdminUsersPage() {
       agent: users.filter(u => u.accountType === 'agent' && !u.isDeleted).length,
       trainer: users.filter(u => u.accountType === 'trainer' && !u.isDeleted).length,
       club: users.filter(u => u.accountType === 'club' && !u.isDeleted).length,
+      marketer: users.filter(u => u.accountType === 'marketer' && !u.isDeleted).length,
+      parent: users.filter(u => u.accountType === 'parent' && !u.isDeleted).length,
     },
     byRegistrationType: {
       direct: users.filter(u => u.registrationType === 'direct' && !u.isDeleted).length,
@@ -1204,6 +1225,8 @@ export default function AdminUsersPage() {
       trainer: 'مدرب',
       club: 'نادي',
       user: 'مستخدم',
+      marketer: 'مسوق',
+      parent: 'ولي أمر',
       unknown: 'غير محدد'
     };
     return labels[type] || type;
@@ -1216,7 +1239,9 @@ export default function AdminUsersPage() {
       agent: 'bg-purple-100 text-purple-800 border-purple-200',
       trainer: 'bg-orange-100 text-orange-800 border-orange-200',
       club: 'bg-red-100 text-red-800 border-red-200',
-      user: 'bg-gray-100 text-gray-800 border-gray-200'
+      user: 'bg-gray-100 text-gray-800 border-gray-200',
+      marketer: 'bg-teal-100 text-teal-800 border-teal-200',
+      parent: 'bg-indigo-100 text-indigo-800 border-indigo-200'
     };
     return colors[type] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
@@ -2017,285 +2042,207 @@ export default function AdminUsersPage() {
             )}
           </Card>
 
-          {/* Advanced Filters */}
-          <Card className="mb-6 shadow-lg border-2 border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 cursor-pointer" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Filter className="h-6 w-6 text-gray-700" />
-                  <span>فلاتر البحث المتقدمة</span>
-                  <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-                    {filteredAndSortedUsers.length.toLocaleString()} نتيجة
-                  </Badge>
-                </div>
-                {showAdvancedFilters ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </CardTitle>
-            </CardHeader>
-            {showAdvancedFilters && (
-              <CardContent className="p-6">
-                {/* Main Search */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">البحث السريع</label>
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      placeholder="ابحث بالاسم، البريد الإلكتروني، أو رقم الهاتف..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="pr-12 text-lg h-12 border-2 border-gray-300 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Filter Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {/* Account Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">نوع الحساب</label>
-                    <select
-                      value={filterType}
-                      onChange={(e) => {
-                        setFilterType(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر نوع الحساب"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الأنواع ({stats.total.toLocaleString()})</option>
-                      <option value="player">لاعب ({stats.byType.player.toLocaleString()})</option>
-                      <option value="academy">أكاديمية ({stats.byType.academy.toLocaleString()})</option>
-                      <option value="agent">وكيل ({stats.byType.agent.toLocaleString()})</option>
-                      <option value="trainer">مدرب ({stats.byType.trainer.toLocaleString()})</option>
-                      <option value="club">نادي ({stats.byType.club.toLocaleString()})</option>
-                    </select>
-                  </div>
-
-                  {/* Verification Status */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">حالة التوثيق</label>
-                    <select
-                      value={filterVerification}
-                      onChange={(e) => {
-                        setFilterVerification(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر حالة التوثيق"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الحالات</option>
-                      <option value="verified">موثق ({stats.verified.toLocaleString()})</option>
-                      <option value="pending">في الانتظار ({stats.pending.toLocaleString()})</option>
-                      <option value="rejected">مرفوض</option>
-                    </select>
-                  </div>
-
-                  {/* Profile Completion */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">اكتمال الملف</label>
-                    <select
-                      value={filterProfileCompletion}
-                      onChange={(e) => {
-                        setFilterProfileCompletion(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر مستوى اكتمال الملف"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع المستويات</option>
-                      <option value="complete">مكتمل 80%+ ({stats.profileComplete.toLocaleString()})</option>
-                      <option value="partial">جزئي 50-79%</option>
-                      <option value="minimal">قليل &lt;50%</option>
-                      <option value="incomplete">غير مكتمل &lt;80% ({stats.profileIncomplete.toLocaleString()})</option>
-                    </select>
-                  </div>
-
-                  {/* Country */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">الدولة</label>
-                    <select
-                      value={filterCountry}
-                      onChange={(e) => {
-                        setFilterCountry(e.target.value);
-                        setFilterCity('all');
-                        setCurrentPage(1);
-                      }}
-                      title="اختر الدولة"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الدول ({uniqueCountries.length})</option>
-                      {uniqueCountries.sort().map(country => (
-                        <option key={country} value={country}>
-                          {country} ({users.filter(u => u.country === country && !u.isDeleted).length})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* City */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">المدينة</label>
-                    <select
-                      value={filterCity}
-                      onChange={(e) => {
-                        setFilterCity(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر المدينة"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع المدن ({uniqueCities.length})</option>
-                      {uniqueCities
-                        .filter(city => filterCountry === 'all' || users.some(u => u.city === city && u.country === filterCountry))
-                        .sort()
-                        .map(city => (
-                          <option key={city} value={city}>
-                            {city} ({users.filter(u => u.city === city && (filterCountry === 'all' || u.country === filterCountry) && !u.isDeleted).length})
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {/* Registration Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ التسجيل</label>
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => {
-                        setDateFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر فترة التسجيل"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع التواريخ</option>
-                      <option value="newest">الأحدث (آخر 24 ساعة) ⭐</option>
-                      <option value="today">اليوم ({stats.newToday})</option>
-                      <option value="yesterday">أمس</option>
-                      <option value="last3Days">آخر 3 أيام</option>
-                      <option value="thisWeek">هذا الأسبوع ({stats.newThisWeek})</option>
-                      <option value="thisMonth">هذا الشهر</option>
-                      {stats.noDate > 0 && (
-                        <option value="noDate">بدون تاريخ ({stats.noDate}) ⚠️</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Sort By */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ترتيب حسب</label>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      title="اختر حقل الترتيب"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="createdAt">تاريخ التسجيل</option>
-                      <option value="name">الاسم</option>
-                      <option value="email">البريد الإلكتروني</option>
-                      <option value="lastLogin">آخر دخول</option>
-                      <option value="accountType">نوع الحساب</option>
-                      <option value="profileCompletion">اكتمال الملف</option>
-                      <option value="country">الدولة</option>
-                    </select>
-                  </div>
-
-                  {/* Registration Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">طريقة التسجيل</label>
-                    <select
-                      value={filterRegistrationType}
-                      onChange={(e) => {
-                        setFilterRegistrationType(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      title="اختر طريقة التسجيل"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value="all">جميع الطرق</option>
-                      <option value="direct">تسجيل مباشر ({stats.byRegistrationType.direct})</option>
-                      <option value="organization">عبر منظمة ({stats.byRegistrationType.organization})</option>
-                      {stats.byRegistrationType.unknown > 0 && (
-                        <option value="unknown">غير محدد ({stats.byRegistrationType.unknown})</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Organization Filter */}
-                  {uniqueOrganizations.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">المنظمة</label>
-                      <select
-                        value={filterOrganization}
-                        onChange={(e) => {
-                          setFilterOrganization(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        title="اختر المنظمة"
-                        className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value="all">جميع المنظمات</option>
-                        <option value="direct">بدون منظمة (تسجيل مباشر)</option>
-                        {uniqueOrganizations.sort().map(org => (
-                          <option key={org} value={org}>
-                            {org} ({users.filter(u => u.parentOrganizationName === org && !u.isDeleted).length})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Items Per Page */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">عدد العناصر</label>
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) => {
-                        setItemsPerPage(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      title="اختر عدد العناصر في الصفحة"
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      <option value={25}>25 في الصفحة</option>
-                      <option value={50}>50 في الصفحة</option>
-                      <option value={100}>100 في الصفحة</option>
-                      <option value={250}>250 في الصفحة</option>
-                      <option value={500}>500 في الصفحة</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Reset Filters */}
-                <div className="mt-6 flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setFilterType('all');
-                      setFilterVerification('all');
-                      setFilterProfileCompletion('all');
-                      setFilterCountry('all');
-                      setFilterCity('all');
-                      setFilterOrganization('all');
-                      setFilterRegistrationType('all');
-                      setDateFilter('all');
-                      setSortBy('createdAt');
-                      setSortOrder('desc');
-                      setCurrentPage(1);
-                      toast.success('تم إعادة تعيين جميع الفلاتر');
-                    }}
-                    className="gap-2"
+          {/* Compact Filter Bar */}
+          <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+            {/* Row 1: Search + Quick Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search Input */}
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="بحث بالاسم، البريد، الهاتف، أو ID..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pr-10 h-9 text-sm border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    <RefreshCcw className="h-4 w-4" />
-                    إعادة تعيين جميع الفلاتر
-                  </Button>
-                </div>
-              </CardContent>
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Account Type Filter */}
+              <select
+                value={filterType}
+                onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
+                className="h-9 px-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">كل الأنواع</option>
+                <option value="player">لاعب</option>
+                <option value="academy">أكاديمية</option>
+                <option value="trainer">مدرب</option>
+                <option value="club">نادي</option>
+                <option value="agent">وكيل</option>
+                <option value="marketer">مسوق</option>
+                <option value="parent">ولي أمر</option>
+              </select>
+
+              {/* Verification Filter */}
+              <select
+                value={filterVerification}
+                onChange={(e) => { setFilterVerification(e.target.value); setCurrentPage(1); }}
+                className="h-9 px-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">كل الحالات</option>
+                <option value="verified">موثق ✓</option>
+                <option value="pending">انتظار ⏳</option>
+                <option value="rejected">مرفوض ✗</option>
+              </select>
+
+              {/* Country Filter */}
+              <select
+                value={filterCountry}
+                onChange={(e) => { setFilterCountry(e.target.value); setFilterCity('all'); setCurrentPage(1); }}
+                className="h-9 px-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">كل الدول</option>
+                {uniqueCountries.sort().map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+
+              {/* Date Filter */}
+              <select
+                value={dateFilter}
+                onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+                className="h-9 px-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">كل التواريخ</option>
+                <option value="today">اليوم</option>
+                <option value="thisWeek">هذا الأسبوع</option>
+                <option value="thisMonth">هذا الشهر</option>
+              </select>
+
+              {/* More Filters Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="h-9 px-3 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                <Filter className="h-4 w-4 ml-1" />
+                {showAdvancedFilters ? 'أقل' : 'المزيد'}
+              </Button>
+
+              {/* Results Count Badge */}
+              <Badge variant="outline" className="h-9 px-3 bg-blue-50 text-blue-700 border-blue-200 font-medium">
+                {filteredAndSortedUsers.length.toLocaleString()} نتيجة
+              </Badge>
+
+              {/* Reset Button (shown only if filters are active) */}
+              {(searchTerm || filterType !== 'all' || filterVerification !== 'all' || filterCountry !== 'all' || dateFilter !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterType('all');
+                    setFilterVerification('all');
+                    setFilterProfileCompletion('all');
+                    setFilterCountry('all');
+                    setFilterCity('all');
+                    setFilterOrganization('all');
+                    setFilterRegistrationType('all');
+                    setDateFilter('all');
+                    setSortBy('createdAt');
+                    setSortOrder('desc');
+                    setCurrentPage(1);
+                  }}
+                  className="h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Row 2: Advanced Filters (Collapsible) */}
+            {showAdvancedFilters && (
+              <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {/* City */}
+                <select
+                  value={filterCity}
+                  onChange={(e) => { setFilterCity(e.target.value); setCurrentPage(1); }}
+                  className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="all">كل المدن</option>
+                  {uniqueCities
+                    .filter(city => filterCountry === 'all' || users.some(u => u.city === city && u.country === filterCountry))
+                    .sort()
+                    .map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                </select>
+
+                {/* Profile Completion */}
+                <select
+                  value={filterProfileCompletion}
+                  onChange={(e) => { setFilterProfileCompletion(e.target.value); setCurrentPage(1); }}
+                  className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="all">اكتمال الملف</option>
+                  <option value="complete">مكتمل 80%+</option>
+                  <option value="partial">جزئي 50-79%</option>
+                  <option value="minimal">قليل &lt;50%</option>
+                </select>
+
+                {/* Registration Type */}
+                <select
+                  value={filterRegistrationType}
+                  onChange={(e) => { setFilterRegistrationType(e.target.value); setCurrentPage(1); }}
+                  className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="all">طريقة التسجيل</option>
+                  <option value="direct">مباشر</option>
+                  <option value="organization">عبر منظمة</option>
+                </select>
+
+                {/* Sort By */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="createdAt">ترتيب: التسجيل</option>
+                  <option value="name">ترتيب: الاسم</option>
+                  <option value="lastLogin">ترتيب: آخر دخول</option>
+                  <option value="profileCompletion">ترتيب: الاكتمال</option>
+                </select>
+
+                {/* Items Per Page */}
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value={25}>25/صفحة</option>
+                  <option value={50}>50/صفحة</option>
+                  <option value={100}>100/صفحة</option>
+                </select>
+
+                {/* Organization (if exists) */}
+                {uniqueOrganizations.length > 0 && (
+                  <select
+                    value={filterOrganization}
+                    onChange={(e) => { setFilterOrganization(e.target.value); setCurrentPage(1); }}
+                    className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white"
+                  >
+                    <option value="all">كل المنظمات</option>
+                    <option value="direct">بدون منظمة</option>
+                    {uniqueOrganizations.sort().map(org => (
+                      <option key={org} value={org}>{org}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             )}
-          </Card>
+          </div>
 
           {/* Bulk Actions */}
           {selectedUsers.length > 0 && (
@@ -2467,7 +2414,7 @@ export default function AdminUsersPage() {
                       <span className="text-gray-500 font-normal">عرض</span>
                       <span className="font-bold">{filteredAndSortedUsers.length.toLocaleString()}</span>
                       <span className="text-gray-400">/</span>
-                      <span className="font-bold">{getUsersByTab().length.toLocaleString()}</span>
+                      <span className="font-bold">{usersByTab.length.toLocaleString()}</span>
                     </Badge>
                   </div>
                 </div>
@@ -2476,7 +2423,7 @@ export default function AdminUsersPage() {
 
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table key={`table-${filteredAndSortedUsers.length}-${searchTerm}-${filterType}`} className="w-full">
                   <thead className="bg-gray-50/80 border-b border-gray-100 backdrop-blur-sm sticky top-0 z-10">
                     <tr>
                       <th className="text-right p-4 font-medium text-gray-500 text-xs uppercase tracking-wider w-12">

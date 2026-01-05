@@ -34,7 +34,7 @@ class StorageManager {
     private loadConfig(customConfig?: Partial<StorageConfig>): StorageConfig {
         const providerType = (customConfig?.provider ||
             process.env.NEXT_PUBLIC_STORAGE_PROVIDER ||
-            'supabase') as StorageProviderType;
+            'cloudflare') as StorageProviderType;
 
         return {
             provider: providerType,
@@ -54,6 +54,8 @@ class StorageManager {
                     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '',
                 secretAccessKey: customConfig?.cloudflare?.secretAccessKey ||
                     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+                bucketName: customConfig?.cloudflare?.bucketName ||
+                    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || '',
                 publicUrl: customConfig?.cloudflare?.publicUrl ||
                     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL,
             },

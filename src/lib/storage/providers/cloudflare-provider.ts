@@ -16,15 +16,18 @@ export class CloudflareStorageProvider implements StorageProvider {
     private s3Client: S3Client;
     private publicUrl: string;
     private accountId: string;
+    private mainBucket: string;
 
     constructor(config: {
         accountId: string;
         accessKeyId: string;
         secretAccessKey: string;
         publicUrl?: string;
+        bucketName?: string;
     }) {
         this.accountId = config.accountId;
         this.publicUrl = config.publicUrl || `https://pub-${config.accountId}.r2.dev`;
+        this.mainBucket = config.bucketName || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
 
         // إنشاء S3 Client متوافق مع Cloudflare R2
         this.s3Client = new S3Client({
@@ -95,8 +98,11 @@ export class CloudflareStorageProvider implements StorageProvider {
      * الحصول على رابط عام للملف
      */
     async getPublicUrl(bucket: string, path: string): Promise<string> {
-        // استخدام Public Development URL أو Custom Domain
-        return `${this.publicUrl}/${path}`;
+        let fullKey = path;
+        if (bucket !== this.mainBucket) {
+            fullKey = `${bucket}/${path}`;
+        }
+        return `${this.publicUrl}/${fullKey}`;
     }
 
     /**
@@ -105,13 +111,20 @@ export class CloudflareStorageProvider implements StorageProvider {
     async delete(bucket: string, paths: string | string[]): Promise<DeleteResult> {
         try {
             const pathsArray = Array.isArray(paths) ? paths : [paths];
+            const targetBucket = this.mainBucket;
+
             console.log('🗑️ [Cloudflare R2] Deleting files:', { bucket, paths: pathsArray });
 
             // حذف كل ملف على حدة
             const deletePromises = pathsArray.map(async (path) => {
+                let fullKey = path;
+                if (bucket !== this.mainBucket && !path.startsWith(bucket + '/')) {
+                    fullKey = `${bucket}/${path}`;
+                }
+
                 const command = new DeleteObjectCommand({
-                    Bucket: bucket,
-                    Key: path,
+                    Bucket: targetBucket,
+                    Key: fullKey,
                 });
                 await this.s3Client.send(command);
             });
@@ -138,21 +151,14 @@ export class CloudflareStorageProvider implements StorageProvider {
 
             // تحديد البوكت والمسار الفعليين
             // في حالتنا، نستخدم بوكت واحد (assets) مع مجلدات
-            let targetBucket = bucket;
+            let targetBucket = this.mainBucket;
             let prefix = path;
 
-            // إذا كان البوكت الممرر ليس البوكت الرئيسي، نعتبره مجلد
-            const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
-
-            if (bucket !== mainBucket) {
+            // إذا كان البوكت الممرر ليس البوكت الرئيسي، نعتبره مجلد بادئة
+            if (bucket !== this.mainBucket) {
                 // ندمج اسم البوكت القديم مع المسار ليصبحا Prefix
                 // مثال: bucket='videos', path='user1' -> prefix='videos/user1/'
                 prefix = path ? `${bucket}/${path}` : `${bucket}/`;
-            }
-
-            // التأكد من أن الـ prefix ينتهي بـ / إذا كان مجلداً
-            if (prefix && !prefix.endsWith('/')) {
-                prefix += '/';
             }
 
             // Fetch all items (handling pagination)
@@ -162,7 +168,7 @@ export class CloudflareStorageProvider implements StorageProvider {
 
             do {
                 const command = new ListObjectsV2Command({
-                    Bucket: mainBucket,
+                    Bucket: targetBucket,
                     Prefix: prefix,
                     MaxKeys: 1000,
                     ContinuationToken: continuationToken,
@@ -198,14 +204,15 @@ export class CloudflareStorageProvider implements StorageProvider {
                 }
 
                 return {
+                    id: item.ETag?.replace(/"/g, '') || fullKey,
                     name: relativeName,
-                    id: item.ETag?.replace(/"/g, '') || '',
-                    updated_at: item.LastModified?.toISOString() || new Date().toISOString(),
-                    created_at: item.LastModified?.toISOString() || new Date().toISOString(),
-                    last_accessed_at: item.LastModified?.toISOString() || new Date().toISOString(),
+                    size: item.Size || 0,
+                    url: `${this.publicUrl}/${fullKey}`,
+                    uploadedAt: item.LastModified || new Date(),
                     metadata: {
                         size: item.Size || 0,
-                        mimetype: 'application/octet-stream', // S3 list doesn't return mime type
+                        mimetype: 'application/octet-stream',
+                        lastModified: item.LastModified
                     }
                 };
             });
@@ -221,9 +228,14 @@ export class CloudflareStorageProvider implements StorageProvider {
      */
     async exists(bucket: string, path: string): Promise<boolean> {
         try {
+            let fullKey = path;
+            if (bucket !== this.mainBucket && !path.startsWith(bucket + '/')) {
+                fullKey = `${bucket}/${path}`;
+            }
+
             const command = new HeadObjectCommand({
-                Bucket: bucket,
-                Key: path,
+                Bucket: this.mainBucket,
+                Key: fullKey,
             });
 
             await this.s3Client.send(command);

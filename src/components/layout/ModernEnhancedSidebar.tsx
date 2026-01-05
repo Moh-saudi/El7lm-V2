@@ -399,6 +399,8 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       // 'beon-v3': 'canManageEmployees', // Removed - service deprecated
       'whatsapp-test': 'canManageSupport',
       'dream-academy-categories': 'canManageContent',
+      'media': 'canManageContent',
+      'dream-academy': 'canManageContent',
     };
 
     const requiredPermission = menuItemPermissions[menuItemId];
@@ -508,7 +510,8 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'reports', label: 'التقارير', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'support', label: 'مركز الدعم والبلاغات', icon: Shield, href: `/dashboard/admin/support`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'tournaments', label: 'البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+        { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/admin/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'media', label: 'مركز مراجعة الوسائط', icon: Video, href: `/dashboard/admin/media`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
         { id: 'referrals', label: 'إدارة سفراء الحلم', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
