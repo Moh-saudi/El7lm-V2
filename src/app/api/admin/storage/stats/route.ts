@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
         const accountId = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
         const accessKeyId = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
         const secretAccessKey = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-        const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
+        const mainBucket = 'el7lmplatform';
 
         if (!accountId || !accessKeyId || !secretAccessKey) {
             return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
             try {
                 do {
                     const command: ListObjectsV2Command = new ListObjectsV2Command({
-                        Bucket: mainBucket,
+                        Bucket: mainBucket, // el7lmplatform
                         Prefix: `${folder}/`,
                         ContinuationToken: continuationToken,
                     });

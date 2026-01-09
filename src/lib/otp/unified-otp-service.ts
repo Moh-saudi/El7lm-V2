@@ -11,8 +11,20 @@
  */
 
 import { storeOTPInFirestore, hasActiveOTP } from './firestore-otp-manager';
-import { formatPhoneNumber } from '@/lib/whatsapp/babaservice-config';
-import { BABASERVICE_CONFIG } from '@/lib/whatsapp/babaservice-config';
+
+// تنسيق رقم الهاتف
+const formatPhoneNumber = (phone: string): string => {
+  if (!phone) return '';
+  let cleaned = phone.replace(/[^\d+]/g, '');
+  if (!cleaned.startsWith('+') && cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1);
+  }
+  return cleaned.trim();
+};
+
+const BABASERVICE_CONFIG = {
+  INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID || '68F243B3A8D8D'
+};
 
 export type OTPChannel = 'whatsapp' | 'sms' | 'firebase_phone' | 'auto';
 export type OTPPurpose = 'registration' | 'login' | 'password_reset' | 'verification';
@@ -71,15 +83,15 @@ async function sendOTPViaWhatsApp(
     if (response.ok && data.success) {
       return { success: true };
     } else {
-      return { 
-        success: false, 
-        error: data.error || 'فشل في إرسال OTP عبر WhatsApp' 
+      return {
+        success: false,
+        error: data.error || 'فشل في إرسال OTP عبر WhatsApp'
       };
     }
   } catch (error: any) {
-    return { 
-      success: false, 
-      error: error.message || 'حدث خطأ في إرسال OTP عبر WhatsApp' 
+    return {
+      success: false,
+      error: error.message || 'حدث خطأ في إرسال OTP عبر WhatsApp'
     };
   }
 }
@@ -94,9 +106,9 @@ async function sendOTPViaSMS(
   name: string
 ): Promise<{ success: boolean; error?: string }> {
   // SMS route غير موجود حالياً - نرجع خطأ واضح
-  return { 
-    success: false, 
-    error: 'SMS service غير متاح حالياً. يرجى استخدام WhatsApp' 
+  return {
+    success: false,
+    error: 'SMS service غير متاح حالياً. يرجى استخدام WhatsApp'
   };
 }
 
@@ -112,7 +124,7 @@ async function sendOTPViaFirebasePhone(
     // Firebase Phone Auth يتطلب reCAPTCHA
     // هذا يحتاج إلى إعداد في الواجهة الأمامية
     // سنتركه كـ placeholder للآن
-    
+
     return {
       success: false,
       error: 'Firebase Phone Auth غير مفعل حالياً. يرجى استخدام WhatsApp أو SMS'
@@ -180,7 +192,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
 
     if (selectedChannel === 'whatsapp') {
       sendResult = await sendOTPViaWhatsApp(formattedPhone, otp, name, instanceId);
-      
+
       // إذا فشل WhatsApp و channel هو auto، جرب SMS (إذا كان متاحاً)
       if (!sendResult.success && channel === 'auto') {
         console.log('⚠️ WhatsApp failed, trying SMS...');
@@ -195,7 +207,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
       }
     } else if (selectedChannel === 'sms') {
       sendResult = await sendOTPViaSMS(formattedPhone, otp, name);
-      
+
       // إذا فشل SMS و channel هو auto، جرب WhatsApp
       if (!sendResult.success && channel === 'auto') {
         console.log('⚠️ SMS failed or not available, trying WhatsApp...');

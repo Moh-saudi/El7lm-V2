@@ -72,8 +72,9 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(arrayBuffer);
 
         // رفع الملف إلى Cloudflare R2
+        // استخدام البوكت الصحيح el7lmplatform
         const uploadCommand = new PutObjectCommand({
-            Bucket: mainBucket || 'assets',
+            Bucket: 'el7lmplatform',
             Key: fileName,
             Body: buffer,
             ContentType: file.type,
@@ -83,7 +84,8 @@ export async function POST(request: NextRequest) {
         await s3Client.send(uploadCommand);
 
         // بناء الرابط العام
-        const baseUrl = publicUrl || `https://pub-${accountId}.r2.dev`;
+        // استخدام الدومين المخصص
+        const baseUrl = 'https://assets.el7lm.com';
         const filePublicUrl = `${baseUrl}/${fileName}`;
 
         console.log('✅ Voice message uploaded successfully:', filePublicUrl);

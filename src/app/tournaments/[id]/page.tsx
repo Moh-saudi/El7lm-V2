@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, Calendar, Users, MapPin, Clock, Search } from 'lucide-react';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 // --- Types ---
 interface Team {
@@ -143,7 +144,7 @@ export default function PublicTournamentPage() {
                     <div className="flex flex-col md:flex-row items-center gap-8">
                         <div className="flex-shrink-0">
                             {tournament.logo ? (
-                                <img src={tournament.logo} alt={tournament.name} className="w-32 h-32 md:w-40 md:h-40 rounded-2xl shadow-2xl border-4 border-white/10 object-cover" />
+                                <img src={fixReceiptUrl(tournament.logo) || tournament.logo} alt={tournament.name} className="w-32 h-32 md:w-40 md:h-40 rounded-2xl shadow-2xl border-4 border-white/10 object-cover" />
                             ) : (
                                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-2xl">
                                     <Trophy className="h-16 w-16 text-white" />

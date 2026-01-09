@@ -49,20 +49,23 @@ export async function POST(request: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const fileBuffer = Buffer.from(arrayBuffer);
 
-        // إستراتيجية البوكت الواحد: استخدام البوكت الرئيسي والمجلدات
-        let targetBucket = bucket;
-        let targetKey = path;
+        // إستراتيجية البوكت الواحد: استخدام البوكت الرئيسي دائماً والمجلدات
+        // البوكت الرئيسي هو 'el7lmplatform' كما هو محدد في إعدادات Cloudflare
+        const targetBucket = 'el7lmplatform';
 
-        if (mainBucket) {
-            targetBucket = mainBucket;
-            // إذا كان البوكت المطلوب يختلف عن البوكت الرئيسي، نستخدمه كمجلد بادئة
-            if (bucket !== mainBucket) {
-                // تجنب تكرار اسم المجلد إذا كان المسار يحتوي عليه بالفعل
-                if (!path.startsWith(bucket + '/')) {
-                    targetKey = `${bucket}/${path}`;
-                }
-            }
+        // المسار الكامل: bucket المُرسل يصبح مجلد + المسار الأصلي
+        let targetKey = path;
+        if (bucket && bucket !== targetBucket && !path.startsWith(bucket + '/')) {
+            targetKey = `${bucket}/${path}`;
         }
+
+        console.log('📦 [API Route] Upload details:', {
+            requestedBucket: bucket,
+            targetBucket,
+            targetKey,
+            endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+            mainBucket: mainBucket || 'not set'
+        });
 
         // رفع الملف
         const command = new PutObjectCommand({
@@ -76,7 +79,8 @@ export async function POST(request: NextRequest) {
         await s3Client.send(command);
 
         // بناء الرابط العام
-        const baseUrl = publicUrl || `https://pub-${accountId}.r2.dev`;
+        // استخدام الدومين المخصص
+        const baseUrl = 'https://assets.el7lm.com';
         // الرابط يجب أن يشير إلى المسار الكامل (بما في ذلك المجلدات)
         const filePublicUrl = `${baseUrl}/${targetKey}`;
 

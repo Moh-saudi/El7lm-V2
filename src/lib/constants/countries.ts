@@ -124,6 +124,180 @@ export const detectCountryFromPhone = (phone: string): Country | undefined => {
   return undefined;
 };
 
+// تحليل ذكي للرقم لفهم حالته
+export interface PhoneAnalysis {
+  originalPhone: string;
+  countryCode: string;
+  localNumber: string;           // الرقم المحلي (بدون كود البلد)
+  fullNumber: string;            // الرقم الكامل (كود + محلي)
+  isValid: boolean;
+  hasCountryCodeInPhone: boolean; // هل الرقم يحتوي على كود البلد في بدايته؟
+  issues: string[];              // قائمة المشاكل
+  suggestions: string[];         // اقتراحات الإصلاح
+  status: 'valid' | 'fixable' | 'invalid';
+}
+
+// دالة التحليل الذكي للرقم
+export const analyzePhoneNumber = (phone: string, countryCode: string): PhoneAnalysis => {
+  const issues: string[] = [];
+  const suggestions: string[] = [];
+
+  // تنظيف المدخلات
+  const cleanPhone = (phone || '').replace(/\D/g, '');
+  const cleanCode = (countryCode || '').replace(/\D/g, '');
+
+  // البحث عن البلد
+  const country = getCountryByCode(countryCode);
+
+  if (!cleanPhone) {
+    return {
+      originalPhone: phone,
+      countryCode,
+      localNumber: '',
+      fullNumber: '',
+      isValid: false,
+      hasCountryCodeInPhone: false,
+      issues: ['رقم الهاتف فارغ'],
+      suggestions: ['يجب إدخال رقم هاتف'],
+      status: 'invalid'
+    };
+  }
+
+  if (!country) {
+    return {
+      originalPhone: phone,
+      countryCode,
+      localNumber: cleanPhone,
+      fullNumber: cleanPhone,
+      isValid: false,
+      hasCountryCodeInPhone: false,
+      issues: ['كود البلد غير معروف أو مفقود'],
+      suggestions: ['يجب تحديد كود البلد الصحيح'],
+      status: 'invalid'
+    };
+  }
+
+  // فحص هل الرقم يبدأ بكود البلد
+  const hasCountryCodeInPhone = cleanPhone.startsWith(cleanCode);
+
+  // استخراج الرقم المحلي
+  let localNumber: string;
+  if (hasCountryCodeInPhone) {
+    localNumber = cleanPhone.substring(cleanCode.length);
+  } else {
+    // إزالة الصفر البادئ إن وجد
+    localNumber = cleanPhone.replace(/^0+/, '');
+  }
+
+  // التحقق من طول الرقم المحلي
+  const expectedLength = country.phoneLength;
+  const actualLength = localNumber.length;
+
+  if (actualLength !== expectedLength) {
+    issues.push(`طول الرقم المحلي ${actualLength} أرقام، المتوقع ${expectedLength} لـ${country.name}`);
+
+    if (actualLength < expectedLength) {
+      suggestions.push(`الرقم قصير، يجب أن يكون ${expectedLength} أرقام`);
+    } else {
+      suggestions.push(`الرقم طويل، يجب أن يكون ${expectedLength} أرقام`);
+    }
+  }
+
+  // إنشاء الرقم الكامل
+  const fullNumber = `${cleanCode}${localNumber}`;
+
+  // تحديد الحالة
+  let status: 'valid' | 'fixable' | 'invalid';
+  let isValid = false;
+
+  if (issues.length === 0) {
+    status = 'valid';
+    isValid = true;
+  } else if (hasCountryCodeInPhone && actualLength === expectedLength) {
+    // الرقم يحتوي على الكود لكن يمكن إصلاحه
+    status = 'fixable';
+    issues.push('كود البلد مكرر في الرقم');
+    suggestions.push('سيتم إزالة كود البلد من بداية الرقم');
+  } else if (Math.abs(actualLength - expectedLength) <= 2) {
+    // فرق بسيط في الطول - قابل للمراجعة
+    status = 'fixable';
+  } else {
+    status = 'invalid';
+  }
+
+  return {
+    originalPhone: phone,
+    countryCode,
+    localNumber,
+    fullNumber,
+    isValid,
+    hasCountryCodeInPhone,
+    issues,
+    suggestions,
+    status
+  };
+};
+
+// دالة التطبيع الذكي - تعيد الرقم المحلي الصحيح
+export const smartNormalizePhone = (phone: string, countryCode: string): {
+  localPhone: string;
+  fullPhone: string;
+  wasFixed: boolean;
+  fixDescription?: string;
+} => {
+  const analysis = analyzePhoneNumber(phone, countryCode);
+
+  const wasFixed = analysis.hasCountryCodeInPhone || analysis.originalPhone !== analysis.localNumber;
+
+  return {
+    localPhone: analysis.localNumber,
+    fullPhone: analysis.fullNumber,
+    wasFixed,
+    fixDescription: wasFixed ?
+      (analysis.hasCountryCodeInPhone ? 'تم إزالة كود البلد المكرر' : 'تم تطبيع الرقم') :
+      undefined
+  };
+};
+
+// دالة للحصول على تفاصيل التحقق للعرض في الواجهة
+export const getPhoneValidationDetails = (phone: string, countryCode: string): {
+  status: 'valid' | 'warning' | 'error';
+  statusText: string;
+  statusColor: string;
+  details: string;
+  canFix: boolean;
+} => {
+  const analysis = analyzePhoneNumber(phone, countryCode);
+
+  if (analysis.status === 'valid') {
+    return {
+      status: 'valid',
+      statusText: 'صحيح',
+      statusColor: 'text-green-600 bg-green-50',
+      details: `رقم ${getCountryByCode(countryCode)?.name || 'غير معروف'} صحيح`,
+      canFix: false
+    };
+  }
+
+  if (analysis.status === 'fixable') {
+    return {
+      status: 'warning',
+      statusText: 'يحتاج إصلاح',
+      statusColor: 'text-amber-600 bg-amber-50',
+      details: analysis.issues.join('، '),
+      canFix: true
+    };
+  }
+
+  return {
+    status: 'error',
+    statusText: 'غير صالح',
+    statusColor: 'text-red-600 bg-red-50',
+    details: analysis.issues.join('، '),
+    canFix: false
+  };
+};
+
 // قائمة الدول العربية
 export const arabicCountries = countries.filter(country =>
   ['+966', '+971', '+965', '+974', '+973', '+968', '+20', '+962', '+961', '+964', '+963', '+212', '+213', '+216', '+218', '+249', '+967'].includes(country.code)

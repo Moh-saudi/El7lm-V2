@@ -7,6 +7,7 @@ import { TournamentProvider, useTournament } from './providers';
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Trophy, LayoutDashboard, Users, Calendar, Network, Settings } from 'lucide-react';
 import { cn } from "@/lib/utils/index";
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 function TournamentLayoutContent({ children }: { children: React.ReactNode }) {
     const { tournament, loading, error } = useTournament();
@@ -34,7 +35,7 @@ function TournamentLayoutContent({ children }: { children: React.ReactNode }) {
                     </Button>
                     <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-100">
                         {tournament.logo ? (
-                            <img src={tournament.logo} alt={tournament.name} className="h-full w-full object-cover rounded-lg" />
+                            <img src={fixReceiptUrl(tournament.logo) || tournament.logo} alt={tournament.name} className="h-full w-full object-cover rounded-lg" />
                         ) : (
                             <Trophy className="h-6 w-6 text-blue-600" />
                         )}

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tournament, formatDate, getCurrencySymbol } from '../utils';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 interface TournamentCardProps {
     tournament: Tournament;
@@ -63,7 +64,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         {tournament.logo ? (
                             <img
-                                src={tournament.logo}
+                                src={fixReceiptUrl(tournament.logo) || tournament.logo}
                                 alt={tournament.name}
                                 className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}

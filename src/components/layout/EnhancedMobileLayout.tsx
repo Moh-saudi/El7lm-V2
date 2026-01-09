@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Menu, 
-  X, 
-  Home, 
-  User, 
-  Settings, 
-  LogOut, 
-  Bell, 
+import {
+  Menu,
+  X,
+  Home,
+  User,
+  Settings,
+  LogOut,
+  Bell,
   Search,
   ChevronLeft,
   Plus,
@@ -109,14 +109,14 @@ export default function EnhancedMobileLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { 
-    isSidebarOpen, 
-    isHeaderExpanded, 
+  const {
+    isSidebarOpen,
+    isHeaderExpanded,
     isSearchOpen,
-    toggleSidebar, 
-    toggleHeader, 
-    toggleSearch, 
-    closeAll 
+    toggleSidebar,
+    toggleHeader,
+    toggleSearch,
+    closeAll
   } = useLayout();
 
   const [isMobile, setIsMobile] = useState(false);
@@ -166,7 +166,7 @@ export default function EnhancedMobileLayout({
             onClick={closeAll}
             className="fixed inset-0 bg-black/50 z-40"
           />
-          
+
           {/* Sidebar */}
           <motion.div
             initial={{ x: '100%' }}
@@ -178,15 +178,13 @@ export default function EnhancedMobileLayout({
             {/* Header */}
             <div className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm border-b border-white/20">
               <div className="flex items-center space-x-3">
-                <Avatar
-                  src={user?.photoURL || undefined}
-                  name={getUserDisplayName()}
-                  size="lg"
-                  className="bg-white/20"
-                />
+                <Avatar className="w-10 h-10 bg-white/20">
+                  <AvatarImage src={user?.photoURL || undefined} />
+                  <AvatarFallback>{getUserDisplayName().charAt(0)}</AvatarFallback>
+                </Avatar>
                 <div>
                   <h3 className="text-white font-semibold">{getUserDisplayName()}</h3>
-                  <Badge color="primary" variant="flat" size="sm">
+                  <Badge variant="secondary" className="text-xs">
                     {accountType}
                   </Badge>
                 </div>
@@ -262,7 +260,7 @@ export default function EnhancedMobileLayout({
           >
             <Menu className="w-5 h-5" />
           </Button>
-          
+
           {showBackButton && (
             <Button
               variant="ghost"
@@ -272,7 +270,7 @@ export default function EnhancedMobileLayout({
               <ChevronLeft className="w-5 h-5" />
             </Button>
           )}
-          
+
           <h1 className="text-lg font-semibold text-gray-900 truncate">{title}</h1>
         </div>
 
@@ -280,9 +278,8 @@ export default function EnhancedMobileLayout({
         <div className="flex items-center space-x-1">
           {showSearch && (
             <Button
-              isIconOnly
-              variant="light"
-              color="default"
+              variant="ghost"
+              size="icon"
               onClick={toggleSearch}
               className="touch-target"
               title="البحث"
@@ -290,7 +287,7 @@ export default function EnhancedMobileLayout({
               <Search className="w-5 h-5" />
             </Button>
           )}
-          
+
           {showAddButton && (
             <Button
               variant="default"
@@ -301,7 +298,7 @@ export default function EnhancedMobileLayout({
               <Plus className="w-5 h-5" />
             </Button>
           )}
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -383,7 +380,7 @@ export default function EnhancedMobileLayout({
           active={pathname === '/dashboard/profile'}
         />
       </div>
-      
+
       {/* إضافة مساحة للوجو في الأسفل */}
       <div className="px-4 py-2 border-t border-gray-100 logo-section">
         <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 space-y-2 sm:space-y-0">
@@ -394,12 +391,10 @@ export default function EnhancedMobileLayout({
             <span>© {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Avatar
-              src="/images/logo.png"
-              name="M"
-              size="sm"
-              className="bg-blue-600"
-            />
+            <Avatar className="w-6 h-6 bg-blue-600">
+              <AvatarImage src="/images/logo.png" />
+              <AvatarFallback>M</AvatarFallback>
+            </Avatar>
             <span className="font-medium">Mesk El7lm</span>
           </div>
         </div>
@@ -411,12 +406,12 @@ export default function EnhancedMobileLayout({
     <div className="mobile-layout min-h-screen bg-gray-50">
       <EnhancedHeader />
       <EnhancedSidebar />
-      
+
       {/* Main Content */}
       <main className="pt-20 pb-32 px-4">
         {children}
       </main>
-      
+
       <EnhancedFooter />
     </div>
   );
@@ -441,16 +436,14 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon: Icon, title, href, acti
 
   return (
     <Button
-      variant={active ? "solid" : "light"}
-      color={active ? "primary" : "default"}
-      startContent={<Icon className="w-5 h-5" />}
+      variant={active ? "default" : "ghost"}
       onClick={handleClick}
-      className={`w-full justify-start ${
-        active 
-          ? 'bg-white/20 text-white' 
-          : 'text-white/80 hover:bg-white/10 hover:text-white'
-      }`}
+      className={`w-full justify-start gap-2 ${active
+        ? 'bg-white/20 text-white'
+        : 'text-white/80 hover:bg-white/10 hover:text-white'
+        }`}
     >
+      <Icon className="w-5 h-5" />
       {title}
     </Button>
   );
@@ -472,16 +465,14 @@ const FooterItem: React.FC<FooterItemProps> = ({ icon: Icon, title, href, active
 
   return (
     <Button
-      variant="light"
-      color={active ? "primary" : "default"}
-      startContent={<Icon className="w-5 h-5" />}
+      variant="ghost"
       onClick={handleClick}
-      className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-        active 
-          ? 'text-blue-600 bg-blue-50' 
-          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-      }`}
+      className={`flex flex-col items-center p-2 rounded-lg transition-colors gap-1 ${active
+        ? 'text-blue-600 bg-blue-50'
+        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+        }`}
     >
+      <Icon className="w-5 h-5" />
       <span className="text-xs">{title}</span>
     </Button>
   );

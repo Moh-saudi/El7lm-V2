@@ -77,6 +77,7 @@ export async function addPaymentNotification({
     title,
     message,
     type,
+    scope: userId,
     link: `/dashboard/payments/${paymentId}`,
     metadata: {
       paymentId,
@@ -168,6 +169,7 @@ export async function addSubscriptionNotification({
     title,
     message,
     type,
+    scope: userId,
     link: '/dashboard/subscription',
     metadata: {
       status,
@@ -194,6 +196,7 @@ export async function addNewsNotification({
     title,
     message,
     type: 'info',
+    scope: userId,
     link,
     metadata: {
       type: 'news'

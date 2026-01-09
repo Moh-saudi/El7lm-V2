@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Trophy, Eye, Users, DollarSign, Plus
+  Trophy, Eye, Users, DollarSign, Plus, Search, Filter, SortAsc, X
 } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { collection, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
@@ -23,6 +25,12 @@ import { ShareTournamentModal } from './components/ShareTournamentModal';
 const AdminTournamentsPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'paid' | 'free'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'participants'>('newest');
 
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -96,6 +104,48 @@ const AdminTournamentsPage: React.FC = () => {
       fetchTournaments(); // Revert on error
     }
   };
+
+  // Filtered and Sorted Tournaments
+  const filteredTournaments = useMemo(() => {
+    let result = [...tournaments];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(t =>
+        t.name.toLowerCase().includes(query) ||
+        t.location?.toLowerCase().includes(query)
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(t =>
+        statusFilter === 'active' ? t.isActive : !t.isActive
+      );
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      result = result.filter(t =>
+        typeFilter === 'paid' ? t.isPaid : !t.isPaid
+      );
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      } else if (sortBy === 'oldest') {
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      } else if (sortBy === 'participants') {
+        return b.currentParticipants - a.currentParticipants;
+      }
+      return 0;
+    });
+
+    return result;
+  }, [tournaments, searchQuery, statusFilter, typeFilter, sortBy]);
 
   const stats = [
     {
@@ -172,6 +222,118 @@ const AdminTournamentsPage: React.FC = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Search and Filters */}
+          <div className="mb-6 space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="ابحث عن بطولة بالاسم أو الموقع..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pr-10 h-12 text-base"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">الفلاتر:</span>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex gap-2">
+                <Button
+                  variant={statusFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                  className={statusFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  الكل
+                </Button>
+                <Button
+                  variant={statusFilter === 'active' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('active')}
+                  className={statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}
+                >
+                  نشطة
+                </Button>
+                <Button
+                  variant={statusFilter === 'inactive' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('inactive')}
+                  className={statusFilter === 'inactive' ? 'bg-gray-600 hover:bg-gray-700' : ''}
+                >
+                  غير نشطة
+                </Button>
+              </div>
+
+              <div className="h-6 w-px bg-gray-300"></div>
+
+              {/* Type Filter */}
+              <div className="flex gap-2">
+                <Button
+                  variant={typeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTypeFilter('all')}
+                  className={typeFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  الكل
+                </Button>
+                <Button
+                  variant={typeFilter === 'paid' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTypeFilter('paid')}
+                  className={typeFilter === 'paid' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                >
+                  مدفوعة
+                </Button>
+                <Button
+                  variant={typeFilter === 'free' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTypeFilter('free')}
+                  className={typeFilter === 'free' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                >
+                  مجانية
+                </Button>
+              </div>
+
+              <div className="h-6 w-px bg-gray-300"></div>
+
+              {/* Sort */}
+              <div className="flex items-center gap-2">
+                <SortAsc className="h-4 w-4 text-gray-500" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="newest">الأحدث</option>
+                  <option value="oldest">الأقدم</option>
+                  <option value="participants">الأكثر مشاركين</option>
+                </select>
+              </div>
+
+              {/* Results Count */}
+              <div className="mr-auto">
+                <Badge variant="secondary" className="text-sm">
+                  {filteredTournaments.length} من {tournaments.length} بطولة
+                </Badge>
+              </div>
+            </div>
+          </div>
+
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, index) => (
@@ -192,29 +354,55 @@ const AdminTournamentsPage: React.FC = () => {
           </div>
 
           {/* Tournaments Grid */}
-          {tournaments.length === 0 ? (
+          {filteredTournaments.length === 0 ? (
             <Card className="border border-gray-200 shadow-sm">
               <CardContent className="p-12 text-center">
                 <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="h-10 w-10 text-yellow-600" />
+                  {tournaments.length === 0 ? (
+                    <Trophy className="h-10 w-10 text-yellow-600" />
+                  ) : (
+                    <Search className="h-10 w-10 text-yellow-600" />
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">لا توجد بطولات</h3>
-                <p className="text-gray-600 mb-6">ابدأ بإنشاء بطولة جديدة</p>
-                <Button
-                  onClick={() => {
-                    setEditingTournament(null);
-                    setIsFormOpen(true);
-                  }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  إضافة بطولة جديدة
-                </Button>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {tournaments.length === 0 ? 'لا توجد بطولات' : 'لا توجد نتائج مطابقة'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {tournaments.length === 0
+                    ? 'ابدأ بإنشاء بطولة جديدة'
+                    : 'لم يتم العثور على أي بطولات تطابق معايير البحث الحالية'}
+                </p>
+
+                {tournaments.length === 0 ? (
+                  <Button
+                    onClick={() => {
+                      setEditingTournament(null);
+                      setIsFormOpen(true);
+                    }}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    إضافة بطولة جديدة
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                      setTypeFilter('all');
+                    }}
+                    variant="outline"
+                    className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
+                  >
+                    <X className="h-5 w-5 mr-2" />
+                    إلغاء الفلاتر والبحث
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-6">
-              {tournaments.map((tournament) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTournaments.map((tournament) => (
                 <TournamentCard
                   key={tournament.id}
                   tournament={tournament}

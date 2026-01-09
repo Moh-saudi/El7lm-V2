@@ -19,28 +19,28 @@ import '@/lib/firebase/connection-fix';
 import '@/utils/console-filter';
 
 export const metadata: Metadata = {
-  title: 'El7lm - منصة كرة القدم المتكاملة',
-  description: 'منصة شاملة لإدارة كرة القدم واللاعبين والأندية',
-  keywords: 'كرة القدم, لاعبي كرة القدم, أندية, تدريب, إدارة رياضية',
-  authors: [{ name: 'El7lm Team' }],
-  creator: 'El7lm',
-  publisher: 'El7lm',
-  metadataBase: new URL('https://el7lm.com'),
+  title: "El7lm - منصة كرة القدم المتكاملة",
+  description: "منصة شاملة لإدارة كرة القدم واللاعبين والأندية",
+  keywords: "كرة القدم, لاعبي كرة القدم, أندية, تدريب, إدارة رياضية",
+  authors: [{ name: "El7lm Team" }],
+  creator: "El7lm",
+  publisher: "El7lm",
+  metadataBase: new URL("https://el7lm.com"),
   alternates: {
-    canonical: '/',
+    canonical: "/",
     languages: {
-      'ar': '/ar',
-      'en': '/en',
+      ar: "/ar",
+      en: "/en",
     },
   },
   openGraph: {
-    title: 'El7lm - منصة كرة القدم المتكاملة',
-    description: 'منصة شاملة لإدارة كرة القدم واللاعبين والأندية',
-    url: 'https://el7lm.com',
-    siteName: 'El7lm',
-    images: [{ url: '/images/og-image.jpg', width: 1200, height: 630, alt: 'El7lm' }],
-    locale: 'ar_SA',
-    type: 'website',
+    title: "El7lm - منصة كرة القدم المتكاملة",
+    description: "منصة شاملة لإدارة كرة القدم واللاعبين والأندية",
+    url: "https://el7lm.com",
+    siteName: "El7lm",
+    images: [{ url: "/images/og-image.jpg", width: 1200, height: 630, alt: "El7lm" }],
+    locale: "ar_SA",
+    type: "website",
   },
 };
 

@@ -22,7 +22,9 @@ interface ExtendedUser extends User {
   country?: string;
 }
 
+
 interface PlayerFormData {
+  id?: string;
   full_name: string;
   birth_date: string;
   nationality: string;
@@ -56,10 +58,11 @@ interface PlayerFormData {
   technical_skills: Record<string, number>;
   physical_skills: Record<string, number>;
   social_skills: Record<string, number>;
-  objectives: Record<string, boolean> & { other?: string };
+  objectives: Record<string, boolean | string>;
   profile_image: { url: string } | string | null;
   additional_images: Array<{ url: string }>;
   videos: { url: string; desc: string }[];
+  uploaded_videos?: Array<{ url: string; name?: string }>;
   training_courses: string[];
   has_passport: 'yes' | 'no';
   ref_source: string;
@@ -98,6 +101,15 @@ interface PlayerFormData {
     name: string;
   }>;
   address?: string;
+  // حقول الربط بالمنظمات
+  club_id?: string;
+  clubId?: string;
+  academy_id?: string;
+  academyId?: string;
+  trainer_id?: string;
+  trainerId?: string;
+  agent_id?: string;
+  agentId?: string;
   // إضافة حقول التتبع
   addedBy?: {
     accountType: 'club' | 'academy' | 'trainer' | 'agent';
@@ -358,7 +370,8 @@ export default function SharedPlayerForm({
 
   // State
   const [playerData, setPlayerData] = useState<PlayerFormData | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PlayerFormData>({
+    ...defaultPlayerFields,
     // البيانات الشخصية
     full_name: '',
     birth_date: '',
@@ -409,7 +422,7 @@ export default function SharedPlayerForm({
     uploaded_videos: [],
 
     // العقود والاتصالات
-    currently_contracted: '',
+    currently_contracted: 'no',
     current_club: '',
     player_number: '',
     favorite_jersey_number: '',
@@ -419,7 +432,7 @@ export default function SharedPlayerForm({
       phone: '',
       email: ''
     },
-    has_passport: '',
+    has_passport: 'no',
     ref_source: '',
     address: '',
 
@@ -446,6 +459,13 @@ export default function SharedPlayerForm({
   const [createLoginAccount, setCreateLoginAccount] = useState(true); // تفعيل إنشاء الحساب افتراضياً
   const [loginAccountPassword, setLoginAccountPassword] = useState<string>('');
   const [showLoginCredentials, setShowLoginCredentials] = useState(false);
+  const [createdAccountInfo, setCreatedAccountInfo] = useState<{
+    email: string;
+    password: string;
+    name: string;
+    phone: string;
+    whatsapp: string;
+  } | null>(null);
 
   // كلمة المرور الثابتة الموحدة
   const UNIFIED_PASSWORD = '123456789';

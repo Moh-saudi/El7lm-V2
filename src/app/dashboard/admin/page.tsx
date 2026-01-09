@@ -21,31 +21,6 @@ import {
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-interface MessageStats {
-  totalSent: number;
-  successful: number;
-  failed: number;
-  pending: number;
-  todaySent: number;
-  thisWeekSent: number;
-  thisMonthSent: number;
-  lastReset: string;
-  dailyStats: Record<string, number>;
-  hourlyStats: Record<string, number>;
-  errorStats: Record<string, number>;
-  topPhones: Record<string, number>;
-  messageTypes: {
-    sms: number;
-    whatsapp: number;
-    unified: number;
-  };
-  successRate: number;
-  failureRate: number;
-  averagePerDay: number;
-  peakHour: { hour: string; count: number };
-  topError: { error: string; count: number };
-}
-
 interface UserStats {
   totalUsers: number;
 }
@@ -69,7 +44,6 @@ interface MediaStats {
 }
 
 export default function AdminDashboardPage() {
-  const [messageStats, setMessageStats] = useState<MessageStats | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [adStats, setAdStats] = useState<AdStats | null>(null);
   const [mediaStats, setMediaStats] = useState<MediaStats | null>(null);
@@ -84,24 +58,13 @@ export default function AdminDashboardPage() {
       console.log('🔍 Starting to fetch all stats in parallel...');
 
       try {
-        const [messageResult, userResult, adResult, mediaResult] = await Promise.allSettled([
-          fetch('/api/admin/babaservice/stats'),
+        const [userResult, adResult, mediaResult] = await Promise.allSettled([
           fetch('/api/admin/users/count'),
           fetch('/api/admin/ads/count'),
           fetch('/api/admin/media/count')
         ]);
 
-        // 1. Message Stats
-        if (messageResult.status === 'fulfilled' && messageResult.value.ok) {
-          try {
-            const data = await messageResult.value.json();
-            if (data.success && isMounted) setMessageStats(data.data);
-          } catch (e) { console.error('Failed to parse message stats'); }
-        } else {
-          console.warn('Message stats fetch failed');
-        }
-
-        // 2. User Stats
+        // 1. User Stats
         if (userResult.status === 'fulfilled' && userResult.value.ok) {
           try {
             const data = await userResult.value.json();
@@ -109,7 +72,7 @@ export default function AdminDashboardPage() {
           } catch (e) { console.error('Failed to parse user stats'); }
         }
 
-        // 3. Ad Stats
+        // 2. Ad Stats
         if (adResult.status === 'fulfilled' && adResult.value.ok) {
           try {
             const data = await adResult.value.json();
@@ -117,7 +80,7 @@ export default function AdminDashboardPage() {
           } catch (e) { console.error('Failed to parse ad stats'); }
         }
 
-        // 4. Media Stats
+        // 3. Media Stats
         if (mediaResult.status === 'fulfilled' && mediaResult.value.ok) {
           try {
             const data = await mediaResult.value.json();
@@ -226,8 +189,8 @@ export default function AdminDashboardPage() {
       color: "text-green-600"
     },
     {
-      title: "التقارير",
-      value: messageStats?.totalSent?.toString() || "0",
+      title: "الصور",
+      value: mediaStats?.totalImages?.toString() || "0",
       icon: BarChart3,
       color: "text-purple-600"
     }

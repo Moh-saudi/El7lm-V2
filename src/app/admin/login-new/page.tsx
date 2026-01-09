@@ -35,7 +35,7 @@ export default function AdminLoginNewPage() {
     addDebugInfo('تم تحميل صفحة تسجيل الدخول');
     addDebugInfo(`Firebase Auth: ${auth ? '✅ متاح' : '❌ غير متاح'}`);
     addDebugInfo(`Firestore DB: ${db ? '✅ متاح' : '❌ غير متاح'}`);
-    
+
     // مراقبة حالة المصادقة
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -51,16 +51,16 @@ export default function AdminLoginNewPage() {
   const testFirebaseConnection = async () => {
     setStep('testing-firebase');
     addDebugInfo('🔄 اختبار اتصال Firebase...');
-    
+
     try {
       // اختبار قراءة من Firestore
       const testDoc = await getDoc(doc(db, 'test', 'connection'));
       addDebugInfo('✅ اتصال Firestore يعمل بشكل صحيح');
-      
+
       // اختبار Firebase Auth
       const currentUser = auth.currentUser;
       addDebugInfo(`Auth Current User: ${currentUser ? currentUser.email : 'null'}`);
-      
+
       setSuccess('Firebase متصل بنجاح');
       setStep('ready');
     } catch (error: any) {
@@ -84,7 +84,7 @@ export default function AdminLoginNewPage() {
     setSuccess('');
     setLoading(true);
     setStep('logging-in');
-    
+
     addDebugInfo('🔄 بدء عملية تسجيل الدخول...');
     addDebugInfo(`📧 البريد: ${email}`);
     addDebugInfo(`🔐 كلمة المرور: ${password.replace(/./g, '*')}`);
@@ -94,18 +94,18 @@ export default function AdminLoginNewPage() {
       addDebugInfo('📝 الخطوة 1: تسجيل الدخول إلى Firebase Auth');
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
+
       addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.uid}`);
       addDebugInfo(`📧 البريد: ${user.email}`);
       addDebugInfo(`✉️ البريد مؤكد: ${user.emailVerified}`);
-      
+
       setStep('checking-user-data');
 
       // الخطوة 2: فحص بيانات المستخدم
       addDebugInfo('📝 الخطوة 2: فحص بيانات المستخدم في Firestore');
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
         addDebugInfo('❌ مستند المستخدم غير موجود في users collection');
         throw new Error('لم يتم العثور على بيانات المستخدم');
@@ -116,30 +116,30 @@ export default function AdminLoginNewPage() {
       addDebugInfo(`   - الاسم: ${userData.name}`);
       addDebugInfo(`   - نوع الحساب: ${userData.accountType}`);
       addDebugInfo(`   - حالة التفعيل: ${userData.isActive}`);
-      
+
       setStep('checking-admin-permissions');
 
       // الخطوة 3: التحقق من صلاحيات الأدمن
       addDebugInfo('📝 الخطوة 3: التحقق من صلاحيات الأدمن');
-      
+
       let isValidAdmin = false;
-      
+
       if (userData.accountType === 'admin') {
         addDebugInfo('✅ المستخدم مصنف كـ admin في users collection');
         isValidAdmin = true;
       } else {
         addDebugInfo('ℹ️ المستخدم ليس admin في users، فحص admins collection...');
-        
+
         const adminDocRef = doc(db, 'admins', user.uid);
         const adminDoc = await getDoc(adminDocRef);
-        
+
         if (adminDoc.exists()) {
           const adminData = adminDoc.data();
           addDebugInfo(`✅ المستخدم موجود في admins collection`);
           addDebugInfo(`   - الدور: ${adminData.role}`);
           addDebugInfo(`   - نشط: ${adminData.isActive}`);
           addDebugInfo(`   - الصلاحيات: ${adminData.permissions?.length || 0} صلاحية`);
-          
+
           if (adminData.isActive) {
             isValidAdmin = true;
           } else {
@@ -156,10 +156,10 @@ export default function AdminLoginNewPage() {
         addDebugInfo('🎉 تم التحقق من صلاحيات الأدمن بنجاح!');
         setSuccess('تسجيل دخول ناجح! جاري التوجيه...');
         setStep('redirecting');
-        
+
         // تسجيل نشاط تسجيل الدخول
         addDebugInfo('📝 تسجيل نشاط تسجيل الدخول...');
-        
+
         setTimeout(() => {
           addDebugInfo('🚀 توجيه إلى لوحة الإدارة');
           router.push('/dashboard/admin');
@@ -169,9 +169,9 @@ export default function AdminLoginNewPage() {
     } catch (error: any) {
       addDebugInfo(`❌ خطأ في تسجيل الدخول: ${error.message}`);
       addDebugInfo(`   - كود الخطأ: ${error.code || 'غير محدد'}`);
-      
+
       let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
-      
+
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'البريد الإلكتروني غير مسجل';
         addDebugInfo('💡 المستخدم غير موجود في Firebase Auth');
@@ -185,7 +185,7 @@ export default function AdminLoginNewPage() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       setError(errorMessage);
       setStep('ready');
     } finally {
@@ -225,7 +225,7 @@ export default function AdminLoginNewPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* صفحة تسجيل الدخول */}
         <Card className="bg-white/95 backdrop-blur-md shadow-2xl">
           <CardHeader className="text-center">
@@ -239,7 +239,7 @@ export default function AdminLoginNewPage() {
               نسخة محسنة مع نظام تشخيص شامل
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             {/* حالة النظام */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -252,12 +252,12 @@ export default function AdminLoginNewPage() {
 
             {/* رسائل التنبيه */}
             {error && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert className="border-red-200 bg-red-50">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
-            
+
             {success && (
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -283,7 +283,7 @@ export default function AdminLoginNewPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">كلمة المرور</Label>
                 <div className="relative">
@@ -307,7 +307,7 @@ export default function AdminLoginNewPage() {
                   </button>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Button
                   type="submit"
@@ -323,7 +323,7 @@ export default function AdminLoginNewPage() {
                     'تسجيل الدخول'
                   )}
                 </Button>
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -344,7 +344,7 @@ export default function AdminLoginNewPage() {
               >
                 🚀 وصول مباشر للأدمن
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={clearDebugInfo}
@@ -366,14 +366,14 @@ export default function AdminLoginNewPage() {
               مراقبة مباشرة لعملية تسجيل الدخول
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">سجل الأحداث:</span>
                 <span className="text-xs text-gray-500">{debugInfo.length} حدث</span>
               </div>
-              
+
               <Textarea
                 value={debugInfo.join('\n')}
                 readOnly

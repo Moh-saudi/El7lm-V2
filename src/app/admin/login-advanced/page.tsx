@@ -35,7 +35,7 @@ export default function AdminLoginAdvancedPage() {
     addDebugInfo('تم تحميل صفحة تسجيل الدخول المتقدمة');
     addDebugInfo(`Firebase Auth: ${auth ? '✅ متاح' : '❌ غير متاح'}`);
     addDebugInfo(`Firestore DB: ${db ? '✅ متاح' : '❌ غير متاح'}`);
-    
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         addDebugInfo(`✅ مستخدم مسجل: ${user.email} (${user.uid})`);
@@ -50,14 +50,14 @@ export default function AdminLoginAdvancedPage() {
   const testFirebaseConnection = async () => {
     setStep('testing-firebase');
     addDebugInfo('🔄 اختبار اتصال Firebase...');
-    
+
     try {
       const testDoc = await getDoc(doc(db, 'test', 'connection'));
       addDebugInfo('✅ اتصال Firestore يعمل');
-      
+
       const currentUser = auth.currentUser;
       addDebugInfo(`Auth Current User: ${currentUser ? currentUser.email : 'null'}`);
-      
+
       setSuccess('Firebase متصل بنجاح');
       setStep('ready');
     } catch (error: any) {
@@ -81,7 +81,7 @@ export default function AdminLoginAdvancedPage() {
     setSuccess('');
     setLoading(true);
     setStep('logging-in');
-    
+
     addDebugInfo('🔄 بدء تسجيل الدخول...');
     addDebugInfo(`📧 البريد: ${email}`);
 
@@ -89,14 +89,14 @@ export default function AdminLoginAdvancedPage() {
       addDebugInfo('📝 الخطوة 1: Firebase Auth');
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
+
       addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.uid}`);
       setStep('checking-user-data');
 
       addDebugInfo('📝 الخطوة 2: فحص بيانات المستخدم');
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (!userDoc.exists()) {
         addDebugInfo('❌ مستند المستخدم غير موجود');
         throw new Error('بيانات المستخدم غير موجودة');
@@ -104,26 +104,26 @@ export default function AdminLoginAdvancedPage() {
 
       const userData = userDoc.data();
       addDebugInfo(`✅ بيانات المستخدم: ${userData.name} (${userData.accountType})`);
-      
+
       setStep('checking-admin-permissions');
 
       addDebugInfo('📝 الخطوة 3: التحقق من صلاحيات الأدمن');
-      
+
       let isValidAdmin = false;
-      
+
       if (userData.accountType === 'admin') {
         addDebugInfo('✅ المستخدم admin في users collection');
         isValidAdmin = true;
       } else {
         addDebugInfo('ℹ️ فحص admins collection...');
-        
+
         const adminDocRef = doc(db, 'admins', user.uid);
         const adminDoc = await getDoc(adminDocRef);
-        
+
         if (adminDoc.exists()) {
           const adminData = adminDoc.data();
           addDebugInfo(`✅ موجود في admins: ${adminData.role} (نشط: ${adminData.isActive})`);
-          
+
           if (adminData.isActive) {
             isValidAdmin = true;
           } else {
@@ -138,7 +138,7 @@ export default function AdminLoginAdvancedPage() {
         addDebugInfo('🎉 تم التحقق من صلاحيات الأدمن!');
         setSuccess('تسجيل دخول ناجح! جاري التوجيه...');
         setStep('redirecting');
-        
+
         setTimeout(() => {
           addDebugInfo('🚀 توجيه للأدمن بانل');
           router.push('/dashboard/admin');
@@ -147,9 +147,9 @@ export default function AdminLoginAdvancedPage() {
 
     } catch (error: any) {
       addDebugInfo(`❌ خطأ: ${error.message} (${error.code || 'no-code'})`);
-      
+
       let errorMessage = 'حدث خطأ في تسجيل الدخول';
-      
+
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'البريد الإلكتروني غير مسجل';
       } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
@@ -157,7 +157,7 @@ export default function AdminLoginAdvancedPage() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       setError(errorMessage);
       setStep('ready');
     } finally {
@@ -180,7 +180,7 @@ export default function AdminLoginAdvancedPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* صفحة تسجيل الدخول */}
         <Card className="bg-white/95 backdrop-blur-md shadow-2xl">
           <CardHeader className="text-center">
@@ -194,7 +194,7 @@ export default function AdminLoginAdvancedPage() {
               نسخة محسنة مع تشخيص شامل
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             {/* حالة النظام */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -207,12 +207,12 @@ export default function AdminLoginAdvancedPage() {
 
             {/* رسائل التنبيه */}
             {error && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert className="border-red-200 bg-red-50">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
-            
+
             {success && (
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -237,7 +237,7 @@ export default function AdminLoginAdvancedPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">كلمة المرور</Label>
                 <div className="relative">
@@ -260,7 +260,7 @@ export default function AdminLoginAdvancedPage() {
                   </button>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="submit"
@@ -273,7 +273,7 @@ export default function AdminLoginAdvancedPage() {
                     'تسجيل الدخول'
                   )}
                 </Button>
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -291,7 +291,7 @@ export default function AdminLoginAdvancedPage() {
               >
                 🚀 وصول مباشر
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={() => setDebugInfo([])}
@@ -312,7 +312,7 @@ export default function AdminLoginAdvancedPage() {
               مراقبة مباشرة للعمليات
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <Textarea
               value={debugInfo.join('\n')}

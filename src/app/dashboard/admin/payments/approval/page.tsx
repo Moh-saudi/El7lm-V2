@@ -20,7 +20,7 @@ interface PaymentRequest {
   paymentMethod: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: string;
   createdAt: Date;
   receiptUrl?: string;
   transactionId?: string;
@@ -283,7 +283,7 @@ export default function PaymentApprovalPage() {
   }, [statusFilter, searchTerm, dateRange]);
 
   return (
-          <div className="p-6" dir="rtl">
+    <div className="p-6" dir="rtl">
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
@@ -470,10 +470,10 @@ export default function PaymentApprovalPage() {
                       <div>
                         <div className="text-sm text-gray-900">
                           {payment.paymentMethod === 'geidea' ? '💳 بطاقة بنكية' :
-                           payment.paymentMethod === 'vodafone_cash' ? '📱 فودافون كاش' :
-                           payment.paymentMethod === 'instapay' ? '⚡ انستا باي' :
-                           payment.paymentMethod === 'bank_transfer' ? '🏦 تحويل بنكي' :
-                           '💰 طريقة أخرى'}
+                            payment.paymentMethod === 'vodafone_cash' ? '📱 فودافون كاش' :
+                              payment.paymentMethod === 'instapay' ? '⚡ انستا باي' :
+                                payment.paymentMethod === 'bank_transfer' ? '🏦 تحويل بنكي' :
+                                  '💰 طريقة أخرى'}
                         </div>
                         {payment.transactionId && (
                           <div className="text-xs text-gray-500">
@@ -493,14 +493,13 @@ export default function PaymentApprovalPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        payment.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        payment.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payment.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          payment.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {payment.status === 'approved' ? 'تمت الموافقة' :
-                         payment.status === 'rejected' ? 'مرفوض' :
-                         'قيد الانتظار'}
+                          payment.status === 'rejected' ? 'مرفوض' :
+                            'قيد الانتظار'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
@@ -522,9 +521,8 @@ export default function PaymentApprovalPage() {
                         <button
                           onClick={() => handleApprove(payment)}
                           disabled={actionLoading === payment.id || payment.status !== 'pending'}
-                          className={`text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed ${
-                            actionLoading === payment.id ? 'animate-pulse' : ''
-                          }`}
+                          className={`text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed ${actionLoading === payment.id ? 'animate-pulse' : ''
+                            }`}
                           title="موافقة"
                         >
                           <Check className="w-5 h-5" />
@@ -532,9 +530,8 @@ export default function PaymentApprovalPage() {
                         <button
                           onClick={() => handleReject(payment)}
                           disabled={actionLoading === payment.id || payment.status !== 'pending'}
-                          className={`text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed ${
-                            actionLoading === payment.id ? 'animate-pulse' : ''
-                          }`}
+                          className={`text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed ${actionLoading === payment.id ? 'animate-pulse' : ''
+                            }`}
                           title="رفض"
                         >
                           <X className="w-5 h-5" />

@@ -5,13 +5,17 @@ import {
   Address,
   ContactInfo,
   PhoneNumber,
-  EmailAddress
+  EmailAddress,
+  SocialMedia
 } from './common';
 
 export interface PlayerFormData {
   full_name: string;
   birth_date?: DateOrTimestamp;
   age?: number;
+  gender?: 'male' | 'female';
+  guardian_name?: string;
+  guardian_phone?: string;
   nationality: string;
   city: string;
   country: string;
@@ -22,6 +26,9 @@ export interface PlayerFormData {
   education_level: string;
   graduation_year: string;
   degree: string;
+  school_name?: string;
+  languages?: { language: string; level: string }[];
+  courses?: { name: string; organization: string; date: string }[];
   english_level: string;
   arabic_level: string;
   spanish_level: string;
@@ -34,8 +41,16 @@ export interface PlayerFormData {
   surgeries: Surgery[];
   allergies: string;
   medical_notes: string;
+  allergies_list?: string[] | { value: string }[];
+  surgeries_list?: Surgery[];
+  medications?: { name: string; dosage?: string; frequency?: string }[];
+  position?: string;
   primary_position: string;
   secondary_position: string;
+  detailed_position?: string;
+  jersey_number?: string;
+  contract_start_date?: string;
+  foot?: string;
   preferred_foot: string;
   club_history: ClubHistory[];
   experience_years: string;
@@ -43,7 +58,25 @@ export interface PlayerFormData {
   technical_skills?: Record<string, number>;
   physical_skills?: Record<string, number>;
   social_skills?: Record<string, number>;
-  objectives?: PlayerObjectives;
+  academies?: Academy[];
+  private_coaches?: PrivateCoach[];
+  // New Stats Fields
+  stats_pace?: number;
+  stats_shooting?: number;
+  stats_passing?: number;
+  stats_dribbling?: number;
+  stats_defending?: number;
+  stats_physical?: number;
+  mentality_vision?: number;
+  mentality_leadership?: number;
+  mentality_composure?: number;
+  mentality_teamwork?: number;
+  mentality_aggression?: number;
+  weak_foot?: number;
+  skill_moves?: number;
+  work_rate_attack?: string;
+  work_rate_defense?: string;
+  objectives?: PlayerObjectives | string[] | Record<string, any>;
   profile_image?: string;
   additional_images: Image[];
   videos: Video[];
@@ -53,14 +86,19 @@ export interface PlayerFormData {
   ref_source: string;
   contract_history?: ContractHistory[];
   agent_history?: AgentHistory[];
+  contract_status?: string;
+  contract_end_date?: string;
+  market_value?: number;
+  agent_name?: string;
+  agent_phone?: string;
   official_contact?: OfficialContact;
   currently_contracted: 'yes' | 'no';
   achievements: Achievement[];
   medical_history?: MedicalHistory;
   current_club: string;
   previous_clubs: string[];
-  documents?: Document[];
-  updated_at: DateOrTimestamp;
+  documents?: PlayerDocument[];
+  updated_at?: DateOrTimestamp;
   subscription_end?: DateOrTimestamp;
   profile_image_url?: string;
   subscription_status: string;
@@ -85,6 +123,8 @@ export interface OfficialContact {
   title: string;
   phone: string;
   email: string;
+  whatsapp?: string;
+  social_links?: SocialMedia;
 }
 
 export interface MedicalHistory {
@@ -108,9 +148,26 @@ export interface Surgery {
 }
 
 export interface ClubHistory {
+  name?: string;
+  club_name?: string;
+  from?: string;
+  to?: string;
+  season?: string;
+  position_played?: string;
+  goals?: number;
+  assists?: number;
+}
+
+export interface Academy {
   name: string;
-  from: string;
-  to: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface PrivateCoach {
+  name: string;
+  start_date: string;
+  end_date: string;
 }
 
 export interface ContractHistory {
@@ -126,7 +183,7 @@ export interface AgentHistory {
   to: string;
 }
 
-export interface Document {
+export interface PlayerDocument {
   type: string;
   url: string;
   name: string;

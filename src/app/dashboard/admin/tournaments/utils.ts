@@ -29,6 +29,9 @@ export interface Tournament {
     allowInstallments?: boolean;
     installmentsCount?: number;
     installmentsDetails?: string;
+    country?: string;  // Added for country selection
+    walletName?: string; // Added for wallet name (e.g. Vodafone Cash)
+    walletNumber?: string; // Added for wallet number
     createdAt: Date;
     updatedAt: Date;
     registrations: TournamentRegistration[];

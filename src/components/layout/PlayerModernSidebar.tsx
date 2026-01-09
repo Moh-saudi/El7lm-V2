@@ -7,17 +7,17 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Home, 
-  User, 
-  MessageSquare, 
-  Users, 
-  Search, 
-  Video, 
-  FileText, 
-  LogOut, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Home,
+  User,
+  MessageSquare,
+  Users,
+  Search,
+  Video,
+  FileText,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
   Bell,
   Settings,
   BarChart3,
@@ -29,6 +29,27 @@ import {
   Upload
 } from 'lucide-react';
 import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
+
+// دالة ترجمة مبسطة - تُرجع النص المترجم من مفتاح الترجمة
+const translations: Record<string, string> = {
+  'sidebar.player.home': 'الرئيسية',
+  'sidebar.player.profile': 'الملف الشخصي',
+  'sidebar.player.reports': 'التقارير',
+  'sidebar.player.referrals': 'الإحالات',
+  'sidebar.player.store': 'المتجر',
+  'sidebar.player.academy': 'الأكاديمية',
+  'sidebar.player.videos': 'الفيديوهات',
+  'sidebar.player.uploadVideos': 'رفع فيديو',
+  'sidebar.player.playerVideos': 'فيديوهات اللاعبين',
+  'sidebar.player.search': 'البحث',
+  'sidebar.player.stats': 'الإحصائيات',
+  'sidebar.common.messages': 'الرسائل',
+  'sidebar.player.subscriptions': 'الاشتراكات',
+  'sidebar.player.subscriptionStatus': 'حالة الاشتراك',
+  'sidebar.player.notifications': 'الإشعارات'
+};
+
+const t = (key: string): string => translations[key] || key;
 
 interface PlayerModernSidebarProps {
   collapsed: boolean;
@@ -63,31 +84,31 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
   // الحصول على معلومات المستخدم
   const getUserDisplayName = () => {
     if (!userData) return 'لاعب';
-    
+
     // إضافة console.log للتأكد من البيانات
     console.log('🎯 getUserDisplayName - userData:', userData);
-    
+
     // البحث في جميع الحقول المحتملة للاسم
     let displayName = '';
-    
+
     if (userData) {
-      displayName = userData.full_name || 
-                   (userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : '') ||
-                   userData.name || 
-                   userData.displayName || 
-                   '';
+      displayName = userData.full_name ||
+        (userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : '') ||
+        userData.name ||
+        userData.displayName ||
+        '';
     }
-    
+
     // إذا لم نجد اسم في userData، جرب user object
     if (!displayName && user) {
       displayName = user.displayName || '';
     }
-    
+
     // إذا لم نجد اسم، استخدم اسم افتراضي
     if (!displayName) {
       displayName = 'لاعب';
     }
-    
+
     console.log('🎯 getUserDisplayName - displayName:', displayName);
     return displayName;
   };
@@ -190,37 +211,37 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
     }
   ];
 
-     // قائمة التواصل والاشتراكات
-   const communicationMenuItems = [
-     {
-       id: 'messages',
-       title: 'sidebar.common.messages',
-       href: '/dashboard/messages',
-       icon: MessageSquare,
-       badge: null
-     },
-     {
-       id: 'subscriptions',
-       title: 'sidebar.player.subscriptions',
-       href: '/dashboard/player/bulk-payment',
-       icon: CreditCard,
-       badge: null
-     },
-     {
-       id: 'subscription-status',
-       title: 'sidebar.player.subscriptionStatus',
-       href: '/dashboard/subscription',
-       icon: CreditCard,
-       badge: null
-     }
-   ];
+  // قائمة التواصل والاشتراكات
+  const communicationMenuItems = [
+    {
+      id: 'messages',
+      title: 'sidebar.common.messages',
+      href: '/dashboard/messages',
+      icon: MessageSquare,
+      badge: null
+    },
+    {
+      id: 'subscriptions',
+      title: 'sidebar.player.subscriptions',
+      href: '/dashboard/player/bulk-payment',
+      icon: CreditCard,
+      badge: null
+    },
+    {
+      id: 'subscription-status',
+      title: 'sidebar.player.subscriptionStatus',
+      href: '/dashboard/subscription',
+      icon: CreditCard,
+      badge: null
+    }
+  ];
 
   // دالة التنقل
   const handleNavigation = (href: string, id: string) => {
     try {
       console.log('🎯 Navigating to:', href);
       setActiveItem(id);
-      
+
       // إضافة تأخير صغير لتجنب مشاكل التوجيه
       setTimeout(() => {
         router.push(href);
@@ -245,24 +266,24 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
   console.log('🎯 Rendering PlayerModernSidebar with collapsed:', collapsed);
 
   return (
-         <motion.div
-       initial={false}
-       animate={{ 
-         width: collapsed ? 80 : 280,
-         x: collapsed ? 0 : 0
-       }}
-       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-               className="fixed top-16 right-0 bottom-24 bg-gradient-to-b from-blue-600 via-blue-700 to-blue-800 text-white shadow-2xl z-[60]"
-       style={{ direction: 'rtl' }}
-     >
+    <motion.div
+      initial={false}
+      animate={{
+        width: collapsed ? 80 : 280,
+        x: collapsed ? 0 : 0
+      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed top-16 right-0 bottom-24 bg-gradient-to-b from-blue-600 via-blue-700 to-blue-800 text-white shadow-2xl z-[60]"
+      style={{ direction: 'rtl' }}
+    >
       <div className="flex flex-col h-full">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-blue-500">
           <div className="flex items-center space-x-3 space-x-reverse">
             <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
-              <AvatarImage 
-                src={getUserAvatar()} 
+              <AvatarImage
+                src={getUserAvatar()}
                 alt={getUserDisplayName()}
                 onError={(e) => {
                   console.log('❌ Error loading avatar image in sidebar:', e);
@@ -293,10 +314,10 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
           </Button>
         </div>
 
-                 {/* Navigation */}
-         <nav className="flex-1 overflow-y-auto py-4 pb-6">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 pb-6">
           <div className="space-y-6">
-            
+
             {/* القائمة الرئيسية */}
             <div>
               <div className="px-4 mb-2">
@@ -318,15 +339,13 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                     >
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
-                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                          isActive
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
                             ? 'bg-white text-blue-600 shadow-lg'
                             : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                        }`}
+                          }`}
                       >
-                        <Icon className={`w-5 h-5 ${
-                          isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                        }`} />
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                          }`} />
                         {!collapsed && (
                           <>
                             <span className="flex-1 text-right font-medium">
@@ -367,15 +386,13 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                     >
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
-                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                          isActive
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
                             ? 'bg-white text-blue-600 shadow-lg'
                             : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                        }`}
+                          }`}
                       >
-                        <Icon className={`w-5 h-5 ${
-                          isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                        }`} />
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                          }`} />
                         {!collapsed && (
                           <>
                             <span className="flex-1 text-right font-medium">
@@ -416,15 +433,13 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                     >
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
-                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                          isActive
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
                             ? 'bg-white text-blue-600 shadow-lg'
                             : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                        }`}
+                          }`}
                       >
-                        <Icon className={`w-5 h-5 ${
-                          isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                        }`} />
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                          }`} />
                         {!collapsed && (
                           <>
                             <span className="flex-1 text-right font-medium">
@@ -465,15 +480,13 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                     >
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
-                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                          isActive
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
                             ? 'bg-white text-blue-600 shadow-lg'
                             : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                        }`}
+                          }`}
                       >
-                        <Icon className={`w-5 h-5 ${
-                          isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                        }`} />
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                          }`} />
                         {!collapsed && (
                           <>
                             <span className="flex-1 text-right font-medium">
@@ -514,15 +527,13 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                     >
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
-                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                          isActive
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
                             ? 'bg-white text-blue-600 shadow-lg'
                             : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                        }`}
+                          }`}
                       >
-                        <Icon className={`w-5 h-5 ${
-                          isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                        }`} />
+                        <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                          }`} />
                         {!collapsed && (
                           <>
                             <span className="flex-1 text-right font-medium">
@@ -556,17 +567,15 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                                     <button
-                     onClick={() => handleNavigation('/dashboard/player/notifications', 'notifications')}
-                     className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${
-                       activeItem === 'notifications'
-                         ? 'bg-white text-blue-600 shadow-lg'
-                         : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
-                     }`}
-                   >
-                    <Bell className={`w-5 h-5 ${
-                      activeItem === 'notifications' ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
-                    }`} />
+                  <button
+                    onClick={() => handleNavigation('/dashboard/player/notifications', 'notifications')}
+                    className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${activeItem === 'notifications'
+                        ? 'bg-white text-blue-600 shadow-lg'
+                        : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                      }`}
+                  >
+                    <Bell className={`w-5 h-5 ${activeItem === 'notifications' ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
+                      }`} />
                     {!collapsed && (
                       <span className="flex-1 text-right font-medium">
                         {t('sidebar.player.notifications')}
@@ -596,7 +605,7 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                 </Button>
               </div>
             )}
-            
+
             {/* تسجيل الخروج */}
             <Button
               variant="ghost"

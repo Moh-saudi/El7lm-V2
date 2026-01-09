@@ -51,7 +51,8 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
         currency: 'EGP', isPaid: false, isActive: true, ageGroups: [], categories: [],
         rules: '', prizes: '', contactInfo: '', logo: '', paymentMethods: ['credit_card', 'bank_transfer'],
         paymentDeadline: '', refundPolicy: '', feeType: 'individual', maxPlayersPerClub: 1,
-        allowInstallments: false, installmentsCount: 2, installmentsDetails: '', registrations: []
+        allowInstallments: false, installmentsCount: 2, installmentsDetails: '', registrations: [],
+        walletName: '', walletNumber: ''
     });
 
     const ageGroupsList = [
@@ -83,6 +84,8 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                     ageGroups: initialData.ageGroups || [],
                     categories: initialData.categories || [],
                     registrations: initialData.registrations || [],
+                    walletName: initialData.walletName || '',
+                    walletNumber: initialData.walletNumber || '',
                 });
                 setLogoPreview(initialData.logo || '');
             } else {
@@ -99,7 +102,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
             isPaid: false, isActive: true, ageGroups: [], categories: [], rules: '', prizes: '',
             contactInfo: '', logo: '', paymentMethods: ['credit_card', 'bank_transfer'], paymentDeadline: '',
             refundPolicy: '', feeType: 'individual', maxPlayersPerClub: 1, allowInstallments: false,
-            installmentsCount: 2, installmentsDetails: '', registrations: []
+            installmentsCount: 2, installmentsDetails: '', registrations: [], walletName: '', walletNumber: ''
         });
         setLogoFile(null);
         setLogoPreview('');
@@ -420,8 +423,40 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                         </div>
                     </div>
 
+                    <div className="md:col-span-2 space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <Label className="font-semibold text-gray-900">بيانات التحويل (المحفظة/الحساب)</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm text-gray-600">
+                                    {formData.country === 'EG' ? 'اسم المحفظة (فودافون كاش/انستاباي)' :
+                                        formData.country === 'SA' ? 'اسم المحفظة (STC Pay/Alinma)' :
+                                            'اسم البنك / المحفظة'}
+                                </Label>
+                                <Input
+                                    value={formData.walletName}
+                                    onChange={e => setFormData(p => ({ ...p, walletName: e.target.value }))}
+                                    placeholder={formData.country === 'EG' ? 'مثال: فودافون كاش' : 'اسم المحفظة أو البنك'}
+                                    className="bg-white"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm text-gray-600">
+                                    {formData.country === 'EG' ? 'رقم المحفظة / عنوان الدفع' :
+                                        'رقم الحساب / المحفظة'}
+                                </Label>
+                                <Input
+                                    value={formData.walletNumber}
+                                    onChange={e => setFormData(p => ({ ...p, walletNumber: e.target.value }))}
+                                    placeholder="01xxxxxxxxx"
+                                    className="bg-white"
+                                    dir="ltr"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="md:col-span-2 space-y-3">
-                        <Label>طرق الدفع المتاحة</Label>
+                        <Label>طرق الدفع المتاحة للمشتركين</Label>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {paymentMethodsList.map(method => (
                                 <div

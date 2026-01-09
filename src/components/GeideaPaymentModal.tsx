@@ -118,7 +118,7 @@ export default function GeideaPaymentModal({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-    }, [visible, onRequestClose]);
+  }, [visible, onRequestClose]);
 
   // معالجة إغلاق المودال
   useEffect(() => {
@@ -160,7 +160,7 @@ export default function GeideaPaymentModal({
     if (!skipRedirect && typeof window !== 'undefined') {
       const currentUrl = window.location.href;
       const url = new URL(currentUrl);
-      
+
       // إضافة status=success إذا لم يكن موجوداً
       if (!url.searchParams.has('status')) {
         url.searchParams.set('status', 'success');
@@ -168,7 +168,7 @@ export default function GeideaPaymentModal({
       if (!url.searchParams.has('payment')) {
         url.searchParams.set('payment', 'success');
       }
-      
+
       // تحديث URL بدون إعادة تحميل الصفحة (لأن Geidea قد أعاد المستخدم بالفعل)
       // فقط إذا كان URL مختلفاً
       if (url.toString() !== currentUrl) {
@@ -204,7 +204,7 @@ export default function GeideaPaymentModal({
 
   const onCancel = (response: any) => {
     console.log('🔄 [Geidea] Payment cancelled by user:', response);
-    
+
     // حذف بيانات الدفع عند الإلغاء
     localStorage.removeItem('geidea_session_id');
     localStorage.removeItem('geidea_payment_data');
@@ -241,7 +241,7 @@ export default function GeideaPaymentModal({
         // إذا لم يكن هناك returnUrl، استخدم الصفحة الحالية
         const currentUrl = window.location.href;
         const url = new URL(currentUrl);
-        
+
         // إزالة query parameters السابقة المتعلقة بالدفع
         url.searchParams.delete('status');
         url.searchParams.delete('payment');
@@ -249,11 +249,11 @@ export default function GeideaPaymentModal({
         url.searchParams.delete('responseCode');
         url.searchParams.delete('responseMessage');
         url.searchParams.delete('sessionId');
-        
+
         // إضافة status=cancelled
         url.searchParams.set('status', 'cancelled');
         url.searchParams.set('payment', 'cancelled');
-        
+
         console.log('🔄 [Geidea] Updating current URL after cancellation:', url.toString());
         // تحديث URL بدون إعادة تحميل الصفحة
         window.history.replaceState({}, '', url.toString());
@@ -281,7 +281,8 @@ export default function GeideaPaymentModal({
           setState({
             loading: false,
             error: analyzedError.message,
-            isTestMode: false
+            isTestMode: false,
+            sessionCreated: false
           });
 
           // تسجيل الخطأ للتتبع
@@ -362,7 +363,7 @@ export default function GeideaPaymentModal({
   };
 
   const createPaymentSession = async () => {
-    setState({ loading: true, error: null, isTestMode: false });
+    setState({ loading: true, error: null, isTestMode: false, sessionCreated: false });
 
     try {
       // التحقق من صحة المبلغ
@@ -378,7 +379,7 @@ export default function GeideaPaymentModal({
       // استخدام API الجديد مع المكتبة المركزية
       // استخدام returnUrl الممرر أو الصفحة الحالية (بدون query parameters)
       let currentReturnUrl = returnUrl;
-      
+
       if (!currentReturnUrl && typeof window !== 'undefined') {
         // استخدام الصفحة الحالية ولكن بدون query parameters
         const currentUrl = new URL(window.location.href);
@@ -386,11 +387,11 @@ export default function GeideaPaymentModal({
         currentUrl.hash = ''; // إزالة hash
         currentReturnUrl = currentUrl.toString();
       }
-      
+
       console.log('🔄 [Geidea Payment Modal] Using returnUrl:', currentReturnUrl);
       console.log('🔄 [Geidea Payment Modal] Original returnUrl prop:', returnUrl);
       console.log('🔄 [Geidea Payment Modal] Current window.location.href:', typeof window !== 'undefined' ? window.location.href : 'N/A');
-      
+
       const payload = {
         amount: amount,
         currency: currency,
@@ -415,17 +416,17 @@ export default function GeideaPaymentModal({
       if (!response.ok || data.error) {
         const errorDetails = data.details || data.message || data.error || 'فشل في إنشاء جلسة الدفع';
         const troubleshooting = data.troubleshooting || [];
-        
+
         // بناء رسالة خطأ مفصلة
         let errorMessage = errorDetails;
         if (data.responseCode || data.detailedResponseCode) {
           errorMessage += ` (كود الخطأ: ${data.responseCode || 'غير معروف'}${data.detailedResponseCode ? `-${data.detailedResponseCode}` : ''})`;
         }
-        
+
         if (troubleshooting.length > 0) {
           errorMessage += '\n\nنصائح لحل المشكلة:\n' + troubleshooting.map((tip: string, idx: number) => `${idx + 1}. ${tip}`).join('\n');
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -451,16 +452,16 @@ export default function GeideaPaymentModal({
         // تحميل المكتبة أولاً إذا لم تكن محملة
         try {
           await loadGeideaScript();
-          
+
           if (typeof window !== 'undefined' && window.GeideaCheckout) {
             console.log('✅ [Geidea] Starting payment with GeideaCheckout library (Popup Mode)');
-            
+
             // إنشاء instance من GeideaCheckout مع callbacks
             const payment = new window.GeideaCheckout(onSuccess, onError, onCancel);
-            
+
             // بدء الدفع - هذا يفتح popup/modal iframe تلقائياً حسب الوثائق
             payment.startPayment(data.sessionId);
-            
+
             // إغلاق المودال بعد بدء الدفع
             setTimeout(() => {
               onRequestClose();
@@ -487,22 +488,22 @@ export default function GeideaPaymentModal({
         // إذا لم يكن هناك success أو sessionId، فهذا خطأ
         const errorDetails = data.details || data.message || data.error || 'فشل في إنشاء جلسة الدفع';
         const troubleshooting = data.troubleshooting || [];
-        
+
         let errorMessage = errorDetails;
         if (data.responseCode || data.detailedResponseCode) {
           errorMessage += ` (كود الخطأ: ${data.responseCode || 'غير معروف'}${data.detailedResponseCode ? `-${data.detailedResponseCode}` : ''})`;
         }
-        
+
         if (troubleshooting.length > 0) {
           errorMessage += '\n\nنصائح لحل المشكلة:\n' + troubleshooting.map((tip: string, idx: number) => `${idx + 1}. ${tip}`).join('\n');
         }
-        
+
         throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('❌ [Geidea] Payment session creation failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
-      setState({ loading: false, error: errorMessage, isTestMode: false });
+      setState({ loading: false, error: errorMessage, isTestMode: false, sessionCreated: false });
       onPaymentFailure(error);
     }
   };

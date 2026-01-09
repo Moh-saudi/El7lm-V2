@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  getDocs, 
-  doc, 
+import {
+  collection,
+  getDocs,
+  doc,
   getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
-  query, 
+  query,
   orderBy,
   where,
   limit,
@@ -88,6 +88,7 @@ interface PlayerData {
   lastName: string;
   email?: string;
   phone?: string;
+  whatsapp?: string;
   dateOfBirth?: any;
   age?: number;
   nationality?: string;
@@ -119,12 +120,16 @@ interface PlayerData {
   marketValue?: number;
   currentClub?: string;
   contractEndDate?: any;
+  clubId?: string;
+  academyId?: string;
+  trainerId?: string;
+  agentId?: string;
 }
 
 const POSITIONS = [
   'حارس مرمى',
   'مدافع أيمن',
-  'مدافع أيسر', 
+  'مدافع أيسر',
   'مدافع وسط',
   'لاعب وسط دفاعي',
   'لاعب وسط',
@@ -193,12 +198,12 @@ export default function PlayersManagement() {
       }
 
       const snapshot = await getDocs(q);
-      
+
       if (!snapshot.empty) {
         const playersData = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
             const data = docSnap.data();
-            
+
             // حساب العمر
             let age = 0;
             if (data.dateOfBirth) {
@@ -250,18 +255,18 @@ export default function PlayersManagement() {
 
         // تطبيق الفلاتر
         let filteredPlayers = playersData;
-        
+
         if (searchTerm) {
           filteredPlayers = playersData.filter(player => {
             const playerName = `${player.firstName || ''} ${player.lastName || ''}`.trim();
             const playerEmail = player.email || '';
             const playerPhone = player.phone || '';
             const playerPosition = player.position || '';
-            
+
             return playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                   playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                   playerPhone.includes(searchTerm) ||
-                   playerPosition.toLowerCase().includes(searchTerm.toLowerCase());
+              playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              playerPhone.includes(searchTerm) ||
+              playerPosition.toLowerCase().includes(searchTerm.toLowerCase());
           });
         }
 
@@ -307,7 +312,7 @@ export default function PlayersManagement() {
         }
 
         setHasMore(snapshot.docs.length === 20);
-        
+
         if (snapshot.docs.length > 0) {
           setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
         }
@@ -318,7 +323,7 @@ export default function PlayersManagement() {
           verified: filteredPlayers.filter(p => p.isVerified).length,
           active: filteredPlayers.filter(p => p.isActive).length,
           withClubs: filteredPlayers.filter(p => p.currentClub).length,
-          avgAge: filteredPlayers.length > 0 ? 
+          avgAge: filteredPlayers.length > 0 ?
             Math.round(filteredPlayers.reduce((sum, p) => sum + (p.age || 0), 0) / filteredPlayers.length) : 0,
           totalValue: filteredPlayers.reduce((sum, p) => sum + (p.marketValue || 0), 0)
         };
@@ -342,24 +347,24 @@ export default function PlayersManagement() {
 
     try {
       const buckets = ['playeravatar', 'player-images', 'videos'];
-      
+
       for (const bucket of buckets) {
         try {
           const { data: files } = await supabase.storage
             .from(bucket)
             .list(playerId);
-          
+
           if (files) {
-            const images = files.filter(f => 
+            const images = files.filter(f =>
               f.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
             );
-            const videos = files.filter(f => 
+            const videos = files.filter(f =>
               f.name.match(/\.(mp4|avi|mov|wmv|webm)$/i)
             );
-            const docs = files.filter(f => 
+            const docs = files.filter(f =>
               f.name.match(/\.(pdf|doc|docx|txt)$/i)
             );
-            
+
             mediaCount.images += images.length;
             mediaCount.videos += videos.length;
             mediaCount.documents += docs.length;
@@ -407,7 +412,7 @@ export default function PlayersManagement() {
         console.warn(`📊 [STATS] Non-critical error loading stats for ${playerId}:`, error.code);
       }
     }
-    
+
     // إرجاع إحصائيات حقيقية (أصفار) في جميع الحالات
     return defaultStats;
   };
@@ -419,9 +424,9 @@ export default function PlayersManagement() {
         verifiedAt: !isVerified ? new Date() : null,
         updatedAt: new Date()
       });
-      
-      setPlayers(prev => prev.map(player => 
-        player.id === playerId 
+
+      setPlayers(prev => prev.map(player =>
+        player.id === playerId
           ? { ...player, isVerified: !isVerified }
           : player
       ));
@@ -436,9 +441,9 @@ export default function PlayersManagement() {
         isActive: !isActive,
         updatedAt: new Date()
       });
-      
-      setPlayers(prev => prev.map(player => 
-        player.id === playerId 
+
+      setPlayers(prev => prev.map(player =>
+        player.id === playerId
           ? { ...player, isActive: !isActive }
           : player
       ));
@@ -449,7 +454,7 @@ export default function PlayersManagement() {
 
   const deletePlayer = async () => {
     if (!playerToDelete) return;
-    
+
     try {
       await deleteDoc(doc(db, 'players', playerToDelete.id));
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
@@ -751,12 +756,12 @@ export default function PlayersManagement() {
                             {!player.isActive && (
                               <Badge variant="destructive">غير نشط</Badge>
                             )}
-                            <LoginAccountStatus 
+                            <LoginAccountStatus
                               playerEmail={player.email}
                               className="text-xs"
                               showLabel={false}
                             />
-                            <SecurityStatusBadge 
+                            <SecurityStatusBadge
                               userData={player}
                               userPhone={player.phone}
                               showDetails={true}
@@ -766,7 +771,7 @@ export default function PlayersManagement() {
                         </div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-sm">
@@ -790,7 +795,7 @@ export default function PlayersManagement() {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="space-y-1">
                         <Badge variant="outline">
@@ -803,7 +808,7 @@ export default function PlayersManagement() {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="space-y-1">
                         {player.currentClub ? (
@@ -822,7 +827,7 @@ export default function PlayersManagement() {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="space-y-1 text-sm">
                         <div>👁️ {player.stats?.profileViews || 0} مشاهدة</div>
@@ -831,7 +836,7 @@ export default function PlayersManagement() {
                         <div>🎯 {player.stats?.assists || 0} تمريرة</div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex gap-3 text-sm">
                         <div className="flex items-center gap-1">
@@ -848,13 +853,13 @@ export default function PlayersManagement() {
                         </div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="font-medium">
                         {player.marketValue ? formatCurrency(player.marketValue) : 'غير محدد'}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <CreateLoginAccountButton
@@ -877,7 +882,7 @@ export default function PlayersManagement() {
                             console.log(`تم إنشاء حساب للاعب ${player.firstName} ${player.lastName} بكلمة المرور: ${password}`);
                           }}
                         />
-                        
+
                         <IndependentAccountCreator
                           playerId={player.id}
                           playerData={{
@@ -897,68 +902,68 @@ export default function PlayersManagement() {
                           size="sm"
                           className="text-purple-600 hover:bg-purple-50"
                         />
-                        
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 ml-2" />
-                            عرض التفاصيل
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 ml-2" />
-                            تعديل
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => togglePlayerVerification(player.id, player.isVerified)}
-                          >
-                            {player.isVerified ? (
-                              <>
-                                <UserX className="w-4 h-4 ml-2" />
-                                إلغاء التوثيق
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="w-4 h-4 ml-2" />
-                                توثيق
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => togglePlayerStatus(player.id, player.isActive)}
-                          >
-                            {player.isActive ? (
-                              <>
-                                <XCircle className="w-4 h-4 ml-2" />
-                                تعطيل
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="w-4 h-4 ml-2" />
-                                تفعيل
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Mail className="w-4 h-4 ml-2" />
-                            إرسال رسالة
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setPlayerToDelete(player);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 ml-2" />
+                              عرض التفاصيل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="w-4 h-4 ml-2" />
+                              تعديل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => togglePlayerVerification(player.id, player.isVerified)}
+                            >
+                              {player.isVerified ? (
+                                <>
+                                  <UserX className="w-4 h-4 ml-2" />
+                                  إلغاء التوثيق
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="w-4 h-4 ml-2" />
+                                  توثيق
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => togglePlayerStatus(player.id, player.isActive)}
+                            >
+                              {player.isActive ? (
+                                <>
+                                  <XCircle className="w-4 h-4 ml-2" />
+                                  تعطيل
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 ml-2" />
+                                  تفعيل
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="w-4 h-4 ml-2" />
+                              إرسال رسالة
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setPlayerToDelete(player);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -970,8 +975,8 @@ export default function PlayersManagement() {
           {/* Load More */}
           {hasMore && (
             <div className="flex justify-center mt-4">
-              <Button 
-                onClick={() => fetchPlayers(false)} 
+              <Button
+                onClick={() => fetchPlayers(false)}
                 disabled={loadingMore}
                 variant="outline"
               >
@@ -995,7 +1000,7 @@ export default function PlayersManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف اللاعب "{playerToDelete?.firstName} {playerToDelete?.lastName}"؟ 
+              هل أنت متأكد من حذف اللاعب "{playerToDelete?.firstName} {playerToDelete?.lastName}"؟
               سيتم حذف جميع بياناته ووسائطه بشكل نهائي.
               هذا الإجراء لا يمكن التراجع عنه.
             </AlertDialogDescription>

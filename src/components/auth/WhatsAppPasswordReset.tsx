@@ -11,9 +11,21 @@ import { CheckCircle, Info, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { formatPhoneNumber } from '@/lib/whatsapp/babaservice-config';
-import { BABASERVICE_CONFIG } from '@/lib/whatsapp/babaservice-config';
 import { COUNTRIES_FROM_REGISTER } from '@/data/countries-from-register';
+
+// تنسيق رقم الهاتف
+const formatPhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    if (!cleaned.startsWith('+') && cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+    }
+    return cleaned.trim();
+};
+
+const BABASERVICE_CONFIG = {
+    INSTANCE_ID: process.env.NEXT_PUBLIC_BABASERVICE_INSTANCE_ID || '68F243B3A8D8D'
+};
 
 type Step = 'phone' | 'otp' | 'password';
 

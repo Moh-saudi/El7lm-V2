@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Check, 
-  X, 
+import {
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
   AlertCircle,
   Info,
   CheckCircle,
@@ -39,7 +39,6 @@ import {
   Phone,
   MapPin,
   Calendar,
-  Clock as ClockIcon,
   Tag,
   Hash,
   AtSign,
@@ -52,81 +51,21 @@ import {
   RotateCcw,
   RefreshCw,
   Zap,
-  Battery,
   Wifi,
-  Signal,
   Volume2,
   VolumeX,
   Mic,
   MicOff,
   Headphones,
-  Speaker,
   Monitor,
   Smartphone,
   Tablet,
   Laptop,
-  Desktop,
-  Tv,
-  Watch,
-  Camera as CameraIcon,
-  Video as VideoIcon,
-  Image as ImageIcon,
   FileText,
-  FileImage,
-  FileVideo,
-  FileAudio,
-  FileArchive,
-  FileCode,
-  FilePdf,
-  FileWord,
-  FileExcel,
-  FilePowerpoint,
   Folder,
   FolderOpen,
   FolderPlus,
-  FolderMinus,
-  FolderX,
-  FolderCheck,
-  FolderSearch,
-  FolderHeart,
-  FolderStar,
-  FolderLock,
-  FolderUnlock,
-  FolderKey,
-  FolderCog,
-  FolderSettings,
-  FolderUser,
-  FolderUsers,
-  FolderHome,
-  FolderDownload,
-  FolderUpload,
-  FolderSync,
-  FolderGit,
-  FolderGit2,
-  FolderCloud,
-  FolderCloud2,
-  FolderPlus2,
-  FolderMinus2,
-  FolderX2,
-  FolderCheck2,
-  FolderSearch2,
-  FolderHeart2,
-  FolderStar2,
-  FolderLock2,
-  FolderUnlock2,
-  FolderKey2,
-  FolderCog2,
-  FolderSettings2,
-  FolderUser2,
-  FolderUsers2,
-  FolderHome2,
-  FolderDownload2,
-  FolderUpload2,
-  FolderSync2,
-  FolderGit3,
-  FolderGit4,
-  FolderCloud3,
-  FolderCloud4
+  FolderMinus
 } from 'lucide-react';
 
 // ===== مكون البطاقة القابلة للطي =====
@@ -185,7 +124,7 @@ export const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           <ChevronDown className="w-5 h-5 text-gray-500" />
         </motion.div>
       </button>
-      
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -355,18 +294,17 @@ export const InteractiveCard: React.FC<InteractiveCardProps> = ({
     <motion.div
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.98 }}
-      className={`bg-white rounded-xl border transition-all duration-500 ease-out ${
-        selected 
-          ? 'border-blue-500 bg-blue-50' 
+      className={`bg-white rounded-xl border transition-all duration-500 ease-out ${selected
+          ? 'border-blue-500 bg-blue-50'
           : 'border-gray-200 hover:border-gray-300'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       onClick={disabled ? undefined : onClick}
     >
       <div className="p-4">
         <div className="flex items-start space-x-3">
           {image && (
-            <img 
-              src={image} 
+            <img
+              src={image}
               alt={title}
               className="w-12 h-12 rounded-lg object-cover"
             />
@@ -376,7 +314,7 @@ export const InteractiveCard: React.FC<InteractiveCardProps> = ({
               <Icon className="w-6 h-6 text-gray-600" />
             </div>
           )}
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900 truncate">{title}</h3>
@@ -434,7 +372,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = false
 }) => {
   const percentage = Math.min((value / max) * 100, 100);
-  
+
   const colors = {
     blue: 'bg-blue-600',
     green: 'bg-green-600',
@@ -457,13 +395,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           <span className="text-sm text-gray-500">{Math.round(percentage)}%</span>
         </div>
       )}
-      
+
       <div className={`w-full bg-gray-200 rounded-full ${sizes[size]}`}>
         <motion.div
           className={`${colors[color]} rounded-full ${sizes[size]}`}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ 
+          transition={{
             duration: animated ? 1 : 0.3,
             ease: "easeOut"
           }}
@@ -514,12 +452,12 @@ export const AdvancedDropdown: React.FC<AdvancedDropdownProps> = ({
       <div onClick={() => setIsOpen(!isOpen)}>
         {trigger}
       </div>
-      
+
       <AnimatePresence>
         {isOpen && (
           <>
-            <div 
-              className="fixed inset-0 z-10" 
+            <div
+              className="fixed inset-0 z-10"
               onClick={() => setIsOpen(false)}
             />
             <motion.div
@@ -541,13 +479,12 @@ export const AdvancedDropdown: React.FC<AdvancedDropdownProps> = ({
                         }
                       }}
                       disabled={item.disabled}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 text-sm transition-colors ${
-                        item.disabled
+                      className={`w-full flex items-center space-x-3 px-4 py-2 text-sm transition-colors ${item.disabled
                           ? 'text-gray-400 cursor-not-allowed'
                           : item.danger
-                          ? 'text-red-600 hover:bg-red-50'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                            ? 'text-red-600 hover:bg-red-50'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       title={item.label}
                       aria-label={item.label}
                     >
@@ -637,9 +574,8 @@ export const AdvancedStatCard: React.FC<AdvancedStatCardProps> = ({
       whileHover={{ scale: onClick ? 1.02 : 1 }}
       whileTap={{ scale: onClick ? 0.98 : 1 }}
       onClick={onClick}
-      className={`bg-white rounded-xl p-4 border ${colorStyle.border} ${
-        onClick ? 'cursor-pointer' : ''
-      }`}
+      className={`bg-white rounded-xl p-4 border ${colorStyle.border} ${onClick ? 'cursor-pointer' : ''
+        }`}
     >
       <div className="flex items-center justify-between">
         {Icon && (
@@ -649,17 +585,16 @@ export const AdvancedStatCard: React.FC<AdvancedStatCardProps> = ({
         )}
         {change && (
           <div className="text-right">
-            <span className={`text-sm font-medium ${
-              change.type === 'increase' ? 'text-green-600' : 
-              change.type === 'decrease' ? 'text-red-600' : 
-              'text-gray-600'
-            }`}>
+            <span className={`text-sm font-medium ${change.type === 'increase' ? 'text-green-600' :
+                change.type === 'decrease' ? 'text-red-600' :
+                  'text-gray-600'
+              }`}>
               {change.value}
             </span>
           </div>
         )}
       </div>
-      
+
       <div className="mt-3">
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         <p className="text-sm text-gray-600">{title}</p>

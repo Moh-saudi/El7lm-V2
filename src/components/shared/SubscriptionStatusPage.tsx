@@ -37,7 +37,7 @@ interface PaymentRecord {
 }
 
 interface SubscriptionInfo {
-  status: 'active' | 'expired' | 'pending' | 'inactive';
+  status: 'active' | 'expired' | 'pending' | 'inactive' | 'completed' | 'success' | 'cancelled' | 'failed' | 'rejected' | 'processing' | 'waiting';
   plan_name?: string;
   package_name?: string;
   packageType?: string;
@@ -725,12 +725,12 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           <CardHeader>
             <CardTitle className="flex items-center gap-2 flex-wrap">
               <Zap className={`w-5 h-5 ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
-                  ? 'text-green-600' :
-                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                    ? 'text-red-600' :
-                    subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                      ? 'text-yellow-600' :
-                      'text-gray-600'
+                ? 'text-green-600' :
+                subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                  ? 'text-red-600' :
+                  subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                    ? 'text-yellow-600' :
+                    'text-gray-600'
                 }`} />
               حالة الاشتراك الحالية
               {subscription.isFromParent && (
@@ -761,12 +761,12 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
               </div>
 
               <div className={`p-4 rounded-lg ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
-                  ? 'bg-gradient-to-br from-green-50 to-green-100' :
-                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                    ? 'bg-gradient-to-br from-red-50 to-red-100' :
-                    subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100' :
-                      'bg-gradient-to-br from-gray-50 to-gray-100'
+                ? 'bg-gradient-to-br from-green-50 to-green-100' :
+                subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                  ? 'bg-gradient-to-br from-red-50 to-red-100' :
+                  subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                    ? 'bg-gradient-to-br from-yellow-50 to-yellow-100' :
+                    'bg-gradient-to-br from-gray-50 to-gray-100'
                 }`}>
                 <div className="flex items-center gap-2 mb-2">
                   {subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success' ? (
@@ -781,12 +781,12 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   <span className="text-sm font-medium text-gray-700">الحالة</span>
                 </div>
                 <div className={`text-xl font-bold ${subscription.status === 'active' || subscription.status === 'completed' || subscription.status === 'success'
-                    ? 'text-green-700' :
-                    subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
-                      ? 'text-red-700' :
-                      subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
-                        ? 'text-yellow-700' :
-                        'text-gray-700'
+                  ? 'text-green-700' :
+                  subscription.status === 'expired' || subscription.status === 'cancelled' || subscription.status === 'failed' || subscription.status === 'rejected'
+                    ? 'text-red-700' :
+                    subscription.status === 'pending' || subscription.status === 'processing' || subscription.status === 'waiting'
+                      ? 'text-yellow-700' :
+                      'text-gray-700'
                   }`}>
                   {subscription.status === 'active' ? 'مفعل' :
                     subscription.status === 'completed' ? 'مكتمل' :

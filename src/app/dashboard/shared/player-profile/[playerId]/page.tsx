@@ -41,7 +41,21 @@ import {
   Loader2,
   School,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  Stethoscope,
+  Pill,
+  AlertTriangle,
+  Brain,
+  Shield,
+  ShieldCheck,
+  Languages,
+  Plus,
+  Trophy,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Twitter,
+  FileText
 } from 'lucide-react';
 // import ReactPlayer from 'react-player/lazy';
 import { Button } from '@/components/ui/button';
@@ -81,8 +95,8 @@ import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadius
 import { debugConsole } from '@/lib/utils/console-manager';
 import { getPlayerOrganization, getOrganizationDetails } from '@/utils/player-organization';
 import PlayerResume from '@/components/player/PlayerResume';
-import { FileText } from 'lucide-react';
-import { PlayerFormData, Achievement, Injury, ContractHistory, AgentHistory } from '@/types/player';
+import { FootballPitch } from '@/components/player/FootballPitch';
+import { Player, PlayerDocument, PlayerFormData, Achievement, Injury, ContractHistory, AgentHistory } from '@/types/player';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 // import { PlayerVideo } from '@/types/common';
 import 'dayjs/locale/ar';
@@ -275,7 +289,7 @@ function PlayerReportPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const [user, loading, authError] = useAuthState(auth);
-  const [player, setPlayer] = useState<PlayerFormData | null>(null);
+  const [player, setPlayer] = useState<Player | null>(null);
 
   // الحصول على معرف اللاعب من الرابط
   const playerIdFromUrl = params?.playerId as string;
@@ -627,221 +641,477 @@ function PlayerReportPage() {
     return false;
   };
 
-  // تحديث دالة عرض المعلومات الشخصية
-  const renderPersonalInfo = () => (
-    <div className="mb-8 bg-white rounded-lg shadow-sm">
-      <div className="p-6">
-        <h3 className="flex gap-2 items-center mb-6 text-xl font-semibold">
-          <User className="w-6 h-6 text-blue-600" />
-          المعلومات الشخصية
-        </h3>
+  const renderPersonalInfo = () => {
+    const age = calculateAge(player?.birth_date);
+    const isMinor = age !== null && age < 18;
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* الاسم الكامل */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">الاسم الكامل</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.full_name || 'غير محدد'}</div>
-          </div>
+    return (
+      <div className="space-y-6">
+        {/* Basic Info Card */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
+          <h3 className="flex gap-2 items-center mb-6 text-xl font-semibold text-gray-800">
+            <User className="w-5 h-5 text-blue-600" />
+            البيانات الأساسية
+          </h3>
 
-          {/* تاريخ الميلاد */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">تاريخ الميلاد</label>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              {player?.birth_date ? dayjs(player.birth_date).format('YYYY/MM/DD') : 'غير محدد'}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="col-span-full md:col-span-1">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الاسم الكامل</label>
+              <div className="text-lg font-bold text-gray-900">{player?.full_name || player?.name || '--'}</div>
             </div>
-          </div>
 
-          {/* الجنسية */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">الجنسية</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.nationality || 'غير محدد'}</div>
-          </div>
-
-          {/* الدولة */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">الدولة</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.country || 'غير محدد'}</div>
-          </div>
-
-          {/* المدينة */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">المدينة</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.city || 'غير محدد'}</div>
-          </div>
-
-          {/* رقم الهاتف - مع شرط العرض */}
-          {canViewPhoneNumber() ? (
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف</label>
-              <div className="p-3 bg-gray-50 rounded-lg">{player?.phone || 'غير محدد'}</div>
-            </div>
-          ) : (
-            <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف</label>
-              <div className="flex gap-2 items-center p-3 text-gray-500 bg-gray-50 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                محجوب - اللاعب تابع لحساب آخر
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">تاريخ الميلاد</label>
+              <div className="font-medium text-gray-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                {player?.birth_date ? dayjs(player.birth_date).format('DD/MM/YYYY') : '--'}
+                {age !== null && (
+                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">
+                    {age} سنة
+                  </span>
+                )}
               </div>
             </div>
-          )}
 
-          {/* البريد الإلكتروني */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.email || 'غير محدد'}</div>
-          </div>
-
-          {/* واتساب */}
-          {canViewPhoneNumber() && (
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">واتساب</label>
-              <div className="p-3 bg-gray-50 rounded-lg">{player?.whatsapp || 'غير محدد'}</div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الجنسية</label>
+              <div className="font-medium text-gray-700">{player?.nationality || '--'}</div>
             </div>
-          )}
 
-          {/* العنوان */}
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">العنوان</label>
-            <div className="p-3 bg-gray-50 rounded-lg">{player?.address || 'غير محدد'}</div>
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الجنس</label>
+              <div className="font-medium text-gray-700">
+                {player?.gender === 'male' ? 'ذكر' : player?.gender === 'female' ? 'أنثى' : '--'}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">المركز</label>
+              <div className="inline-block">
+                <span className="font-bold text-gray-900 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-sm">
+                  {player?.primary_position || player?.position || '--'}
+                </span>
+              </div>
+            </div>
           </div>
+        </div>
 
-          {/* نبذة مختصرة */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <label className="block mb-2 text-sm font-medium text-gray-700">نبذة مختصرة</label>
-            <div className="p-3 bg-gray-50 rounded-lg min-h-[80px]">
-              {player?.brief ? (
-                <p className="text-gray-700 leading-relaxed">{player.brief}</p>
-              ) : (
-                <p className="text-gray-500 italic">لا توجد نبذة مختصرة</p>
+        {/* Brief Bio */}
+        {player?.brief && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-hidden">
+            <h3 className="flex gap-2 items-center mb-4 text-xl font-semibold text-gray-800">
+              <FileText className="w-5 h-5 text-gray-600" />
+              نبذة مختصرة
+            </h3>
+            <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100 whitespace-pre-line">
+              {player.brief}
+            </p>
+          </div>
+        )}
+
+        {/* Guardian Alert for Minors */}
+        {isMinor && (player?.guardian_name || player?.guardian_phone) && (
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-amber-100 rounded-lg text-amber-600 shrink-0">
+                <Shield className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-amber-900 mb-1">بيانات ولي الأمر</h4>
+                <p className="text-amber-700 text-sm mb-4">اللاعب قاصر (أقل من 18 سنة)، بيانات التواصل مع ولي الأمر:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {player.guardian_name && (
+                    <div className="bg-white/60 p-3 rounded border border-amber-100">
+                      <span className="text-xs text-amber-800 block mb-1">الاسم</span>
+                      <span className="font-semibold text-amber-900">{player.guardian_name}</span>
+                    </div>
+                  )}
+                  {player.guardian_phone && (
+                    <div className="bg-white/60 p-3 rounded border border-amber-100">
+                      <span className="text-xs text-amber-800 block mb-1">رقم الهاتف</span>
+                      <span className="font-semibold text-amber-900" dir="ltr">{player.guardian_phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Contact & Location */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-hidden">
+          <h3 className="flex gap-2 items-center mb-6 text-xl font-semibold text-gray-800">
+            <MapPin className="w-5 h-5 text-green-600" />
+            الإقامة والاتصال
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">دولة الإقامة</label>
+              <div className="font-medium text-gray-700">{player?.country || '--'}</div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">المدينة</label>
+              <div className="font-medium text-gray-700">{player?.city || '--'}</div>
+            </div>
+
+            <div className="col-span-1 md:col-span-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">العنوان التفصيلي</label>
+              <div className="font-medium text-gray-700 flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-gray-400 mt-1" />
+                <span>{player?.address || '--'}</span>
+              </div>
+            </div>
+
+            {/* Show Phone/Email only if allowed */}
+            {canViewPhoneNumber() && (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">رقم الهاتف</label>
+                  <div className="font-medium text-gray-700 flex items-center gap-2" dir="ltr">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    {player?.phone || '--'}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">البريد الإلكتروني</label>
+                  <div className="font-medium text-gray-700 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    {player?.email || '--'}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+      </div>
+    );
+  };
+
+  const renderSportsInfo = () => {
+    const primaryPos = player?.primary_position || player?.position;
+
+    return (
+      <div className="space-y-6">
+        {/* 1. Attributes & Positions Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Pitch Visualization (Spans 1 col on LG, Full on others) */}
+          <div className="lg:col-span-1 bg-white rounded-xl border border-gray-100 p-4 shadow-sm flex flex-col items-center">
+            <h4 className="text-sm font-semibold text-gray-500 mb-3 w-full text-center uppercase tracking-wider">خريطة الملعب</h4>
+            <FootballPitch
+              primaryPosition={primaryPos}
+              secondaryPosition={player?.secondary_position}
+              jerseyNumber={player?.jersey_number || player?.player_number}
+            />
+            <div className="mt-4 flex gap-4 text-xs">
+              {primaryPos && (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-600 rounded-full border border-gray-200" />
+                  <span>الأساسي ({primaryPos})</span>
+                </div>
+              )}
+              {player?.secondary_position && (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full border border-gray-200" />
+                  <span>الثانوي ({player.secondary_position})</span>
+                </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
 
-  const renderSportsInfo = () => (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <div className="mb-1 font-semibold text-blue-700">المركز الأساسي</div>
-        <div className="text-lg font-bold text-blue-900">{player?.primary_position || '--'}</div>
-      </div>
-      <div className="p-4 bg-green-50 rounded-lg">
-        <div className="mb-1 font-semibold text-green-700">المركز الثانوي</div>
-        <div className="text-lg font-bold text-green-900">{player?.secondary_position || '--'}</div>
-      </div>
-      <div className="p-4 bg-purple-50 rounded-lg">
-        <div className="mb-1 font-semibold text-purple-700">القدم المفضلة</div>
-        <div className="text-lg font-bold text-purple-900">{player?.preferred_foot || '--'}</div>
-      </div>
-      <div className="p-4 bg-yellow-50 rounded-lg">
-        <div className="mb-1 font-semibold text-yellow-700">الطول</div>
-        <div className="text-lg font-bold text-yellow-900">{player?.height ? `${player.height} سم` : '--'}</div>
-      </div>
-      <div className="p-4 bg-red-50 rounded-lg">
-        <div className="mb-1 font-semibold text-red-700">الوزن</div>
-        <div className="text-lg font-bold text-red-900">{player?.weight ? `${player.weight} كجم` : '--'}</div>
-      </div>
-      <div className="p-4 bg-indigo-50 rounded-lg">
-        <div className="mb-1 font-semibold text-indigo-700">النادي الحالي</div>
-        <div className="text-lg font-bold text-indigo-900">{player?.current_club || '--'}</div>
-      </div>
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <div className="mb-1 font-semibold text-gray-700">سنوات الخبرة</div>
-        <div className="text-lg font-bold text-gray-900">{player?.experience_years || '--'}</div>
-      </div>
-      <div className="p-4 bg-lime-50 rounded-lg">
-        <div className="mb-1 font-semibold text-lime-700">رقم اللاعب</div>
-        <div className="text-lg font-bold text-lime-900">{player?.player_number || '--'}</div>
-      </div>
-      <div className="p-4 bg-emerald-50 rounded-lg">
-        <div className="mb-1 font-semibold text-emerald-700">رقم القميص المفضل</div>
-        <div className="text-lg font-bold text-emerald-900">{player?.favorite_jersey_number || '--'}</div>
-      </div>
-      <div className="col-span-2 p-4 bg-pink-50 rounded-lg">
-        <div className="mb-2 font-semibold text-pink-700">الأندية السابقة</div>
-        <div className="space-y-2">
-          {player?.previous_clubs && player.previous_clubs.length > 0 ? (
-            player.previous_clubs.map((club: string, index: number) => (
-              <div key={index} className="p-2 bg-white rounded">
-                {club}
+          {/* Detailed Info & Attributes (Spans 2 cols on LG) */}
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+            {/* Role & Specifics */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm flex flex-col justify-center">
+              <div className="mb-6 text-center">
+                <span className="text-gray-400 text-sm block mb-1">المركز الأساسي (تفصيلي)</span>
+                <span className="text-3xl font-black text-gray-900">{primaryPos || '--'}</span>
+                {player?.detailed_position && <span className="text-blue-600 block mt-1 font-medium text-lg">{player.detailed_position}</span>}
               </div>
-            ))
-          ) : (
-            <div className="p-2 text-gray-500 bg-white rounded">لا توجد أندية سابقة مسجلة</div>
-          )}
-        </div>
-      </div>
-      <div className="col-span-2 p-4 bg-orange-50 rounded-lg">
-        <div className="mb-2 font-semibold text-orange-700">الإنجازات</div>
-        <div className="space-y-2">
-          {player?.achievements && player.achievements.length > 0 ? (
-            player.achievements.map((achievement: Achievement, index: number) => (
-              <div key={index} className="p-2 bg-white rounded">
-                <div className="font-semibold">{achievement.title}</div>
-                <div className="text-sm text-gray-600">التاريخ: {achievement.date}</div>
-                {achievement.description && (
-                  <div className="mt-1 text-sm text-gray-600">{achievement.description}</div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="p-2 text-gray-500 bg-white rounded">لا توجد إنجازات مسجلة</div>
-          )}
-        </div>
-      </div>
-      <div className="col-span-2 p-4 rounded-lg bg-slate-50">
-        <div className="mb-1 font-semibold text-slate-700">ملاحظات رياضية</div>
-        <div className="text-lg font-bold text-slate-900">{player?.sports_notes || '--'}</div>
-      </div>
-    </div>
-  );
+              {player?.secondary_position && (
+                <div className="text-center pt-6 border-t border-gray-100">
+                  <span className="text-gray-400 text-sm block mb-1">المركز الثانوي</span>
+                  <span className="text-xl font-bold text-gray-700">{player.secondary_position}</span>
+                </div>
+              )}
+            </div>
 
-  const renderEducation = () => (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <div className="mb-1 font-semibold text-blue-700">المستوى التعليمي</div>
-        <div className="text-lg font-bold text-blue-900">{player?.education_level || '--'}</div>
-      </div>
-      <div className="p-4 bg-green-50 rounded-lg">
-        <div className="mb-1 font-semibold text-green-700">سنة التخرج</div>
-        <div className="text-lg font-bold text-green-900">{player?.graduation_year || '--'}</div>
-      </div>
-      <div className="p-4 bg-purple-50 rounded-lg">
-        <div className="mb-1 font-semibold text-purple-700">مستوى اللغة الإنجليزية</div>
-        <div className="text-lg font-bold text-purple-900">{player?.english_level || '--'}</div>
-      </div>
-      <div className="p-4 bg-yellow-50 rounded-lg">
-        <div className="mb-1 font-semibold text-yellow-700">مستوى اللغة الإسبانية</div>
-        <div className="text-lg font-bold text-yellow-900">{player?.spanish_level || '--'}</div>
-      </div>
-      <div className="p-4 bg-red-50 rounded-lg">
-        <div className="mb-1 font-semibold text-red-700">مستوى اللغة العربية</div>
-        <div className="text-lg font-bold text-red-900">{player?.arabic_level || '--'}</div>
-      </div>
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <div className="mb-1 font-semibold text-gray-700">الدرجة العلمية</div>
-        <div className="text-lg font-bold text-gray-900">{player?.degree || '--'}</div>
-      </div>
-      <div className="col-span-2 p-4 bg-indigo-50 rounded-lg">
-        <div className="mb-2 font-semibold text-indigo-700">الدورات التدريبية</div>
-        <div className="space-y-2">
-          {player?.training_courses && player.training_courses.length > 0 ? (
-            player.training_courses.map((course: string, index: number) => (
-              <div key={index} className="p-2 bg-white rounded">
-                {course}
+            {/* Attributes Summary (Height, Weight, Foot) */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm relative">
+              <div className="relative z-10">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                    <span className="text-xs text-gray-500 block mb-1">القدم المفضلة</span>
+                    <span className="font-bold text-lg text-gray-900">{player?.preferred_foot || player?.foot || '--'}</span>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                    <span className="text-xs text-gray-500 block mb-1">الطول</span>
+                    <span className="font-bold text-lg text-gray-900" dir="ltr">{player?.height ? `${player.height} cm` : '--'}</span>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                    <span className="text-xs text-gray-500 block mb-1">الوزن</span>
+                    <span className="font-bold text-lg text-gray-900" dir="ltr">{player?.weight ? `${player.weight} kg` : '--'}</span>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                    <span className="text-xs text-gray-500 block mb-1">رقم القميص</span>
+                    <span className="font-bold text-lg text-gray-900">{player?.jersey_number || player?.player_number || '--'}</span>
+                  </div>
+                </div>
               </div>
-            ))
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Current Club & Career */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex items-center gap-3 bg-gray-50/50">
+            <Briefcase className="w-5 h-5 text-indigo-500" />
+            <h3 className="text-lg font-bold text-gray-800">المسيرة الرياضية</h3>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Current Club */}
+              <div className="flex flex-col gap-4">
+                <h4 className="font-semibold text-gray-700 mb-2">النادي الحالي</h4>
+                <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-2xl">
+                    ⚽
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">النادي</span>
+                    <div className="text-xl font-bold text-indigo-900">{player?.current_club || 'غير مرتبط بنادي'}</div>
+                    {player?.experience_years && <div className="text-sm text-indigo-700 mt-1">خبرة: {player.experience_years} سنوات</div>}
+                    {player?.contract_start_date && (
+                      <div className="text-xs text-indigo-500 mt-1">بداية العقد: {player.contract_start_date}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* History */}
+              <div>
+                <h4 className="font-semibold text-gray-700 mb-4">تاريخ الأندية</h4>
+                <div className="space-y-4 border-r-2 border-gray-100 pr-4 mr-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {(player?.club_history && player.club_history.length > 0) ? (
+                    player.club_history.map((club: any, i: number) => (
+                      <div key={i} className="relative pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                        <div className="absolute top-2 -right-[23px] w-3 h-3 bg-gray-300 rounded-full ring-4 ring-white" />
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-gray-800">{club.club_name || club.name}</div>
+                            <div className="text-xs text-gray-500 mt-0.5" dir="ltr">{club.season || `${club.from} - ${club.to}`}</div>
+                            {club.position_played && <div className="text-xs text-indigo-600 mt-1">{club.position_played}</div>}
+                          </div>
+                          {(club.goals || club.assists) && (
+                            <div className="flex gap-1 flex-wrap justify-end">
+                              {club.goals && (
+                                <div className="px-1.5 py-0.5 bg-green-50 text-green-700 text-[10px] rounded border border-green-100 flex items-center gap-1">
+                                  <span>⚽</span> {club.goals}
+                                </div>
+                              )}
+                              {club.assists && (
+                                <div className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-100 flex items-center gap-1">
+                                  <span>👟</span> {club.assists}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (player?.previous_clubs && player.previous_clubs.length > 0) ? (
+                    player.previous_clubs.map((club: string, i: number) => (
+                      <div key={i} className="relative">
+                        <div className="absolute top-2 -right-[23px] w-3 h-3 bg-gray-300 rounded-full ring-4 ring-white" />
+                        <div className="font-bold text-gray-800">{club}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 italic text-sm">لا يوجد تاريخ أندية سابق</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Training History (Academies & Private Coaches) */}
+        {((player?.academies && player?.academies.length > 0) || (player?.private_coaches && player?.private_coaches.length > 0)) && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center gap-3 bg-purple-50/50">
+              <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                <School className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">التدريب والتأسيس</h3>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Academies */}
+              {player?.academies && player.academies.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-400" /> الأكاديميات
+                  </h4>
+                  <div className="space-y-3">
+                    {player.academies.map((aca: any, i: number) => (
+                      <div key={i} className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                        <div className="font-bold text-purple-900">{aca.name}</div>
+                        <div className="text-xs text-purple-600 mt-1" dir="ltr">{aca.start_date} - {aca.end_date}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Private Coaches */}
+              {player?.private_coaches && player.private_coaches.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <User className="w-4 h-4 text-indigo-400" /> المدربين الخاصين
+                  </h4>
+                  <div className="space-y-3">
+                    {player.private_coaches.map((coach: any, i: number) => (
+                      <div key={i} className="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+                        <div className="font-bold text-indigo-900">{coach.name}</div>
+                        <div className="text-xs text-indigo-600 mt-1" dir="ltr">{coach.start_date} - {coach.end_date}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Achievements */}
+        {(player?.achievements && player.achievements.length > 0) && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800 mb-4">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              الإنجازات والجوائز
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {player.achievements.map((ach: any, i: number) => (
+                <div key={i} className="bg-amber-50 p-4 rounded-xl border border-amber-100 transition-transform hover:-translate-y-1 duration-200">
+                  <div className="font-bold text-amber-900 mb-1">{ach.title || ach.name}</div>
+                  {ach.date && <div className="text-xs text-amber-700 font-medium bg-amber-100 inline-block px-2 py-0.5 rounded mb-2">{ach.date}</div>}
+                  {ach.description && <div className="text-sm text-amber-800/80 line-clamp-2">{ach.description}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Sports Notes */}
+        {player?.sports_notes && (
+          <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-2">
+              <FileText className="w-5 h-5 text-slate-500" />
+              ملاحظات رياضية
+            </h3>
+            <p className="text-slate-700 leading-relaxed">{player.sports_notes}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderEducation = () => {
+    // Helper to map levels if needed, or just display raw value
+    const EDUCATION_LEVEL_LABELS: Record<string, string> = {
+      "primary": "ابتدائي",
+      "middle": "متوسط",
+      "high_school": "ثانوي",
+      "bachelors": "بكالوريوس",
+      "masters": "ماجستير",
+      "phd": "دكتوراه"
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* 1. Academic Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Level */}
+          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+            <div className="flex items-center gap-2 mb-2 text-indigo-700 font-semibold">
+              <GraduationCap className="w-5 h-5" />
+              المستوى التعليمي
+            </div>
+            <div className="text-xl font-bold text-indigo-900">
+              {EDUCATION_LEVEL_LABELS[player?.education_level] || player?.education_level || '--'}
+            </div>
+            {player?.school_name && (
+              <div className="text-sm text-indigo-600 mt-1">{player.school_name}</div>
+            )}
+          </div>
+
+          {/* Graduation Year */}
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold">
+              <Calendar className="w-5 h-5" />
+              سنة التخرج
+            </div>
+            <div className="text-xl font-bold text-blue-900">{player?.graduation_year || '--'}</div>
+          </div>
+        </div>
+
+        {/* 2. Languages */}
+        <div className="bg-teal-50 rounded-lg border border-teal-100 p-4">
+          <div className="flex items-center gap-2 mb-4 text-teal-700 font-semibold">
+            <Languages className="w-5 h-5" />
+            اللغات
+          </div>
+          {player?.languages && player.languages.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {player.languages.map((lang: any, idx: number) => (
+                <div key={idx} className="bg-white p-3 rounded shadow-sm flex justify-between items-center">
+                  <span className="font-bold text-teal-900">{lang.language}</span>
+                  <span className="text-xs px-2 py-1 bg-teal-100 text-teal-700 rounded-full">{lang.level}</span>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="p-2 text-gray-500 bg-white rounded">لا توجد دورات تدريبية مسجلة</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {player?.english_level && <div className="bg-white p-3 rounded shadow-sm">🇺🇸 English: {player.english_level}</div>}
+              {player?.arabic_level && <div className="bg-white p-3 rounded shadow-sm">🇸🇦 العربية: {player.arabic_level}</div>}
+              {!player?.english_level && !player?.arabic_level && <div className="text-gray-500 italic">لا توجد لغات مسجلة</div>}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Courses */}
+        <div className="bg-orange-50 rounded-lg border border-orange-100 p-4">
+          <div className="flex items-center gap-2 mb-4 text-orange-700 font-semibold">
+            <Award className="w-5 h-5" />
+            الدورات والشهادات
+          </div>
+          {player?.courses && player.courses.length > 0 ? (
+            <div className="space-y-3">
+              {player.courses.map((course: any, idx: number) => (
+                <div key={idx} className="bg-white p-3 rounded shadow-sm border-r-4 border-orange-400">
+                  <div className="font-bold text-gray-900">{course.name}</div>
+                  <div className="flex gap-4 mt-1 text-sm text-gray-500">
+                    <span>{course.organization}</span>
+                    <span>{course.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : player?.training_courses && player.training_courses.length > 0 ? (
+            <div className="space-y-2">
+              {player.training_courses.map((c: string, idx: number) => (
+                <div key={idx} className="bg-white p-2 rounded shadow-sm">{c}</div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-500 italic">لا توجد دورات مسجلة</div>
           )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMedicalRecord = () => {
     // حساب BMI
@@ -850,168 +1120,385 @@ function PlayerReportPage() {
     const bmi = height && weight ? (weight / Math.pow(height / 100, 2)).toFixed(1) : null;
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">الوزن (كجم)</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.weight || '--'}</div>
-            {bmi && <div className="mt-1 text-xs text-gray-500">BMI: {bmi}</div>}
-          </div>
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">الطول (سم)</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.height || '--'}</div>
-            <div className="mt-1 text-xs text-gray-500">متوسط الطول العالمي: 175 سم</div>
-          </div>
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">فصيلة الدم</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.blood_type || '--'}</div>
-          </div>
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">آخر فحص طبي</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.medical_history?.last_checkup || '--'}</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">هل لديك أمراض مزمنة؟</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.chronic_conditions ? 'نعم' : 'لا'}</div>
-          </div>
-          <div>
-            <div className="mb-1 font-semibold text-gray-700">تفاصيل الأمراض المزمنة</div>
-            <div className="p-2 text-center bg-gray-100 rounded">{player?.chronic_details || 'لا يوجد'}</div>
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-1 font-semibold text-gray-700">الحساسية</div>
-          <div className="p-2 text-center bg-gray-100 rounded">{player?.allergies ? player.allergies : 'لا يوجد'}</div>
-        </div>
-
-        <div>
-          <div className="mb-1 font-semibold text-gray-700">الإصابات السابقة</div>
-          {player?.injuries && Array.isArray(player.injuries) && player.injuries.length > 0 ? (
-            player.injuries.map((injury: Injury, idx: number) => (
-              <div key={idx} className="p-2 mb-2 bg-gray-100 rounded">
-                <div>النوع: {injury.type || '--'}</div>
-                <div>التاريخ: {injury.date || '--'}</div>
-                <div>الحالة: {injury.status || '--'}</div>
+      <div className="space-y-8">
+        {/* Vital Signs Card */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h4 className="flex items-center gap-2 text-lg font-semibold mb-6">
+            <Activity className="w-5 h-5 text-red-500" />
+            القياسات الحيوية
+          </h4>
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className="text-sm text-gray-500 mb-1">الوزن</div>
+              <div className="text-xl font-bold text-gray-900">{player?.weight || '--'} <span className="text-xs font-normal">كجم</span></div>
+              {bmi && <div className={`text-xs mt-1 font-medium ${Number(bmi) < 18.5 ? 'text-blue-600' :
+                Number(bmi) < 25 ? 'text-green-600' :
+                  'text-orange-600'
+                }`}>BMI: {bmi}</div>}
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className="text-sm text-gray-500 mb-1">الطول</div>
+              <div className="text-xl font-bold text-gray-900">{player?.height || '--'} <span className="text-xs font-normal">سم</span></div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className="text-sm text-gray-500 mb-1">فصيلة الدم</div>
+              <div className="text-xl font-bold text-red-600 font-mono">{player?.blood_type || '--'}</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className="text-sm text-gray-500 mb-1">أمراض مزمنة</div>
+              <div className={`text-lg font-bold ${player?.chronic_conditions ? 'text-red-600' : 'text-green-600'}`}>
+                {player?.chronic_conditions ? 'نعم' : 'لا'}
               </div>
-            ))
-          ) : (
-            <div className="p-2 text-center bg-gray-100 rounded">لا يوجد</div>
+            </div>
+          </div>
+          {player?.chronic_conditions && (
+            <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100">
+              <div className="font-semibold text-red-800 mb-1">تفاصيل الأمراض المزمنة:</div>
+              <p className="text-red-700 text-sm">{player?.chronic_details || 'لا توجد تفاصيل'}</p>
+            </div>
           )}
         </div>
 
-        <div>
-          <div className="mb-1 font-semibold text-gray-700">العمليات الجراحية</div>
-          {player?.surgeries && player.surgeries.length > 0 ? (
-            player.surgeries.map((surgery, idx) => (
-              <div key={idx} className="p-2 mb-2 bg-gray-100 rounded">
-                <div>النوع: {surgery.type || '--'}</div>
-                <div>التاريخ: {surgery.date || '--'}</div>
-              </div>
-            ))
-          ) : (
-            <div className="p-2 text-center bg-gray-100 rounded">لا يوجد</div>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Allergies & Medications */}
+          <div className="space-y-6">
+            {/* Allergies */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+              <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                الحساسية
+              </h4>
+              {(player?.allergies_list && player.allergies_list.length > 0) ? (
+                <div className="flex flex-wrap gap-2">
+                  {player.allergies_list.map((a: any, i: number) => (
+                    <span key={i} className="px-3 py-1 bg-orange-50 text-orange-700 border border-orange-100 rounded-full text-sm">
+                      {typeof a === 'string' ? a : a.value || a.name || a}
+                    </span>
+                  ))}
+                </div>
+              ) : player?.allergies ? (
+                <p className="text-gray-700">{player.allergies}</p>
+              ) : (
+                <p className="text-gray-400 italic">لا توجد حساسية مسجلة</p>
+              )}
+            </div>
+
+            {/* Medications */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+              <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
+                <Pill className="w-5 h-5 text-blue-500" />
+                الأدوية المستمرة
+              </h4>
+              {(player?.medications && player.medications.length > 0) ? (
+                <div className="space-y-3">
+                  {player.medications.map((m: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <span className="font-medium text-blue-900">{m.name || m}</span>
+                      <span className="text-sm text-blue-600">{m.dosage || m.frequency}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 italic">لا توجد أدوية مسجلة</p>
+              )}
+            </div>
+          </div>
+
+          {/* Injuries & Surgeries */}
+          <div className="space-y-6">
+            {/* Injuries */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+              <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
+                <Activity className="w-5 h-5 text-red-500" />
+                الإصابات السابقة
+              </h4>
+              {(player?.injuries && player.injuries.length > 0) ? (
+                <div className="space-y-3">
+                  {player.injuries.map((injury: any, i: number) => (
+                    <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="font-medium text-gray-900">{injury.type}</div>
+                      <div className="flex justify-between mt-1 text-sm">
+                        <span className="text-gray-500">{injury.date}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${injury.status === 'تعافي تام' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                          }`}>{injury.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 italic">لا توجد إصابات مسجلة</p>
+              )}
+            </div>
+
+            {/* Surgeries */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+              <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
+                <Stethoscope className="w-5 h-5 text-purple-500" />
+                العمليات الجراحية
+              </h4>
+              {((player?.surgeries_list && player.surgeries_list.length > 0) || (player?.surgeries && player.surgeries.length > 0)) ? (
+                <div className="space-y-3">
+                  {(player.surgeries_list || player.surgeries).map((surgery: any, i: number) => (
+                    <div key={i} className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                      <div className="font-medium text-purple-900">{surgery.type || surgery.name}</div>
+                      <div className="text-sm text-purple-600 mt-1">{surgery.date ? dayjs(surgery.date).format('YYYY/MM/DD') : '--'}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 italic">لا توجد عمليات مسجلة</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div>
-          <div className="mb-1 font-semibold text-gray-700">ملاحظات طبية</div>
-          <div className="p-2 text-center bg-gray-100 rounded">{player?.medical_notes || 'لا يوجد'}</div>
+        {/* Notes */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h4 className="flex items-center gap-2 text-lg font-semibold mb-4 text-gray-700">ملاحظات طبية إضافية</h4>
+          <p className="text-gray-600 leading-relaxed">{player?.medical_notes || 'لا توجد ملاحظات إضافية'}</p>
         </div>
       </div>
     );
   };
 
-  const renderSkills = () => (
-    <div className="space-y-8">
-      {technicalSkillsData.length > 0 && (
-        <div>
-          <h3 className="mb-4 text-xl font-semibold">المهارات الفنية</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={technicalSkillsData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="skill" />
-                <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                <Radar name="المهارات" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                <ChartTooltip />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
-            {technicalSkillsData.map((skillData, index) => (
-              <div key={index} className="p-2 bg-white rounded shadow">
-                <div className="font-semibold">
-                  {skillData.skill}
-                </div>
-                <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+  const renderSkills = () => {
+    // 1. Check for New Data Format (FIFA Stats)
+    const hasNewStats = player?.stats_pace !== undefined || player?.stats_shooting !== undefined;
 
-      {physicalSkillsData.length > 0 && (
-        <div>
-          <h3 className="mb-4 text-xl font-semibold">المهارات البدنية</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={physicalSkillsData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="skill" />
-                <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                <Radar name="المهارات" dataKey="value" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
-                <ChartTooltip />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
-            {physicalSkillsData.map((skillData, index) => (
-              <div key={index} className="p-2 bg-white rounded shadow">
-                <div className="font-semibold">
-                  {skillData.skill}
-                </div>
-                <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    if (hasNewStats) {
+      const mainStats = [
+        { label: 'السرعة', value: player?.stats_pace || 0, color: 'text-red-500' },
+        { label: 'التسديد', value: player?.stats_shooting || 0, color: 'text-blue-500' },
+        { label: 'التمرير', value: player?.stats_passing || 0, color: 'text-green-500' },
+        { label: 'المراوغة', value: player?.stats_dribbling || 0, color: 'text-yellow-500' },
+        { label: 'الدفاع', value: player?.stats_defending || 0, color: 'text-purple-500' },
+        { label: 'البدنية', value: player?.stats_physical || 0, color: 'text-gray-500' },
+      ];
 
-      {socialSkillsData.length > 0 && (
-        <div>
-          <h3 className="mb-4 text-xl font-semibold">المهارات الاجتماعية</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={socialSkillsData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="skill" />
-                <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                <Radar name="المهارات" dataKey="value" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
-                <ChartTooltip />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
-            {socialSkillsData.map((skillData, index) => (
-              <div key={index} className="p-2 bg-white rounded shadow">
-                <div className="font-semibold">
-                  {skillData.skill}
-                </div>
-                <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+      const radarData = mainStats.map(stat => ({
+        subject: stat.label,
+        A: stat.value,
+        fullMark: 100
+      }));
+
+      const mentalStats = [
+        { label: 'الرؤية', value: player?.mentality_vision || 0 },
+        { label: 'القيادة', value: player?.mentality_leadership || 0 },
+        { label: 'الهدوء', value: player?.mentality_composure || 0 },
+        { label: 'العمل الجماعي', value: player?.mentality_teamwork || 0 },
+        { label: 'الشراسة', value: player?.mentality_aggression || 0 },
+      ];
+
+      return (
+        <div className="space-y-8">
+          {/* Main Stats (Radar + Grid) */}
+          <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <Zap className="w-6 h-6 text-yellow-500" />
+              القدرات الفنية والبدنية
+            </h3>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+              {/* Radar Chart */}
+              <div className="h-[300px] w-full flex justify-center" dir="ltr">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="#e5e7eb" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#374151', fontSize: 13, fontWeight: 500 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar name="اللاعب" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
+                    <ChartTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  </RadarChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {mainStats.map((stat, i) => (
+                  <div key={i} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100 flex flex-col justify-center h-full hover:bg-gray-100 transition-colors">
+                    <div className={`text-3xl font-black mb-1 ${stat.value >= 80 ? 'text-green-600' : stat.value >= 60 ? 'text-blue-600' : 'text-gray-800'}`}>{stat.value}</div>
+                    <div className="text-sm text-gray-500 font-bold">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Mental Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm h-full">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <Brain className="w-6 h-6 text-purple-500" />
+                القدرات الذهنية
+              </h3>
+              <div className="space-y-4">
+                {mentalStats.map((stat, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-medium text-gray-700">{stat.label}</span>
+                      <span className="font-bold text-gray-900">{stat.value}</span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${stat.value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Advanced Stats */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm h-full">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <Star className="w-6 h-6 text-amber-500" />
+                مهارات متقدمة
+              </h3>
+              <div className="space-y-6">
+                {/* Stars */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <span className="font-medium text-gray-700">القدم الضعيفة</span>
+                    <div className="flex gap-1" dir="ltr">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`w-5 h-5 ${s <= (player?.weak_foot || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <span className="font-medium text-gray-700">مهارات المراوغة</span>
+                    <div className="flex gap-1" dir="ltr">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`w-5 h-5 ${s <= (player?.skill_moves || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                {/* Work Rates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 border border-gray-100 rounded-lg">
+                    <span className="text-xs text-gray-500 block mb-1">معدل الهجوم</span>
+                    <span className="font-bold text-blue-600">{player?.work_rate_attack || '-'}</span>
+                  </div>
+                  <div className="text-center p-3 border border-gray-100 rounded-lg">
+                    <span className="text-xs text-gray-500 block mb-1">معدل الدفاع</span>
+                    <span className="font-bold text-blue-600">{player?.work_rate_defense || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      );
+    }
+
+    // Fallback Legacy
+    return (
+      <div className="space-y-8">
+        {technicalSkillsData.length > 0 && (
+          <div>
+            <h3 className="mb-4 text-xl font-semibold">المهارات الفنية</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={technicalSkillsData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="skill" />
+                  <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                  <Radar name="المهارات" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                  <ChartTooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
+              {technicalSkillsData.map((skillData, index) => (
+                <div key={index} className="p-2 bg-white rounded shadow">
+                  <div className="font-semibold">{skillData.skill}</div>
+                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {physicalSkillsData.length > 0 && (
+          <div>
+            <h3 className="mb-4 text-xl font-semibold">المهارات البدنية</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={physicalSkillsData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="skill" />
+                  <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                  <Radar name="المهارات" dataKey="value" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                  <ChartTooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
+              {physicalSkillsData.map((skillData, index) => (
+                <div key={index} className="p-2 bg-white rounded shadow">
+                  <div className="font-semibold">{skillData.skill}</div>
+                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {socialSkillsData.length > 0 && (
+          <div>
+            <h3 className="mb-4 text-xl font-semibold">المهارات الاجتماعية</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={socialSkillsData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="skill" />
+                  <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                  <Radar name="المهارات" dataKey="value" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                  <ChartTooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4 md:grid-cols-3">
+              {socialSkillsData.map((skillData, index) => (
+                <div key={index} className="p-2 bg-white rounded shadow">
+                  <div className="font-semibold">{skillData.skill}</div>
+                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderObjectives = () => {
-    // تعريف الأهداف مع تسمياتها
+    // دعم الصيغة الجديدة (Array of strings)
+    if (Array.isArray(player?.objectives)) {
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {player.objectives.length > 0 ? (
+              player.objectives.map((obj: string, index: number) => (
+                <div key={index} className="p-4 bg-green-50 rounded-lg border border-green-200 flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-full text-green-600">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-green-900">{obj}</span>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-12 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">لم يتم تحديد أهداف بعد</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // تعريف الأهداف مع تسمياتها (Logic القديم)
     const objectiveLabels = {
       professional: 'الاحتراف',
       trials: 'إجراء التجارب',
@@ -1356,7 +1843,7 @@ function PlayerReportPage() {
 
           {player?.documents && player.documents.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {player.documents.map((doc: Document, index: number) => (
+              {player.documents.map((doc: PlayerDocument, index: number) => (
                 <div key={index} className="p-4 bg-white rounded-lg border border-gray-200 shadow-md transition-shadow hover:shadow-lg">
                   <div className="flex gap-3 items-start">
                     <div className="flex-shrink-0 p-2 bg-purple-100 rounded-lg">
@@ -1397,100 +1884,211 @@ function PlayerReportPage() {
     );
   };
 
-  const renderContracts = () => (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {/* سؤال جواز السفر */}
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <div className="mb-1 font-semibold text-blue-700">هل لديك جواز سفر؟</div>
-        <div className="text-lg font-bold text-blue-900">
-          {player?.has_passport === 'yes' ? 'نعم' : player?.has_passport === 'no' ? 'لا' : '--'}
-        </div>
-      </div>
-      {/* سؤال متعاقد حاليًا */}
-      <div className="p-4 bg-green-50 rounded-lg">
-        <div className="mb-1 font-semibold text-green-700">هل أنت متعاقد حاليًا؟</div>
-        <div className="text-lg font-bold text-green-900">
-          {player?.currently_contracted === 'yes' ? 'نعم' : player?.currently_contracted === 'no' ? 'لا' : '--'}
-        </div>
-      </div>
-      {/* تاريخ التعاقدات السابقة */}
-      <div className="col-span-2 p-4 bg-gray-50 rounded-lg">
-        <div className="mb-2 font-semibold text-gray-700">تاريخ التعاقدات السابقة</div>
-        <div className="space-y-2">
-          {player?.contract_history && player.contract_history.length > 0 ? (
-            player.contract_history.map((contract: ContractHistory, idx: number) => (
-              <div key={idx} className="p-2 bg-white rounded">
-                <div>النادي: {contract.club || '--'}</div>
-                <div>الفترة: {contract.from} - {contract.to}</div>
-                <div>المركز: {contract.role || '--'}</div>
-              </div>
-            ))
-          ) : (
-            <div className="p-2 text-gray-500 bg-white rounded">لا توجد تعاقدات سابقة مسجلة</div>
-          )}
-        </div>
-      </div>
-      {/* بيانات وكيل اللاعبين */}
-      <div className="col-span-2 p-4 bg-yellow-50 rounded-lg">
-        <div className="mb-2 font-semibold text-yellow-700">تاريخ وكيل اللاعبين</div>
-        <div className="space-y-2">
-          {player?.agent_history && player.agent_history.length > 0 ? (
-            player.agent_history.map((agent: AgentHistory, idx: number) => (
-              <div key={idx} className="p-2 bg-white rounded">
-                <div>الاسم: {agent.agent || '--'}</div>
-                <div>الفترة: {agent.from} - {agent.to}</div>
-              </div>
-            ))
-          ) : (
-            <div className="p-2 text-gray-500 bg-white rounded">لا يوجد وكلاء لاعبين مسجلين</div>
-          )}
-        </div>
-      </div>
-      {/* جهة الاتصال والتفاوض الرسمية */}
-      <div className="col-span-2 p-4 bg-purple-50 rounded-lg">
-        <div className="mb-2 font-semibold text-purple-700">جهة الاتصال والتفاوض الرسمية</div>
-        <div className="p-2 bg-white rounded">
-          <div>الاسم: {player?.official_contact?.name || '--'}</div>
-          <div>المسمى الوظيفي: {player?.official_contact?.title || '--'}</div>
-          <div>رقم الهاتف: {player?.official_contact?.phone || '--'}</div>
-          <div>البريد الإلكتروني: {player?.official_contact?.email || '--'}</div>
-        </div>
-      </div>
-      {/* كيف عرفت المنصة */}
-      <div className="col-span-2 p-4 bg-orange-50 rounded-lg">
-        <div className="mb-2 font-semibold text-orange-700">من أين عرفت عنا؟</div>
-        <div className="p-2 bg-white rounded">
-          {player?.ref_source || '--'}
-        </div>
-      </div>
+  const renderContracts = () => {
+    const status = player?.contract_status?.toLowerCase();
+    const isContracted = status === 'contracted' || status === 'loan';
 
-      {/* بيانات الاشتراك */}
-      <div className="col-span-2 p-4 bg-green-50 rounded-lg">
-        <div className="mb-2 font-semibold text-green-700">تاريخ انتهاء الاشتراك</div>
-        <div className="text-lg font-bold text-green-900">
-          {player?.subscription_end ? dayjs(player.subscription_end).format('DD/MM/YYYY') : '--'}
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* 1. Contract Status */}
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <div className="mb-1 font-semibold text-blue-700">الحالة التعاقدية</div>
+          <div className="text-lg font-bold text-blue-900">
+            {status === 'free' ? 'لاعب حر (Free Agent)' :
+              status === 'contracted' ? 'مرتبط بعقد' :
+                status === 'loan' ? 'إعارة' :
+                  // Fallback
+                  (player?.currently_contracted === 'yes' ? 'مرتبط بعقد' :
+                    player?.currently_contracted === 'no' ? 'لاعب حر' :
+                      player?.contract_status || '--')}
+          </div>
         </div>
-      </div>
-      <div className="col-span-2 p-4 bg-yellow-50 rounded-lg">
-        <div className="mb-2 font-semibold text-yellow-700">حالة الاشتراك</div>
-        <div className="text-lg font-bold text-yellow-900">
-          {player?.subscription_status || '--'}
+
+        {/* 2. Passport Status (Legacy/Admin) */}
+        {(player?.has_passport) && (
+          <div className="p-4 bg-indigo-50 rounded-lg">
+            <div className="mb-1 font-semibold text-indigo-700">جواز السفر</div>
+            <div className="text-lg font-bold text-indigo-900">
+              {player?.has_passport === 'yes' ? 'متوفر' : 'غير متوفر'}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Market Value (New) */}
+        <div className="p-4 bg-green-50 rounded-lg">
+          <div className="mb-1 font-semibold text-green-700">القيمة السوقية</div>
+          <div className="text-lg font-bold text-green-900" dir="ltr">
+            {(player?.market_value !== undefined && player?.market_value !== null)
+              ? `${Number(player.market_value).toLocaleString()} €`
+              : '--'}
+          </div>
+          <div className="text-xs text-green-600 mt-1">قيمة تقديرية</div>
         </div>
-      </div>
-      <div className="col-span-2 p-4 bg-red-50 rounded-lg">
-        <div className="mb-2 font-semibold text-red-700">نوع الاشتراك</div>
-        <div className="text-lg font-bold text-red-900">
-          {player?.subscription_type || '--'}
+
+        {/* 4. Current Club Details (If Contracted) */}
+        {isContracted && (
+          <div className="col-span-1 md:col-span-2 p-4 bg-gray-50 rounded-lg border border-gray-100">
+            <div className="flex flex-wrap gap-8 items-center">
+              <div>
+                <div className="text-sm text-gray-500 mb-1">النادي الحالي</div>
+                <div className="font-bold text-gray-900 text-lg">{player?.current_club || '--'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-1">بداية العقد</div>
+                <div className="font-bold text-gray-900 text-lg">{player?.contract_start_date ? dayjs(player.contract_start_date).format('DD/MM/YYYY') : '--'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-1">نهاية العقد</div>
+                <div className="font-bold text-gray-900 text-lg">{player?.contract_end_date ? dayjs(player.contract_end_date).format('DD/MM/YYYY') : '--'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. Current Agent (New) */}
+        {(player?.agent_name || player?.agent_phone) && (
+          <div className="col-span-1 md:col-span-2 p-4 bg-violet-50 rounded-lg border border-violet-100">
+            <div className="mb-3 font-semibold text-violet-700 flex items-center gap-2">
+              <Briefcase className="w-5 h-5" />
+              وكيل الأعمال الحالي
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {player.agent_name && (
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <span className="text-xs text-violet-500 block">الاسم</span>
+                  <span className="font-medium text-violet-900">{player.agent_name}</span>
+                </div>
+              )}
+              {player.agent_phone && (
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <span className="text-xs text-violet-500 block">رقم الهاتف</span>
+                  <span className="font-medium text-violet-900" dir="ltr">{player.agent_phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Official Contact */}
+        {(player?.official_contact) && (
+          <div className="col-span-1 md:col-span-2 p-4 bg-fuchsia-50 rounded-lg border border-fuchsia-100">
+            <div className="mb-3 font-semibold text-fuchsia-700 flex items-center gap-2">
+              <Phone className="w-5 h-5" />
+              جهة الاتصال والتفاوض الرسمية
+            </div>
+            <div className="bg-white p-4 rounded shadow-sm space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-fuchsia-500 block">الاسم</span>
+                  <span className="font-medium text-fuchsia-900">{player.official_contact.name || '--'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-fuchsia-500 block">المسمى الوظيفي</span>
+                  <span className="font-medium text-fuchsia-900">{player.official_contact.title || '--'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-fuchsia-500 block">رقم الهاتف</span>
+                  <span className="font-medium text-fuchsia-900" dir="ltr">{player.official_contact.phone || '--'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-fuchsia-500 block">البريد الإلكتروني</span>
+                  <span className="font-medium text-fuchsia-900">{player.official_contact.email || '--'}</span>
+                </div>
+                {player.official_contact.whatsapp && (
+                  <div>
+                    <span className="text-xs text-fuchsia-500 block">واتساب</span>
+                    <span className="font-medium text-fuchsia-900" dir="ltr">{player.official_contact.whatsapp}</span>
+                  </div>
+                )}
+              </div>
+
+              {player.official_contact.social_links && Object.values(player.official_contact.social_links).some(v => v) && (
+                <div className="pt-3 border-t border-gray-100">
+                  <span className="text-xs text-fuchsia-500 block mb-2">حسابات التواصل الاجتماعي</span>
+                  <div className="flex gap-4">
+                    {player.official_contact.social_links.facebook && (
+                      <a href={player.official_contact.social_links.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors">
+                        <Facebook className="w-5 h-5" />
+                      </a>
+                    )}
+                    {player.official_contact.social_links.instagram && (
+                      <a href={player.official_contact.social_links.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:text-pink-800 transition-colors">
+                        <Instagram className="w-5 h-5" />
+                      </a>
+                    )}
+                    {player.official_contact.social_links.linkedin && (
+                      <a href={player.official_contact.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-900 transition-colors">
+                        <Linkedin className="w-5 h-5" />
+                      </a>
+                    )}
+                    {player.official_contact.social_links.twitter && (
+                      <a href={player.official_contact.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:text-sky-700 transition-colors">
+                        <Twitter className="w-5 h-5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 6. Legacy Contract History */}
+        <div className="col-span-1 md:col-span-2 p-4 bg-gray-50 rounded-lg">
+          <div className="mb-2 font-semibold text-gray-700">تاريخ التعاقدات السابقة</div>
+          <div className="space-y-2">
+            {player?.contract_history && player.contract_history.length > 0 ? (
+              player.contract_history.map((contract: any, idx: number) => (
+                <div key={idx} className="p-2 bg-white rounded shadow-sm">
+                  <div>النادي: {contract.club || '--'}</div>
+                  <div>الفترة: {contract.from} - {contract.to}</div>
+                  <div>المركز: {contract.role || '--'}</div>
+                </div>
+              ))
+            ) : (
+              <div className="p-2 text-gray-500 bg-white rounded">لا توجد تعاقدات سابقة مسجلة</div>
+            )}
+          </div>
         </div>
+
+        {/* 7. Legacy Agent History */}
+        {player?.agent_history && player.agent_history.length > 0 && (
+          <div className="col-span-1 md:col-span-2 p-4 bg-yellow-50 rounded-lg">
+            <div className="mb-2 font-semibold text-yellow-700">سجل وكلاء اللاعبين السابق</div>
+            <div className="space-y-2">
+              {player.agent_history.map((agent: any, idx: number) => (
+                <div key={idx} className="p-2 bg-white rounded shadow-sm">
+                  <div>الاسم: {agent.agent || '--'}</div>
+                  <div>الفترة: {agent.from} - {agent.to}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 8. Subscription etc. */}
+        {player?.subscription_status && (
+          <div className="col-span-1 md:col-span-2 p-4 bg-purple-50 rounded-lg">
+            <div className="mb-2 font-semibold text-purple-700">تفاصيل الاشتراك</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <span className="text-xs text-purple-600 block">الحالة</span>
+                <span className="font-bold">{player?.subscription_status || '--'}</span>
+              </div>
+              <div>
+                <span className="text-xs text-purple-600 block">النوع</span>
+                <span className="font-bold">{player?.subscription_type || '--'}</span>
+              </div>
+              <div>
+                <span className="text-xs text-purple-600 block">ينتهي في</span>
+                <span className="font-bold">{player?.subscription_end ? dayjs(player.subscription_end).format('DD/MM/YYYY') : '--'}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="col-span-2 p-4 bg-purple-50 rounded-lg">
-        <div className="mb-2 font-semibold text-purple-700">آخر تحديث</div>
-        <div className="text-lg font-bold text-purple-900">
-          {player?.updated_at ? dayjs(player.updated_at).format('DD/MM/YYYY') : '--'}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const TABS = [
     { name: 'البيانات الشخصية', render: renderPersonalInfo },
@@ -2356,7 +2954,7 @@ function PlayerReportPage() {
                       <div className="flex gap-4 items-center text-white/90">
                         <span className="flex gap-1 items-center">
                           <Target className="w-4 h-4" />
-                          {player?.primary_position || 'غير محدد'}
+                          {player?.primary_position || player?.position || 'غير محدد'}
                         </span>
                         <span className="flex gap-1 items-center">
                           <Calendar className="w-4 h-4" />
@@ -2528,30 +3126,119 @@ function PlayerReportPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="py-8 text-center">
-                    <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-sm">
-                      <span className="text-3xl">🔥</span>
+                  (() => {
+                    const status = player?.contract_status?.toLowerCase();
+                    const isContracted = status === 'contracted' || status === 'loan';
+
+                    if (isContracted) {
+                      return (
+                        <div className="py-8 text-center">
+                          <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full shadow-sm">
+                            <span className="text-3xl">⚽</span>
+                          </div>
+                          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                            <p className="mb-1 text-lg font-bold text-blue-900">
+                              {status === 'loan' ? 'لاعب مُعار' : 'لاعب مرتبط بعقد'}
+                            </p>
+                            {player?.current_club && (
+                              <p className="mb-1 text-base font-semibold text-blue-800">
+                                {player.current_club}
+                              </p>
+                            )}
+                            <p className="mb-3 text-xs text-blue-600">
+                              مرتبط بنادي حالياً (حسب الملف الشخصي)
+                            </p>
+                            <div className="inline-block px-4 py-2 mt-2 text-sm font-medium text-blue-700 bg-white border border-blue-200 rounded-lg shadow-sm">
+                              يرجى التواصل مع جهة الاتصال الرسمية
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="py-8 text-center">
+                        <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full shadow-sm">
+                          <span className="text-3xl">🔥</span>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                          <p className="mb-1 text-sm font-bold text-gray-700">لاعب مستقل</p>
+                          <p className="mb-3 text-xs text-gray-500">هذا اللاعب غير مرتبط بأي جهة حالياً</p>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex gap-2 justify-center items-center text-gray-600">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                              <span>يمكنه الانضمام لنادي أو أكاديمية</span>
+                            </div>
+                            <div className="flex gap-2 justify-center items-center text-gray-600">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                              <span>يمكنه التعاقد مع وكيل لاعبين</span>
+                            </div>
+                            <div className="flex gap-2 justify-center items-center text-gray-600">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                              <span>يمكنه العمل مع مدرب شخصي</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* Guardianship & Evaluation Cards */}
+              <div className="space-y-6">
+                {/* Guardianship Card (Minors) */}
+                {player?.birth_date && dayjs().diff(dayjs(player.birth_date), 'year') < 18 && (() => {
+                  const hasConsent = player?.documents?.some((d: any) => d.type === 'guardian_consent');
+                  return (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                      <div className="p-4 border-b border-gray-100">
+                        <h3 className="flex gap-2 items-center text-lg font-semibold text-gray-900">
+                          <ShieldCheck className={`w-5 h-5 ${hasConsent ? 'text-green-600' : 'text-amber-600'}`} />
+                          {hasConsent ? 'الوصاية القانونية' : 'تنبيه الوصاية'}
+                        </h3>
+                      </div>
+                      <div className={`p-4 ${hasConsent ? 'bg-green-50' : 'bg-amber-50'}`}>
+                        <div className="flex items-center gap-3">
+                          {hasConsent ? <CheckCircle className="w-8 h-8 text-green-600" /> : <AlertTriangle className="w-8 h-8 text-amber-600" />}
+                          <div>
+                            <div className={`font-bold text-sm ${hasConsent ? 'text-green-800' : 'text-amber-800'}`}>
+                              {hasConsent ? 'موافقة ولي الأمر مكتملة' : 'تحت وصاية ولي الأمر'}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              {hasConsent ? 'يمكن التفاوض واستكمال الإجراءات' : 'بانتظار موافقة ولي الأمر الرسمية'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-                      <p className="mb-1 text-sm font-bold text-gray-700">لاعب مستقل</p>
-                      <p className="mb-3 text-xs text-gray-500">هذا اللاعب غير مرتبط بأي جهة حالياً</p>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex gap-2 justify-center items-center text-gray-600">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                          <span>يمكنه الانضمام لنادي أو أكاديمية</span>
+                  );
+                })()}
+
+                {/* Evaluation Card */}
+                <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                  <div className="p-4 border-b border-gray-100">
+                    <h3 className="flex gap-2 items-center text-lg font-semibold text-gray-900">
+                      <Star className="w-5 h-5 text-purple-600" />
+                      تقييم الموهبة
+                    </h3>
+                  </div>
+                  <div className="p-4 bg-purple-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center border border-purple-200">
+                        <Star className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-purple-900">
+                          {player?.evaluation_status === 'rated' ? 'تم التقييم' : 'تحت التقييم'}
                         </div>
-                        <div className="flex gap-2 justify-center items-center text-gray-600">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                          <span>يمكنه التعاقد مع وكيل لاعبين</span>
-                        </div>
-                        <div className="flex gap-2 justify-center items-center text-gray-600">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                          <span>يمكنه العمل مع مدرب شخصي</span>
+                        <div className="text-xs text-purple-700 mt-1">
+                          من اللجنة الفنية للمنصة
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* جهة الاتصال الرسمية */}

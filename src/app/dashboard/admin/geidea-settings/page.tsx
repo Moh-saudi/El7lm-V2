@@ -27,6 +27,8 @@ interface OrderResult {
   status?: number;
   environment?: string;
   endpoint?: string;
+  saved?: boolean;
+  savedData?: any;
 }
 
 const credentialPresets = {
@@ -90,8 +92,8 @@ const CredentialRow = ({ label, value }: { label: string; value: string }) => {
 const ModePill = ({ mode, active }: { mode: GeideaMode; active: boolean }) => (
   <span
     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${active
-        ? 'bg-indigo-600 text-white shadow-md'
-        : 'bg-gray-100 text-gray-500'
+      ? 'bg-indigo-600 text-white shadow-md'
+      : 'bg-gray-100 text-gray-500'
       }`}
   >
     {active && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
@@ -379,8 +381,8 @@ export default function GeideaSettingsPage() {
                 onClick={() => handleModeUpdate(type)}
                 disabled={modeSaving || mode === type}
                 className={`rounded-full border px-3 py-1 font-medium transition ${mode === type
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 cursor-default'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 cursor-default'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {mode === type ? '✓ ' : ''}اجعل {type === 'live' ? 'الإنتاج' : 'الاختبار'} نشطاً

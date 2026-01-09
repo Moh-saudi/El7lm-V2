@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Script from 'next/script';
 
 interface GoogleTagManagerProps {
@@ -16,7 +17,9 @@ const GoogleTagManager: React.FC<GoogleTagManagerProps> = ({ gtmId }) => {
     return null;
   }
 
-  console.log('🔧 Loading Google Tag Manager with ID:', gtmId);
+  useEffect(() => {
+    console.log('🔧 Loading Google Tag Manager with ID:', gtmId);
+  }, [gtmId]);
 
   return (
     <>

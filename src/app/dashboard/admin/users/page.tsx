@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { countries, detectCountryFromPhone, validatePhoneWithCountry } from '@/lib/constants/countries';
+import { countries, detectCountryFromPhone, validatePhoneWithCountry, analyzePhoneNumber, smartNormalizePhone, getPhoneValidationDetails, getCountryByCode } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, setDoc, query, limit, orderBy, where } from 'firebase/firestore';
@@ -1003,57 +1003,143 @@ export default function AdminUsersPage() {
 
   // ذكاء اصطناعي لتنظيف وتحسين البيانات - Smart Repair
   const handleSmartRepair = async () => {
-    const problematicUsers = users.filter(u =>
-      !u.createdAt ||
-      !u.country ||
-      (!u.countryCode && u.phone) ||
-      (u.phone && u.phone.length < 8)
-    );
+    // تحليل جميع المستخدمين للعثور على المشاكل
+    const phoneProblems: { user: User; analysis: ReturnType<typeof analyzePhoneNumber> }[] = [];
+    const otherProblems: User[] = [];
 
-    if (problematicUsers.length === 0) {
-      toast.info('البيانات تبدو نظيفة تماماً!');
+    users.forEach(u => {
+      // تحليل رقم الهاتف
+      if (u.phone && u.countryCode) {
+        const analysis = analyzePhoneNumber(u.phone, u.countryCode);
+        if (analysis.status !== 'valid') {
+          phoneProblems.push({ user: u, analysis });
+        }
+      }
+
+      // مشاكل أخرى
+      if (!u.createdAt || !u.country || (!u.countryCode && u.phone)) {
+        if (!phoneProblems.find(p => p.user.id === u.id)) {
+          otherProblems.push(u);
+        }
+      }
+    });
+
+    const totalProblems = phoneProblems.length + otherProblems.length;
+
+    if (totalProblems === 0) {
+      toast.info('🎉 البيانات نظيفة تماماً! لا توجد مشاكل للإصلاح.');
       return;
     }
 
-    if (!window.confirm(`هل تريد البدء في إصلاح وتحسين بيانات ${problematicUsers.length} مستخدم؟ سيتم استنتاج التواريخ والدول من بيانات النشاط وأرقام الهواتف.`)) return;
+    // عرض تفاصيل المشاكل المكتشفة
+    const phoneFixable = phoneProblems.filter(p => p.analysis.status === 'fixable').length;
+    const phoneInvalid = phoneProblems.filter(p => p.analysis.status === 'invalid').length;
+
+    const confirmMessage = `
+🔍 تم اكتشاف ${totalProblems} مشكلة:
+
+📱 مشاكل أرقام الهواتف:
+   • ${phoneFixable} رقم يمكن إصلاحه تلقائياً
+   • ${phoneInvalid} رقم يحتاج مراجعة يدوية
+
+📋 مشاكل أخرى:
+   • ${otherProblems.length} ملف بدون بلد/تاريخ
+
+هل تريد البدء في الإصلاح الذكي؟
+    `.trim();
+
+    if (!window.confirm(confirmMessage)) return;
 
     setIsRepairing(true);
-    let repairedCount = 0;
+    let phoneRepairedCount = 0;
+    let otherRepairedCount = 0;
+    const errors: string[] = [];
 
     try {
-      // تنفيذ الإصلاح على دفعات (Batches) لتجنب هبوط المتصفح
-      for (let i = 0; i < problematicUsers.length; i += 5) {
-        const batch = problematicUsers.slice(i, i + 5);
-        await Promise.all(batch.map(async (u) => {
-          const updates: any = {};
+      // 1. إصلاح أرقام الهواتف القابلة للإصلاح
+      const fixablePhones = phoneProblems.filter(p => p.analysis.status === 'fixable');
 
-          // 1. استنتاج الدولة من الهاتف
-          if (!u.countryCode || !u.country) {
-            const detected = detectCountryFromPhone(u.phone);
-            if (detected) {
-              updates.countryCode = detected.code;
-              if (!u.country) updates.country = detected.name;
+      for (let i = 0; i < fixablePhones.length; i += 5) {
+        const batch = fixablePhones.slice(i, i + 5);
+        await Promise.all(batch.map(async ({ user, analysis }) => {
+          try {
+            const normalized = smartNormalizePhone(user.phone, user.countryCode || '');
+
+            if (normalized.wasFixed) {
+              const updates: any = {
+                phone: normalized.localPhone,           // الرقم المحلي فقط
+                phoneNormalized: normalized.fullPhone,  // الرقم الكامل للواتساب
+                phoneFixed: true,
+                phoneFixedAt: new Date(),
+                phoneFixDescription: normalized.fixDescription,
+                previousPhone: user.phone               // حفظ الرقم القديم للمراجعة
+              };
+
+              const collectionName = user.accountType === 'user' ? 'users' : user.accountType + 's';
+              await updateDoc(doc(db, collectionName, user.id), updates);
+              phoneRepairedCount++;
+
+              console.log(`✅ تم إصلاح رقم ${user.name}: ${user.phone} → ${normalized.localPhone}`);
             }
-          }
-
-          // 2. محاولة جلب تاريخ من metadata إذا كان مفقوداً
-          if (!u.createdAt) {
-            const docSnap = await getDoc(doc(db, u.accountType === 'user' ? 'users' : u.accountType + 's', u.id));
-            if (docSnap.exists() && (docSnap.metadata as any).createTime) {
-              updates.createdAt = (docSnap.metadata as any).createTime;
-            }
-          }
-
-          if (Object.keys(updates).length > 0) {
-            const collectionName = u.accountType === 'user' ? 'users' : u.accountType + 's';
-            await updateDoc(doc(db, collectionName, u.id), updates);
-            repairedCount++;
+          } catch (e) {
+            errors.push(`فشل إصلاح ${user.name}: ${e}`);
           }
         }));
       }
-      toast.success(`تم بنجاح تحسين بيانات ${repairedCount} مستخدم`);
-      // إعادة التحميل لتحديث الواجهة
-      window.location.reload();
+
+      // 2. إصلاح المشاكل الأخرى (البلد/التاريخ)
+      for (let i = 0; i < otherProblems.length; i += 5) {
+        const batch = otherProblems.slice(i, i + 5);
+        await Promise.all(batch.map(async (u) => {
+          try {
+            const updates: any = {};
+
+            // استنتاج البلد من رقم الهاتف
+            if ((!u.countryCode || !u.country) && u.phone) {
+              const detected = detectCountryFromPhone(u.phone);
+              if (detected) {
+                updates.countryCode = detected.code;
+                if (!u.country) updates.country = detected.name;
+              }
+            }
+
+            // محاولة جلب تاريخ من metadata
+            if (!u.createdAt) {
+              const docSnap = await getDoc(doc(db, u.accountType === 'user' ? 'users' : u.accountType + 's', u.id));
+              if (docSnap.exists() && (docSnap.metadata as any).createTime) {
+                updates.createdAt = (docSnap.metadata as any).createTime;
+              }
+            }
+
+            if (Object.keys(updates).length > 0) {
+              const collectionName = u.accountType === 'user' ? 'users' : u.accountType + 's';
+              await updateDoc(doc(db, collectionName, u.id), updates);
+              otherRepairedCount++;
+            }
+          } catch (e) {
+            errors.push(`فشل إصلاح بيانات ${u.name}: ${e}`);
+          }
+        }));
+      }
+
+      // عرض النتائج
+      const resultMessage = `
+✅ تم الإصلاح بنجاح!
+
+📱 أرقام الهواتف: ${phoneRepairedCount} من ${fixablePhones.length}
+📋 بيانات أخرى: ${otherRepairedCount} من ${otherProblems.length}
+${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
+      `.trim();
+
+      toast.success(resultMessage);
+
+      if (errors.length > 0) {
+        console.error('أخطاء الإصلاح:', errors);
+      }
+
+      // إعادة التحميل بعد ثانيتين
+      setTimeout(() => window.location.reload(), 2000);
+
     } catch (e) {
       console.error(e);
       toast.error('حدث خطأ أثناء عملية الإصلاح');
@@ -2522,23 +2608,60 @@ export default function AdminUsersPage() {
                               <div className="flex items-center gap-2 text-gray-600">
                                 <Phone className="h-3.5 w-3.5 text-gray-400" />
                                 <span className="text-sm font-medium dir-ltr">{user.phone || '-'}</span>
+                                {user.countryCode && (
+                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1 rounded">{user.countryCode}</span>
+                                )}
                               </div>
                               {user.phone && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   {(() => {
-                                    const validation = user.countryCode ? validateUserPhone(user) : { isValid: false, error: 'no_code' };
-                                    if (validation.isValid) {
-                                      return <span className="flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 px-1.5 rounded"><CheckCircle2 className="h-2.5 w-2.5" /> صحيح</span>;
+                                    // استخدام النظام الجديد للتحقق
+                                    if (user.countryCode) {
+                                      const validation = getPhoneValidationDetails(user.phone, user.countryCode);
+                                      const analysis = analyzePhoneNumber(user.phone, user.countryCode);
+
+                                      return (
+                                        <>
+                                          <span
+                                            className={`flex items-center gap-1 text-[10px] px-1.5 rounded cursor-help ${validation.statusColor}`}
+                                            title={validation.details}
+                                          >
+                                            {validation.status === 'valid' && <CheckCircle2 className="h-2.5 w-2.5" />}
+                                            {validation.status === 'warning' && <AlertCircle className="h-2.5 w-2.5" />}
+                                            {validation.status === 'error' && <XCircle className="h-2.5 w-2.5" />}
+                                            {validation.statusText}
+                                          </span>
+                                          {analysis.hasCountryCodeInPhone && (
+                                            <span className="text-[10px] text-amber-600 bg-amber-50 px-1 rounded" title="كود البلد مكرر في الرقم">
+                                              🔄 مكرر
+                                            </span>
+                                          )}
+                                          {validation.canFix && (
+                                            <span className="text-[10px] text-blue-600" title={`التصحيح: ${analysis.localNumber}`}>
+                                              → {analysis.localNumber}
+                                            </span>
+                                          )}
+                                        </>
+                                      );
                                     } else {
-                                      return <span className="flex items-center gap-1 text-[10px] text-red-600 bg-red-50 px-1.5 rounded"><AlertCircle className="h-2.5 w-2.5" /> {user.countryCode ? 'خطأ' : 'كود مفقود'}</span>;
+                                      // لا يوجد كود بلد - نحاول اكتشافه
+                                      const detected = detectCountryFromPhone(user.phone);
+                                      return (
+                                        <>
+                                          <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 rounded">
+                                            <AlertCircle className="h-2.5 w-2.5" />
+                                            كود مفقود
+                                          </span>
+                                          {detected && (
+                                            <span className="text-[10px] text-blue-600 flex items-center gap-0.5" title={`المحتمل: ${detected.code}`}>
+                                              <Globe className="h-2.5 w-2.5" />
+                                              {detected.name}?
+                                            </span>
+                                          )}
+                                        </>
+                                      );
                                     }
                                   })()}
-                                  {!user.countryCode && (
-                                    (() => {
-                                      const detected = detectCountryFromPhone(user.phone);
-                                      return detected ? <span className="text-[10px] text-blue-600 flex items-center gap-0.5"><Globe className="h-2.5 w-2.5" /> {detected.name}</span> : null;
-                                    })()
-                                  )}
                                 </div>
                               )}
                             </div>

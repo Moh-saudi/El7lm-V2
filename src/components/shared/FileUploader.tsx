@@ -1,11 +1,11 @@
 // src/components/shared/FileUploader.tsx
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { uploadProfileImage, uploadAdditionalImage } from '@/lib/firebase/upload-media';
 import { supabase, STORAGE_BUCKETS } from '@/lib/supabase/config';
 
-export default function FileUploader({ onUploadComplete, type = 'image' }: { onUploadComplete: (url: string) => void, type?: 'image' | 'video' }) {
+export default function FileUploader({ onUploadComplete, type = 'image' }: { onUploadComplete: (url: string) => void, type?: 'image' | 'video' | 'document' }) {
     const [isUploading, setIsUploading] = useState(false);
     const { user } = useAuth();
 
@@ -20,6 +20,8 @@ export default function FileUploader({ onUploadComplete, type = 'image' }: { onU
                 url = await uploadProfileImage(file, user); // أو uploadAdditionalImage حسب الحاجة
             } else if (type === 'video') {
                 url = await uploadVideoToSupabase(file, user);
+            } else if (type === 'document') {
+                url = await uploadDocumentToStorage(file, user);
             }
             onUploadComplete(url);
         } catch (error) {
@@ -29,21 +31,24 @@ export default function FileUploader({ onUploadComplete, type = 'image' }: { onU
         }
     };
 
+    const inputId = useId();
     return (
-        <div className="p-4 border rounded-lg">
+        <div className="p-4 border rounded-lg bg-gray-50/50">
             <input
                 type="file"
                 onChange={handleFileChange}
                 className="hidden"
-                id="file-input"
-                accept={type === 'image' ? 'image/*' : 'video/*'}
+                id={inputId}
+                accept={type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : '.pdf,.doc,.docx,.jpg,.png'}
                 disabled={isUploading}
             />
             <Button
-                onClick={() => document.getElementById('file-input')?.click()}
+                type="button"
+                onClick={() => document.getElementById(inputId)?.click()}
                 disabled={isUploading}
+                className="w-full bg-black text-white hover:bg-black/90"
             >
-                {isUploading ? 'جاري الرفع...' : (type === 'image' ? 'اختر صورة' : 'اختر فيديو')}
+                {isUploading ? 'جاري الرفع...' : (type === 'image' ? 'اختر صورة' : type === 'video' ? 'اختر فيديو' : 'اختر ملف')}
             </Button>
         </div>
     );
@@ -81,6 +86,28 @@ async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
         return result.publicUrl;
     } catch (error) {
         console.error('فشل في رفع الفيديو:', error);
+        throw error;
+    }
+}
+
+async function uploadDocumentToStorage(file: File, user: any): Promise<string> {
+    if (!file || !user?.uid) throw new Error('ملف أو معرف المستخدم غير متوفر');
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const timestamp = Date.now();
+        // Use a generic logic or 'documents' bucket/prefix
+        const filePath = `documents/${user.uid}/${timestamp}.${fileExt}`;
+
+        const { storageManager } = await import('@/lib/storage');
+
+        const result = await storageManager.upload('documents', filePath, file, {
+            contentType: file.type
+        });
+
+        return result.publicUrl;
+    } catch (error) {
+        console.error('فشل في رفع المستند:', error);
         throw error;
     }
 }

@@ -36,7 +36,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { formatPhoneNumber as formatWhatsAppPhone } from '@/lib/whatsapp/babaservice-config';
 import { updatePaymentStatus, activateSubscription, deactivateSubscription } from '@/lib/utils/subscription-manager';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
@@ -631,8 +630,16 @@ const buildShareMessage = (record: InvoiceRecord, includeDownloadLink: boolean =
 
 const formatPhoneForApi = (phone?: string | null) => {
   if (!phone) return '';
-  const formatted = formatWhatsAppPhone(phone);
-  return formatted?.trim() || '';
+  // تنسيق رقم الهاتف: إزالة كل شيء ما عدا الأرقام وعلامة +
+  let cleaned = phone.replace(/[^\d+]/g, '');
+  // إذا لم يبدأ بـ +، أضف + في البداية
+  if (!cleaned.startsWith('+')) {
+    // إذا بدأ بـ 0، أزل الصفر
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+  }
+  return cleaned.trim();
 };
 
 const generateInvoiceHTML = (record: InvoiceRecord) => `

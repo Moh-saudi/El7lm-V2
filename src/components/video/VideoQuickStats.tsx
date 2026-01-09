@@ -41,42 +41,6 @@ const VideoQuickStats: React.FC<VideoQuickStatsProps> = ({
     return 'ملف شخصي ممتاز مع فيديوهات متنوعة!';
   };
 
-  const handleSendStats = async () => {
-    // منع الإرسال المتكرر
-    if (loading) {
-      console.log('🛑 Stats sending blocked - already loading');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setMessage('');
-
-    try {
-      const response = await fetch('/api/analytics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          videoId: videoId,
-          stats: stats
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setMessage('تم إرسال الإحصائيات بنجاح!');
-      } else {
-        setError(result.error || 'فشل في إرسال الإحصائيات');
-      }
-    } catch (error: any) {
-      setError('حدث خطأ في إرسال الإحصائيات');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">

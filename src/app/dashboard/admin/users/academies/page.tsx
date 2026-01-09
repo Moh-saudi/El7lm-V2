@@ -3,42 +3,42 @@
 import AdminFooter from '@/components/layout/AdminFooter';
 import AdminHeader from '@/components/layout/AdminHeader';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -46,20 +46,20 @@ import { db } from '@/lib/firebase/config';
 import { getIndexCreationUrls } from '@/lib/firebase/indexes';
 import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import {
-    Building2,
-    CheckCircle,
-    Clock,
-    Download,
-    Filter,
-    GraduationCap,
-    Mail,
-    MapPin,
-    Phone,
-    RefreshCcw,
-    Search,
-    Star,
-    UserPlus,
-    Users
+  Building2,
+  CheckCircle,
+  Clock,
+  Download,
+  Filter,
+  GraduationCap,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCcw,
+  Search,
+  Star,
+  UserPlus,
+  Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -327,8 +327,8 @@ export default function AcademiesManagement() {
             createdAt: doc.data().createdAt?.toDate(),
             expiresAt: doc.data().expiresAt?.toDate()
           }))
-          .filter(sub => ['active', 'trial'].includes(sub.status))
-          .sort((a, b) => b.createdAt - a.createdAt);
+          .filter((sub: any) => ['active', 'trial'].includes(sub.status))
+          .sort((a: any, b: any) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
 
         const subscription = subscriptions[0];
 
@@ -398,10 +398,10 @@ export default function AcademiesManagement() {
       (!regionFilter.cityId || academy.location?.cityId === regionFilter.cityId);
 
     return matchesSearch &&
-           matchesVerification &&
-           matchesStatus &&
-           matchesSubscription &&
-           matchesRegion;
+      matchesVerification &&
+      matchesStatus &&
+      matchesSubscription &&
+      matchesRegion;
   });
 
   // Update toggleAcademyStatus function
@@ -445,7 +445,8 @@ export default function AcademiesManagement() {
   // Update RegionFilter component
   const RegionFilter = () => {
     const selectedCountry = regionFilter.countryId;
-    const cities = selectedCountry ? CITIES_BY_COUNTRY[selectedCountry] : [];
+    // المدن غير متاحة حالياً
+    const cities: string[] = [];
 
     return (
       <div className="grid grid-cols-2 gap-4">
@@ -464,9 +465,9 @@ export default function AcademiesManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">جميع الدول</SelectItem>
-              {SUPPORTED_COUNTRIES.map(country => (
-                <SelectItem key={country} value={country}>
-                  {country}
+              {SUPPORTED_COUNTRIES.map((country) => (
+                <SelectItem key={country.name} value={country.name}>
+                  {country.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -543,12 +544,12 @@ export default function AcademiesManagement() {
         prevAcademies.map(academy =>
           academy.id === selectedAcademy.id
             ? {
-                ...academy,
-                isActive: false,
-                suspendedAt: new Date(),
-                suspensionEndDate,
-                suspensionReason: 'تم إيقاف الحساب مؤقتاً من قبل الإدارة'
-              }
+              ...academy,
+              isActive: false,
+              suspendedAt: new Date(),
+              suspensionEndDate,
+              suspensionReason: 'تم إيقاف الحساب مؤقتاً من قبل الإدارة'
+            }
             : academy
         )
       );
@@ -658,12 +659,12 @@ export default function AcademiesManagement() {
                   <div className="flex items-center gap-2">
                     <Badge variant={
                       selectedAcademy.subscription?.status === 'active' ? 'success' :
-                      selectedAcademy.subscription?.status === 'trial' ? 'warning' :
-                      'destructive'
+                        selectedAcademy.subscription?.status === 'trial' ? 'warning' :
+                          'destructive'
                     }>
                       {selectedAcademy.subscription?.status === 'active' ? 'نشط' :
-                       selectedAcademy.subscription?.status === 'trial' ? 'تجريبي' :
-                       'منتهي'}
+                        selectedAcademy.subscription?.status === 'trial' ? 'تجريبي' :
+                          'منتهي'}
                     </Badge>
                   </div>
                   {selectedAcademy.subscription?.expiresAt && (
@@ -985,14 +986,14 @@ export default function AcademiesManagement() {
                         <Badge
                           variant={
                             academy.subscription.status === 'active' ? 'success' :
-                            academy.subscription.status === 'trial' ? 'warning' :
-                            'destructive'
+                              academy.subscription.status === 'trial' ? 'warning' :
+                                'destructive'
                           }
                           className="text-xs"
                         >
                           {academy.subscription.status === 'active' ? 'مشترك' :
-                           academy.subscription.status === 'trial' ? 'تجريبي' :
-                           'منتهي'}
+                            academy.subscription.status === 'trial' ? 'تجريبي' :
+                              'منتهي'}
                         </Badge>
                       )}
                     </div>

@@ -308,7 +308,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       const snapshot = await getDocs(q);
       const playersData: PlayerData[] = snapshot.docs.map(doc => {
-        const d = doc.data();
+        const d: any = doc.data();
         return {
           id: doc.id,
           name: d.full_name || d.name || 'لاعب',

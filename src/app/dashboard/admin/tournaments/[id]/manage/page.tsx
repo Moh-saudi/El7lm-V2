@@ -18,6 +18,7 @@ import { MatchesManager } from './components/MatchesManager';
 import { BracketManager } from './components/BracketManager';
 import { OverviewManager } from './components/OverviewManager';
 import { SettingsManager } from './components/SettingsManager';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 export default function TournamentManagePage() {
     const params = useParams();
@@ -82,7 +83,7 @@ export default function TournamentManagePage() {
                                 <div className="h-6 w-px bg-gray-200"></div>
                                 <div className="flex items-center gap-3">
                                     {tournament.logo ? (
-                                        <img src={tournament.logo} alt={tournament.name} className="w-8 h-8 rounded-lg object-cover" />
+                                        <img src={fixReceiptUrl(tournament.logo) || tournament.logo} alt={tournament.name} className="w-8 h-8 rounded-lg object-cover" />
                                     ) : (
                                         <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                                             <Trophy className="h-4 w-4 text-yellow-600" />
@@ -102,73 +103,77 @@ export default function TournamentManagePage() {
                                 </span>
                             </div>
                         </div>
-
-                        {/* Tabs Navigation */}
-                        <div className="mt-2">
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className="bg-transparent border-b border-transparent w-full justify-start h-auto p-0 space-x-8 space-x-reverse">
-                                    <TabsTrigger
-                                        value="overview"
-                                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
-                                    >
-                                        <LayoutDashboard className="h-4 w-4 ml-2" />
-                                        نظرة عامة
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="teams"
-                                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Shield className="h-4 w-4 ml-2" />
-                                        الفرق واللاعبين
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="matches"
-                                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Calendar className="h-4 w-4 ml-2" />
-                                        المباريات والنتائج
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="bracket"
-                                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Users className="h-4 w-4 ml-2" />
-                                        المجموعات والأدوار
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="settings"
-                                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
-                                    >
-                                        <Settings className="h-4 w-4 ml-2" />
-                                        الإعدادات
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                {/* Content Area */}
-                                <div className="py-6">
-                                    <TabsContent value="overview">
-                                        <OverviewManager tournament={tournament} />
-                                    </TabsContent>
-
-                                    <TabsContent value="teams">
-                                        <TeamsManager tournament={tournament} />
-                                    </TabsContent>
-
-                                    <TabsContent value="matches">
-                                        <MatchesManager tournament={tournament} />
-                                    </TabsContent>
-
-                                    <TabsContent value="bracket">
-                                        <BracketManager tournament={tournament} />
-                                    </TabsContent>
-
-                                    <TabsContent value="settings">
-                                        <SettingsManager tournament={tournament} />
-                                    </TabsContent>
-                                </div>
-                            </Tabs>
-                        </div>
                     </div>
+                </div>
+
+                {/* Tabs Navigation */}
+                <div className="bg-white border-b border-gray-200">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="bg-transparent border-b border-transparent w-full justify-start h-auto p-0 space-x-8 space-x-reverse">
+                                <TabsTrigger
+                                    value="overview"
+                                    className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
+                                >
+                                    <LayoutDashboard className="h-4 w-4 ml-2" />
+                                    نظرة عامة
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="teams"
+                                    className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
+                                >
+                                    <Shield className="h-4 w-4 ml-2" />
+                                    الفرق واللاعبين
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="matches"
+                                    className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
+                                >
+                                    <Calendar className="h-4 w-4 ml-2" />
+                                    المباريات والنتائج
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="bracket"
+                                    className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
+                                >
+                                    <Users className="h-4 w-4 ml-2" />
+                                    المجموعات والأدوار
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="settings"
+                                    className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 pb-3 rounded-none bg-transparent hover:bg-gray-50 transition-colors"
+                                >
+                                    <Settings className="h-4 w-4 ml-2" />
+                                    الإعدادات
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <TabsContent value="overview" className="mt-0">
+                            <OverviewManager tournament={tournament} />
+                        </TabsContent>
+
+                        <TabsContent value="teams" className="mt-0">
+                            <TeamsManager tournament={tournament} />
+                        </TabsContent>
+
+                        <TabsContent value="matches" className="mt-0">
+                            <MatchesManager tournament={tournament} />
+                        </TabsContent>
+
+                        <TabsContent value="bracket" className="mt-0">
+                            <BracketManager tournament={tournament} />
+                        </TabsContent>
+
+                        <TabsContent value="settings" className="mt-0">
+                            <SettingsManager tournament={tournament} />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </AccountTypeProtection>
