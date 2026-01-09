@@ -31,28 +31,7 @@ interface HeaderProps {
   customActions?: React.ReactNode;
 }
 
-const getSupabaseImageUrl = (path: string) => {
-  if (!path) return '/images/default-avatar.png';
-  if (path.startsWith('http')) return path;
-
-  // استخدام رابط Cloudflare المباشر للملفات
-  const CLOUDFLARE_PUBLIC_URL = 'https://assets.el7lm.com';
-
-  // إزالة أي شرطة مائلة في البداية لتجنب الازدواج
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-
-  // افتراض أن الملف في bucket 'avatars' إذا لم يكن المسار يحتوي على اسم bucket
-  // الملاحظة: التخزين الجديد يستخدم بادئات، لكن الروابط القديمة قد تكون مختلفة.
-  // ومع ذلك، بما أننا حدثنا قاعدة البيانات، فالمفترض أن المسارات النسبية (إذا وجدت)
-  // تشير إلى المسار الكامل داخل الـ bucket أو تحتاج لاسم الـ bucket.
-
-  // في Supabase القديم، getPublicUrl كانت تضيف اسم الـ bucket.
-  // path هنا غالباً هو اسم الملف فقط (مثل 'img.jpg') أو مسار نسبي ('folder/img.jpg').
-  // دالة getPublicUrl القديمة كانت: supabase.storage.from('avatars').getPublicUrl(path);
-  // لذا المسار الكامل في R2 يجب أن يكون: CLOUDFLARE_PUBLIC_URL/avatars/path
-
-  return `${CLOUDFLARE_PUBLIC_URL}/avatars/${cleanPath}`;
-};
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 const getAccountTypeInfo = (accountType: string) => {
   const types = {
@@ -111,7 +90,7 @@ export default function UnifiedHeader({
         setUserProfile({
           name: data.name || data.displayName || 'مستخدم غير معروف',
           email: data.email || user.email || '',
-          avatar: getSupabaseImageUrl(data.avatar),
+          avatar: fixReceiptUrl(data.avatar) || undefined,
           accountType: data.accountType || 'player',
           role: data.role || 'user'
         });

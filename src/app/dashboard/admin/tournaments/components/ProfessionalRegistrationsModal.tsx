@@ -21,6 +21,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 interface ProfessionalRegistrationsModalProps {
     isOpen: boolean;
@@ -65,6 +66,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                         playerEmail: player.email || data.accountEmail || '',
                         playerPhone: player.phone || data.accountPhone || '',
                         playerClub: player.club_id || data.clubName || '',
+                        playerAvatar: player.photoURL || player.avatar || data.accountAvatar || null,
                         playerPosition: player.position || '',
                         registrationDate: data.registrationDate || data.createdAt || new Date(),
                         paymentStatus: data.paymentStatus || 'pending',
@@ -228,7 +230,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                                                 <TableCell className="py-3">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="h-10 w-10 border-2 border-white shadow-sm bg-gray-100">
-                                                            <AvatarImage src="" /> {/* Placeholder for future avatar URL */}
+                                                            <AvatarImage src={fixReceiptUrl(reg.playerAvatar) || ''} />
                                                             <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
                                                                 {reg.playerName.slice(0, 2)}
                                                             </AvatarFallback>

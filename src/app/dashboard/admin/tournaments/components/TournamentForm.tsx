@@ -14,11 +14,13 @@ import { toast } from 'sonner';
 import {
     Trophy, Calendar, Users, MapPin, DollarSign, Save, X, Link,
     Info, CreditCard, FileText, Image as ImageIcon, Upload, Navigation, Copy,
-    CheckCircle2, ChevronRight, ChevronLeft, Flag, HelpCircle
+    CheckCircle2, ChevronRight, ChevronLeft, Flag, HelpCircle, Loader2
 } from 'lucide-react';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Tournament, getCurrencySymbol } from '../utils';
+import { storageManager } from '@/lib/storage';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 interface TournamentFormProps {
     initialData: Tournament | null;
@@ -44,6 +46,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoPreview, setLogoPreview] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState<Partial<Tournament>>({
         name: '', description: '', location: '', locationUrl: '', startDate: '', endDate: '',
@@ -124,7 +127,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
             setLogoUploading(true);
             const fileExt = logoFile.name.split('.').pop();
             const fileName = `tournaments/logos/${Date.now()}.${fileExt}`;
-            const { storageManager } = await import('@/lib/storage');
+
             const result = await storageManager.upload('tournaments', fileName, logoFile, {
                 cacheControl: '3600', upsert: true, contentType: logoFile.type
             });
@@ -138,12 +141,15 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
     };
 
     const handleSubmit = async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             let logoUrl = formData.logo;
             if (logoFile) {
                 logoUrl = await uploadLogo();
                 if (!logoUrl && logoFile) {
                     toast.error('فشل في رفع الشعار');
+                    setIsSubmitting(false);
                     return;
                 }
             }
@@ -169,6 +175,8 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
         } catch (error) {
             console.error('Error saving tournament:', error);
             toast.error('فشل في حفظ البطولة');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -249,7 +257,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                     <div className="relative group shrink-0">
                         <div className="w-20 h-20 rounded-full bg-white shadow-sm border overflow-hidden">
                             {logoPreview || formData.logo ? (
-                                <img src={logoPreview || formData.logo} className="w-full h-full object-cover" />
+                                <img src={logoPreview || fixReceiptUrl(formData.logo) || ''} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                                     <ImageIcon className="h-8 w-8" />
@@ -385,7 +393,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                         <div className="flex gap-2">
                             <Input
                                 type="number"
-                                value={formData.entryFee}
+                                value={isNaN(Number(formData.entryFee)) ? '' : formData.entryFee}
                                 onChange={e => setFormData(p => ({ ...p, entryFee: parseFloat(e.target.value) }))}
                                 className="h-11 text-lg font-bold"
                             />
@@ -617,8 +625,19 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                     </div>
 
                     {currentStep === STEPS.length ? (
-                        <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 w-32 shadow-sm shadow-blue-200">
-                            حفظ وإنهاء
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="bg-blue-600 hover:bg-blue-700 w-32 shadow-sm shadow-blue-200"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    جاري الحفظ...
+                                </>
+                            ) : (
+                                'حفظ وإنهاء'
+                            )}
                         </Button>
                     ) : (
                         <Button onClick={nextStep} className="bg-gray-900 hover:bg-black text-white w-32">
