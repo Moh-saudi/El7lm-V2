@@ -51,12 +51,8 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
             // إنشاء طلب انضمام
             await organizationReferralService.createJoinRequest(
                 playerId,
-                referralCode.trim(),
-                playerName,
-                {
-                    enteredAt: new Date().toISOString(),
-                    source: 'welcome_modal'
-                }
+                { name: playerName, enteredAt: new Date().toISOString() },
+                referralCode.trim()
             );
 
             toast.success('🎉 تم إرسال طلب الانضمام بنجاح!');

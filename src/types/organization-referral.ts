@@ -34,6 +34,8 @@ export interface PlayerJoinRequest {
   processedAt?: DateOrTimestamp;
   processedBy?: string;
   notes?: string;
+  approvedAt?: DateOrTimestamp; // Added field
+  rejectionReason?: string;    // Added field
   playerData?: {
     position?: string;
     age?: number;

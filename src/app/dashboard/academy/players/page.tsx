@@ -12,17 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CreateLoginAccountButton from '@/components/ui/CreateLoginAccountButton';
 import LoginAccountStatus from '@/components/ui/LoginAccountStatus';
 import IndependentAccountCreator from '@/components/ui/IndependentAccountCreator';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Edit, 
-  Camera, 
-  Video, 
-  Image as ImageIcon, 
-  ExternalLink, 
-  Trash2, 
-  User, 
+import {
+  Users,
+  Plus,
+  Search,
+  Edit,
+  Camera,
+  Video,
+  Image as ImageIcon,
+  ExternalLink,
+  Trash2,
+  User,
   Filter,
   Eye,
   Calendar,
@@ -51,7 +51,7 @@ export default function AcademyPlayersPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [playersPerPage, setPlayersPerPage] = useState(10);
@@ -74,24 +74,24 @@ export default function AcademyPlayersPage() {
   const loadPlayers = async () => {
     try {
       setLoading(true);
-      
+
       const baseQuery = query(
         collection(db, "players"),
         where("academy_id", "==", user?.uid)
       );
       const snapshot = await getDocs(baseQuery);
-      
+
       const playersData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter((p: any) => !p.isDeleted) as Player[];
 
       // Manual sorting on the client-side
       playersData.sort((a, b) => {
-          const aValue = a[sortBy as keyof Player] as any;
-          const bValue = b[sortBy as keyof Player] as any;
-          if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-          if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-          return 0;
+        const aValue = a[sortBy as keyof Player] as any;
+        const bValue = b[sortBy as keyof Player] as any;
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
       });
 
       setPlayers(playersData);
@@ -118,13 +118,13 @@ export default function AcademyPlayersPage() {
     const playerName = player.full_name || (player as Player & { name?: string }).name || '';
     const playerEmail = player.email || '';
     const playerPhone = player.phone || '';
-    
+
     const matchesSearch = playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         playerPhone.includes(searchTerm);
-    
+      playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      playerPhone.includes(searchTerm);
+
     const matchesFilter = filterStatus === 'all' || player.subscription_status === filterStatus;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -156,7 +156,7 @@ export default function AcademyPlayersPage() {
   // Sort players
   const sortedPlayers = [...filteredPlayers].sort((a, b) => {
     let aValue: any, bValue: any;
-    
+
     switch (sortBy) {
       case 'name':
         aValue = a.full_name || a.name || '';
@@ -178,7 +178,7 @@ export default function AcademyPlayersPage() {
         aValue = a.full_name || a.name || '';
         bValue = b.full_name || b.name || '';
     }
-    
+
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : -1;
     } else {
@@ -202,7 +202,7 @@ export default function AcademyPlayersPage() {
   const getSubscriptionBadge = (status: string, endDate: any) => {
     const now = new Date();
     let end: Date;
-    
+
     try {
       if (typeof endDate === 'object' && endDate.toDate && typeof endDate.toDate === 'function') {
         end = endDate.toDate();
@@ -216,7 +216,7 @@ export default function AcademyPlayersPage() {
     } catch (error) {
       end = new Date(0);
     }
-    
+
     if (status === 'active' && end > now) {
       return <Badge className="text-green-800 bg-green-100 hover:bg-green-200"><CheckCircle className="mr-1 w-3 h-3" />نشط</Badge>;
     } else if (status === 'active' && end <= now) {
@@ -240,17 +240,17 @@ export default function AcademyPlayersPage() {
       } else {
         d = new Date(birthDate);
       }
-      
+
       if (isNaN(d.getTime())) return null;
-      
+
       const today = new Date();
       let age = today.getFullYear() - d.getFullYear();
       const monthDiff = today.getMonth() - d.getMonth();
-      
+
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
         age--;
       }
-      
+
       return age;
     } catch (error) {
       return null;
@@ -271,11 +271,11 @@ export default function AcademyPlayersPage() {
       } else {
         return 'غير محدد';
       }
-      
+
       if (isNaN(d.getTime())) {
         return 'غير محدد';
       }
-      
+
       return d.toLocaleDateString('en-GB');
     } catch (error) {
       return 'غير محدد';
@@ -294,14 +294,14 @@ export default function AcademyPlayersPage() {
       } else {
         d = new Date(date);
       }
-      
+
       const now = new Date();
       const diffMs = now.getTime() - d.getTime();
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffHours / 24);
       const diffWeeks = Math.floor(diffDays / 7);
       const diffMonths = Math.floor(diffDays / 30);
-      
+
       if (diffMonths > 0) {
         return `منذ ${diffMonths} شهر`;
       } else if (diffWeeks > 0) {
@@ -422,66 +422,124 @@ export default function AcademyPlayersPage() {
       <div className="space-y-6">
         {/* Referrals summary card */}
         <OrgReferralSummaryCard accountType="academy" />
-        
+
         {joinRequests.length > 0 && (
-          <Card className="p-4 mb-2 bg-blue-50 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-900">لديك {joinRequests.length} طلب انضمام جديد</span>
+          <Card className="overflow-hidden border-2 border-primary/10 shadow-lg mb-8">
+            <div className="bg-gradient-to-l from-primary/5 to-transparent p-4 border-b border-primary/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-2 rounded-full">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">طلبات الانضمام الجديدة</h3>
+                  <p className="text-xs text-gray-500">لديك {joinRequests.length} لاعب بانتظار الموافقة</p>
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setShowJoinRequests(!showJoinRequests)}>
-                {showJoinRequests ? 'إخفاء' : 'عرض'} الطلبات
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowJoinRequests(!showJoinRequests)}
+                className="gap-2"
+              >
+                {showJoinRequests ? 'إخفاء القائمة' : 'عرض القائمة'}
+                {showJoinRequests ? <Eye className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
               </Button>
             </div>
+
             {showJoinRequests && (
-              <div className="mt-4 space-y-3">
-                {joinRequests.map((request) => (
-                  <div key={request.id} className="bg-white rounded-lg p-4 border">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">{request.playerName}</h4>
-                      <Badge variant="outline">طلب جديد</Badge>
+              <div className="p-4 bg-gray-50/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {joinRequests.map((request) => (
+                    <div key={request.id} className="bg-white rounded-xl p-4 border shadow-sm hover:shadow-md transition-shadow group">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                            <span className="text-lg font-bold text-gray-400">{request.playerName.charAt(0)}</span>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-sm">{request.playerName}</h4>
+                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                              <Calendar className="w-3 h-3" />
+                              <span dir="ltr">{formatDate(request.requestedAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                          جديد
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2 mb-4 bg-gray-50 p-3 rounded-lg text-xs">
+                        {request.playerData?.position && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">المركز:</span>
+                            <span className="font-medium text-gray-900">{request.playerData.position}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">البريد:</span>
+                          <span className="font-medium text-gray-900 truncate max-w-[150px]" title={request.playerEmail}>{request.playerEmail}</span>
+                        </div>
+                        {request.referralCode && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">كود الدعوة:</span>
+                            <code className="bg-gray-200 px-1 py-0.5 rounded text-gray-700 font-mono">{request.referralCode}</code>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
+                          onClick={async () => {
+                            try {
+                              await organizationReferralService.approveJoinRequest(request.id, user!.uid, 'الأكاديمية');
+                              toast.success('تم قبول اللاعب بنجاح');
+                              loadJoinRequests();
+                              loadPlayers();
+                            } catch (error) {
+                              toast.error('فشل في قبول اللاعب');
+                            }
+                          }}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1.5" />
+                          قبول
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
+                          onClick={async () => {
+                            if (!confirm('هل أنت متأكد من رفض هذا الطلب؟')) return;
+                            try {
+                              await organizationReferralService.rejectJoinRequest(request.id, user!.uid, 'الأكاديمية', 'تم الرفض من قبل الإدارة');
+                              toast.success('تم رفض الطلب');
+                              loadJoinRequests();
+                            } catch (error) {
+                              toast.error('فشل في رفض الطلب');
+                            }
+                          }}
+                        >
+                          <XCircle className="w-4 h-4 mr-1.5" />
+                          رفض
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      <p>📧 {request.playerEmail}</p>
-                      {request.playerData?.position && (<p>⚽ المركز: {request.playerData.position}</p>)}
-                      <p>📅 {new Date(request.requestedAt as any).toLocaleDateString('ar')}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={async () => {
-                        try {
-                          await organizationReferralService.approveJoinRequest(request.id, user!.uid, 'الأكاديمية');
-                          toast.success('تم قبول اللاعب بنجاح');
-                          loadJoinRequests();
-                          loadPlayers();
-                        } catch (error) {
-                          toast.error('فشل في قبول اللاعب');
-                        }
-                      }}>✅ قبول</Button>
-                      <Button size="sm" variant="outline" onClick={async () => {
-                        try {
-                          await organizationReferralService.rejectJoinRequest(request.id, user!.uid, 'الأكاديمية', 'تم الرفض');
-                          toast.success('تم رفض الطلب');
-                          loadJoinRequests();
-                        } catch (error) {
-                          toast.error('فشل في رفض الطلب');
-                        }
-                      }}>❌ رفض</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </Card>
         )}
-        
+
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-cyan-600 mb-2">إدارة اللاعبين</h1>
             <p className="text-gray-600">إدارة قائمة اللاعبين المنتسبين للأكاديمية ({players.length} لاعب)</p>
           </div>
-          
+
           <div className="flex gap-3">
             <Button
               onClick={exportToExcel}
@@ -491,7 +549,7 @@ export default function AcademyPlayersPage() {
               <Download className="mr-2 w-4 h-4" />
               تصدير Excel
             </Button>
-            
+
             <Link href="/dashboard/academy/players/add">
               <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                 <Plus className="mr-2 w-4 h-4" />
@@ -514,7 +572,7 @@ export default function AcademyPlayersPage() {
                 className="pr-10"
               />
             </div>
-            
+
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger>
                 <Filter className="mr-2 w-4 h-4" />
@@ -527,7 +585,7 @@ export default function AcademyPlayersPage() {
                 <SelectItem value="expired">منتهي</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
                 <SelectValue placeholder="الترتيب حسب" />
@@ -539,7 +597,7 @@ export default function AcademyPlayersPage() {
                 <SelectItem value="subscription_status">حالة الاشتراك</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="ترتيب" />
@@ -581,8 +639,8 @@ export default function AcademyPlayersPage() {
             <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد نتائج</h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm || filterStatus !== 'all' 
-                ? 'لم يتم العثور على لاعبين يطابقون معايير البحث' 
+              {searchTerm || filterStatus !== 'all'
+                ? 'لم يتم العثور على لاعبين يطابقون معايير البحث'
                 : 'لم يتم إضافة أي لاعبين للأكاديمية بعد'
               }
             </p>
@@ -597,377 +655,381 @@ export default function AcademyPlayersPage() {
           </Card>
         ) : (
           <>
-          <Card className="overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المنضمون عبر كود الإحالة ({currentPlayers.filter(p => (p as any).joinedViaReferral).length})</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الانضمام عبر كود</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentPlayers.filter(p => (p as any).joinedViaReferral).map((player) => (
-                    <tr key={player.id} className="hover:bg-gray-50 transition-colors">
-                      {/* Player Info */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 w-12 h-12">
-                            {player.profile_image_url || player.profile_image ? (
-                              <img
-                                src={player.profile_image_url || player.profile_image}
-                                alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
-                                className="object-cover w-12 h-12 rounded-full border border-gray-200"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = "/images/default-avatar.png";
-                                }}
-                              />
-                            ) : (
-                              <div className="flex justify-center items-center w-12 h-12 bg-gray-200 rounded-full border border-gray-300">
-                                <User className="w-6 h-6 text-gray-400" />
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b">
+                <h3 className="font-bold text-gray-800">اللاعبون المنضمون عبر كود الإحالة ({currentPlayers.filter(p => (p as any).joinedViaReferral).length})</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الانضمام عبر كود</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentPlayers.filter(p => (p as any).joinedViaReferral).map((player) => (
+                      <tr key={player.id} className="hover:bg-gray-50 transition-colors">
+                        {/* Player Info */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-12 h-12">
+                              {player.profile_image_url || player.profile_image ? (
+                                <img
+                                  src={player.profile_image_url || player.profile_image}
+                                  alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
+                                  className="object-cover w-12 h-12 rounded-full border border-gray-200"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = "/images/default-avatar.png";
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex justify-center items-center w-12 h-12 bg-gray-200 rounded-full border border-gray-300">
+                                  <User className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="mr-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {player.full_name || player.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {(() => {
+                                  const age = calculateAge(player.birth_date);
+                                  return age ? `${age} سنة` : 'العمر غير محدد';
+                                })()}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                #{player.id?.slice(0, 8)}
+                              </div>
+                              {player.joinedViaReferral && (
+                                <div className="mt-1 space-y-1">
+                                  <div className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                    انضم عبر كود
+                                    {player.referralCodeUsed && <span className="font-mono">({player.referralCodeUsed})</span>}
+                                  </div>
+                                  <div className="text-[11px] text-gray-500">
+                                    تاريخ الانضمام: {formatDate(player.organizationJoinedAt)}
+                                    {player.organizationApprovedBy?.userName && (
+                                      <span className="ml-2">— بواسطة: {player.organizationApprovedBy.userName}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Contact Info */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="flex gap-1 items-center mb-1">
+                              <Phone className="w-3 h-3 text-gray-400" />
+                              {player.phone || 'غير محدد'}
+                            </div>
+                            <div className="flex gap-1 items-center">
+                              <Mail className="w-3 h-3 text-gray-400" />
+                              <span className="text-xs">{player.email || 'غير محدد'}</span>
+                            </div>
+                            <div className="mt-2">{(() => {
+                              const pct = getProfileCompletion(player); return (
+                                <div>
+                                  <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                                  <div className="w-32 h-1.5 bg-gray-200 rounded">
+                                    <div className={`h-1.5 rounded ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })()}</div>
+                          </div>
+                        </td>
+
+                        {/* Position & Measurements */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium">
+                              {player.primary_position || player.position || 'غير محدد'}
+                            </div>
+                            {player.secondary_position && (
+                              <div className="text-xs text-gray-500">
+                                ثانوي: {player.secondary_position}
                               </div>
                             )}
+                            <div className="mt-1 text-xs text-gray-500">
+                              {player.height && `${player.height} سم`}
+                              {player.height && player.weight && ' • '}
+                              {player.weight && `${player.weight} كج`}
+                            </div>
                           </div>
-                          <div className="mr-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {player.full_name || player.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {(() => {
-                                const age = calculateAge(player.birth_date);
-                                return age ? `${age} سنة` : 'العمر غير محدد';
-                              })()}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              #{player.id?.slice(0, 8)}
-                            </div>
-                            {player.joinedViaReferral && (
-                              <div className="mt-1 space-y-1">
-                                <div className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                                  انضم عبر كود
-                                  {player.referralCodeUsed && <span className="font-mono">({player.referralCodeUsed})</span>}
-                                </div>
-                                <div className="text-[11px] text-gray-500">
-                                  تاريخ الانضمام: {formatDate(player.organizationJoinedAt)}
-                                  {player.organizationApprovedBy?.userName && (
-                                    <span className="ml-2">— بواسطة: {player.organizationApprovedBy.userName}</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Contact Info */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1">
-                            <Phone className="w-3 h-3 text-gray-400" />
-                            {player.phone || 'غير محدد'}
-                          </div>
-                          <div className="flex gap-1 items-center">
-                            <Mail className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs">{player.email || 'غير محدد'}</span>
-                          </div>
-                          <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
-                            <div>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
-                              <div className="w-32 h-1.5 bg-gray-200 rounded">
-                                <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
-                              </div>
+                        {/* Location */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="flex gap-1 items-center mb-1">
+                              <MapPin className="w-3 h-3 text-gray-400" />
+                              {player.city || 'غير محدد'}
                             </div>
-                          ); })()}</div>
-                        </div>
-                      </td>
-
-                      {/* Position & Measurements */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="font-medium">
-                            {player.primary_position || player.position || 'غير محدد'}
-                          </div>
-                          {player.secondary_position && (
                             <div className="text-xs text-gray-500">
-                              ثانوي: {player.secondary_position}
+                              {player.nationality || player.country || 'غير محدد'}
                             </div>
+                          </div>
+                        </td>
+
+                        {/* Subscription */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            {getSubscriptionBadge(player.subscription_status, player.subscription_end)}
+                            <div className="mt-1 text-xs text-gray-500">
+                              {player.subscription_type && (
+                                <div>نوع: {player.subscription_type}</div>
+                              )}
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(player.subscription_end)}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Media */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              <Video className="mr-1 w-3 h-3" />
+                              {player.videos?.length || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              <ImageIcon className="mr-1 w-3 h-3" />
+                              {player.additional_images?.length || 0}
+                            </Badge>
+                          </div>
+                        </td>
+
+                        {/* Dates */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs text-gray-600">
+                            <div className="flex gap-1 items-center mb-1">
+                              <Plus className="w-3 h-3 text-green-600" />
+                              <span className="font-medium">إضافة:</span>
+                            </div>
+                            <div className="mb-2">
+                              {formatDate(player.createdAt || player.created_at)}
+                              <div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div>
+                            </div>
+
+                            <div className="flex gap-1 items-center mb-1">
+                              <Edit className="w-3 h-3 text-blue-600" />
+                              <span className="font-medium">تحديث:</span>
+                            </div>
+                            <div>
+                              {formatDate(player.updatedAt || player.updated_at)}
+                              <div className="text-gray-400">{getTimeAgo(player.updatedAt || player.updated_at)}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Referral Info */}
+                        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-700">
+                          <div>الكود: {player.referralCodeUsed || '-'}</div>
+                          <div>التاريخ: {formatDate((player as any).organizationJoinedAt)}</div>
+                          {(player as any).organizationApprovedBy?.userName && (
+                            <div>الموافق: {(player as any).organizationApprovedBy.userName}</div>
                           )}
-                          <div className="mt-1 text-xs text-gray-500">
-                            {player.height && `${player.height} سم`}
-                            {player.height && player.weight && ' • '}
-                            {player.weight && `${player.weight} كج`}
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Location */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1">
-                            <MapPin className="w-3 h-3 text-gray-400" />
-                            {player.city || 'غير محدد'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {player.nationality || player.country || 'غير محدد'}
-                          </div>
-                        </div>
-                      </td>
+                        {/* Actions */}
+                        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Link href={`/dashboard/academy/players/add?edit=${player.id}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 hover:bg-green-50"
+                                title="تعديل البيانات"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </Link>
 
-                      {/* Subscription */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          {getSubscriptionBadge(player.subscription_status, player.subscription_end)}
-                          <div className="mt-1 text-xs text-gray-500">
-                            {player.subscription_type && (
-                              <div>نوع: {player.subscription_type}</div>
-                            )}
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {formatDate(player.subscription_end)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+                            <CreateLoginAccountButton
+                              playerId={player.id}
+                              playerData={{
+                                full_name: player.full_name || player.name,
+                                name: player.name || player.full_name,
+                                email: player.email,
+                                phone: player.phone,
+                                academy_id: player.academy_id || user?.uid,
+                                ...player
+                              }}
+                              source="players"
+                              onSuccess={(password) => {
+                                console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`);
+                              }}
+                            />
 
-                      {/* Media */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            <Video className="mr-1 w-3 h-3" />
-                            {player.videos?.length || 0}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            <ImageIcon className="mr-1 w-3 h-3" />
-                            {player.additional_images?.length || 0}
-                          </Badge>
-                        </div>
-                      </td>
+                            <IndependentAccountCreator
+                              playerId={player.id}
+                              playerData={{
+                                full_name: player.full_name || player.name,
+                                name: player.name || player.full_name,
+                                email: player.email,
+                                phone: player.phone,
+                                whatsapp: player.whatsapp,
+                                academy_id: player.academy_id || user?.uid,
+                                ...player
+                              }}
+                              source="players"
+                              variant="outline"
+                              size="sm"
+                              className="text-purple-600 hover:bg-purple-50"
+                            />
 
-                      {/* Dates */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs text-gray-600">
-                          <div className="flex gap-1 items-center mb-1">
-                            <Plus className="w-3 h-3 text-green-600" />
-                            <span className="font-medium">إضافة:</span>
-                          </div>
-                          <div className="mb-2">
-                            {formatDate(player.createdAt || player.created_at)}
-                            <div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div>
-                          </div>
-                          
-                          <div className="flex gap-1 items-center mb-1">
-                            <Edit className="w-3 h-3 text-blue-600" />
-                            <span className="font-medium">تحديث:</span>
-                          </div>
-                          <div>
-                            {formatDate(player.updatedAt || player.updated_at)}
-                            <div className="text-gray-400">{getTimeAgo(player.updatedAt || player.updated_at)}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Referral Info */}
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-700">
-                        <div>الكود: {player.referralCodeUsed || '-'}</div>
-                        <div>التاريخ: {formatDate((player as any).organizationJoinedAt)}</div>
-                        {(player as any).organizationApprovedBy?.userName && (
-                          <div>الموافق: {(player as any).organizationApprovedBy.userName}</div>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                        <div className="flex gap-2">
-                          <Link href={`/dashboard/academy/players/add?edit=${player.id}`}>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-green-600 hover:bg-green-50"
-                              title="تعديل البيانات"
+                              onClick={() => handleDeletePlayer(player)}
+                              className="text-red-600 hover:bg-red-50"
+                              title="حذف اللاعب"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
-                          </Link>
-                          
-                          <CreateLoginAccountButton
-                            playerId={player.id}
-                            playerData={{
-                              full_name: player.full_name || player.name,
-                              name: player.name || player.full_name,
-                              email: player.email,
-                              phone: player.phone,
-                              academy_id: player.academy_id || user?.uid,
-                              ...player
-                            }}
-                            source="players"
-                            onSuccess={(password) => {
-                              console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`);
-                            }}
-                          />
-                          
-                          <IndependentAccountCreator
-                            playerId={player.id}
-                            playerData={{
-                              full_name: player.full_name || player.name,
-                              name: player.name || player.full_name,
-                              email: player.email,
-                              phone: player.phone,
-                              whatsapp: player.whatsapp,
-                              academy_id: player.academy_id || user?.uid,
-                              ...player
-                            }}
-                            source="players"
-                            variant="outline"
-                            size="sm"
-                            className="text-purple-600 hover:bg-purple-50"
-                          />
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeletePlayer(player)}
-                            className="text-red-600 hover:bg-red-50"
-                            title="حذف اللاعب"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-          {/* Players added manually by organization */}
-          <Card className="overflow-hidden mt-6">
-            <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المضافون بواسطة المنظمة ({currentPlayers.filter(p => !(p as any).joinedViaReferral).length})</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentPlayers.filter(p => !(p as any).joinedViaReferral).map((player) => (
-                    <tr key={player.id} className="hover:bg-gray-50 transition-colors">
-                      {/* Player Info */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 w-12 h-12">
-                            {player.profile_image_url || player.profile_image ? (
-                              <img
-                                src={player.profile_image_url || player.profile_image}
-                                alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
-                                className="object-cover w-12 h-12 rounded-full border border-gray-200"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = "/images/default-avatar.png";
-                                }}
-                              />
-                            ) : (
-                              <div className="flex justify-center items-center w-12 h-12 bg-gray-200 rounded-full border border-gray-300">
-                                <User className="w-6 h-6 text-gray-400" />
-                              </div>
-                            )}
                           </div>
-                          <div className="mr-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {player.full_name || player.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {(() => {
-                                const age = calculateAge(player.birth_date);
-                                return age ? `${age} سنة` : 'العمر غير محدد';
-                              })()}
-                            </div>
-                            <div className="text-xs text-gray-400">#{player.id?.slice(0, 8)}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Contact Info */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1"><Phone className="w-3 h-3 text-gray-400" />{player.phone || 'غير محدد'}</div>
-                          <div className="flex gap-1 items-center"><Mail className="w-3 h-3 text-gray-400" /><span className="text-xs">{player.email || 'غير محدد'}</span></div>
-                          <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
-                            <div>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
-                              <div className="w-32 h-1.5 bg-gray-200 rounded">
-                                <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
-                              </div>
-                            </div>
-                          ); })()}</div>
-                        </div>
-                      </td>
-
-                      {/* Position & Measurements */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="font-medium">{player.primary_position || player.position || 'غير محدد'}</div>
-                          {player.secondary_position && (<div className="text-xs text-gray-500">ثانوي: {player.secondary_position}</div>)}
-                          <div className="mt-1 text-xs text-gray-500">{player.height && `${player.height} سم`}{player.height && player.weight && ' • '}{player.weight && `${player.weight} كج`}</div>
-                        </div>
-                      </td>
-
-                      {/* Location */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1"><MapPin className="w-3 h-3 text-gray-400" />{player.city || 'غير محدد'}</div>
-                          <div className="text-xs text-gray-500">{player.nationality || player.country || 'غير محدد'}</div>
-                        </div>
-                      </td>
-
-                      {/* Subscription */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">{getSubscriptionBadge(player.subscription_status, player.subscription_end)}<div className="mt-1 text-xs text-gray-500">{player.subscription_type && (<div>نوع: {player.subscription_type}</div>)}<div className="flex itemsكية gap-1"><Calendar className="w-3 h-3" />{formatDate(player.subscription_end)}</div></div></div>
-                      </td>
-
-                      {/* Media */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2"><Badge variant="outline" className="text-xs"><Video className="mr-1 w-3 h-3" />{player.videos?.length || 0}</Badge><Badge variant="outline" className="text-xs"><ImageIcon className="mr-1 w-3 h-3" />{player.additional_images?.length || 0}</Badge></div>
-                      </td>
-
-                      {/* Dates */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">إضافة:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">تحديث:</span></div><div>{formatDate(player.updatedAt || player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updatedAt || player.updated_at)}</div></div></div>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                        <div className="flex gap-2">
-                          <Link href={`/dashboard/academy/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link>
-                          <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
-                          <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
-                          <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 h-4" /></Button>
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            {/* Players added manually by organization */}
+            <Card className="overflow-hidden mt-6">
+              <div className="p-4 border-b">
+                <h3 className="font-bold text-gray-800">اللاعبون المضافون بواسطة المنظمة ({currentPlayers.filter(p => !(p as any).joinedViaReferral).length})</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
+                      <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentPlayers.filter(p => !(p as any).joinedViaReferral).map((player) => (
+                      <tr key={player.id} className="hover:bg-gray-50 transition-colors">
+                        {/* Player Info */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-12 h-12">
+                              {player.profile_image_url || player.profile_image ? (
+                                <img
+                                  src={player.profile_image_url || player.profile_image}
+                                  alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
+                                  className="object-cover w-12 h-12 rounded-full border border-gray-200"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = "/images/default-avatar.png";
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex justify-center items-center w-12 h-12 bg-gray-200 rounded-full border border-gray-300">
+                                  <User className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="mr-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {player.full_name || player.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {(() => {
+                                  const age = calculateAge(player.birth_date);
+                                  return age ? `${age} سنة` : 'العمر غير محدد';
+                                })()}
+                              </div>
+                              <div className="text-xs text-gray-400">#{player.id?.slice(0, 8)}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Contact Info */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="flex gap-1 items-center mb-1"><Phone className="w-3 h-3 text-gray-400" />{player.phone || 'غير محدد'}</div>
+                            <div className="flex gap-1 items-center"><Mail className="w-3 h-3 text-gray-400" /><span className="text-xs">{player.email || 'غير محدد'}</span></div>
+                            <div className="mt-2">{(() => {
+                              const pct = getProfileCompletion(player); return (
+                                <div>
+                                  <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                                  <div className="w-32 h-1.5 bg-gray-200 rounded">
+                                    <div className={`h-1.5 rounded ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })()}</div>
+                          </div>
+                        </td>
+
+                        {/* Position & Measurements */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium">{player.primary_position || player.position || 'غير محدد'}</div>
+                            {player.secondary_position && (<div className="text-xs text-gray-500">ثانوي: {player.secondary_position}</div>)}
+                            <div className="mt-1 text-xs text-gray-500">{player.height && `${player.height} سم`}{player.height && player.weight && ' • '}{player.weight && `${player.weight} كج`}</div>
+                          </div>
+                        </td>
+
+                        {/* Location */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <div className="flex gap-1 items-center mb-1"><MapPin className="w-3 h-3 text-gray-400" />{player.city || 'غير محدد'}</div>
+                            <div className="text-xs text-gray-500">{player.nationality || player.country || 'غير محدد'}</div>
+                          </div>
+                        </td>
+
+                        {/* Subscription */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">{getSubscriptionBadge(player.subscription_status, player.subscription_end)}<div className="mt-1 text-xs text-gray-500">{player.subscription_type && (<div>نوع: {player.subscription_type}</div>)}<div className="flex itemsكية gap-1"><Calendar className="w-3 h-3" />{formatDate(player.subscription_end)}</div></div></div>
+                        </td>
+
+                        {/* Media */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex gap-2"><Badge variant="outline" className="text-xs"><Video className="mr-1 w-3 h-3" />{player.videos?.length || 0}</Badge><Badge variant="outline" className="text-xs"><ImageIcon className="mr-1 w-3 h-3" />{player.additional_images?.length || 0}</Badge></div>
+                        </td>
+
+                        {/* Dates */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">إضافة:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">تحديث:</span></div><div>{formatDate(player.updatedAt || player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updatedAt || player.updated_at)}</div></div></div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Link href={`/dashboard/academy/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link>
+                            <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
+                            <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
+                            <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </>
         )}
 
@@ -978,7 +1040,7 @@ export default function AcademyPlayersPage() {
               <div className="text-sm text-gray-600">
                 عرض {startIndex + 1}-{Math.min(endIndex, totalPlayers)} من {totalPlayers} نتيجة
               </div>
-              
+
               <div className="flex gap-2 items-center">
                 <Button
                   variant="outline"
@@ -988,7 +1050,7 @@ export default function AcademyPlayersPage() {
                 >
                   الأولى
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -997,7 +1059,7 @@ export default function AcademyPlayersPage() {
                 >
                   السابق
                 </Button>
-                
+
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNumber: number;
@@ -1010,7 +1072,7 @@ export default function AcademyPlayersPage() {
                     } else {
                       pageNumber = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <Button
                         key={pageNumber}
@@ -1024,7 +1086,7 @@ export default function AcademyPlayersPage() {
                     );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -1033,7 +1095,7 @@ export default function AcademyPlayersPage() {
                 >
                   التالي
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"

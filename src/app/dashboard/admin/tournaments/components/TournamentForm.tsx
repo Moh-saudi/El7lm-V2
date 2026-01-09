@@ -418,10 +418,11 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                                 onClick={() => setFormData(p => ({ ...p, feeType: 'club' }))}
                                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${formData.feeType === 'club' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
                             >
-                                لكل فريق
                             </button>
                         </div>
                     </div>
+
+
 
                     <div className="md:col-span-2 space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                         <Label className="font-semibold text-gray-900">بيانات التحويل (المحفظة/الحساب)</Label>
@@ -482,6 +483,30 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
     const renderStep4_Details = () => (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-3 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+                    <Label className="font-semibold text-blue-900 flex items-center gap-2">
+                        <Users className="w-4 h-4" /> نظام الفرق واللاعبين
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm">عدد اللاعبين المطلوب للفريق <span className="text-red-500">*</span></Label>
+                            <Input
+                                type="number"
+                                min="1"
+                                value={formData.maxPlayersPerClub || 1}
+                                onChange={e => setFormData(p => ({ ...p, maxPlayersPerClub: parseInt(e.target.value) }))}
+                                className="bg-white"
+                                placeholder="مثال: 11"
+                            />
+                            <p className="text-xs text-gray-500">سيتم منع التسجيل إذا كان عدد اللاعبين المختارين أقل من هذا الرقم</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm">الحد الأقصى للبدلاء (اختياري)</Label>
+                            <Input type="number" min="0" placeholder="مثال: 5" className="bg-white" />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-3">
                     <Label>الفئات العمرية المسموحة</Label>
                     <div className="grid grid-cols-2 gap-2">

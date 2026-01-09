@@ -140,6 +140,47 @@ export default function EnhancedReferralsPage() {
   const [newCodeName, setNewCodeName] = useState('');
   const [isCreatingCode, setIsCreatingCode] = useState(false);
 
+  // Join Org State
+  const [joinCode, setJoinCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handleJoinOrg = async () => {
+    if (!joinCode.trim()) return;
+
+    setIsJoining(true);
+    try {
+      // 1. Verify code
+      const orgReferral = await organizationReferralService.verifyReferralCode(joinCode.trim());
+      if (!orgReferral) {
+        toast.error('كود الانضمام غير صحيح أو منتهي الصلاحية');
+        return;
+      }
+
+      // 2. Create Join Request
+      await organizationReferralService.createJoinRequest(
+        user!.uid,
+        {
+          full_name: userData?.full_name || userData?.name,
+          email: userData?.email,
+          phone: userData?.phone,
+          position: (userData as any)?.primary_position
+        },
+        joinCode.trim()
+      );
+
+      toast.success(`تم إرسال طلب الانضمام إلى ${orgReferral.organizationName} بنجاح!`);
+      setJoinCode('');
+      loadPlayerOnlyData(); // Reload requests
+      setActiveTab('requests'); // Switch to requests tab
+
+    } catch (error: any) {
+      console.error('Join Error:', error);
+      toast.error(error.message || 'حدث خطأ أثناء الانضمام');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   const config = (ACCOUNT_TYPE_INFO[accountType as keyof typeof ACCOUNT_TYPE_INFO] || ACCOUNT_TYPE_INFO.player) as any;
   const MainIcon = config.icon;
 
@@ -352,6 +393,44 @@ export default function EnhancedReferralsPage() {
           </div>
         </div>
       </header>
+
+      {/* --- Join Organization Section (Players Only) --- */}
+      {accountType === 'player' && (
+        <Card className="border-2 border-emerald-100 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm mb-8">
+          <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-white rounded-2xl shadow-sm text-emerald-600">
+                <Building className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 mb-1">الانضمام إلى مؤسسة رياضية</h3>
+                <p className="text-gray-600 font-medium">هل لديك كود دعوة من نادٍ أو أكاديمية؟ أدخله هنا للانضمام فوراً.</p>
+              </div>
+            </div>
+
+            <div className="flex w-full md:w-auto gap-3">
+              <div className="relative flex-1 md:w-80">
+                <Input
+                  placeholder="أدخل كود الانضمام (مثال: ACD-X92F)"
+                  className="h-14 rounded-xl border-emerald-200 focus:border-emerald-500 focus:ring-emerald-200 text-lg font-mono uppercase pl-12 bg-white shadow-sm"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                />
+                <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
+              <Button
+                size="lg"
+                className="h-14 px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-200"
+                onClick={handleJoinOrg}
+                disabled={!joinCode.trim() || isJoining}
+              >
+                {isJoining ? 'جاري التحقق...' : 'انضمام'}
+                <ArrowRight className="w-5 h-5 mr-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* --- Stats Grid --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

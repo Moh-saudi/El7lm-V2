@@ -850,6 +850,14 @@ export default function UnifiedTournamentRegistrationPage() {
                       toast.error('يرجى اختيار لاعب واحد على الأقل');
                       return;
                     }
+
+                    // Enforce team size validation
+                    const requiredCount = selectedTournament.maxPlayersPerClub;
+                    if (requiredCount && requiredCount > 1 && selectedPlayers.length !== requiredCount) {
+                      toast.error(`عدد اللاعبين غير مكتمل. الرجاء استكمال العدد المطلوب (${requiredCount} لاعبين) لاستكمال الاشتراك بالبطولة.`);
+                      return;
+                    }
+
                     setCurrentStep(3);
                   }}
                   className="flex-1 h-12 text-base bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"

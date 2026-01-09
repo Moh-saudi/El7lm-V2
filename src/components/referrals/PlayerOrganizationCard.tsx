@@ -51,6 +51,21 @@ const getOrganizationTypeLabel = (type: string) => {
     }
 };
 
+// Helper to safely format dates
+const formatDate = (date: any) => {
+    if (!date) return '';
+    try {
+        // Handle Firestore Timestamp
+        if (date && typeof date.toDate === 'function') {
+            return date.toDate().toLocaleDateString('ar');
+        }
+        // Handle String or Date object
+        return new Date(date).toLocaleDateString('ar');
+    } catch (e) {
+        return '';
+    }
+};
+
 export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationCardProps) {
     const [joinRequests, setJoinRequests] = useState<PlayerJoinRequest[]>([]);
     const [loading, setLoading] = useState(true);
@@ -167,7 +182,7 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                     </p>
                                     {request.approvedAt && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                            ✅ تم القبول: {new Date(request.approvedAt as any).toLocaleDateString('ar')}
+                                            ✅ تم القبول: {formatDate(request.approvedAt)}
                                         </p>
                                     )}
                                 </div>
@@ -200,7 +215,7 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                         {getOrganizationTypeLabel(request.organizationType)}
                                     </p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        📅 تم الإرسال: {new Date(request.requestedAt as any).toLocaleDateString('ar')}
+                                        📅 تم الإرسال: {formatDate(request.requestedAt)}
                                     </p>
                                 </div>
                             </div>

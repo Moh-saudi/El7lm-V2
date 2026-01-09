@@ -104,12 +104,8 @@ export default function JoinOrganizationModal({
 
             await organizationReferralService.createJoinRequest(
                 playerId,
-                referralCode.trim(),
-                playerName,
-                {
-                    enteredAt: new Date().toISOString(),
-                    source: 'join_modal'
-                }
+                { name: playerName, enteredAt: new Date().toISOString() },
+                referralCode.trim()
             );
 
             toast.success('🎉 تم إرسال طلب الانضمام بنجاح!');
