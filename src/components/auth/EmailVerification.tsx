@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
-import emailjs from '@emailjs/browser';
+
 
 interface EmailVerificationProps {
   email: string;
@@ -35,7 +35,7 @@ export default function EmailVerification({
   // عداد الوقت المتبقي
   useEffect(() => {
     if (timeRemaining <= 0) return;
-    
+
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
@@ -54,24 +54,28 @@ export default function EmailVerification({
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
-  // دالة إرسال الإيميل مباشرة من المتصفح
+  // دالة إرسال الإيميل عبر API (Resend)
   const sendEmailDirectly = async (otpCode: string) => {
     try {
-      const templateParams = {
-        user_name: name,
-        otp_code: otpCode,
-        email: email,
-        to_email: email
-      };
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          otp: otpCode
+        }),
+      });
 
-      const result = await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-        templateParams,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
-      );
+      const data = await response.json();
 
-      return { success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني!' };
+      if (data.success) {
+        return { success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني!' };
+      } else {
+        throw new Error(data.error || 'Faled to send email');
+      }
     } catch (error: any) {
       console.error('خطأ في إرسال الإيميل:', error);
       return { success: false, message: 'فشل في إرسال الإيميل. يرجى المحاولة مرة أخرى.' };
@@ -87,10 +91,10 @@ export default function EmailVerification({
       // إنشاء OTP جديد
       const newOtp = generateOTP();
       setCurrentOtpCode(newOtp);
-      
+
       // إرسال الإيميل مباشرة من المتصفح
       const emailResult = await sendEmailDirectly(newOtp);
-      
+
       if (emailResult.success) {
         setMessage(emailResult.message);
         setTimeRemaining(60); // 60 ثانية
@@ -102,14 +106,14 @@ export default function EmailVerification({
       console.error('خطأ في إرسال OTP:', error);
       setError('حدث خطأ في إرسال رمز التحقق');
     }
-    
+
     setLoading(false);
   };
 
   const handleOtpChange = (index: number, value: string) => {
     // السماح بالأرقام فقط
     if (value && !/^\d$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -150,7 +154,7 @@ export default function EmailVerification({
         setLoading(false);
         return;
       }
-      
+
       // التحقق من صحة الرمز
       if (currentOtpCode !== otpCode) {
         setError('رمز التحقق غير صحيح.');
@@ -162,34 +166,34 @@ export default function EmailVerification({
         setLoading(false);
         return;
       }
-      
+
       // تحقق ناجح
       setMessage('تم التحقق من البريد الإلكتروني بنجاح!');
       setCurrentOtpCode(''); // مسح الرمز
-      
+
       setTimeout(() => {
         onVerificationSuccess();
       }, 1500);
-      
+
     } catch (error: any) {
       console.error('خطأ في التحقق:', error);
       setError('حدث خطأ في التحقق من الرمز');
     }
-    
+
     setLoading(false);
   };
 
   const handleResendOTP = async () => {
     setResendLoading(true);
     setError('');
-    
+
     // مسح OTP القديم
     setCurrentOtpCode('');
     setOtp(['', '', '', '', '', '']);
-    
+
     // إرسال OTP جديد
     await sendOTP();
-    
+
     setResendLoading(false);
   };
 
@@ -249,7 +253,7 @@ export default function EmailVerification({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 disabled={loading}
-                style={{direction: 'ltr', textAlign: 'center'}}
+                style={{ direction: 'ltr', textAlign: 'center' }}
               />
             ))}
           </div>
@@ -274,11 +278,10 @@ export default function EmailVerification({
           <button
             onClick={handleResendOTP}
             disabled={resendLoading || timeRemaining > 0}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-              timeRemaining > 0
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${timeRemaining > 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
           >
             {resendLoading ? (
               <>

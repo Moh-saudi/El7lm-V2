@@ -199,10 +199,10 @@ export async function POST(request: NextRequest) {
       });
     } else {
       return NextResponse.json({
-        success: false,
+        success: true,
         exists: false,
         message: 'المستخدم غير موجود في النظام'
-      }, { status: 404 });
+      }, { status: 200 });
     }
 
   } catch (error: any) {

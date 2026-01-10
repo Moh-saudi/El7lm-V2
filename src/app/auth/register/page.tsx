@@ -82,7 +82,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [registrationMethod, setRegistrationMethod] = useState<'phone' | 'email' | null>(null);
-  const [formStep, setFormStep] = useState(1);
+  // formStep removed for single-step flow
   const [showOrgCode, setShowOrgCode] = useState(false);
 
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
@@ -170,10 +170,22 @@ export default function RegisterPage() {
           }
         }
 
-        // Send Verify Email
+        // Send Verify Email (via Resend API)
         if (auth.currentUser) {
-          console.log('Sending Verification Email...');
-          await sendEmailVerification(auth.currentUser);
+          console.log('Sending Verification Email via Resend...');
+          try {
+            await fetch('/api/auth/send-verification-link', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: formData.email,
+                name: formData.name
+              })
+            });
+          } catch (emailErr) {
+            console.error('Failed to send verification email, but account created', emailErr);
+            // We still proceed to show success UI
+          }
         }
 
         toast.success('تم إرسال رابط التفعيل!');
@@ -258,7 +270,7 @@ export default function RegisterPage() {
             {registrationMethod && (
               <div className="px-6 py-4 border-b border-slate-100/50 flex items-center justify-between bg-white/50">
                 <button
-                  onClick={() => { setRegistrationMethod(null); setFormStep(1); }}
+                  onClick={() => { setRegistrationMethod(null); }}
                   className="text-xs font-bold text-slate-500 hover:text-purple-600 flex items-center gap-1 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100"
                 >
                   <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
@@ -358,147 +370,99 @@ export default function RegisterPage() {
                 {registrationMethod && (
                   <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
 
-                    {formStep === 1 && (
-                      <div className="space-y-5">
-                        <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} required />
+                    <div className="space-y-5">
+                      <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} required />
 
-                        <div className="relative group">
-                          <label htmlFor="reg-country" className="absolute text-xs font-bold text-slate-400 duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[top_right] right-4 peer-focus:text-purple-600 pointer-events-none uppercase tracking-widest">الدولة</label>
-                          <select
-                            id="reg-country"
-                            name="country"
-                            value={formData.country}
-                            onChange={handleCountryChange}
-                            className="block px-4 pb-2 pt-6 w-full text-sm font-black text-slate-800 bg-slate-50/50 border border-slate-200 rounded-[1.25rem] appearance-none focus:outline-none focus:border-purple-600 focus:bg-white peer cursor-pointer transition-all"
-                          >
-                            <option value="">اختر الدولة</option>
-                            {countries.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
-                          </select>
-                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors pointer-events-none" aria-hidden="true" />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity">
-                            {/* Custom arrow can go here */}
-                          </div>
-                        </div>
+                      <div className="relative group">
+                        <label htmlFor="reg-country" className="absolute text-xs font-bold text-slate-400 duration-300 transform -translate-y-3 scale-75 top-4 z-10 origin-[top_right] right-4 peer-focus:text-purple-600 pointer-events-none uppercase tracking-widest">الدولة</label>
+                        <select
+                          id="reg-country"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleCountryChange}
+                          className="block px-4 pb-2 pt-6 w-full text-sm font-black text-slate-800 bg-slate-50/50 border border-slate-200 rounded-[1.25rem] appearance-none focus:outline-none focus:border-purple-600 focus:bg-white peer cursor-pointer transition-all"
+                        >
+                          <option value="">اختر الدولة</option>
+                          {countries.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                        </select>
+                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors pointer-events-none" aria-hidden="true" />
+                      </div>
 
-                        <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} required />
+                      <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} required />
 
+                      <div className="relative">
+                        <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} />
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (!formData.name || !formData.country || !isValidEmail(formData.email)) {
-                              setError('يرجى إكمال جميع البيانات بشكل صحيح');
-                              return;
-                            }
-
-                            setLoading(true);
-                            setError('');
-                            try {
-                              const checkRes = await fetch('/api/auth/check-user', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
-                              });
-                              const checkData = await checkRes.json();
-                              if (checkRes.ok && checkData.exists) {
-                                setError(`البريد الإلكتروني مسجل بالفعل باسم ${checkData.userName}. يرجى تسجيل الدخول.`);
-                                toast.error('هذا الحساب موجود بالفعل');
-                                return;
-                              }
-                              setFormStep(2);
-                            } catch (e) {
-                              // If check fails, we still allow moving forward
-                              setFormStep(2);
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
-                          disabled={loading}
-                          className="w-full bg-slate-900 group relative text-white font-black h-14 rounded-2xl text-sm shadow-xl shadow-slate-200 mt-4 overflow-hidden active:scale-95 transition-all disabled:opacity-70"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
+                          aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                          <span className="relative z-10 flex items-center justify-center gap-2">
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                              <>
-                                التالي
-                                <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-                              </>
-                            )}
-                          </span>
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                    )}
 
-                    {formStep === 2 && (
-                      <div className="space-y-5 animate-in slide-in-from-right-8 duration-500">
-                        <div className="relative">
-                          <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-10 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
-                            aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
+                      <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} />
 
-                        <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} />
+                      {formData.accountType === 'player' && (
+                        <div className="bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 border-2 border-dashed border-purple-200 rounded-2xl p-5 my-6 relative overflow-hidden group hover:border-purple-400 hover:shadow-md transition-all duration-300">
+                          <div className="absolute top-0 left-0 w-20 h-20 bg-purple-100/50 rounded-full -translate-x-10 -translate-y-10 blur-xl"></div>
 
-                        <div className="py-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowOrgCode(!showOrgCode)}
-                            className="text-[10px] text-purple-600 font-black uppercase tracking-widest flex items-center gap-2 hover:underline bg-purple-50 px-3 py-1.5 rounded-full transition-all"
-                          >
-                            <Users className="w-3.5 h-3.5" />
-                            {showOrgCode ? 'إخفاء كود الانضمام' : 'لديك كود انضمام؟'}
-                          </button>
-
-                          {showOrgCode && (
-                            <div className="mt-3 animate-in slide-in-from-top-2 duration-300">
-                              <FloatingInput id="reg-org-code" name="organizationCode" label="كود الانضمام للمنظمة" value={formData.organizationCode} onChange={handleInputChange} icon={Globe} />
+                          <div className="flex items-start gap-3 mb-4 relative z-10">
+                            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0 text-purple-700 shadow-sm border border-purple-200">
+                              <Users className="w-5 h-5" />
                             </div>
-                          )}
-                        </div>
+                            <div className="space-y-0.5">
+                              <h3 className="text-sm font-black text-purple-900">هل لديك كود انضمام؟</h3>
+                              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                إذا كنت تنضم إلى نادٍ أو أكاديمية، أدخل الكود الخاص بهم هنا ليتم ربط حسابك مباشرة.
+                              </p>
+                            </div>
+                          </div>
 
-                        <div className="flex items-start gap-3 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                          <div className="relative flex items-center pt-0.5">
-                            <input
-                              id="terms-checkbox"
-                              type="checkbox"
-                              checked={formData.agreeToTerms}
-                              onChange={(e) => setFormData(p => ({ ...p, agreeToTerms: e.target.checked }))}
-                              className="w-5 h-5 rounded-lg border-slate-200 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer accent-purple-600"
+                          <div className="relative z-10 bg-white rounded-xl shadow-sm">
+                            <FloatingInput
+                              id="reg-org-code"
+                              name="organizationCode"
+                              label="أدخل كود الانضمام (اختياري)"
+                              value={formData.organizationCode}
+                              onChange={handleInputChange}
+                              icon={Globe}
                             />
                           </div>
-                          <label htmlFor="terms-checkbox" className="text-xs text-slate-500 font-medium leading-relaxed">
-                            أوافق على <button type="button" onClick={() => setShowTerms(true)} className="text-purple-700 font-black underline decoration-purple-200 underline-offset-4 hover:decoration-purple-600 transition-all">شروط الخدمة</button> و سياسة الخصوصية الخاصة بمنصة الحلم.
-                          </label>
                         </div>
+                      )}
 
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setFormStep(1)}
-                            className="px-6 bg-slate-100 text-slate-600 font-black h-14 rounded-2xl text-sm hover:bg-slate-200 transition-all active:scale-95"
-                          >
-                            رجوع
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black h-14 rounded-2xl text-sm shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
-                          >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                              <>
-                                <span>تأكيد التسجيل</span>
-                                <CheckCircle className="w-4 h-4" />
-                              </>
-                            )}
-                          </button>
+                      <div className="flex items-start gap-3 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                        <div className="relative flex items-center pt-0.5">
+                          <input
+                            id="terms-checkbox"
+                            type="checkbox"
+                            checked={formData.agreeToTerms}
+                            onChange={(e) => setFormData(p => ({ ...p, agreeToTerms: e.target.checked }))}
+                            className="w-5 h-5 rounded-lg border-slate-200 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer accent-purple-600"
+                          />
                         </div>
+                        <label htmlFor="terms-checkbox" className="text-xs text-slate-500 font-medium leading-relaxed">
+                          أوافق على <button type="button" onClick={() => setShowTerms(true)} className="text-purple-700 font-black underline decoration-purple-200 underline-offset-4 hover:decoration-purple-600 transition-all">شروط الخدمة</button> و سياسة الخصوصية الخاصة بمنصة الحلم.
+                        </label>
                       </div>
-                    )}
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black h-14 rounded-2xl text-sm shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
+                        >
+                          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                            <>
+                              <span>إنشاء الحساب</span>
+                              <CheckCircle className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 

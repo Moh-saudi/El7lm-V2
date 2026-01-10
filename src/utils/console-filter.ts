@@ -64,7 +64,14 @@ const errorsToHide = [
   'strategy=... onload',
   'current url',
   'current pathname',
-  'smart-script-loader.js'
+  'smart-script-loader.js',
+
+  // Extension & 3rd Party Noise
+  'content-script',
+  'content.js',
+  'get phone number error',
+  '_aiwn',
+  '_1fm4m'
 ];
 
 // Reference to original console methods to prevent infinite loops
@@ -158,7 +165,7 @@ export const initializeConsoleFilter = () => {
   };
 
   (window as any).__el7lm_console_filtered = true;
-  originalLog.call(console, '🛡️ Unified Console Filter v4.1 Activated');
+  originalLog.call(console, '🛡️ Unified Console Filter v4.2 Activated');
 };
 
 if (typeof window !== 'undefined') {

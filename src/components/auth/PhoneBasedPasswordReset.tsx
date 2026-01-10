@@ -407,31 +407,12 @@ export default function PhoneBasedPasswordReset({
                         </div>
                     </div>
 
-                    {/* Fallback Display for Testing */}
-                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-right" dir="rtl">
-                        <p className="text-sm font-bold text-yellow-800 mb-2">إصدار تجريبي (للمساعدة اليدوية):</p>
-                        <div className="space-y-3">
-                            <div className="text-xs text-gray-600">
-                                <span className="font-bold">رابط الاسترجاع:</span>
-                                <div className="mt-1 p-2 bg-white border border-gray-200 rounded break-all select-all font-mono text-[10px]">
-                                    {sessionStorage.getItem('shortResetLink')}
-                                </div>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                                <span className="font-bold">رمز التحقق:</span>
-                                <span className="mr-2 px-2 py-1 bg-white border border-gray-200 rounded font-bold text-purple-600">
-                                    {sessionStorage.getItem('resetToken')}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-right">
                         <h3 className="text-sm font-medium text-blue-800 mb-2">📧 الخطوات التالية:</h3>
                         <ol className="text-xs text-blue-700 space-y-2 list-decimal list-inside pr-0">
                             <li>افتح صندوق البريد الإلكتروني</li>
                             <li>ابحث عن رسالة من "منصة الحلم"</li>
-                            <li>استخدم الرابط أو الرمز أعلاه للمتابعة</li>
+                            <li>استخدم الرابط الموجود في الرسالة لاستعادة كلمة المرور</li>
                         </ol>
                     </div>
 

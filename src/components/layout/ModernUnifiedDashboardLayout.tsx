@@ -130,8 +130,11 @@ const ModernUnifiedDashboardLayout: React.FC<ModernUnifiedDashboardLayoutProps> 
 
           {/* المحتوى الرئيسي */}
           <main
-            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${shouldShowSidebar ? (collapsed ? 'mr-20' : 'mr-[280px]') : ''
+            className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ease-in-out ${shouldShowSidebar
+              ? (collapsed ? 'md:mr-20' : 'md:mr-[280px]') // Responsive margins
+              : ''
               }`}
+            // On mobile (default), margin is 0, sidebar overlays or is collapsed
             style={{ direction: 'rtl' }}
           >
             {/* مساحة للهيدر */}

@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useSidebar } from '@/lib/context/SidebarContext';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -398,6 +399,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       'whatsapp': 'canManageSupport',
       // 'beon-v3': 'canManageEmployees', // Removed - service deprecated
       'whatsapp-test': 'canManageSupport',
+      'email-center': 'canManageSupport',
       'dream-academy-categories': 'canManageContent',
       'media': 'canManageContent',
       'dream-academy': 'canManageContent',
@@ -501,6 +503,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/admin/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'messages', label: 'الرسائل', icon: MessageSquare, href: `/dashboard/admin/messages`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
         { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/admin/notifications`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+        { id: 'email-center', label: 'مركز الرسائل والبريد', icon: Mail, href: `/dashboard/admin/email-center`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
         { id: 'users', label: 'إدارة المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'employees', label: 'فريق العمل والصلاحيات', icon: User, href: `/dashboard/admin/employees`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'payments', label: 'السجل المالي', icon: Target, href: `/dashboard/admin/payments`, color: 'text-green-600', bgColor: 'bg-green-50' },
@@ -565,184 +568,237 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
     }
   };
 
+  // Import useSidebar at the top first (will do via separate tool or assume implicit if I could, but I can't. I'll add imports in next step or use replace_block correctly)
+  // Actually, I will just rewrite the return  /* Hook inserted by logic */ 
+  const { isMobileOpen, closeMobileSidebar } = useSidebar();
+
+  // Mobile Swipe/Backdrop logic
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileOpen]);
+
+  // Determine width based on state and viewport (simplified for motion)
+  // On mobile, if open, we want full width (280). If closed, 0 (hidden).
+  // But we handle hiding via CSS transform.
+  const sidebarWidth = collapsed ? 80 : 280;
+
   return (
-    <motion.div
-      initial={{ width: collapsed ? 80 : 280 }}
-      animate={{ width: collapsed ? 80 : 280 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className={`fixed right-0 top-0 h-full bg-gradient-to-b ${accountInfo.bgGradient} backdrop-blur-xl border-l border-white/20 shadow-2xl z-40 flex flex-col max-w-full`}
-    >
-      {/* Header Section */}
-      <div className="p-4 sm:p-6 border-b border-white/20">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className={`p-2 sm:p-3 bg-gradient-to-br ${accountInfo.gradient} rounded-xl shadow-lg`}>
-                {(() => { const IconCmp = accountInfo.icon; return <IconCmp className="w-5 h-5 sm:w-6 sm:h-6 text-white" />; })()}
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">El7lm</h2>
-                <p className="text-sm text-slate-600">Platform</p>
-              </div>
-            </motion.div>
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 hover:bg-white/60 rounded-xl"
-          >
-            {collapsed ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-          </Button>
-        </div>
-      </div>
-
-      {/* User Profile Section */}
-      <div className="p-4 sm:p-6 border-b border-white/20">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
-              <AvatarImage
-                key={getUserAvatar || 'default'}
-                src={getUserAvatar || undefined}
-                alt={getUserDisplayName()}
-                onError={(e) => {
-                  console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar);
-                  e.currentTarget.style.display = 'none';
-                }}
-                onLoad={() => {
-                  console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar);
-                }}
-              />
-              <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
-                {getUserDisplayName().slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className={`absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-br ${accountInfo.gradient} rounded-full border-2 border-white flex items-center justify-center text-sm`}>
-              {accountInfo.emoji}
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex-1 min-w-0"
-              >
-                <div className="font-semibold text-slate-800 truncate">
-                  {getUserDisplayName()}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className={`bg-gradient-to-r ${accountInfo.gradient} text-white border-0 text-xs px-2 py-1`}>
-                    {accountInfo.label}
-                  </Badge>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Navigation Menu */}
-      <div className="flex-1 overflow-y-auto py-2 sm:py-4">
-        <nav className="space-y-2 px-2 sm:px-3">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeItem === item.id;
-
-            return (
-              <motion.button
-                key={item.id}
-                onClick={() => handleNavigation(item.href, item.id)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`
-                  w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group
-                  ${isActive
-                    ? `bg-white/80 ${item.color} shadow-lg ring-1 ring-white/30`
-                    : 'hover:bg-white/60 text-slate-700 hover:text-slate-900'
-                  }
-                `}
-              >
-                <div className={`
-                  p-2 rounded-lg transition-all duration-300
-                  ${isActive
-                    ? `${item.bgColor} ${item.color}`
-                    : 'bg-white/30 group-hover:bg-white/60'
-                  }
-                `}>
-                  <Icon className="w-5 h-5" />
-                </div>
-
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      className="font-medium text-sm"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Footer Section */}
-      <div className="p-4 border-t border-white/20">
-        <motion.button
-          onClick={handleLogout}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 transition-all duration-300 group"
-        >
-          <div className="p-2 rounded-lg bg-red-50 group-hover:bg-red-100 transition-all duration-300">
-            <LogOut className="w-5 h-5" />
-          </div>
-
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="font-medium text-sm"
-              >
-                تسجيل الخروج
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
-
-        {!collapsed && (
+    <>
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isMobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-4 text-center"
-          >
-            <div className="text-xs text-slate-500">
-              منصة الأحلام الرياضية
-            </div>
-            <div className="text-xs text-slate-400 mt-1">
-              v2.0.0
-            </div>
-          </motion.div>
+            onClick={closeMobileSidebar}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          />
         )}
-      </div>
-    </motion.div>
+      </AnimatePresence>
+
+      <motion.div
+        initial={false}
+        animate={{
+          width: window.innerWidth >= 768 ? sidebarWidth : 280,
+          x: window.innerWidth < 768 && !isMobileOpen ? '100%' : '0%' // Handle visibility via x-transform
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className={`fixed right-0 top-0 h-full bg-gradient-to-b ${accountInfo.bgGradient} backdrop-blur-xl border-l border-white/20 shadow-2xl z-50 flex flex-col max-w-full md:translate-x-0`}
+      // Force width on mobile to standard size
+      >
+        {/* Header Section */}
+        <div className="p-4 sm:p-6 border-b border-white/20">
+          <div className="flex items-center justify-between">
+            {/* Show Logo Title if not collapsed OR if on mobile (always expanded menu on mobile) */}
+            {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-3"
+              >
+                <div className={`p-2 sm:p-3 bg-gradient-to-br ${accountInfo.gradient} rounded-xl shadow-lg`}>
+                  {(() => { const IconCmp = accountInfo.icon; return <IconCmp className="w-5 h-5 sm:w-6 sm:h-6 text-white" />; })()}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">El7lm</h2>
+                  <p className="text-sm text-slate-600">Platform</p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Collapse Toggle - Only show on Desktop */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-2 hover:bg-white/60 rounded-xl hidden md:flex"
+            >
+              {collapsed ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </Button>
+
+            {/* Close Button - Only show on Mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeMobileSidebar}
+              className="p-2 hover:bg-white/60 rounded-xl md:hidden"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* User Profile Section */}
+        <div className="p-4 sm:p-6 border-b border-white/20">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg">
+                <AvatarImage
+                  key={getUserAvatar || 'default'}
+                  src={getUserAvatar || undefined}
+                  alt={getUserDisplayName()}
+                  onError={(e) => {
+                    console.error('❌ Sidebar: Error loading avatar image:', getUserAvatar);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Sidebar: Avatar image loaded successfully:', getUserAvatar);
+                  }}
+                />
+                <AvatarFallback className={`bg-gradient-to-br ${accountInfo.gradient} text-white font-bold`}>
+                  {getUserDisplayName().slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className={`absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-br ${accountInfo.gradient} rounded-full border-2 border-white flex items-center justify-center text-sm`}>
+                {accountInfo.emoji}
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex-1 min-w-0"
+                >
+                  <div className="font-semibold text-slate-800 truncate">
+                    {getUserDisplayName()}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="secondary" className={`bg-gradient-to-r ${accountInfo.gradient} text-white border-0 text-xs px-2 py-1`}>
+                      {accountInfo.label}
+                    </Badge>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Navigation Menu */}
+        <div className="flex-1 overflow-y-auto py-2 sm:py-4">
+          <nav className="space-y-2 px-2 sm:px-3">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeItem === item.id;
+
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => {
+                    handleNavigation(item.href, item.id);
+                    if (window.innerWidth < 768) closeMobileSidebar(); // Close sidebar on click (mobile)
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group
+                    ${isActive
+                      ? `bg-white/80 ${item.color} shadow-lg ring-1 ring-white/30`
+                      : 'hover:bg-white/60 text-slate-700 hover:text-slate-900'
+                    }
+                  `}
+                >
+                  <div className={`
+                    p-2 rounded-lg transition-all duration-300
+                    ${isActive
+                      ? `${item.bgColor} ${item.color}`
+                      : 'bg-white/30 group-hover:bg-white/60'
+                    }
+                  `}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+
+                  <AnimatePresence>
+                    {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Footer Section */}
+        <div className="p-4 border-t border-white/20">
+          <motion.button
+            onClick={handleLogout}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 transition-all duration-300 group"
+          >
+            <div className="p-2 rounded-lg bg-red-50 group-hover:bg-red-100 transition-all duration-300">
+              <LogOut className="w-5 h-5" />
+            </div>
+
+            <AnimatePresence>
+              {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+                <motion.span
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="font-medium text-sm"
+                >
+                  تسجيل الخروج
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+
+          {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mt-4 text-center"
+            >
+              <div className="text-xs text-slate-500">
+                منصة الأحلام الرياضية
+              </div>
+              <div className="text-xs text-slate-400 mt-1">
+                v2.0.0
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </>
   );
 };
 

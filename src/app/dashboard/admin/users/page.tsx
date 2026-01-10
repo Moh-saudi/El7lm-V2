@@ -155,6 +155,8 @@ export default function AdminUsersPage() {
   const [newAccountType, setNewAccountType] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
   const [isPermanentDelete, setIsPermanentDelete] = useState(false);
+  const [showPurgeDialog, setShowPurgeDialog] = useState(false);
+  const [purgeEmail, setPurgeEmail] = useState('');
 
   const handleRequestUpdate = async (userId: string) => {
     try {
@@ -684,32 +686,19 @@ export default function AdminUsersPage() {
       const allCollections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
 
       if (isPermanentDelete) {
-        // حذف نهائي شامل (Deep Hard Delete)
-        const deleteOperations: Promise<any>[] = [];
-
-        // 1. الحذف المباشر بالـ ID من جميع المجموعات
-        allCollections.forEach(coll => {
-          deleteOperations.push(deleteDoc(doc(db, coll, userId)).catch(() => { }));
+        // حذف نهائي باستخدام API لضمان حذف Auth + Firestore
+        const res = await fetch('/api/admin/users/purge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userEmail })
         });
+        const data = await res.json();
 
-        // 2. إذا كان هناك بريد، نبحث عن أي حسابات مكررة بنفس البريد ونحذفها أيضاً
-        if (userEmail) {
-          for (const collName of allCollections) {
-            try {
-              const q = query(collection(db, collName), where('email', '==', userEmail));
-              const snap = await getDocs(q);
-              snap.forEach(d => {
-                deleteOperations.push(deleteDoc(doc(db, collName, d.id)).catch(() => { }));
-              });
-            } catch (e) { /* skip failures in specific sub-collections */ }
-          }
-        }
-
-        await Promise.all(deleteOperations);
+        if (!data.success) throw new Error(data.error);
 
         // تحديث الواجهة فوراً ومسح أي أثر لهذا البريد
         setUsers(prev => prev.filter(u => u.id !== userId && (u.email?.toLowerCase().trim() !== userEmail || !userEmail)));
-        toast.success(`تم تطهير قاعدة البيانات من الحساب (${userEmail}) وجميع تكراراته`);
+        toast.success(`تم تطهير قاعدة البيانات من الحساب (${userEmail}) بنجاح`);
       } else {
         // حذف ناعم (Soft Delete)
         const deletePayload = {
@@ -746,6 +735,36 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error('Critical Deletion Error:', error);
       toast.error('حدث خطأ فني أثناء محاولة التطهير الشامل للبيانات');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePurgeAccount = async () => {
+    if (!purgeEmail.trim()) {
+      toast.error('يرجى إدخال البريد الإلكتروني');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const res = await fetch('/api/admin/users/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: purgeEmail.trim().toLowerCase() })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('تم تطهير الحساب بنجاح:\n' + data.logs.join('\n'));
+        setShowPurgeDialog(false);
+        setPurgeEmail('');
+        window.location.reload();
+      } else {
+        toast.error(data.error);
+      }
+    } catch (e) {
+      toast.error('حدث خطأ أثناء التطهير');
     } finally {
       setActionLoading(false);
     }
@@ -1776,6 +1795,15 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
               >
                 {isRepairing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
                 {isRepairing ? 'جاري الإصلاح...' : 'الإصلاح الذكي'}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowPurgeDialog(true)}
+                className="gap-2 shadow-sm"
+              >
+                <Trash2 className="h-4 w-4" />
+                تطهير حساب (Email)
               </Button>
               <Button onClick={() => { }} variant="outline" size="sm" className="bg-white hover:bg-gray-50 border-gray-200">
                 <Download className="h-4 w-4 ml-2" />
@@ -3485,6 +3513,46 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 {actionLoading ? 'جاري التغيير...' : 'تغيير نوع الحساب'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Purge Ghost Account Dialog */}
+        <Dialog open={showPurgeDialog} onOpenChange={setShowPurgeDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-red-600 flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                تطهير حساب عالق (Emergency Purge)
+              </DialogTitle>
+              <DialogDescription>
+                استخدم هذه الأداة لحذف حساب "عالق" يظهر كـ "مسجل بالفعل" ولكن لا يظهر في جدول المستخدمين.
+                سيقوم النظام بحذفه من المصادقة (Firebase Auth) وقاعدة البيانات.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">البريد الإلكتروني للحساب العالق</label>
+                <Input
+                  placeholder="email@example.com"
+                  value={purgeEmail}
+                  onChange={(e) => setPurgeEmail(e.target.value)}
+                  className="border-red-200 focus:ring-red-500"
+                />
+              </div>
+              <div className="bg-red-50 p-3 rounded text-xs text-red-800 border border-red-200">
+                ⚠️ تحذير: هذا الإجراء لا يمكن التراجع عنه. تأكد من كتابة البريد بشكل صحيح.
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowPurgeDialog(false)}>إلغاء</Button>
+              <Button
+                variant="destructive"
+                onClick={handlePurgeAccount}
+                disabled={actionLoading || !purgeEmail}
+              >
+                {actionLoading ? 'جاري التطهير...' : 'تطهير الآن'}
               </Button>
             </div>
           </DialogContent>

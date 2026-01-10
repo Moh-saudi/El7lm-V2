@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, AlertTriangle, Clock, RefreshCw, X } from 'lucide-react';
-import emailjs from '@emailjs/browser';
+
 
 interface EmailOTPVerificationProps {
   email: string;
@@ -34,7 +34,7 @@ export default function EmailOTPVerification({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [currentOtpCode, setCurrentOtpCode] = useState('');
-  
+
   // حماية ضد الإرسال المتكرر
   const sentRef = useRef(false);
   const isInitializedRef = useRef(false);
@@ -43,24 +43,24 @@ export default function EmailOTPVerification({
 
   // إرسال OTP عند فتح المكون (مرة واحدة فقط)
   useEffect(() => {
-    console.log('🔍 EmailOTP: useEffect triggered:', { 
-      isOpen, 
-      initialized: isInitializedRef.current, 
+    console.log('🔍 EmailOTP: useEffect triggered:', {
+      isOpen,
+      initialized: isInitializedRef.current,
       sent: sentRef.current,
       email,
       lastEmail: lastEmailRef.current
     });
-    
+
     if (isOpen && !isInitializedRef.current) {
       isInitializedRef.current = true;
       console.log('🚀 EmailOTP: Initial OTP send triggered for:', email);
-      
+
       // التحقق من أن البريد الإلكتروني لم يتغير
       if (lastEmailRef.current === email && sentRef.current) {
         console.log('🛑 EmailOTP: OTP already sent for this email, skipping...');
         return;
       }
-      
+
       // إرسال OTP الأولي
       sendOTP();
     }
@@ -69,7 +69,7 @@ export default function EmailOTPVerification({
   // عداد الوقت المتبقي
   useEffect(() => {
     if (timeRemaining <= 0) return;
-    
+
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
@@ -92,7 +92,7 @@ export default function EmailOTPVerification({
       isInitializedRef.current = false;
       isSendingRef.current = false;
       lastEmailRef.current = '';
-      
+
       setOtp(['', '', '', '', '', '']);
       setLoading(false);
       setResendLoading(false);
@@ -119,24 +119,28 @@ export default function EmailOTPVerification({
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
-  // دالة إرسال الإيميل مباشرة من المتصفح
+  // دالة إرسال الإيميل عبر API (Resend)
   const sendEmailDirectly = async (otpCode: string) => {
     try {
-      const templateParams = {
-        user_name: name,
-        otp_code: otpCode,
-        email: email,
-        to_email: email
-      };
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          otp: otpCode
+        }),
+      });
 
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-        templateParams,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
-      );
+      const data = await response.json();
 
-      return { success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني!' };
+      if (data.success) {
+        return { success: true, message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني!' };
+      } else {
+        throw new Error(data.error || 'Failed to send email');
+      }
     } catch (error: any) {
       console.error('خطأ في إرسال الإيميل:', error);
       return { success: false, message: 'فشل في إرسال الإيميل. يرجى المحاولة مرة أخرى.' };
@@ -159,7 +163,7 @@ export default function EmailOTPVerification({
     isSendingRef.current = true;
     sentRef.current = true;
     lastEmailRef.current = email;
-    
+
     setLoading(true);
     setError('');
     setMessage('');
@@ -167,9 +171,9 @@ export default function EmailOTPVerification({
     try {
       const newOtp = generateOTP();
       setCurrentOtpCode(newOtp);
-      
+
       const emailResult = await sendEmailDirectly(newOtp);
-      
+
       if (emailResult.success) {
         setMessage(emailResult.message);
         setTimeRemaining(otpExpirySeconds);
@@ -187,7 +191,7 @@ export default function EmailOTPVerification({
       sentRef.current = false;
       isSendingRef.current = false;
     }
-    
+
     setLoading(false);
     isSendingRef.current = false;
   };
@@ -195,7 +199,7 @@ export default function EmailOTPVerification({
   const handleOtpChange = (index: number, value: string) => {
     // السماح بالأرقام فقط
     if (value && !/^\d$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -235,7 +239,7 @@ export default function EmailOTPVerification({
         setLoading(false);
         return;
       }
-      
+
       // التحقق من صحة الرمز
       if (currentOtpCode !== otpCode) {
         setError('رمز التحقق غير صحيح.');
@@ -247,21 +251,21 @@ export default function EmailOTPVerification({
         setLoading(false);
         return;
       }
-      
+
       // تحقق ناجح
       setMessage('تم التحقق من البريد الإلكتروني بنجاح!');
-      
+
       setTimeout(() => {
         onVerificationSuccess(otpCode);
         resetComponent();
       }, 1500);
-      
+
     } catch (error: any) {
       console.error('خطأ في التحقق:', error);
       setError('حدث خطأ في التحقق من الرمز');
       onVerificationFailed('حدث خطأ في التحقق من الرمز');
     }
-    
+
     setLoading(false);
   };
 
@@ -274,12 +278,12 @@ export default function EmailOTPVerification({
 
     setResendLoading(true);
     setError('');
-    
+
     // إعادة تعيين الحماية للسماح بالإرسال مرة أخرى
     setCurrentOtpCode('');
     setOtp(['', '', '', '', '', '']);
     sentRef.current = false;
-    
+
     console.log('🔄 Starting email resend...');
     await sendOTP();
     setResendLoading(false);
@@ -351,7 +355,7 @@ export default function EmailOTPVerification({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 disabled={loading}
-                style={{direction: 'ltr', textAlign: 'center'}}
+                style={{ direction: 'ltr', textAlign: 'center' }}
               />
             ))}
           </div>
@@ -376,11 +380,10 @@ export default function EmailOTPVerification({
           <button
             onClick={handleResendOTP}
             disabled={resendLoading || timeRemaining > 0}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-              timeRemaining > 0
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${timeRemaining > 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
           >
             {resendLoading ? (
               <>

@@ -106,38 +106,42 @@ export async function POST(request: NextRequest) {
         let resendError = null;
 
         try {
-            const { Resend } = await import('resend');
-            const resend = new Resend(process.env.RESEND_API_KEY);
+            const { sendEmail } = await import('@/lib/email/sender');
 
             const { generatePasswordResetEmail, generatePasswordResetPlainText } = await import('@/lib/email/templates/password-reset');
 
+            const userName = userDoc?.full_name || userDoc?.name || 'المستخدم';
+
             const emailHtml = generatePasswordResetEmail({
-                userName: userDoc?.full_name || userDoc?.name || 'المستخدم',
+                userName: userName,
                 resetLink: resetLink,
                 token: token,
                 expiresIn: '60 دقيقة'
             });
 
             const emailText = generatePasswordResetPlainText({
-                userName: userDoc?.full_name || userDoc?.name || 'المستخدم',
+                userName: userName,
                 resetLink: resetLink,
                 token: token,
                 expiresIn: '60 دقيقة'
             });
 
-            const { data: emailData, error: emailError } = await resend.emails.send({
-                from: 'منصة الحلم <noreply@el7lm.com>',
+            const result = await sendEmail({
                 to: email,
                 subject: '🔐 إعادة تعيين كلمة المرور - منصة الحلم',
                 html: emailHtml,
                 text: emailText,
+                type: 'password-reset',
+                userId: userRecord.uid,
+                userName: userName,
+                metadata: { token, collection: userCollection }
             });
 
-            if (emailError) {
-                console.error('❌ [generate-reset-link] Resend error details:', emailError);
-                resendError = emailError;
+            if (!result.success) {
+                console.error('❌ [generate-reset-link] Send error:', result.error);
+                resendError = result.error;
             } else {
-                console.log('✅ [generate-reset-link] Email sent successfully:', emailData?.id);
+                console.log('✅ [generate-reset-link] Email sent successfully:', result.id);
                 emailSent = true;
             }
         } catch (err: any) {

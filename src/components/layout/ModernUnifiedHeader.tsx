@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useSidebar } from '@/lib/context/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,7 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
   const locale = 'ar';
   const isRTL = true;
   const router = useRouter();
+  const { toggleMobileSidebar } = useSidebar();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -354,14 +356,14 @@ const ModernUnifiedHeader: React.FC<ModernUnifiedHeaderProps> = ({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Toggles Sidebar */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={toggleMobileSidebar}
               className="md:hidden border-white/30 bg-white/60 backdrop-blur-sm hover:bg-white/80 rounded-xl p-2"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-5 h-5" />
             </Button>
           </div>
         </div>
