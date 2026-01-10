@@ -3,7 +3,8 @@ import { adminDb } from '@/lib/firebase/admin';
 import { EmailType, EmailLog } from '@/types/email';
 
 // Initialize Resend with API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend with API Key (use fallback to prevent build errors)
+const resend = new Resend(process.env.RESEND_API_KEY || 're_123_build_fix');
 
 export type { EmailType, EmailLog }; // Re-export for convenience if needed
 
