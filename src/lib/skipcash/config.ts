@@ -10,13 +10,9 @@ export const skipCashConfig = {
 };
 
 export const config = {
-    baseUrl: (process.env.SKIPCASH_MODE === 'live' || (isProduction && process.env.SKIPCASH_MODE !== 'test'))
+    baseUrl: process.env.SKIPCASH_MODE === 'live'
         ? skipCashConfig.productionUrl
         : skipCashConfig.sandboxUrl,
-    authorization: (process.env.SKIPCASH_SECRET_KEY || '').trim(), // Usually Authorization is just the secret? Or KeyId?
-    // Wait, verification usually needs specific headers.
-    // Client.ts uses 'Authorization': config.secretKey? No, let's check client.ts logic.
-    // Ideally we export the same config structure used elsewhere.
     ...skipCashConfig
 };
 
