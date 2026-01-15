@@ -215,7 +215,12 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           }
         }
 
-        if (isCurrentlyActive) {
+        // SMART BLOCKER: Only auto-trigger the modal if:
+        // 1. It's a player account (Organizations should always access management)
+        // 2. No manual action (renew/upgrade) is requested via URL
+        const shouldShowModal = isCurrentlyActive && accountType === 'player' && !actionParam;
+
+        if (shouldShowModal) {
           const currentPlan = availablePlans.find(p => p.id === detectedPkgId);
           const currentPrice = currentPlan?.base_price || 0;
           const hasHigherPlan = availablePlans.some(p => p.isActive && (p.base_price || 0) > currentPrice);
@@ -234,13 +239,16 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             expiryDate: expiresAt || undefined
           });
 
-          console.log('✨ [Detection] Active subscription found. Triggering modal.', { detectedPlanName, daysLeft });
+          console.log('✨ [Detection] Active player subscription found. Triggering modal.', { detectedPlanName, daysLeft });
           setIsActionModalOpen(true);
         } else if (actionParam === 'renew' || actionParam === 'upgrade') {
-          console.log('✨ [Detection] Manual action requested. Triggering modal.');
-          setIsActionModalOpen(true);
+          console.log('✨ [Detection] Manual action requested. Setting up modal behavior.');
+          // Don't auto-open if it's already active and they specifically came here to manage
+          if (!isCurrentlyActive) {
+            setIsActionModalOpen(true);
+          }
         } else {
-          console.log('ℹ️ [Detection] No active subscription or action detected.');
+          console.log('ℹ️ [Detection] Management mode or no action needed.');
         }
       } catch (err) {
         console.error('❌ [Detection] Error detecting subscription:', err);
@@ -1417,7 +1425,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         open={isActionModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            if (activeSubscriptionData?.isActive) {
+            // Only redirect players who don't have a manual action intent
+            if (activeSubscriptionData?.isActive && accountType === 'player' && !actionParam) {
               router.push('/dashboard');
             } else {
               setIsActionModalOpen(false);
@@ -1450,10 +1459,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               <div className="relative z-10 w-full">
                 <DialogTitle className="text-2xl md:text-3xl font-black text-slate-900 mb-3 leading-tight">
                   {activeSubscriptionData?.isActive
-                    ? (activeSubscriptionData.isMaxPlan ? 'أنت في القمة! 🚀' : 'لديك اشتراك نشط بالفعل ⚡')
-                    : (actionParam === 'upgrade' ? 'ترقية باقتك الملكية' :
-                      actionParam === 'renew' ? 'تجديد اشتراكك' :
-                        'اشترك في منصة الحلم')}
+                    ? 'إدارة اشتراكك الحالي ⚡'
+                    : 'اشترك في منصة الحلم'}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
                   نافذة إدارة الاشتراك وتجديد أو ترقية الباقة الحالية.
@@ -1462,7 +1469,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 <div className="text-slate-600 font-bold mb-6 leading-relaxed">
                   {activeSubscriptionData?.isActive ? (
                     <div className="space-y-6">
-                      <p className="text-xs">أهلاً بك! يظهر لدينا أنك مشترك حالياً في:</p>
+                      <p className="text-xs">يظهر لدينا أنك مشترك حالياً في:</p>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-lg shadow-slate-200/30 flex flex-col md:flex-row items-center gap-4 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-600"></div>
@@ -1475,17 +1482,20 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
                               <span className="text-slate-900 font-black">{activeSubscriptionData.daysLeft} يوم متبقي</span>
                             </div>
-                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
-                              <span className="text-slate-900 font-black">{activeSubscriptionData.expiryDate?.toLocaleDateString('ar-EG')}</span>
-                            </div>
                           </div>
                         </div>
                       </div>
-                      <p className="text-xs px-1 leading-relaxed">
-                        {activeSubscriptionData.isMaxPlan
-                          ? `استمتع بكافة المميزات الحصرية المتاحة لك الآن.`
-                          : `هل تود الانتقال للباقة السنوية لضمان متابعة مستمرة من الكشافين؟`}
-                      </p>
+
+                      {activeSubscriptionData.isMaxPlan ? (
+                        <div className="bg-green-50/80 p-4 rounded-xl text-green-700 text-[11px] font-bold border border-green-100/50 flex items-start gap-2">
+                          <span className="shrink-0">✨</span>
+                          <p>أنت مشترك في الفئة الأعلى! يمكنك متابعة إدارة حسابك أو إضافة لاعبين جدد لفريقك من خلال الضغط على الزر أدناه.</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs px-1 leading-relaxed">
+                          باقتك الحالية مفعّلة. هل تود ترقية باقتك للحصول على مميزات السنوية وتوفير 30%؟
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs leading-loose">
@@ -1505,12 +1515,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                       <p>ترقية اشتراكك للسنوي الآن تمنحك خصماً فورياً 30%.</p>
                     </div>
                   )}
-                  {activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && (
-                    <div className="bg-green-50/80 backdrop-blur-sm p-4 rounded-2xl text-green-700 text-sm font-bold leading-relaxed border border-green-100 flex items-start gap-3">
-                      <div className="shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✨</div>
-                      <p>استمتع بكل المزايا الاحترافية، الكشافون يتابعون ملفك الآن وكل شيء يعمل بشكل ممتاز!</p>
-                    </div>
-                  )}
                   {!activeSubscriptionData?.isActive && (
                     <div className="bg-blue-50/80 backdrop-blur-sm p-4 rounded-2xl text-blue-700 text-sm font-bold leading-relaxed border border-blue-100 flex items-start gap-3">
                       <div className="shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">⭐</div>
@@ -1521,9 +1525,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button
                       onClick={() => {
-                        if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan) {
+                        // If it's a player with Max Plan, they really should go back
+                        if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && accountType === 'player') {
                           router.push('/dashboard');
                         } else {
+                          // Everyone else (Admins or those who want to renew/upgrade) stays here
                           setIsActionModalOpen(false);
                         }
                       }}
@@ -1531,13 +1537,25 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                     >
                       <span>
                         {activeSubscriptionData?.isActive
-                          ? (activeSubscriptionData.isMaxPlan ? 'استمرار للرئيسية' : 'باقات الترقية')
+                          ? (activeSubscriptionData.isMaxPlan
+                            ? (accountType === 'player' ? 'استمرار للرئيسية' : 'إدارة اللاعبين')
+                            : 'باقات الترقية')
                           : 'استعراض الباقات'}
                       </span>
                       <ChevronLeft className="mr-1 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     </Button>
 
-                    {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
+                    {(activeSubscriptionData?.isActive && accountType !== 'player') && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => router.push('/dashboard')}
+                        className="text-slate-400 text-xs font-bold h-12 px-4 hover:bg-slate-50"
+                      >
+                        العودة للرئيسية
+                      </Button>
+                    )}
+
+                    {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && accountType === 'player' && (
                       <Button
                         variant="ghost"
                         onClick={() => router.push('/dashboard')}
