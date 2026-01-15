@@ -1,9 +1,9 @@
 import React from 'react';
 
-export const AlertDialog: React.FC<{ 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
-  children: React.ReactNode 
+export const AlertDialog: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode
 }> = ({ open, onOpenChange, children }) => {
   if (!open) return null;
 
@@ -22,53 +22,54 @@ export const AlertDialog: React.FC<{
   );
 };
 
-export const AlertDialogContent: React.FC<{ 
-  children: React.ReactNode; 
-  className?: string 
+export const AlertDialogContent: React.FC<{
+  children: React.ReactNode;
+  className?: string
 }> = ({ children, className }) => (
   <div className={`p-4 ${className || ""}`}>
     {children}
   </div>
 );
 
-export const AlertDialogHeader: React.FC<{ 
-  children: React.ReactNode 
-}> = ({ children }) => (
-  <div className="mb-4">
+export const AlertDialogHeader: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => (
+  <div className={`mb-4 ${className || ""}`}>
     {children}
   </div>
 );
 
-export const AlertDialogTitle: React.FC<{ 
-  children: React.ReactNode; 
-  className?: string 
+export const AlertDialogTitle: React.FC<{
+  children: React.ReactNode;
+  className?: string
 }> = ({ children, className }) => (
   <h3 className={`text-lg font-semibold ${className || ""}`}>
     {children}
   </h3>
 );
 
-export const AlertDialogDescription: React.FC<{ 
-  children: React.ReactNode; 
-  className?: string 
+export const AlertDialogDescription: React.FC<{
+  children: React.ReactNode;
+  className?: string
 }> = ({ children, className }) => (
   <p className={`text-sm text-gray-600 ${className || ""}`}>
     {children}
   </p>
 );
 
-export const AlertDialogFooter: React.FC<{ 
-  children: React.ReactNode; 
-  className?: string 
+export const AlertDialogFooter: React.FC<{
+  children: React.ReactNode;
+  className?: string
 }> = ({ children, className }) => (
   <div className={`flex justify-end gap-3 mt-6 ${className || ""}`}>
     {children}
   </div>
 );
 
-export const AlertDialogCancel: React.FC<{ 
-  children: React.ReactNode; 
-  onClick?: () => void; 
+export const AlertDialogCancel: React.FC<{
+  children: React.ReactNode;
+  onClick?: () => void;
   className?: string;
   disabled?: boolean;
 }> = ({ children, onClick, className, disabled }) => (
@@ -81,18 +82,18 @@ export const AlertDialogCancel: React.FC<{
   </button>
 );
 
-export const AlertDialogAction: React.FC<{ 
-  children: React.ReactNode; 
-  onClick?: () => void; 
+export const AlertDialogAction: React.FC<{
+  children: React.ReactNode;
+  onClick?: () => void;
   className?: string;
   disabled?: boolean;
   variant?: 'default' | 'destructive';
 }> = ({ children, onClick, className, disabled, variant = 'default' }) => {
   const baseClasses = "px-4 py-2 rounded-md focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed";
-  const variantClasses = variant === 'destructive' 
+  const variantClasses = variant === 'destructive'
     ? "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
     : "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500";
-  
+
   return (
     <button
       onClick={onClick}

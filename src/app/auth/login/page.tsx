@@ -12,12 +12,14 @@ import {
   Mail,
   Phone,
   Shield,
-  Star
+  Star,
+  ChevronDown
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast, Toaster } from 'sonner';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
+import { FloatingInput, FloatingSelect } from '@/components/shared/PremiumInputs';
 
 
 type LoginMethod = 'phone' | 'email';
@@ -81,7 +83,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, logout, signInWithGoogle, setupRecaptcha, sendPhoneOTP, verifyPhoneOTP, user, userData, loading: authLoading } = useAuth();
 
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('email');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -121,6 +123,43 @@ export default function LoginPage() {
   };
 
 
+  // Auto-detect country from IP on page load
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        console.log('🌍 Detecting country from IP...');
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+
+        console.log('📍 IP Location:', data.country_name, data.country_code);
+
+        // Map ISO country code to phone code
+        const countryMap: Record<string, string> = {
+          'SA': '+966', 'AE': '+971', 'KW': '+965', 'QA': '+974',
+          'BH': '+973', 'OM': '+968', 'EG': '+20', 'JO': '+962',
+          'LB': '+961', 'IQ': '+964', 'SY': '+963', 'MA': '+212',
+          'DZ': '+213', 'TN': '+216', 'LY': '+218', 'SD': '+249',
+          'SN': '+221', 'CI': '+225', 'DJ': '+253', 'ES': '+34',
+          'FR': '+33', 'GB': '+44', 'PT': '+351', 'IT': '+39',
+          'GR': '+30', 'CY': '+357', 'TR': '+90', 'TH': '+66', 'YE': '+967'
+        };
+
+        const detectedCode = countryMap[data.country_code];
+        if (detectedCode) {
+          setCountryCode(detectedCode);
+          console.log(`✅ Country auto-detected: ${data.country_name} (${detectedCode})`);
+          toast.success(`🌍 تم اكتشاف بلدك: ${data.country_name}`, { duration: 3000 });
+        } else {
+          console.log('⚠️ Country not supported, using default');
+        }
+      } catch (error) {
+        console.error('❌ Failed to detect country:', error);
+        // Keep default (+20)
+      }
+    };
+
+    detectCountry();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -160,20 +199,13 @@ export default function LoginPage() {
     }
   }, []);
 
-  const findFirebaseEmailByPhone = async (fullPhone: string): Promise<string | null> => {
-    try {
-      const response = await fetch('/api/auth/find-user-by-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone })
-      });
-      if (!response.ok) return null;
-      const result = await response.json();
-      return result?.found && result?.email ? result.email : null;
-    } catch (error) {
-      console.error('Error finding user:', error);
-      return null;
-    }
+  // Generate email from phone (same logic as registration)
+  const generateEmailFromPhone = (fullPhone: string): string => {
+    // Remove + and spaces: +201014477580 → 201014477580@el7lm.com
+    const cleanPhone = fullPhone.replace(/[\s+]/g, '');
+    const email = `${cleanPhone}@el7lm.com`;
+    console.log(`📧 [Login] Generated email: ${email} from phone: ${fullPhone}`);
+    return email;
   };
 
   const getDashboardRoute = (accountType: string | undefined) => {
@@ -234,20 +266,21 @@ export default function LoginPage() {
     try {
       if (loginMethod === 'email') {
         if (!email.trim()) {
-          toast.error('يرجى إدخال البريد الإلكتروني');
+          toast.error('📧 يرجى إدخال البريد الإلكتروني');
           setLoading(false);
           return;
         }
         loginEmail = email.trim();
       } else {
         if (!phone.trim()) {
-          toast.error('يرجى إدخال رقم الهاتف');
+          toast.error('📱 يرجى إدخال رقم الهاتف');
           setLoading(false);
           return;
         }
       }
 
-      const fullPhone = `${countryCode}${phone.replace(/^0+/, '')}`;
+      const cleanPhone = phone.trim().replace(/^0+/, '').replace(/\s+/g, '');
+      const fullPhone = `${countryCode.trim()}${cleanPhone}`;
 
       // --- OTP Login Flow ---
       if (useOTP) {
@@ -267,7 +300,7 @@ export default function LoginPage() {
           return; // Stop here, wait for OTP
         } catch (error: any) {
           console.error('Send OTP Error:', error);
-          toast.error(error.message || 'فشل إرسال الرمز', { id: 'login' });
+          toast.error(error.message || '❌ فشل إرسال رمز التحقق لرقم الهاتف', { id: 'login' });
           setLoading(false);
           return;
         }
@@ -275,8 +308,14 @@ export default function LoginPage() {
       // ----------------------
 
       toast.loading('جاري التحقق...', { id: 'login' });
-      const firebaseEmail = await findFirebaseEmailByPhone(fullPhone);
-      if (!firebaseEmail) {
+      const firebaseEmail = generateEmailFromPhone(fullPhone);
+
+      // Optional: Check if phone exists (but don't wait for email)
+      console.log(`📧 [Login] Using email: ${firebaseEmail}`);
+
+      // Try to login with generated email
+      const legacyCheck = false; // Skip database check for speed
+      if (legacyCheck) {
         // رسالة خطأ محسنة مع زر للتسجيل
         toast.custom((t: any) => (
           <div className={`bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4 shadow-lg max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
@@ -284,7 +323,7 @@ export default function LoginPage() {
               <div className="flex-shrink-0 text-2xl">👤</div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-red-800 dark:text-red-200 text-base sm:text-lg mb-1">
-                  رقم الهاتف غير مسجل
+                  رقم الهاتف غير مسجل 📱
                 </h3>
                 <p className="text-red-600 dark:text-red-300 text-sm sm:text-base mb-3">
                   💡 يرجى إنشاء حساب جديد للبدء
@@ -314,8 +353,8 @@ export default function LoginPage() {
       }
       loginEmail = firebaseEmail;
 
-      if (!password && !useOTP) { // Only check password if NOT using OTP
-        toast.error('يرجى إدخال كلمة المرور');
+      if (!password && !useOTP) {
+        toast.error('🔒 يرجى إدخال كلمة المرور');
         setLoading(false);
         return;
       }
@@ -328,24 +367,19 @@ export default function LoginPage() {
       }
 
       toast.loading('جاري تسجيل الدخول...', { id: 'login' });
-      const result = await login(loginEmail, password);
 
-      // --- Enforce Email Verification ---
-      if (loginMethod === 'email' && !result.user.emailVerified) {
-        // Resend Verification
-        toast.loading('الحساب غير مفعل. جاري إرسال رابط التفعيل...', { id: 'verify-check' });
-        try {
-          await sendEmailVerification(result.user);
-          toast.success('تم إرسال رابط التفعيل إلى بريدك الإلكتروني.', { id: 'verify-check' });
-        } catch (e: any) {
-          console.log('Resend verification error:', e);
-          toast.error('يرجى التحقق من بريدك الإلكتروني (بما في ذلك الرسائل غير المرغوب فيها).', { id: 'verify-check' });
-        }
-
-        await logout();
+      // Ensure we have a valid email and password
+      if (!loginEmail || (!password && !useOTP)) {
+        toast.error('بيانات الدخول غير مكتملة', { id: 'login' });
         setLoading(false);
         return;
       }
+
+      console.log(`[Login Attempt] Method: ${loginMethod}, Email: ${loginEmail}, Password Length: ${password.length}`);
+
+      const result = await login(loginEmail, password);
+
+      // Email verification check bypassed for smoother entry during refined auth phase
       // ----------------------------------
 
       if (!result.userData.accountType) {
@@ -380,7 +414,7 @@ export default function LoginPage() {
         const error = err as { code: string; message?: string };
 
         if (error.code === 'auth/user-not-found') {
-          errorIcon = '👤';
+          errorIcon = loginMethod === 'email' ? '📧' : '📱';
           errorMessage = loginMethod === 'email' ? 'البريد الإلكتروني غير مسجل' : 'رقم الهاتف غير مسجل';
 
           // رسالة خطأ محسنة مع زر للتسجيل
@@ -468,6 +502,39 @@ export default function LoginPage() {
                   </div>
                 </div>
               ), { id: 'login', duration: 12000 });
+              setLoading(false);
+              return;
+            } else if (verifyData.existsInAuth && !verifyData.hasPassword && verifyData.hasGoogle) {
+              // ⬅️ مستخدم سجل بـ Google ويحاول الدخول بكلمة مرور
+              toast.custom((t: any) => (
+                <div className={`bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-700 rounded-lg p-5 shadow-xl max-w-md w-full mx-auto transition-all ${t.visible ? 'animate-in slide-in-from-top-5' : 'animate-out slide-out-to-top-5'}`} dir="rtl">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 text-3xl">🌐</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-indigo-900 dark:text-indigo-100 text-lg mb-2">تسجيل الدخول عبر Google</h3>
+                      <p className="text-indigo-700 dark:text-indigo-300 text-sm mb-4 leading-relaxed">
+                        يبدو أنك أنشأت حسابك باستخدام <b>Google</b>. يرجى استخدام زر الدخول عبر Google للمتابعة.
+                      </p>
+                      <button
+                        onClick={() => {
+                          toast.dismiss(t.id);
+                          handleGoogleSignIn();
+                        }}
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-base font-bold transition-all shadow-md flex items-center justify-center gap-3"
+                      >
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                        الدخول عبر Google الآن
+                      </button>
+                    </div>
+                    <button onClick={() => toast.dismiss(t.id)} className="text-indigo-300 hover:text-indigo-500 transition-colors p-1">✕</button>
+                  </div>
+                </div>
+              ), { id: 'login', duration: 15000 });
               setLoading(false);
               return;
             } else if (verifyData.existsInFirestore === false) {
@@ -697,17 +764,10 @@ export default function LoginPage() {
   // Redirect to dashboard if user is already logged in
   useEffect(() => {
     if (user && userData && !authLoading) {
-      // Check if email is verified before redirecting
-      if (user.email && !user.emailVerified) {
-        // Check if it's a password user (not Google/Phone) to be safe, though Google is usually verified.
-        // We'll trust user.emailVerified. If false, force logout.
-        console.log('User is logged in but not verified. Logging out...');
-        logout();
-        return;
-      }
+      // Email verification enforcement removed for smoother flow
       router.replace(getDashboardRoute(userData.accountType));
     }
-  }, [user, userData, authLoading, router, logout]);
+  }, [user, userData, authLoading, router]);
 
   if (authLoading) {
     return (
@@ -824,39 +884,33 @@ export default function LoginPage() {
 
                 {loginMethod === 'phone' ? (
                   <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
-                    <div className="space-y-2">
-                      <label htmlFor="country-select" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البلد</label>
-                      <div className="relative">
-                        <select
-                          id="country-select"
-                          value={countryCode}
-                          onChange={(e) => setCountryCode(e.target.value)}
-                          className="w-full h-14 px-5 text-sm bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none appearance-none font-black text-slate-800 cursor-pointer"
-                        >
-                          {countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
-                        </select>
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                      </div>
-                    </div>
+                    <FloatingSelect
+                      id="country-select"
+                      label="البلد"
+                      value={countryCode}
+                      onChange={(e: any) => setCountryCode(e.target.value)}
+                      icon={Shield}
+                    >
+                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
+                    </FloatingSelect>
 
-                    <div className="space-y-2">
-                      <label htmlFor="phone-input" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">رقم الهاتف</label>
-                      <div className="flex h-14 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/50 focus-within:bg-white focus-within:border-purple-600 focus-within:ring-4 focus-within:ring-purple-600/5 transition-all">
-                        <div className="flex items-center justify-center px-4 bg-slate-100/50 border-l border-slate-200 text-slate-700 font-black text-sm" dir="ltr">
+                    <div className="relative">
+                      <FloatingInput
+                        id="phone-input"
+                        label="رقم الهاتف"
+                        type="tel"
+                        value={phone}
+                        onChange={(e: any) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                        className={`text-left font-sans tracking-widest pl-20`}
+                        placeholder="50xxxxxxx"
+                        dir="ltr"
+                        required
+                        icon={Phone}
+                      />
+                      <div className="absolute left-3 top-[-36px] z-30 pointer-events-none mt-12">
+                        <span className="text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-xl border border-purple-100 shadow-sm">
                           {countryCode}
-                        </div>
-                        <input
-                          id="phone-input"
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                          className="flex-1 px-5 bg-transparent border-none text-sm font-black text-slate-800 placeholder:text-slate-400 focus:ring-0 outline-none"
-                          placeholder="50xxxxxxx"
-                          dir="ltr"
-                          required
-                        />
+                        </span>
                       </div>
                     </div>
 
@@ -875,51 +929,42 @@ export default function LoginPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="animate-in fade-in slide-in-from-left-8 duration-500 space-y-2">
-                    <label htmlFor="email-input" className="text-xs font-black text-slate-700 uppercase tracking-wider pr-1">البريد الإلكتروني</label>
-                    <div className="relative group">
-                      <input
-                        id="email-input"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-14 pr-12 pl-4 bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none text-sm font-black text-slate-800"
-                        placeholder="name@example.com"
-                        required
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-600 transition-colors">
-                        <Mail className="w-5 h-5" />
-                      </div>
-                    </div>
+                  <div className="animate-in fade-in slide-in-from-left-8 duration-500">
+                    <FloatingInput
+                      id="email-input"
+                      label="البريد الإلكتروني"
+                      type="email"
+                      value={email}
+                      onChange={(e: any) => setEmail(e.target.value)}
+                      icon={Mail}
+                      required
+                    />
                   </div>
                 )}
 
                 {(loginMethod === 'email' || !useOTP) && (
                   <div className="space-y-2 animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-center pr-1">
-                      <label htmlFor="password-input" className="text-xs font-black text-slate-700 uppercase tracking-wider">كلمة المرور</label>
-                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all min-h-[32px] flex items-center">نسيت كلمة المرور؟</button>
+                    <div className="flex justify-between items-center pr-1 mb-1">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الأمان</span>
+                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all min-h-[28px] flex items-center">نسيت كلمة المرور؟</button>
                     </div>
-                    <div className="relative group">
-                      <input
+                    <div className="relative">
+                      <FloatingInput
                         id="password-input"
+                        label="كلمة المرور"
                         type={showPassword ? 'text' : 'password'}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full h-14 pr-12 pl-12 bg-slate-50/50 hover:bg-white focus:bg-white rounded-2xl border border-slate-200 focus:border-purple-600 focus:ring-4 focus:ring-purple-600/5 transition-all outline-none text-sm font-black text-slate-800"
-                        placeholder="••••••••"
+                        onChange={(e: any) => setPassword(e.target.value)}
+                        icon={Lock}
                         required={!useOTP}
                       />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-600 transition-colors">
-                        <Lock className="w-5 h-5" />
-                      </div>
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2 -m-2 min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2 z-30"
                         aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                       >
-                        {showPassword ? <EyeOff className="w-5 h-4" /> : <Eye className="w-5 h-4" />}
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>

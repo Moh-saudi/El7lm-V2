@@ -240,6 +240,93 @@ export default function PlayerDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        {/* Profile Completion Section - NEW */}
+        <div className="mb-6 md:mb-8">
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl md:rounded-3xl shadow-2xl">
+            {/* Animated Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 right-0 w-60 h-60 bg-white rounded-full blur-3xl"></div>
+            </div>
+
+            <div className="relative p-6 md:p-8">
+              {/* Header with Icon */}
+              <div className="flex items-start justify-between mb-4 md:mb-6">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-yellow-300 rounded-full blur-lg opacity-50 animate-pulse"></div>
+                    <div className="relative bg-white p-3 md:p-4 rounded-xl md:rounded-2xl shadow-lg">
+                      <Star className="w-6 h-6 md:w-8 md:h-8 text-yellow-500 fill-yellow-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-3xl font-black text-white mb-1">
+                      أكمل ملفك الشخصي! 🚀
+                    </h2>
+                    <p className="text-white/90 text-sm md:text-base font-medium">
+                      اجعل ملفك احترافياً وزد فرصك في الظهور
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-4 md:mb-6">
+                <div className="flex items-center justify-between text-white/90 text-xs md:text-sm font-semibold mb-2">
+                  <span>اكتمال الملف الشخصي</span>
+                  <span className="text-yellow-300">45%</span>
+                </div>
+                <div className="h-3 md:h-4 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div
+                    className="h-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 rounded-full transition-all duration-1000 ease-out shadow-lg"
+                    style={{ width: '45%' }}
+                  >
+                    <div className="h-full w-full bg-white/30 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefits Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6">
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
+                  <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-green-300 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-sm md:text-base">ظهور أفضل</p>
+                    <p className="text-white/70 text-xs">في نتائج البحث</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:w-6 text-blue-300 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-sm md:text-base">فرص أكثر</p>
+                    <p className="text-white/70 text-xs">للتواصل معك</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
+                  <Trophy className="w-5 h-5 md:w-6 md:h-6 text-yellow-300 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-sm md:text-base">مظهر احترافي</p>
+                    <p className="text-white/70 text-xs">يلفت الانتباه</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <Link
+                href="/dashboard/player/profile"
+                className="group relative inline-flex items-center justify-center gap-3 w-full md:w-auto px-6 md:px-8 py-4 md:py-5 bg-white text-purple-600 rounded-xl md:rounded-2xl font-black text-base md:text-lg shadow-2xl hover:shadow-yellow-500/50 hover:scale-105 transition-all duration-300 overflow-hidden"
+              >
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                <User className="w-5 h-5 md:w-6 md:h-6 relative z-10 group-hover:rotate-12 transition-transform" />
+                <span className="relative z-10">أكمل ملفك الآن</span>
+                <ArrowRight className="w-5 h-5 md:w-6 md:h-6 relative z-10 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Player Organization Card - الارتباطات */}
         {user && (
           <div className="mb-6 md:mb-8">

@@ -56,12 +56,12 @@ export async function POST(request: NextRequest) {
     if (!firestoreUid) {
       // ⬅️ المستخدم غير موجود في Firestore - هذا يعني أن الحساب غير موجود أو البريد/الهاتف غير صحيح
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'المستخدم غير موجود في قاعدة البيانات', 
-          needsSync: false, 
-          existsInAuth: false, 
-          existsInFirestore: false 
+        {
+          success: false,
+          error: 'المستخدم غير موجود في قاعدة البيانات',
+          needsSync: false,
+          existsInAuth: false,
+          existsInFirestore: false
         },
         { status: 200 } // ⬅️ نعيد 200 لأن هذا ليس خطأ في الـ API، بل المستخدم غير موجود
       );
@@ -70,12 +70,19 @@ export async function POST(request: NextRequest) {
     // التحقق من Firebase Auth
     try {
       const authUser = await adminAuth.getUser(firestoreUid);
+      const providers = authUser.providerData.map(p => p.providerId);
+      const hasPassword = providers.includes('password');
+      const hasGoogle = providers.includes('google.com');
+
       return NextResponse.json({
         success: true,
         existsInAuth: true,
         existsInFirestore: true,
         needsSync: false,
         uid: authUser.uid,
+        providers,
+        hasPassword,
+        hasGoogle,
         message: 'المستخدم موجود'
       });
     } catch (authError: any) {
