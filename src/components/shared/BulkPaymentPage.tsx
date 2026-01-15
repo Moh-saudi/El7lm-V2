@@ -1469,7 +1469,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 <div className="text-slate-600 font-bold mb-6 leading-relaxed">
                   {activeSubscriptionData?.isActive ? (
                     <div className="space-y-6">
-                      <p className="text-xs">يظهر لدينا أنك مشترك حالياً في:</p>
+                      <p className="text-xs">أهلاً بك! يظهر لدينا أنك مشترك حالياً في:</p>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-lg shadow-slate-200/30 flex flex-col md:flex-row items-center gap-4 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-600"></div>
@@ -1482,20 +1482,17 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
                               <span className="text-slate-900 font-black">{activeSubscriptionData.daysLeft} يوم متبقي</span>
                             </div>
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.expiryDate?.toLocaleDateString('ar-EG')}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      {activeSubscriptionData.isMaxPlan ? (
-                        <div className="bg-green-50/80 p-4 rounded-xl text-green-700 text-[11px] font-bold border border-green-100/50 flex items-start gap-2">
-                          <span className="shrink-0">✨</span>
-                          <p>أنت مشترك في الفئة الأعلى! يمكنك متابعة إدارة حسابك أو إضافة لاعبين جدد لفريقك من خلال الضغط على الزر أدناه.</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs px-1 leading-relaxed">
-                          باقتك الحالية مفعّلة. هل تود ترقية باقتك للحصول على مميزات السنوية وتوفير 30%؟
-                        </p>
-                      )}
+                      <p className="text-xs px-1 leading-relaxed">
+                        {activeSubscriptionData.isMaxPlan
+                          ? `استمتع بكافة المميزات الحصرية المتاحة لك الآن.`
+                          : `هل تود الانتقال للباقة السنوية لضمان متابعة مستمرة من الكشافين؟`}
+                      </p>
                     </div>
                   ) : (
                     <p className="text-xs leading-loose">
@@ -1522,48 +1519,52 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                     </div>
                   )}
 
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <Button
-                      onClick={() => {
-                        // If it's a player with Max Plan, they really should go back
-                        if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && accountType === 'player') {
-                          router.push('/dashboard');
-                        } else {
-                          // Everyone else (Admins or those who want to renew/upgrade) stays here
-                          setIsActionModalOpen(false);
-                        }
-                      }}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-sm font-black shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 group"
-                    >
-                      <span>
-                        {activeSubscriptionData?.isActive
-                          ? (activeSubscriptionData.isMaxPlan
-                            ? (accountType === 'player' ? 'استمرار للرئيسية' : 'إدارة اللاعبين')
-                            : 'باقات الترقية')
-                          : 'استعراض الباقات'}
-                      </span>
-                      <ChevronLeft className="mr-1 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    </Button>
-
-                    {(activeSubscriptionData?.isActive && accountType !== 'player') && (
+                  <div className="flex flex-col gap-3 pt-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <Button
-                        variant="ghost"
-                        onClick={() => router.push('/dashboard')}
-                        className="text-slate-400 text-xs font-bold h-12 px-4 hover:bg-slate-50"
+                        onClick={() => {
+                          if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && accountType === 'player') {
+                            router.push('/dashboard');
+                          } else {
+                            setIsActionModalOpen(false);
+                          }
+                        }}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 text-base font-black shadow-xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 group"
                       >
-                        العودة للرئيسية
+                        <span>
+                          {activeSubscriptionData?.isActive
+                            ? (activeSubscriptionData.isMaxPlan
+                              ? (accountType === 'player' ? 'استمرار للرئيسية' : 'إدارة اللاعبين الآن')
+                              : 'استعراض باقات الترقية')
+                            : 'استعراض الباقات'}
+                        </span>
+                        <ChevronLeft className="mr-2 w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                       </Button>
-                    )}
 
-                    {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && accountType === 'player' && (
+                      {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
+                        <Button
+                          onClick={() => {
+                            setIsActionModalOpen(false);
+                            router.push(`${window.location.pathname}?action=upgrade`);
+                          }}
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl h-14 text-sm font-black shadow-xl shadow-amber-200/50 transition-all"
+                        >
+                          <Crown className="ml-2 w-4 h-4" />
+                          ترقية الخطة الآن
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {/* Later/Cancel Button returns to dashboard */}
                       <Button
                         variant="ghost"
                         onClick={() => router.push('/dashboard')}
-                        className="text-slate-400 text-xs font-bold h-12 px-4 hover:bg-slate-50"
+                        className="flex-1 rounded-xl h-12 text-slate-400 font-bold hover:bg-slate-50"
                       >
                         لاحقاً
                       </Button>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
