@@ -1522,26 +1522,18 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <div className="flex flex-col gap-3 pt-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Button
-                        onClick={() => {
-                          if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && accountType === 'player') {
-                            router.push('/dashboard');
-                          } else {
-                            setIsActionModalOpen(false);
-                          }
-                        }}
+                        onClick={() => setIsActionModalOpen(false)}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 text-base font-black shadow-xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 group"
                       >
                         <span>
                           {activeSubscriptionData?.isActive
-                            ? (activeSubscriptionData.isMaxPlan
-                              ? (accountType === 'player' ? 'استمرار للرئيسية' : 'إدارة اللاعبين الآن')
-                              : 'استعراض باقات الترقية')
+                            ? (accountType === 'player' ? 'ترقية أو تمديد الخطة 🚀' : 'إدارة اللاعبين الآن')
                             : 'استعراض الباقات'}
                         </span>
                         <ChevronLeft className="mr-2 w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                       </Button>
 
-                      {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
+                      {activeSubscriptionData?.isActive && (
                         <Button
                           onClick={() => {
                             setIsActionModalOpen(false);
@@ -1550,7 +1542,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                           className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl h-14 text-sm font-black shadow-xl shadow-amber-200/50 transition-all"
                         >
                           <Crown className="ml-2 w-4 h-4" />
-                          ترقية الخطة الآن
+                          ترقية أو تمديد الخطة
                         </Button>
                       )}
                     </div>
