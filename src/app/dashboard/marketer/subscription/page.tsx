@@ -14,7 +14,7 @@ export default function MarketerSubscriptionPage() {
 
   useEffect(() => {
     // إعادة التوجيه إلى صفحة الاشتراك المشتركة
-    router.replace('/dashboard/subscription');
+    router.replace('/dashboard/shared/subscription-status');
   }, [router]);
 
   return (

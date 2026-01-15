@@ -64,7 +64,7 @@ interface PaymentRecord {
   amount: number;
   playerCount: number;
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
-  paymentMethod?: 'mobile_wallet' | 'card' | 'geidea' | 'later';
+  paymentMethod?: 'mobile_wallet' | 'card' | 'geidea' | 'later' | 'skipcash';
   paymentType?: 'immediate' | 'deferred';
   registrationDate: Date;
   paymentDate?: Date;
@@ -254,7 +254,8 @@ export default function PaymentManagementModal({
     switch (method) {
       case 'mobile_wallet': return Smartphone;
       case 'card':
-      case 'geidea': return CreditCard;
+      case 'geidea':
+      case 'skipcash': return CreditCard;
       case 'later': return Clock;
       default: return DollarSign;
     }
@@ -265,6 +266,7 @@ export default function PaymentManagementModal({
       case 'mobile_wallet': return 'محفظة إلكترونية';
       case 'card':
       case 'geidea': return 'كارت بنكي (جيديا)';
+      case 'skipcash': return 'كارت بنكي (SkipCash)';
       case 'later': return 'دفع لاحقاً';
       default: return 'غير محدد';
     }
@@ -477,7 +479,8 @@ export default function PaymentManagementModal({
                               <span>
                                 {payment.paymentMethod === 'mobile_wallet' ? 'محفظة' :
                                   payment.paymentMethod === 'card' ? 'بطاقة' :
-                                    payment.paymentMethod === 'geidea' ? 'جيديا' : 'آجل'}
+                                    payment.paymentMethod === 'geidea' ? 'جيديا' :
+                                      payment.paymentMethod === 'skipcash' ? 'SkipCash' : 'آجل'}
                               </span>
                             </div>
                           ) : <span className="text-gray-400 text-xs">-</span>}

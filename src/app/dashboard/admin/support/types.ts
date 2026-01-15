@@ -3,6 +3,8 @@ export interface SupportConversation {
     userId: string;
     userName: string;
     userType: string;
+    userEmail?: string;
+    userPhone?: string;
     status: 'open' | 'in_progress' | 'resolved' | 'closed';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     category: string;

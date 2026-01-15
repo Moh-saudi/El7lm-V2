@@ -13,25 +13,22 @@ export async function activateSubscription(payment: any) {
             throw new Error('لا يوجد معرف مستخدم صالح');
         }
 
-        // تحديد مدة الاشتراك بناءً على نوع الباقة
-        const packageType = payment.packageType || payment.package_type || 'subscription_3months';
-        let subscriptionMonths = 3; // افتراضي 3 أشهر
-        let packageName = 'اشتراك 3 شهور';
-        let packageDuration = '3 شهور';
+        // تحديد مدة الاشتراك بناءً على البيانات المخزنة (التي تأتي من خطة التسعير)
+        const rawDuration = payment.packageDuration || payment.package_duration || payment.packageName || payment.package_name || '';
 
-        if (packageType.includes('annual') || packageType.includes('yearly') || packageType.includes('سنوي')) {
+        let subscriptionMonths = 3; // افتراضي
+
+        // استخراج الرقم من النص (مثال: "6 شهور" -> 6)
+        const match = rawDuration.match(/(\d+)/);
+        if (match) {
+            subscriptionMonths = parseInt(match[1]);
+        } else if (rawDuration.includes('سنة') || rawDuration.includes('سنوي') || rawDuration.includes('annual') || rawDuration.includes('year') || rawDuration.includes('12')) {
             subscriptionMonths = 12;
-            packageName = 'اشتراك سنوي';
-            packageDuration = '12 شهر';
-        } else if (packageType.includes('6months') || packageType.includes('6 شهور')) {
-            subscriptionMonths = 6;
-            packageName = 'اشتراك 6 شهور';
-            packageDuration = '6 شهور';
-        } else if (packageType.includes('3months') || packageType.includes('3 شهور')) {
-            subscriptionMonths = 3;
-            packageName = 'اشتراك 3 شهور';
-            packageDuration = '3 شهور';
         }
+
+        let packageName = payment.packageName || payment.package_name || `اشتراك ${subscriptionMonths} شهور`;
+        let packageDuration = payment.packageDuration || payment.package_duration || `${subscriptionMonths} شهور`;
+        const packageType = payment.packageType || payment.package_type || 'custom';
 
         const expiresAt = new Date(Date.now() + subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
 

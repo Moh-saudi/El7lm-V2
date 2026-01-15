@@ -49,6 +49,7 @@ interface SubscriptionPlan {
     basePrice: number;
     currency: 'USD';
     duration: number;
+    period: string;
     features: Feature[];
     bonusFeatures: Feature[];
     isActive: boolean;
@@ -282,6 +283,9 @@ export default function PricingAdminPage() {
                     duration: plan.id.includes('3months') ? 90 :
                         plan.id.includes('6months') ? 180 :
                             plan.id.includes('annual') ? 365 : 30,
+                    period: plan.period || (plan.id.includes('3months') ? '3 شهور' :
+                        plan.id.includes('6months') ? '6 شهور' :
+                            plan.id.includes('annual') ? '12 شهر' : 'شهر'),
                     features: Array.isArray(plan.features)
                         ? plan.features.map((f: any, i) => ({
                             id: `f${i}`,
@@ -604,9 +608,7 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                 subtitle: plan.id.includes('3months') ? 'للتجربة والبداية' :
                     plan.id.includes('6months') ? 'الخيار الأذكى' :
                         plan.id.includes('annual') ? 'أفضل قيمة وتوفير' : '',
-                period: plan.id.includes('3months') ? '3 شهور' :
-                    plan.id.includes('6months') ? '6 شهور' :
-                        plan.id.includes('annual') ? '12 شهر' : '',
+                period: updatedPlan.period,
                 base_currency: 'USD' as const,
                 base_original_price: updatedPlan.basePrice * 1.5, // افتراض أن السعر الأصلي أعلى
                 base_price: updatedPlan.basePrice,

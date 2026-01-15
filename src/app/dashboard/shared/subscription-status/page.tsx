@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import SubscriptionStatusPage from '@/components/shared/SubscriptionStatusPage';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { Shield, AlertCircle } from 'lucide-react';
@@ -20,6 +21,24 @@ export default function SharedSubscriptionStatusPage() {
     allowedTypes: ['academy', 'trainer', 'agent', 'club', 'marketer', 'admin', 'player', 'parent'],
     redirectTo: '/dashboard'
   });
+
+  // Add Geidea real-time listener
+  useEffect(() => {
+    const handleGeideaMessage = (event: MessageEvent) => {
+      if (event.origin === 'https://geidea.net' && event.data === 'payment_success') {
+        // Handle successful payment, e.g., refresh subscription status
+        console.log('Geidea payment successful! Refreshing subscription status...');
+        // You might want to trigger a re-fetch of subscription data here
+        // For example, if you have a state management solution or a refetch function
+      }
+    };
+
+    window.addEventListener('message', handleGeideaMessage);
+
+    return () => {
+      window.removeEventListener('message', handleGeideaMessage);
+    };
+  }, []);
 
   // شاشة التحميل أثناء التحقق من الصلاحيات
   if (isCheckingAuth) {
@@ -90,11 +109,21 @@ export default function SharedSubscriptionStatusPage() {
     );
   }
 
+
+
   // كل شيء صحيح - عرض صفحة حالة الاشتراك
-  return <SubscriptionStatusPage accountType={accountType} />;
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6" dir="rtl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">إدارة الاشتراك</h1>
+          <p className="text-gray-600 font-medium">عرض تفاصيل اشتراك وكشف حساب {accountType}</p>
+        </div>
+      </div>
+      <SubscriptionStatusPage accountType={accountType} />
+    </div>
+  );
 }
-
-
 
 
 

@@ -1118,6 +1118,12 @@ const ModernMessageCenter: React.FC = () => {
                                                             </div>
                                                         ) : (
                                                             <div className="px-4 py-2.5">
+                                                                {(msg as any).metadata?.isWhatsApp && (
+                                                                    <div className="flex items-center gap-1 mb-1 text-[10px] text-green-600 bg-green-50 w-fit px-1.5 py-0.5 rounded-full">
+                                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" className="w-3 h-3" />
+                                                                        <span>واتساب</span>
+                                                                    </div>
+                                                                )}
                                                                 <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">{msg.message}</p>
                                                             </div>
                                                         )}

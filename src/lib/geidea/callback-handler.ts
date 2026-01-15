@@ -169,6 +169,7 @@ async function enrichWithPackageInfo(
   packageType?: string | null;
   package_type?: string | null;
   selectedPackage?: string | null;
+  userId?: string | null;
 } | null> {
   if (!adminDb) {
     console.warn('⚠️ [Package Info] Admin DB not available');
@@ -214,12 +215,12 @@ async function enrichWithPackageInfo(
     const userDoc = await adminDb.collection('users').doc(userId).get();
     if (!userDoc.exists) {
       console.warn('⚠️ [Package Info] User document not found:', userId);
-      return null;
+      return { userId }; // Return at least userId
     }
 
     const userData = userDoc.data();
     if (!userData) {
-      return null;
+      return { userId };
     }
 
     // 5️⃣ استخراج معلومات الباقة
@@ -233,6 +234,7 @@ async function enrichWithPackageInfo(
     });
 
     return {
+      userId,
       plan_name,
       packageType,
       package_type: packageType,
@@ -284,7 +286,8 @@ async function saveGeideaPayment(processed: ProcessedCallback): Promise<void> {
     callbackReceivedAt: new Date().toISOString(),
     paymentMethod: 'geidea',
     source: 'geidea_callback',
-    // ✨ إضافة معلومات الباقة
+    // ✨ إضافة معرف المستخدم ومعلومات الباقة
+    userId: packageInfo?.userId || null,
     plan_name: packageInfo?.plan_name || null,
     packageType: packageInfo?.packageType || null,
     package_type: packageInfo?.package_type || null,
@@ -711,7 +714,8 @@ async function saveGeideaPaymentFromOrder(
     fetchedFromGeideaAt: new Date().toISOString(),
     paymentMethod: 'geidea',
     source: 'geidea_fetch_order_api',
-    // ✨ إضافة معلومات الباقة
+    // ✨ إضافة معرف المستخدم ومعلومات الباقة
+    userId: packageInfo?.userId || null,
     plan_name: packageInfo?.plan_name || null,
     packageType: packageInfo?.packageType || null,
     package_type: packageInfo?.package_type || null,

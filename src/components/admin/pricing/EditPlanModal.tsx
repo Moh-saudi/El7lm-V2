@@ -19,6 +19,7 @@ interface SubscriptionPlan {
     basePrice: number;
     currency: 'USD';
     duration: number;
+    period: string;
     features: Feature[];
     bonusFeatures: Feature[];
     isActive: boolean;
@@ -201,19 +202,20 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                                     </div>
 
                                     <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-700">
-                                            المدة (أيام)
+                                        <label className="block mb-2 text-sm font-medium text-gray-700 text-right">
+                                            النص المعروض للمدة (مثال: 6 شهور)
                                         </label>
                                         <input
-                                            type="number"
-                                            value={editedPlan.duration}
+                                            type="text"
+                                            value={editedPlan.period}
                                             onChange={(e) =>
                                                 setEditedPlan({
                                                     ...editedPlan,
-                                                    duration: parseInt(e.target.value),
+                                                    period: e.target.value,
                                                 })
                                             }
-                                            className="px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
+                                            dir="rtl"
                                         />
                                     </div>
                                 </div>

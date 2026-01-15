@@ -7,37 +7,37 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    BarChart3,
-    Bell,
-    BookOpen,
-    Briefcase,
-    Building,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    CreditCard,
-    DollarSign,
-    FileText,
-    Globe,
-    GraduationCap,
-    Headphones,
-    Home,
-    LogOut,
-    MessageSquare,
-    Play,
-    Search,
-    Settings,
-    Shield,
-    Star,
-    Target,
-    User,
-    UserCheck,
-    UserCog,
-    UserPlus,
-    Users,
-    Video,
-    X
+  BarChart3,
+  Bell,
+  BookOpen,
+  Briefcase,
+  Building,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  DollarSign,
+  FileText,
+  Globe,
+  GraduationCap,
+  Headphones,
+  Home,
+  LogOut,
+  MessageSquare,
+  Play,
+  Search,
+  Settings,
+  Shield,
+  Star,
+  Target,
+  User,
+  UserCheck,
+  UserCog,
+  UserPlus,
+  Users,
+  Video,
+  X
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -315,7 +315,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
               id: 'subscriptionStatus',
               label: t('sidebar.player.subscriptionStatus'),
               icon: Clock,
-              href: `/dashboard/subscription`,
+              href: `/dashboard/shared/subscription-status`,
               color: 'text-amber-600',
               bgColor: 'bg-amber-50'
             },
@@ -974,9 +974,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         initial={isMobile ? { x: '100%' } : { width: collapsed ? 80 : 280 }}
         animate={isMobile ? { x: isOpen ? 0 : '100%' } : { width: collapsed ? (screenSize === 'tablet' ? 64 : 80) : (screenSize === 'tablet' ? 256 : 320) }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed top-0 right-0 h-full bg-gradient-to-b ${accountInfo.color} z-50 shadow-2xl backdrop-blur-xl border-l border-white/20 ${
-          isMobile ? 'w-80' : getSidebarWidth()
-        }`}
+        className={`fixed top-0 right-0 h-full bg-gradient-to-b ${accountInfo.color} z-50 shadow-2xl backdrop-blur-xl border-l border-white/20 ${isMobile ? 'w-80' : getSidebarWidth()
+          }`}
         dir={isRTL}
       >
         <div className="flex flex-col h-full">
@@ -1077,9 +1076,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
                     <Button
                       variant="ghost"
                       onClick={() => toggleGroup(group.id)}
-                      className={`w-full justify-between h-10 px-3 text-white hover:bg-white/20 ${
-                        group.id === 'main' ? 'font-semibold' : 'font-medium'
-                      }`}
+                      className={`w-full justify-between h-10 px-3 text-white hover:bg-white/20 ${group.id === 'main' ? 'font-semibold' : 'font-medium'
+                        }`}
                     >
                       <div className="flex items-center gap-2">
                         <GroupIcon className="w-4 h-4" />
@@ -1136,18 +1134,15 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
                                   <Button
                                     variant="ghost"
                                     onClick={() => handleNavigation(item.href, item.id)}
-                                    className={`w-full justify-start gap-3 h-10 px-3 transition-all duration-500 ease-out ${
-                                      isActive
+                                    className={`w-full justify-start gap-3 h-10 px-3 transition-all duration-500 ease-out ${isActive
                                         ? 'bg-white text-gray-900 shadow-lg'
                                         : 'text-white hover:bg-white/20'
-                                    }`}
+                                      }`}
                                   >
-                                    <div className={`p-1.5 rounded-lg transition-colors ${
-                                      isActive ? item.bgColor : 'bg-white/10'
-                                    }`}>
-                                      <IconComponent className={`w-3.5 h-3.5 ${
-                                        isActive ? item.color : 'text-white'
-                                      }`} />
+                                    <div className={`p-1.5 rounded-lg transition-colors ${isActive ? item.bgColor : 'bg-white/10'
+                                      }`}>
+                                      <IconComponent className={`w-3.5 h-3.5 ${isActive ? item.color : 'text-white'
+                                        }`} />
                                     </div>
 
                                     <AnimatePresence>

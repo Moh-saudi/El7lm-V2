@@ -11,6 +11,7 @@
  */
 
 import { storeOTPInFirestore, hasActiveOTP } from './firestore-otp-manager';
+import { ChatAmanService } from '@/lib/services/chataman-service';
 
 // تنسيق رقم الهاتف
 const formatPhoneNumber = (phone: string): string => {
@@ -64,9 +65,33 @@ async function sendOTPViaWhatsApp(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const formattedPhone = formatPhoneNumber(phoneNumber);
-    const targetInstanceId = instanceId || BABASERVICE_CONFIG.INSTANCE_ID;
 
+    // 1. Try ChatAman First (Official BSP)
+    try {
+      const config = await ChatAmanService.getConfig();
+      if (config && config.isActive) {
+        console.log('Using ChatAman for OTP...');
+        const result = await ChatAmanService.sendOtp(formattedPhone, otp);
+        if (result.success) {
+          return { success: true };
+        } else {
+          console.warn('ChatAman OTP failed, falling back to legacy provider:', result.error);
+        }
+      }
+    } catch (e) {
+      console.error('Error checking ChatAman config:', e);
+    }
+
+    // 2. Fallback to Babaservice (Legacy)
+    const targetInstanceId = instanceId || BABASERVICE_CONFIG.INSTANCE_ID;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+    // Check if we are running on server or client to determine fetch URL correctly if needed, 
+    // but usually calling internal API via full URL is safer for Next.js API routes if not separated.
+    // However, calling internal API from internal service is weird. 
+    // Usually Babaservice logic should be internal here or external URL.
+    // Assuming existing logic works for legacy.
+
     const response = await fetch(`${baseUrl}/api/whatsapp/babaservice/otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

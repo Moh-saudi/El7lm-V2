@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { db } from '@/lib/firebase/config';
+import { PricingService } from '@/lib/pricing/pricing-service';
+import { SubscriptionPlan } from '@/types/pricing';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
 import { maskPhoneNumber, maskEmail, maskName, applyPaymentPrivacy } from '@/lib/utils/privacy-utils';
 import { fetchPaymentsOptimized } from '@/lib/utils/payments-fetcher';
@@ -56,6 +58,7 @@ export default function AdminPaymentsPage() {
   const [showStatusUpdateDialog, setShowStatusUpdateDialog] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(null);
   const [newStatus, setNewStatus] = useState('');
+  const [allPlans, setAllPlans] = useState<SubscriptionPlan[]>([]);
   const [packageInfo, setPackageInfo] = useState({
     name: '',
     duration: '',
@@ -264,6 +267,17 @@ export default function AdminPaymentsPage() {
   const handleStatusUpdate = (payment) => {
     setUpdatingPayment(payment);
     setNewStatus(payment.status);
+
+    // استخدام PricingService للعثور على أفضل باقة مطابقة
+    const pkgType = payment.packageType || payment.package_type || payment.selectedPackage || '';
+    const bestMatch = PricingService.getBestMatchedPlan(payment.amount, pkgType, allPlans);
+
+    setPackageInfo({
+      name: payment.packageName || payment.package_name || payment.plan_name || bestMatch.title,
+      duration: bestMatch.period,
+      price: payment.amount || 0
+    });
+
     setShowStatusUpdateDialog(true);
   };
 
@@ -328,25 +342,13 @@ export default function AdminPaymentsPage() {
         return;
       }
 
-      // تحديد مدة الاشتراك بناءً على نوع الباقة
-      const packageType = payment.packageType || packageInfo.name || 'subscription_3months';
-      let subscriptionMonths = 3; // افتراضي 3 أشهر
-      let packageName = 'اشتراك 3 شهور';
-      let packageDuration = '3 شهور';
+      // استخدام PricingService للعثور على أفضل باقة مطابقة
+      const pkgType = payment.packageType || payment.package_type || payment.selectedPackage || 'subscription_3months';
+      const bestMatch = PricingService.getBestMatchedPlan(payment.amount, pkgType, allPlans);
 
-      if (packageType.includes('annual') || packageType.includes('yearly') || packageType.includes('سنوي')) {
-        subscriptionMonths = 12;
-        packageName = 'اشتراك سنوي';
-        packageDuration = '12 شهر';
-      } else if (packageType.includes('6months') || packageType.includes('6 شهور')) {
-        subscriptionMonths = 6;
-        packageName = 'اشتراك 6 شهور';
-        packageDuration = '6 شهور';
-      } else if (packageType.includes('3months') || packageType.includes('3 شهور')) {
-        subscriptionMonths = 3;
-        packageName = 'اشتراك 3 شهور';
-        packageDuration = '3 شهور';
-      }
+      const subscriptionMonths = bestMatch.months;
+      const packageName = payment.packageName || payment.package_name || payment.plan_name || bestMatch.title;
+      const packageDuration = bestMatch.period;
 
       const expiresAt = new Date(Date.now() + subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
 
@@ -354,7 +356,7 @@ export default function AdminPaymentsPage() {
         userId: userId,
         plan_name: packageInfo.name || packageName,
         package_name: packageInfo.name || packageName,
-        packageType: packageType,
+        packageType: bestMatch.plan?.id || pkgType,
         package_duration: packageInfo.duration || packageDuration,
         package_price: payment.amount,
         payment_id: payment.id,
@@ -362,7 +364,7 @@ export default function AdminPaymentsPage() {
         expires_at: expiresAt,
         end_date: expiresAt,
         status: 'active',
-        features: ['unlimited_access', 'premium_support', 'advanced_features'],
+        features: bestMatch.plan?.features || ['unlimited_access', 'premium_support', 'advanced_features'],
         invoice_number: `INV-${Date.now()}`,
         receipt_url: payment.receiptImage || payment.receiptUrl || '',
         created_at: new Date(),
@@ -403,6 +405,28 @@ export default function AdminPaymentsPage() {
         selectedPackage: packageInfo.name || packageName,
         updatedAt: new Date()
       });
+
+      // 4️⃣ تسجيل العملية في سجل المدفوعات الموحد (Unified Payment History)
+      try {
+        const paymentHistoryData = {
+          userId: userId,
+          amount: payment.amount,
+          currency: payment.currency || 'EGP',
+          status: 'completed',
+          package_name: packageInfo.name || packageName,
+          packageType: packageType,
+          payment_date: new Date(),
+          createdAt: new Date(),
+          transaction_id: payment.transactionId || payment.paymentId || payment.id,
+          source: payment.collection || 'manual_activation',
+          customer_name: payment.playerName || payment.customerName || '',
+          customer_email: payment.playerEmail || payment.customerEmail || ''
+        };
+        await addDoc(collection(db, 'payments'), paymentHistoryData);
+        console.log('✅ [Admin Payments] سجل الدفع الموحد تم إنشاؤه');
+      } catch (historyError) {
+        console.warn('⚠️ [Admin Payments] فشل تسجيل الدفع في السجل الموحد ولكن تم التفعيل:', historyError);
+      }
 
       // تحديث حالة الدفع في الجدول الأصلي إذا كانت من bulkPayments
       if (payment.collection === 'bulkPayments' || payment.collection === 'bulk_payments') {
@@ -857,7 +881,7 @@ export default function AdminPaymentsPage() {
         'orange_money', 'etisalat_wallet', 'paymob',
         'paypal_transactions', 'stripe_payments',
         'bulkPayments', 'bulk_payments', 'payment_action_logs', 'payment_results',
-        'tournament_payments', 'geidea_payments', 'geidea'
+        'tournament_payments', 'geidea_payments', 'geidea', 'invoices', 'receipts'
       ];
 
       let allPayments = [];
@@ -1540,6 +1564,9 @@ export default function AdminPaymentsPage() {
               playersData: playersData,
               // بيانات إضافية من البيانات الأصلية
               packageType: data.packageType || data.package_type || null,
+              packageName: data.packageName || data.package_name || data.plan_name || data.selectedPackage || null,
+              package_name: data.package_name || data.packageName || data.plan_name || null,
+              plan_name: data.plan_name || data.packageName || data.package_name || null,
               // بيانات إضافية لمدفوعات جيديا
               orderId: geideaOrderId || merchantRefId || doc.id, // orderId من جيديا أو merchantReferenceId
               geideaOrderId: geideaOrderId, // orderId من جيديا (للتوضيح)
@@ -1780,6 +1807,7 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => {
+    PricingService.getAllPlans().then(setAllPlans);
     fetchPayments();
   }, []);
 
@@ -2817,10 +2845,18 @@ export default function AdminPaymentsPage() {
                       <p className="text-gray-900 font-mono text-sm">{selectedPayment.orderId}</p>
                     </div>
                   )}
-                  {selectedPayment.responseCode && (
+                  {selectedPayment.userId && (
                     <div>
-                      <label className="font-medium text-gray-700">رمز الاستجابة:</label>
-                      <p className="text-gray-900 font-mono text-sm">{selectedPayment.responseCode}</p>
+                      <label className="font-medium text-gray-700">معرف العميل (UID):</label>
+                      <p className="text-gray-900 font-mono text-xs break-all bg-gray-50 p-1 rounded border">{selectedPayment.userId}</p>
+                    </div>
+                  )}
+                  {(selectedPayment.packageName || selectedPayment.package_name || selectedPayment.plan_name || selectedPayment.packageType) && (
+                    <div>
+                      <label className="font-medium text-gray-700">الباقة المختارة:</label>
+                      <p className="text-blue-700 font-bold">
+                        {selectedPayment.packageName || selectedPayment.package_name || selectedPayment.plan_name || selectedPayment.packageType}
+                      </p>
                     </div>
                   )}
                 </div>

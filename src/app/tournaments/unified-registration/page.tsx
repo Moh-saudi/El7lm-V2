@@ -417,6 +417,12 @@ export default function UnifiedTournamentRegistrationPage() {
         return;
       }
 
+      if (paymentMethod === 'skipcash' && total > 0) {
+        await handleSkipCashPayment();
+        setSubmitting(false); // Should redirect, but if stops here safely
+        return;
+      }
+
       // Check if payment method is a wallet (vodafone_cash, stc_pay, fawran, instapay)
       const walletMethods = ['vodafone_cash', 'stc_pay', 'fawran', 'instapay', 'mobile_wallet'];
       if (walletMethods.includes(paymentMethod) && total > 0) {
@@ -471,6 +477,35 @@ export default function UnifiedTournamentRegistrationPage() {
       setSelectedTournament(null);
     } catch (e) {
       toast.error('حدث خطأ');
+    }
+  };
+
+  const handleSkipCashPayment = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/skipcash/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: calculateTotal(),
+          customerEmail: user?.email || userData?.email || 'customer@example.com',
+          customerPhone: user?.phoneNumber || userData?.phone || userData?.phoneNumber || '00000000',
+          customerName: user?.displayName || userData?.name || 'Customer',
+          transactionId: `REG-${selectedTournament?.id}-${Date.now()}`,
+        })
+      });
+
+      const data = await response.json();
+      if (data.success && data.payUrl) {
+        window.location.href = data.payUrl;
+      } else {
+        toast.error(data.error || 'فشل إنشاء عملية الدفع');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('حدث خطأ غير متوقع');
+      setLoading(false);
     }
   };
 
@@ -923,13 +958,47 @@ export default function UnifiedTournamentRegistrationPage() {
                       {(() => {
                         const methods: any[] = [];
 
-                        // Always add card and later options
-                        methods.push(
-                          { id: 'later', label: 'دفع لاحقاً', icon: Clock },
-                          { id: 'card', label: 'بطاقة بنكية', icon: CreditCard }
-                        );
+                        // 1. "Later" option is always available (unless we want to control it too, but let's keep it for now)
+                        methods.push({ id: 'later', label: 'دفع لاحقاً', icon: Clock });
 
-                        // Custom Tournament Wallet
+                        // 2. Dynamic Methods from Admin Settings (Firestore)
+                        // 'paymentMethods' is already loaded via useEffect when tournament is selected.
+                        if (paymentMethods && paymentMethods.length > 0) {
+                          paymentMethods.forEach(setting => {
+                            if (setting.enabled) {
+                              // Map Admin Setting ID to UI Component
+                              if (setting.id === 'skipcash') {
+                                methods.push({ id: 'skipcash', label: setting.name || 'بطاقة بنكية / Apple Pay', icon: CreditCard });
+                              } else if (setting.id === 'geidea' || (setting.type === 'card' && setting.id !== 'skipcash')) {
+                                // Generic Card or Geidea
+                                // Check if we already added a card method to avoid duplicates if configured weirdly by user
+                                if (!methods.find(m => m.id === 'card' || m.id === 'geidea')) {
+                                  methods.push({ id: 'card', label: setting.name || 'بطاقة بنكية', icon: CreditCard });
+                                }
+                              } else if (setting.type === 'wallet' || setting.type === 'bank_transfer') {
+                                // Wallets and Transfers
+                                methods.push({
+                                  id: setting.id,
+                                  label: setting.name,
+                                  icon: setting.type === 'bank_transfer' ? Globe : (setting.icon === '⚡' ? Zap : Wallet),
+                                  // Mapping icons is tricky, we can use generic Wallet
+                                  number: setting.accountNumber || setting.details
+                                });
+                              }
+                            }
+                          });
+                        } else {
+                          // FALLBACK if no settings loaded (e.g. offline or error)
+                          const country = selectedTournament.country || selectedTournament.location_country || 'EG';
+                          if (['QA', 'Qatar', 'قطر'].includes(country)) {
+                            methods.push({ id: 'skipcash', label: 'بطاقة بنكية / Apple Pay', icon: CreditCard });
+                          } else {
+                            methods.push({ id: 'card', label: 'بطاقة بنكية', icon: CreditCard });
+                          }
+                        }
+
+                        // 3. Custom Tournament Wallet (Overrides or Adds to Admin Settings?)
+                        // Usually this is specific to this tournament, so we add it.
                         if (selectedTournament.walletName && selectedTournament.walletNumber) {
                           methods.push({
                             id: 'tournament_wallet',
@@ -939,21 +1008,6 @@ export default function UnifiedTournamentRegistrationPage() {
                             isTournamentSpecific: true
                           });
                         }
-
-                        // Add wallet methods from settings (already includes fallback from useEffect)
-                        // Only add if NO tournament specific wallet is present, OR just append them?
-                        // Let's append them for flexibility, but prioritize tournament one visually if needed.
-                        paymentMethods.forEach(method => {
-                          if (method.enabled !== false && method.id !== 'geidea' && method.id !== 'bank_transfer') {
-                            // Avoid adding duplicate wallets if they match the tournament one roughly (optional check)
-                            methods.push({
-                              id: method.id,
-                              label: method.name || method.id,
-                              icon: Wallet,
-                              number: method.accountNumber || method.details
-                            });
-                          }
-                        });
 
                         methods.push({ id: 'office', label: 'في المكتب', icon: DollarSign });
 

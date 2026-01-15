@@ -91,14 +91,14 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({ conversation, 
                                     <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-blue-50">
                                         <Mail className="h-4 w-4" />
                                     </div>
-                                    <span className="truncate">user@example.com</span>
+                                    <span className="truncate">{conversation.userEmail || 'غير متوفر'}</span>
                                 </div>
 
                                 <div className="flex items-center gap-3 text-sm text-slate-600 group cursor-pointer hover:text-blue-600 transition-colors">
                                     <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-blue-50">
                                         <Phone className="h-4 w-4" />
                                     </div>
-                                    <span dir="ltr">+966 50 123 4567</span>
+                                    <span dir="ltr">{conversation.userPhone || 'غير متوفر'}</span>
                                 </div>
 
                                 <div className="flex items-center gap-3 text-sm text-slate-600">

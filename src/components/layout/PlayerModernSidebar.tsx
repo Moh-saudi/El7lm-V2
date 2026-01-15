@@ -230,7 +230,7 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
     {
       id: 'subscription-status',
       title: 'sidebar.player.subscriptionStatus',
-      href: '/dashboard/subscription',
+      href: '/dashboard/shared/subscription-status',
       icon: CreditCard,
       badge: null
     }
@@ -340,8 +340,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
                         className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                            ? 'bg-white text-blue-600 shadow-lg'
-                            : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                          ? 'bg-white text-blue-600 shadow-lg'
+                          : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                           }`}
                       >
                         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
@@ -387,8 +387,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
                         className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                            ? 'bg-white text-blue-600 shadow-lg'
-                            : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                          ? 'bg-white text-blue-600 shadow-lg'
+                          : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                           }`}
                       >
                         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
@@ -434,8 +434,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
                         className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                            ? 'bg-white text-blue-600 shadow-lg'
-                            : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                          ? 'bg-white text-blue-600 shadow-lg'
+                          : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                           }`}
                       >
                         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
@@ -481,8 +481,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
                         className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                            ? 'bg-white text-blue-600 shadow-lg'
-                            : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                          ? 'bg-white text-blue-600 shadow-lg'
+                          : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                           }`}
                       >
                         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
@@ -528,8 +528,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                       <button
                         onClick={() => handleNavigation(item.href, item.id)}
                         className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                            ? 'bg-white text-blue-600 shadow-lg'
-                            : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                          ? 'bg-white text-blue-600 shadow-lg'
+                          : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                           }`}
                       >
                         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'
@@ -570,8 +570,8 @@ const PlayerModernSidebar: React.FC<PlayerModernSidebarProps> = ({
                   <button
                     onClick={() => handleNavigation('/dashboard/player/notifications', 'notifications')}
                     className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-lg transition-all duration-200 group ${activeItem === 'notifications'
-                        ? 'bg-white text-blue-600 shadow-lg'
-                        : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
+                      ? 'bg-white text-blue-600 shadow-lg'
+                      : 'text-white hover:bg-blue-600 hover:bg-opacity-20'
                       }`}
                   >
                     <Bell className={`w-5 h-5 ${activeItem === 'notifications' ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'

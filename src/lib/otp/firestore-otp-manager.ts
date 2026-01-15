@@ -10,11 +10,11 @@
  */
 
 import { db } from '@/lib/firebase/config';
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  deleteDoc, 
+import {
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
   serverTimestamp,
   Timestamp,
   collection,
@@ -35,7 +35,7 @@ interface OTPRecord {
   createdAt: Timestamp;
   expiresAt: Timestamp;
   verified: boolean;
-  purpose?: string; // 'registration' | 'login' | 'password_reset'
+  purpose?: 'registration' | 'login' | 'password_reset' | 'verification'; // Added 'verification'
 }
 
 /**
@@ -61,14 +61,14 @@ function getPhoneDocId(phoneNumber: string): string {
  * حفظ OTP في Firestore
  */
 export async function storeOTPInFirestore(
-  phoneNumber: string, 
+  phoneNumber: string,
   otp: string,
-  purpose: 'registration' | 'login' | 'password_reset' = 'registration'
+  purpose: 'registration' | 'login' | 'password_reset' | 'verification' = 'registration'
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const phoneDocId = getPhoneDocId(phoneNumber);
     const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
-    
+
     // التحقق من وجود OTP سابق
     const existingDoc = await getDoc(otpRef);
     if (existingDoc.exists()) {
@@ -77,22 +77,22 @@ export async function storeOTPInFirestore(
       const expiresAt = data.expiresAt.toMillis();
       const timeUntilExpiry = expiresAt - now;
       const minutesUntilExpiry = timeUntilExpiry / (60 * 1000);
-      
+
       // Rate Limiting: إذا كان OTP نشط (أكثر من 30 ثانية متبقية)، نمنع الإرسال
       if (!data.verified && expiresAt > now && minutesUntilExpiry > RATE_LIMIT_MINUTES) {
         const remainingSeconds = Math.ceil((expiresAt - now) / 1000);
-        
+
         // رسالة خطأ واضحة مع الوقت المتبقي
-        const timeMessage = remainingSeconds >= 60 
+        const timeMessage = remainingSeconds >= 60
           ? `${Math.floor(remainingSeconds / 60)} دقيقة و ${remainingSeconds % 60} ثانية`
           : `${remainingSeconds} ثانية`;
-        
+
         return {
           success: false,
           error: `يوجد رمز تحقق نشط بالفعل. يرجى الانتظار ${timeMessage} أو استخدام الرمز المرسل سابقاً`
         };
       }
-      
+
       // إذا كان OTP منتهي أو قريب من الانتهاء، نحذفه ونسمح بإرسال جديد
       await deleteDoc(otpRef);
       console.log(`🗑️ [Firestore OTP] تم حذف OTP قديم لـ ${phoneNumber} قبل إنشاء جديد`);
@@ -102,7 +102,7 @@ export async function storeOTPInFirestore(
     const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
     const otpHash = hashOTP(otp);
-    
+
     const otpRecord: Omit<OTPRecord, 'createdAt' | 'expiresAt'> & {
       createdAt: any;
       expiresAt: any;
@@ -122,9 +122,9 @@ export async function storeOTPInFirestore(
     return { success: true };
   } catch (error: any) {
     console.error('❌ [Firestore OTP] خطأ في حفظ OTP:', error);
-    return { 
-      success: false, 
-      error: error.message || 'فشل في حفظ OTP' 
+    return {
+      success: false,
+      error: error.message || 'فشل في حفظ OTP'
     };
   }
 }
@@ -133,24 +133,24 @@ export async function storeOTPInFirestore(
  * التحقق من OTP في Firestore
  */
 export async function verifyOTPInFirestore(
-  phoneNumber: string, 
+  phoneNumber: string,
   otp: string
-): Promise<{ 
-  success: boolean; 
-  error?: string; 
+): Promise<{
+  success: boolean;
+  error?: string;
   attemptsRemaining?: number;
 }> {
   try {
     const phoneDocId = getPhoneDocId(phoneNumber);
     const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
-    
+
     const otpDoc = await getDoc(otpRef);
-    
+
     if (!otpDoc.exists()) {
       console.error(`❌ [Firestore OTP] لا يوجد OTP لـ ${phoneNumber}`);
-      return { 
-        success: false, 
-        error: 'رمز التحقق غير موجود أو منتهي الصلاحية. يرجى طلب رمز جديد' 
+      return {
+        success: false,
+        error: 'رمز التحقق غير موجود أو منتهي الصلاحية. يرجى طلب رمز جديد'
       };
     }
 
@@ -159,17 +159,17 @@ export async function verifyOTPInFirestore(
     // التحقق من انتهاء الصلاحية
     if (data.expiresAt.toMillis() < Date.now()) {
       await deleteDoc(otpRef);
-      return { 
-        success: false, 
-        error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد' 
+      return {
+        success: false,
+        error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد'
       };
     }
 
     // التحقق من عدد المحاولات
     if (data.attempts >= MAX_ATTEMPTS) {
       await deleteDoc(otpRef);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'تم تجاوز الحد الأقصى لمحاولات التحقق. يرجى طلب رمز جديد',
         attemptsRemaining: 0
       };
@@ -177,9 +177,9 @@ export async function verifyOTPInFirestore(
 
     // التحقق من أن OTP لم يتم التحقق منه مسبقاً
     if (data.verified) {
-      return { 
-        success: false, 
-        error: 'تم استخدام رمز التحقق مسبقاً. يرجى طلب رمز جديد' 
+      return {
+        success: false,
+        error: 'تم استخدام رمز التحقق مسبقاً. يرجى طلب رمز جديد'
       };
     }
 
@@ -188,20 +188,20 @@ export async function verifyOTPInFirestore(
     if (data.otpHash !== otpHash) {
       // زيادة عدد المحاولات
       const newAttempts = data.attempts + 1;
-      await setDoc(otpRef, { 
-        attempts: newAttempts 
+      await setDoc(otpRef, {
+        attempts: newAttempts
       }, { merge: true });
 
       const remaining = MAX_ATTEMPTS - newAttempts;
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `رمز التحقق غير صحيح. المحاولات المتبقية: ${remaining}`,
         attemptsRemaining: remaining
       };
     }
 
     // OTP صحيح - تحديث الحالة وحذف المستند
-    await setDoc(otpRef, { 
+    await setDoc(otpRef, {
       verified: true,
       verifiedAt: serverTimestamp()
     }, { merge: true });
@@ -213,9 +213,9 @@ export async function verifyOTPInFirestore(
     return { success: true };
   } catch (error: any) {
     console.error('❌ [Firestore OTP] خطأ في التحقق من OTP:', error);
-    return { 
-      success: false, 
-      error: error.message || 'حدث خطأ أثناء التحقق من رمز التحقق' 
+    return {
+      success: false,
+      error: error.message || 'حدث خطأ أثناء التحقق من رمز التحقق'
     };
   }
 }
@@ -276,14 +276,14 @@ export async function cleanupExpiredOTPs(): Promise<number> {
  * @param allowExpiredMinutes - السماح بإرسال OTP جديد إذا كان القديم منتهي خلال X دقائق (افتراضي: 1)
  */
 export async function hasActiveOTP(
-  phoneNumber: string, 
+  phoneNumber: string,
   allowExpiredMinutes: number = RATE_LIMIT_MINUTES
 ): Promise<boolean> {
   try {
     const phoneDocId = getPhoneDocId(phoneNumber);
     const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
     const otpDoc = await getDoc(otpRef);
-    
+
     if (!otpDoc.exists()) {
       return false;
     }
@@ -293,32 +293,32 @@ export async function hasActiveOTP(
     const expiresAt = data.expiresAt.toMillis();
     const timeUntilExpiry = expiresAt - now;
     const minutesUntilExpiry = timeUntilExpiry / (60 * 1000);
-    
+
     // إذا كان OTP محقق، نحذفه ونرجع false
     if (data.verified) {
       await deleteDoc(otpRef);
       return false;
     }
-    
+
     // إذا كان OTP منتهي الصلاحية، نحذفه ونرجع false
     if (expiresAt <= now) {
       await deleteDoc(otpRef);
       return false;
     }
-    
+
     // إذا تجاوز عدد المحاولات، نحذفه ونرجع false
     if (data.attempts >= MAX_ATTEMPTS) {
       await deleteDoc(otpRef);
       return false;
     }
-    
+
     // إذا كان OTP سينتهي خلال X دقائق، نسمح بإرسال جديد (نحذف القديم)
     if (minutesUntilExpiry <= allowExpiredMinutes) {
       console.log(`⚠️ [Firestore OTP] OTP سينتهي خلال ${minutesUntilExpiry.toFixed(1)} دقائق - السماح بإرسال جديد`);
       await deleteDoc(otpRef);
       return false;
     }
-    
+
     // OTP نشط وصالح (أكثر من X دقائق متبقية)
     return true;
   } catch (error: any) {
@@ -341,7 +341,7 @@ export async function getOTPInfo(phoneNumber: string): Promise<{
     const phoneDocId = getPhoneDocId(phoneNumber);
     const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
     const otpDoc = await getDoc(otpRef);
-    
+
     if (!otpDoc.exists()) {
       return {
         exists: false,

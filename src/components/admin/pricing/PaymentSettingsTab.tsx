@@ -4,6 +4,8 @@ import { Save, Plus, Trash2, Globe, CreditCard, Smartphone, Banknote } from 'luc
 import { doc, getDoc, setDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import toast from 'react-hot-toast';
+import AddPaymentMethodModal from './AddPaymentMethodModal';
+import AddCountryModal from './AddCountryModal';
 
 interface PaymentMethod {
     id: string;
@@ -41,7 +43,7 @@ const DEFAULT_SETTINGS: CountrySettings[] = [
         countryName: 'قطر',
         currency: 'QAR',
         methods: [
-            { id: 'geidea', name: 'بطاقة بنكية', type: 'card', enabled: true, isDefault: true, icon: '💳' },
+            { id: 'skipcash', name: 'SkipCash (بطاقة بنكية)', type: 'card', enabled: true, isDefault: true, icon: '💳' },
             { id: 'fawran', name: 'خدمة فورا', type: 'wallet', enabled: true, isDefault: false, accountNumber: '', icon: '⚡' },
             { id: 'bank_transfer', name: 'تحويل بنكي', type: 'bank_transfer', enabled: true, isDefault: false, accountNumber: '', icon: '🏦' }
         ]
@@ -73,6 +75,8 @@ export default function PaymentSettingsTab() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [selectedCountry, setSelectedCountry] = useState('EG');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
 
     // تحميل الإعدادات من Firebase
     useEffect(() => {
@@ -135,6 +139,23 @@ export default function PaymentSettingsTab() {
         }));
     };
 
+    const handleAddMethod = (newMethod: PaymentMethod) => {
+        setSettings(prev => prev.map(country => {
+            if (country.countryCode !== selectedCountry) return country;
+            return {
+                ...country,
+                methods: [...country.methods, newMethod]
+            };
+        }));
+        toast.success(`تم إضافة ${newMethod.name} بنجاح! لا تنس حفظ التغييرات.`);
+    };
+
+    const handleAddCountry = (newCountry: CountrySettings) => {
+        setSettings(prev => [...prev, newCountry]);
+        setSelectedCountry(newCountry.countryCode);
+        toast.success(`تم إضافة ${newCountry.countryName} بنجاح!`);
+    };
+
     const currentCountry = settings.find(s => s.countryCode === selectedCountry) || settings[0];
 
     if (loading) return <div className="p-8 text-center text-gray-500">جاري تحميل الإعدادات...</div>;
@@ -156,8 +177,21 @@ export default function PaymentSettingsTab() {
                             {country.countryName}
                         </button>
                     ))}
+                    <button
+                        onClick={() => setIsCountryModalOpen(true)}
+                        className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-blue-600 hover:bg-blue-50 border border-dashed border-blue-200 flex items-center gap-1 transition-all"
+                    >
+                        <Plus className="w-4 h-4" /> دولة جديدة
+                    </button>
                 </div>
             </div>
+
+            <AddCountryModal
+                isOpen={isCountryModalOpen}
+                onClose={() => setIsCountryModalOpen(false)}
+                onAdd={handleAddCountry}
+                existingCodes={settings.map(s => s.countryCode)}
+            />
 
             <motion.div
                 key={selectedCountry}
@@ -261,7 +295,27 @@ export default function PaymentSettingsTab() {
                         </div>
                     ))}
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-dashed border-gray-300">
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center justify-center gap-2"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                            <Plus className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold">إضافة وسيلة دفع جديدة</span>
+                        <span className="text-xs text-gray-400">فودافون كاش، باي بال، تحويل بنكي...</span>
+                    </button>
+                </div>
+
+                <AddPaymentMethodModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onAdd={handleAddMethod}
+                />
+
             </motion.div>
-        </div>
+        </div >
     );
 }

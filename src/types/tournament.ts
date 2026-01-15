@@ -28,6 +28,10 @@ export interface Tournament {
   paymentDeadline?: string;
   refundPolicy?: string;
   registrations?: TournamentRegistration[];
+  country?: string;
+  location_country?: string;
+  walletName?: string;
+  walletNumber?: string;
 }
 
 export interface TournamentRegistration {
@@ -66,7 +70,7 @@ export interface RegistrationFormData {
   playerEmail: string;
   playerPhone: string;
   playerAge: number;
-  paymentMethod: 'cash' | 'card' | 'bank_transfer' | 'mobile_wallet' | 'later' | 'immediate' | 'geidea';
+  paymentMethod: 'cash' | 'card' | 'bank_transfer' | 'mobile_wallet' | 'later' | 'immediate' | 'geidea' | 'skipcash';
   notes: string;
   clubName: string;
   clubContact: string;

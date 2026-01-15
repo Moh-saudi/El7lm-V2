@@ -502,10 +502,11 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         ...(accountType === 'admin' ? [
           { id: 'admin-payments', label: 'السجل المالي', icon: CreditCard, href: `/dashboard/admin/payments`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
           { id: 'admin-geidea-transactions', label: 'حسابات جيديا', icon: CreditCard, href: `/dashboard/admin/geidea-transactions`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-          { id: 'admin-pricing', label: 'إدارة الخطط والأسعار', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+          { id: 'admin-skipcash', label: 'إدارة SkipCash', icon: CreditCard, href: `/dashboard/admin/skipcash`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+          { id: 'admin-pricing', label: 'الأسعار وبوابات الدفع', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
           { id: 'admin-invoices', label: 'الفواتير والحسابات', icon: FileText, href: `/dashboard/admin/invoices`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         ] : [
-          { id: 'subscription-status', label: 'حالة اشتراكي', icon: Star, href: `/dashboard/subscription`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          { id: 'subscription-status', label: 'حالة اشتراكي', icon: Star, href: `/dashboard/shared/subscription-status`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
           { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/${accountType}/billing`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
           { id: 'shared-bulk-payment', label: 'خدمة الدفع', icon: CreditCard, href: `/dashboard/shared/bulk-payment`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         ])

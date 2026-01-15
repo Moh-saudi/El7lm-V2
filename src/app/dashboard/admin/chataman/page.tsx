@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from 'sonner';
-import { Loader2, Save, Send, CheckCircle2, XCircle, MessageSquare, Key, Globe, Activity } from 'lucide-react';
+import { Loader2, Save, Send, CheckCircle2, XCircle, MessageSquare, Key, Globe, Activity, Info } from 'lucide-react';
 import { ChatAmanService, ChatAmanConfig, ChatAmanTemplate } from '@/lib/services/chataman-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,14 @@ export default function ChatAmanSettingsPage() {
     const [templates, setTemplates] = useState<ChatAmanTemplate[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+    const [templateParams, setTemplateParams] = useState<string[]>([]);
+    const [webhookUrl, setWebhookUrl] = useState('');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setWebhookUrl(`${window.location.origin}/api/chataman/webhook`);
+        }
+    }, []);
 
     useEffect(() => {
         if (testMode === 'template' && templates.length === 0) {
@@ -119,7 +127,8 @@ export default function ChatAmanSettingsPage() {
             const selectedTemplate = templates.find(t => t.uuid === selectedTemplateId);
             // For testing simple templates without params for now, or just sending empty params
             result = await ChatAmanService.sendTemplate(testPhone, selectedTemplateId, {
-                language: selectedTemplate?.language || 'ar'
+                language: selectedTemplate?.language || 'ar',
+                bodyParams: templateParams
             });
         }
 
@@ -157,8 +166,71 @@ export default function ChatAmanSettingsPage() {
             <Tabs defaultValue="settings" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8">
                     <TabsTrigger value="settings">إعدادات الربط</TabsTrigger>
+                    <TabsTrigger value="integration">دليل الويب (Webhooks)</TabsTrigger>
                     <TabsTrigger value="test">اختبار الإرسال</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="integration">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>إعداد استقبال الرسائل (Webhook)</CardTitle>
+                            <CardDescription>اربط نظامك مع ChatAman لاستقبال ردود العملاء وتحديثات الحالة</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                <div className="flex">
+                                    <div className="flex-shrink-0">
+                                        <Info className="h-5 w-5 text-yellow-400" />
+                                    </div>
+                                    <div className="mr-3">
+                                        <p className="text-sm text-yellow-700">
+                                            لكي تعمل استجابة النظام للرسائل الواردة، يجب نسخ الرابط بالأسفل ووضعه في إعدادات Webhooks في لوحة تحكم ChatAman.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Webhook URL (رابط الاستقبال)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={webhookUrl}
+                                        readOnly
+                                        className="bg-gray-50 font-mono text-left ltr"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(webhookUrl);
+                                            toast.success('تم نسخ الرابط');
+                                        }}
+                                    >
+                                        نسخ
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">قم بلصق هذا الرابط في خانة Notification URL في إعدادات ChatAman.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Events (الأحداث المطلوبة)</Label>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        message.received
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        message.status.update
+                                    </div>
+                                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        message.sent
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 <TabsContent value="settings">
                     <Card>
@@ -328,6 +400,37 @@ export default function ChatAmanSettingsPage() {
                                             </p>
                                         </div>
                                     )}
+
+                                    {selectedTemplateId && (() => {
+                                        const template = templates.find(t => t.uuid === selectedTemplateId);
+                                        const matches = template?.body?.match(/{{(\d+)}}/g);
+                                        const paramCount = matches ? new Set(matches).size : 0;
+
+                                        if (paramCount === 0) return null;
+
+                                        return (
+                                            <div className="space-y-3 border p-4 rounded-lg bg-gray-50/50">
+                                                <Label className="text-sm font-semibold text-gray-700">متغيرات القالب (Parameters)</Label>
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {Array.from({ length: paramCount }).map((_, i) => (
+                                                        <div key={i} className="flex items-center gap-2">
+                                                            <span className="text-xs font-mono text-gray-500 w-8">{`{{${i + 1}}}`}</span>
+                                                            <Input
+                                                                placeholder={`قيمة المتغير ${i + 1}`}
+                                                                value={templateParams[i] || ''}
+                                                                onChange={(e) => {
+                                                                    const newParams = [...templateParams];
+                                                                    newParams[i] = e.target.value;
+                                                                    setTemplateParams(newParams);
+                                                                }}
+                                                                className="h-9 text-sm"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
 

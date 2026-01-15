@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/firebase/notifications';
 import { db } from '@/lib/firebase/config';
+import { PricingService } from '@/lib/pricing/pricing-service';
+import { SubscriptionPlan } from '@/types/pricing';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle,
@@ -34,6 +36,7 @@ export default function PaymentApprovalPage() {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentRequest[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [allPlans, setAllPlans] = useState<SubscriptionPlan[]>([]);
 
   // فلاتر
   const [statusFilter, setStatusFilter] = useState<string>('pending');
@@ -149,6 +152,7 @@ export default function PaymentApprovalPage() {
 
   // تحميل البيانات عند فتح الصفحة
   useEffect(() => {
+    PricingService.getAllPlans().then(setAllPlans);
     if (user?.uid) {
       fetchPayments();
     }
@@ -170,8 +174,12 @@ export default function PaymentApprovalPage() {
 
       // تحديث حالة الاشتراك للاعبين
       if (payment.players && payment.players.length > 0) {
+        // استخدام PricingService للعثور على أفضل باقة مطابقة
+        const bestMatch = PricingService.getBestMatchedPlan(payment.amount, payment.description, allPlans);
+        const monthsToAdd = bestMatch.months;
+
         const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 3); // اشتراك 3 شهور
+        endDate.setMonth(endDate.getMonth() + monthsToAdd);
 
         for (const player of payment.players) {
           try {
@@ -179,6 +187,8 @@ export default function PaymentApprovalPage() {
             await updateDoc(playerRef, {
               subscription_status: 'active',
               subscription_end: endDate.toISOString(),
+              package_type: bestMatch.plan?.id || 'standard',
+              package_name: bestMatch.title,
               last_payment_id: payment.id,
               last_payment_amount: payment.amount,
               last_payment_date: new Date().toISOString(),
@@ -494,8 +504,8 @@ export default function PaymentApprovalPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payment.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          payment.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
+                        payment.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
                         }`}>
                         {payment.status === 'approved' ? 'تمت الموافقة' :
                           payment.status === 'rejected' ? 'مرفوض' :

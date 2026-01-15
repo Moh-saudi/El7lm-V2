@@ -1,12 +1,24 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Sparkles, Users, Crown, Shield, Star, Gift, Zap, Trophy,
-  CreditCard, Check, ArrowLeft, Globe, Search, ChevronDown, ChevronUp, Copy, CheckCircle, Wallet, Upload
+  CreditCard, Check, ArrowLeft, ChevronLeft, Globe, Search, ChevronDown, ChevronUp, Copy, CheckCircle, Wallet, Upload,
+  MessageSquare, Send
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { serverTimestamp } from 'firebase/firestore';
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import GeideaPaymentModal from '@/components/GeideaPaymentModal';
@@ -14,9 +26,12 @@ import { getCurrencyRates, convertCurrency as convertCurrencyLib, getCurrencyInf
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { COUNTRIES } from '@/constants/countries';
 import { SubscriptionPlan } from '@/types/pricing';
+import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 
 import { db } from '@/lib/firebase/config';
 import { doc, updateDoc, setDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { InvoiceService } from '@/lib/payments/invoice-service';
+import { storageManager } from '@/lib/storage';
 
 // Extend Window interface
 declare global {
@@ -65,8 +80,8 @@ const DEFAULT_PAYMENT_METHODS = {
     { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'دفع آمن ومضمون', discount: 0, popular: false }
   ],
   QA: [
-    { id: 'geidea', name: 'بطاقة بنكية', icon: '💳', description: 'Visa, MasterCard, NAPS', discount: 0, popular: true },
-    { id: 'fawran', name: 'خدمة فورا', icon: '⚡', description: 'تحويل فوري برقم الجوال', discount: 0, popular: true, details: '70900058' },
+    { id: 'skipcash', name: 'SkipCash (بطاقة بنكية)', icon: '💳', description: 'Visa, MasterCard, Apple Pay (Qatar)', discount: 0, popular: true },
+    { id: 'fawran', name: 'خدمة فورا (Fawran)', icon: '⚡', description: 'تحويل فوري برقم الجوال', discount: 0, popular: true, details: '70900058' },
     { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'تحويل مباشر للحساب', discount: 0, popular: false }
   ],
   EG: [
@@ -85,6 +100,7 @@ interface Partner {
   customPricing: {
     monthly?: number;
     quarterly?: number;
+    sixMonths?: number;
     yearly?: number;
   };
   isActive?: boolean;
@@ -92,7 +108,7 @@ interface Partner {
 }
 
 export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const router = useRouter();
 
   // State
@@ -103,6 +119,23 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showGeideaModal, setShowGeideaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'none' | 'expired' | 'active' | 'upgrade'>('all');
+  const searchParams = useSearchParams();
+  const actionParam = searchParams.get('action');
+
+  // Modals state
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketMessage, setTicketMessage] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [activeSubscriptionData, setActiveSubscriptionData] = useState<{
+    isActive: boolean;
+    planName: string;
+    planDuration?: string;
+    isMaxPlan: boolean;
+    daysLeft?: number;
+    expiryDate?: Date;
+  } | null>(null);
 
   // Country & Currency
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
@@ -129,6 +162,142 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [currentPaymentDetails, setCurrentPaymentDetails] = useState<string>('');
   const [currentPaymentInstructions, setCurrentPaymentInstructions] = useState<string>('');
+
+  // Handle Action Parameter & Subscription Detection
+  useEffect(() => {
+    const detectSubscription = async () => {
+      if (!user) return;
+
+      let isCurrentlyActive = false;
+      let detectedPlanName = 'اشتراك نشط';
+      let detectedPkgId = '';
+      let activeSubscriptionData_raw: any = null;
+
+      try {
+        // 1. Check user's individual subscription directly in the source of truth
+        const userSubDoc = await getDoc(doc(db, 'subscriptions', user.uid));
+        if (userSubDoc.exists()) {
+          const data = userSubDoc.data();
+          if (data.status === 'active') {
+            isCurrentlyActive = true;
+            activeSubscriptionData_raw = data;
+
+            // Use PricingService to get the best matched plan details
+            const amount = Number(data.package_price || data.amount || 0);
+            const pkgType = data.packageType || data.package_type || '';
+            const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
+
+            detectedPlanName = bestMatch.title;
+            detectedPkgId = bestMatch.plan?.id || pkgType;
+          }
+        }
+
+        // 2. Fallback: Check parent subscription (for players in clubs/academies)
+        if (!isCurrentlyActive && accountType === 'player' && userData) {
+          const parentId = userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.agent_id;
+          if (parentId) {
+            const parentSubDoc = await getDoc(doc(db, 'subscriptions', parentId));
+            if (parentSubDoc.exists()) {
+              const data = parentSubDoc.data();
+              if (data.status === 'active') {
+                isCurrentlyActive = true;
+                activeSubscriptionData_raw = data;
+
+                // Use PricingService for parent subscription as well
+                const amount = Number(data.package_price || data.amount || 0);
+                const pkgType = data.packageType || data.package_type || '';
+                const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
+
+                detectedPlanName = bestMatch.title;
+                detectedPkgId = bestMatch.plan?.id || pkgType;
+              }
+            }
+          }
+        }
+
+        if (isCurrentlyActive) {
+          const currentPlan = availablePlans.find(p => p.id === detectedPkgId);
+          const currentPrice = currentPlan?.base_price || 0;
+          const hasHigherPlan = availablePlans.some(p => p.isActive && (p.base_price || 0) > currentPrice);
+
+          // Calculate remaining days
+          const expiresAt = activeSubscriptionData_raw?.expires_at?.toDate ? activeSubscriptionData_raw.expires_at.toDate() :
+            (activeSubscriptionData_raw?.end_date?.toDate ? activeSubscriptionData_raw.end_date.toDate() : null);
+          const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+
+          setActiveSubscriptionData({
+            isActive: true,
+            planName: detectedPlanName,
+            planDuration: activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || 'غير محددة',
+            isMaxPlan: !hasHigherPlan,
+            daysLeft: daysLeft,
+            expiryDate: expiresAt || undefined
+          });
+
+          console.log('✨ [Detection] Active subscription found. Triggering modal.', { detectedPlanName, daysLeft });
+          setIsActionModalOpen(true);
+        } else if (actionParam === 'renew' || actionParam === 'upgrade') {
+          console.log('✨ [Detection] Manual action requested. Triggering modal.');
+          setIsActionModalOpen(true);
+        } else {
+          console.log('ℹ️ [Detection] No active subscription or action detected.');
+        }
+      } catch (err) {
+        console.error('❌ [Detection] Error detecting subscription:', err);
+      }
+    };
+
+    if (!loading && availablePlans.length > 0) {
+      detectSubscription();
+    }
+  }, [loading, availablePlans, user, userData, accountType, actionParam]);
+
+  const handleSubmitTicket = async () => {
+    if (!ticketSubject.trim() || !ticketMessage.trim() || !user) {
+      toast.error('يرجى ملء جميع الحقول');
+      return;
+    }
+
+    setIsSubmittingTicket(true);
+    try {
+      const conversationRef = await addDoc(collection(db, 'support_conversations'), {
+        userId: user.uid,
+        userName: userData?.name || user.displayName || 'مستخدم',
+        userEmail: user.email || '',
+        userPhone: userData?.phone || userData?.personal_phone || '',
+        userType: accountType,
+        status: 'open',
+        priority: 'medium',
+        category: 'subscription',
+        lastMessage: ticketMessage.trim(),
+        lastMessageTime: serverTimestamp(),
+        unreadCount: 1,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        subject: ticketSubject.trim()
+      });
+
+      await addDoc(collection(db, 'support_messages'), {
+        conversationId: conversationRef.id,
+        senderId: user.uid,
+        senderName: userData?.name || user.displayName || 'مستخدم',
+        senderType: 'user',
+        message: ticketMessage.trim(),
+        timestamp: serverTimestamp(),
+        isRead: false
+      });
+
+      toast.success('تم إرسال تذكرتك بنجاح');
+      setIsSupportModalOpen(false);
+      setTicketSubject('');
+      setTicketMessage('');
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast.error('فشل إرسال التذكرة');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
 
   // --- Effects ---
 
@@ -170,7 +339,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   useEffect(() => {
     const fetchPaymentSettings = async () => {
       const countryCode = selectedCountry || 'global';
-      // Default methods for this country
+      // Step 1: Get base defaults from hardcoded list
       const baseMethods = DEFAULT_PAYMENT_METHODS[countryCode as keyof typeof DEFAULT_PAYMENT_METHODS] || DEFAULT_PAYMENT_METHODS.global;
 
       try {
@@ -181,21 +350,45 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           const settings = docSnap.data();
           const serverMethods = settings.methods || [];
 
-          // Merge server settings with base methods logic
-          const mergedMethods = baseMethods.map(baseMethod => {
+          // Step 2: Sync server settings with base methods
+          // CRITICAL FIX: Only allow methods that exist in the base list for this country
+          const syncedMethods = baseMethods.map((baseMethod: any) => {
             const serverMethod = serverMethods.find((m: any) => m.id === baseMethod.id);
+
+            // If it exists in Firestore, merge settings
             if (serverMethod) {
               return {
                 ...baseMethod,
-                enabled: serverMethod.enabled !== false,
-                details: serverMethod.accountNumber || (baseMethod as any).details,
-                instructions: serverMethod.instructions
+                enabled: serverMethod.enabled === true,
+                details: serverMethod.accountNumber || serverMethod.details || (baseMethod as any).details,
+                instructions: serverMethod.instructions || (baseMethod as any).instructions,
+                // Branding: Force Code-defined branding for SkipCash to override DB pollution (NAPS, etc)
+                name: baseMethod.id === 'skipcash' ? baseMethod.name : (serverMethod.name || baseMethod.name),
+                icon: baseMethod.icon,
+                description: baseMethod.id === 'skipcash' ? baseMethod.description : (serverMethod.description || baseMethod.description)
               };
             }
-            return { ...baseMethod, enabled: true };
-          }).filter((m: any) => m.enabled);
 
-          setPaymentMethods(mergedMethods);
+            // If it doesn't exist in Firestore, keep defaults but enable by default
+            return {
+              ...baseMethod,
+              enabled: true
+            };
+          }).filter((m: any) => m.enabled === true);
+
+          // If the resulting list is valid, use it
+          if (syncedMethods.length > 0) {
+            setPaymentMethods(syncedMethods);
+
+            // Smart auto-select: if current selected is not in new list, pick default or first
+            const exists = syncedMethods.find(m => m.id === selectedPaymentMethod);
+            if (!exists) {
+              const hasDefault = syncedMethods.find((m: any) => m.isDefault);
+              setSelectedPaymentMethod(hasDefault ? hasDefault.id : syncedMethods[0].id);
+            }
+          } else {
+            setPaymentMethods(baseMethods);
+          }
         } else {
           setPaymentMethods(baseMethods);
         }
@@ -209,6 +402,16 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       fetchPaymentSettings();
     }
   }, [selectedCountry]);
+
+  // Auto-select valid method when methods change
+  useEffect(() => {
+    if (paymentMethods.length > 0) {
+      const exists = paymentMethods.find(m => m.id === selectedPaymentMethod);
+      if (!exists) {
+        setSelectedPaymentMethod(paymentMethods[0].id);
+      }
+    }
+  }, [paymentMethods]);
 
   // Update details/instructions when method changes
   useEffect(() => {
@@ -496,6 +699,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
     if (selectedPackage.includes('3months') && appliedPartner.customPricing.quarterly) {
       basePrice = appliedPartner.customPricing.quarterly;
+    } else if (selectedPackage.includes('6months') && appliedPartner.customPricing.sixMonths) {
+      basePrice = appliedPartner.customPricing.sixMonths;
     } else if (selectedPackage.includes('annual') && appliedPartner.customPricing.yearly) {
       basePrice = appliedPartner.customPricing.yearly;
     }
@@ -504,7 +709,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   }
 
   const subscriptionPrice = basePrice;
-  const originalTotal = subscriptionPrice * selectedCount;
+  const countForCalculation = accountType === 'player' ? Math.max(selectedCount, 1) : selectedCount;
+  const originalTotal = subscriptionPrice * countForCalculation;
 
   let offerDiscount = 0;
   if (appliedOffer && selectedCount > 0) {
@@ -518,34 +724,132 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const currencySymbol = getCurrentCurrencySymbol();
   const currentCurrencyCode = getCurrentCurrency();
 
-  const handleCheckout = () => {
-    // 1. If Geidea (Online)
-    if (selectedPaymentMethod === 'geidea') {
-      let convertedAmountEGP = Math.round(finalPrice);
-      if (currentCurrencyCode !== 'EGP') {
-        const usd = convertCurrencyLib(finalPrice, currentCurrencyCode, 'USD', currencyRates);
-        convertedAmountEGP = Math.round(convertCurrencyLib(usd, 'USD', 'EGP', currencyRates));
+  const isManualMethod = ['vodafone_cash', 'etisalat_cash', 'instapay', 'fawran', 'bank_transfer', 'stc_pay', 'wallet'].includes(selectedPaymentMethod);
+
+  const handleCheckout = async () => {
+    if (!user?.uid) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
+    if (selectedCount === 0 && accountType !== 'player') {
+      toast.error('يرجى اختيار لاعب واحد على الأقل');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Validation for manual payments
+      if (isManualMethod && !receiptFile) {
+        toast.error('يرجى رفع صورة إيصال التحويل للمتابعة');
+        setLoading(false);
+        return;
       }
-      if (typeof window !== 'undefined') window.convertedAmountForGeidea = convertedAmountEGP;
-      setShowGeideaModal(true);
-      return;
-    }
 
-    // 2. If Manual (Fawran, Vodafone Cash, etc)
-    if (!receiptFile) {
-      toast.error('يرجى رفع صورة إيصال التحويل للمتابعة');
-      return;
-    }
+      // Step 1: Create Invoice in database (Order Pre-creation)
+      const invoiceData = {
+        userId: user.uid,
+        amount: finalPrice,
+        currency: currentCurrencyCode,
+        paymentMethod: selectedPaymentMethod,
+        packageType: selectedPackage,
+        packageName: packages[selectedPackage]?.title || 'اشتراك',
+        packageDuration: packages[selectedPackage]?.period || 'مدة غير محددة',
+        package_duration: packages[selectedPackage]?.period || 'مدة غير محددة',
+        playerCount: countForCalculation,
+        players: accountType === 'player' ? [user.uid] : selectedPlayers.map(p => p.id),
+        customerEmail: user.email || '',
+        customerName: user.displayName || '',
+      };
 
-    // Simulate Success for Manual Flow
-    // In a real scenario: Upload Image -> Create Firestore Doc -> Notification
-    toast.success('تم إرسال طلبك وسيتم مراجعة الإيصال وتفعيل الاشتراك');
-    // Reset or Redirect
-    setReceiptFile(null);
+      const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
+
+      // Step 2: Route based on method
+
+      // A. SkipCash
+      if (selectedPaymentMethod === 'skipcash') {
+        await handleSkipCashPayment(invoiceId);
+        return;
+      }
+
+      // B. Geidea
+      if (selectedPaymentMethod === 'geidea') {
+        let convertedAmountEGP = Math.round(finalPrice);
+        if (currentCurrencyCode !== 'EGP') {
+          const usd = convertCurrencyLib(finalPrice, currentCurrencyCode, 'USD', currencyRates);
+          convertedAmountEGP = Math.round(convertCurrencyLib(usd, 'USD', 'EGP', currencyRates));
+        }
+        if (typeof window !== 'undefined') window.convertedAmountForGeidea = convertedAmountEGP;
+
+        // We can store the invoiceId in localStorage for the success/callback handler
+        localStorage.setItem('pending_invoice_id', invoiceId);
+
+        setShowGeideaModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // C. PayPal
+      if (selectedPaymentMethod === 'paypal') {
+        toast('سيتم إضافة الدفع عبر PayPal قريباً');
+        setLoading(false);
+        return;
+      }
+
+      // D. Manual Methods (Upload Receipt)
+      if (isManualMethod && receiptFile) {
+        toast.loading('جاري رفع الإيصال...', { id: 'upload' });
+
+        const fileExt = receiptFile.name.split('.').pop();
+        const path = `receipts/${user.uid}/${invoiceId}.${fileExt}`;
+
+        const uploadResult = await storageManager.upload('payments', path, receiptFile);
+        const receiptUrl = uploadResult.url;
+
+        await InvoiceService.submitManualReceipt(invoiceId, receiptUrl);
+
+        toast.success('تم إرسال طلبك بنجاح. سيتم مراجعة الإيصال وتفعيل الاشتراك خلال 24 ساعة.', { id: 'upload' });
+        setReceiptFile(null);
+        router.push('/dashboard/shared/subscription-status');
+      }
+
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast.error('حدث خطأ أثناء إتمام الطلب');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGeideaPayment = () => { // Kept for modal callback if needed, but logic moved to handleCheckout
-    // ...
+  const handleSkipCashPayment = async (invoiceId: string) => {
+    try {
+      const response = await fetch('/api/skipcash/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: finalPrice,
+          customerEmail: user?.email || 'customer@example.com',
+          // @ts-ignore
+          customerPhone: user?.phoneNumber || user?.phone || '33333333',
+          customerName: user?.displayName || 'Customer',
+          transactionId: invoiceId, // CRITICAL: Use invoiceId as transactionId
+          returnUrl: `${window.location.origin}/payment/success?method=skipcash&amount=${finalPrice}`,
+          custom1: `${user?.uid || 'guest'}:${selectedPackage}`
+        })
+      });
+
+      const data = await response.json();
+      if (data.success && data.payUrl) {
+        window.location.href = data.payUrl;
+      } else {
+        const errorMsg = data.error || 'فشل إنشاء عملية الدفع';
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('حدث خطأ غير متوقع في خدمة SkipCash');
+    }
   };
 
   const handlePaymentSuccess = async (data: any) => {
@@ -707,7 +1011,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             )}
                             <div className="flex items-baseline justify-center gap-1">
                               <span className={`text-3xl font-black ${isSelected ? 'text-white' : scheme.text}`}>{pkg.price}</span>
-                              <span className={`text-xs font-bold ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{currencySymbol} / شهر</span>
+                              <span className={`text-xs font-bold ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{currencySymbol}</span>
                             </div>
                           </div>
 
@@ -944,8 +1248,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
                 <div className="border-t border-dashed border-gray-200 my-4"></div>
 
-                {/* Manual Payment Upload (Fawran / Wallet) */}
-                {!['geidea', 'paypal'].includes(selectedPaymentMethod) && (
+                {/* Manual Payment Upload (Fawran / Wallet / Vodafone Cash) */}
+                {isManualMethod && (
                   <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100 border-dashed">
                     <div className="flex items-start gap-2 mb-3">
                       <div className="p-1 bg-blue-100 rounded text-blue-600 mt-0.5"><Upload className="w-3 h-3" /></div>
@@ -991,7 +1295,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   className="w-full py-4 bg-gradient-to-r from-gray-900 to-black hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold text-sm shadow-xl shadow-gray-200 transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   <span>
-                    {!['geidea', 'paypal'].includes(selectedPaymentMethod)
+                    {!['geidea', 'paypal', 'skipcash'].includes(selectedPaymentMethod)
                       ? 'تأكيد التحويل وإرسال الإيصال'
                       : 'إتمام عملية الدفع الإلكتروني'}
                   </span>
@@ -1005,10 +1309,32 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               </div>
             </div>
 
+            {/* Support Widget */}
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl shadow-blue-500/10 p-6 text-white text-right" dir="rtl">
+              <h4 className="font-black text-lg mb-2">تحتاج مساعدة؟</h4>
+              <p className="text-blue-100 text-xs mb-6 leading-relaxed">فريق الدعم الفني متواجد لمساعدتك في إتمام عملية الدفع وتفعيل الاشتراكات.</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => window.open(getPrimaryWhatsAppNumber(), '_blank')}
+                  className="w-full py-3 bg-white text-blue-600 rounded-xl font-black text-sm hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  واتساب الدعم
+                </button>
+                <button
+                  onClick={() => setIsSupportModalOpen(true)}
+                  className="w-full py-3 bg-white/10 text-white border border-white/20 rounded-xl font-black text-sm hover:bg-white/20 transition-all"
+                >
+                  فتح تذكرة دعم
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>
       </div >
+
+
 
       <GeideaPaymentModal
         visible={showGeideaModal}
@@ -1022,6 +1348,211 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         customerEmail={user?.email || 'customer@example.com'}
         merchantReferenceId={`PAY-${Date.now()}`}
       />
+
+      {/* Support Ticket Modal */}
+      <Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
+        <DialogContent className="w-[95vw] sm:w-[450px] p-0 overflow-hidden bg-white border-none shadow-2xl rounded-[2rem] sm:rounded-[2.5rem]">
+          <div className="p-8 text-right" dir="rtl">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 shadow-inner">
+                <MessageSquare className="w-7 h-7 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black text-slate-900 leading-none mb-2">الدعم الفني</DialogTitle>
+                <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-wider">Help & Support</DialogDescription>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700 mr-1">موضوع المشكلة</label>
+                <Input
+                  placeholder="ما هي المشكلة التي تواجهها؟"
+                  value={ticketSubject}
+                  onChange={(e) => setTicketSubject(e.target.value)}
+                  className="rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 h-12 text-right font-medium transition-all"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700 mr-1">التفاصيل</label>
+                <Textarea
+                  placeholder="اشرح لنا المشكلة بالتفصيل هنا..."
+                  value={ticketMessage}
+                  onChange={(e) => setTicketMessage(e.target.value)}
+                  className="min-h-[140px] rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 text-right font-medium resize-none leading-relaxed transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row-reverse gap-3">
+              <Button
+                onClick={handleSubmitTicket}
+                disabled={isSubmittingTicket}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-8 font-black flex-1 shadow-xl shadow-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isSubmittingTicket ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    إرسال الطلب
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setIsSupportModalOpen(false)}
+                className="rounded-2xl h-14 px-6 font-bold text-slate-400 hover:bg-slate-100 transition-all"
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Action Modal (Renew / Upgrade) */}
+      <Dialog
+        open={isActionModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (activeSubscriptionData?.isActive) {
+              router.push('/dashboard');
+            } else {
+              setIsActionModalOpen(false);
+            }
+          } else {
+            setIsActionModalOpen(true);
+          }
+        }}
+      >
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-xl p-0 overflow-hidden bg-white border-none shadow-2xl rounded-[2rem] sm:rounded-[2.5rem]">
+          <div className="flex flex-col md:flex-row min-h-[350px]" dir="rtl">
+            {/* Visual Accent Panel */}
+            <div className="md:w-1/4 bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 blur-3xl"></div>
+              <div className="relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl mb-4 mx-auto animate-float">
+                  <Zap className="w-8 h-8 text-white fill-white" />
+                </div>
+                <h3 className="text-white text-base font-black mb-1 leading-tight">منصة الحلم</h3>
+                <p className="text-blue-100/60 text-[10px] font-bold px-2 leading-tight">رحلة الاحتراف تبدأ من هنا</p>
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 p-6 md:p-10 flex flex-col justify-center bg-white relative">
+              <div className="absolute top-4 left-4 md:block hidden opacity-[0.03]">
+                <Crown size={80} />
+              </div>
+
+              <div className="relative z-10 w-full">
+                <DialogTitle className="text-2xl md:text-3xl font-black text-slate-900 mb-3 leading-tight">
+                  {activeSubscriptionData?.isActive
+                    ? (activeSubscriptionData.isMaxPlan ? 'أنت في القمة! 🚀' : 'لديك اشتراك نشط بالفعل ⚡')
+                    : (actionParam === 'upgrade' ? 'ترقية باقتك الملكية' :
+                      actionParam === 'renew' ? 'تجديد اشتراكك' :
+                        'اشترك في منصة الحلم')}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  نافذة إدارة الاشتراك وتجديد أو ترقية الباقة الحالية.
+                </DialogDescription>
+
+                <div className="text-slate-600 font-bold mb-6 leading-relaxed">
+                  {activeSubscriptionData?.isActive ? (
+                    <div className="space-y-6">
+                      <p className="text-xs">أهلاً بك! يظهر لدينا أنك مشترك حالياً في:</p>
+
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-lg shadow-slate-200/30 flex flex-col md:flex-row items-center gap-4 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-600"></div>
+                        <div className="flex-1 text-center md:text-right">
+                          <p className="text-blue-600 text-xl font-black mb-1">{activeSubscriptionData.planName}</p>
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-[10px] text-slate-500">
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.planDuration || 'مدة غير محددة'}</span>
+                            </div>
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.daysLeft} يوم متبقي</span>
+                            </div>
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.expiryDate?.toLocaleDateString('ar-EG')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs px-1 leading-relaxed">
+                        {activeSubscriptionData.isMaxPlan
+                          ? `استمتع بكافة المميزات الحصرية المتاحة لك الآن.`
+                          : `هل تود الانتقال للباقة السنوية لضمان متابعة مستمرة من الكشافين؟`}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs leading-loose">
+                      {actionParam === 'upgrade'
+                        ? 'اختر إحدى الباقات المميزة للحصول على الوصول كامل لكل مميزات المنصة'
+                        : actionParam === 'renew'
+                          ? 'يمكنك تمديد مدة اشتراكك الحالي بسهولة عبر اختيار الباقة المناسبة'
+                          : 'أهلاً بك! اختر الباقة التي تناسبك لتبدأ رحلتك الاحترافية'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-auto">
+                  {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
+                    <div className="bg-orange-50/80 p-3 rounded-xl text-orange-700 text-[11px] font-bold border border-orange-100/50 flex items-start gap-2">
+                      <span className="shrink-0">💡</span>
+                      <p>ترقية اشتراكك للسنوي الآن تمنحك خصماً فورياً 30%.</p>
+                    </div>
+                  )}
+                  {activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan && (
+                    <div className="bg-green-50/80 backdrop-blur-sm p-4 rounded-2xl text-green-700 text-sm font-bold leading-relaxed border border-green-100 flex items-start gap-3">
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✨</div>
+                      <p>استمتع بكل المزايا الاحترافية، الكشافون يتابعون ملفك الآن وكل شيء يعمل بشكل ممتاز!</p>
+                    </div>
+                  )}
+                  {!activeSubscriptionData?.isActive && (
+                    <div className="bg-blue-50/80 backdrop-blur-sm p-4 rounded-2xl text-blue-700 text-sm font-bold leading-relaxed border border-blue-100 flex items-start gap-3">
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">⭐</div>
+                      <p>سيتم تطبيق الرموز والخصومات المتاحة تلقائياً عند الدفع لضمان حصولك على أفضل سعر.</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <Button
+                      onClick={() => {
+                        if (activeSubscriptionData?.isActive && activeSubscriptionData.isMaxPlan) {
+                          router.push('/dashboard');
+                        } else {
+                          setIsActionModalOpen(false);
+                        }
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-sm font-black shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 group"
+                    >
+                      <span>
+                        {activeSubscriptionData?.isActive
+                          ? (activeSubscriptionData.isMaxPlan ? 'استمرار للرئيسية' : 'باقات الترقية')
+                          : 'استعراض الباقات'}
+                      </span>
+                      <ChevronLeft className="mr-1 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    </Button>
+
+                    {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => router.push('/dashboard')}
+                        className="text-slate-400 text-xs font-bold h-12 px-4 hover:bg-slate-50"
+                      >
+                        لاحقاً
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div >
   );

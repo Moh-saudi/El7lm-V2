@@ -176,6 +176,53 @@ export const PricingService = {
         }
     },
 
+    /**
+     * Finds the best matching plan based on amount, type or description.
+     * Centralizes logic for mapping payments to valid subscriptions.
+     */
+    getBestMatchedPlan(amount: number, packageType?: string, currentPlans?: SubscriptionPlan[]): { plan: SubscriptionPlan | null; months: number; title: string, period: string } {
+        const plans = currentPlans && currentPlans.length > 0 ? currentPlans : DEFAULT_PLANS;
+
+        // 1. Direct ID Match
+        if (packageType) {
+            const matched = plans.find(p => p.id === packageType);
+            if (matched) {
+                const monthsStr = matched.period.match(/\d+/)?.[0];
+                const months = monthsStr ? parseInt(monthsStr) : (matched.id.includes('annual') ? 12 : matched.id.includes('6months') ? 6 : 3);
+                return { plan: matched, months, title: matched.title, period: matched.period };
+            }
+        }
+
+        // 2. Amount-based Matching (Egypt/Global primary thresholds)
+        const numAmount = Number(amount || 0);
+        if (numAmount >= 110 && numAmount < 180) {
+            const semiPlan = plans.find(p => p.id === 'subscription_6months' || p.period.includes('6'));
+            return {
+                plan: semiPlan || null,
+                months: 6,
+                title: semiPlan?.title || 'اشتراك 6 شهور',
+                period: semiPlan?.period || '6 شهور'
+            };
+        } else if (numAmount >= 180) {
+            const annualPlan = plans.find(p => p.id === 'subscription_annual' || p.period.includes('12') || p.period.includes('سنة'));
+            return {
+                plan: annualPlan || null,
+                months: 12,
+                title: annualPlan?.title || 'اشتراك سنوي',
+                period: annualPlan?.period || '12 شهر'
+            };
+        }
+
+        // 3. Fallback (Basic 3 Months)
+        const basicPlan = plans.find(p => p.id === 'subscription_3months' || p.period.includes('3'));
+        return {
+            plan: basicPlan || null,
+            months: 3,
+            title: basicPlan?.title || 'اشتراك 3 شهور',
+            period: basicPlan?.period || '3 شهور'
+        };
+    },
+
     async initializeDefaults() {
         const promises = DEFAULT_PLANS.map(plan => {
             const { id, ...data } = plan;

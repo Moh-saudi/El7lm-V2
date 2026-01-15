@@ -31,14 +31,14 @@ export default function PlayerBillingPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      
+
       // جلب المدفوعات من مجموعة bulkPayments
       const bulkPaymentsQuery = query(
         collection(db, 'bulkPayments'),
         where('userId', '==', user?.uid),
         orderBy('createdAt', 'desc')
       );
-      
+
       const bulkPaymentsSnapshot = await getDocs(bulkPaymentsQuery);
       const bulkPayments = bulkPaymentsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -51,7 +51,7 @@ export default function PlayerBillingPage() {
         where('userId', '==', user?.uid),
         orderBy('createdAt', 'desc')
       );
-      
+
       let regularPayments: PaymentRecord[] = [];
       try {
         const paymentsSnapshot = await getDocs(paymentsQuery);
@@ -81,10 +81,13 @@ export default function PlayerBillingPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'success':
+      case 'paid':
         return 'text-green-600 bg-green-100';
       case 'pending':
         return 'text-yellow-600 bg-yellow-100';
       case 'failed':
+      case 'cancelled':
         return 'text-red-600 bg-red-100';
       default:
         return 'text-gray-600 bg-gray-100';
@@ -94,11 +97,15 @@ export default function PlayerBillingPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'success':
+      case 'paid':
         return 'مكتمل';
       case 'pending':
         return 'قيد المعالجة';
       case 'failed':
         return 'فشل';
+      case 'cancelled':
+        return 'ملغي';
       default:
         return 'غير محدد';
     }
@@ -163,7 +170,7 @@ export default function PlayerBillingPage() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">إجمالي المدفوعات</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {payments.filter(p => p.status === 'completed').length}
+                  {payments.filter(p => ['completed', 'success', 'paid'].includes(p.status)).length}
                 </p>
               </div>
             </div>
@@ -197,7 +204,7 @@ export default function PlayerBillingPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   {formatAmount(
                     payments
-                      .filter(p => p.status === 'completed')
+                      .filter(p => ['completed', 'success', 'paid'].includes(p.status))
                       .reduce((sum, p) => sum + (p.amount || 0), 0),
                     'EGP'
                   )}
@@ -263,12 +270,13 @@ export default function PlayerBillingPage() {
                         {formatAmount(payment.amount || 0, payment.currency || 'EGP')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {payment.paymentMethod === 'geidea' ? 'بطاقة بنكية' : 
-                         payment.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' :
-                         payment.paymentMethod === 'etisalat_cash' ? 'اتصالات كاش' :
-                         payment.paymentMethod === 'instapay' ? 'انستاباي' :
-                         payment.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' :
-                         payment.paymentMethod}
+                        {payment.paymentMethod === 'geidea' ? 'بطاقة بنكية' :
+                          payment.paymentMethod === 'skipcash' ? 'سكيب كاش' :
+                            payment.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' :
+                              payment.paymentMethod === 'etisalat_cash' ? 'اتصالات كاش' :
+                                payment.paymentMethod === 'instapay' ? 'انستاباي' :
+                                  payment.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' :
+                                    payment.paymentMethod}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
