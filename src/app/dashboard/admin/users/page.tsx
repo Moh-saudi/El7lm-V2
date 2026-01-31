@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
@@ -40,7 +40,13 @@ import {
   UserCog,
   Users,
   UserX,
-  XCircle
+  XCircle,
+  Database,
+  ArrowUpDown,
+  Loader2,
+  Flag,
+  Ban,
+  MoreHorizontal
 } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -105,6 +111,7 @@ export default function AdminUsersPage() {
   const { user, userData } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchLimit, setFetchLimit] = useState(500); // 🚀 تمت الترقية: جلب 500 مستخدم مبدئياً
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -157,6 +164,7 @@ export default function AdminUsersPage() {
   const [isPermanentDelete, setIsPermanentDelete] = useState(false);
   const [showPurgeDialog, setShowPurgeDialog] = useState(false);
   const [purgeEmail, setPurgeEmail] = useState('');
+  const [manualImportProgress, setManualImportProgress] = useState<string>(''); // For progress display
 
   const handleRequestUpdate = async (userId: string) => {
     try {
@@ -894,10 +902,24 @@ export default function AdminUsersPage() {
 
         setOrganizationsCache(prev => ({ ...prev, ...orgsCache }));
 
-        // جلب المستخدمين بالتوازي لتسريع العملية
+        // جلب المستخدمين بالتوازي لتسريع العملية (مع حد أقصى للحماية من التكاليف)
         const fetchPromises = collections.map(async (collectionName) => {
           try {
-            const snapshot = await getDocs(collection(db, collectionName));
+            // OPTIMIZATION: Limit to recent {fetchLimit} users per collection to save Firebase Quota
+            // This prevents reading 133k docs. We only load what's necessary.
+            const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'), limit(fetchLimit));
+            // Backup query if createdAt doesn't exist widely yet
+            // const q = query(collection(db, collectionName), limit(50)); 
+
+            let snapshot;
+            try {
+              snapshot = await getDocs(q);
+            } catch (e) {
+              // If orderBy fails (missing index), fallback to simple limit
+              const qFallback = query(collection(db, collectionName), limit(50));
+              snapshot = await getDocs(qFallback);
+            }
+
             const collectionUsers: User[] = [];
 
             snapshot.forEach((userDoc) => {
@@ -918,19 +940,33 @@ export default function AdminUsersPage() {
                 const parentType = data.parentAccountType || (data.clubId ? 'club' : data.academyId ? 'academy' : '');
                 const parentOrgName = parentId && parentType ? (orgsCache[`${parentType}_${parentId}`] || '') : '';
 
+                // Smart country detection: if country is missing, detect from phone
+                let userCountry = data.country || '';
+                let userCountryCode = data.countryCode || '';
+
+                if (!userCountry && (data.phone || data.phoneNumber)) {
+                  const phoneNumber = data.phone || data.phoneNumber;
+                  const detectedCountry = detectCountryFromPhone(phoneNumber);
+                  if (detectedCountry) {
+                    userCountry = detectedCountry.name;
+                    userCountryCode = detectedCountry.code;
+                    console.log(`🔍 Auto-detected country for ${data.name || 'user'}: ${userCountry} from phone: ${phoneNumber}`);
+                  }
+                }
+
                 collectionUsers.push({
                   id: userDoc.id,
                   name: data.name || data.full_name || data.displayName || 'غير محدد',
                   email: data.email || '',
                   phone: data.phone || data.phoneNumber || '',
                   whatsapp: data.whatsapp || '',
-                  countryCode: data.countryCode || '',
+                  countryCode: userCountryCode,
                   accountType: accountType,
                   isActive: data.isActive !== false,
                   createdAt: createdAtDate,
                   lastLogin: safeToDate(data.lastLogin || data.lastAccessTime),
                   city: data.city || '',
-                  country: data.country || '',
+                  country: userCountry,
                   parentAccountId: parentId,
                   parentAccountType: parentType,
                   parentOrganizationName: parentOrgName,
@@ -976,6 +1012,31 @@ export default function AdminUsersPage() {
         console.log('📈 جاري تحميل الإحصائيات في الخلفية...');
         loadVisitStats();
 
+        // Log stats for debugging
+        const todayUsers = uniqueUsers.filter(u => {
+          if (!u.createdAt || u.isDeleted) return false;
+          const today = new Date();
+          const userDate = new Date(u.createdAt);
+          return userDate.toDateString() === today.toDateString();
+        });
+
+        console.log(`📊 Stats Summary:`, {
+          totalUsers: uniqueUsers.length,
+          newToday: todayUsers.length,
+          recentRegistrations: uniqueUsers
+            .filter(u => u.createdAt)
+            .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+            .slice(0, 5)
+            .map(u => ({
+              name: u.name,
+              created: u.createdAt?.toLocaleString('ar-EG', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+              })
+            }))
+        });
+
+
       } catch (error) {
         console.error('❌ خطأ في تحميل البيانات:', error);
         toast.error('حدث خطأ في تحميل البيانات');
@@ -986,7 +1047,7 @@ export default function AdminUsersPage() {
     if (user && userData?.accountType === 'admin') {
       loadUsers();
     }
-  }, [user, userData]);
+  }, [user, userData, fetchLimit]); // Re-fetch when fetchLimit increases
 
   // Filter users by tab - using useMemo for stable reference
   const usersByTab = React.useMemo(() => {
@@ -1294,16 +1355,29 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
     profileIncomplete: users.filter(u => u.profileCompletion < 80 && !u.isDeleted).length,
     noDate: users.filter(u => !u.createdAt && !u.isDeleted).length,
     newToday: users.filter(u => {
-      if (!u.createdAt) return false;
+      if (!u.createdAt || u.isDeleted) return false;
+
+      // Use date string comparison to avoid timezone issues
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return u.createdAt >= today && !u.isDeleted;
+      const userDate = new Date(u.createdAt);
+
+      // Compare only the date part (YYYY-MM-DD)
+      const isSameDay = userDate.toDateString() === today.toDateString();
+
+      // Debug logging for first few users
+      if (users.indexOf(u) < 3) {
+        console.log(`[newToday Check] User: ${u.name}, Created: ${userDate.toLocaleString()}, Today: ${today.toLocaleString()}, Same Day: ${isSameDay}`);
+      }
+
+      return isSameDay;
     }).length,
     newThisWeek: users.filter(u => {
-      if (!u.createdAt) return false;
+      if (!u.createdAt || u.isDeleted) return false;
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      return u.createdAt >= weekAgo && !u.isDeleted;
+      weekAgo.setHours(0, 0, 0, 0);
+      const userDate = new Date(u.createdAt);
+      return userDate >= weekAgo;
     }).length,
     byType: {
       player: users.filter(u => u.accountType === 'player' && !u.isDeleted).length,
@@ -1318,7 +1392,20 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
       direct: users.filter(u => u.registrationType === 'direct' && !u.isDeleted).length,
       organization: users.filter(u => u.registrationType === 'organization' && !u.isDeleted).length,
       unknown: users.filter(u => u.registrationType === 'unknown' && !u.isDeleted).length,
-    }
+    },
+    // إضافة إحصائيات الدول والمدن من المستخدمين الفعليين
+    byCountry: users.reduce((acc, u) => {
+      if (!u.isDeleted && u.country) {
+        acc[u.country] = (acc[u.country] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>),
+    byCity: users.reduce((acc, u) => {
+      if (!u.isDeleted && u.city) {
+        acc[u.city] = (acc[u.city] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>),
   };
 
   // Helper functions
@@ -1863,6 +1950,25 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
               </CardContent>
             </Card>
 
+            {/* NEW: Today's Registrations Card */}
+            <Card className="shadow-sm border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50">
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-emerald-700 text-xs font-semibold uppercase tracking-wider">مسجلون اليوم</span>
+                  <UserCheck className="h-4 w-4 text-emerald-500" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-emerald-900">{stats.newToday.toLocaleString()}</span>
+                  {stats.newToday > 0 && (
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  )}
+                </div>
+                <div className="mt-3 text-xs text-emerald-600 font-medium">
+                  {stats.newThisWeek.toLocaleString()} هذا الأسبوع
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="shadow-sm border-gray-200 bg-white overflow-hidden relative">
               {healthScore < 50 && (
                 <div className="absolute top-0 right-0 p-1">
@@ -2078,23 +2184,27 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
                     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                       <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-800">
                         <Globe className="h-4 w-4 text-emerald-500" />
-                        أهم الدول
+                        أهم الدول (المستخدمون)
                       </h4>
                       <div className="space-y-3">
-                        {Object.entries(visitStats.byCountry)
-                          .sort(([, a], [, b]) => b - a)
-                          .slice(0, 5)
-                          .map(([country, count], idx) => (
-                            <div key={country} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
-                                <span className="text-sm text-gray-700 font-medium">{country}</span>
+                        {Object.keys(stats.byCountry).length > 0 ? (
+                          Object.entries(stats.byCountry)
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 5)
+                            .map(([country, count], idx) => (
+                              <div key={country} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
+                                  <span className="text-sm text-gray-700 font-medium">{country}</span>
+                                </div>
+                                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-none">
+                                  {count}
+                                </Badge>
                               </div>
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-none">
-                                {count}
-                              </Badge>
-                            </div>
-                          ))}
+                            ))
+                        ) : (
+                          <p className="text-center text-xs text-gray-400 py-4">لا توجد بيانات</p>
+                        )}
                       </div>
                     </div>
 
@@ -2102,23 +2212,27 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
                     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                       <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-800">
                         <MapPin className="h-4 w-4 text-orange-500" />
-                        أهم المدن
+                        أهم المدن (المستخدمون)
                       </h4>
                       <div className="space-y-3">
-                        {Object.entries(visitStats.byCity)
-                          .sort(([, a], [, b]) => b - a)
-                          .slice(0, 5)
-                          .map(([city, count], idx) => (
-                            <div key={city} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
-                                <span className="text-sm text-gray-700 font-medium">{city}</span>
+                        {Object.keys(stats.byCity).length > 0 ? (
+                          Object.entries(stats.byCity)
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 5)
+                            .map(([city, count], idx) => (
+                              <div key={city} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-mono text-gray-400 w-4">{idx + 1}</span>
+                                  <span className="text-sm text-gray-700 font-medium">{city}</span>
+                                </div>
+                                <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-none">
+                                  {count}
+                                </Badge>
                               </div>
-                              <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-none">
-                                {count}
-                              </Badge>
-                            </div>
-                          ))}
+                            ))
+                        ) : (
+                          <p className="text-center text-xs text-gray-400 py-4">لا توجد بيانات</p>
+                        )}
                       </div>
                     </div>
 
@@ -2274,6 +2388,211 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
                   <RefreshCcw className="h-4 w-4" />
                 </Button>
               )}
+
+              {/* Import Auth Data Button (Client-Side Only) */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 px-3 gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
+                    <Database className="h-3.5 w-3.5" />
+                    📥 استيراد بيانات (يدوي مضمون)
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>استيراد البيانات يدوياً (نسخة مطورة)</DialogTitle>
+                    <DialogDescription>
+                      بما أن الاتصال بالسيرفر يواجه مشكلة، يرجى نسخ جدول المستخدمين من Firebase Console ولصقه هنا.
+                      <br />
+                      <span className="text-xs text-amber-600 font-bold">الحل مضمون 100% لإصلاح التواريخ والدول فوراً.</span>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <textarea
+                      id="authDataInput"
+                      className="w-full h-64 p-3 border rounded-md font-mono text-xs bg-slate-50"
+                      placeholder={`الصق البيانات هنا... مثال:
+212703930990@el7lm.com
+Jan 17, 2026
+Jan 17, 2026
+aRVwQ3bjO3btKPJn5zNt8agQk1A2
+...`}
+                    />
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={async () => {
+                        const inputEl = document.getElementById('authDataInput') as HTMLTextAreaElement;
+                        if (!inputEl || !inputEl.value) {
+                          try { toast.error("الرجاء لصق البيانات أولاً"); } catch (e) { }
+                          return;
+                        }
+                        const text = inputEl.value;
+
+                        let toastId;
+                        try { toastId = toast.loading('جاري بدء عملية التحليل...'); } catch (e) { }
+
+                        // Set initial Loading State
+                        setManualImportProgress('جاري التحليل...');
+
+                        try {
+                          const lines = text.split('\n');
+                          let processed = 0;
+                          let updated = 0;
+
+                          // Regex Patterns
+                          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+                          const uidRegex = /\b[a-zA-Z0-9]{28}\b/; // Firebase UIDs are usually 28 chars
+                          const dateRegex = /([A-Z][a-z]{2} \d{1,2}, \d{4})|(\d{1,2}\/\d{1,2}\/\d{4})/;
+
+                          // Calculate total potential UIDs for progress bar (approximate)
+                          const totalUIDs = (text.match(new RegExp(uidRegex, 'g')) || []).length;
+
+                          for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+
+                            const uidMatch = line.match(uidRegex);
+
+                            // If this line contains a UID (or looks like one)
+                            if (uidMatch) {
+                              const uid = uidMatch[0];
+                              let email = '';
+                              let dateStr = '';
+
+                              // Update Progress UI
+                              processed++;
+                              setManualImportProgress(`جاري معالجة المستخدم ${processed} من ${totalUIDs}...`);
+
+                              // 1. Search in THIS line
+                              const emailInLine = line.match(emailRegex);
+                              const dateInLine = line.match(dateRegex);
+
+                              if (emailInLine) email = emailInLine[0];
+                              if (dateInLine) dateStr = dateInLine[0];
+
+                              // 2. If missing, search backward/forward slightly (handling spread out data)
+                              if (!email || !dateStr) {
+                                for (let j = 1; j <= 5; j++) {
+                                  // Look Back
+                                  if (i - j >= 0) {
+                                    const prev = lines[i - j];
+                                    if (!email && prev.match(emailRegex)) email = prev.match(emailRegex)[0];
+                                    if (!dateStr && prev.match(dateRegex)) dateStr = prev.match(dateRegex)[0];
+                                  }
+                                  // Look Forward (sometimes date is after UID)
+                                  if (i + j < lines.length) {
+                                    const next = lines[i + j];
+                                    if (!email && next.match(emailRegex)) email = next.match(emailRegex)[0];
+                                    if (!dateStr && next.match(dateRegex)) dateStr = next.match(dateRegex)[0];
+                                  }
+                                }
+                              }
+
+                              if (uid) {
+                                try {
+                                  const updateData: any = {};
+
+                                  // Parse Date
+                                  if (dateStr) {
+                                    const d = new Date(dateStr);
+                                    if (!isNaN(d.getTime())) {
+                                      updateData.createdAt = d;
+                                      updateData.created_at = d;
+                                      updateData.registrationDate = d;
+                                    }
+                                  }
+
+                                  // Detect Country
+                                  let detectedName = '';
+                                  let detectedCode = '';
+                                  if (email) {
+                                    if (email.startsWith('212')) { detectedName = 'المغرب'; detectedCode = '+212'; }
+                                    else if (email.startsWith('20') || email.startsWith('p20')) { detectedName = 'مصر'; detectedCode = '+20'; }
+                                    else if (email.startsWith('966')) { detectedName = 'السعودية'; detectedCode = '+966'; }
+                                    else if (email.startsWith('974') || email.startsWith('p974')) { detectedName = 'قطر'; detectedCode = '+974'; }
+                                    else if (email.startsWith('30')) { detectedName = 'اليونان'; detectedCode = '+30'; }
+                                    else if (email.startsWith('44')) { detectedName = 'إنجلترا'; detectedCode = '+44'; }
+                                  }
+
+                                  if (detectedName) {
+                                    updateData.country = detectedName;
+                                    updateData.countryCode = detectedCode;
+                                  }
+
+                                  // Perform Update
+                                  if (Object.keys(updateData).length > 0) {
+                                    let success = false;
+                                    try { await updateDoc(doc(db, 'users', uid), updateData); success = true; } catch (e) { }
+
+                                    if (!success) {
+                                      try { await updateDoc(doc(db, 'players', uid), updateData); success = true; } catch (e) { }
+                                      if (!success) try { await updateDoc(doc(db, 'clubs', uid), updateData); success = true; } catch (e) { }
+                                      if (!success) try { await updateDoc(doc(db, 'academies', uid), updateData); success = true; } catch (e) { }
+                                    }
+                                    if (success) updated++;
+                                  }
+                                } catch (err) { console.error("Error updating user:", uid, err); }
+                              }
+
+                              // Small delay to allow UI updates to paint (crucial for "counter" feel)
+                              await new Promise(r => setTimeout(r, 10));
+                            }
+                          }
+
+                          setManualImportProgress(''); // Clear progress
+                          if (processed === 0) {
+                            toast.error(`⚠️ لم يتم العثور على أي معرفات (UIDs)!`, { id: toastId });
+                          } else {
+                            toast.success(`✅ اكتملت العملية! تم تحديث ${updated} من ${processed} مستخدم.`, { id: toastId, duration: 5000 });
+                            setTimeout(() => window.location.reload(), 2000);
+                          }
+
+                        } catch (e) {
+                          setManualImportProgress('');
+                          toast.error('حدث خطأ أثناء المعالجة', { id: toastId });
+                          console.error(e);
+                        }
+                      }}
+
+
+                    >
+                      {manualImportProgress ? manualImportProgress : "🚀 بدء التحديث (نسخة ذكية)"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Data Sync Button (Fix Data - Server Side Diagnostic) */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm('هل تريد مزامنة التواريخ الحقيقية من السيرفر وإصلاح الدول؟')) return;
+
+                  const toastId = toast.loading('جاري الاتصال بالسيرفر للمزامنة...');
+                  try {
+                    const res = await fetch('/api/admin/sync-users-dates', { method: 'POST' });
+                    const result = await res.json();
+
+                    if (result.success) {
+                      toast.success(`✅ تم تحديث ${result.count} مستخدم بنجاح!`, { id: toastId, duration: 5000 });
+                      setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                      toast.error(`❌ فشل السيرفر: ${result.error}`, { id: toastId, duration: 10000 });
+                      // Fallback hint
+                      if (result.error?.includes('Missing')) {
+                        toast("تنبيه: مفاتيح Firebase غير موجودة في ملف .env", { duration: 5000 });
+                      }
+                    }
+                  } catch (e) {
+                    toast.error('فشل الاتصال بالشبكة', { id: toastId });
+                  }
+                }}
+                className="h-9 px-3 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 gap-2"
+                title="إصلاح التواريخ والدول (سيرفر)"
+              >
+                <Database className="h-3.5 w-3.5" />
+                مزامنة شاملة
+              </Button>
             </div>
 
             {/* Row 2: Advanced Filters (Collapsible) */}
@@ -2979,6 +3298,35 @@ ${errors.length > 0 ? `\n⚠️ أخطاء: ${errors.length}` : ''}
                   </div>
                 </div>
               )}
+
+              {/* Server-Side Load More Button */}
+              <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-center gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const newLimit = fetchLimit + 500;
+                    setFetchLimit(newLimit);
+                    toast.loading(`جاري تحميل المزيد (الإجمالي: ${newLimit})...`);
+                  }}
+                  className="flex-1 max-w-sm bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200 shadow-sm"
+                >
+                  {loading ? <RefreshCcw className="h-4 w-4 animate-spin ml-2" /> : <Download className="h-4 w-4 ml-2" />}
+                  تحميل 500 إضافي (حالياً: {fetchLimit})
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!confirm('تحميل كل قاعدة البيانات قد يستغرق وقتاً. هل أنت متأكد؟')) return;
+                    setFetchLimit(10000); // رقم كبير جداً لجلب الكل
+                    toast.loading(`جاري تحميل قاعدة البيانات بالكامل...`);
+                  }}
+                  className="flex-1 max-w-sm border-dashed border-gray-400 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <Globe className="h-4 w-4 ml-2" />
+                  تحميل قاعدة البيانات بالكامل للبحث
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

@@ -308,7 +308,9 @@ export default function RegisterPage() {
         organizationCode: formData.organizationCode,
         phone: fullPhone,
         email: formData.email, // Preserve original email if provided
-        isVerifiedLocal: true
+        isVerifiedLocal: true,
+        createdAt: new Date(), // ✅ تاريخ التسجيل
+        created_at: new Date() // ✅ نسخة احتياطية للتوافق
       });
 
       // Auto-create join request if code is provided
@@ -643,43 +645,49 @@ export default function RegisterPage() {
                             error={fieldErrors.country}
                             required
                           >
-                            <option value="">اختر الدولة</option>
-                            {countries.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                            <option value="">📍 اختر دولتك</option>
+                            {countries.map(c => (
+                              <option key={c.code} value={c.name}>
+                                {c.name} ({c.code})
+                              </option>
+                            ))}
                           </FloatingSelect>
 
                           {registrationMethod === 'phone' ? (
-                            <FloatingInput
-                              id="reg-phone"
-                              name="phone"
-                              label="رقم الهاتف"
-                              type="tel"
-                              dir="ltr"
-                              value={formData.phone}
-                              onChange={handleInputChange}
-                              icon={
-                                phoneStatus === 'checking' ? Loader2 :
-                                  phoneStatus === 'available' ? CheckCircle :
-                                    phoneStatus === 'exists' ? AlertTriangle :
-                                      Phone
-                              }
-                              className={`text-left font-sans tracking-widest ${formData.countryCode ? 'pl-20' : ''}`}
-                              placeholder={formData.countryCode || '0...'}
-                              error={fieldErrors.phone || phoneExistsError || (phoneStatus === 'invalid' ? 'رقم غير صحيح' : '')}
-                              required
-                            />
+                            <div className="relative">
+                              <FloatingInput
+                                id="reg-phone"
+                                name="phone"
+                                label="رقم الهاتف"
+                                type="tel"
+                                dir="ltr"
+                                value={formData.phone}
+                                onChange={handleInputChange}
+                                icon={
+                                  phoneStatus === 'checking' ? Loader2 :
+                                    phoneStatus === 'available' ? CheckCircle :
+                                      phoneStatus === 'exists' ? AlertTriangle :
+                                        Phone
+                                }
+                                className={`text-left font-mono tracking-wider text-lg ${formData.countryCode ? 'pl-24' : ''}`}
+                                placeholder={formData.countryCode ? '123456789' : 'اختر الدولة أولاً'}
+                                error={fieldErrors.phone || phoneExistsError || (phoneStatus === 'invalid' ? 'رقم غير صحيح' : '')}
+                                required
+                                disabled={!formData.country}
+                              />
+                              {/* Country Code Badge - Inside Input */}
+                              {formData.countryCode && (
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                                  <span className="text-sm font-black text-white bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 rounded-lg shadow-md border-2 border-white">
+                                    {formData.countryCode}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} error={fieldErrors.email} required />
                           )}
                         </div>
-
-                        {registrationMethod === 'phone' && formData.countryCode && (
-                          <div className="relative mt-[-12px] z-30 pointer-events-none">
-                            <span className="absolute left-3 top-[-36px] text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-xl border border-purple-100 shadow-sm">
-                              {formData.countryCode}
-                            </span>
-                          </div>
-                        )}
-
 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

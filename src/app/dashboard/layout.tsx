@@ -4,14 +4,14 @@ import ResponsiveLayoutWrapper from '@/components/layout/ResponsiveLayout';
 import PushNotificationSetup from '@/components/notifications/PushNotificationSetup';
 import FloatingChatWidget from '@/components/support/FloatingChatWidget';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import dynamic from 'next/dynamic';
 
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
-const AuthRedirect = dynamic(() => import('@/components/auth/AuthRedirect'), { ssr: false });
+// AuthRedirect no longer needed for logic, but fine to keep if used elsewhere. Removed here for clarity.
 
 export default function DashboardLayout({
   children,
@@ -19,6 +19,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, userData: authUserData, loading: authLoading } = useAuth();
 
   const accountType = useMemo(() => {
@@ -26,6 +27,7 @@ export default function DashboardLayout({
     return authUserData.accountType;
   }, [authUserData?.accountType]);
 
+  // 1. Loading State
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -37,14 +39,20 @@ export default function DashboardLayout({
     );
   }
 
+  // 2. Unauthorized State (Redirect Logic)
+  // We use explicit router.replace instead of hard reload with timeout
   if (!user) {
     if (typeof window !== 'undefined') {
-      setTimeout(() => {
-        window.location.href = '/auth/login';
-      }, 3500);
+      router.replace('/auth/login');
     }
-
-    return <AuthRedirect />;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-4 w-4 bg-blue-500 rounded-full mb-2"></div>
+          <span className="text-xs text-slate-400">Redirecting...</span>
+        </div>
+      </div>
+    );
   }
 
   const noPadding = pathname.includes('player-videos') || pathname.includes('shared-videos');

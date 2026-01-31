@@ -20,6 +20,8 @@ import { useEffect, useState } from 'react';
 import { toast, Toaster } from 'sonner';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
 import { FloatingInput, FloatingSelect } from '@/components/shared/PremiumInputs';
+import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
+import Image from 'next/image';
 
 
 type LoginMethod = 'phone' | 'email';
@@ -83,8 +85,13 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, logout, signInWithGoogle, setupRecaptcha, sendPhoneOTP, verifyPhoneOTP, user, userData, loading: authLoading } = useAuth();
 
+  const [branding, setBranding] = useState<BrandingData | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getBrandingData().then(setBranding).catch(console.error);
+  }, []);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -824,8 +831,12 @@ export default function LoginPage() {
             <div className="p-8 md:p-10">
 
               <div className="text-center mb-10">
-                <div className="inline-flex justify-center items-center mb-6 w-20 h-20 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl shadow-lg border border-white ring-4 ring-purple-500/5">
-                  <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" aria-hidden="true" />
+                <div className="inline-flex justify-center items-center mb-6 w-20 h-20 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl shadow-lg border border-white ring-4 ring-purple-500/5 overflow-hidden relative">
+                  {branding?.logoUrl ? (
+                    <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-2" />
+                  ) : (
+                    <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" aria-hidden="true" />
+                  )}
                 </div>
                 <h1 className="text-3xl font-black text-slate-900 mb-2 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
                 <p className="text-slate-500 text-sm font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>

@@ -37,7 +37,8 @@ import {
   User,
   Users,
   Video,
-  Zap
+  Zap,
+  LayoutTemplate
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -517,6 +518,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'tournaments', label: 'البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
         { id: 'dream-academy', label: 'أكاديمية الحلم', icon: GraduationCap, href: `/dashboard/admin/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
         { id: 'media', label: 'مركز مراجعة الوسائط', icon: Video, href: `/dashboard/admin/media`, color: 'text-red-600', bgColor: 'bg-red-50' },
+        { id: 'content', label: 'إدارة المحتوى', icon: LayoutTemplate, href: `/dashboard/admin/content`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
         { id: 'system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
         { id: 'referrals', label: 'إدارة سفراء الحلم', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },

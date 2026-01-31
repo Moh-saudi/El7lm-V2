@@ -307,7 +307,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
             } else {
               // 🔧 FIX: Search in role-specific collections FIRST (this is the source of truth)
               // This ensures we get the correct accountType from clubs, academies, etc.
-              const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+              const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
               let userAccountType: UserRole = 'player';
               let foundData = null;
               let foundCollection = null;
@@ -526,7 +526,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('📋 AuthProvider - Fetching user data from Firestore...');
 
       // البحث في المجموعات الخاصة بالأدوار أولاً
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
       let userAccountType: UserRole = 'player';
       let foundCollection = null;
@@ -724,7 +724,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       });
 
       // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
       let userAccountType: UserRole = defaultRole;
       let isNewUser = true;
@@ -984,7 +984,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('✅ Phone verified successfully:', user.uid);
 
       // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
       let userAccountType: UserRole = defaultRole;
       let isNewUser = true;
@@ -1520,7 +1520,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       console.log('🔄 Refreshing user data...');
 
       // البحث في المجموعات الخاصة بالأدوار أولاً
-      const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'admins'];
+      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
       let userAccountType: UserRole = 'player';
       let foundCollection = null;

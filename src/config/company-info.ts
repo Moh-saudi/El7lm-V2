@@ -12,8 +12,8 @@ export const COMPANY_INFO = {
 
     // الوصف
     description: {
-        ar: 'أول متجر إلكتروني لتسويق وبيع اللاعبين في الشرق الأوسط',
-        en: 'First digital marketplace for marketing and selling players in the Middle East'
+        ar: 'المنصة الأولى لاكتشاف وتطوير المواهب الرياضية في الشرق الأوسط',
+        en: 'The premier platform for discovering and developing sports talent in the Middle East'
     },
 
     // الشركة المالكة

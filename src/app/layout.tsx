@@ -8,7 +8,7 @@ import HydrationFix from '@/components/security/HydrationFix';
 import ReactErrorBoundary from '@/components/security/ReactErrorBoundary';
 import { cairo, inter } from '@/lib/fonts';
 import '@mantine/core/styles.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'react-hot-toast';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/analytics.css';
@@ -18,6 +18,12 @@ import '@/lib/utils/initialize-location-fix';
 import '@/lib/firebase/connection-fix';
 import '@/utils/console-filter';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#001e4e',
+};
+
 export const metadata: Metadata = {
   title: "El7lm - منصة كرة القدم المتكاملة",
   description: "منصة شاملة لإدارة كرة القدم واللاعبين والأندية",
@@ -26,12 +32,17 @@ export const metadata: Metadata = {
   creator: "El7lm",
   publisher: "El7lm",
   metadataBase: new URL("https://el7lm.com"),
+  manifest: '/manifest.json',
   alternates: {
     canonical: "/",
     languages: {
       ar: "/ar",
       en: "/en",
     },
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
   },
   openGraph: {
     title: "El7lm - منصة كرة القدم المتكاملة",
@@ -52,18 +63,6 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className={`${inter.variable} ${cairo.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" />
-
-        <link rel="preconnect" href="https://firestore.googleapis.com" />
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
-        <link rel="preconnect" href="https://www.clarity.ms" />
-
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID || 'GTM-WR4X2BD8'} />
         <ClarityScript projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 't69agqt6n4'} />
       </head>

@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Briefcase, 
-  MapPin, 
-  Clock, 
-  Users, 
-  TrendingUp, 
+import {
+  Briefcase,
+  MapPin,
+  Clock,
+  Users,
+  TrendingUp,
   Heart,
   ArrowRight,
   CheckCircle,
@@ -37,7 +37,7 @@ export default function CareersPage() {
         {
           title: 'محلل أداء رياضي',
           location: 'الدوحة، قطر',
-          type: 'دوام كامل', 
+          type: 'دوام كامل',
           experience: '3-5 سنوات',
           salary: 'يحدد لاحقاً',
           key: 'performanceAnalysts'
@@ -45,7 +45,7 @@ export default function CareersPage() {
       ]
     },
     {
-      category: 'الإدارة والتسويق',
+      category: 'الإدارة والتطوير المؤسسي',
       icon: '📈',
       color: 'from-green-500 to-green-600',
       jobs: [
@@ -61,12 +61,12 @@ export default function CareersPage() {
           title: 'مدير أكاديمية',
           location: 'قطر / الإمارات',
           type: 'دوام كامل',
-          experience: '4-7 سنوات', 
+          experience: '4-7 سنوات',
           salary: 'يحدد لاحقاً',
           key: 'academyManagement'
         },
         {
-          title: 'مندوب مبيعات',
+          title: 'مسؤول تطوير أعمال',
           location: 'مصر / قطر',
           type: 'دوام كامل',
           experience: '1-3 سنوات',
@@ -175,7 +175,7 @@ export default function CareersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
@@ -216,7 +216,7 @@ export default function CareersPage() {
             whileHover={{ scale: 1.05 }}
             className="inline-block"
           >
-            <Button 
+            <Button
               onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth' })}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full text-lg inline-flex items-center space-x-2 space-x-reverse"
             >
@@ -366,7 +366,7 @@ export default function CareersPage() {
                                 </div>
                                 <span className="text-gray-600">{job.type}</span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center space-x-1 space-x-reverse">
                                   <Award className="w-4 h-4 text-gray-500" />
@@ -374,7 +374,7 @@ export default function CareersPage() {
                                 </div>
                                 <span className="text-gray-600">{job.experience}</span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center space-x-1 space-x-reverse">
                                   <DollarSign className="w-4 h-4 text-gray-500" />
@@ -384,7 +384,7 @@ export default function CareersPage() {
                               </div>
                             </div>
 
-                            <Button 
+                            <Button
                               onClick={() => window.location.href = `/careers/apply?role=${job.key}`}
                               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold"
                             >
@@ -417,15 +417,15 @@ export default function CareersPage() {
               أرسل لنا سيرتك الذاتية وسنتواصل معك عند توفر فرصة مناسبة
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/careers/apply'}
                 className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 rounded-full text-lg font-semibold"
               >
                 أرسل سيرتك الذاتية
               </Button>
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/contact'}
-                variant="outline" 
+                variant="outline"
                 className="border-black text-black hover:bg-black hover:text-white px-8 py-4 rounded-full text-lg font-semibold"
               >
                 تواصل معنا

@@ -49,6 +49,7 @@ import {
   TrendingUp,
   Trophy,
   User,
+  LayoutTemplate,
   UserCheck,
   UserPlus,
   Users,
@@ -441,6 +442,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-dream-academy-categories': 'canManageContent',
       'admin-customer-management': 'canViewUsers',
       'admin-careers': 'canManageContent',
+      'admin-content-mgmt': 'canManageContent',
       'admin-send-notifications': 'canManageSupport',
       'admin-notification-center': 'canManageSupport',
       'admin-notifications': 'canManageSupport',
@@ -539,6 +541,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       title: 'التسويق والإعلام',
       icon: TrendingUp,
       items: [
+        { id: 'admin-content-mgmt', label: 'إدارة المحتوى', icon: LayoutTemplate, href: `/dashboard/admin/content`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'admin-ads', label: 'إدارة الإعلانات', icon: TrendingUp, href: `/dashboard/admin/ads`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
         { id: 'admin-videos', label: 'مكتبة الميديا', icon: Video, href: `/dashboard/admin/media`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
         { id: 'admin-tournaments', label: 'تنظيم البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
