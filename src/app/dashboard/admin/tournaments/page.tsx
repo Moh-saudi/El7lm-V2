@@ -466,7 +466,6 @@ const AdminTournamentsPage: React.FC = () => {
         />
       )}
     </div>
-       </div >
   );
 };
 
