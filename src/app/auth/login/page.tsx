@@ -821,34 +821,34 @@ export default function LoginPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" aria-hidden="true"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] opacity-60" aria-hidden="true"></div>
 
-        <div className="w-full max-w-[440px] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <div className="w-full max-w-[350px] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
           <div className="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.6)] border border-white/20 overflow-hidden relative transition-all duration-500">
 
             {/* Top Slim Gradient Bar */}
             <div className="h-2 w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600"></div>
 
-            <div className="p-8 md:p-10">
+            <div className="p-4">
 
-              <div className="text-center mb-10">
-                <div className="inline-flex justify-center items-center mb-6 w-20 h-20 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl shadow-lg border border-white ring-4 ring-purple-500/5 overflow-hidden relative">
+              <div className="text-center mb-4">
+                <div className="inline-flex justify-center items-center mb-2 w-12 h-12 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl shadow-lg border border-white ring-2 ring-purple-500/5 overflow-hidden relative">
                   {branding?.logoUrl ? (
                     <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-2" />
                   ) : (
                     <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" aria-hidden="true" />
                   )}
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 mb-2 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
-                <p className="text-slate-500 text-sm font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>
+                <h1 className="text-xl font-black text-slate-900 mb-0.5 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
+                <p className="text-slate-500 text-xs font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>
               </div>
 
               {/* Google Login - Premium Style */}
-              <div className="mb-8">
+              <div className="mb-4">
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={googleLoading || loading}
-                  className="w-full h-14 text-sm font-black rounded-2xl transition-all flex items-center justify-center gap-3 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group"
+                  className="w-full h-10 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group"
                 >
                   {googleLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
@@ -866,41 +866,42 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <div className="relative flex items-center mb-8">
+              <div className="relative flex items-center mb-4">
                 <div className="flex-grow border-t border-slate-100"></div>
                 <span className="flex-shrink mx-4 text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">أو عبر البيانات</span>
                 <div className="flex-grow border-t border-slate-100"></div>
               </div>
 
               {/* Login Method Toggle - Modern Glass Pill */}
-              <div className="p-1.5 bg-slate-100/80 rounded-[1.25rem] mb-8 relative border border-slate-200/50 flex">
+              <div className="p-1 bg-slate-100/80 rounded-[1rem] mb-4 relative border border-slate-200/50 flex">
                 <button
                   onClick={() => setLoginMethod('phone')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black rounded-xl transition-all duration-500 relative z-10 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black rounded-[0.8rem] transition-all duration-500 relative z-10 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Phone className={`w-3.5 h-3.5 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-400'}`} />
                   رقم الهاتف
                 </button>
                 <button
                   onClick={() => setLoginMethod('email')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black rounded-xl transition-all duration-500 relative z-10 ${loginMethod === 'email' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black rounded-[0.8rem] transition-all duration-500 relative z-10 ${loginMethod === 'email' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   <Mail className={`w-3.5 h-3.5 ${loginMethod === 'email' ? 'text-white' : 'text-slate-400'}`} />
                   البريد الإلكتروني
                 </button>
-                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-900 rounded-[0.9rem] transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) shadow-lg ${loginMethod === 'phone' ? 'translate-x-0' : 'translate-x-[calc(-100%-6px)]'}`}></div>
+                <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-slate-900 rounded-[0.6rem] transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) shadow-lg ${loginMethod === 'phone' ? 'translate-x-0' : 'translate-x-[calc(-100%-8px)]'}`}></div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleLogin} className="space-y-3">
 
                 {loginMethod === 'phone' ? (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
+                  <div className="space-y-3 animate-in fade-in slide-in-from-right-8 duration-500">
                     <FloatingSelect
                       id="country-select"
                       label="البلد"
                       value={countryCode}
                       onChange={(e: any) => setCountryCode(e.target.value)}
                       icon={Shield}
+                      isCompact
                     >
                       {countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
                     </FloatingSelect>
@@ -917,6 +918,7 @@ export default function LoginPage() {
                         dir="ltr"
                         required
                         icon={Phone}
+                        isCompact
                       />
                       <div className="absolute left-3 top-[-36px] z-30 pointer-events-none mt-12">
                         <span className="text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-xl border border-purple-100 shadow-sm">
@@ -949,12 +951,13 @@ export default function LoginPage() {
                       onChange={(e: any) => setEmail(e.target.value)}
                       icon={Mail}
                       required
+                      isCompact
                     />
                   </div>
                 )}
 
                 {(loginMethod === 'email' || !useOTP) && (
-                  <div className="space-y-2 animate-in slide-in-from-bottom-4 duration-500">
+                  <div className="space-y-1 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="flex justify-between items-center pr-1 mb-1">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الأمان</span>
                       <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all min-h-[28px] flex items-center">نسيت كلمة المرور؟</button>
@@ -968,6 +971,7 @@ export default function LoginPage() {
                         onChange={(e: any) => setPassword(e.target.value)}
                         icon={Lock}
                         required={!useOTP}
+                        isCompact
                       />
                       <button
                         type="button"
@@ -995,7 +999,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl text-sm font-black shadow-2xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 relative overflow-hidden group"
+                  className="w-full h-10 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-black shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative z-10 flex items-center gap-2">
@@ -1004,21 +1008,21 @@ export default function LoginPage() {
                   </span>
                 </button>
 
-                <div className="text-center pt-8 border-t border-slate-100">
-                  <p className="text-sm text-slate-400 font-medium tracking-tight">
+                <div className="text-center pt-4 border-t border-slate-100">
+                  <p className="text-xs text-slate-400 font-medium tracking-tight">
                     ليس لديك حساب حتى الآن؟
-                    <button type="button" onClick={() => router.push('/auth/register')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-black px-5 py-2 rounded-full mr-3 transition-all hover:scale-105">إنشاء حساب جديد</button>
+                    <button type="button" onClick={() => router.push('/auth/register')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-black px-4 py-1.5 rounded-full mr-2 transition-all hover:scale-105">إنشاء حساب جديد</button>
                   </p>
                 </div>
               </form>
             </div>
           </div>
 
-          <div className="mt-10 text-center space-y-4">
-            <div className="flex justify-center gap-6 text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">
-              <a href="#" className="hover:text-white transition-colors">الشروط</a>
-              <a href="#" className="hover:text-white transition-colors">الخصوصية</a>
-              <a href="#" className="hover:text-white transition-colors">المساعدة</a>
+          <div className="mt-4 text-center space-y-2">
+            <div className="flex justify-center gap-4 text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">
+              <a href="/terms" className="hover:text-white transition-colors">الشروط</a>
+              <a href="/privacy" className="hover:text-white transition-colors">الخصوصية</a>
+              <a href="/support" className="hover:text-white transition-colors">المساعدة</a>
             </div>
             <p className="text-[10px] text-white/20 font-black tracking-widest">منصة الحلم © 2024 - جميع الحقوق محفوظة</p>
           </div>

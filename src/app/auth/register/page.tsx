@@ -530,18 +530,18 @@ export default function RegisterPage() {
 
       <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 font-sans" dir="rtl">
 
-        <div className="w-full max-w-[540px] animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-indigo-700 font-cairo mb-2">أهلاً بك في منصة الحلم</h1>
-            <p className="text-slate-500 text-sm font-medium">ابدأ رحلتك الرياضية اليوم باختيار نوع حسابك</p>
+        <div className="w-full max-w-[350px] animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="text-center mb-2">
+            <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-indigo-700 font-cairo mb-1">منصة الحلم</h1>
+            <p className="text-slate-500 text-xs font-medium">ابدأ رحلتك الرياضية اليوم</p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-purple-200/50 border border-white overflow-hidden">
 
 
 
-            <div className="p-6 md:p-8">
-              <form onSubmit={handleRegister} className="space-y-6">
+            <div className="p-3">
+              <form onSubmit={handleRegister} className="space-y-3">
 
                 {/* Only show generic error for critical issues (like terms not agreed) */}
                 {error && !Object.keys(fieldErrors).length && (
@@ -553,11 +553,11 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  <div className="space-y-4">
+                <div className="space-y-3 animate-in fade-in duration-500">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-black text-slate-700 uppercase tracking-widest">اختر دورك</label>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">مطلوب</span>
+                      <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">اختر دورك</label>
+                      <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">مطلوب</span>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-between">
                       {accountTypes.map(t => (
@@ -565,7 +565,7 @@ export default function RegisterPage() {
                           key={t.value}
                           type="button"
                           onClick={() => setFormData(p => ({ ...p, accountType: t.value as UserRole }))}
-                          className={`flex-1 min-w-[80px] group relative flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl border transition-all duration-300 ${formData.accountType === t.value
+                          className={`flex-1 min-w-[70px] group relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl border transition-all duration-300 ${formData.accountType === t.value
                             ? 'border-purple-600 bg-purple-50/50 text-purple-700 ring-1 ring-purple-600/20 shadow-sm'
                             : 'border-slate-100 bg-white text-slate-500 hover:border-purple-200'
                             }`}
@@ -573,44 +573,44 @@ export default function RegisterPage() {
                           <div className={`p-1.5 rounded-lg transition-all duration-300 ${formData.accountType === t.value ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-purple-100'}`}>
                             <t.icon className="w-4 h-4" />
                           </div>
-                          <span className="text-[9px] font-black underline-offset-2">{t.label}</span>
+                          <span className="text-[8px] font-black underline-offset-2">{t.label}</span>
                           {formData.accountType === t.value && <CheckCircle className="absolute top-1 left-1 w-3 h-3 text-purple-600" />}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="h-px bg-slate-100 my-2"></div>
+                  <div className="h-px bg-slate-100 my-1"></div>
 
                   {/* Method Tabs */}
-                  <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1.5">
+                  <div className="bg-slate-100/50 border border-slate-200 p-1 rounded-xl flex gap-1">
                     <button
                       type="button"
                       onClick={() => { setRegistrationMethod('phone'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'phone' ? 'bg-white text-purple-700 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'phone' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
                     >
-                      <Phone className="w-3.5 h-3.5" />
+                      <Phone className={`w-3.5 h-3.5 ${registrationMethod === 'phone' ? 'text-white' : 'text-slate-400'}`} />
                       <span>رقم الهاتف</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setRegistrationMethod('email'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'email' ? 'bg-white text-purple-700 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'email' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
                     >
-                      <Mail className="w-3.5 h-3.5" />
+                      <Mail className={`w-3.5 h-3.5 ${registrationMethod === 'email' ? 'text-white' : 'text-slate-400'}`} />
                       <span>البريد الإلكتروني</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setRegistrationMethod('google'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'google' ? 'bg-white text-purple-700 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'google' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
                     >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                      <svg className={`w-3.5 h-3.5 ${registrationMethod === 'google' ? 'text-white' : 'text-slate-400'}`} viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                       <span>Google</span>
                     </button>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {registrationMethod === 'google' ? (
                       <div className="py-8 space-y-6 text-center animate-in zoom-in duration-500">
                         <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-purple-100/50">
@@ -631,9 +631,9 @@ export default function RegisterPage() {
                       </div>
                     ) : (
                       <>
-                        <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} error={fieldErrors.name} required />
+                        <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} error={fieldErrors.name} required isCompact />
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
                           <FloatingSelect
                             id="reg-country"
                             name="country"
@@ -643,6 +643,7 @@ export default function RegisterPage() {
                             icon={Globe}
                             error={fieldErrors.country}
                             required
+                            isCompact
                           >
                             <option value="">📍 اختر دولتك</option>
                             {countries.map(c => (
@@ -673,6 +674,7 @@ export default function RegisterPage() {
                                 error={fieldErrors.phone || phoneExistsError || (phoneStatus === 'invalid' ? 'رقم غير صحيح' : '')}
                                 required
                                 disabled={!formData.country}
+                                isCompact
                               />
                               {/* Country Code Badge - Inside Input */}
                               {formData.countryCode && (
@@ -684,20 +686,20 @@ export default function RegisterPage() {
                               )}
                             </div>
                           ) : (
-                            <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} error={fieldErrors.email} required />
+                            <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} error={fieldErrors.email} required isCompact />
                           )}
                         </div>
 
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
                           <div className="relative">
-                            <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} error={fieldErrors.password} required />
+                            <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} error={fieldErrors.password} required isCompact />
                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-1 z-10">
                               {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                           </div>
                           <div className="relative">
-                            <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} error={fieldErrors.confirmPassword} required />
+                            <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} error={fieldErrors.confirmPassword} required isCompact />
                             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-1 z-10">
                               {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
@@ -705,7 +707,7 @@ export default function RegisterPage() {
                         </div>
 
                         {formData.accountType === 'player' && (
-                          <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-4 flex gap-3 items-center">
+                          <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3 flex gap-2 items-center">
                             <Users className="w-5 h-5 text-purple-600 shrink-0" />
                             <div className="flex-1">
                               <FloatingInput
@@ -715,6 +717,7 @@ export default function RegisterPage() {
                                 value={formData.organizationCode}
                                 onChange={handleInputChange}
                                 className="bg-white"
+                                isCompact
                               />
                             </div>
                           </div>
@@ -746,12 +749,12 @@ export default function RegisterPage() {
                             console.log('🔴 [DEBUG] Submit button clicked!');
                             console.log('🔴 [DEBUG] Form data:', { name: formData.name, country: formData.country, phone: formData.phone, agreeToTerms: formData.agreeToTerms });
                           }}
-                          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black h-14 rounded-2xl text-base shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-70 group"
+                          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black h-10 rounded-xl text-xs shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 group"
                         >
                           {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                             <>
                               <span>إنشاء حسابك الآن</span>
-                              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 rtl:rotate-180 transition-transform" />
+                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 rtl:rotate-180 transition-transform" />
                             </>
                           )}
                         </button>
@@ -761,9 +764,9 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="text-center pt-4 border-t border-slate-50/50">
-                  <p className="text-sm text-slate-400 font-medium">
+                  <p className="text-xs text-slate-400 font-medium">
                     لديك حساب بالفعل؟
-                    <button type="button" onClick={() => router.push('/auth/login')} className="bg-slate-100 hover:bg-slate-200 text-purple-700 font-black px-4 py-1.5 rounded-full mr-2 transition-all">دخول</button>
+                    <button type="button" onClick={() => router.push('/auth/login')} className="bg-slate-100 hover:bg-slate-200 text-purple-700 font-black px-3 py-1 rounded-full mr-1 transition-all text-xs">دخول</button>
                   </p>
                 </div>
               </form>
