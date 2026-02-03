@@ -309,8 +309,7 @@ export default function RegisterPage() {
         phone: fullPhone,
         email: formData.email, // Preserve original email if provided
         isVerifiedLocal: true,
-        createdAt: new Date(), // ✅ تاريخ التسجيل
-        created_at: new Date() // ✅ نسخة احتياطية للتوافق
+        // ⚠️ لا نُرسل createdAt من هنا - auth-provider يتولى إضافة التاريخ بشكل صحيح
       });
 
       // Auto-create join request if code is provided

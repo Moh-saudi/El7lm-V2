@@ -44,7 +44,7 @@ export default function UnifiedNotificationsButton() {
   const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
     if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
     try {
-      for (const col of ['users', 'players', 'clubs', 'academies']) {
+      for (const col of ['users', 'players', 'clubs', 'academies', 'employees', 'admins']) {
         const d = await getDoc(doc(db, col, senderId));
         if (d.exists()) {
           const data = d.data();
@@ -176,23 +176,23 @@ export default function UnifiedNotificationsButton() {
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[95vw] sm:w-[420px] p-0 shadow-premium border-white/20 dark:border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-slate-950/95"
+        className="w-[85vw] sm:w-[240px] p-0 shadow-lg border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden backdrop-blur-xl bg-white/95 dark:bg-slate-950/95"
         align="end"
         sideOffset={12}
         collisionPadding={16}
       >
-        <div className="p-5 px-6 flex items-center justify-between border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-cyan-500/5">
+        <div className="p-3 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <Bell className="w-4 h-4 text-blue-600" />
             </div>
-            <h3 className="font-black text-lg text-slate-900 dark:text-white">Notifications</h3>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">الإشعارات</h3>
           </div>
           <div className="flex gap-2">
             {unreadCount > 0 && (
-              <Button onClick={markAllRead} variant="ghost" size="sm" className="h-8 text-[11px] font-black text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
-                <CheckCheck className="w-3.5 h-3.5 mr-1" />
-                Mark all as read
+              <Button onClick={markAllRead} variant="ghost" size="sm" className="h-6 gap-1 text-[10px] font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md px-2">
+                <CheckCheck className="w-3 h-3" />
+                قراءة الكل
               </Button>
             )}
             <Button
@@ -230,7 +230,7 @@ export default function UnifiedNotificationsButton() {
           </button>
         </div>
 
-        <ScrollArea className="h-[60vh] sm:h-[480px]">
+        <ScrollArea className="h-[50vh] sm:h-[300px]">
           {loading ? (
             <div className="p-6 space-y-6">
               {[1, 2, 3].map(i => (
@@ -268,14 +268,14 @@ export default function UnifiedNotificationsButton() {
                     exit={{ opacity: 0, x: 50 }}
                     key={notif.id}
                     className={cn(
-                      "group relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all",
+                      "group relative flex items-start gap-2 p-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer",
                       !notif.isRead && "bg-blue-500/5"
                     )}
                   >
                     <div className="relative flex-shrink-0">
-                      <Avatar className="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 border-white dark:border-slate-800 shadow-premium transition-transform group-hover:scale-105">
+                      <Avatar className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700">
                         <AvatarImage src={notif.senderAvatar} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-black">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-bold text-xs">
                           {notif.senderName?.[0]}
                         </AvatarFallback>
                       </Avatar>
@@ -284,23 +284,23 @@ export default function UnifiedNotificationsButton() {
                     </div>
 
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-black text-slate-900 dark:text-slate-100 truncate pr-2">{notif.title}</span>
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex-shrink-0">
+                      <div className="flex justify-between items-center mb-0.5">
+                        <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate pr-1">{notif.title}</span>
+                        <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex-shrink-0">
                           {formatDistanceToNow(notif.createdAt, { locale: ar, addSuffix: true })}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed line-clamp-2 mb-3">{notif.message}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug line-clamp-2 mb-2">{notif.message}</p>
 
                       <div className="flex items-center gap-2">
                         {notif.actionUrl && (
-                          <Link href={notif.actionUrl} onClick={() => { setIsOpen(false); markRead(notif.id, notif.category); }} className="text-[11px] font-black text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors">
-                            View Details
+                          <Link href={notif.actionUrl} onClick={() => { setIsOpen(false); markRead(notif.id, notif.category); }} className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md transition-colors">
+                            عرض التفاصيل
                           </Link>
                         )}
                         {!notif.isRead && (
-                          <button onClick={() => markRead(notif.id, notif.category)} className="text-[11px] font-black text-slate-400 hover:text-slate-600 px-2 py-1.5 transition-colors">
-                            Mark as Read
+                          <button onClick={() => markRead(notif.id, notif.category)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-1.5 py-1 transition-colors">
+                            تحديد كمقروء
                           </button>
                         )}
                       </div>

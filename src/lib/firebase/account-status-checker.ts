@@ -122,22 +122,45 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
   }
 }
 
+const ACCOUNT_COLLECTIONS = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents', 'employees'];
+
 export async function updateLastLogin(userId: string): Promise<void> {
   try {
-    // Update last login in users collection
+    const timestamp = new Date();
     const payload = {
-      lastLogin: new Date(),
-      lastLoginIP: getClientIP() // Optional: track IP
-    } as Record<string, any>;
-    const sanitized = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v !== undefined));
-    await updateDoc(doc(db, 'users', userId), sanitized);
+      lastLogin: timestamp,
+      last_login: timestamp, // للتوافق
+      lastLoginIP: getClientIP()
+    };
+
+    // تنظيف البيانات
+    const sanitized = Object.fromEntries(
+      Object.entries(payload).filter(([_, v]) => v !== undefined)
+    );
+
+    // محاولة التحديث في جميع المجموعات المحتملة بشكل متوازي
+    // هذا يضمن التحديث حتى لو كان المستخدم موجوداً في اكثر من مكان
+    const updatePromises = ACCOUNT_COLLECTIONS.map(async (collectionName) => {
+      try {
+        const docRef = doc(db, collectionName, userId);
+        // نتحقق أولاً من وجود المستند لتجنب الأخطاء (أو يمكن استخدام setDoc مع {merge: true} لإنشائه لو غير موجود، لكننا نريد تحديث الموجود فقط)
+        // لكن updateDoc تفشل إذا لم يكن موجوداً، وهذا جيد هنا لأننا لا نريد إنشاء مستندات وهمية
+        await updateDoc(docRef, sanitized);
+      } catch (e) {
+        // نتجاهل الأخطاء لأن المستند قد لا يكون موجوداً في هذه المجموعة وهذا طبيعي
+      }
+    });
+
+    await Promise.all(updatePromises);
+
   } catch (error) {
     console.warn('Failed to update last login:', error);
-    // Don't throw error as this is not critical
   }
 }
 
 function getClientIP(): string {
-  // This is a simple implementation - in production you might want to use a service
+  if (typeof window !== 'undefined') {
+    return 'client-side';
+  }
   return 'unknown';
 }

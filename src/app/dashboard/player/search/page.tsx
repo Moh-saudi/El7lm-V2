@@ -80,7 +80,7 @@ interface SearchEntity {
 
 interface FilterOptions {
   searchQuery: string;
-  type: 'all' | 'club' | 'agent' | 'scout' | 'academy' | 'sponsor' | 'trainer';
+  type: 'all' | 'club' | 'agent' | 'academy' | 'trainer';
   country: string;
   city: string;
   sortBy: 'relevance' | 'followers' | 'recent';
@@ -90,9 +90,7 @@ interface FilterOptions {
 const ENTITY_TYPES = {
   club: { label: 'الأندية', icon: Building, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', gradient: 'from-blue-500 to-blue-600' },
   agent: { label: 'الوكلاء', icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-indigo-600' },
-  scout: { label: 'الكشافين', icon: Eye, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', gradient: 'from-emerald-500 to-emerald-600' },
   academy: { label: 'الأكاديميات', icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', gradient: 'from-amber-500 to-amber-600' },
-  sponsor: { label: 'الرعاة', icon: Award, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', gradient: 'from-rose-500 to-rose-600' },
   trainer: { label: 'المدربين', icon: User, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100', gradient: 'from-cyan-500 to-cyan-600' }
 };
 
@@ -246,54 +244,49 @@ export default function SearchPage() {
     if (!user) return;
     try {
       setIsLoading(true);
-      const collectionsToFetch = filters.type === 'all'
-        ? ['clubs', 'agents', 'academies', 'trainers', 'scouts', 'sponsors']
-        : [
-          filters.type === 'club' ? 'clubs' :
-            filters.type === 'agent' ? 'agents' :
-              filters.type === 'trainer' ? 'trainers' :
-                filters.type === 'academy' ? 'academies' :
-                  filters.type === 'scout' ? 'scouts' :
-                    'sponsors'
-        ];
+      const typesToFetch = filters.type === 'all'
+        ? ['club', 'agent', 'academy', 'trainer']
+        : [filters.type];
 
-      const fetchPromises = collectionsToFetch.map(async (colName) => {
-        let q = query(collection(db, colName));
-        if (filters.country) {
-          q = query(collection(db, colName), where('country', '==', filters.country));
+      const fetchPromises = typesToFetch.map(async (type) => {
+        try {
+          let q = query(collection(db, 'users'), where('accountType', '==', type));
+          if (filters.country) {
+            q = query(q, where('country', '==', filters.country));
+          }
+          // Add limit to prevent fetching entire users collection and improve performance
+          q = query(q, limit(50));
+
+          const snapshot = await getDocs(q);
+
+          return snapshot.docs.map(docSnap => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              name: data.fullName || data.full_name || data.display_name || data.name || 'كيان رياضي',
+              type: type as any,
+              email: data.email || '',
+              profileImage: fixReceiptUrl(
+                data.profile_image || data.logo || data.profile_photo || data.profileImage ||
+                data.photoURL || data.avatar || data.image || data.profile_image_url ||
+                data.profile_picture || data.brand_logo || data.business_logo
+              ),
+              coverImage: fixReceiptUrl(data.coverImage || data.backCover || data.header_image || data.banner),
+              location: { country: data.country || data.nationality || '', city: data.city || data.current_location || '', },
+              description: data.description || data.bio || data.about || data.specialization || 'وصف غير متاح',
+              verified: data.verified || data.is_fifa_licensed || data.is_certified || false,
+              rating: data.rating || 4.5,
+              reviewsCount: data.reviewsCount || 0,
+              followersCount: Array.isArray(data.followers) ? data.followers.length : (data.followersCount || 0),
+              isPremium: data.isPremium || false,
+              isFollowing: Array.isArray(data.followers) ? data.followers.includes(user.uid) : false,
+              createdAt: data.createdAt?.toDate() || new Date(),
+            };
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch entities for type ${type}:`, error);
+          return [];
         }
-        const snapshot = await getDocs(q);
-
-        const typeMap: any = {
-          'clubs': 'club', 'agents': 'agent', 'trainers': 'trainer',
-          'academies': 'academy', 'scouts': 'scout', 'sponsors': 'sponsor'
-        };
-        const type = typeMap[colName] || 'club';
-
-        return snapshot.docs.map(docSnap => {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            name: data.name || data.full_name || data.display_name || 'كيان رياضي',
-            type: type as any,
-            email: data.email || '',
-            profileImage: fixReceiptUrl(
-              data.profile_image || data.logo || data.profile_photo || data.profileImage ||
-              data.photoURL || data.avatar || data.image || data.profile_image_url ||
-              data.profile_picture || data.brand_logo || data.business_logo
-            ),
-            coverImage: fixReceiptUrl(data.coverImage || data.backCover || data.header_image || data.banner),
-            location: { country: data.country || data.nationality || '', city: data.city || data.current_location || '', },
-            description: data.description || data.specialization || 'وصف غير متاح',
-            verified: data.verified || data.is_fifa_licensed || data.is_certified || false,
-            rating: data.rating || 4.5,
-            reviewsCount: data.reviewsCount || 0,
-            followersCount: Array.isArray(data.followers) ? data.followers.length : (data.followersCount || 0),
-            isPremium: data.isPremium || false,
-            isFollowing: Array.isArray(data.followers) ? data.followers.includes(user.uid) : false,
-            createdAt: data.createdAt?.toDate() || new Date(),
-          };
-        });
       });
 
       const results = await Promise.all(fetchPromises);
@@ -415,7 +408,7 @@ export default function SearchPage() {
             <Zap className="w-3.5 h-3.5 fill-current" /> شبكة الحلم العالمية
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">ابحث عن <span className="text-blue-600">القوة</span> التالية ⚽</h1>
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">ابحث عن <span className="text-blue-600">الفرص والأندية</span> ⚽</h1>
           <p className="text-slate-500 font-medium max-w-xl mx-auto mb-10">تواصل مباشرة مع الأندية والوكلاء المحترفين في أكبر شبكة رياضية عربية.</p>
 
           <div className="max-w-2xl mx-auto relative">
@@ -551,7 +544,7 @@ export default function SearchPage() {
             </p>
           </div>
           <div className="flex gap-2 bg-white p-1 rounded-2xl border border-slate-100">
-            {(['all', 'club', 'agent', 'scout'] as const).map(t => (
+            {(['all', 'club', 'agent', 'academy', 'trainer'] as const).map(t => (
               <button
                 key={`tab-btn-${t}`}
                 onClick={() => { setFilters(prev => ({ ...prev, type: t })); setCurrentPage(1); }}

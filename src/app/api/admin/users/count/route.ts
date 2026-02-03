@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -28,23 +27,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get counts from all user collections with timeout
+    // Get counts from all user collections using Admin SDK
     const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
     const counts: Record<string, number> = {};
     let totalUsers = 0;
 
     for (const collectionName of collections) {
       try {
-        // Add timeout for each collection query
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Query timeout')), 5000); // 5 second timeout
-        });
-
-        const collectionRef = collection(db, collectionName);
-        const queryPromise = getDocs(collectionRef);
-
-        const snapshot = await Promise.race([queryPromise, timeoutPromise]);
-        const count = snapshot.size;
+        const snapshot = await adminDb.collection(collectionName).count().get();
+        const count = snapshot.data().count;
         counts[collectionName] = count;
         totalUsers += count;
         console.log(`📊 [Admin API] ${collectionName}: ${count} users`);
@@ -54,18 +45,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get active users count with timeout
+    // Get active users count using Admin SDK
     let activeUsers = 0;
     try {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Active users query timeout')), 5000);
-      });
-
-      const activeQuery = query(collection(db, 'users'), where('isActive', '==', true));
-      const queryPromise = getDocs(activeQuery);
-
-      const activeSnapshot = await Promise.race([queryPromise, timeoutPromise]);
-      activeUsers = activeSnapshot.size;
+      const activeSnapshot = await adminDb.collection('users')
+        .where('isActive', '==', true)
+        .count()
+        .get();
+      activeUsers = activeSnapshot.data().count;
     } catch (error) {
       console.error('❌ [Admin API] Error counting active users:', error);
     }

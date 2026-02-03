@@ -31,8 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import AdminHeader from '@/components/layout/AdminHeader';
-import AdminFooter from '@/components/layout/AdminFooter';
+
 
 interface UserEmailData {
   id: string;
@@ -73,7 +72,7 @@ export default function EmailMigration() {
       router.push('/dashboard/admin/users');
       return;
     }
-    
+
     loadUsers();
   }, [user, userData, router]);
 
@@ -81,33 +80,33 @@ export default function EmailMigration() {
     try {
       setLoading(true);
       const allUsers: UserEmailData[] = [];
-      
+
       // قائمة المجموعات المختلفة
       const collections = ['users', 'players', 'clubs', 'agents', 'academies', 'trainers'];
-      
+
       console.log('📂 Email Migration - Starting to load users...');
-      
+
       for (const collectionName of collections) {
         try {
           console.log(`📂 Email Migration - Loading from ${collectionName}...`);
           const snapshot = await getDocs(collection(db, collectionName));
           console.log(`📊 Email Migration - Found ${snapshot.docs.length} documents in ${collectionName}`);
-          
+
           // تحميل دالة إنشاء البريد الإلكتروني مرة واحدة
           const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
-          
+
           snapshot.docs.forEach(doc => {
             const data = doc.data();
             const email = data.email || '';
-            
+
             // التحقق من الإيميلات التي تحتاج تحديث
-            const needsUpdate = email.includes('@hagzzgo.com') || 
-                               email.includes('@0199999999') ||
-                               /^\d+@/.test(email) || // يبدأ بأرقام
-                               email.includes('temp@') ||
-                               email.includes('placeholder@') ||
-                               (email.includes('user_') && email.includes('_') && email.includes('@el7lm.com') && email.length > 30); // البريد الإلكتروني الطويل
-            
+            const needsUpdate = email.includes('@hagzzgo.com') ||
+              email.includes('@0199999999') ||
+              /^\d+@/.test(email) || // يبدأ بأرقام
+              email.includes('temp@') ||
+              email.includes('placeholder@') ||
+              (email.includes('user_') && email.includes('_') && email.includes('@el7lm.com') && email.length > 30); // البريد الإلكتروني الطويل
+
             // اقتراح إيميل جديد باستخدام النظام الجديد
             let newEmail = '';
             if (needsUpdate) {
@@ -140,7 +139,7 @@ export default function EmailMigration() {
       }
 
       // إزالة المكررات
-      const uniqueUsers = allUsers.filter((user, index, self) => 
+      const uniqueUsers = allUsers.filter((user, index, self) =>
         index === self.findIndex(u => u.id === user.id)
       );
 
@@ -181,17 +180,17 @@ export default function EmailMigration() {
       });
 
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.error || 'فشل في تحديث البريد الإلكتروني');
       }
 
       // تحديث في المجموعة الخاصة بنوع الحساب أيضاً
-      const roleCollection = accountType === 'player' ? 'players' : 
-                            accountType === 'club' ? 'clubs' :
-                            accountType === 'agent' ? 'agents' :
-                            accountType === 'academy' ? 'academies' :
-                            accountType === 'trainer' ? 'trainers' : null;
+      const roleCollection = accountType === 'player' ? 'players' :
+        accountType === 'club' ? 'clubs' :
+          accountType === 'agent' ? 'agents' :
+            accountType === 'academy' ? 'academies' :
+              accountType === 'trainer' ? 'trainers' : null;
 
       if (roleCollection) {
         try {
@@ -216,7 +215,7 @@ export default function EmailMigration() {
   // دالة للترحيل التلقائي لجميع المستخدمين الذين يحتاجون تحديث
   const autoMigrateAllUsers = async () => {
     const usersToMigrate = users.filter(u => u.needsUpdate && u.status === 'pending');
-    
+
     if (usersToMigrate.length === 0) {
       toast.info('لا يوجد مستخدمين يحتاجون ترحيل');
       return;
@@ -232,10 +231,10 @@ export default function EmailMigration() {
       if (!user.newEmail) continue;
 
       const result = await updateUserEmail(user.id, user.newEmail, user.accountType);
-      
-      setUsers(prev => prev.map(u => 
-        u.id === user.id ? { 
-          ...u, 
+
+      setUsers(prev => prev.map(u =>
+        u.id === user.id ? {
+          ...u,
           status: result.success ? 'updated' as const : 'error' as const,
           error: result.success ? undefined : result.error,
           currentEmail: result.success ? user.newEmail : u.currentEmail
@@ -253,12 +252,12 @@ export default function EmailMigration() {
     }
 
     setUpdating(false);
-    
+
     toast.success(`تم ترحيل ${successCount} مستخدم بنجاح`);
     if (errorCount > 0) {
       toast.error(`فشل ترحيل ${errorCount} مستخدم`);
     }
-    
+
     updateStats(users);
   };
 
@@ -266,15 +265,15 @@ export default function EmailMigration() {
     const user = users.find(u => u.id === userId);
     if (!user || !user.newEmail) return;
 
-    setUsers(prev => prev.map(u => 
+    setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, status: 'pending' as const } : u
     ));
 
     const result = await updateUserEmail(userId, user.newEmail, user.accountType);
-    
-    setUsers(prev => prev.map(u => 
-      u.id === userId ? { 
-        ...u, 
+
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? {
+        ...u,
         status: result.success ? 'updated' as const : 'error' as const,
         error: result.success ? undefined : result.error,
         currentEmail: result.success ? user.newEmail : u.currentEmail
@@ -305,10 +304,10 @@ export default function EmailMigration() {
       if (!user || !user.newEmail) continue;
 
       const result = await updateUserEmail(userId, user.newEmail, user.accountType);
-      
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { 
-          ...u, 
+
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? {
+          ...u,
           status: result.success ? 'updated' as const : 'error' as const,
           error: result.success ? undefined : result.error,
           currentEmail: result.success ? user.newEmail : u.currentEmail
@@ -324,7 +323,7 @@ export default function EmailMigration() {
 
     setUpdating(false);
     setSelectedUsers([]);
-    
+
     if (successCount > 0) {
       toast.success(`تم تحديث ${successCount} إيميل بنجاح`);
     }
@@ -337,7 +336,7 @@ export default function EmailMigration() {
 
   const updateAllUsers = async () => {
     const usersToUpdate = users.filter(u => u.needsUpdate && u.newEmail);
-    
+
     if (usersToUpdate.length === 0) {
       toast.error('لا توجد إيميلات تحتاج للتحديث');
       return;
@@ -353,10 +352,10 @@ export default function EmailMigration() {
 
     for (const user of usersToUpdate) {
       const result = await updateUserEmail(user.id, user.newEmail, user.accountType);
-      
-      setUsers(prev => prev.map(u => 
-        u.id === user.id ? { 
-          ...u, 
+
+      setUsers(prev => prev.map(u =>
+        u.id === user.id ? {
+          ...u,
           status: result.success ? 'updated' as const : 'error' as const,
           error: result.success ? undefined : result.error,
           currentEmail: result.success ? user.newEmail : u.currentEmail
@@ -371,7 +370,7 @@ export default function EmailMigration() {
     }
 
     setUpdating(false);
-    
+
     if (successCount > 0) {
       toast.success(`تم تحديث ${successCount} إيميل بنجاح`);
     }
@@ -400,7 +399,7 @@ export default function EmailMigration() {
   };
 
   const updateNewEmail = (userId: string, newEmail: string) => {
-    setUsers(prev => prev.map(u => 
+    setUsers(prev => prev.map(u =>
       u.id === userId ? { ...u, newEmail } : u
     ));
   };
@@ -434,28 +433,25 @@ export default function EmailMigration() {
   if (loading) {
     return (
       <div className="bg-gray-50">
-        <AdminHeader />
         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
             <p className="text-gray-600">جاري تحميل بيانات المستخدمين...</p>
           </div>
         </div>
-        <AdminFooter />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-gray-50">
-      <AdminHeader />
-      
+    <div className="flex flex-col bg-gray-50 min-h-full">
+
       <main className="flex-1 container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.push('/dashboard/admin/users')}
             >
               <ArrowLeft className="w-4 h-4 ml-2" />
@@ -466,14 +462,14 @@ export default function EmailMigration() {
               <p className="text-gray-600">تحويل الإيميلات من النظام القديم إلى إيميلات حقيقية</p>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             <Button variant="outline" onClick={loadUsers} disabled={updating}>
               <RefreshCcw className="w-4 h-4 ml-2" />
               تحديث
             </Button>
-            <Button 
-              onClick={updateAllUsers} 
+            <Button
+              onClick={updateAllUsers}
               disabled={updating || stats.needsUpdate === 0}
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -484,8 +480,8 @@ export default function EmailMigration() {
               )}
               تحديث المحدد ({selectedUsers.length})
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={autoMigrateAllUsers}
               disabled={updating || stats.needsUpdate === 0}
               className="bg-green-600 hover:bg-green-700"
@@ -638,9 +634,9 @@ export default function EmailMigration() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => updateSingleUser(user.id)}
                       disabled={updating || user.status === 'updated' || !user.newEmail}
                     >
@@ -666,8 +662,6 @@ export default function EmailMigration() {
           )}
         </div>
       </main>
-
-      <AdminFooter />
     </div>
   );
 } 

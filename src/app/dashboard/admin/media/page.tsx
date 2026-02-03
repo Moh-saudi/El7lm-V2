@@ -16,6 +16,8 @@ import { MediaFilterBar } from './components/MediaFilterBar';
 import { MediaGrid } from './components/MediaGrid';
 import { MediaInspector } from './components/MediaInspector';
 import { Media } from './types';
+import { usePermissions } from '../employees-v2/_hooks/usePermissions';
+import AccessDenied from '@/components/admin/AccessDenied';
 
 export default function MediaReviewPage() {
   const { user, userData } = useAuth();
@@ -32,10 +34,8 @@ export default function MediaReviewPage() {
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
 
-  // --- Authorization ---
-  const isAuthorized = useMemo(() => {
-    return user && (userData?.accountType === 'admin' || userData?.role === 'admin' || (userData?.accountType as unknown as string) === 'employee');
-  }, [user, userData]);
+  // --- Authorization (New System) ---
+  const { can } = usePermissions();
 
   // --- Data Fetching ---
   const fetchData = useCallback(async (type: 'videos' | 'images') => {
@@ -216,23 +216,8 @@ export default function MediaReviewPage() {
   };
 
   // --- Access Denied View ---
-  if (!isAuthorized) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl border-none">
-          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
-            <Shield className="w-10 h-10" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-slate-900">Access Restricted</h3>
-            <p className="text-slate-500 text-sm mt-2">To view this page, you must have Administrator privileges.</p>
-          </div>
-          <Button className="w-full" variant="outline" onClick={() => window.location.href = '/'}>
-            Return Home
-          </Button>
-        </Card>
-      </div>
-    );
+  if (!can('read', 'media')) {
+    return <AccessDenied resource="مراجعة الميديا" />;
   }
 
   return (

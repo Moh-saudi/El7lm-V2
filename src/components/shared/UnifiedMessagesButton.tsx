@@ -124,17 +124,17 @@ export default function UnifiedMessagesButton() {
             </PopoverTrigger>
 
             <PopoverContent
-                className="w-[95vw] sm:w-[400px] p-0 shadow-premium border-white/20 dark:border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-slate-950/95"
+                className="w-[85vw] sm:w-[240px] p-0 shadow-lg border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden backdrop-blur-xl bg-white/95 dark:bg-slate-950/95"
                 align="end"
                 sideOffset={12}
                 collisionPadding={16}
             >
-                <div className="p-5 px-6 flex items-center justify-between border-b border-white/20 bg-gradient-to-r from-blue-500/5 to-cyan-500/5">
+                <div className="p-3 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                             <MessageSquare className="w-4 h-4 text-blue-600" />
                         </div>
-                        <h3 className="font-black text-lg text-slate-900 dark:text-white">الرسائل</h3>
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white">الرسائل</h3>
                     </div>
                     <div className="flex gap-2">
                         <Button
@@ -147,32 +147,32 @@ export default function UnifiedMessagesButton() {
                     </div>
                 </div>
 
-                <div className="flex p-2 m-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl">
+                <div className="flex p-1 m-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg">
                     <button
                         onClick={() => setActiveTab('all')}
                         className={cn(
-                            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all",
+                            "flex-1 py-1 text-[10px] font-bold rounded-md transition-all",
                             activeTab === 'all'
                                 ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm"
                                 : "text-slate-500 hover:text-slate-700"
                         )}
                     >
-                        المحادثات الأخيرة
+                        المحادثات
                     </button>
                     <button
                         onClick={() => setActiveTab('unread')}
                         className={cn(
-                            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all",
+                            "flex-1 py-1 text-[10px] font-bold rounded-md transition-all",
                             activeTab === 'unread'
                                 ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm"
                                 : "text-slate-500 hover:text-slate-700"
                         )}
                     >
-                        غير المقروءة ({unreadCount})
+                        غير مقروءة ({unreadCount})
                     </button>
                 </div>
 
-                <ScrollArea className="h-[60vh] sm:h-[450px]">
+                <ScrollArea className="h-[50vh] sm:h-[300px]">
                     {loading ? (
                         <div className="p-6 space-y-6">
                             {[1, 2, 3].map(i => (
@@ -210,15 +210,15 @@ export default function UnifiedMessagesButton() {
                                         exit={{ opacity: 0, x: 50 }}
                                         key={conv.id}
                                         className={cn(
-                                            "group relative flex items-start gap-4 p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer",
+                                            "group relative flex items-start gap-2 p-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer",
                                             conv.unread && "bg-blue-500/5"
                                         )}
                                         onClick={() => handleConversationClick(conv)}
                                     >
                                         <div className="relative flex-shrink-0">
-                                            <Avatar className="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 border-white dark:border-slate-800 shadow-premium transition-transform group-hover:scale-105">
+                                            <Avatar className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700">
                                                 <AvatarImage src={conv.senderAvatar} />
-                                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-black">
+                                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-bold text-xs">
                                                     {conv.senderName?.[0]}
                                                 </AvatarFallback>
                                             </Avatar>
@@ -231,15 +231,15 @@ export default function UnifiedMessagesButton() {
                                         </div>
 
                                         <div className="flex-1 min-w-0 pt-0.5">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="font-black text-slate-900 dark:text-slate-100 truncate pr-2">{conv.senderName}</span>
-                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex-shrink-0">
+                                            <div className="flex justify-between items-center mb-0.5">
+                                                <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate pr-1">{conv.senderName}</span>
+                                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex-shrink-0">
                                                     {formatDistanceToNow(conv.updatedAt, { locale: ar, addSuffix: true })}
                                                 </span>
                                             </div>
                                             <p className={cn(
-                                                "text-sm truncate",
-                                                conv.unread ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-500 dark:text-slate-400 font-medium"
+                                                "text-xs truncate",
+                                                conv.unread ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-500 dark:text-slate-400"
                                             )}>
                                                 {conv.lastMessage}
                                             </p>
@@ -257,14 +257,15 @@ export default function UnifiedMessagesButton() {
                     )}
                 </ScrollArea>
 
-                <div className="p-4 bg-gradient-to-t from-slate-50/50 to-transparent dark:from-slate-900/50">
+                <div className="p-2 border-t border-slate-100 dark:border-slate-800">
                     <Button
                         onClick={() => { setIsOpen(false); router.push('/dashboard/messages'); }}
-                        variant="outline"
-                        className="w-full flex items-center justify-between px-6 h-12 rounded-2xl font-black text-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition-all group"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                     >
-                        <span>انتقل إلى مركز الرسائل</span>
-                        <MessageSquare className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <span>عرض كل الرسائل</span>
+                        <MessageSquare className="w-3 h-3" />
                     </Button>
                 </div>
             </PopoverContent>

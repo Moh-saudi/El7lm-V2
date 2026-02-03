@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  collection, 
-  query, 
-  where, 
+import {
+  collection,
+  query,
+  where,
   onSnapshot,
   orderBy,
   doc,
@@ -155,7 +155,7 @@ export default function NotificationsManager({
           senderAccountType: userData.accountType || undefined
         };
       }
-      
+
       // إذا لم نجد في users، نحاول البحث في players
       const playerDoc = await getDoc(doc(db, 'players', senderId));
       if (playerDoc.exists()) {
@@ -168,7 +168,7 @@ export default function NotificationsManager({
           senderAccountType: 'player'
         };
       }
-      
+
       // محاولة البحث في clubs
       const clubDoc = await getDoc(doc(db, 'clubs', senderId));
       if (clubDoc.exists()) {
@@ -181,7 +181,7 @@ export default function NotificationsManager({
           senderAccountType: 'club'
         };
       }
-      
+
       // محاولة البحث في academies
       const academyDoc = await getDoc(doc(db, 'academies', senderId));
       if (academyDoc.exists()) {
@@ -192,6 +192,32 @@ export default function NotificationsManager({
           senderName: academyData.name || null,
           senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'academy' }),
           senderAccountType: 'academy'
+        };
+      }
+
+      // محاولة البحث في employees
+      const employeeDoc = await getDoc(doc(db, 'employees', senderId));
+      if (employeeDoc.exists()) {
+        const empData = employeeDoc.data();
+        const avatar = empData.avatar || empData.photoURL || empData.image || null;
+        return {
+          senderId,
+          senderName: empData.full_name || empData.name || null,
+          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'employee' }),
+          senderAccountType: 'employee'
+        };
+      }
+
+      // محاولة البحث في admins
+      const adminDoc = await getDoc(doc(db, 'admins', senderId));
+      if (adminDoc.exists()) {
+        const adminData = adminDoc.data();
+        const avatar = adminData.avatar || adminData.photoURL || adminData.image || null;
+        return {
+          senderId,
+          senderName: adminData.full_name || adminData.name || null,
+          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'admin' }),
+          senderAccountType: 'admin'
         };
       }
     } catch (error) {
@@ -206,12 +232,12 @@ export default function NotificationsManager({
       console.log('⚠️ NotificationsManager: لا يوجد مستخدم مسجل دخول');
       return;
     }
-    
+
     if (!userData) {
       console.log('⚠️ NotificationsManager: بيانات المستخدم غير متوفرة بعد، انتظار...');
       return;
     }
-    
+
     console.log('✅ NotificationsManager: بدء جلب الإشعارات للمستخدم:', user.uid);
 
     // جلب الإشعارات النظامية
@@ -237,7 +263,7 @@ export default function NotificationsManager({
     // محاولة الاستعلام مع orderBy أولاً
     try {
       unsubscribeNotifications = onSnapshot(
-        notificationsQuery, 
+        notificationsQuery,
         async (snapshot) => {
           const notificationsData = await Promise.all(
             snapshot.docs.map(async (doc) => {
@@ -247,7 +273,7 @@ export default function NotificationsManager({
                 ...data,
                 metadata: normalizedMetadata
               };
-              
+
               let senderInfo = getInitialSenderInfo(dataWithMetadata);
               const metadata = normalizedMetadata || {};
               const senderId = data.senderId
@@ -255,18 +281,18 @@ export default function NotificationsManager({
                 || metadata.viewerId
                 || metadata.profileOwnerId
                 || metadata.userId;
-              
+
               if (senderId) {
                 const senderData = await fetchSenderInfo(senderId);
                 if (senderData) {
                   senderInfo = mergeSenderInfo(senderInfo, senderData);
                 }
               }
-              
+
               if (!senderInfo.senderAvatar && senderInfo.senderName) {
                 senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
               }
-              
+
               return {
                 id: doc.id,
                 ...dataWithMetadata,
@@ -275,76 +301,76 @@ export default function NotificationsManager({
               } as Notification;
             })
           );
-          
+
           // ترتيب البيانات حسب التاريخ
           const sortedData = notificationsData.sort((a, b) => {
             const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
             const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
             return dateB.getTime() - dateA.getTime();
           });
-          
+
           setSystemNotifications(sortedData);
-        }, 
+        },
         (error) => {
           console.error('خطأ في جلب الإشعارات النظامية:', error);
-          
+
           // في حالة فشل الاستعلام (مثل عدم وجود فهرس مركب)، نجرب بدون orderBy
           if ((error.code === 'failed-precondition' || error.message?.includes('index')) && !useFallback) {
             console.warn('⚠️ محاولة جلب الإشعارات بدون orderBy...');
             useFallback = true;
-            
+
             const fallbackQuery = query(
               collection(db, 'notifications'),
               where('userId', '==', user.uid),
               limit(100)
             );
-            
+
             if (unsubscribeNotifications) {
               unsubscribeNotifications();
             }
-            
+
             unsubscribeNotifications = onSnapshot(fallbackQuery, async (snapshot) => {
               const notificationsData = await Promise.all(
                 snapshot.docs.map(async (doc) => {
                   const data = doc.data() as Notification;
-              const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-              const dataWithMetadata = { ...data, metadata: normalizedMetadata };
-              
-              let senderInfo = getInitialSenderInfo(dataWithMetadata);
-              const metadata = normalizedMetadata || {};
+                  const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
+                  const dataWithMetadata = { ...data, metadata: normalizedMetadata };
+
+                  let senderInfo = getInitialSenderInfo(dataWithMetadata);
+                  const metadata = normalizedMetadata || {};
                   const senderId = data.senderId
                     || metadata.senderId
                     || metadata.viewerId
                     || metadata.profileOwnerId
                     || metadata.userId;
-                  
+
                   if (senderId) {
                     const senderData = await fetchSenderInfo(senderId);
                     if (senderData) {
                       senderInfo = mergeSenderInfo(senderInfo, senderData);
                     }
                   }
-                  
+
                   if (!senderInfo.senderAvatar && senderInfo.senderName) {
                     senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
                   }
-                  
+
                   return {
                     id: doc.id,
-                ...dataWithMetadata,
+                    ...dataWithMetadata,
                     senderId: senderId || data.senderId,
                     ...senderInfo
                   } as Notification;
                 })
               );
-              
+
               // ترتيب البيانات على العميل
               const sortedData = notificationsData.sort((a, b) => {
                 const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
                 const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
                 return dateB.getTime() - dateA.getTime();
               });
-              
+
               setSystemNotifications(sortedData);
             }, (fallbackError) => {
               console.error('خطأ في جلب الإشعارات (fallback):', fallbackError);
@@ -360,14 +386,14 @@ export default function NotificationsManager({
         where('userId', '==', user.uid),
         limit(100)
       );
-      
+
       unsubscribeNotifications = onSnapshot(fallbackQuery, async (snapshot) => {
         const notificationsData = await Promise.all(
           snapshot.docs.map(async (doc) => {
             const data = doc.data() as Notification;
             const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
             const dataWithMetadata = { ...data, metadata: normalizedMetadata };
-            
+
             let senderInfo = getInitialSenderInfo(dataWithMetadata);
             const metadata = normalizedMetadata || {};
             const senderId = data.senderId
@@ -375,18 +401,18 @@ export default function NotificationsManager({
               || metadata.viewerId
               || metadata.profileOwnerId
               || metadata.userId;
-            
+
             if (senderId) {
               const senderData = await fetchSenderInfo(senderId);
               if (senderData) {
                 senderInfo = mergeSenderInfo(senderInfo, senderData);
               }
             }
-            
+
             if (!senderInfo.senderAvatar && senderInfo.senderName) {
               senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
             }
-            
+
             return {
               id: doc.id,
               ...dataWithMetadata,
@@ -395,13 +421,13 @@ export default function NotificationsManager({
             } as Notification;
           })
         );
-        
+
         const sortedData = notificationsData.sort((a, b) => {
           const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
           const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
           return dateB.getTime() - dateA.getTime();
         });
-        
+
         setSystemNotifications(sortedData);
       });
     }
@@ -410,13 +436,13 @@ export default function NotificationsManager({
       const interactionNotificationsData = await Promise.all(
         snapshot.docs.map(async (doc) => {
           const data = doc.data();
-              const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-              const enrichedData = { ...data, metadata: normalizedMetadata };
-          
-              // معلومات مبدئية للمرسل
-              let senderInfo = getInitialSenderInfo(enrichedData as Notification);
-              const senderCandidateId = data.viewerId || data.senderId || data.profileOwnerId;
-          
+          const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
+          const enrichedData = { ...data, metadata: normalizedMetadata };
+
+          // معلومات مبدئية للمرسل
+          let senderInfo = getInitialSenderInfo(enrichedData as Notification);
+          const senderCandidateId = data.viewerId || data.senderId || data.profileOwnerId;
+
           if (senderCandidateId) {
             const senderData = await fetchSenderInfo(senderCandidateId);
             if (senderData) {
@@ -433,13 +459,13 @@ export default function NotificationsManager({
             userId: data.userId,
             title: data.title || 'إشعار تفاعلي',
             message: data.message || 'لا توجد تفاصيل',
-            type: data.type === 'profile_view' ? 'info' : 
-                  data.type === 'message_sent' ? 'success' : 
-                  data.type === 'connection_request' ? 'warning' : 'info',
+            type: data.type === 'profile_view' ? 'info' :
+              data.type === 'message_sent' ? 'success' :
+                data.type === 'connection_request' ? 'warning' : 'info',
             isRead: data.isRead || false,
             link: data.actionUrl,
             metadata: {
-                  ...enrichedData,
+              ...enrichedData,
               profileOwnerId: data.profileOwnerId,
               viewerId: data.viewerId,
               profileType: data.profileType || 'player'
@@ -453,14 +479,14 @@ export default function NotificationsManager({
           } as Notification;
         })
       );
-      
+
       // ترتيب البيانات يدوياً حسب التاريخ
       const sortedData = interactionNotificationsData.sort((a, b) => {
         const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
         const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-      
+
       setInteractionNotifications(sortedData);
     }, (error) => {
       console.error('خطأ في جلب الإشعارات التفاعلية:', error);
@@ -481,17 +507,17 @@ export default function NotificationsManager({
       const enableSound = async () => {
         await enableSoundForMobile();
       };
-      
+
       // محاولة تفعيل الصوت عند أول تفاعل
       const handleFirstInteraction = () => {
         enableSound();
         document.removeEventListener('click', handleFirstInteraction);
         document.removeEventListener('touchstart', handleFirstInteraction);
       };
-      
+
       document.addEventListener('click', handleFirstInteraction, { once: true });
       document.addEventListener('touchstart', handleFirstInteraction, { once: true });
-      
+
       return () => {
         document.removeEventListener('click', handleFirstInteraction);
         document.removeEventListener('touchstart', handleFirstInteraction);
@@ -507,15 +533,15 @@ export default function NotificationsManager({
       const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
       return dateB.getTime() - dateA.getTime();
     });
-    
+
     // التحقق من وجود إشعارات جديدة
     const currentNotificationIds = new Set(sortedNotifications.map(n => n.id));
-    
+
     // العثور على الإشعارات الجديدة
     const newNotifications = sortedNotifications.filter(
       n => !previousNotificationsRef.current.has(n.id)
     );
-    
+
     // تشغيل الصوت وإظهار إشعار منبثق لكل إشعار جديد غير مقروء
     // (فقط إذا كان هناك إشعارات سابقة - لتجنب التشغيل عند التحميل الأول)
     if (newNotifications.length > 0 && previousNotificationsRef.current.size > 0) {
@@ -524,7 +550,7 @@ export default function NotificationsManager({
           // تشغيل الصوت
           const soundType = getSoundTypeFromNotificationType(notification.type, notification.actionType);
           playNotificationSound(soundType);
-          
+
           // إظهار إشعار منبثق
           toast(
             (t) => (
@@ -547,18 +573,18 @@ export default function NotificationsManager({
             {
               duration: 5000,
               position: 'top-right',
-              icon: notification.type === 'success' ? '✅' : 
-                    notification.type === 'warning' ? '⚠️' : 
-                    notification.type === 'error' ? '❌' : 'ℹ️',
+              icon: notification.type === 'success' ? '✅' :
+                notification.type === 'warning' ? '⚠️' :
+                  notification.type === 'error' ? '❌' : 'ℹ️',
             }
           );
         }
       });
     }
-    
+
     // تحديث المرجع بالإشعارات الحالية (بعد معالجة الإشعارات الجديدة)
     previousNotificationsRef.current = currentNotificationIds;
-    
+
     setNotifications(sortedNotifications);
     setLoading(false);
   }, [systemNotifications, interactionNotifications]);
@@ -638,7 +664,7 @@ export default function NotificationsManager({
           });
         }
       });
-      
+
       await Promise.all(updatePromises);
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (error) {
@@ -651,12 +677,12 @@ export default function NotificationsManager({
   const navigateToSender = async (senderId: string) => {
     // البحث عن الإشعار المرتبط
     const notification = notifications.find(n => n.senderId === senderId || n.metadata?.viewerId === senderId);
-    
+
     // في حالة profile_view، نعرض ملف صاحب الملف الشخصي (profileOwnerId)
     if (notification?.actionType === 'profile_view' && notification.metadata?.profileOwnerId) {
       const profileOwnerId = notification.metadata.profileOwnerId;
       const profileType = notification.metadata.profileType || 'player';
-      
+
       // تحديد المسار حسب نوع الملف الشخصي
       if (profileType === 'player') {
         router.push(`/dashboard/shared/player-profile/${profileOwnerId}`);
@@ -673,10 +699,10 @@ export default function NotificationsManager({
       }
       return;
     }
-    
+
     // في الحالات الأخرى، نعرض ملف المرسل/المشاهد
     let accountType = notification?.senderAccountType;
-    
+
     // إذا لم نجد نوع الحساب من الإشعار، نحاول جلبها من Firestore
     if (!accountType) {
       try {
@@ -688,7 +714,7 @@ export default function NotificationsManager({
         console.error('خطأ في جلب معلومات المرسل:', error);
       }
     }
-    
+
     // تحديد المسار حسب نوع الحساب
     if (accountType === 'player') {
       // للاعبين، نستخدم صفحة تقارير اللاعب
@@ -727,23 +753,23 @@ export default function NotificationsManager({
   // إنشاء إشعارات تجريبية
   const createTestNotifications = async () => {
     if (!user?.uid) return;
-    
+
     try {
       // استيراد ديناميكي لتجنب مشاكل في وقت البناء
-      const { 
-        createTestNotification, 
-        createTestInteractionNotification, 
-        createTestPaymentNotification, 
-        createTestWarningNotification 
+      const {
+        createTestNotification,
+        createTestInteractionNotification,
+        createTestPaymentNotification,
+        createTestWarningNotification
       } = await import('@/lib/firebase/test-notifications');
-      
+
       await Promise.all([
         createTestNotification(user.uid),
         createTestInteractionNotification(user.uid),
         createTestPaymentNotification(user.uid),
         createTestWarningNotification(user.uid)
       ]);
-      
+
       toast.success('تم إنشاء الإشعارات التجريبية بنجاح');
     } catch (error) {
       console.error('خطأ في إنشاء الإشعارات التجريبية:', error);
@@ -754,15 +780,15 @@ export default function NotificationsManager({
   // إنشاء إشعارات متعددة
   const createMultipleNotifications = async () => {
     if (!user?.uid) return;
-    
+
     try {
       const { createTestNotification } = await import('@/lib/firebase/test-notifications');
-      
+
       const promises = [];
       for (let i = 0; i < 10; i++) {
         promises.push(createTestNotification(user.uid));
       }
-      
+
       await Promise.all(promises);
       toast.success('تم إنشاء 10 إشعارات تجريبية بنجاح');
     } catch (error) {

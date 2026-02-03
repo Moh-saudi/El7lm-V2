@@ -3,6 +3,7 @@
 // - Removes functions
 // - Converts Infinity/-Infinity to null
 // - Keeps Date instances (Firestore SDK converts them to Timestamps)
+// - Keeps FieldValue instances (like serverTimestamp())
 
 export function sanitizeForFirestore<T = any>(input: T): T | undefined {
 	if (input === undefined) return undefined;
@@ -18,6 +19,12 @@ export function sanitizeForFirestore<T = any>(input: T): T | undefined {
 
 	// Allow Date objects (Firestore SDK will convert them)
 	if (input instanceof Date) return input;
+
+	// 🔧 FIX: Allow FieldValue objects (like serverTimestamp())
+	// FieldValue has _methodName property
+	if (typeof input === 'object' && input !== null && '_methodName' in (input as any)) {
+		return input;
+	}
 
 	// Arrays: sanitize items and drop undefined entries
 	if (Array.isArray(input)) {

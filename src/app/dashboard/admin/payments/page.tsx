@@ -10,14 +10,19 @@ import { fetchPaymentsOptimized } from '@/lib/utils/payments-fetcher';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
+import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth'; // Keep for other hooks if needed, or remove? Keeping for safety.
+import { useAbility } from '@/hooks/useAbility';
+import AccessDenied from '@/components/admin/AccessDenied';
 
 export default function AdminPaymentsPage() {
-  // التحقق من الصلاحيات
-  const { isAuthorized, isCheckingAuth, userRole } = useAccountTypeAuth({ allowedTypes: ['admin'] });
+  const { can } = useAbility();
+  const [loading, setLoading] = useState(true);
+
+  if (!can('read', 'financials') && !loading) {
+    return <AccessDenied resource="إدارة المالية والمدفوعات" />;
+  }
   const [payments, setPayments] = useState([]);
   const [filteredPayments, setFilteredPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
@@ -205,6 +210,13 @@ export default function AdminPaymentsPage() {
       } else {
         return aValue < bValue ? 1 : -1;
       }
+    });
+
+    // تطبيق قيود النطاق الجغرافي من CASL
+    filtered = filtered.filter(payment => {
+      // التحقق مما إذا كان لدى المستخدم صلاحية القراءة لهذه الدفعة المحددة (بناءً على بلدها)
+      // إذا لم يكن بالدفعة بلد، نمرر 'all' أو نحاول تخمينه
+      return can('read', { resource: 'financials', country: payment.country || payment.playerCountry || 'all' } as any);
     });
 
     setFilteredPayments(filtered);
@@ -2435,13 +2447,15 @@ export default function AdminPaymentsPage() {
                       <span className="text-xs">📋</span>
                       <span className="hidden sm:inline">تاريخ الرسائل</span>
                     </button>
-                    <button
-                      onClick={() => handleStatusUpdate(payment)}
-                      className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="text-xs">⚙️</span>
-                      <span className="hidden sm:inline">تحديث</span>
-                    </button>
+                    {can('update', 'financials') && (
+                      <button
+                        onClick={() => handleStatusUpdate(payment)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                      >
+                        <span className="text-xs">⚙️</span>
+                        <span className="hidden sm:inline">تحديث</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => generateInvoice(payment)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
@@ -2449,21 +2463,25 @@ export default function AdminPaymentsPage() {
                       <span className="text-xs">📄</span>
                       <span className="hidden sm:inline">PDF</span>
                     </button>
-                    <button
-                      onClick={() => sendPaymentViaWhatsApp(payment)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                      title="إرسال عبر WhatsApp"
-                    >
-                      <span className="text-xs">📱</span>
-                      <span className="hidden sm:inline">WhatsApp</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeletePayment(payment)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="text-xs">🗑️</span>
-                      <span className="hidden sm:inline">حذف</span>
-                    </button>
+                    {can('manage', 'communications') && (
+                      <button
+                        onClick={() => sendPaymentViaWhatsApp(payment)}
+                        className="bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                        title="إرسال عبر WhatsApp"
+                      >
+                        <span className="text-xs">📱</span>
+                        <span className="hidden sm:inline">WhatsApp</span>
+                      </button>
+                    )}
+                    {can('delete', 'financials') && (
+                      <button
+                        onClick={() => handleDeletePayment(payment)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                      >
+                        <span className="text-xs">🗑️</span>
+                        <span className="hidden sm:inline">حذف</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

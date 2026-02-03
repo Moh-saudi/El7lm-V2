@@ -13,6 +13,8 @@ import { db } from '@/lib/firebase/config';
 import { toast } from 'sonner';
 import { auth } from '@/lib/firebase/config';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { notifyProfileUpdate } from '@/lib/notifications/admin-notifications';
+
 
 export default function AdminProfile() {
   const { user, userData, refreshUserData } = useAuth();
@@ -61,15 +63,13 @@ export default function AdminProfile() {
             avatar: data.avatar || data.profile_image || data.photoURL || ''
           });
         } else {
-          // إذا لم توجد في users، ابحث في employees collection
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          const employeesSnapshot = await getDocs(employeesQuery);
+          // البحث في employees collection
+          // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
+          const employeeDocRef = doc(db, 'employees', user.uid);
+          const employeeDocSnap = await getDoc(employeeDocRef);
 
-          if (!employeesSnapshot.empty) {
-            const employeeData = employeesSnapshot.docs[0].data();
+          if (employeeDocSnap.exists()) {
+            const employeeData = employeeDocSnap.data();
             setProfileData({
               name: employeeData.name || '',
               phone: employeeData.phone || '',
@@ -77,13 +77,30 @@ export default function AdminProfile() {
               avatar: employeeData.avatar || ''
             });
           } else {
-            // إذا لم تكن البيانات موجودة في أي مكان، استخدم بيانات المستخدم الأساسية
-            setProfileData({
-              name: '',
-              phone: '',
-              email: user.email || '',
-              avatar: ''
-            });
+            // ثانياً: البحث بـ authUserId (الطريقة القديمة)
+            const employeesQuery = query(
+              collection(db, 'employees'),
+              where('authUserId', '==', user.uid)
+            );
+            const employeesSnapshot = await getDocs(employeesQuery);
+
+            if (!employeesSnapshot.empty) {
+              const employeeData = employeesSnapshot.docs[0].data();
+              setProfileData({
+                name: employeeData.name || '',
+                phone: employeeData.phone || '',
+                email: user.email || employeeData.email || '',
+                avatar: employeeData.avatar || ''
+              });
+            } else {
+              // إذا لم تكن البيانات موجودة في أي مكان، استخدم بيانات المستخدم الأساسية
+              setProfileData({
+                name: '',
+                phone: '',
+                email: user.email || '',
+                avatar: ''
+              });
+            }
           }
         }
       } catch (error) {
@@ -210,32 +227,97 @@ export default function AdminProfile() {
         console.log('📋 البيانات المراد حفظها في users:', finalUpdateData);
         await updateDoc(userRef, finalUpdateData);
         console.log('✅ تم حفظ البيانات بنجاح في users collection');
-      } else {
-        // إذا لم يكن موجوداً في users، ابحث في employees
-        const employeesQuery = query(
-          collection(db, 'employees'),
-          where('authUserId', '==', user.uid)
-        );
-        const employeesSnapshot = await getDocs(employeesQuery);
 
-        if (!employeesSnapshot.empty) {
-          // حفظ في employees collection
-          const employeeRef = doc(db, 'employees', employeesSnapshot.docs[0].id);
-          console.log('📋 البيانات المراد حفظها في employees:', updateData);
+        // أيضاً تحديث employees collection إذا كان موظفاً
+        if (data.employeeId) {
+          const employeeRef = doc(db, 'employees', data.employeeId);
           await updateDoc(employeeRef, updateData);
+          console.log('✅ تم تحديث بيانات الموظف أيضاً');
+        }
+      } else {
+        // البحث في employees collection
+        // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
+        const employeeDocRef = doc(db, 'employees', user.uid);
+        const employeeDocSnap = await getDoc(employeeDocRef);
+
+        if (employeeDocSnap.exists()) {
+          // حفظ في employees collection
+          console.log('📋 البيانات المراد حفظها في employees:', updateData);
+          await updateDoc(employeeDocRef, updateData);
           console.log('✅ تم حفظ البيانات بنجاح في employees collection');
         } else {
-          // إنشاء document جديد في users إذا لم يكن موجوداً في أي مكان
-          const newUserData = {
-            uid: user.uid,
-            email: user.email || '',
-            accountType: 'admin',
-            ...updateData,
-            createdAt: new Date()
-          };
-          console.log('📋 إنشاء document جديد في users:', newUserData);
-          await updateDoc(userRef, newUserData);
-          console.log('✅ تم إنشاء وحفظ البيانات في users collection');
+          // ثانياً: البحث بـ authUserId (الطريقة القديمة)
+          const employeesQuery = query(
+            collection(db, 'employees'),
+            where('authUserId', '==', user.uid)
+          );
+          const employeesSnapshot = await getDocs(employeesQuery);
+
+          if (!employeesSnapshot.empty) {
+            // حفظ في employees collection
+            const employeeRef = doc(db, 'employees', employeesSnapshot.docs[0].id);
+            console.log('📋 البيانات المراد حفظها في employees:', updateData);
+            await updateDoc(employeeRef, updateData);
+            console.log('✅ تم حفظ البيانات بنجاح في employees collection');
+          } else {
+            // إنشاء document جديد في users إذا لم يكن موجوداً في أي مكان
+            const newUserData = {
+              uid: user.uid,
+              email: user.email || '',
+              accountType: 'admin',
+              ...updateData,
+              createdAt: new Date()
+            };
+            console.log('📋 إنشاء document جديد في users:', newUserData);
+            await updateDoc(userRef, newUserData);
+            console.log('✅ تم إنشاء وحفظ البيانات في users collection');
+          }
+        }
+      }
+
+      // إرسال إشعار للإدارة
+      // نرسل الإشعار إذا كان المستخدم موظفاً (لديه employeeId) أو له دور معين (roleId)
+      // أو حتى إذا كان مشرفاً عادياً (admin) لتوثيق التغييرات
+      console.log('🔍 Checking notification conditions:', {
+        hasEmployeeId: !!userData?.employeeId,
+        hasRoleId: !!userData?.roleId,
+        accountType: userData?.accountType
+      });
+
+      if (userData?.employeeId || userData?.roleId || userData?.accountType === 'admin') {
+        const changes: string[] = [];
+
+        // مقارنة البيانات الجديدة مع القديمة
+        if (updateData.name !== (userData?.name || userData?.displayName)) {
+          changes.push(`الاسم (من "${userData?.name || userData?.displayName}" إلى "${updateData.name}")`);
+        }
+        if ((updateData.phone || '') !== (userData?.phone || '')) {
+          changes.push('رقم الهاتف');
+        }
+        // التحقق من تغيير الصورة (إذا كان الرابط الجديد مختلفاً عن القديم)
+        // ومختلفاً عن الصورة الافتراضية
+        if (updateData.avatar && updateData.avatar !== userData?.avatar) {
+          changes.push('الصورة الشخصية');
+        }
+
+        console.log('📝 Detected changes:', changes);
+
+        if (changes.length > 0) {
+          try {
+            await notifyProfileUpdate(
+              {
+                id: userData?.employeeId || user.uid,
+                name: updateData.name,
+                email: user.email || undefined
+              },
+              changes
+            );
+            console.log('📢 تم إرسال إشعار للإدارة بنجاح');
+          } catch (notifError) {
+            console.error('❌ فشل إرسال الإشعار:', notifError);
+          }
+        } else {
+          console.log('⚠️ No changes detected for notification');
         }
       }
 

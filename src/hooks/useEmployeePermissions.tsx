@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { useState, useEffect } from 'react';
+import { defineAbilityFor } from '@/lib/permissions/ability';
 
 // أنواع الموظفين
-export type EmployeeRole = 
+export type EmployeeRole =
   | 'customer_service'    // خدمة عملاء
   | 'data_entry'          // إدخال بيانات
   | 'supervisor'          // مشرف
@@ -19,28 +20,28 @@ export interface EmployeePermissions {
   canEditCustomers: boolean;
   canDeleteCustomers: boolean;
   canAddCustomers: boolean;
-  
+
   // رفع الملفات
   canUploadFiles: boolean;
   canDownloadFiles: boolean;
-  
+
   // التواصل
   canSendWhatsApp: boolean;
   canMakeCalls: boolean;
   canSendEmails: boolean;
-  
+
   // إدارة البيانات
   canViewStatistics: boolean;
   canExportData: boolean;
   canImportData: boolean;
-  
+
   // الأدوات المتقدمة
   canAccessAdvancedTools: boolean;
   canTestPhoneFormatting: boolean;
   canFixPhoneNumbers: boolean;
   canRemoveDuplicates: boolean;
   canDeleteAllData: boolean;
-  
+
   // إدارة النظام
   canManageUsers: boolean;
   canManageRoles: boolean;
@@ -56,203 +57,203 @@ const ROLE_PERMISSIONS: Record<EmployeeRole, EmployeePermissions> = {
     canEditCustomers: true,
     canDeleteCustomers: false,
     canAddCustomers: false,
-    
+
     // رفع الملفات - محدود
     canUploadFiles: false,
     canDownloadFiles: true,
-    
+
     // التواصل - كامل
     canSendWhatsApp: true,
     canMakeCalls: true,
     canSendEmails: true,
-    
+
     // إدارة البيانات - محدودة
     canViewStatistics: true,
     canExportData: false,
     canImportData: false,
-    
+
     // الأدوات المتقدمة - محظورة
     canAccessAdvancedTools: false,
     canTestPhoneFormatting: false,
     canFixPhoneNumbers: false,
     canRemoveDuplicates: false,
     canDeleteAllData: false,
-    
+
     // إدارة النظام - محظورة
     canManageUsers: false,
     canManageRoles: false,
     canViewLogs: false,
     canAccessAdminPanel: false,
   },
-  
+
   data_entry: {
     // إدارة العملاء - محدودة
     canViewCustomers: true,
     canEditCustomers: false,
     canDeleteCustomers: false,
     canAddCustomers: true,
-    
+
     // رفع الملفات - كامل
     canUploadFiles: true,
     canDownloadFiles: true,
-    
+
     // التواصل - محظور
     canSendWhatsApp: false,
     canMakeCalls: false,
     canSendEmails: false,
-    
+
     // إدارة البيانات - محدودة
     canViewStatistics: false,
     canExportData: false,
     canImportData: true,
-    
+
     // الأدوات المتقدمة - محظورة
     canAccessAdvancedTools: false,
     canTestPhoneFormatting: false,
     canFixPhoneNumbers: false,
     canRemoveDuplicates: false,
     canDeleteAllData: false,
-    
+
     // إدارة النظام - محظورة
     canManageUsers: false,
     canManageRoles: false,
     canViewLogs: false,
     canAccessAdminPanel: false,
   },
-  
+
   supervisor: {
     // إدارة العملاء - كاملة
     canViewCustomers: true,
     canEditCustomers: true,
     canDeleteCustomers: true,
     canAddCustomers: true,
-    
+
     // رفع الملفات - كامل
     canUploadFiles: true,
     canDownloadFiles: true,
-    
+
     // التواصل - كامل
     canSendWhatsApp: true,
     canMakeCalls: true,
     canSendEmails: true,
-    
+
     // إدارة البيانات - كاملة
     canViewStatistics: true,
     canExportData: true,
     canImportData: true,
-    
+
     // الأدوات المتقدمة - محدودة
     canAccessAdvancedTools: true,
     canTestPhoneFormatting: true,
     canFixPhoneNumbers: true,
     canRemoveDuplicates: false,
     canDeleteAllData: false,
-    
+
     // إدارة النظام - محدودة
     canManageUsers: false,
     canManageRoles: false,
     canViewLogs: true,
     canAccessAdminPanel: false,
   },
-  
+
   manager: {
     // إدارة العملاء - كاملة
     canViewCustomers: true,
     canEditCustomers: true,
     canDeleteCustomers: true,
     canAddCustomers: true,
-    
+
     // رفع الملفات - كامل
     canUploadFiles: true,
     canDownloadFiles: true,
-    
+
     // التواصل - كامل
     canSendWhatsApp: true,
     canMakeCalls: true,
     canSendEmails: true,
-    
+
     // إدارة البيانات - كاملة
     canViewStatistics: true,
     canExportData: true,
     canImportData: true,
-    
+
     // الأدوات المتقدمة - كاملة
     canAccessAdvancedTools: true,
     canTestPhoneFormatting: true,
     canFixPhoneNumbers: true,
     canRemoveDuplicates: true,
     canDeleteAllData: false,
-    
+
     // إدارة النظام - محدودة
     canManageUsers: true,
     canManageRoles: false,
     canViewLogs: true,
     canAccessAdminPanel: true,
   },
-  
+
   admin: {
     // إدارة العملاء - كاملة
     canViewCustomers: true,
     canEditCustomers: true,
     canDeleteCustomers: true,
     canAddCustomers: true,
-    
+
     // رفع الملفات - كامل
     canUploadFiles: true,
     canDownloadFiles: true,
-    
+
     // التواصل - كامل
     canSendWhatsApp: true,
     canMakeCalls: true,
     canSendEmails: true,
-    
+
     // إدارة البيانات - كاملة
     canViewStatistics: true,
     canExportData: true,
     canImportData: true,
-    
+
     // الأدوات المتقدمة - كاملة
     canAccessAdvancedTools: true,
     canTestPhoneFormatting: true,
     canFixPhoneNumbers: true,
     canRemoveDuplicates: true,
     canDeleteAllData: true,
-    
+
     // إدارة النظام - كاملة
     canManageUsers: true,
     canManageRoles: true,
     canViewLogs: true,
     canAccessAdminPanel: true,
   },
-  
+
   developer: {
     // إدارة العملاء - كاملة
     canViewCustomers: true,
     canEditCustomers: true,
     canDeleteCustomers: true,
     canAddCustomers: true,
-    
+
     // رفع الملفات - كامل
     canUploadFiles: true,
     canDownloadFiles: true,
-    
+
     // التواصل - كامل
     canSendWhatsApp: true,
     canMakeCalls: true,
     canSendEmails: true,
-    
+
     // إدارة البيانات - كاملة
     canViewStatistics: true,
     canExportData: true,
     canImportData: true,
-    
+
     // الأدوات المتقدمة - كاملة
     canAccessAdvancedTools: true,
     canTestPhoneFormatting: true,
     canFixPhoneNumbers: true,
     canRemoveDuplicates: true,
     canDeleteAllData: true,
-    
+
     // إدارة النظام - كاملة
     canManageUsers: true,
     canManageRoles: true,
@@ -261,7 +262,7 @@ const ROLE_PERMISSIONS: Record<EmployeeRole, EmployeePermissions> = {
   },
 };
 
-// Hook للصلاحيات
+// Hook للصلاحيات (Legacy wrapper for new CASL system)
 export const useEmployeePermissions = () => {
   const { userData } = useAuth();
   const [permissions, setPermissions] = useState<EmployeePermissions | null>(null);
@@ -270,47 +271,40 @@ export const useEmployeePermissions = () => {
 
   useEffect(() => {
     if (userData) {
-      console.log('🔍 useEmployeePermissions - userData:', userData);
-      console.log('🔍 useEmployeePermissions - accountType:', userData.accountType);
-      console.log('🔍 useEmployeePermissions - employeeRole:', userData.employeeRole);
-      console.log('🔍 useEmployeePermissions - role:', userData.role);
-      
-      // تحديد دور الموظف من البيانات
-      let userRole = userData.employeeRole || userData.role;
-      
-      // إذا كان المستخدم admin حقيقي (ليس موظف)، نعطيه صلاحيات admin
-      // التحقق من أن المستخدم ليس موظفاً (ليس لديه employeeId أو employeeRole)
-      if (userData.accountType === 'admin' && !userData.employeeId && !userData.employeeRole) {
-        userRole = 'admin';
-        console.log('🔍 useEmployeePermissions - Setting role to admin (real admin, not employee)');
-      } else if (userData.accountType === 'admin' && (userData.employeeId || userData.employeeRole)) {
-        // إذا كان موظفاً، استخدم دوره الفعلي
-        userRole = userData.employeeRole || userData.role || 'customer_service';
-        console.log('🔍 useEmployeePermissions - Employee detected, using actual role:', userRole);
-      }
-      
-      // إذا لم يكن هناك دور محدد، نستخدم customer_service كافتراضي
-      if (!userRole) {
-        userRole = 'customer_service';
-        console.log('🔍 useEmployeePermissions - No role found, using customer_service as default');
-      }
-      
-      console.log('🔍 useEmployeePermissions - Final userRole:', userRole);
-      console.log('🔍 useEmployeePermissions - Available roles:', Object.keys(ROLE_PERMISSIONS));
-      
-      // التحقق من أن الدور صحيح
-      if (userRole in ROLE_PERMISSIONS) {
-        setRole(userRole as EmployeeRole);
-        setPermissions(ROLE_PERMISSIONS[userRole as EmployeeRole]);
-        console.log('🔍 useEmployeePermissions - Role set successfully:', userRole);
-        console.log('🔍 useEmployeePermissions - Permissions:', ROLE_PERMISSIONS[userRole as EmployeeRole]);
-      } else {
-        // دور افتراضي إذا كان الدور غير معروف
-        console.warn(`Unknown role: ${userRole}, using customer_service as default`);
-        setRole('customer_service');
-        setPermissions(ROLE_PERMISSIONS.customer_service);
-      }
-      
+      const ability = defineAbilityFor(userData);
+
+      // Mapping old permissions to CASL
+      const caslPermissions: EmployeePermissions = {
+        canViewCustomers: ability.can('read', 'users'),
+        canEditCustomers: ability.can('update', 'users'),
+        canDeleteCustomers: ability.can('delete', 'users'),
+        canAddCustomers: ability.can('create', 'users'),
+
+        canUploadFiles: ability.can('create', 'media'),
+        canDownloadFiles: ability.can('read', 'media'),
+
+        canSendWhatsApp: ability.can('manage', 'communications'),
+        canMakeCalls: ability.can('manage', 'communications'),
+        canSendEmails: ability.can('manage', 'communications'),
+
+        canViewStatistics: ability.can('read', 'reports'),
+        canExportData: ability.can('manage', 'reports'),
+        canImportData: ability.can('manage', 'users'),
+
+        canAccessAdvancedTools: ability.can('manage', 'settings'),
+        canTestPhoneFormatting: ability.can('manage', 'settings'),
+        canFixPhoneNumbers: ability.can('manage', 'users'),
+        canRemoveDuplicates: ability.can('manage', 'users'),
+        canDeleteAllData: ability.can('delete', 'all'),
+
+        canManageUsers: ability.can('manage', 'users'),
+        canManageRoles: ability.can('manage', 'roles'),
+        canViewLogs: ability.can('read', 'settings'),
+        canAccessAdminPanel: ability.can('read', 'employees'),
+      };
+
+      setPermissions(caslPermissions);
+      setRole((userData.employeeRole || userData.role || userData.accountType) as EmployeeRole);
       setLoading(false);
     }
   }, [userData]);
@@ -363,7 +357,7 @@ export const PermissionGuard = ({
     );
   }
 
-  const hasAccess = requireAll 
+  const hasAccess = requireAll
     ? hasAllPermissions(requiredPermissions)
     : hasAnyPermission(requiredPermissions);
 
@@ -390,7 +384,7 @@ export const PermissionsInfo = () => {
     <div className="p-4 bg-gray-50 rounded-lg">
       <h3 className="text-lg font-semibold mb-2">معلومات الصلاحيات</h3>
       <p className="text-sm text-gray-600 mb-4">الدور: {role}</p>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h4 className="font-medium mb-2">إدارة العملاء</h4>
@@ -401,7 +395,7 @@ export const PermissionsInfo = () => {
             <li>إضافة عملاء: {permissions.canAddCustomers ? '✅' : '❌'}</li>
           </ul>
         </div>
-        
+
         <div>
           <h4 className="font-medium mb-2">التواصل</h4>
           <ul className="text-sm space-y-1">
@@ -410,7 +404,7 @@ export const PermissionsInfo = () => {
             <li>إرسال بريد إلكتروني: {permissions.canSendEmails ? '✅' : '❌'}</li>
           </ul>
         </div>
-        
+
         <div>
           <h4 className="font-medium mb-2">الأدوات المتقدمة</h4>
           <ul className="text-sm space-y-1">

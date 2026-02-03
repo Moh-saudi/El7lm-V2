@@ -27,7 +27,8 @@ import {
   query,
   where,
   getDocs,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -283,192 +284,163 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           setUser(user);
           setError(null);
 
-          try {
-            // Handle admin users first
-            const adminEmails = ['admin@el7lm.com', 'admin@el7lm-go.com', 'admin@el7lm-go.com'];
-            if (adminEmails.includes(user.email || '')) {
-              const userRef = doc(db, 'users', user.uid);
-              const adminData: UserData = {
+          // إعداد المستمع الحقيقي لبيانات المستخدم
+          const setupUserListener = async () => {
+            // 1. البحث عن مصدر البيانات (موظف، مدير، لاعب...)
+            let foundDocRef = doc(db, 'users', user.uid);
+            let collectionName = 'users';
+
+            // 🛡️ Super Admin Force - تخطي البحث عن المجموعات الأخرى لمنع تداخل الأدوار
+            const isSuperAdmin = user.email === 'admin@el7lm.com' || user.email === 'admin@elhilm.com';
+
+            if (isSuperAdmin) {
+              console.log('🛡️ Super Admin Session Restore - Forcing Admin Role');
+              collectionName = 'users';
+              foundDocRef = doc(db, 'users', user.uid);
+            } else {
+              try {
+                // محاولة البحث أولاً في الموظفين باستخدام AuthID
+                let employeesQuery = query(collection(db, 'employees'), where('authUserId', '==', user.uid));
+                let employeesSnap = await getDocs(employeesQuery);
+
+                // إذا لم نجد باستخدام AuthID، نبحث بالبريد الإلكتروني (للموظفين الذين لم يتم ربطهم بعد)
+                if (employeesSnap.empty && user.email) {
+                  const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
+                  const emailSnap = await getDocs(emailQuery);
+                  if (!emailSnap.empty) {
+                    employeesSnap = emailSnap;
+                    // نقوم بتحديث AuthID للموظف ليتم ربطه بالحساب
+                    const empDoc = emailSnap.docs[0];
+                    try {
+                      await updateDoc(doc(db, 'employees', empDoc.id), {
+                        authUserId: user.uid,
+                        updatedAt: new Date()
+                      });
+                      console.log('🔗 Automatically linked employee account via email:', user.email);
+                    } catch (e) {
+                      console.error('Error linking employee account:', e);
+                    }
+                  }
+                }
+
+                if (!employeesSnap.empty) {
+                  foundDocRef = doc(db, 'employees', employeesSnap.docs[0].id);
+                  collectionName = 'employees';
+                } else {
+                  // البحث في المجموعات الأخرى
+                  const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
+                  for (const col of accountTypes) {
+                    const d = await getDoc(doc(db, col, user.uid));
+                    if (d.exists()) {
+                      foundDocRef = doc(db, col, user.uid);
+                      collectionName = col;
+                      break;
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('Error searching for user collection:', err);
+              }
+            }
+
+            // مستمع لصلاحيات الدور (للموظفين)
+            let roleUnsubscribe: (() => void) | null = null;
+
+            // 2. إعداد المستمع للوثيقة الرئيسية
+            userDocUnsubscribe = onSnapshot(foundDocRef, async (snapshot) => {
+              if (!snapshot.exists()) {
+                if (collectionName !== 'users') {
+                  // تحول للبحث في users كـ fallback
+                  collectionName = 'users';
+                  foundDocRef = doc(db, 'users', user.uid);
+                  // سيعيد المستمع بناء نفسه في المحاولة التالية
+                  return;
+                }
+                if (isSubscribed) {
+                  setLoading(false);
+                  setHasInitialized(true);
+                }
+                return;
+              }
+
+              const data = snapshot.data() || {};
+
+              // جلب بيانات إضافية من مجموعة users لضمان عدم فقدان الحقول القديمة (مثل role)
+              let legacyData = {};
+              if (collectionName !== 'users') {
+                try {
+                  const userSnap = await getDoc(doc(db, 'users', user.uid));
+                  if (userSnap.exists()) {
+                    legacyData = userSnap.data();
+                  }
+                } catch (e) {
+                  console.warn('Could not fetch legacy user data');
+                }
+              }
+
+              const userAccountType: UserRole = (collectionName === 'admins' || collectionName === 'employees') ? 'admin' : (collectionName.slice(0, -1) as UserRole || 'player');
+
+              const newUserData: UserData = {
                 uid: user.uid,
-                email: user.email || '',
-                accountType: 'admin',
-                full_name: 'System Administrator',
-                phone: '',
-                profile_image: '',
-                isNewUser: false,
-                created_at: serverTimestamp(),
-                updated_at: serverTimestamp()
+                email: user.email || data.email || (legacyData as any).email || '',
+                accountType: userAccountType,
+                full_name: data.full_name || data.name || (legacyData as any).full_name || (legacyData as any).name || '',
+                phone: data.phone || (legacyData as any).phone || '',
+                profile_image: data.profile_image || data.profileImage || data.avatar || (legacyData as any).profile_image || '',
+                ...legacyData, // الحقول القديمة أولاً
+                ...data,       // البيانات الجديدة تغطي القديمة
+                isEmployee: collectionName === 'employees',
+                employeeId: collectionName === 'employees' ? snapshot.id : (data.employeeId || (legacyData as any).employeeId)
               };
 
-              if (isSubscribed) {
-                await setDoc(userRef, adminData);
-                setUserData(adminData);
-              }
-            } else {
-              // 🔧 FIX: Search in role-specific collections FIRST (this is the source of truth)
-              // This ensures we get the correct accountType from clubs, academies, etc.
-              const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-              let userAccountType: UserRole = 'player';
-              let foundData = null;
-              let foundCollection = null;
+              // إذا كان موظفاً، نحتاج لمراقبة صلاحيات الدور أيضاً
+              if (collectionName === 'employees' && data.roleId) {
+                if (roleUnsubscribe) roleUnsubscribe();
 
-              // Use Promise.all for parallel queries
-              const queries = accountTypes.map(collection =>
-                getDoc(doc(db, collection, user.uid))
-              );
-
-              const results = await Promise.all(queries);
-
-              for (let i = 0; i < results.length; i++) {
-                if (results[i].exists()) {
-                  foundData = results[i].data();
-                  foundCollection = accountTypes[i];
-                  // معالجة خاصة لـ admins collection
-                  if (accountTypes[i] === 'admins') {
-                    userAccountType = 'admin';
-                  } else {
-                    userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+                roleUnsubscribe = onSnapshot(doc(db, 'roles', data.roleId), (roleSnap) => {
+                  if (roleSnap.exists()) {
+                    const roleData = roleSnap.data();
+                    if (isSubscribed) {
+                      setUserData({
+                        ...newUserData,
+                        permissions: roleData.permissions || [],
+                        roleName: roleData.name
+                      } as UserData);
+                    }
+                  } else if (isSubscribed) {
+                    setUserData(newUserData);
                   }
-                  break; // Use first found collection as source of truth
-                }
-              }
-
-              // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
-              let employeesSnapshot: any = null;
-              if (!foundData) {
-                try {
-                  const employeesQuery = query(
-                    collection(db, 'employees'),
-                    where('authUserId', '==', user.uid)
-                  );
-                  employeesSnapshot = await getDocs(employeesQuery);
-
-                  if (!employeesSnapshot.empty) {
-                    const employeeDoc = employeesSnapshot.docs[0];
-                    foundData = employeeDoc.data();
-                    foundCollection = 'employees';
-                    userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
-                    console.log(`✅ Found employee data in employees collection:`, foundData);
-                  }
-                } catch (employeeError) {
-                  console.warn('Error searching employees collection:', employeeError);
-                }
+                });
+              } else if (isSubscribed) {
+                setUserData(newUserData);
               }
 
               if (isSubscribed) {
-                if (foundData && foundCollection) {
-                  // Use data from role-specific collection (source of truth)
-
-                  const userData: UserData = {
-                    uid: user.uid,
-                    email: user.email || foundData.email || '',
-                    accountType: userAccountType,
-                    full_name: foundData.full_name || foundData.name || '',
-                    phone: foundData.phone || '',
-                    profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
-                    country: foundData.country || '',
-                    isNewUser: false,
-                    isActive: foundData.isActive !== undefined ? foundData.isActive : true,
-                    created_at: foundData.created_at || foundData.createdAt || new Date(),
-                    updated_at: new Date(),
-                    // إضافة الحقول المختصة بكل نوع حساب
-                    academy_name: foundData.academy_name,
-                    club_name: foundData.club_name,
-                    agent_name: foundData.agent_name,
-                    trainer_name: foundData.trainer_name,
-                    ...foundData
-                  };
-
-                  // Update users collection to sync with role collection
-                  const userRef = doc(db, 'users', user.uid);
-                  try {
-                    const syncData: any = {
-                      ...userData,
-                      updated_at: new Date()
-                    };
-
-                    // إذا كان موظفاً، أضف معلومات إضافية
-                    if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
-                      syncData.employeeId = employeesSnapshot.docs[0].id;
-                      syncData.employeeRole = foundData.role;
-                      syncData.role = foundData.role;
-                    }
-
-                    await setDoc(userRef, syncData, { merge: true });
-                  } catch (syncError) {
-                    // Continue anyway - this is not critical
-                  }
-
-                  setUserData(userData);
-                } else {
-                  // Fallback: Check users collection if no role-specific data found
-                  console.log('⚠️ AuthProvider - No data in role collections, checking users collection...');
-                  const userRef = doc(db, 'users', user.uid);
-                  const userDoc = await getDoc(userRef);
-
-                  if (userDoc.exists()) {
-                    const data = userDoc.data() as UserData;
-
-                    // Check if uid field is missing and fix it
-                    if (!data.uid) {
-                      console.log('🔧 AuthProvider - Missing uid field detected, fixing...');
-                      try {
-                        await updateDoc(userRef, {
-                          uid: user.uid,
-                          updatedAt: new Date()
-                        });
-                        console.log('✅ AuthProvider - Successfully added uid field');
-                        data.uid = user.uid;
-                      } catch (error) {
-                        console.error('❌ AuthProvider - Error adding uid field:', error);
-                      }
-                    }
-
-                    console.log('📋 AuthProvider - User document found in users collection (fallback):', {
-                      uid: user.uid,
-                      email: data.email,
-                      accountType: data.accountType,
-                      name: data.name,
-                      phone: data.phone,
-                      avatar: data.avatar ? 'موجود' : 'غير موجود',
-                      isActive: data.isActive,
-                      hasAllRequiredFields: !!(data.uid && data.email && data.accountType),
-                      allFields: Object.keys(data)
-                    });
-
-                    // التأكد من وجود accountType وعدم السماح بـ unknown
-                    const finalData: UserData = {
-                      ...data,
-                      accountType: data.accountType || 'player',
-                      uid: user.uid,
-                      email: user.email || data.email || ''
-                    };
-
-                    setUserData(finalData);
-                    console.log('✅ AuthProvider - User data set from users collection (fallback):', {
-                      name: finalData.name,
-                      phone: finalData.phone,
-                      avatar: finalData.avatar ? 'موجود' : 'غير موجود',
-                      accountType: finalData.accountType
-                    });
-                  } else {
-                    // Create basic user document if no data found anywhere
-                    console.log('⚠️ AuthProvider - No data found in any collection, creating basic user document...');
-                    const basicData = await createBasicUserDocument(user, userAccountType, foundData || {});
-                    setUserData(basicData);
-                  }
-                }
+                setLoading(false);
+                setHasInitialized(true);
               }
-            }
-          } catch (firestoreError) {
-            console.error('Error fetching user data:', firestoreError);
-            if (isSubscribed) {
-              setError('Error fetching user data - please refresh');
-            }
-          }
+            }, (err) => {
+              console.error('Error in user data listener:', err);
+              if (isSubscribed) {
+                setLoading(false);
+                setHasInitialized(true);
+              }
+            });
+
+            // وظيفة التنظيف المدمجة
+            const originalUnsub = userDocUnsubscribe;
+            userDocUnsubscribe = () => {
+              if (originalUnsub) originalUnsub();
+              if (roleUnsubscribe) roleUnsubscribe();
+            };
+          };
+
+          setupUserListener();
         } else if (isSubscribed) {
           setUser(null);
           setUserData(null);
+          setLoading(false);
+          setHasInitialized(true);
         }
       } catch (authError) {
         console.error('Auth state change error:', authError);
@@ -525,53 +497,81 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       // جلب بيانات المستخدم من Firestore
       console.log('📋 AuthProvider - Fetching user data from Firestore...');
 
-      // البحث في المجموعات الخاصة بالأدوار أولاً
-      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
-      let userAccountType: UserRole = 'player';
       let foundCollection = null;
+      let userAccountType: UserRole = 'player';
 
-      // استخدام Promise.all للبحث المتوازي
-      const queries = accountTypes.map(collection =>
-        getDoc(doc(db, collection, user.uid))
-      );
-
-      const results = await Promise.all(queries);
-
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].exists()) {
-          foundData = results[i].data();
-          foundCollection = accountTypes[i];
-          // معالجة خاصة لـ admins collection
-          if (accountTypes[i] === 'admins') {
-            userAccountType = 'admin';
-          } else {
-            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+      // Super Admin Override
+      if (email === 'admin@el7lm.com' || email === 'admin@elhilm.com') {
+        console.log('🛡️ Super Admin login detected');
+        userAccountType = 'admin';
+        foundData = {
+          uid: user.uid,
+          email: user.email,
+          full_name: 'Super Admin',
+          accountType: 'admin',
+          isAdmin: true
+        };
+        // We try to verify if there is real data in 'users'
+        try {
+          const userDocCheck = await getDoc(doc(db, 'users', user.uid));
+          if (userDocCheck.exists()) {
+            foundData = { ...foundData, ...userDocCheck.data() };
           }
-          console.log(`✅ Found user data in ${accountTypes[i]} collection:`, foundData);
-          break;
-        }
+        } catch (e) { }
       }
 
-      // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
+      // 1. البحث في مجموعة الموظفين أولاً (النظام الجديد)
       let employeesSnapshot: any = null;
-      if (!foundData) {
-        try {
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          employeesSnapshot = await getDocs(employeesQuery);
+      try {
+        const employeesQuery = query(
+          collection(db, 'employees'),
+          where('authUserId', '==', user.uid)
+        );
+        employeesSnapshot = await getDocs(employeesQuery);
 
-          if (!employeesSnapshot.empty) {
-            const employeeDoc = employeesSnapshot.docs[0];
-            foundData = employeeDoc.data();
-            foundCollection = 'employees';
-            userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
-            console.log(`✅ Found employee data in employees collection:`, foundData);
+        // Fallback: Search by email
+        if (employeesSnapshot.empty && user.email) {
+          const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
+          const emailSnap = await getDocs(emailQuery);
+          if (!emailSnap.empty) {
+            employeesSnapshot = emailSnap;
+            console.log('✅ Found employee by email during login lookup');
           }
-        } catch (employeeError) {
-          console.warn('Error searching employees collection:', employeeError);
+        }
+
+        if (!employeesSnapshot.empty) {
+          const employeeDoc = employeesSnapshot.docs[0];
+          foundData = employeeDoc.data();
+          foundCollection = 'employees';
+          userAccountType = 'admin';
+          console.log(`✅ Found employee data in employees collection (Priority):`, foundData);
+        }
+      } catch (employeeError) {
+        console.warn('Error searching employees collection:', employeeError);
+      }
+
+      // 2. إذا لم يكن موظفاً، ابحث في المجموعات الأخرى
+      if (!foundData) {
+        const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
+        const queries = accountTypes.map(collection =>
+          getDoc(doc(db, collection, user.uid))
+        );
+
+        const results = await Promise.all(queries);
+
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].exists()) {
+            foundData = results[i].data();
+            foundCollection = accountTypes[i];
+            if (accountTypes[i] === 'admins') {
+              userAccountType = 'admin';
+            } else {
+              userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+            }
+            console.log(`✅ Found user data in ${accountTypes[i]} collection:`, foundData);
+            break;
+          }
         }
       }
 
@@ -586,20 +586,33 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
           country: foundData.country || '',
           isNewUser: false,
+          isEmployee: foundCollection === 'employees',
+          employeeId: foundData.id || foundData.uid || (foundCollection === 'employees' ? employeesSnapshot.docs[0].id : undefined),
           created_at: foundData.created_at || foundData.createdAt || new Date(),
           updated_at: new Date(),
           ...foundData
         };
 
-        // إذا كان موظفاً، أنشئ document في users collection
-        if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
-          const userRef = doc(db, 'users', user.uid);
+        // إذا كان موظفاً، أنشئ document في users collection وجلب الصلاحيات
+        if (foundCollection === 'employees') {
           try {
+            // جلب الصلاحيات إذا وجدت
+            const roleId = foundData.roleId || foundData.role;
+            if (roleId) {
+              const roleDoc = await getDoc(doc(db, 'roles', roleId));
+              if (roleDoc.exists()) {
+                const roleData = roleDoc.data();
+                userData.permissions = roleData.permissions || [];
+                console.log('✅ AuthProvider (Login) - Fetched role permissions:', userData.permissions);
+              }
+            }
+
+            const userRef = doc(db, 'users', user.uid);
             await setDoc(userRef, {
               ...userData,
-              employeeId: employeesSnapshot.docs[0].id,
-              employeeRole: foundData.role,
-              role: foundData.role,
+              employeeId: employeesSnapshot?.docs[0]?.id || foundData.id,
+              employeeRole: foundData.roleId || foundData.role,
+              role: foundData.roleId || foundData.role,
               updated_at: new Date()
             }, { merge: true });
           } catch (syncError) {
@@ -723,31 +736,110 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         photoURL: user.photoURL
       });
 
-      // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
-      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-      let foundData = null;
+      let foundData: any = null;
       let userAccountType: UserRole = defaultRole;
       let isNewUser = true;
 
-      // البحث المتوازي في جميع المجموعات
-      const queries = accountTypes.map(collectionName =>
-        getDoc(doc(db, collectionName, user.uid))
-      );
-
-      const results = await Promise.all(queries);
-
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].exists()) {
-          foundData = results[i].data();
-          // معالجة خاصة لـ admins collection
-          if (accountTypes[i] === 'admins') {
-            userAccountType = 'admin';
+      // Special handling for Super Admin to preventing role conflict
+      if (user.email === 'admin@el7lm.com' || user.email === 'admin@elhilm.com') {
+        console.log('🛡️ Super Admin Detected (Google Auth)');
+        userAccountType = 'admin';
+        foundData = {
+          uid: user.uid,
+          email: user.email,
+          full_name: 'Super Admin',
+          accountType: 'admin',
+          isAdmin: true
+        };
+        // Try to get real data if exists
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            foundData = { ...foundData, ...userDoc.data() };
+            isNewUser = false;
           } else {
-            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+            // Check if it exists in admins
+            const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+            if (adminDoc.exists()) {
+              foundData = { ...foundData, ...adminDoc.data() };
+              isNewUser = false;
+            }
           }
-          isNewUser = false;
-          console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
-          break;
+        } catch (e) {
+          console.warn('Error checking existing admin data:', e);
+        }
+        // 🕵️‍♀️ Duplicate Scanner for Debugging
+        (async () => {
+          const searchCols = ['employees', 'clubs', 'academies', 'trainers', 'agents', 'players'];
+          const dupes = [];
+          for (const col of searchCols) {
+            try {
+              const d = await getDoc(doc(db, col, user.uid));
+              if (d.exists()) dupes.push(col);
+            } catch (e) { }
+          }
+          if (dupes.length > 0) {
+            console.warn(`🚨 SUPER ADMIN DUPLICATE ALERT: Found accounts in: ${dupes.join(', ')}. These are ignored by the system but exist in DB.`);
+          }
+        })();
+      }
+
+      // 0. التحقق أولاً من مجموعة الموظفين (مع الربط التلقائي)
+      if (!foundData) {
+        try {
+          let employeesQuery = query(collection(db, 'employees'), where('authUserId', '==', user.uid));
+          let employeesSnap = await getDocs(employeesQuery);
+
+          // Fallback: Link by Email
+          if (employeesSnap.empty && user.email) {
+            const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
+            const emailSnap = await getDocs(emailQuery);
+            if (!emailSnap.empty) {
+              // Link the account
+              const empDoc = emailSnap.docs[0];
+              await updateDoc(doc(db, 'employees', empDoc.id), {
+                authUserId: user.uid,
+                updatedAt: new Date()
+              });
+              employeesSnap = emailSnap;
+              console.log('🔗 [Google Auth] Linked employee account via email');
+            }
+          }
+
+          if (!employeesSnap.empty) {
+            foundData = employeesSnap.docs[0].data();
+            userAccountType = 'admin';  // Employees are admins
+            isNewUser = false;
+            console.log('✅ [Google Auth] Found employee account');
+            // foundData will be used below to populate userData with isEmployee: true
+          }
+        } catch (err) {
+          console.warn('Error checking employees in Google Sign In:', err);
+        }
+      }
+
+      // 1. البحث عن المستخدم في المجموعات الأخرى إذا لم يكن موظفاً
+      if (!foundData) {
+        const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
+        // ... rest of the loop
+        const queries = accountTypes.map(collectionName =>
+          getDoc(doc(db, collectionName, user.uid))
+        );
+
+        const results = await Promise.all(queries);
+
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].exists()) {
+            foundData = results[i].data();
+            if (accountTypes[i] === 'admins') {
+              userAccountType = 'admin';
+            } else {
+              userAccountType = accountTypes[i].slice(0, -1) as UserRole;
+            }
+            isNewUser = false;
+            console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
+            break;
+          }
         }
       }
 
@@ -795,6 +887,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const finalRole = (baseRole && (baseRole as any) !== 'unknown') ? baseRole : 'player';
 
         userData = {
+          ...(migrationData || {}), // ⚠️ MUST come first so dates below override
           uid: user.uid,
           email: user.email || '',
           accountType: finalRole,
@@ -804,13 +897,19 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           isNewUser: migrationData ? false : true,
           isGoogleUser: true,
           googleId: user.uid,
-          created_at: migrationData ? (migrationData.created_at || new Date()) : new Date(),
-          updated_at: new Date(),
+          // 🔧 FIX: استخدام serverTimestamp() لضمان الحفظ الصحيح
+          created_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           country: migrationData?.country || '',
           countryCode: migrationData?.countryCode || '',
           currency: migrationData?.currency || '',
           currencySymbol: migrationData?.currencySymbol || '',
-          ...(migrationData || {}) // دمج البيانات القديمة
+          // تعيين آخر تسجيل دخول
+          lastLogin: serverTimestamp(),
+          last_login: serverTimestamp(),
+          lastLoginIP: 'google_auth',
         };
 
         // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
@@ -826,7 +925,15 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
         // حفظ في مجموعة users
         const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, sanitizeForFirestore(userData));
+        await setDoc(userRef, {
+          ...sanitizeForFirestore(userData),
+          created_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          last_login: serverTimestamp()
+        });
         console.log('✅ User saved to users collection');
 
         // Only create role-specific document if we actually know the role (migration case)
@@ -834,8 +941,12 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           const roleRef = doc(db, finalRole + 's', user.uid);
           await setDoc(roleRef, sanitizeForFirestore({
             ...userData,
-            created_at: new Date(),
-            updated_at: new Date()
+            created_at: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            last_login: serverTimestamp()
           }));
           console.log(`✅ User saved to ${finalRole}s collection`);
         }
@@ -1034,6 +1145,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const finalRole = additionalData.accountType || defaultRole;
 
         userData = {
+          ...additionalData, // ⚠️ MUST come first so dates below override
           uid: user.uid,
           email: user.email || additionalData.email || '',
           accountType: finalRole,
@@ -1042,13 +1154,19 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
           profile_image: '',
           isNewUser: true,
           isPhoneAuth: true,
-          created_at: new Date(),
-          updated_at: new Date(),
+          // 🔧 FIX: استخدام serverTimestamp() لضمان الحفظ الصحيح
+          created_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           country: additionalData.country || '',
           countryCode: additionalData.countryCode || '',
           currency: additionalData.currency || '',
           currencySymbol: additionalData.currencySymbol || '',
-          ...additionalData
+          // تعيين آخر تسجيل دخول
+          lastLogin: serverTimestamp(),
+          last_login: serverTimestamp(),
+          lastLoginIP: 'phone_auth',
         };
 
         // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
@@ -1058,15 +1176,27 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
         // حفظ في مجموعة users
         const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, sanitizeForFirestore(userData));
+        await setDoc(userRef, {
+          ...sanitizeForFirestore(userData),
+          created_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          last_login: serverTimestamp()
+        });
 
         // حفظ في المجموعة الخاصة بالدور ONLY IF role is known
         if (finalRole !== 'unknown' && finalRole !== 'admin') {
           const roleRef = doc(db, finalRole + 's', user.uid);
           await setDoc(roleRef, sanitizeForFirestore({
             ...userData,
-            created_at: new Date(),
-            updated_at: new Date()
+            created_at: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+            last_login: serverTimestamp()
           }));
         }
       } else {
@@ -1122,7 +1252,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
   /**
    * إعادة تفعيل حساب محذوف
-  
+   
    */
   const reactivateDeletedAccount = async (
     email: string,
@@ -1323,8 +1453,9 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
       console.log('✅ Firebase Auth user created:', user.uid);
 
-      // Prepare user data
+      // Prepare user data - IMPORTANT: additionalData comes FIRST so our dates override any passed dates
       const userData: UserData = {
+        ...additionalData, // ⚠️ MUST come first so our dates below override any incorrect dates
         uid: user.uid,
         email: user.email || email,
         accountType: role,
@@ -1333,8 +1464,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         profile_image: additionalData.profile_image || additionalData.profileImage || '',
         isNewUser: true,
         isActive: true,
-        created_at: new Date(),
-        updated_at: new Date(),
+        // 🔧 FIX: استخدام serverTimestamp() بدلاً من new Date() لضمان الحفظ الصحيح
+        created_at: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         // Store additional phone-related data
         country: additionalData.country || '',
         countryCode: additionalData.countryCode || '',
@@ -1344,7 +1478,11 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         firebaseEmail: email,
         // Store original phone if different from normalized
         originalPhone: additionalData.originalPhone || additionalData.phone || '',
-        ...additionalData
+
+        // تعيين آخر تسجيل دخول عند التسجيل
+        lastLogin: serverTimestamp(),
+        last_login: serverTimestamp(),
+        lastLoginIP: 'registration',
       };
 
       console.log('📝 Saving user data to Firestore...', {
@@ -1355,7 +1493,16 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
       // Save to main users collection
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, sanitizeForFirestore(userData));
+      // 🔧 FIX: إضافة التاريخ مباشرة في setDoc بعد sanitize لضمان عدم فقدان serverTimestamp
+      await setDoc(userRef, {
+        ...sanitizeForFirestore(userData),
+        created_at: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        last_login: serverTimestamp()
+      });
 
       console.log('✅ User data saved to main collection');
 
@@ -1364,8 +1511,12 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         const roleRef = doc(db, role + 's', user.uid);
         await setDoc(roleRef, sanitizeForFirestore({
           ...userData,
-          created_at: new Date(),
-          updated_at: new Date()
+          created_at: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          last_login: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          updatedAt: serverTimestamp()
         }));
         console.log(`✅ User data saved to ${role}s collection`);
       }
@@ -1519,7 +1670,39 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
     try {
       console.log('🔄 Refreshing user data...');
 
-      // البحث في المجموعات الخاصة بالأدوار أولاً
+      // 1. أولاً: التحقق من مجموعة users الرئيسية
+      // هذه الخطوة مهمة جداً لأنها المصدر الأساسي للحقيقة الآن
+      const mainUserRef = doc(db, 'users', user.uid);
+      const mainUserSnap = await getDoc(mainUserRef);
+
+      if (mainUserSnap.exists()) {
+        const mainData = mainUserSnap.data();
+
+        // إذا كان المستخدم معرفاً كـ admin في users، نعتمد هذا فوراً
+        // أيضاً إذا كان البريد الإلكتروني هو البريد الرسمي للإدارة
+        if (mainData.accountType === 'admin' || user.email === 'admin@el7lm.com') {
+          console.log('✅ Refresh - Found ADMIN data in users collection');
+
+          const adminData: UserData = {
+            uid: user.uid,
+            email: user.email || mainData.email || '',
+            accountType: 'admin',
+            full_name: mainData.full_name || mainData.name || 'System Administrator',
+            phone: mainData.phone || '',
+            profile_image: mainData.profile_image || mainData.avatar || '',
+            country: mainData.country || '',
+            isNewUser: false,
+            created_at: mainData.created_at || mainData.createdAt || new Date(),
+            updated_at: new Date(),
+            ...mainData
+          };
+
+          setUserData(adminData);
+          return; // 🛑 توقف هنا ولا تكمل البحث في باقي المجموعات
+        }
+      }
+
+      // البحث في المجموعات الخاصة بالأدوار أولاً (للمستخدمين غير الأدمن أو البيانات القديمة)
       const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
       let foundData = null;
       let userAccountType: UserRole = 'player';
@@ -1569,7 +1752,14 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         }
       }
 
-      // إذا وجدنا بيانات في المجموعات الخاصة بالأدوار، استخدمها مباشرة
+      // إذا لم نجد شيئاً في المجموعات الفرعية، نعود لاستخدام بيانات users الرئيسية إذا وجدت
+      if (!foundData && mainUserSnap.exists()) {
+        foundData = mainUserSnap.data();
+        userAccountType = (foundData?.accountType as UserRole) || 'player';
+        console.log('✅ Refresh - Fallback to users collection data:', foundData);
+      }
+
+      // إذا وجدنا بيانات، استخدمها
       if (foundData) {
         console.log('🔍 Found data details:', {
           userAccountType,
@@ -1622,47 +1812,16 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         });
 
         setUserData(userData);
-        console.log('✅ User data refreshed successfully from role collection');
-        return;
-      }
-
-      // إذا لم نجد بيانات في المجموعات الخاصة بالأدوار، ابحث في مجموعة users
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
-
-      if (userDoc.exists()) {
-        const data = userDoc.data() as UserData;
-        console.log('📋 Data from users collection:', {
-          name: data.name,
-          phone: data.phone,
-          avatar: data.avatar ? 'موجود' : 'غير موجود',
-          accountType: data.accountType,
-          allFields: Object.keys(data)
-        });
-
-        // التأكد من وجود accountType
-        const finalData: UserData = {
-          ...data,
-          accountType: data.accountType || 'player',
-          uid: user.uid,
-          email: user.email || data.email || ''
-        };
-
-        setUserData(finalData);
-        console.log('✅ User data refreshed successfully from users collection:', {
-          name: finalData.name,
-          phone: finalData.phone,
-          avatar: finalData.avatar ? 'موجود' : 'غير موجود',
-          accountType: finalData.accountType
-        });
       } else {
-        console.warn('No user data found in any collection');
+        console.log('❌ Refresh - No user data found in any collection');
+        setUserData(null);
       }
     } catch (error) {
       console.error('Error refreshing user data:', error);
-      setError('Failed to refresh user data');
     }
   };
+
+
 
   // Clear error function
   const clearError = () => setError(null);

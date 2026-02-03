@@ -40,7 +40,9 @@ import {
   X
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useAbility } from '@/hooks/useAbility';
+import { PermissionAction, PermissionResource } from '@/lib/permissions/types';
 
 interface UnifiedSidebarProps {
   isOpen: boolean;
@@ -71,6 +73,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   isMobile = false
 }) => {
   const { user, userData, logout } = useAuth();
+  const { can, userRole: currentAbilityRole } = useAbility();
   const router = useRouter();
   const pathname = usePathname();
   const t = (key: string) => key;
@@ -183,6 +186,41 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     if (screenSize === 'mobile') return false;
     if (screenSize === 'tablet') return !collapsed;
     return !collapsed;
+  };
+
+  // Check permission for menu item using CASL
+  const hasPermissionForMenuItem = (menuItemId: string, can: any): boolean => {
+    // Mapping between menu items and CASL resources
+    const menuItemMapping: Record<string, { action: PermissionAction, resource: PermissionResource }> = {
+      'users': { action: 'read', resource: 'users' },
+      'employees': { action: 'read', resource: 'employees' },
+      'convertPlayers': { action: 'update', resource: 'users' },
+      'checkPhone': { action: 'read', resource: 'users' },
+      'notifications': { action: 'read', resource: 'communications' },
+      'careers': { action: 'read', resource: 'content' },
+      'reports': { action: 'read', resource: 'reports' },
+      'clarity': { action: 'read', resource: 'reports' },
+      'payments': { action: 'read', resource: 'financials' },
+      'subscriptions': { action: 'read', resource: 'subscriptions' },
+      'support': { action: 'read', resource: 'support' },
+      'system': { action: 'manage', resource: 'settings' },
+      'emailMigration': { action: 'manage', resource: 'employees' },
+      'dreamAcademyVideos': { action: 'read', resource: 'content' },
+      'dreamAcademyCategories': { action: 'read', resource: 'content' },
+      'dreamAcademySettings': { action: 'manage', resource: 'settings' },
+      'dreamAcademy': { action: 'read', resource: 'content' },
+      'referrals': { action: 'read', resource: 'users' },
+    };
+
+    const requirement = menuItemMapping[menuItemId];
+    if (!requirement) return true;
+
+    return can(requirement.action, requirement.resource);
+  };
+
+  // Filter group items based on permissions
+  const filterAdminItems = (items: MenuItem[], can: any): MenuItem[] => {
+    return items.filter(item => hasPermissionForMenuItem(item.id, can));
   };
 
   // الحصول على مجموعات القائمة حسب نوع الحساب
@@ -893,13 +931,23 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       ]
     };
 
-    return [
+    const groups = [
       baseGroup,
       ...(accountSpecificGroups[accountType as keyof typeof accountSpecificGroups] || accountSpecificGroups.player)
     ];
+
+    // فلترة عناصر الأدمن بناءً على الصلاحيات
+    if (accountType === 'admin') {
+      return groups.map(group => ({
+        ...group,
+        items: filterAdminItems(group.items, can)
+      })).filter(group => group.items.length > 0);
+    }
+
+    return groups;
   };
 
-  const menuGroups = getMenuGroups();
+  const menuGroups = useMemo(() => getMenuGroups(), [accountType, currentAbilityRole]);
 
   // الحصول على صورة المستخدم
   const getUserAvatar = () => {
@@ -1135,8 +1183,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
                                     variant="ghost"
                                     onClick={() => handleNavigation(item.href, item.id)}
                                     className={`w-full justify-start gap-3 h-10 px-3 transition-all duration-500 ease-out ${isActive
-                                        ? 'bg-white text-gray-900 shadow-lg'
-                                        : 'text-white hover:bg-white/20'
+                                      ? 'bg-white text-gray-900 shadow-lg'
+                                      : 'text-white hover:bg-white/20'
                                       }`}
                                   >
                                     <div className={`p-1.5 rounded-lg transition-colors ${isActive ? item.bgColor : 'bg-white/10'

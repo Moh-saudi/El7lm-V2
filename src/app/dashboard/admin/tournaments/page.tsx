@@ -21,6 +21,8 @@ import { TournamentForm } from './components/TournamentForm';
 import { RegistrationsModal } from './components/RegistrationsModal';
 import { ProfessionalRegistrationsModal } from './components/ProfessionalRegistrationsModal';
 import { ShareTournamentModal } from './components/ShareTournamentModal';
+import { usePermissions } from '../employees-v2/_hooks/usePermissions';
+import AccessDenied from '@/components/admin/AccessDenied';
 
 const AdminTournamentsPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -178,290 +180,293 @@ const AdminTournamentsPage: React.FC = () => {
     }
   ];
 
+  const { can } = usePermissions();
+
+  if (!can('read', 'tournaments')) {
+    return <AccessDenied resource="إدارة البطولات" />;
+  }
+
   if (loading && tournaments.length === 0) {
     return (
-      <AccountTypeProtection allowedTypes={['admin']}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">جاري تحميل البطولات...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري تحميل البطولات...</p>
         </div>
-      </AccountTypeProtection>
+      </div>
     );
   }
 
   return (
-    <AccountTypeProtection allowedTypes={['admin']}>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-yellow-100 rounded-xl">
-                  <Trophy className="h-8 w-8 text-yellow-600" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">إدارة البطولات</h1>
-                  <p className="text-gray-600 mt-1">إدارة شاملة لجميع البطولات والتسجيلات</p>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-yellow-100 rounded-xl">
+                <Trophy className="h-8 w-8 text-yellow-600" />
               </div>
-              <Button
-                onClick={() => {
-                  setEditingTournament(null);
-                  setIsFormOpen(true);
-                }}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 h-auto"
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">إدارة البطولات</h1>
+                <p className="text-gray-600 mt-1">إدارة شاملة لجميع البطولات والتسجيلات</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                setEditingTournament(null);
+                setIsFormOpen(true);
+              }}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 h-auto"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              إضافة بطولة جديدة
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="ابحث عن بطولة بالاسم أو الموقع..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-10 h-12 text-base"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <Plus className="h-5 w-5 mr-2" />
-                إضافة بطولة جديدة
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">الفلاتر:</span>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex gap-2">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+                className={statusFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                الكل
+              </Button>
+              <Button
+                variant={statusFilter === 'active' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('active')}
+                className={statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}
+              >
+                نشطة
+              </Button>
+              <Button
+                variant={statusFilter === 'inactive' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('inactive')}
+                className={statusFilter === 'inactive' ? 'bg-gray-600 hover:bg-gray-700' : ''}
+              >
+                غير نشطة
               </Button>
             </div>
+
+            <div className="h-6 w-px bg-gray-300"></div>
+
+            {/* Type Filter */}
+            <div className="flex gap-2">
+              <Button
+                variant={typeFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTypeFilter('all')}
+                className={typeFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                الكل
+              </Button>
+              <Button
+                variant={typeFilter === 'paid' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTypeFilter('paid')}
+                className={typeFilter === 'paid' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                مدفوعة
+              </Button>
+              <Button
+                variant={typeFilter === 'free' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTypeFilter('free')}
+                className={typeFilter === 'free' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+              >
+                مجانية
+              </Button>
+            </div>
+
+            <div className="h-6 w-px bg-gray-300"></div>
+
+            {/* Sort */}
+            <div className="flex items-center gap-2">
+              <SortAsc className="h-4 w-4 text-gray-500" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="newest">الأحدث</option>
+                <option value="oldest">الأقدم</option>
+                <option value="participants">الأكثر مشاركين</option>
+              </select>
+            </div>
+
+            {/* Results Count */}
+            <div className="mr-auto">
+              <Badge variant="secondary" className="text-sm">
+                {filteredTournaments.length} من {tournaments.length} بطولة
+              </Badge>
+            </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Search and Filters */}
-          <div className="mb-6 space-y-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="ابحث عن بطولة بالاسم أو الموقع..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10 h-12 text-base"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Filters Row */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">الفلاتر:</span>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex gap-2">
-                <Button
-                  variant={statusFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('all')}
-                  className={statusFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  الكل
-                </Button>
-                <Button
-                  variant={statusFilter === 'active' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('active')}
-                  className={statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}
-                >
-                  نشطة
-                </Button>
-                <Button
-                  variant={statusFilter === 'inactive' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('inactive')}
-                  className={statusFilter === 'inactive' ? 'bg-gray-600 hover:bg-gray-700' : ''}
-                >
-                  غير نشطة
-                </Button>
-              </div>
-
-              <div className="h-6 w-px bg-gray-300"></div>
-
-              {/* Type Filter */}
-              <div className="flex gap-2">
-                <Button
-                  variant={typeFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTypeFilter('all')}
-                  className={typeFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  الكل
-                </Button>
-                <Button
-                  variant={typeFilter === 'paid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTypeFilter('paid')}
-                  className={typeFilter === 'paid' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-                >
-                  مدفوعة
-                </Button>
-                <Button
-                  variant={typeFilter === 'free' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTypeFilter('free')}
-                  className={typeFilter === 'free' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                >
-                  مجانية
-                </Button>
-              </div>
-
-              <div className="h-6 w-px bg-gray-300"></div>
-
-              {/* Sort */}
-              <div className="flex items-center gap-2">
-                <SortAsc className="h-4 w-4 text-gray-500" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="newest">الأحدث</option>
-                  <option value="oldest">الأقدم</option>
-                  <option value="participants">الأكثر مشاركين</option>
-                </select>
-              </div>
-
-              {/* Results Count */}
-              <div className="mr-auto">
-                <Badge variant="secondary" className="text-sm">
-                  {filteredTournaments.length} من {tournaments.length} بطولة
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
-              <Card key={index} className="border border-gray-200 shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">{stat.title}</p>
-                      <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                    </div>
-                    <div className={`p-3 ${stat.bgColor} rounded-lg`}>
-                      <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                    </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat, index) => (
+            <Card key={index} className="border border-gray-200 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">{stat.title}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Tournaments Grid */}
-          {filteredTournaments.length === 0 ? (
-            <Card className="border border-gray-200 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {tournaments.length === 0 ? (
-                    <Trophy className="h-10 w-10 text-yellow-600" />
-                  ) : (
-                    <Search className="h-10 w-10 text-yellow-600" />
-                  )}
+                  <div className={`p-3 ${stat.bgColor} rounded-lg`}>
+                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {tournaments.length === 0 ? 'لا توجد بطولات' : 'لا توجد نتائج مطابقة'}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {tournaments.length === 0
-                    ? 'ابدأ بإنشاء بطولة جديدة'
-                    : 'لم يتم العثور على أي بطولات تطابق معايير البحث الحالية'}
-                </p>
-
-                {tournaments.length === 0 ? (
-                  <Button
-                    onClick={() => {
-                      setEditingTournament(null);
-                      setIsFormOpen(true);
-                    }}
-                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    إضافة بطولة جديدة
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setStatusFilter('all');
-                      setTypeFilter('all');
-                    }}
-                    variant="outline"
-                    className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
-                  >
-                    <X className="h-5 w-5 mr-2" />
-                    إلغاء الفلاتر والبحث
-                  </Button>
-                )}
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTournaments.map((tournament) => (
-                <TournamentCard
-                  key={tournament.id}
-                  tournament={tournament}
-                  onEdit={(t) => {
-                    setEditingTournament(t);
-                    setIsFormOpen(true);
-                  }}
-                  onDelete={handleDelete}
-                  onViewRegistrations={setViewingRegistrations}
-                  onViewProfessionalRegistrations={setShowProfessionalRegistrations}
-                  onManagePayments={setSelectedTournamentForPayments}
-                  onStatusChange={handleStatusChange}
-                  onShare={setViewingShare}
-                />
-              ))}
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* Modals */}
-        <TournamentForm
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          initialData={editingTournament}
-          onSuccess={fetchTournaments}
-        />
+        {/* Tournaments Grid */}
+        {filteredTournaments.length === 0 ? (
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="p-12 text-center">
+              <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                {tournaments.length === 0 ? (
+                  <Trophy className="h-10 w-10 text-yellow-600" />
+                ) : (
+                  <Search className="h-10 w-10 text-yellow-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {tournaments.length === 0 ? 'لا توجد بطولات' : 'لا توجد نتائج مطابقة'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {tournaments.length === 0
+                  ? 'ابدأ بإنشاء بطولة جديدة'
+                  : 'لم يتم العثور على أي بطولات تطابق معايير البحث الحالية'}
+              </p>
 
-        <RegistrationsModal
-          isOpen={!!viewingRegistrations}
-          onClose={() => setViewingRegistrations(null)}
-          tournament={viewingRegistrations}
-        />
-
-        <ProfessionalRegistrationsModal
-          isOpen={!!showProfessionalRegistrations}
-          onClose={() => setShowProfessionalRegistrations(null)}
-          tournament={showProfessionalRegistrations}
-        />
-
-        <ShareTournamentModal
-          isOpen={!!viewingShare}
-          onClose={() => setViewingShare(null)}
-          tournament={viewingShare}
-        />
-
-        {selectedTournamentForPayments && (
-          <PaymentManagementModal
-            isOpen={!!selectedTournamentForPayments}
-            onClose={() => setSelectedTournamentForPayments(null)}
-            tournament={{
-              id: selectedTournamentForPayments.id || '',
-              name: selectedTournamentForPayments.name,
-              entryFee: selectedTournamentForPayments.entryFee || 0,
-              paymentDeadline: selectedTournamentForPayments.paymentDeadline
-            }}
-          />
+              {tournaments.length === 0 ? (
+                <Button
+                  onClick={() => {
+                    setEditingTournament(null);
+                    setIsFormOpen(true);
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  إضافة بطولة جديدة
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                    setTypeFilter('all');
+                  }}
+                  variant="outline"
+                  className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
+                >
+                  <X className="h-5 w-5 mr-2" />
+                  إلغاء الفلاتر والبحث
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTournaments.map((tournament) => (
+              <TournamentCard
+                key={tournament.id}
+                tournament={tournament}
+                onEdit={(t) => {
+                  setEditingTournament(t);
+                  setIsFormOpen(true);
+                }}
+                onDelete={handleDelete}
+                onViewRegistrations={setViewingRegistrations}
+                onViewProfessionalRegistrations={setShowProfessionalRegistrations}
+                onManagePayments={setSelectedTournamentForPayments}
+                onStatusChange={handleStatusChange}
+                onShare={setViewingShare}
+              />
+            ))}
+          </div>
         )}
       </div>
-    </AccountTypeProtection>
+
+      {/* Modals */}
+      <TournamentForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        initialData={editingTournament}
+        onSuccess={fetchTournaments}
+      />
+
+      <RegistrationsModal
+        isOpen={!!viewingRegistrations}
+        onClose={() => setViewingRegistrations(null)}
+        tournament={viewingRegistrations}
+      />
+
+      <ProfessionalRegistrationsModal
+        isOpen={!!showProfessionalRegistrations}
+        onClose={() => setShowProfessionalRegistrations(null)}
+        tournament={showProfessionalRegistrations}
+      />
+
+      <ShareTournamentModal
+        isOpen={!!viewingShare}
+        onClose={() => setViewingShare(null)}
+        tournament={viewingShare}
+      />
+
+      {selectedTournamentForPayments && (
+        <PaymentManagementModal
+          isOpen={!!selectedTournamentForPayments}
+          onClose={() => setSelectedTournamentForPayments(null)}
+          tournament={{
+            id: selectedTournamentForPayments.id || '',
+            name: selectedTournamentForPayments.name,
+            entryFee: selectedTournamentForPayments.entryFee || 0,
+            paymentDeadline: selectedTournamentForPayments.paymentDeadline
+          }}
+        />
+      )}
+    </div>
+       </div >
   );
 };
 

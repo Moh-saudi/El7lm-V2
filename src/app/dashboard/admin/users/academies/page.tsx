@@ -1,7 +1,6 @@
 'use client';
 
-import AdminFooter from '@/components/layout/AdminFooter';
-import AdminHeader from '@/components/layout/AdminHeader';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -730,22 +729,18 @@ export default function AcademiesManagement() {
   if (loading) {
     return (
       <div className="bg-gray-50">
-        <AdminHeader />
         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
             <p className="mt-4 text-gray-600">جاري تحميل بيانات الأكاديميات...</p>
           </div>
         </div>
-        <AdminFooter />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-gray-50">
-      <AdminHeader />
-
+    <div className="flex flex-col bg-gray-50 min-h-full">
       <main className="flex-1 container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -1042,7 +1037,7 @@ export default function AcademiesManagement() {
         </div>
       </main>
 
-      <AdminFooter />
+
 
       {/* Add Dialogs */}
       <ProfileDialog />

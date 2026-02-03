@@ -19,6 +19,7 @@ import {
   where
 } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
+import { DEFAULT_ROLES } from "@/lib/permissions/types";
 import {
   Award,
   BarChart3,
@@ -54,14 +55,23 @@ import {
   UserPlus,
   Users,
   Video,
-  X
+  Zap,
+  Globe,
+  Heart,
+  Key,
+  X,
+  Megaphone
 } from 'lucide-react';
+
 import { usePathname, useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useMediaQuery } from 'react-responsive';
 import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
 import UnifiedMessagesButton from '@/components/shared/UnifiedMessagesButton';
 import { cn } from '@/lib/utils';
+import { useAbility } from '@/hooks/useAbility';
+import { PermissionAction, PermissionResource } from '@/lib/permissions/types';
+import { ADMIN_DASHBOARD_MENU } from '@/config/menu-config';
 
 
 // Layout Context
@@ -195,9 +205,12 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     isTablet,
     isDesktop,
     isClient,
-    toggleSidebar,
-    closeSidebar
+    closeSidebar,
+    openSidebar,
+    toggleSidebar
   } = useLayout();
+
+  const { can, userRole: currentAbilityRole } = useAbility();
 
   const [activeItem, setActiveItem] = useState('dashboard');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['main']));
@@ -470,158 +483,317 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   };
 
   const getMenuGroups = () => {
-    // 1. Main Group - for everyone
-    const mainGroup = {
-      id: 'main',
-      title: 'لوحة التحكم',
-      icon: Home,
-      items: [
-        { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/${accountType}`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/${accountType}/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
-      ]
-    };
-
-    // 2. User Management and Identity - Admin ONLY
-    const identityGroup = accountType === 'admin' ? {
-      id: 'identity-mgmt',
-      title: 'إدارة الهوية',
-      icon: Users,
-      items: [
-        { id: 'admin-users-management', label: 'إدارة المستخدمين', icon: Users, href: `/dashboard/admin/users`, color: 'text-green-600', bgColor: 'bg-green-50' },
-        { id: 'admin-employees', label: 'فريق العمل والصلاحيات', icon: UserCheck, href: `/dashboard/admin/employees`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
-        { id: 'admin-customer-management', label: 'إدارة العملاء', icon: UserPlus, href: `/dashboard/admin/customer-management`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-        { id: 'admin-check-phone', label: 'فحص الهواتف', icon: Search, href: `/dashboard/admin/users/check-phone`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'admin-referrals-mgmt', label: 'سفراء الحلم', icon: Award, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-      ]
-    } : null;
-
-    // 3. Financial Management - Context-aware per account type
-    const financialGroup = {
-      id: 'finance-mgmt',
-      title: 'المالية والاشتراكات',
-      icon: DollarSign,
-      items: [
-        ...(accountType === 'admin' ? [
-          { id: 'admin-payments', label: 'السجل المالي', icon: CreditCard, href: `/dashboard/admin/payments`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-          { id: 'admin-geidea-transactions', label: 'حسابات جيديا', icon: CreditCard, href: `/dashboard/admin/geidea-transactions`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-          { id: 'admin-skipcash', label: 'إدارة SkipCash', icon: CreditCard, href: `/dashboard/admin/skipcash`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-          { id: 'admin-pricing', label: 'الأسعار وبوابات الدفع', icon: DollarSign, href: `/dashboard/admin/pricing-management`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-          { id: 'admin-invoices', label: 'الفواتير والحسابات', icon: FileText, href: `/dashboard/admin/invoices`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        ] : [
-          { id: 'subscription-status', label: 'حالة اشتراكي', icon: Star, href: `/dashboard/shared/subscription-status`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-          { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/${accountType}/billing`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-          { id: 'shared-bulk-payment', label: 'خدمة الدفع', icon: CreditCard, href: `/dashboard/shared/bulk-payment`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        ])
-      ]
-    };
-
-    // 4. Operations and Technology - Admin ONLY
-    const operationsGroup = accountType === 'admin' ? {
-      id: 'ops-tech',
-      title: 'العمليات والنظام',
-      icon: Settings,
-      items: [
-        { id: 'admin-system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-red-600', bgColor: 'bg-red-50' },
-        { id: 'admin-email-center', label: 'مركز البريد الإلكتروني', icon: Mail, href: `/dashboard/admin/email-center`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'admin-notification-center', label: 'إرسال التنبيهات', icon: Bell, href: `/dashboard/admin/notification-center`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        { id: 'admin-send-notifications', label: 'مركز الرسائل (نماذج)', icon: Send, href: `/dashboard/admin/send-notifications`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-        { id: 'admin-shared-messages', label: 'المحادثات المباشرة', icon: MessageSquare, href: `/dashboard/shared/messages`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-        { id: 'admin-notifications', label: 'سجل الإشعارات', icon: Clock, href: `/dashboard/admin/notifications`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'admin-chataman', label: 'بوابة الرسائل (ChatAman)', icon: MessageSquare, href: `/dashboard/admin/chataman`, color: 'text-green-600', bgColor: 'bg-green-50' },
-        { id: 'admin-support', label: 'مركز الدعم والبلاغات', icon: Headphones, href: `/dashboard/admin/support`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-        { id: 'admin-clarity', label: 'تحليلات Clarity', icon: BarChart3, href: `/dashboard/admin/clarity`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'admin-reports', label: 'تقارير الأداء', icon: FileText, href: `/dashboard/admin/reports`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'admin-beon-v3', label: 'إدارة BeOn', icon: MessageSquare, href: `/dashboard/admin/beon-v3`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-      ]
-    } : null;
-
-    // 5. Content and Marketing - Admin and Marketer ONLY
-    const marketingGroup = (accountType === 'admin' || accountType === 'marketer') ? {
-      id: 'marketing-mgmt',
-      title: 'التسويق والإعلام',
-      icon: TrendingUp,
-      items: [
-        { id: 'admin-content-mgmt', label: 'إدارة المحتوى', icon: LayoutTemplate, href: `/dashboard/admin/content`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-        { id: 'admin-ads', label: 'إدارة الإعلانات', icon: TrendingUp, href: `/dashboard/admin/ads`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-        { id: 'admin-videos', label: 'مكتبة الميديا', icon: Video, href: `/dashboard/admin/media`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-        { id: 'admin-tournaments', label: 'تنظيم البطولات', icon: Award, href: `/dashboard/admin/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-        { id: 'admin-careers', label: 'طلبات التوظيف', icon: Briefcase, href: `/dashboard/admin/careers`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-      ]
-    } : null;
-
-    // 6. Sports Career - For players and team managers
-    const sportsGroup = (['player', 'club', 'academy', 'trainer', 'agent'].includes(accountType)) ? {
-      id: 'sports-mgmt',
-      title: accountType === 'player' ? 'مسيرتي الرياضية' : 'إدارة الفريق',
-      icon: Trophy,
-      items: [
-        ...(accountType === 'player' ? [
-          { id: 'player-videos', label: 'فيديوهاتي', icon: Video, href: `/dashboard/player/videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-          { id: 'player-stats', label: 'إحصائياتي', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-green-600', bgColor: 'bg-green-50' },
-          { id: 'player-reports', label: 'تقارير الكشافين', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-          { id: 'player-referrals', label: 'سفراء الحلم', icon: Users, href: `/dashboard/player/referrals`, color: 'text-teal-600', bgColor: 'bg-teal-50' },
-        ] : [
-          { id: 'team-players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-green-600', bgColor: 'bg-green-50' },
-          { id: 'player-videos-mgmt', label: 'بنك فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-          { id: 'referrals-mgmt', label: 'سفراء الحلم', icon: FileText, href: `/dashboard/${accountType}/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
-        ])
-      ]
-    } : null;
-
-    // 7. Opportunities and Discovery - Available for all
-    const discoveryGroup = {
-      id: 'discovery-mgmt',
-      title: 'اكتشاف الفرص',
-      icon: Search,
-      items: [
-        ...(accountType === 'player' || accountType === 'admin' ? [
-          {
-            id: 'search-opportunities',
-            label: 'البحث عن فرص',
-            icon: Search,
-            href: `/dashboard/${accountType === 'admin' ? 'player' : accountType}/search`,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-          }
-        ] : []),
-        { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/${['admin', 'marketer', 'parent'].includes(accountType) ? 'player' : accountType}/search-players`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-        { id: 'shared-videos', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/player/shared-videos`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        { id: 'tournaments-unified', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-white', bgColor: 'bg-gradient-to-r from-yellow-500 to-orange-500', isHighlighted: true },
-      ]
-    };
-
-    // 8. Education Platform - Dream Academy
-    const dreamAcademyGroup = {
-      id: 'dream-academy-mgmt',
-      title: 'أكاديمية الحلم',
-      icon: GraduationCap,
-      items: [
-        { id: 'dream-academy-home', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
-        ...(accountType === 'admin' ? [{ id: 'admin-dream-academy-mgmt', label: 'إدارة الأكاديمية', icon: Settings, href: `/dashboard/admin/dream-academy`, color: 'text-cyan-600', bgColor: 'bg-cyan-50' }] : [])
-      ]
-    };
-
-    const allGroups = [
-      mainGroup,
-      identityGroup,
-      sportsGroup,
-      financialGroup,
-      discoveryGroup,
-      dreamAcademyGroup,
-      marketingGroup,
-      operationsGroup,
-    ].filter(Boolean) as any[];
-
-    if (accountType === 'admin' && getEmployeePermissions) {
-      return allGroups.map(group => ({
-        ...group,
-        items: filterGroupItems(group.items, getEmployeePermissions)
-      })).filter(group => group.items.length > 0);
+    // --- 1. Player Platform (Exact User Request) ---
+    if (accountType === 'player') {
+      return [
+        // Group 1: Control Panel
+        {
+          id: 'main',
+          title: 'لوحة التحكم',
+          icon: Home,
+          items: [
+            { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/player`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'profile', label: 'الملف الشخصي', icon: User, href: `/dashboard/player/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'career', label: 'مسيرتي الرياضية', icon: Trophy, href: `/dashboard/player/career`, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'videos', label: 'فيديوهاتي', icon: Video, href: `/dashboard/player/videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+            { id: 'stats', label: 'إحصائياتي', icon: BarChart3, href: `/dashboard/player/stats`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+            { id: 'reports', label: 'تقارير الكشافين', icon: FileText, href: `/dashboard/player/reports`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+            { id: 'referrals', label: 'سفراء الحلم', icon: UserPlus, href: `/dashboard/player/referrals`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          ]
+        },
+        // Group 2: Finance & Subscriptions
+        {
+          id: 'finance',
+          title: 'المالية والاشتراكات',
+          icon: CreditCard,
+          items: [
+            { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/player/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+            { id: 'payment-service', label: 'خدمة الدفع', icon: DollarSign, href: `/dashboard/player/bulk-payment`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          ]
+        },
+        // Group 3: Discovery
+        {
+          id: 'discovery',
+          title: 'اكتشاف الفرص',
+          icon: Search,
+          items: [
+            { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'search-players', label: 'البحث عن لاعبين', icon: Users, href: `/dashboard/player/search-players`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+            { id: 'player-cinema', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/player/player-videos`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+            { id: 'tournaments', label: 'البطولات الحالية', icon: Trophy, href: `/dashboard/player/tournaments`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          ]
+        },
+        // Group 4: Academy (Renamed to Dream School)
+        {
+          id: 'academy',
+          title: 'مدرسة الحلم',
+          icon: GraduationCap,
+          items: [
+            { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        }
+      ];
     }
 
-    return allGroups;
-  };
+    // --- 2. Club Platform (Based on Actual File Structure) ---
+    if (accountType === 'club') {
+      return [
+        // Group 1: Main
+        {
+          id: 'main',
+          title: 'لوحة التحكم',
+          icon: Home,
+          items: [
+            { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/club`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'profile', label: 'الملف الشخصي', icon: Building, href: `/dashboard/club/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          ]
+        },
+        // Group 2: Team Management
+        {
+          id: 'team-mgmt',
+          title: 'إدارة الفريق',
+          icon: Users,
+          items: [
+            { id: 'players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/club/players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-evaluation', label: 'تقييم اللاعبين', icon: BarChart3, href: `/dashboard/club/player-evaluation`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+            { id: 'contracts', label: 'العقود', icon: FileText, href: `/dashboard/club/contracts`, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'negotiations', label: 'المفاوضات', icon: MessageSquare, href: `/dashboard/club/negotiations`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/club/player-videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+          ]
+        },
+        // Group 3: Analysis & Marketing
+        {
+          id: 'analysis',
+          title: 'التحليل والتسويق',
+          icon: TrendingUp,
+          items: [
+            { id: 'ai-analysis', label: 'تحليل الذكاء الاصطناعي', icon: Zap, href: `/dashboard/club/ai-analysis`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+            { id: 'market-values', label: 'القيم السوقية', icon: TrendingUp, href: `/dashboard/club/market-values`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+            { id: 'marketing', label: 'التسويق', icon: Megaphone, href: `/dashboard/club/marketing`, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+          ]
+        },
+        // Group 4: Dream School
+        {
+          id: 'school',
+          title: 'مدرسة الحلم',
+          icon: GraduationCap,
+          items: [
+            { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        },
+        // Group 5: Finance
+        {
+          id: 'finance',
+          title: 'المالية والاشتراكات',
+          icon: CreditCard,
+          items: [
+            { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/club/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+            { id: 'bulk-payment', label: 'خدمة الدفع', icon: DollarSign, href: `/dashboard/club/bulk-payment`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'referrals', label: 'سفراء الحلم', icon: UserPlus, href: `/dashboard/club/referrals`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          ]
+        },
+        // Group 5: Discovery
+        {
+          id: 'discovery',
+          title: 'اكتشاف الفرص',
+          icon: Search,
+          items: [
+            { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'search-players', label: 'البحث عن لاعبين', icon: Search, href: `/dashboard/club/search-players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-cinema', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/club/player-videos`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+            { id: 'tournaments', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          ]
+        }
+      ];
+    }
 
+    // --- 3. Academy Platform (Exact User Request) ---
+    if (accountType === 'academy') {
+      return [
+        // Group 1: Control Panel
+        {
+          id: 'main',
+          title: 'لوحة التحكم',
+          icon: Home,
+          items: [
+            { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/academy`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'profile', label: 'الملف الشخصي', icon: GraduationCap, href: `/dashboard/academy/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          ]
+        },
+        // Group 2: Academy Management
+        {
+          id: 'management',
+          title: 'إدارة الأكاديمية',
+          icon: Users,
+          items: [
+            { id: 'players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/academy/players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/academy/player-videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+          ]
+        },
+        // Group 3: Dream School
+        {
+          id: 'school',
+          title: 'مدرسة الحلم',
+          icon: GraduationCap,
+          items: [
+            { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        },
+        // Group 4: Finance & Subscriptions
+        {
+          id: 'finance',
+          title: 'المالية والاشتراكات',
+          icon: CreditCard,
+          items: [
+            { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/academy/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+            { id: 'bulk-payment', label: 'خدمة الدفع', icon: DollarSign, href: `/dashboard/academy/bulk-payment`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'referrals', label: 'سفراء الحلم', icon: UserPlus, href: `/dashboard/academy/referrals`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          ]
+        },
+        // Group 4: Discovery
+        {
+          id: 'discovery',
+          title: 'اكتشاف الفرص',
+          icon: Search,
+          items: [
+            { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'search-players', label: 'البحث عن لاعبين', icon: Search, href: `/dashboard/academy/search-players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-cinema', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/academy/player-videos`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+            { id: 'tournaments', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          ]
+        }
+      ];
+    }
+
+    // --- 4. Agent & Trainer (Unified Structure) ---
+    if (accountType === 'agent' || accountType === 'trainer') {
+      const typeLabel = accountType === 'agent' ? 'الوكيل' : 'المدرب';
+      const typeIcon = accountType === 'agent' ? Briefcase : Target;
+
+      return [
+        {
+          id: 'main',
+          title: 'لوحة التحكم',
+          icon: Home,
+          items: [
+            { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/${accountType}`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'profile', label: 'الملف الشخصي', icon: typeIcon, href: `/dashboard/${accountType}/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          ]
+        },
+        {
+          id: 'management',
+          title: `إدارة ${typeLabel}`,
+          icon: Users,
+          items: [
+            { id: 'players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/${accountType}/players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos`, color: 'text-red-600', bgColor: 'bg-red-50' },
+          ]
+        },
+        {
+          id: 'school',
+          title: 'مدرسة الحلم',
+          icon: GraduationCap,
+          items: [
+            { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        },
+        {
+          id: 'finance',
+          title: 'المالية والاشتراكات',
+          icon: CreditCard,
+          items: [
+            { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/${accountType}/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+            { id: 'bulk-payment', label: 'خدمة الدفع', icon: DollarSign, href: `/dashboard/${accountType}/bulk-payment`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'referrals', label: 'سفراء الحلم', icon: UserPlus, href: `/dashboard/${accountType}/referrals`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          ]
+        },
+        {
+          id: 'discovery',
+          title: 'اكتشاف الفرص',
+          icon: Search,
+          items: [
+            { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'search-players', label: 'البحث عن لاعبين', icon: Search, href: `/dashboard/${accountType}/search-players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-cinema', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/${accountType}/player-videos`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+            { id: 'tournaments', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          ]
+        }
+      ];
+    }
+
+    // --- 5. Marketer Platform ---
+    if (accountType === 'marketer') {
+      return [
+        {
+          id: 'main',
+          title: 'لوحة التحكم',
+          icon: Home,
+          items: [
+            { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/marketer`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'profile', label: 'الملف الشخصي', icon: Briefcase, href: `/dashboard/marketer/profile`, color: 'text-green-600', bgColor: 'bg-green-50' },
+          ]
+        },
+        {
+          id: 'school',
+          title: 'مدرسة الحلم',
+          icon: GraduationCap,
+          items: [
+            { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        },
+        {
+          id: 'management',
+          title: 'إدارة التسويق',
+          icon: Users,
+          items: [
+            { id: 'players', label: 'إدارة اللاعبين', icon: Users, href: `/dashboard/marketer/players`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'contracts', label: 'العقود', icon: FileText, href: `/dashboard/marketer/contracts`, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'ai-analysis', label: 'تحليل الذكاء الاصطناعي', icon: Zap, href: `/dashboard/marketer/ai-analysis`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+          ]
+        },
+        {
+          id: 'finance',
+          title: 'المالية والاشتراكات',
+          icon: CreditCard,
+          items: [
+            { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+            { id: 'billing', label: 'فواتيري', icon: FileText, href: `/dashboard/marketer/billing`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+            { id: 'payment', label: 'خدمة الدفع', icon: DollarSign, href: `/dashboard/marketer/payment`, color: 'text-green-600', bgColor: 'bg-green-50' },
+            { id: 'referrals', label: 'سفراء الحلم', icon: UserPlus, href: `/dashboard/marketer/referrals`, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+          ]
+        },
+        {
+          id: 'discovery',
+          title: 'اكتشاف الفرص',
+          icon: Search,
+          items: [
+            { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'search-players', label: 'البحث عن لاعبين', icon: Search, href: `/dashboard/marketer/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+            { id: 'player-cinema', label: 'سينما اللاعبين', icon: Play, href: `/dashboard/marketer/videos`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+            { id: 'tournaments', label: 'البطولات الحالية', icon: Trophy, href: `/tournaments/unified-registration`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+          ]
+        }
+      ];
+    }
+
+    // --- 6. Admin Platform (Config-Driven) ---
+    if (accountType === 'admin') {
+      if (getEmployeePermissions) {
+        return ADMIN_DASHBOARD_MENU.map(group => ({
+          ...group,
+          items: filterGroupItems(group.items, getEmployeePermissions)
+        })).filter(group => group.items.length > 0);
+      }
+      return ADMIN_DASHBOARD_MENU;
+    }
+
+    // Default Fallback
+    return [];
+  };
 
   const menuGroups = useMemo(() => getMenuGroups(), [accountType, userData, getEmployeePermissions]);
   const showText = useMemo(() => shouldShowText(), [isMobile, isTablet, isSidebarCollapsed]);
@@ -863,10 +1035,17 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
                     className="flex-1 min-w-0"
                   >
                     <h3 className="text-sm font-semibold text-white truncate">{getUserDisplayName()}</h3>
-                    <div className="flex gap-1 items-center">
-                      <Badge variant="secondary" className={`${accountInfo.bgColor} ${accountInfo.textColor} border-0 text-xs px-1.5 py-0.5`}>
-                        {accountInfo.emoji} {accountInfo.subtitle}
-                      </Badge>
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      <div className="flex gap-1 items-center">
+                        <Badge variant="secondary" className={`${accountInfo.bgColor} ${accountInfo.textColor} border-0 text-xs px-1.5 py-0.5`}>
+                          {(!userData?.isEmployee && !userData?.employeeId && !userData?.roleId && !userData?.employeeRole && !userData?.role) ? '👑' : '👤'} {userData?.roleName || userData?.jobTitle || (userData?.roleId && DEFAULT_ROLES.find(r => r.id === userData.roleId)?.name) || userData?.role || accountInfo.subtitle}
+                        </Badge>
+                      </div>
+                      {userData?.department && (
+                        <div className="text-[10px] text-white/70 px-1 truncate max-w-[150px]">
+                          {userData.department}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

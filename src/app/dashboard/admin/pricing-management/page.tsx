@@ -38,7 +38,9 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { initializeRealPricingSystem } from '@/lib/services/init-real-pricing';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { db } from '@/lib/firebase/config';
+import { useAbility } from '@/hooks/useAbility';
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import AccessDenied from '@/components/admin/AccessDenied';
 
 // ==================== INTERFACES ====================
 
@@ -134,7 +136,9 @@ interface OverviewStats {
 // ==================== MAIN COMPONENT ====================
 
 export default function PricingAdminPage() {
+    const { can } = useAbility();
     const { user } = useAuth();
+
     const [activeTab, setActiveTab] = useState<'plans' | 'custom' | 'accountTypes' | 'guidelines' | 'offers' | 'partners' | 'payments'>('plans');
     const [stats, setStats] = useState<OverviewStats>({
         activePlans: 3,
@@ -156,6 +160,10 @@ export default function PricingAdminPage() {
     useEffect(() => {
         loadData();
     }, []);
+
+    if (!can('read', 'pricing')) {
+        return <AccessDenied resource="إدارة الأسعار" />;
+    }
 
     const handleApplyRecommendedPlans = async () => {
         if (!confirm('This will update Kickoff, Pro, and Dream plans. Are you sure?')) return;
@@ -260,7 +268,7 @@ export default function PricingAdminPage() {
         }
     };
 
-    const loadData = async () => {
+    async function loadData() {
         setLoading(true);
         try {
             console.log('📦 Loading plans from Firebase...');
@@ -375,13 +383,15 @@ export default function PricingAdminPage() {
                                 <Download className="w-4 h-4" />
                                 تصدير
                             </button>
-                            <button
-                                onClick={handleApplyRecommendedPlans}
-                                className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700"
-                            >
-                                <Check className="w-4 h-4" />
-                                تحديث الباقات القياسية
-                            </button>
+                            {can('update', 'pricing') && (
+                                <button
+                                    onClick={handleApplyRecommendedPlans}
+                                    className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700"
+                                >
+                                    <Check className="w-4 h-4" />
+                                    تحديث الباقات القياسية
+                                </button>
+                            )}
                             <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
                                 <BarChart3 className="w-4 h-4" />
                                 التقارير
@@ -560,6 +570,7 @@ interface BasePlansTabProps {
 }
 
 function BasePlansTab({ plans, onUpdate }: BasePlansTabProps) {
+    const { can } = useAbility();
     return (
         <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -571,10 +582,12 @@ function BasePlansTab({ plans, onUpdate }: BasePlansTabProps) {
                     <h2 className="text-xl font-bold text-gray-900">الباقات الأساسية</h2>
                     <p className="mt-1 text-sm text-gray-600">الأسعار الأساسية بالدولار الأمريكي</p>
                 </div>
-                <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
-                    <Plus className="w-4 h-4" />
-                    إضافة باقة جديدة
-                </button>
+                {can('create', 'pricing') && (
+                    <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
+                        <Plus className="w-4 h-4" />
+                        إضافة باقة جديدة
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -594,6 +607,7 @@ interface PlanCardProps {
 }
 
 function PlanCard({ plan, onUpdate }: PlanCardProps) {
+    const { can } = useAbility();
     const [showPreview, setShowPreview] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -688,26 +702,31 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                 </div>
 
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowEdit(true)}
-                        className="flex flex-1 gap-2 justify-center items-center px-4 py-2 text-blue-600 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100"
-                    >
-                        <Edit2 className="w-4 h-4" />
-                        تعديل
-                    </button>
+                    {can('update', 'pricing') && (
+                        <button
+                            onClick={() => setShowEdit(true)}
+                            className="flex flex-1 gap-2 justify-center items-center px-4 py-2 text-blue-600 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100"
+                        >
+                            <Edit2 className="w-4 h-4" />
+                            تعديل
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowPreview(true)}
-                        className="flex gap-2 justify-center items-center px-4 py-2 text-gray-600 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100"
+                        className={`flex ${can('update', 'pricing') ? '' : 'flex-1'} gap-2 justify-center items-center px-4 py-2 text-gray-600 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100`}
                     >
                         <Eye className="w-4 h-4" />
+                        {!can('update', 'pricing') && <span>عرض التفاصيل</span>}
                     </button>
-                    <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="flex gap-2 justify-center items-center px-4 py-2 text-red-600 bg-red-50 rounded-lg transition-colors hover:bg-red-100 disabled:opacity-50"
-                    >
-                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                    {can('delete', 'pricing') && (
+                        <button
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="flex gap-2 justify-center items-center px-4 py-2 text-red-600 bg-red-50 rounded-lg transition-colors hover:bg-red-100 disabled:opacity-50"
+                        >
+                            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex gap-2 justify-center items-center mt-4">

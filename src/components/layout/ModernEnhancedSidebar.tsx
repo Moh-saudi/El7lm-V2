@@ -10,6 +10,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
+import { useAbility } from '@/hooks/useAbility';
+import { PermissionAction, PermissionResource, DEFAULT_ROLES } from '@/lib/permissions/types';
 import {
   Award,
   BarChart3,
@@ -59,6 +61,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { can, userRole: currentAbilityRole } = useAbility();
   const [activeItem, setActiveItem] = useState('');
   const [clubLogo, setClubLogo] = useState<string | null>(null);
 
@@ -268,152 +271,47 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
   const accountInfo = getAccountTypeInfo();
 
   // Get menu items based on account type
-  // الصلاحيات الافتراضية لكل دور وظيفي (من employees/page.tsx)
-  const DEFAULT_PERMISSIONS: Record<EmployeeRole, RolePermissions> = {
-    support: {
-      canViewUsers: true,
-      canEditUsers: false,
-      canViewFinancials: false,
-      canManagePayments: false,
-      allowedLocations: [],
-      canViewReports: false,
-      canManageContent: false,
-      canManageEmployees: false,
-      canViewSupport: true,
-      canManageSupport: true
-    },
-    finance: {
-      canViewUsers: true,
-      canEditUsers: false,
-      canViewFinancials: true,
-      canManagePayments: true,
-      allowedLocations: [],
-      canViewReports: true,
-      canManageContent: false,
-      canManageEmployees: false,
-      canViewSupport: false,
-      canManageSupport: false
-    },
-    sales: {
-      canViewUsers: true,
-      canEditUsers: false,
-      canViewFinancials: false,
-      canManagePayments: false,
-      allowedLocations: [],
-      canViewReports: true,
-      canManageContent: false,
-      canManageEmployees: false,
-      canViewSupport: true,
-      canManageSupport: false
-    },
-    content: {
-      canViewUsers: false,
-      canEditUsers: false,
-      canViewFinancials: false,
-      canManagePayments: false,
-      allowedLocations: [],
-      canViewReports: false,
-      canManageContent: true,
-      canManageEmployees: false,
-      canViewSupport: false,
-      canManageSupport: false
-    },
-    admin: {
-      canViewUsers: true,
-      canEditUsers: true,
-      canViewFinancials: true,
-      canManagePayments: true,
-      allowedLocations: [],
-      canViewReports: true,
-      canManageContent: true,
-      canManageEmployees: true,
-      canViewSupport: true,
-      canManageSupport: true
-    },
-    supervisor: {
-      canViewUsers: true,
-      canEditUsers: true,
-      canViewFinancials: true,
-      canManagePayments: false,
-      allowedLocations: [],
-      canViewReports: true,
-      canManageContent: true,
-      canManageEmployees: false,
-      canViewSupport: true,
-      canManageSupport: true
-    }
-  };
 
-  // الحصول على صلاحيات الموظف
-  const getEmployeePermissions = useMemo((): RolePermissions | null => {
-    if (!userData || accountType !== 'admin') {
-      console.log('🔍 Sidebar - No userData or not admin accountType');
-      return null;
-    }
 
-    console.log('🔍 Sidebar - Checking userData:', {
-      employeeId: userData.employeeId,
-      employeeRole: userData.employeeRole,
-      role: userData.role,
-      accountType: userData.accountType,
-      allKeys: Object.keys(userData)
-    });
-
-    // إذا كان موظفاً (لديه employeeId أو employeeRole أو role)
-    if (userData.employeeId || userData.employeeRole || userData.role) {
-      const role = (userData.employeeRole || userData.role) as EmployeeRole;
-
-      // التحقق من أن الدور موجود في DEFAULT_PERMISSIONS
-      if (role && role in DEFAULT_PERMISSIONS) {
-        console.log('✅ Sidebar - Employee detected with valid role:', {
-          role,
-          permissions: DEFAULT_PERMISSIONS[role]
-        });
-        return DEFAULT_PERMISSIONS[role];
-      } else {
-        console.warn('⚠️ Sidebar - Employee role not found in DEFAULT_PERMISSIONS:', role);
-        return null;
-      }
-    }
-
-    // إذا كان admin حقيقي (ليس موظف)
-    console.log('✅ Sidebar - Real admin detected (not employee) - showing all items');
-    return null; // null يعني عرض كل شيء
-  }, [userData, accountType]);
-
-  // التحقق من صلاحية لعنصر القائمة
-  const hasPermissionForMenuItem = (menuItemId: string, permissions: RolePermissions | null): boolean => {
-    // إذا لم تكن صلاحيات محددة (ليس موظف)، اظهر كل شيء
-    if (!permissions) return true;
-
-    // mapping بين عناصر القائمة والصلاحيات المطلوبة
-    const menuItemPermissions: Record<string, keyof RolePermissions> = {
-      'users': 'canViewUsers',
-      'employees': 'canManageEmployees',
-      'reports': 'canViewReports',
-      'payments': 'canManagePayments',
-      'subscriptions': 'canManagePayments',
-      'support': 'canViewSupport',
-      'system': 'canManageEmployees', // يحتاج صلاحية إدارة الموظفين
-      'clarity': 'canViewReports',
-      'email-migration': 'canManageEmployees',
-      'convert-players': 'canEditUsers',
-      'whatsapp': 'canManageSupport',
-      // 'beon-v3': 'canManageEmployees', // Removed - service deprecated
-      'whatsapp-test': 'canManageSupport',
-      'email-center': 'canManageSupport',
-      'dream-academy-categories': 'canManageContent',
-      'media': 'canManageContent',
-      'dream-academy': 'canManageContent',
+  // التحقق من صلاحية لعنصر القائمة باستخدام نظام CASL الجديد
+  const hasPermissionForMenuItem = (menuItemId: string, can: any): boolean => {
+    // الخريطة بين عناصر القائمة وموارد النظام (CASL)
+    const menuItemMapping: Record<string, { action: PermissionAction, resource: PermissionResource }> = {
+      'users': { action: 'read', resource: 'users' },
+      'employees': { action: 'read', resource: 'employees' },
+      'reports': { action: 'read', resource: 'reports' },
+      'payments': { action: 'read', resource: 'financials' },
+      'subscriptions': { action: 'read', resource: 'subscriptions' },
+      'support': { action: 'read', resource: 'support' },
+      'system': { action: 'manage', resource: 'settings' },
+      'clarity': { action: 'read', resource: 'reports' },
+      'email-migration': { action: 'manage', resource: 'employees' },
+      'convert-players': { action: 'update', resource: 'users' },
+      'whatsapp': { action: 'manage', resource: 'communications' },
+      'whatsapp-test': { action: 'manage', resource: 'communications' },
+      'email-center': { action: 'read', resource: 'communications' },
+      'dream-academy-categories': { action: 'read', resource: 'content' },
+      'media': { action: 'read', resource: 'media' },
+      'dream-academy': { action: 'read', resource: 'content' },
+      'tournaments': { action: 'read', resource: 'tournaments' },
+      'pricing': { action: 'manage', resource: 'financials' },
+      'skipcash': { action: 'manage', resource: 'financials' },
+      'invoices': { action: 'read', resource: 'financials' },
+      'content': { action: 'read', resource: 'content' },
+      'referrals': { action: 'manage', resource: 'users' },
+      'messages': { action: 'read', resource: 'communications' },
+      'notifications': { action: 'read', resource: 'communications' },
     };
 
-    const requiredPermission = menuItemPermissions[menuItemId];
-    if (!requiredPermission) {
-      // العناصر التي لا تحتاج صلاحيات خاصة (مثل profile, messages) تظهر دائماً
+    const requirement = menuItemMapping[menuItemId];
+    if (!requirement) {
+      // حماية صارمة لمنصة الإدارة: إذا لم يكن العنصر معرفاً، لا يظهر للمشرفين
+      if (accountType === 'admin') return false;
+      // العناصر التي لا تحتاج صلاحيات خاصة (مثل profile) تظهر لباقي الحسابات
       return true;
     }
 
-    return permissions[requiredPermission] === true;
+    return can(requirement.action, requirement.resource);
   };
 
   const getMenuItems = () => {
@@ -528,19 +426,13 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
     const items = [...baseItems, ...(accountSpecificItems[accountType as keyof typeof accountSpecificItems] || accountSpecificItems.player)];
 
     // فلترة العناصر بناءً على صلاحيات الموظف
-    if (accountType === 'admin' && getEmployeePermissions) {
+    if (accountType === 'admin') {
       const filteredItems = items.filter(item => {
-        const hasPermission = hasPermissionForMenuItem(item.id, getEmployeePermissions);
+        const hasPermission = hasPermissionForMenuItem(item.id, can);
         if (!hasPermission) {
-          console.log('🚫 Sidebar - Filtered out menu item:', item.id, 'for role:', userData?.employeeRole || userData?.role);
+          console.log('🚫 Sidebar - Filtered out menu item:', item.id, 'for role:', currentAbilityRole);
         }
         return hasPermission;
-      });
-      console.log('✅ Sidebar - Filtered menu items:', {
-        total: items.length,
-        filtered: filteredItems.length,
-        removed: items.length - filteredItems.length,
-        employeePermissions: getEmployeePermissions
       });
       return filteredItems;
     }
@@ -548,7 +440,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
     return items;
   };
 
-  const menuItems = useMemo(() => getMenuItems(), [accountType, userData, getEmployeePermissions]);
+  const menuItems = useMemo(() => getMenuItems(), [accountType, userData]);
 
   const handleNavigation = (href: string, id: string) => {
     // Guard: prevent cross-account-type navigation
@@ -698,7 +590,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="secondary" className={`bg-gradient-to-r ${accountInfo.gradient} text-white border-0 text-xs px-2 py-1`}>
-                      {accountInfo.label}
+                      {(!userData?.isEmployee && !userData?.employeeId && !userData?.roleId && !userData?.employeeRole && !userData?.role) ? '👑' : '👤'} {userData?.roleName || userData?.jobTitle || (userData?.roleId && DEFAULT_ROLES.find((r: any) => r.id === userData.roleId)?.name) || userData?.role || accountInfo.label}
                     </Badge>
                   </div>
                 </motion.div>

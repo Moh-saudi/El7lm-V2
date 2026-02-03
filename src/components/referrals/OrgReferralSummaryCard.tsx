@@ -9,7 +9,7 @@ import { organizationReferralService } from '@/lib/organization/organization-ref
 import type { OrganizationReferral } from '@/types/organization-referral';
 import { Copy, Link2, Users, Plus } from 'lucide-react';
 
-type OrgType = 'club' | 'academy' | 'trainer' | 'agent';
+type OrgType = 'club' | 'academy' | 'trainer' | 'agent' | 'marketer';
 
 interface OrgReferralSummaryCardProps {
   accountType: OrgType;

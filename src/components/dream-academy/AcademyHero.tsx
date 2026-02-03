@@ -13,21 +13,21 @@ export default function AcademyHero() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight">
-              أكاديمية الحلم
+              مدرسة الحلم
             </h1>
             <p className="mt-2 text-white/90 text-sm sm:text-base md:text-lg">
               تعلّم اللغات والمهارات اللازمة للاحتراف الرياضي — محتوى مختار وخبراء متخصصون في كرة القدم
             </p>
           </div>
         </div>
+      </div>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
-          <div className="rounded-xl bg-white/10 backdrop-blur p-4 flex items-center gap-3">
-            <Sparkles className="w-5 h-5" />
-            <div>
-              <div className="font-semibold">محتوى حديث ومتجدد</div>
-              <div className="text-white/80">مقاطع مختارة بعناية لاحتياجات اللاعب</div>
-            </div>
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+        <div className="rounded-xl bg-white/10 backdrop-blur p-4 flex items-center gap-3">
+          <Sparkles className="w-5 h-5" />
+          <div>
+            <div className="font-semibold">محتوى حديث ومتجدد</div>
+            <div className="text-white/80">مقاطع مختارة بعناية لاحتياجات اللاعب</div>
           </div>
           <div className="rounded-xl bg-white/10 backdrop-blur p-4 flex items-center gap-3">
             <Heart className="w-5 h-5" />
@@ -45,7 +45,7 @@ export default function AcademyHero() {
           </div>
         </div>
       </div>
-    </section>
+    </section >
   );
 }
 

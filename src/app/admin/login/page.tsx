@@ -12,27 +12,27 @@ import { auth, db } from '@/lib/firebase/config';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, updateDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import {
-    Activity,
-    AlertCircle,
-    AlertTriangle,
-    BarChart3,
-    CheckCircle,
-    Clock,
-    Eye,
-    EyeOff,
-    Globe,
-    Info,
-    Loader2,
-    Lock,
-    LogIn,
-    Mail,
-    Monitor,
-    Settings,
-    Shield,
-    Smartphone,
-    TrendingUp,
-    Users,
-    XCircle
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle,
+  Clock,
+  Eye,
+  EyeOff,
+  Globe,
+  Info,
+  Loader2,
+  Lock,
+  LogIn,
+  Mail,
+  Monitor,
+  Settings,
+  Shield,
+  Smartphone,
+  TrendingUp,
+  Users,
+  XCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -154,17 +154,60 @@ export default function AdminLoginPage() {
       } else {
         // إذا لم توجد في users، ابحث في employees collection
         try {
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          const employeesSnapshot = await getDocs(employeesQuery);
+          // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
+          const employeeDocRef = doc(db, 'employees', user.uid);
+          const employeeDocSnap = await getDoc(employeeDocRef);
 
-          if (!employeesSnapshot.empty) {
-            const employeeDoc = employeesSnapshot.docs[0];
-            const employeeData = employeeDoc.data();
+          let employeeDoc: any = null;
+          let employeeData: any = null;
+
+          if (employeeDocSnap.exists()) {
+            employeeDoc = employeeDocSnap;
+            employeeData = employeeDocSnap.data();
+          } else {
+            // ثانياً: البحث بـ authUserId (الطريقة القديمة)
+            const employeesQuery = query(
+              collection(db, 'employees'),
+              where('authUserId', '==', user.uid)
+            );
+            const employeesSnapshot = await getDocs(employeesQuery);
+
+            if (!employeesSnapshot.empty) {
+              employeeDoc = employeesSnapshot.docs[0];
+              employeeData = employeeDoc.data();
+            }
+          }
+
+          if (employeeDoc && employeeData) {
             isEmployee = true;
-            
+
+            // جلب صلاحيات الدور من Firestore
+            let rolePermissions: string[] = [];
+            console.log('🔍 Employee data:', {
+              roleId: employeeData.roleId,
+              role: employeeData.role,
+              name: employeeData.name
+            });
+
+            if (employeeData.roleId) {
+              try {
+                console.log('📡 Fetching role from Firestore:', employeeData.roleId);
+                const roleDocRef = doc(db, 'roles', employeeData.roleId);
+                const roleDoc = await getDoc(roleDocRef);
+                if (roleDoc.exists()) {
+                  const roleData = roleDoc.data();
+                  rolePermissions = roleData.permissions || [];
+                  console.log('✅ Fetched role permissions:', rolePermissions);
+                } else {
+                  console.warn('⚠️ Role document not found in Firestore:', employeeData.roleId);
+                }
+              } catch (roleError) {
+                console.warn('Error fetching role permissions:', roleError);
+              }
+            } else {
+              console.warn('⚠️ Employee has no roleId');
+            }
+
             // إنشاء userData من بيانات الموظف
             userData = {
               accountType: 'admin', // الموظفون يستخدمون dashboard المدير
@@ -173,8 +216,10 @@ export default function AdminLoginPage() {
               phone: employeeData.phone,
               isActive: employeeData.isActive !== false,
               employeeId: employeeDoc.id,
-              employeeRole: employeeData.role,
-              role: employeeData.role,
+              employeeRole: employeeData.roleId || employeeData.role,
+              role: employeeData.roleId || employeeData.role,
+              roleId: employeeData.roleId,
+              permissions: rolePermissions, // صلاحيات CASL
               ...employeeData
             };
 
@@ -190,6 +235,38 @@ export default function AdminLoginPage() {
           }
         } catch (employeeError) {
           console.warn('Error searching employees collection:', employeeError);
+        }
+      }
+
+      // إذا لم نجد بيانات في users أو employees، ابحث في admins collection
+      if (!userData) {
+        try {
+          const adminDocRef = doc(db, 'admins', user.uid);
+          const adminDoc = await getDoc(adminDocRef);
+
+          if (adminDoc.exists()) {
+            const adminData = adminDoc.data();
+            userData = {
+              accountType: 'admin',
+              name: adminData.name || adminData.full_name || 'مدير النظام',
+              email: adminData.email || user.email,
+              phone: adminData.phone || '',
+              isActive: adminData.isActive !== false,
+              ...adminData
+            };
+
+            // مزامنة البيانات مع users collection
+            try {
+              await setDoc(userDocRef, {
+                ...userData,
+                updated_at: new Date()
+              }, { merge: true });
+            } catch (syncError) {
+              console.warn('Error syncing admin data to users collection:', syncError);
+            }
+          }
+        } catch (adminError) {
+          console.warn('Error searching admins collection:', adminError);
         }
       }
 
@@ -259,12 +336,23 @@ export default function AdminLoginPage() {
 
       setSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
 
+      // تخزين علامة نجاح تسجيل الدخول للأدمن
+      try {
+        sessionStorage.setItem('adminLoginSuccess', 'true');
+        sessionStorage.setItem('adminLoginTime', Date.now().toString());
+        console.log('✅ Set admin login success flag');
+      } catch (e) {
+        console.warn('Could not set session storage:', e);
+      }
+
       // Wait for AuthProvider to sync before redirecting
-      // This ensures user data is loaded before navigation
+      // Using window.location.href for a hard redirect to ensure auth state is synced
+      console.log('🔄 Waiting 3 seconds before redirect...');
       setTimeout(() => {
-        // Use replace instead of push to avoid back button issues
-        router.replace('/dashboard/admin');
-      }, 2000); // Increased delay to allow auth state to sync
+        console.log('🚀 Redirecting to /dashboard/admin...');
+        // Hard redirect ensures the page fully reloads with auth state
+        window.location.href = '/dashboard/admin';
+      }, 3000); // 3 second delay for auth state sync
 
     } catch (error: any) {
       console.error('Login error:', error);
@@ -337,10 +425,10 @@ export default function AdminLoginPage() {
         <div className="absolute top-0 -left-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob"></div>
         <div className="absolute top-0 -right-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-2000"></div>
         <div className="absolute -bottom-8 left-1/2 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-pink-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-4000"></div>
-        
+
         {/* Grid pattern overlay - Smaller on mobile */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] sm:bg-[size:24px_24px]"></div>
-        
+
         {/* Shine effect */}
         <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
       </div>
@@ -468,13 +556,13 @@ export default function AdminLoginPage() {
             <Card className="bg-white/95 backdrop-blur-2xl shadow-2xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
               {/* Gradient top border */}
               <div className="h-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
-              
+
               <CardHeader className="space-y-4 sm:space-y-6 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6">
                 {/* Icon */}
                 <div className="mx-auto mb-3 sm:mb-4 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105">
                   <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                 </div>
-                
+
                 <div>
                   <CardTitle className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 sm:mb-2">
                     لوحة التحكم الإدارية
@@ -503,7 +591,7 @@ export default function AdminLoginPage() {
                     <div className="relative overflow-hidden rounded-xl border border-red-200/80 bg-gradient-to-r from-red-50 via-red-50/95 to-red-50 shadow-lg backdrop-blur-sm animate-fade-in">
                       {/* Gradient accent border */}
                       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 via-red-400 to-red-500"></div>
-                      
+
                       <div className="flex items-start gap-3 p-4 sm:p-4">
                         <div className="flex-shrink-0 mt-0.5">
                           <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-red-100/80 backdrop-blur-sm">
@@ -531,7 +619,7 @@ export default function AdminLoginPage() {
                     <div className="relative overflow-hidden rounded-xl border border-green-200/80 bg-gradient-to-r from-green-50 via-emerald-50/95 to-green-50 shadow-lg backdrop-blur-sm animate-fade-in">
                       {/* Gradient accent border */}
                       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500"></div>
-                      
+
                       <div className="flex items-start gap-3 p-4 sm:p-4">
                         <div className="flex-shrink-0 mt-0.5">
                           <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-green-100/80 backdrop-blur-sm">

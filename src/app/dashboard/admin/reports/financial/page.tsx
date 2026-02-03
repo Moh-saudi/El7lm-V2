@@ -8,20 +8,22 @@ import { supabase } from '@/lib/supabase/config';
 import '@/styles/admin-dashboard.css';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import {
-    Activity,
-    ArrowUpDown,
-    CheckCircle,
-    Coins,
-    DollarSign,
-    Download,
-    Globe,
-    Percent,
-    RefreshCw,
-    Target,
-    TrendingUp,
-    Users
+  Activity,
+  ArrowUpDown,
+  CheckCircle,
+  Coins,
+  DollarSign,
+  Download,
+  Globe,
+  Percent,
+  RefreshCw,
+  Target,
+  TrendingUp,
+  Users
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { useAbility } from '@/hooks/useAbility';
+import AccessDenied from '@/components/admin/AccessDenied';
 
 // أنواع البيانات
 interface FinancialMetrics {
@@ -96,7 +98,12 @@ interface PaymentDetail {
 }
 
 export default function FinancialReports() {
+  const { can } = useAbility();
   const hasLoadedRef = useRef(false);
+
+  if (!can('read', 'reports')) {
+    return <AccessDenied resource="التقارير المالية" />;
+  }
   const enableSupabase = process.env.NEXT_PUBLIC_ENABLE_SUPABASE_REPORTS === 'true';
   // حالات البيانات
   const [metrics, setMetrics] = useState<FinancialMetrics>({
@@ -199,12 +206,16 @@ export default function FinancialReports() {
         }
       }
 
+      // تصفية البيانات بناءً على الصلاحيات الجغرافية
+      const scopedPayments = allPayments.filter(p => can('read', { resource: 'reports', country: p.country || 'all' } as any));
+      const scopedUsers = allUsers.filter(u => can('read', { resource: 'users', country: u.country || 'all' } as any));
+
       // تحليل البيانات
-      analyzeFinancialMetrics(allPayments);
-      analyzeCurrencyPerformance(allPayments, allUsers);
-      analyzeGeographicalRevenue(allPayments, allUsers);
-      analyzeConversions(allPayments);
-      analyzeTimeSeries(allPayments);
+      analyzeFinancialMetrics(scopedPayments);
+      analyzeCurrencyPerformance(scopedPayments, scopedUsers);
+      analyzeGeographicalRevenue(scopedPayments, scopedUsers);
+      analyzeConversions(scopedPayments);
+      analyzeTimeSeries(scopedPayments);
 
       // بناء تفاصيل المدفوعات المطلوبة للتقرير
       try {
@@ -229,7 +240,7 @@ export default function FinancialReports() {
           return null;
         };
 
-        const details: PaymentDetail[] = allPayments.map((p: any) => {
+        const details: PaymentDetail[] = scopedPayments.map((p: any) => {
           const paymentDate = new Date(p.created_at || new Date().toISOString());
           const pkg = p.packageType || p.selectedPackage || p.package || null;
           const months = normalizePackageToMonths(pkg);
@@ -287,7 +298,7 @@ export default function FinancialReports() {
 
     const averageTransactionEGP = totalTransactions > 0 ? totalRevenueEGP / totalTransactions : 0;
     const topCurrency = Array.from(currencyCount.entries())
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'EGP';
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'EGP';
 
     const currencyDiversity = currencyCount.size;
     const conversionAccuracy = 99.8; // نسبة دقة التحويل (افتراضية)
@@ -476,7 +487,7 @@ export default function FinancialReports() {
 
     const timeSeries = Array.from(dateMap.values()).map(data => {
       const topCurrency = Array.from(data.currencyVolumes.entries())
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'EGP';
+        .sort(([, a], [, b]) => b - a)[0]?.[0] || 'EGP';
 
       return {
         date: data.date,
@@ -551,44 +562,44 @@ export default function FinancialReports() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  التقارير المالية متعددة العملات
-                </h1>
-                <p className="text-gray-600">
-                  تحليل شامل للأداء المالي مع نظام التحويل التلقائي للجنيه المصري
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={refreshData}
-                  disabled={refreshing}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  تحديث البيانات
-                </button>
-                <button
-                  onClick={exportReport}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  تصدير التقرير
-                </button>
-              </div>
-            </div>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              التقارير المالية متعددة العملات
+            </h1>
+            <p className="text-gray-600">
+              تحليل شامل للأداء المالي مع نظام التحويل التلقائي للجنيه المصري
+            </p>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={refreshData}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              تحديث البيانات
+            </button>
+            <button
+              onClick={exportReport}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              تصدير التقرير
+            </button>
+          </div>
+        </div>
+      </div>
 
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-            {loading ? (
-              <CardLoadingSkeleton count={4} />
-            ) : (
-              <>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        {loading ? (
+          <CardLoadingSkeleton count={4} />
+        ) : (
+          <>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">إجمالي الإيرادات</p>
@@ -639,325 +650,323 @@ export default function FinancialReports() {
                 </div>
               </div>
             </div>
-              </>
-            )}
+          </>
+        )}
+      </div>
+
+      {/* Currency Performance */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500 p-2 rounded-lg text-white">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">أداء العملات</h2>
+                <p className="text-sm text-gray-600">تحليل مفصل لكل عملة</p>
+              </div>
+            </div>
           </div>
 
-          {/* Currency Performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-500 p-2 rounded-lg text-white">
-                    <Coins className="w-5 h-5" />
+          <div className="space-y-4">
+            {currencyPerformance.slice(0, 6).map((currency) => (
+              <div key={currency.currency} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Coins className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">أداء العملات</h2>
-                    <p className="text-sm text-gray-600">تحليل مفصل لكل عملة</p>
+                    <h3 className="font-bold text-gray-900">{currency.currency}</h3>
+                    <p className="text-sm text-gray-600">{currency.name}</p>
+                    <p className="text-xs text-gray-500">{currency.countries.length} دولة • {currency.userCount} مستخدم</p>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-4">
-                {currencyPerformance.slice(0, 6).map((currency) => (
-                  <div key={currency.currency} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Coins className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900">{currency.currency}</h3>
-                        <p className="text-sm text-gray-600">{currency.name}</p>
-                        <p className="text-xs text-gray-500">{currency.countries.length} دولة • {currency.userCount} مستخدم</p>
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">حصة السوق</p>
-                      <p className="text-lg font-bold text-blue-600">{currency.marketShare.toFixed(1)}%</p>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600">المعاملات</p>
-                      <p className="text-lg font-bold text-green-600">{currency.transactionCount}</p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">الإجمالي</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {currency.totalAmountEGP.toLocaleString()} ج.م
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {currency.totalAmount.toLocaleString()} {currency.symbol}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {currency.trend === 'up' ? (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4 text-red-600 rotate-180" />
-                      )}
-                      <span className={`text-sm font-medium ${
-                        currency.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {currency.trendPercentage.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Conversion Analytics */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-green-500 p-2 rounded-lg text-white">
-                  <ArrowUpDown className="w-5 h-5" />
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">حصة السوق</p>
+                  <p className="text-lg font-bold text-blue-600">{currency.marketShare.toFixed(1)}%</p>
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">تحليل التحويلات</h2>
-                  <p className="text-sm text-gray-600">إلى الجنيه المصري</p>
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">المعاملات</p>
+                  <p className="text-lg font-bold text-green-600">{currency.transactionCount}</p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">الإجمالي</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {currency.totalAmountEGP.toLocaleString()} ج.م
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {currency.totalAmount.toLocaleString()} {currency.symbol}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {currency.trend === 'up' ? (
+                    <TrendingUp className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4 text-red-600 rotate-180" />
+                  )}
+                  <span className={`text-sm font-medium ${currency.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    {currency.trendPercentage.toFixed(1)}%
+                  </span>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                {conversionAnalytics.slice(0, 5).map((conversion) => (
-                  <div key={conversion.fromCurrency} className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <ArrowUpDown className="w-4 h-4 text-green-600" />
-                        <span className="font-semibold text-gray-900">
-                          {conversion.fromCurrency} → {conversion.toCurrency}
-                        </span>
-                      </div>
-                      <span className="text-xs text-blue-600 font-mono">
-                        1:{conversion.averageRate.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">المحول:</span>
-                        <span className="font-semibold text-green-600">
-                          {conversion.totalConverted.toLocaleString()} ج.م
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">التوفير:</span>
-                        <span className="font-semibold text-blue-600">
-                          {conversion.savingsFromBase.toLocaleString()} ج.م
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Geographical Revenue */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-900">التوزيع الجغرافي للإيرادات</h2>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-right p-4 font-semibold text-gray-900">الدولة</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">العملة</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">الإيرادات (EGP)</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">حصة السوق</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">المعاملات</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">المستخدمين</th>
-                    <th className="text-right p-4 font-semibold text-gray-900">متوسط/مستخدم</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {geographicalRevenue.slice(0, 10).map((geo) => (
-                    <tr key={geo.country} className="border-t border-gray-200 hover:bg-gray-50">
-                      <td className="p-4">
-                        <div className="font-semibold text-gray-900">{geo.country}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <Coins className="w-4 h-4 text-blue-600" />
-                          <span className="font-semibold">{geo.currency}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-green-600">
-                          {geo.totalAmountEGP.toLocaleString()} ج.م
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-12 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="progress-bar progress-bar-blue"
-                              style={{ width: `${Math.min(geo.marketShare, 100)}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-semibold text-blue-600">
-                            {geo.marketShare.toFixed(1)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-semibold text-purple-600">{geo.transactionCount}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4 text-gray-600" />
-                          <span className="font-semibold">{geo.userCount}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-semibold text-orange-600">
-                          {Math.round(geo.averagePerUser).toLocaleString()} ج.م
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        {/* تفاصيل المدفوعات الحقيقية */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">تفاصيل المدفوعات</h2>
-              <span className="text-sm text-gray-500">{paymentDetails.length} عملية</span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-right p-3 font-semibold text-gray-900">الحساب</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">النوع</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">الطريقة</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">الباقة</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">المبلغ</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">الحالة</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">تاريخ الدفع</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">تاريخ الانتهاء</th>
-                  <th className="text-right p-3 font-semibold text-gray-900">اللاعبون</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentDetails.length === 0 ? (
-                  <tr>
-                    <td className="p-4 text-center text-gray-500" colSpan={9}>لا توجد بيانات مدفوعات</td>
-                  </tr>
-                ) : (
-                  paymentDetails.slice(0, 50).map((p) => (
-                    <tr key={p.id} className="border-t hover:bg-gray-50">
-                      <td className="p-3">
-                        <div className="font-semibold text-gray-900">{p.userName}</div>
-                        {p.userEmail && <div className="text-xs text-gray-500">{p.userEmail}</div>}
-                      </td>
-                      <td className="p-3 text-sm text-gray-700">{p.accountType || 'غير محدد'}</td>
-                      <td className="p-3 text-sm text-gray-700">
-                        {p.paymentMethod === 'geidea' ? 'بطاقة' : p.paymentMethod === 'wallet' ? 'محفظة' : p.paymentMethod}
-                      </td>
-                      <td className="p-3 text-sm text-gray-700">{p.packageType || '-'}</td>
-                      <td className="p-3 font-semibold text-gray-900">{p.amount.toLocaleString()} {p.currency}</td>
-                      <td className="p-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          p.status === 'approved' || p.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          p.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-sm text-gray-700">{p.paymentDate.toLocaleDateString('ar-EG')}</td>
-                      <td className="p-3 text-sm text-gray-700">{p.estimatedEndDate ? p.estimatedEndDate.toLocaleDateString('ar-EG') : '-'}</td>
-                      <td className="p-3 text-xs text-gray-600">
-                        {p.players && p.players.length > 0 ? `${p.players.length} لاعب` : '-'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            ))}
           </div>
         </div>
 
-        {/* System Health */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <h3 className="text-lg font-bold text-gray-900">صحة النظام</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">دقة التحويل:</span>
-                  <span className="font-semibold text-green-600">{metrics.conversionAccuracy}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">وقت الاستجابة:</span>
-                  <span className="font-semibold text-blue-600">{'<'}50ms</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">معدل النجاح:</span>
-                  <span className="font-semibold text-green-600">99.9%</span>
-                </div>
-              </div>
+        {/* Conversion Analytics */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-green-500 p-2 rounded-lg text-white">
+              <ArrowUpDown className="w-5 h-5" />
             </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Activity className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-gray-900">النشاط الحالي</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">عملات نشطة:</span>
-                  <span className="font-semibold text-blue-600">{metrics.currencyDiversity}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">معاملات اليوم:</span>
-                  <span className="font-semibold text-purple-600">
-                    {timeSeriesData.length > 0 ? timeSeriesData[timeSeriesData.length - 1]?.transactionCount || 0 : 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">العملة الأكثر نشاطاً:</span>
-                  <span className="font-semibold text-orange-600">{metrics.topCurrency}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Percent className="w-5 h-5 text-purple-600" />
-                <h3 className="text-lg font-bold text-gray-900">الكفاءة المالية</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">توفير التحويل:</span>
-                  <span className="font-semibold text-green-600">2.3%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">تنوع العملات:</span>
-                  <span className="font-semibold text-blue-600">عالي</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">النمو الشهري:</span>
-                  <span className="font-semibold text-green-600">+{metrics.monthlyGrowth}%</span>
-                </div>
-              </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">تحليل التحويلات</h2>
+              <p className="text-sm text-gray-600">إلى الجنيه المصري</p>
             </div>
           </div>
+
+          <div className="space-y-4">
+            {conversionAnalytics.slice(0, 5).map((conversion) => (
+              <div key={conversion.fromCurrency} className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="w-4 h-4 text-green-600" />
+                    <span className="font-semibold text-gray-900">
+                      {conversion.fromCurrency} → {conversion.toCurrency}
+                    </span>
+                  </div>
+                  <span className="text-xs text-blue-600 font-mono">
+                    1:{conversion.averageRate.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">المحول:</span>
+                    <span className="font-semibold text-green-600">
+                      {conversion.totalConverted.toLocaleString()} ج.م
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">التوفير:</span>
+                    <span className="font-semibold text-blue-600">
+                      {conversion.savingsFromBase.toLocaleString()} ج.م
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Geographical Revenue */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-gray-900">التوزيع الجغرافي للإيرادات</h2>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-right p-4 font-semibold text-gray-900">الدولة</th>
+                <th className="text-right p-4 font-semibold text-gray-900">العملة</th>
+                <th className="text-right p-4 font-semibold text-gray-900">الإيرادات (EGP)</th>
+                <th className="text-right p-4 font-semibold text-gray-900">حصة السوق</th>
+                <th className="text-right p-4 font-semibold text-gray-900">المعاملات</th>
+                <th className="text-right p-4 font-semibold text-gray-900">المستخدمين</th>
+                <th className="text-right p-4 font-semibold text-gray-900">متوسط/مستخدم</th>
+              </tr>
+            </thead>
+            <tbody>
+              {geographicalRevenue.slice(0, 10).map((geo) => (
+                <tr key={geo.country} className="border-t border-gray-200 hover:bg-gray-50">
+                  <td className="p-4">
+                    <div className="font-semibold text-gray-900">{geo.country}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-blue-600" />
+                      <span className="font-semibold">{geo.currency}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-bold text-green-600">
+                      {geo.totalAmountEGP.toLocaleString()} ج.م
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="progress-bar progress-bar-blue"
+                          style={{ width: `${Math.min(geo.marketShare, 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-semibold text-blue-600">
+                        {geo.marketShare.toFixed(1)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-purple-600">{geo.transactionCount}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-4 h-4 text-gray-600" />
+                      <span className="font-semibold">{geo.userCount}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-orange-600">
+                      {Math.round(geo.averagePerUser).toLocaleString()} ج.م
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* تفاصيل المدفوعات الحقيقية */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">تفاصيل المدفوعات</h2>
+            <span className="text-sm text-gray-500">{paymentDetails.length} عملية</span>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-right p-3 font-semibold text-gray-900">الحساب</th>
+                <th className="text-right p-3 font-semibold text-gray-900">النوع</th>
+                <th className="text-right p-3 font-semibold text-gray-900">الطريقة</th>
+                <th className="text-right p-3 font-semibold text-gray-900">الباقة</th>
+                <th className="text-right p-3 font-semibold text-gray-900">المبلغ</th>
+                <th className="text-right p-3 font-semibold text-gray-900">الحالة</th>
+                <th className="text-right p-3 font-semibold text-gray-900">تاريخ الدفع</th>
+                <th className="text-right p-3 font-semibold text-gray-900">تاريخ الانتهاء</th>
+                <th className="text-right p-3 font-semibold text-gray-900">اللاعبون</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paymentDetails.length === 0 ? (
+                <tr>
+                  <td className="p-4 text-center text-gray-500" colSpan={9}>لا توجد بيانات مدفوعات</td>
+                </tr>
+              ) : (
+                paymentDetails.slice(0, 50).map((p) => (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3">
+                      <div className="font-semibold text-gray-900">{p.userName}</div>
+                      {p.userEmail && <div className="text-xs text-gray-500">{p.userEmail}</div>}
+                    </td>
+                    <td className="p-3 text-sm text-gray-700">{p.accountType || 'غير محدد'}</td>
+                    <td className="p-3 text-sm text-gray-700">
+                      {p.paymentMethod === 'geidea' ? 'بطاقة' : p.paymentMethod === 'wallet' ? 'محفظة' : p.paymentMethod}
+                    </td>
+                    <td className="p-3 text-sm text-gray-700">{p.packageType || '-'}</td>
+                    <td className="p-3 font-semibold text-gray-900">{p.amount.toLocaleString()} {p.currency}</td>
+                    <td className="p-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved' || p.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          p.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm text-gray-700">{p.paymentDate.toLocaleDateString('ar-EG')}</td>
+                    <td className="p-3 text-sm text-gray-700">{p.estimatedEndDate ? p.estimatedEndDate.toLocaleDateString('ar-EG') : '-'}</td>
+                    <td className="p-3 text-xs text-gray-600">
+                      {p.players && p.players.length > 0 ? `${p.players.length} لاعب` : '-'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* System Health */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <h3 className="text-lg font-bold text-gray-900">صحة النظام</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">دقة التحويل:</span>
+              <span className="font-semibold text-green-600">{metrics.conversionAccuracy}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">وقت الاستجابة:</span>
+              <span className="font-semibold text-blue-600">{'<'}50ms</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">معدل النجاح:</span>
+              <span className="font-semibold text-green-600">99.9%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Activity className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-bold text-gray-900">النشاط الحالي</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">عملات نشطة:</span>
+              <span className="font-semibold text-blue-600">{metrics.currencyDiversity}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">معاملات اليوم:</span>
+              <span className="font-semibold text-purple-600">
+                {timeSeriesData.length > 0 ? timeSeriesData[timeSeriesData.length - 1]?.transactionCount || 0 : 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">العملة الأكثر نشاطاً:</span>
+              <span className="font-semibold text-orange-600">{metrics.topCurrency}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Percent className="w-5 h-5 text-purple-600" />
+            <h3 className="text-lg font-bold text-gray-900">الكفاءة المالية</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">توفير التحويل:</span>
+              <span className="font-semibold text-green-600">2.3%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">تنوع العملات:</span>
+              <span className="font-semibold text-blue-600">عالي</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">النمو الشهري:</span>
+              <span className="font-semibold text-green-600">+{metrics.monthlyGrowth}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -54,31 +54,81 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
+    console.log('🔍 AccountTypeProtection - useEffect triggered:', {
+      loading,
+      hasUser: !!user,
+      hasUserData: !!userData
+    });
+
     if (!loading) {
       if (!user) {
+        // تحقق أولاً إذا كان تسجيل الدخول للأدمن حديثاً (خلال 30 ثانية)
+        try {
+          const adminLoginSuccess = sessionStorage.getItem('adminLoginSuccess');
+          const adminLoginTime = sessionStorage.getItem('adminLoginTime');
+          console.log('🔍 SessionStorage check:', { adminLoginSuccess, adminLoginTime });
+
+          if (adminLoginSuccess === 'true' && adminLoginTime) {
+            const loginTime = parseInt(adminLoginTime);
+            const now = Date.now();
+            const timeDiff = now - loginTime;
+            console.log('🕐 Time diff:', timeDiff, 'ms');
+            // إذا كان تسجيل الدخول خلال آخر 30 ثانية، انتظر ولا توجه
+            if (timeDiff < 30000) {
+              console.log('🔄 AccountTypeProtection - Waiting for admin auth to sync...');
+              // لا نوجه، انتظار تحميل البيانات
+              return;
+            } else {
+              console.log('⏰ Session expired, removing flags');
+              // انتهت الفترة، امسح العلامة
+              sessionStorage.removeItem('adminLoginSuccess');
+              sessionStorage.removeItem('adminLoginTime');
+            }
+          }
+        } catch (e) {
+          console.warn('SessionStorage error:', e);
+          // تجاهل أخطاء sessionStorage
+        }
+
         // المستخدم غير مسجل الدخول - توجيه لصفحة تسجيل الدخول
-        router.push('/auth/login');
+        // تحديد صفحة تسجيل الدخول المناسبة بناءً على الصفحة المطلوبة
+        const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
+        const loginUrl = isAdminRoute ? '/admin/login' : '/auth/login';
+        console.log('❌ No user, redirecting to:', loginUrl);
+        router.push(loginUrl);
         return;
       }
 
-      if (userData) {
-        const userAccountType = (userData as any).accountType;
-        console.log('🔍 AccountTypeProtection - User Data:', {
-          userAccountType,
-          allowedTypes,
-          isAllowed: userAccountType && allowedTypes.includes(userAccountType)
-        });
+      // انتظار تحميل بيانات المستخدم قبل اتخاذ قرار
+      if (!userData) {
+        // البيانات لم تُحمَّل بعد - انتظار
+        // نبقي isCheckingAuth = true حتى تتوفر البيانات
+        return;
+      }
 
-        if (userAccountType && allowedTypes.includes(userAccountType)) {
-          console.log('✅ AccountTypeProtection - Access granted');
-          setIsAuthorized(true);
-        } else {
-          console.log('❌ AccountTypeProtection - Access denied, redirecting...');
-          // نوع الحساب غير مسموح أو غير محدد - توجيه للوحة المناسبة
-          const correctRoute = getDashboardRoute(userAccountType || 'player');
-          console.log('🔄 Redirecting to:', correctRoute);
-          router.push(correctRoute);
+      const userAccountType = (userData as any).accountType;
+      console.log('🔍 AccountTypeProtection - User Data:', {
+        userAccountType,
+        allowedTypes,
+        isAllowed: userAccountType && allowedTypes.includes(userAccountType)
+      });
+
+      if (userAccountType && allowedTypes.includes(userAccountType)) {
+        console.log('✅ AccountTypeProtection - Access granted');
+        setIsAuthorized(true);
+        // مسح علامة تسجيل الدخول للأدمن بعد النجاح
+        try {
+          sessionStorage.removeItem('adminLoginSuccess');
+          sessionStorage.removeItem('adminLoginTime');
+        } catch (e) {
+          // تجاهل الأخطاء
         }
+      } else {
+        console.log('❌ AccountTypeProtection - Access denied, redirecting...');
+        // نوع الحساب غير مسموح أو غير محدد - توجيه للوحة المناسبة
+        const correctRoute = getDashboardRoute(userAccountType || 'player');
+        console.log('🔄 Redirecting to:', correctRoute);
+        router.push(correctRoute);
       }
 
       setIsCheckingAuth(false);
@@ -158,7 +208,10 @@ export const AccountTypeProtection: React.FC<AccountTypeProtectionProps> = ({
   const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes, redirectTo });
 
   if (isCheckingAuth) {
-    return loadingComponent || (
+    if (loadingComponent) {
+      return <>{loadingComponent}</>;
+    }
+    return (
       <div className="flex items-center justify-center min-h-screen" dir="rtl">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
