@@ -17,6 +17,7 @@ import {
     Tabs,
     Switch,
     Tooltip,
+    Modal,
 } from 'antd';
 import {
     DownloadOutlined,
@@ -25,6 +26,7 @@ import {
     TableOutlined,
     BarChartOutlined,
     SyncOutlined,
+    CloudSyncOutlined,
 } from '@ant-design/icons';
 import arEG from 'antd/locale/ar_EG';
 
@@ -93,6 +95,7 @@ function UsersPageContent() {
     });
     const [activeTab, setActiveTab] = useState<'table' | 'charts'>('table');
     const [autoRefresh, setAutoRefresh] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // جلب البيانات - زيادة الحد لجلب جميع المستخدمين
     const { users, loading, error, stats, refetch } = useUsers(2000);
@@ -198,6 +201,71 @@ function UsersPageContent() {
         message.info('قريباً: إضافة مستخدم');
     }, []);
 
+    // مزامنة المستخدمين
+    const handleSyncUsers = async () => {
+        try {
+            setIsSyncing(true);
+            message.loading({ content: 'جاري بدء عملية المزامنة...', key: 'sync' });
+
+            // هنا نستخدم fetch لأنه طلب API وليس عملية Firestore مباشرة
+            const response = await fetch('/api/admin/sync-users-dates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                message.destroy('sync');
+
+                Modal.success({
+                    title: 'تقرير المزامنة والتحقق',
+                    content: (
+                        <div className="py-2">
+                            <Alert
+                                message="تمت عملية المزامنة بنجاح"
+                                description="تم التأكد من وجود كافة الحسابات المسجلة في القائمة أدناه."
+                                type="success"
+                                showIcon
+                                className="mb-4"
+                            />
+                            <div className="bg-gray-50 list-none p-3 rounded-lg border border-gray-100">
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span className="text-gray-600">إجمالي الحسابات في Firebase Auth:</span>
+                                    <span className="font-bold text-blue-600">{data.totalAuthUsers}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span className="text-gray-600">حسابات تم استرجاعها (كانت مفقودة):</span>
+                                    <span className="font-bold text-green-600">{data.createdCount}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-gray-600">حسابات تم تحديث بياناتها:</span>
+                                    <span className="font-bold text-orange-600">{data.updatedCount}</span>
+                                </div>
+                            </div>
+                            <p className="text-gray-500 text-xs mt-3 text-center">
+                                سيتم تحديث الجدول الآن ليعكس هذه النتائج.
+                            </p>
+                        </div>
+                    ),
+                    okText: 'تم',
+                    width: 500,
+                    onOk: () => refetch()
+                });
+                refetch(); // تحديث القائمة لرؤية المستخدمين الجدد
+            } else {
+                throw new Error(data.error || 'فشل عملية المزامنة');
+            }
+        } catch (error: any) {
+            console.error('Sync error:', error);
+            message.error({ content: error.message || 'حدث خطأ أثناء المزامنة', key: 'sync' });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     // إجراءات جماعية
     const handleSuspendBulk = useCallback(async (users: User[], reason: string) => {
         for (const user of users) {
@@ -268,6 +336,16 @@ function UsersPageContent() {
                             </Text>
                         </div>
                         <Space wrap>
+                            {/* زر المزامنة الجديد */}
+                            <Button
+                                icon={<CloudSyncOutlined spin={isSyncing} />}
+                                onClick={handleSyncUsers}
+                                loading={isSyncing}
+                                disabled={isSyncing}
+                            >
+                                مزامنة البيانات
+                            </Button>
+
                             {/* التحديث التلقائي */}
                             <Tooltip title={autoRefresh ? 'إيقاف التحديث التلقائي' : 'تفعيل التحديث التلقائي (كل 30 ثانية)'}>
                                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg">

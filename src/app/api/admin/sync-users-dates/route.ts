@@ -1,4 +1,5 @@
-
+// ... imports
+// (Keep existing imports)
 import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -35,12 +36,15 @@ export async function POST(req: Request) {
         console.log('🔄 Starting Full Sync from Auth Source...');
 
         let updatedCount = 0;
+        let createdCount = 0;
         let pageToken = undefined;
         const updates: Promise<any>[] = [];
 
         // 1. Loop through ALL Auth Users (batches of 1000)
+        let totalAuthUsers = 0;
         do {
             const listUsersResult = await auth.listUsers(1000, pageToken);
+            totalAuthUsers += listUsersResult.users.length;
 
             for (const userRecord of listUsersResult.users) {
                 updates.push((async () => {
@@ -48,27 +52,24 @@ export async function POST(req: Request) {
                     const creationTime = new Date(userRecord.metadata.creationTime);
                     const phoneNumber = userRecord.phoneNumber || ''; // Auth phone (e.g. +212...)
 
-                    // Try to find the user in generic 'users' collection first (most likely)
-                    // We will try to update 'users', 'players', 'clubs' blindly or checking existence.
-                    // Checking existence is costly. Let's assume 'users' for now or try generic update.
+                    // Check all collections used in the dashboard
+                    const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
 
-                    // Better strategy: Update ALL collections we suspect.
-                    const collections = ['users', 'players', 'clubs', 'academies'];
+                    let found = false;
 
                     for (const col of collections) {
                         const docRef = db.collection(col).doc(uid);
-
-                        // We use update() so we don't create garbage docs if user is not in that collection
-                        // But update() fails if doc doesn't exist.
-                        // So we need to check existence efficiently?
-                        // Actually, getting doc is fast.
                         const docSnap = await docRef.get();
+
                         if (docSnap.exists) {
+                            found = true;
                             const data = docSnap.data();
                             const docUpdates: any = {};
 
-                            // A. Sync Date
-                            if (!data?.createdAt && creationTime) {
+                            // A. Sync Date - Force Sync from Auth
+                            // We now overwrite these fields to ensure they match the source of truth (Auth).
+                            // This fixes cases where fields existed but were undefined, null, string-based, or mismatched.
+                            if (creationTime) {
                                 docUpdates.createdAt = creationTime;
                                 docUpdates.created_at = creationTime;
                                 docUpdates.registrationDate = creationTime;
@@ -112,6 +113,49 @@ export async function POST(req: Request) {
                             break; // Found the user in this collection, stop looking in others
                         }
                     }
+
+                    // If user was NOT found in any collection, create them in 'users'
+                    if (!found) {
+                        const phoneToTest = phoneNumber || '';
+                        const cleanPhone = phoneToTest.replace(/\D/g, '');
+                        let countryName = '';
+                        let countryCode = '';
+
+                        const std = detectCountryFromPhone(phoneToTest);
+                        if (std) {
+                            countryName = std.name;
+                            countryCode = std.code;
+                        } else if (cleanPhone) {
+                            if ((cleanPhone.startsWith('06') || cleanPhone.startsWith('07')) && cleanPhone.length === 10) {
+                                countryName = 'المغرب'; countryCode = '+212';
+                            } else if (cleanPhone.startsWith('05') && cleanPhone.length === 10) {
+                                countryName = 'السعودية'; countryCode = '+966';
+                            } else if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+                                countryName = 'مصر'; countryCode = '+20';
+                            }
+                        }
+
+                        const newUser = {
+                            uid: uid,
+                            id: uid, // Helper for some UIs
+                            email: userRecord.email || '',
+                            phone: phoneNumber,
+                            name: userRecord.displayName || (userRecord.email ? userRecord.email.split('@')[0] : 'مستخدم جديد'),
+                            photoURL: userRecord.photoURL || '',
+                            createdAt: creationTime,
+                            created_at: creationTime,
+                            role: 'user', // Default role for orphaned users
+                            accountType: 'user',
+                            isActive: true, // Default to active
+                            country: countryName || 'غير محدد',
+                            countryCode: countryCode,
+                            isSynced: true // Flag to know it was auto-created/synced
+                        };
+
+                        await db.collection('users').doc(uid).set(newUser);
+                        createdCount++;
+                    }
+
                 })());
             }
 
@@ -122,8 +166,10 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
             success: true,
-            count: updatedCount,
-            message: `تمت مزامنة ${updatedCount} مستخدم من سجلات Auth بنجاح`
+            updatedCount,
+            createdCount,
+            totalAuthUsers,
+            message: `تم التحقق من ${totalAuthUsers} حساب في Auth. تم تحديث ${updatedCount} وإنشاء ${createdCount} مستخدم.`
         });
 
     } catch (error: any) {

@@ -79,7 +79,7 @@ export function useUsers(initialLimit = 100) {
                             country: data.country || '',
                             countryCode: data.countryCode || '',
                             city: data.city || '',
-                            createdAt: toDate(data.createdAt || data.created_at),
+                            createdAt: toDate(data.createdAt || data.created_at || data.registrationDate || data.date),
                             lastLogin: toDate(data.lastLogin || data.last_login),
                             parentAccountId: data.parentAccountId || data.clubId || data.academyId,
                             parentAccountType: data.parentAccountType,
