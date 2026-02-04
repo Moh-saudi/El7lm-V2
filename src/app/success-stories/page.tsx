@@ -28,43 +28,49 @@ const STORIES = [
 
 export default function SuccessStoriesPage() {
     return (
-        <div className="min-h-screen bg-[#f8fafc]" dir="rtl">
+        <div className="min-h-screen bg-background" dir="rtl">
             {/* Header */}
-            <div className="bg-[#001e4e] text-white py-16 text-center px-4">
-                <h1 className="text-4xl font-bold mb-4">قصص نجاح ملهمة</h1>
-                <p className="text-blue-200 max-w-2xl mx-auto text-lg">
-                    في "الحلم"، نحن لا نجمع البيانات فقط، بل نصنع النجوم. اكتشف كيف ساعدت منصتنا المواهب على الوصول للعالمية.
-                </p>
+            <div className="bg-gradient-to-br from-slate-900 to-primary/80 text-white py-16 text-center px-4 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10"></div>
+                <div className="relative z-10">
+                    <h1 className="text-4xl font-bold mb-4">قصص نجاح ملهمة</h1>
+                    <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                        في "الحلم"، نحن لا نجمع البيانات فقط، بل نصنع النجوم. اكتشف كيف ساعدت منصتنا المواهب على الوصول للعالمية.
+                    </p>
+                </div>
             </div>
 
             {/* Stories Grid */}
             <div className="container mx-auto px-4 py-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {STORIES.map((story, i) => (
-                        <div key={i} className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow border border-gray-100 group">
+                        <div key={i} className="bg-card rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-border group hover:-translate-y-1">
                             <div className="relative h-64 overflow-hidden">
                                 <Image
                                     src={story.image}
                                     alt={story.name}
                                     layout="fill"
                                     objectFit="cover"
-                                    className="group-hover:scale-105 transition-transform duration-500"
+                                    className="group-hover:scale-110 transition-transform duration-700"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex flex-col justify-end p-6">
                                     <h3 className="text-white text-2xl font-bold">{story.name}</h3>
-                                    <p className="text-blue-300 font-medium">{story.club}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                        <p className="text-slate-200 font-medium text-sm">{story.club}</p>
+                                    </div>
                                 </div>
                             </div>
                             <div className="p-6">
-                                <p className="text-gray-600 leading-relaxed mb-6">
+                                <p className="text-muted-foreground leading-relaxed mb-6">
                                     {story.desc}
                                 </p>
-                                <div className="flex items-center justify-between border-t pt-4">
-                                    <div className="flex items-center gap-2 text-[#001e4e] font-bold">
+                                <div className="flex items-center justify-between border-t border-border pt-4">
+                                    <div className="flex items-center gap-2 text-primary font-bold">
                                         <Trophy size={18} className="text-yellow-500" />
                                         <span>إنجاز متميز</span>
                                     </div>
-                                    <button className="text-sm text-blue-600 font-bold hover:underline">اقرأ المزيد</button>
+                                    <button className="text-sm text-primary font-bold hover:underline">اقرأ المزيد</button>
                                 </div>
                             </div>
                         </div>
@@ -73,10 +79,10 @@ export default function SuccessStoriesPage() {
             </div>
 
             {/* CTA */}
-            <div className="bg-blue-50 py-12 text-center">
-                <h2 className="text-2xl font-bold text-[#001e4e] mb-4">هل أنت قصة النجاح القادمة؟</h2>
-                <p className="text-gray-600 mb-6">انضم إلينا الآن وابدأ مسيرتك الاحترافية مع أفضل الأندية.</p>
-                <a href="/auth/register" className="inline-block bg-[#4aa1e8] text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30">
+            <div className="bg-muted/30 py-12 text-center border-t border-border">
+                <h2 className="text-2xl font-bold text-foreground mb-4">هل أنت قصة النجاح القادمة؟</h2>
+                <p className="text-muted-foreground mb-6">انضم إلينا الآن وابدأ مسيرتك الاحترافية مع أفضل الأندية.</p>
+                <a href="/auth/register" className="inline-block bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/25">
                     سجل الآن مجاناً
                 </a>
             </div>

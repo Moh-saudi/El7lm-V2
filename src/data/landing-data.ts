@@ -11,10 +11,10 @@ export const getLandingData = (lang: 'ar' | 'en' | 'fr' | 'es') => {
                 { rank: 5, name: 'موسى التعمري', club: 'مونبلييه', val: '€6.0m', pos: 'RW', flag: '🇯🇴' },
             ],
             latestRegistrations: [
-                { name: 'إبراهيم عادل', age: 22, from: 'بيراميدز', to: 'خيتافي', date: 'منذ ساعة' },
-                { name: 'سعود عبدالحميد', age: 24, from: 'الهلال', to: 'روما', date: 'منذ 3 ساعات' },
-                { name: 'عمر مرموش', age: 25, from: 'فرانكفورت', to: 'ليفربول', date: 'أمس' },
-                { name: 'يوسف النصيري', age: 26, from: 'إشبيلية', to: 'فنربخشة', date: 'منذ يومين' },
+                { name: 'أحمد محمد', age: 19, from: 'أكاديمية الحلم', to: 'نادي المستقبل', date: 'منذ ساعة' },
+                { name: 'خالد علي', age: 17, from: 'أكاديمية النجوم', to: 'نادي الأبطال', date: 'منذ 3 ساعات' },
+                { name: 'يوسف حسن', age: 20, from: 'مركز الشباب', to: 'النادي الملكي', date: 'أمس' },
+                { name: 'محمود سعيد', age: 18, from: 'أكاديمية المواهب', to: 'نادي الاتحاد', date: 'منذ يومين' },
             ],
             tournaments: [
                 { name: 'كأس العاصمة الإدارية', clubs: 8, status: 'جارية الآن' },
@@ -40,10 +40,10 @@ export const getLandingData = (lang: 'ar' | 'en' | 'fr' | 'es') => {
             { rank: 5, name: 'Mousa Al-Tamari', club: 'Montpellier', val: '€6.0m', pos: 'RW', flag: '🇯🇴' },
         ],
         latestRegistrations: [
-            { name: 'Ibrahim Adel', age: 22, from: 'Pyramids', to: 'Getafe', date: '1h ago' },
-            { name: 'Saud Abdulhamid', age: 24, from: 'Al Hilal', to: 'AS Roma', date: '3h ago' },
-            { name: 'Omar Marmoush', age: 25, from: 'Eintracht', to: 'Liverpool', date: 'Yesterday' },
-            { name: 'Youssef En-Nesyri', age: 26, from: 'Sevilla', to: 'Fenerbahçe', date: '2 days ago' },
+            { name: 'Ahmed Mohamed', age: 19, from: 'Dream Academy', to: 'Future Club', date: '1h ago' },
+            { name: 'Khaled Ali', age: 17, from: 'Stars Academy', to: 'Champions Club', date: '3h ago' },
+            { name: 'Youssef Hassan', age: 20, from: 'Youth Center', to: 'Royal Club', date: 'Yesterday' },
+            { name: 'Mahmoud Saeed', age: 18, from: 'Talent Academy', to: 'Union Club', date: '2 days ago' },
         ],
         tournaments: [
             { name: 'Capital Cup', clubs: 8, status: 'Live Now' },

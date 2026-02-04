@@ -21,7 +21,7 @@ import '@/utils/console-filter';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#001e4e',
+  themeColor: '#0f172a',
 };
 
 export const metadata: Metadata = {

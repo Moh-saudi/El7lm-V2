@@ -144,6 +144,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 📄 Web Content (Landing Page Data)
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // =========================
     // ⚠️ Fallback Rule (Transition Period)
     // =========================

@@ -3,10 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-    Search, User, Menu, X, ArrowRight, TrendingUp, Calendar,
-    Trophy, Globe, ChevronRight, ChevronDown, Star, LogIn, UserPlus,
+    Search, User, Menu, X, Trophy, Globe, ChevronRight, ChevronDown, Star, LogIn, UserPlus,
     MessageCircle, Phone, MapPin, Facebook, Twitter, Instagram,
-    Linkedin, Youtube, Sun, Moon, CheckCircle2, Shield
+    Linkedin, Youtube, Sun, Moon, CheckCircle2, TrendingUp
 } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
@@ -137,83 +136,86 @@ export default function TransfermarktClonePage() {
 
     // --- Theme Colors Helper ---
     const colors = {
-        bg: isDarkMode ? 'bg-[#0b1120]' : 'bg-[#f2f2f2]',
-        cardBg: isDarkMode ? 'bg-[#1e293b]' : 'bg-white',
-        cardBorder: isDarkMode ? 'border-gray-700' : 'border-gray-200',
-        headerBg: isDarkMode ? 'bg-[#0f172a]' : 'bg-[#001e4e]',
-        text: isDarkMode ? 'text-gray-100' : 'text-gray-800',
-        subText: isDarkMode ? 'text-gray-400' : 'text-gray-600',
-        accent: isDarkMode ? 'text-[#38bdf8]' : 'text-[#4aa1e8]',
-        accentBg: isDarkMode ? 'bg-[#38bdf8]' : 'bg-[#4aa1e8]',
-        sectionHeader: isDarkMode ? 'bg-[#1e293b]' : 'bg-[#001e4e]'
+        bg: 'bg-background',
+        cardBg: 'bg-card',
+        cardBorder: 'border-border',
+        headerBg: 'bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b border-border sticky top-0',
+        text: 'text-foreground',
+        subText: 'text-muted-foreground',
+        accent: 'text-primary',
+        accentBg: 'bg-primary',
+        sectionHeader: 'bg-muted/30'
     };
 
     // --- Sub-Components ---
     const TMHeader = () => (
-        <header className={`${colors.headerBg} text-white transition-colors duration-300 relative z-50`}>
+        <header className={`${colors.headerBg} transition-colors duration-300 z-50`}>
             {/* Top Bar */}
-            <div className="border-b border-white/10">
-                <div className="container mx-auto px-4 h-10 flex items-center justify-between text-[10px] sm:text-xs">
-                    <div className="flex items-center gap-4 text-gray-300">
+            <div className={`border-b border-border/50 ${isDarkMode ? 'bg-muted/20' : 'bg-muted/50'}`}>
+                <div className="container mx-auto px-4 h-9 flex items-center justify-between text-[10px] sm:text-xs">
+                    <div className="flex items-center gap-4 text-muted-foreground">
                         {/* Language Switcher */}
-                        <button onClick={toggleLanguage} className="cursor-pointer hover:text-white flex items-center gap-1 transition-colors">
+                        <button onClick={toggleLanguage} className="cursor-pointer hover:text-foreground flex items-center gap-1 transition-colors">
                             <Globe size={12} />
                             <span className="uppercase">{currentLanguage}</span>
                         </button>
 
                         {/* Theme Toggle */}
-                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="cursor-pointer hover:text-white flex items-center gap-1 transition-colors">
+                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="cursor-pointer hover:text-foreground flex items-center gap-1 transition-colors">
                             {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
                         </button>
                     </div>
 
-                    <div className="hidden sm:inline opacity-60">support@el7lm.com</div>
+                    <div className="hidden sm:inline text-muted-foreground opacity-80">support@el7lm.com</div>
                 </div>
             </div>
 
             {/* Main Nav & Branding */}
-            <div className="container mx-auto px-4 py-3 md:py-4">
+            <div className="container mx-auto px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
                     {/* 1. Logo Section */}
                     <div className="flex items-center gap-3 shrink-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded flex items-center justify-center text-[#001e4e] font-bold text-xl md:text-2xl border-2 border-[#1a3151]">
-                            7
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-xl md:text-2xl shadow-lg overflow-hidden relative group">
+                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <span>7</span>
                         </div>
                         <div className="hidden min-[380px]:block">
-                            <h1 className="text-xl md:text-2xl font-bold leading-none tracking-tight">EL7LM</h1>
-                            <span className="text-[9px] md:text-[10px] text-blue-200 uppercase tracking-widest block">{t.header.slogan}</span>
+                            <h1 className={`text-xl md:text-2xl font-bold leading-none tracking-tight ${colors.text}`}>EL7LM</h1>
+                            <span className={`text-[9px] md:text-[10px] uppercase tracking-widest block font-medium ${colors.accent}`}>{t.header.slogan}</span>
                         </div>
                     </div>
 
                     {/* 2. Search Bar (Desktop) */}
                     <div className="hidden md:flex flex-1 max-w-lg mx-auto relative px-6">
-                        <input
-                            type="text"
-                            placeholder={t.header.search_placeholder}
-                            className={`w-full h-10 pl-4 pr-10 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${isDarkMode ? 'bg-slate-800 text-white placeholder-gray-500' : 'bg-white text-gray-900'}`}
-                        />
-                        <button className={`absolute ${isRTL ? 'left-6' : 'right-6'} top-0 h-10 w-10 ${colors.accentBg} text-white flex items-center justify-center hover:opacity-90 transition-colors rounded-sm`}>
-                            <Search size={18} />
-                        </button>
+                        <div className="relative w-full group">
+                            <input
+                                type="text"
+                                placeholder={t.header.search_placeholder}
+                                className={`w-full h-11 pl-4 pr-12 rounded-xl text-sm transition-all border border-transparent focus:border-primary/50 ${isDarkMode ? 'bg-muted/50 text-white placeholder-muted-foreground focus:bg-muted' : 'bg-gray-100 text-gray-900 focus:bg-white'} focus:ring-4 focus:ring-primary/10 outline-none`}
+                            />
+                            <button className={`absolute ${isRTL ? 'left-2' : 'right-2'} top-2 h-7 w-7 bg-background text-primary rounded-lg shadow-sm flex items-center justify-center hover:scale-105 transition-all`}>
+                                <Search size={14} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* 3. Action Buttons & Mobile Toggle */}
                     <div className="flex items-center gap-2 md:gap-3">
                         {/* Login */}
-                        <a href="/auth/login" className="flex items-center justify-center w-9 h-9 md:w-auto md:h-auto md:px-5 md:py-2.5 rounded font-bold text-sm bg-white/10 text-white hover:bg-white/20 transition-all border border-white/20">
+                        <a href="/auth/login" className={`flex items-center justify-center w-9 h-9 md:w-auto md:h-auto md:px-5 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${colors.cardBorder} hover:bg-muted text-foreground`}>
                             <LogIn size={16} />
                             <span className="hidden md:inline md:ml-2">{t.header.login}</span>
                         </a>
 
                         {/* Join */}
-                        <a href="/auth/register" className="flex items-center justify-center h-9 px-3 md:h-auto md:px-6 md:py-2.5 rounded font-bold text-xs md:text-sm bg-gradient-to-r from-blue-500 to-blue-400 text-white hover:from-blue-400 hover:to-blue-300 shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
+                        <a href="/auth/register" className="flex items-center justify-center h-9 px-3 md:h-auto md:px-6 md:py-2.5 rounded-xl font-bold text-xs md:text-sm bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/25 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
                             <UserPlus size={16} className="md:mr-2" />
                             <span className="hidden md:inline">{t.header.join}</span>
                             <span className="md:hidden ml-1">{t.header.join}</span>
                         </a>
 
                         {/* Mobile Menu Toggle */}
-                        <button className="md:hidden text-white p-2 ml-1 rounded hover:bg-white/10" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                        <button className={`md:hidden p-2 ml-1 rounded hover:bg-muted ${colors.text}`} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>
@@ -221,11 +223,11 @@ export default function TransfermarktClonePage() {
             </div>
 
             {/* Categories Nav (Desktop) */}
-            <div className="hidden md:block bg-black/20 border-t border-white/5 backdrop-blur-sm">
+            <div className="hidden md:block border-t border-border/40">
                 <div className="container mx-auto px-4">
-                    <nav className="flex items-center gap-1 text-sm font-medium">
+                    <nav className="flex items-center gap-1 text-sm font-medium overflow-x-auto no-scrollbar">
                         {Object.values(t.nav).map((item, i) => (
-                            <a key={i} href="#" className={`px-4 py-3 hover:bg-white/10 ${colors.accent.replace('text-', 'hover:text-')} transition-colors border-l border-white/5 last:border-r`}>
+                            <a key={i} href="#" className={`px-4 py-3 hover:text-primary transition-colors border-b-2 border-transparent hover:border-primary whitespace-nowrap ${colors.subText}`}>
                                 {item}
                             </a>
                         ))}
@@ -238,93 +240,90 @@ export default function TransfermarktClonePage() {
     const SectionHeader = ({ title, icon: Icon, color, onClick, isOpen }: any) => (
         <div
             onClick={onClick}
-            className={`${color || colors.sectionHeader} text-white px-4 py-3 flex items-center justify-between rounded-t-sm transition-colors duration-300 ${onClick ? 'cursor-pointer hover:opacity-90' : ''}`}
+            className={`${color || colors.sectionHeader} px-4 py-3 flex items-center justify-between rounded-t-xl transition-colors duration-300 border-b border-border/50 ${onClick ? 'cursor-pointer hover:bg-muted/70' : ''}`}
         >
             <div className="flex items-center gap-2">
-                {Icon && <Icon size={18} className={isDarkMode ? 'text-blue-400' : 'text-[#4aa1e8]'} />}
-                <h3 className="font-bold text-sm uppercase tracking-wide">{title}</h3>
+                {Icon && <Icon size={18} className="text-primary" />}
+                <h3 className={`font-bold text-sm uppercase tracking-wide ${colors.text}`}>{title}</h3>
             </div>
             {onClick ? (
-                <div className="md:hidden">
+                <div className={`md:hidden ${colors.text}`}>
                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </div>
             ) : (
-                <button className="text-[10px] bg-white/10 px-2 py-0.5 rounded hover:bg-white/20 transition-colors">View All</button>
+                <button className={`text-[10px] ${colors.accentBg}/10 ${colors.accent} px-2 py-0.5 rounded hover:bg-primary hover:text-white transition-colors`}>View All</button>
             )}
         </div>
     );
 
     const ContactSection = () => (
-        <div className={`${colors.headerBg} text-white rounded-sm p-8 mb-6 relative overflow-hidden`}>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className={`${colors.cardBg} border ${colors.cardBorder} rounded-xl p-8 mb-6 relative overflow-hidden group`}>
+            {/* Glossy Effect */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full -mr-40 -mt-20 blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+
             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 <div>
-                    <h3 className="text-2xl font-bold mb-2">{t.sections.contact_us}</h3>
-                    <p className="text-blue-200 mb-6 text-sm">{t.sections.contact_subtitle}</p>
+                    <h3 className={`text-2xl font-bold mb-2 ${colors.text}`}>{t.sections.contact_us}</h3>
+                    <p className={`${colors.subText} mb-6 text-sm`}>{t.sections.contact_subtitle}</p>
                     <div className="space-y-4">
                         {/* Clickable Phone */}
-                        <a href="https://wa.me/97470542458" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group cursor-pointer hover:bg-white/5 p-2 rounded transition-colors -mx-2">
-                            <div className="w-9 h-9 bg-green-500/20 rounded flex items-center justify-center text-green-400 mt-1 shrink-0 group-hover:bg-green-500 group-hover:text-white transition-colors">
-                                <MessageCircle size={18} />
+                        <a href="https://wa.me/97470542458" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group cursor-pointer hover:bg-muted/50 p-3 rounded-lg transition-colors -mx-3">
+                            <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 shrink-0 group-hover:bg-green-500 group-hover:text-white transition-all">
+                                <MessageCircle size={20} />
                             </div>
                             <div>
-                                <div className="text-xs text-blue-300 mb-1 group-hover:text-white">Customer Service (WhatsApp)</div>
-                                <div className="text-base font-bold font-mono" dir="ltr">+974 7054 2458</div>
-                            </div>
-                        </a>
-
-                        <a href="tel:+97470542458" className="flex items-start gap-4 group cursor-pointer hover:bg-white/5 p-2 rounded transition-colors -mx-2">
-                            <div className="w-9 h-9 bg-blue-500/20 rounded flex items-center justify-center text-[#4aa1e8] mt-1 shrink-0 group-hover:bg-[#4aa1e8] group-hover:text-white transition-colors"><Phone size={18} /></div>
-                            <div>
-                                <div className="text-xs text-blue-300 mb-1 group-hover:text-white">Call Us Directly</div>
-                                <div className="text-base font-bold font-mono" dir="ltr">+974 7054 2458</div>
+                                <div className={`text-xs ${colors.subText} mb-1`}>Customer Service (WhatsApp)</div>
+                                <div className={`text-base font-bold font-mono ${colors.text}`} dir="ltr">+974 7054 2458</div>
                             </div>
                         </a>
 
-                        <div className="flex items-start gap-4 p-2 -mx-2">
-                            <div className="w-9 h-9 bg-blue-500/20 rounded flex items-center justify-center text-[#4aa1e8] mt-1 shrink-0"><MapPin size={18} /></div>
+                        <a href="tel:+97470542458" className="flex items-start gap-4 group cursor-pointer hover:bg-muted/50 p-3 rounded-lg transition-colors -mx-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all"><Phone size={20} /></div>
                             <div>
-                                <div className="text-xs text-blue-300 mb-1">Qatar HQ 🇶🇦</div>
-                                <div className="text-sm font-medium leading-snug">Doha - QFC Tower</div>
+                                <div className={`text-xs ${colors.subText} mb-1`}>Call Us Directly</div>
+                                <div className={`text-base font-bold font-mono ${colors.text}`} dir="ltr">+974 7054 2458</div>
                             </div>
-                        </div>
-                        <div className="flex items-start gap-4 p-2 -mx-2">
-                            <div className="w-9 h-9 bg-blue-500/20 rounded flex items-center justify-center text-[#4aa1e8] mt-1 shrink-0"><MapPin size={18} /></div>
+                        </a>
+
+                        <div className="flex items-start gap-4 p-3 -mx-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0"><MapPin size={20} /></div>
                             <div>
-                                <div className="text-xs text-blue-300 mb-1">Egypt Branch 🇪🇬</div>
-                                <div className="text-sm font-medium leading-snug">Cairo, Nasr City - Hisham Labib St.</div>
+                                <div className={`text-xs ${colors.subText} mb-1`}>Qatar HQ 🇶🇦</div>
+                                <div className={`text-sm font-medium leading-snug ${colors.text}`}>Doha - QFC Tower</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <form className="bg-white/5 p-6 rounded border border-white/10 backdrop-blur-sm">
+                <form className={`p-6 rounded-xl border ${colors.cardBorder} bg-muted/20 backdrop-blur-sm`}>
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input type="text" placeholder={t.sections.name_placeholder} className="bg-white/10 border-none text-white placeholder-white/50 text-sm rounded h-10 px-3 focus:ring-1 focus:ring-[#4aa1e8]" />
-                        <input type="email" placeholder={t.sections.email_placeholder} className="bg-white/10 border-none text-white placeholder-white/50 text-sm rounded h-10 px-3 focus:ring-1 focus:ring-[#4aa1e8]" />
+                        <input type="text" placeholder={t.sections.name_placeholder} className={`bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg h-11 px-4 focus:ring-2 focus:ring-primary/20 outline-none`} />
+                        <input type="email" placeholder={t.sections.email_placeholder} className={`bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg h-11 px-4 focus:ring-2 focus:ring-primary/20 outline-none`} />
                     </div>
-                    <textarea placeholder={t.sections.msg_placeholder} rows={3} className="w-full bg-white/10 border-none text-white placeholder-white/50 text-sm rounded p-3 mb-4 focus:ring-1 focus:ring-[#4aa1e8]"></textarea>
-                    <button className="w-full bg-[#4aa1e8] hover:bg-blue-500 text-white font-bold py-2 rounded text-sm transition-colors">{t.sections.send_message}</button>
+                    <textarea placeholder={t.sections.msg_placeholder} rows={3} className={`w-full bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg p-4 mb-4 focus:ring-2 focus:ring-primary/20 outline-none`}></textarea>
+                    <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-lg text-sm transition-all shadow-lg hover:shadow-primary/25">{t.sections.send_message}</button>
                 </form>
             </div>
         </div>
     );
 
     const Footer = () => (
-        <footer className={`mt-12 ${colors.headerBg} text-white pt-12 pb-6 px-4 rounded-t-sm border-t border-white/10`}>
+        <footer className={`mt-12 ${colors.cardBg} border-t ${colors.cardBorder} pt-12 pb-6 px-4`}>
             <div className="container mx-auto">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                     {/* Brand Column */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-white rounded flex items-center justify-center text-[#001e4e] font-bold text-lg">7</div>
-                            <h2 className="text-xl font-bold">EL7LM</h2>
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden relative">
+                                <span>7</span>
+                            </div>
+                            <h2 className={`text-xl font-bold ${colors.text}`}>EL7LM</h2>
                         </div>
                         <p className={`text-sm ${colors.subText} mb-4 leading-relaxed`}>
                             {t.header.slogan}. موثقون من VLab و QFC. نصنع مستقبل الرياضة بالبيانات والذكاء الاصطناعي.
                         </p>
                         <div className="flex gap-4">
                             {[Facebook, Twitter, Instagram, Linkedin, Youtube].map((Icon, i) => (
-                                <a key={i} href="#" className="text-gray-400 hover:text-white transition-colors">
+                                <a key={i} href="#" className={`${colors.subText} hover:text-primary transition-colors`}>
                                     <Icon size={18} />
                                 </a>
                             ))}
@@ -333,39 +332,39 @@ export default function TransfermarktClonePage() {
 
                     {/* Links Columns */}
                     <div>
-                        <h4 className="font-bold mb-4 text-[#4aa1e8]">{t.footer.platform}</h4>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li><a href="/about" className="hover:text-white transition-colors">{t.footer.links.about}</a></li>
-                            <li><a href="/about" className="hover:text-white transition-colors">{t.footer.links.who_we_are}</a></li>
-                            <li><a href="/success-stories" className="hover:text-white transition-colors">{t.footer.links.success}</a></li>
-                            <li><a href="/careers" className="hover:text-white transition-colors">{t.footer.links.careers}</a></li>
+                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.platform}</h4>
+                        <ul className={`space-y-2 text-sm ${colors.subText}`}>
+                            <li><a href="/about" className="hover:text-primary transition-colors">{t.footer.links.about}</a></li>
+                            <li><a href="/about" className="hover:text-primary transition-colors">{t.footer.links.who_we_are}</a></li>
+                            <li><a href="/success-stories" className="hover:text-primary transition-colors">{t.footer.links.success}</a></li>
+                            <li><a href="/careers" className="hover:text-primary transition-colors">{t.footer.links.careers}</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-4 text-[#4aa1e8]">{t.footer.support}</h4>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li><a href="/contact" className="hover:text-white transition-colors">{t.footer.links.help}</a></li>
-                            <li><a href="/terms" className="hover:text-white transition-colors">{t.footer.links.terms}</a></li>
-                            <li><a href="/privacy" className="hover:text-white transition-colors">{t.footer.links.privacy}</a></li>
-                            <li><a href="/contact" className="hover:text-white transition-colors">{t.footer.links.contact}</a></li>
+                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.support}</h4>
+                        <ul className={`space-y-2 text-sm ${colors.subText}`}>
+                            <li><a href="/contact" className="hover:text-primary transition-colors">{t.footer.links.help}</a></li>
+                            <li><a href="/terms" className="hover:text-primary transition-colors">{t.footer.links.terms}</a></li>
+                            <li><a href="/privacy" className="hover:text-primary transition-colors">{t.footer.links.privacy}</a></li>
+                            <li><a href="/contact" className="hover:text-primary transition-colors">{t.footer.links.contact}</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-4 text-[#4aa1e8]">{t.footer.mobile_title}</h4>
-                        <p className="text-sm text-gray-400 mb-3">{t.footer.mobile_text}</p>
+                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.mobile_title}</h4>
+                        <p className={`text-sm ${colors.subText} mb-3`}>{t.footer.mobile_text}</p>
                         <div className="flex gap-2">
-                            <div className="w-24 h-8 bg-white/10 rounded border border-white/20 flex items-center justify-center text-[10px] text-gray-400 cursor-not-allowed">App Store</div>
-                            <div className="w-24 h-8 bg-white/10 rounded border border-white/20 flex items-center justify-center text-[10px] text-gray-400 cursor-not-allowed">Google Play</div>
+                            <div className="w-24 h-8 bg-muted border border-border rounded flex items-center justify-center text-[10px] text-muted-foreground cursor-not-allowed">App Store</div>
+                            <div className="w-24 h-8 bg-muted border border-border rounded flex items-center justify-center text-[10px] text-muted-foreground cursor-not-allowed">Google Play</div>
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+                <div className={`border-t border-border pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs ${colors.subText}`}>
                     <div>{t.footer.rights}</div>
                     <div className="flex gap-4">
-                        <a href="/privacy" className="hover:text-white">Privacy</a>
-                        <a href="/terms" className="hover:text-white">Terms</a>
-                        <a href="#" className="hover:text-white">Sitemap</a>
+                        <a href="/privacy" className="hover:text-primary">Privacy</a>
+                        <a href="/terms" className="hover:text-primary">Terms</a>
+                        <a href="#" className="hover:text-primary">Sitemap</a>
                     </div>
                 </div>
             </div>
