@@ -15,6 +15,7 @@ import { useAbility } from '@/hooks/useAbility';
 import AccessDenied from '@/components/admin/AccessDenied';
 
 export default function AdminPaymentsPage() {
+  const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes: ['admin'] });
   const { can } = useAbility();
   const [loading, setLoading] = useState(true);
 
@@ -413,7 +414,7 @@ export default function AdminPaymentsPage() {
         subscriptionExpiresAt: subscriptionData.expires_at,
         subscriptionEndDate: subscriptionData.expires_at,
         lastPaymentId: payment.id,
-        packageType: packageType,
+        packageType: pkgType,
         selectedPackage: packageInfo.name || packageName,
         updatedAt: new Date()
       });
@@ -426,7 +427,7 @@ export default function AdminPaymentsPage() {
           currency: payment.currency || 'EGP',
           status: 'completed',
           package_name: packageInfo.name || packageName,
-          packageType: packageType,
+          packageType: pkgType,
           payment_date: new Date(),
           createdAt: new Date(),
           transaction_id: payment.transactionId || payment.paymentId || payment.id,
@@ -904,15 +905,15 @@ export default function AdminPaymentsPage() {
           const q = query(collectionRef, orderBy('createdAt', 'desc'));
           const querySnapshot = await getDocs(q);
 
-          for (const doc of querySnapshot.docs) {
-            const data = doc.data();
+          for (const paymentDoc of querySnapshot.docs) {
+            const data = paymentDoc.data();
 
             console.log(`Collection: ${collectionName}, Data:`, data);
 
             // تسجيل خاص لمدفوعات جيديا
             if (data.paymentMethod === 'geidea' || collectionName === 'bulkPayments' || collectionName === 'bulk_payments') {
               console.log(`🔍 [Geidea Payment] Found in ${collectionName}:`, {
-                id: doc.id,
+                id: paymentDoc.id,
                 paymentMethod: data.paymentMethod,
                 amount: data.amount,
                 status: data.status,
@@ -1522,7 +1523,7 @@ export default function AdminPaymentsPage() {
             if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea' || collectionName === 'geidea_payments') {
               console.log(`✅ [Geidea Payment] Extracted paymentMethod:`, {
                 collection: collectionName,
-                docId: doc.id,
+                docId: paymentDoc.id,
                 extractedPaymentMethod: extractedPaymentMethod,
                 originalPaymentMethod: data.paymentMethod,
                 amount: data.amount,
@@ -1536,7 +1537,7 @@ export default function AdminPaymentsPage() {
               // استخراج رسالة الخطأ من بيانات جيديا
               if (data.status === 'failed' || data.status === 'rejected') {
                 console.warn(`⚠️ [Geidea Payment] Failed payment detected:`, {
-                  orderId: data.orderId || doc.id,
+                  orderId: data.orderId || paymentDoc.id,
                   status: data.status,
                   responseMessage: data.responseMessage || data.detailedResponseMessage,
                   responseCode: data.responseCode,
@@ -1556,7 +1557,7 @@ export default function AdminPaymentsPage() {
             const merchantRefId = data.merchantReferenceId || data.ourMerchantReferenceId || null;
 
             allPayments.push({
-              id: doc.id,
+              id: paymentDoc.id,
               collection: collectionName,
               playerName: playerName,
               userName: userName,
@@ -1580,7 +1581,7 @@ export default function AdminPaymentsPage() {
               package_name: data.package_name || data.packageName || data.plan_name || null,
               plan_name: data.plan_name || data.packageName || data.package_name || null,
               // بيانات إضافية لمدفوعات جيديا
-              orderId: geideaOrderId || merchantRefId || doc.id, // orderId من جيديا أو merchantReferenceId
+              orderId: geideaOrderId || merchantRefId || paymentDoc.id, // orderId من جيديا أو merchantReferenceId
               geideaOrderId: geideaOrderId, // orderId من جيديا (للتوضيح)
               merchantReferenceId: merchantRefId, // merchantReferenceId الذي أرسلناه
               responseCode: data.responseCode || null,

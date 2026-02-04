@@ -73,14 +73,14 @@ import {
 
 interface SubscriptionPlan {
     id: string;
-    title: string;
+    title?: string;
     subtitle?: string;
-    period: string;
-    base_currency: string;
-    base_original_price: number;
-    base_price: number;
-    features: string[];
-    bonusFeatures?: string[];
+    period?: string;
+    base_currency?: string;
+    base_original_price?: number;
+    base_price?: number;
+    features: any[];
+    bonusFeatures?: any[];
     isActive: boolean;
     popular?: boolean;
     icon?: string;
@@ -89,6 +89,13 @@ interface SubscriptionPlan {
     accountTypeOverrides?: Record<string, any>;
     order?: number;
     guidelines?: any;
+    // UI/Legacy fields used in the components
+    name?: string;
+    key?: string;
+    basePrice?: number;
+    currency?: string;
+    duration?: number;
+    displayOrder?: number;
 }
 
 interface PromotionalOffer {

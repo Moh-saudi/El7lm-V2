@@ -38,7 +38,8 @@ import {
   Users,
   Smartphone,
   Zap,
-  Landmark
+  Landmark,
+  Star
 } from 'lucide-react';
 
 import { db } from '@/lib/firebase/config';

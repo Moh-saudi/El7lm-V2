@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         const skipcashResponse = await fetch(url, {
             method: 'GET',
             headers: {
-                'Authorization': config.authorization,
+                'Authorization': config.secretKey,
                 'Content-Type': 'application/json'
             }
         });
