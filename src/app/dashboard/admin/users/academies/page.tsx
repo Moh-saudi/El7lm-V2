@@ -102,6 +102,9 @@ interface Academy {
     url: string;
     uploadedAt: Date;
   }[];
+  suspendedAt?: Date | null;
+  suspensionEndDate?: Date | null;
+  suspensionReason?: string;
 }
 
 export default function AcademiesManagement() {

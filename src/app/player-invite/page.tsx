@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
+import { createPlayerLoginAccount, PlayerLoginData } from '@/lib/utils/player-login-account';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,15 +12,9 @@ import { Label } from '@/components/ui/label';
 import { UserPlus, Search, CheckCircle, AlertTriangle, Mail, Phone, User, Building } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface PlayerResult {
+interface PlayerResult extends PlayerLoginData {
   id: string;
   full_name: string;
-  email?: string;
-  phone?: string;
-  club_id?: string;
-  academy_id?: string;
-  trainer_id?: string;
-  agent_id?: string;
   organizationInfo: string;
   source: 'players' | 'player';
   canCreateAccount: boolean;
@@ -43,12 +37,12 @@ export default function PlayerInvitePage() {
     setSearching(true);
     try {
       const results: PlayerResult[] = [];
-      
+
       // البحث في مجموعة players
       const playersQuery1 = query(collection(db, 'players'), where('full_name', '>=', searchQuery));
       const playersQuery2 = query(collection(db, 'players'), where('email', '==', searchQuery));
       const playersQuery3 = query(collection(db, 'players'), where('phone', '==', searchQuery));
-      
+
       const [snapshot1, snapshot2, snapshot3] = await Promise.all([
         getDocs(playersQuery1),
         getDocs(playersQuery2),
@@ -59,7 +53,7 @@ export default function PlayerInvitePage() {
       const playerQuery1 = query(collection(db, 'player'), where('full_name', '>=', searchQuery));
       const playerQuery2 = query(collection(db, 'player'), where('email', '==', searchQuery));
       const playerQuery3 = query(collection(db, 'player'), where('phone', '==', searchQuery));
-      
+
       const [snapshot4, snapshot5, snapshot6] = await Promise.all([
         getDocs(playerQuery1),
         getDocs(playerQuery2),
@@ -84,7 +78,7 @@ export default function PlayerInvitePage() {
           processedIds.add(doc.id);
 
           const data = doc.data();
-          
+
           // التحقق من أن اللاعب تابع لمنظمة
           const isDependent = !!(data.club_id || data.academy_id || data.trainer_id || data.agent_id);
           if (!isDependent) return;
@@ -112,7 +106,7 @@ export default function PlayerInvitePage() {
       });
 
       setSearchResults(results);
-      
+
       if (results.length === 0) {
         toast.error('لم يتم العثور على لاعبين تابعين بهذا الاسم أو الإيميل');
       } else {
@@ -130,15 +124,15 @@ export default function PlayerInvitePage() {
   // إنشاء حساب للاعب
   const createAccountForPlayer = async (player: PlayerResult) => {
     setCreating(player.id);
-    
+
     try {
       const result = await createPlayerLoginAccount(player.id, player, player.source);
-      
+
       if (result.success) {
         toast.success(`تم إنشاء حساب تسجيل الدخول بنجاح! 
         كلمة المرور: ${result.tempPassword}
         يمكنك الآن تسجيل الدخول بإيميلك وكلمة المرور هذه`);
-        
+
         // إزالة اللاعب من النتائج بعد إنشاء الحساب
         setSearchResults(prev => prev.filter(p => p.id !== player.id));
       } else {
@@ -155,7 +149,7 @@ export default function PlayerInvitePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4" dir="rtl">
       <div className="max-w-4xl mx-auto">
-        
+
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
@@ -242,7 +236,7 @@ export default function PlayerInvitePage() {
                             {player.organizationInfo}
                           </div>
                         </div>
-                        
+
                         <div className="flex gap-4 text-sm text-gray-600 mb-3">
                           {player.email && (
                             <div className="flex items-center gap-1">
@@ -317,10 +311,10 @@ export default function PlayerInvitePage() {
               <li><strong>سجل دخول:</strong> يمكنك الآن تسجيل الدخول بإيميلك وكلمة المرور</li>
               <li><strong>غير كلمة المرور:</strong> ستُطلب منك تغيير كلمة المرور عند الدخول الأول</li>
             </ol>
-            
+
             <div className="mt-6 flex justify-center">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => router.push('/auth/login')}
                 className="px-8"
               >

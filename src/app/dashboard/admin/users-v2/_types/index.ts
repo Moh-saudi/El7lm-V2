@@ -34,6 +34,7 @@ export interface User {
     parentOrganizationName?: string;
     suspendReason?: string;
     suspendedAt?: Date;
+    suspensionEndDate?: Date;
     profileImage?: string;
     isGoogleUser?: boolean;
     isPhoneAuth?: boolean;
