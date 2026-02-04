@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 interface AdminNotification {
   id?: string;
-  type: 'payment' | 'user' | 'system' | 'security' | 'error' | 'warning' | 'info';
+  type: 'payment' | 'user' | 'system' | 'security' | 'error' | 'warning' | 'info' | 'video';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -208,12 +208,11 @@ export default function AdminNotificationCenterPage() {
   };
 
   const getNotificationIcon = (type: string, priority: string) => {
-    const iconClass = `w-5 h-5 ${
-      priority === 'critical' ? 'text-red-500' :
-      priority === 'high' ? 'text-orange-500' :
-      priority === 'medium' ? 'text-yellow-500' :
-      'text-blue-500'
-    }`;
+    const iconClass = `w-5 h-5 ${priority === 'critical' ? 'text-red-500' :
+        priority === 'high' ? 'text-orange-500' :
+          priority === 'medium' ? 'text-yellow-500' :
+            'text-blue-500'
+      }`;
 
     switch (type) {
       case 'payment':
@@ -384,8 +383,8 @@ export default function AdminNotificationCenterPage() {
           toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
 
           if (whatsappResult.data.errors[0].error.includes('instance') ||
-              whatsappResult.data.errors[0].error.includes('Instance') ||
-              whatsappResult.data.errors[0].error.includes('connection')) {
+            whatsappResult.data.errors[0].error.includes('Instance') ||
+            whatsappResult.data.errors[0].error.includes('connection')) {
             toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
           }
         }
@@ -660,9 +659,8 @@ export default function AdminNotificationCenterPage() {
                 {filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.isRead ? 'bg-blue-50 border-r-4 border-blue-500' : ''
-                    }`}
+                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50 border-r-4 border-blue-500' : ''
+                      }`}
                     onClick={() => notification.id && markAsRead(notification.id)}
                   >
                     <div className="flex items-start gap-4">
@@ -672,9 +670,8 @@ export default function AdminNotificationCenterPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className={`text-lg font-semibold truncate ${
-                            !notification.isRead ? 'text-gray-900' : 'text-gray-600'
-                          }`}>
+                          <h4 className={`text-lg font-semibold truncate ${!notification.isRead ? 'text-gray-900' : 'text-gray-600'
+                            }`}>
                             {notification.title}
                           </h4>
 

@@ -1,6 +1,17 @@
+'use client';
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Check, CreditCard, Banknote, Smartphone, Globe } from 'lucide-react';
+import { X, Search, Check, CreditCard, Banknote, Smartphone, Globe, Plus, Sparkles, Loader2, Zap } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PaymentProvider {
     id: string;
@@ -11,29 +22,14 @@ interface PaymentProvider {
 }
 
 const COMMON_PROVIDERS: PaymentProvider[] = [
-    // Global / Cards
-    { id: 'stripe', name: 'Stripe', type: 'card', icon: '💳', description: 'Global Card Payments' },
-    { id: 'paypal', name: 'PayPal', type: 'wallet', icon: '💙', description: 'Global Wallet' },
-
-    // Egypt
-    { id: 'vodafone_cash', name: 'Vodafone Cash', type: 'wallet', icon: '📱', description: 'Egypt Mobile Wallet' },
-    { id: 'instapay', name: 'InstaPay', type: 'wallet', icon: '⚡', description: 'Egypt Instant Transfer' },
-    { id: 'fawry', name: 'Fawry', type: 'other', icon: '🟡', description: 'Egypt Cash Payment' },
-
-    // Gulf
-    { id: 'stc_pay', name: 'STC Pay', type: 'wallet', icon: '🟣', description: 'Saudi Arabia Wallet' },
-    { id: 'urpay', name: 'UrPay', type: 'wallet', icon: '📱', description: 'Saudi Arabia Wallet' },
-    { id: 'skipcash', name: 'SkipCash', type: 'card', icon: '💳', description: 'Qatar Payment Gateway' },
-    { id: 'fawran', name: 'Fawran', type: 'wallet', icon: '⚡', description: 'Qatar Instant Transfer' },
-
-    // Iraq / Levant
-    { id: 'zain_cash', name: 'Zain Cash', type: 'wallet', icon: '⚫', description: 'Iraq/Jordan Wallet' },
-    { id: 'asia_hawala', name: 'Asia Hawala', type: 'wallet', icon: '🔴', description: 'Iraq Wallet' },
-    { id: 'qi_card', name: 'Qi Card', type: 'card', icon: '💳', description: 'Iraq National Card' },
-
-    // Generic
-    { id: 'bank_transfer', name: 'Bank Transfer', type: 'bank_transfer', icon: '🏦', description: 'Direct Bank Transfer' },
-    { id: 'cash', name: 'Cash / Office', type: 'other', icon: '💵', description: 'Cash at Office' },
+    { id: 'stripe', name: 'Stripe', type: 'card', icon: '💳', description: 'Global Infrastructure' },
+    { id: 'paypal', name: 'PayPal', type: 'wallet', icon: '💙', description: 'Global Digital Wallet' },
+    { id: 'vodafone_cash', name: 'Vodafone Cash', type: 'wallet', icon: '📱', description: 'MENA Mobile Liquidity' },
+    { id: 'instapay', name: 'InstaPay', type: 'wallet', icon: '⚡', description: 'Instant Node Transfer' },
+    { id: 'stc_pay', name: 'STC Pay', type: 'wallet', icon: '📱', description: 'KSA Digital Banking' },
+    { id: 'skipcash', name: 'SkipCash', type: 'card', icon: '💳', description: 'Qatar Digital Gateway' },
+    { id: 'zain_cash', name: 'Zain Cash', type: 'wallet', icon: '📱', description: 'Levant Mobile Wallet' },
+    { id: 'bank_transfer', name: 'Bank Transfer', type: 'bank_transfer', icon: '🏦', description: 'Direct Institutional Sync' },
 ];
 
 interface AddPaymentMethodModalProps {
@@ -56,7 +52,7 @@ export default function AddPaymentMethodModal({ isOpen, onClose, onAdd }: AddPay
     const handleConfirm = () => {
         if (selectedProvider) {
             onAdd({
-                id: selectedProvider.id === 'bank_transfer' ? `bank_${Date.now()}` : selectedProvider.id, // Allow multiple banks
+                id: selectedProvider.id === 'bank_transfer' ? `bank_${Date.now()}` : selectedProvider.id,
                 name: selectedProvider.name,
                 type: selectedProvider.type,
                 enabled: true,
@@ -81,130 +77,148 @@ export default function AddPaymentMethodModal({ isOpen, onClose, onAdd }: AddPay
         setCustomName('');
     };
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden"
-                >
-                    {/* Header */}
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <h3 className="text-xl font-bold text-gray-900">إضافة وسيلة دفع</h3>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                            <X className="w-5 h-5 text-gray-500" />
-                        </button>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-3xl bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+                    <DialogHeader className="relative z-10">
+                        <div className="flex justify-between items-start mb-6">
+                            <Badge className="bg-indigo-600 text-white border-none py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase shadow-lg shadow-indigo-500/20">
+                                Network Expansion
+                            </Badge>
+                            <CreditCard className="w-10 h-10 text-indigo-400 opacity-50" />
+                        </div>
+                        <DialogTitle className="text-4xl font-black italic tracking-tighter">
+                            New Payment Protocol
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold text-xs mt-2 p-0 max-w-md">
+                            Integrate sophisticated transaction nodes into regional operational grids.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
+
+                <div className="p-10 flex flex-col min-h-0 h-[500px]">
+                    <div className="relative mb-8">
+                        <input
+                            type="text"
+                            placeholder="Identify provider (Stripe, Vodafone, Instapay...)"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full h-16 pl-14 pr-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-900 transition-all text-lg"
+                        />
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 w-6 h-6" />
                     </div>
 
-                    <div className="p-6">
-                        {/* Search */}
-                        <div className="relative mb-6">
-                            <Search className="absolute right-3 top-3 text-gray-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="ابحث عن مزود خدمة (Fawry, Vodafone, Stripe...)"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            />
-                        </div>
-
-                        {/* List */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto mb-6 pr-2">
-                            {filteredProviders.map(provider => (
-                                <div
+                    <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 gap-4 pb-10 custom-scrollbar">
+                        <AnimatePresence mode="popLayout">
+                            {filteredProviders.map((provider, idx) => (
+                                <motion.div
                                     key={provider.id}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: idx * 0.02 }}
                                     onClick={() => {
                                         setSelectedProvider(provider);
                                         setCustomName('');
                                     }}
                                     className={`
-                                        p-4 rounded-xl border cursor-pointer flex items-center gap-3 transition-all
+                                        relative group p-6 rounded-[2rem] border cursor-pointer transition-all duration-300 flex items-center gap-5
                                         ${selectedProvider?.id === provider.id
-                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                            ? 'border-indigo-500 bg-indigo-600 text-white shadow-2xl shadow-indigo-500/30'
+                                            : 'bg-white border-slate-100 hover:border-indigo-500/30 hover:bg-slate-50'
                                         }
                                     `}
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-xl shadow-sm border border-gray-100">
+                                    <div className={`w-14 h-14 rounded-2xl shadow-inner flex items-center justify-center text-3xl transition-transform duration-500 group-hover:scale-110 
+                                        ${selectedProvider?.id === provider.id ? 'bg-white/20' : 'bg-slate-50'}
+                                    `}>
                                         {provider.icon}
                                     </div>
                                     <div className="flex-1">
-                                        <h4 className="font-bold text-gray-900 text-sm">{provider.name}</h4>
-                                        <p className="text-xs text-gray-500">{provider.description}</p>
+                                        <h4 className={`font-black tracking-tight text-lg ${selectedProvider?.id === provider.id ? 'text-white' : 'text-slate-900'}`}>
+                                            {provider.name}
+                                        </h4>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${selectedProvider?.id === provider.id ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                            {provider.description}
+                                        </p>
                                     </div>
                                     {selectedProvider?.id === provider.id && (
-                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                            <Check className="w-4 h-4 text-white" />
-                                        </div>
+                                        <Check className="w-5 h-5 text-white" />
                                     )}
-                                </div>
+                                </motion.div>
                             ))}
+                        </AnimatePresence>
 
-                            {/* Custom Option */}
-                            <div
-                                onClick={() => {
+                        {/* Custom Provisioning */}
+                        <div
+                            onClick={() => setSelectedProvider(null)}
+                            className={`
+                                p-6 rounded-[2rem] border-2 border-dashed flex flex-col gap-4 transition-all duration-300
+                                ${!selectedProvider && customName ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}
+                            `}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Sparkles className="w-5 h-5 text-indigo-500" />
+                                <span className="font-black text-xs uppercase tracking-widest text-slate-600">Custom Provisioning</span>
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Identifier name..."
+                                value={customName}
+                                onChange={(e) => {
+                                    setCustomName(e.target.value);
                                     setSelectedProvider(null);
-                                    // Focus on custom input managed below
                                 }}
-                                className={`
-                                    p-4 rounded-xl border cursor-pointer border-dashed flex flex-col gap-3 transition-all
-                                    ${!selectedProvider && customName ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}
-                                `}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">
-                                        ✨
-                                    </div>
-                                    <span className="font-bold text-gray-700">أخرى (مخصص)</span>
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="اكتب اسم طريقة الدفع.."
-                                    value={customName}
-                                    onChange={(e) => {
-                                        setCustomName(e.target.value);
-                                        setSelectedProvider(null);
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                                />
-                                <div className="flex gap-2">
-                                    <select
-                                        value={customType}
-                                        onChange={(e) => setCustomType(e.target.value)}
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs bg-white"
-                                    >
-                                        <option value="wallet">محفظة إلكترونية</option>
-                                        <option value="bank_transfer">تحويل بنكي</option>
-                                        <option value="other">أخرى</option>
-                                    </select>
-                                </div>
+                                className="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                            />
+                            <div className="flex gap-2">
+                                <select
+                                    value={customType}
+                                    onChange={(e) => setCustomType(e.target.value)}
+                                    className="flex-1 h-10 px-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500"
+                                >
+                                    <option value="wallet">Mobile Node</option>
+                                    <option value="bank_transfer">Direct Sync</option>
+                                    <option value="other">Misc Protocol</option>
+                                </select>
                             </div>
                         </div>
-
-                        {/* Footer */}
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                            <button
-                                onClick={onClose}
-                                className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                إلغاء
-                            </button>
-                            <button
-                                onClick={handleConfirm}
-                                disabled={!selectedProvider && !customName}
-                                className="px-8 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-blue-200"
-                            >
-                                إضافة
-                            </button>
-                        </div>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+                </div>
+
+                <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        {selectedProvider ? (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-left">
+                                <div className="text-2xl">{selectedProvider.icon}</div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Staging</p>
+                                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">{selectedProvider.name}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identify protocol to proceed</p>
+                        )}
+                    </div>
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <Button
+                            variant="ghost"
+                            onClick={onClose}
+                            className="flex-1 md:flex-none h-14 px-8 rounded-2xl text-slate-600 font-bold hover:bg-slate-100"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleConfirm}
+                            disabled={!selectedProvider && !customName}
+                            className="flex-[2] md:flex-none h-14 px-12 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center gap-3"
+                        >
+                            Execute Integration <Zap className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

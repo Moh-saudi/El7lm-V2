@@ -2,9 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Trash2, X, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Edit2, Plus, Trash2, X, Check, AlertCircle, Loader2, Tag, Star, Users, Briefcase, User, GraduationCap, Layout, Globe, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { PricingService } from '@/lib/pricing/pricing-service';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 // ==================== ACCOUNT TYPE PRICING TAB ====================
 
@@ -14,6 +24,7 @@ function AccountTypePricingTab() {
     const [selectedPlan, setSelectedPlan] = useState<string>('');
     const [editingType, setEditingType] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         loadPlans();
@@ -28,7 +39,8 @@ function AccountTypePricingTab() {
                 setSelectedPlan(plansData[0].id);
             }
         } catch (error) {
-            console.error('خطأ في تحميل الباقات:', error);
+            console.error('Error loading plans:', error);
+            toast.error('Failed to synchronize pricing protocols');
         } finally {
             setLoading(false);
         }
@@ -37,11 +49,11 @@ function AccountTypePricingTab() {
     const currentPlan = plans.find(p => p.id === selectedPlan);
 
     const ACCOUNT_TYPES = [
-        { code: 'club', name: 'النوادي', icon: '⚽', color: 'blue' },
-        { code: 'academy', name: 'الأكاديميات', icon: '🏫', color: 'green' },
-        { code: 'trainer', name: 'المدربين', icon: '👨‍🏫', color: 'purple' },
-        { code: 'agent', name: 'الوكلاء', icon: '💼', color: 'orange' },
-        { code: 'player', name: 'اللاعبين', icon: '🏃', color: 'red' },
+        { code: 'club', name: 'Clubs', icon: <Layout className="w-8 h-8" />, color: 'blue', desc: 'Institutional elite entities' },
+        { code: 'academy', name: 'Academies', icon: <GraduationCap className="w-8 h-8" />, color: 'emerald', desc: 'Developmental organizations' },
+        { code: 'trainer', name: 'Trainers', icon: <Star className="w-8 h-8" />, color: 'purple', desc: 'Individual professionals' },
+        { code: 'agent', name: 'Agents', icon: <Briefcase className="w-8 h-8" />, color: 'orange', desc: 'Strategic intermediaries' },
+        { code: 'player', name: 'Players', icon: <User className="w-8 h-8" />, color: 'rose', desc: 'Rising athletic talent' },
     ];
 
     const handleEditType = (typeCode: string) => {
@@ -58,12 +70,13 @@ function AccountTypePricingTab() {
 
     const handleSaveTypePrice = async () => {
         if (!editingType || !currentPlan) return;
+        setIsSaving(true);
 
         try {
             const updatedOverrides = {
                 ...currentPlan.accountTypeOverrides,
                 [editingType]: {
-                    original_price: editForm.price ? parseFloat(editForm.original_price) : undefined,
+                    original_price: editForm.original_price ? parseFloat(editForm.original_price) : undefined,
                     price: editForm.price ? parseFloat(editForm.price) : undefined,
                     discount_percentage: editForm.discount_percentage ? parseFloat(editForm.discount_percentage) : undefined,
                     active: editForm.active
@@ -75,12 +88,14 @@ function AccountTypePricingTab() {
                 accountTypeOverrides: updatedOverrides
             });
 
-            toast.success('✅ تم حفظ السعر المخصص بنجاح');
+            toast.success('✅ Target protocol synchronized');
             setEditingType(null);
             loadPlans();
         } catch (error) {
-            console.error('خطأ في حفظ السعر المخصص:', error);
-            toast.error('❌ فشل في حفظ السعر المخصص');
+            console.error('Error saving override:', error);
+            toast.error('❌ Synchronization failure');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -96,38 +111,45 @@ function AccountTypePricingTab() {
                 accountTypeOverrides: updatedOverrides
             });
 
-            toast.success('✅ تم حذف السعر المخصص');
+            toast.success('✅ Override purged');
             loadPlans();
         } catch (error) {
-            console.error('خطأ في حذف السعر المخصص:', error);
-            toast.error('❌ فشل في حذف السعر المخصص');
+            console.error('Error removing override:', error);
+            toast.error('❌ Process termination failed');
         }
     };
 
     if (loading) {
         return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            </motion.div>
+            <div className="flex flex-col justify-center items-center py-24 gap-4">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Synchronizing Global Tiers...</p>
+            </div>
         );
     }
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-12"
         >
-            <div className="flex justify-between items-center mb-6">
+            {/* Header Section */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">أسعار أنواع الحسابات</h2>
-                    <p className="mt-1 text-sm text-gray-600">تخصيص الأسعار والخصومات لكل نوع حساب</p>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Access Protocol Optimization</h2>
+                    <p className="mt-2 text-slate-500 font-bold flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                        Configure role-specific financial overrides for institutional targeting.
+                    </p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-[1.5rem] border border-white shadow-xl">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-4">Active Strategy:</span>
                     <select
                         value={selectedPlan}
                         onChange={(e) => setSelectedPlan(e.target.value)}
-                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="h-12 px-6 bg-slate-900 text-white rounded-2xl font-black text-xs tracking-widest uppercase focus:ring-0 outline-none cursor-pointer hover:bg-slate-800 transition-all"
                     >
                         {plans.map(plan => (
                             <option key={plan.id} value={plan.id}>{plan.title}</option>
@@ -136,226 +158,237 @@ function AccountTypePricingTab() {
                 </div>
             </div>
 
-            <div className="p-4 mb-6 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex gap-3 items-start">
-                    <AlertCircle className="flex-shrink-0 w-5 h-5 text-blue-600" />
-                    <div className="text-sm text-blue-900">
-                        <p className="font-semibold">كيف يعمل النظام؟</p>
-                        <p className="mt-1">
-                            يمكنك تحديد سعر خاص أو نسبة خصم لكل نوع حساب. الخصومات تُطبق على جميع الأسعار (الأساسية والمخصصة للدول).
-                        </p>
-                    </div>
-                </div>
-            </div>
+            {/* Strategy Context Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-1 rounded-[2.5rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl p-8 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                    <div className="relative z-10 space-y-6">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-500/20">
+                                <TrendingUp className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Baseline</h3>
+                                <p className="text-[10px] text-slate-400 font-bold">Standard tier configuration</p>
+                            </div>
+                        </div>
 
-            <div className="p-4 mb-6 bg-gray-50 rounded-lg border border-gray-200">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">السعر الأساسي (بدون تخصيص)</h3>
-                <div className="flex gap-6 items-center">
-                    <div>
-                        <p className="text-xs text-gray-500">السعر الأصلي</p>
-                        <p className="text-lg font-bold text-gray-400 line-through">${currentPlan?.base_original_price || 0}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-gray-500">السعر بعد الخصم</p>
-                        <p className="text-lg font-bold text-green-600">${currentPlan?.base_price || 0}</p>
-                    </div>
-                </div>
-            </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Standard Rate</span>
+                                <span className="text-xl font-black text-slate-400 line-through opacity-50">${currentPlan?.base_original_price || 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Strategy Price</span>
+                                <span className="text-2xl font-black text-emerald-600">${currentPlan?.base_price || 0}</span>
+                            </div>
+                        </div>
 
-            <div className="overflow-hidden bg-white rounded-lg border border-gray-200">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">نوع الحساب</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">السعر المخصص</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">نسبة الخصم</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الحالة</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {ACCOUNT_TYPES.map(type => {
-                                const override = currentPlan?.accountTypeOverrides?.[type.code];
-                                const hasCustomPrice = !!override;
+                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100/50">
+                            <p className="text-[10px] text-blue-900 font-bold leading-relaxed flex items-start gap-2">
+                                <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                                Custom role overrides take precedence over global baseline parameters for selected account types.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
 
-                                return (
-                                    <tr key={type.code} className={hasCustomPrice ? 'bg-blue-50/50' : 'bg-white hover:bg-gray-50'}>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2 items-center">
-                                                <span className="text-2xl">{type.icon}</span>
-                                                <span className="font-medium text-gray-900">{type.name}</span>
-                                                {hasCustomPrice && (
-                                                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
-                                                        مخصص
-                                                    </span>
-                                                )}
+                {/* Account Types Grid */}
+                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {ACCOUNT_TYPES.map((type, index) => {
+                        const override = currentPlan?.accountTypeOverrides?.[type.code];
+                        const hasCustomPrice = !!override;
+
+                        return (
+                            <motion.div
+                                key={type.code}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <Card className={`rounded-[2.5rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl overflow-hidden group hover:scale-[1.03] transition-all duration-300 h-full flex flex-col ${hasCustomPrice ? 'ring-2 ring-blue-500/30 shadow-blue-500/5' : ''}`}>
+                                    <div className="p-6 pb-2">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-4 rounded-2xl shadow-inner flex items-center justify-center
+                                                    ${type.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                                                        type.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                                                            type.color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                                                                type.color === 'orange' ? 'bg-orange-50 text-orange-600' : 'bg-rose-50 text-rose-600'}
+                                                `}>
+                                                    {type.icon}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xl font-black text-slate-900 tracking-tight">{type.name}</h4>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{type.desc}</p>
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {override?.price ? (
-                                                <span className="text-lg font-bold text-green-600">${override.price}</span>
-                                            ) : (
-                                                <span className="text-gray-400">—</span>
+                                            {hasCustomPrice && (
+                                                <Badge className="bg-blue-600 text-white border-none py-1 px-3 rounded-full font-black text-[8px] tracking-[0.2em] shadow-lg shadow-blue-500/20">
+                                                    OVERRIDE
+                                                </Badge>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {override?.discount_percentage ? (
-                                                <span className="text-lg font-bold text-orange-600">{override.discount_percentage}%</span>
-                                            ) : (
-                                                <span className="text-gray-400">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {override ? (
-                                                <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${override.active
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-gray-100 text-gray-700'
-                                                    }`}>
-                                                    <div className={`w-2 h-2 rounded-full ${override.active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                                    {override.active ? 'نشط' : 'معطل'}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm text-gray-400">افتراضي</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleEditType(type.code)}
-                                                    className="flex gap-1 items-center px-3 py-1 text-sm text-blue-600 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100"
-                                                >
-                                                    <Edit2 className="w-3 h-3" />
-                                                    {hasCustomPrice ? 'تعديل' : 'إضافة'}
-                                                </button>
-                                                {hasCustomPrice && (
-                                                    <button
-                                                        onClick={() => handleRemoveTypePrice(type.code)}
-                                                        className="flex gap-1 items-center px-3 py-1 text-sm text-red-600 bg-red-50 rounded-lg transition-colors hover:bg-red-100"
-                                                    >
-                                                        <Trash2 className="w-3 h-3" />
-                                                        حذف
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* نافذة التعديل */}
-            <AnimatePresence>
-                {editingType && (
-                    <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="w-full max-w-md bg-white rounded-2xl shadow-2xl"
-                        >
-                            <div className="p-6 border-b border-gray-200">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-gray-900">
-                                            {ACCOUNT_TYPES.find(t => t.code === editingType)?.icon} تخصيص السعر
-                                        </h3>
-                                        <p className="mt-1 text-sm text-gray-600">
-                                            {ACCOUNT_TYPES.find(t => t.code === editingType)?.name}
-                                        </p>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => setEditingType(null)}
-                                        className="p-2 text-gray-400 rounded-lg transition-colors hover:bg-gray-100"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
+
+                                    <CardContent className="px-6 pt-0 flex-1">
+                                        <div className="grid grid-cols-2 gap-3 mb-6">
+                                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-center">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Effective Rate</p>
+                                                <p className={`text-xl font-black ${hasCustomPrice ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                    {hasCustomPrice ? `$${override.price}` : 'Default'}
+                                                </p>
+                                            </div>
+                                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-center">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Reduction</p>
+                                                <p className={`text-xl font-black ${override?.discount_percentage ? 'text-orange-600' : 'text-slate-400'}`}>
+                                                    {override?.discount_percentage ? `${override.discount_percentage}%` : 'Standard'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-white/50 border border-white rounded-2xl">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${hasCustomPrice ? (override.active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300') : 'bg-blue-400'}`} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                    {hasCustomPrice ? (override.active ? 'Operational' : 'Suspended') : 'Global Sync'}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleEditType(type.code)}
+                                                    className="w-10 h-10 rounded-xl bg-white hover:bg-slate-900 hover:text-white border border-slate-200 shadow-sm transition-all"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </Button>
+                                                {hasCustomPrice && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleRemoveTypePrice(type.code)}
+                                                        className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-100"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Edit Override Dialog */}
+            <Dialog open={!!editingType} onOpenChange={() => setEditingType(null)}>
+                <DialogContent className="max-w-md bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                    <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                        <DialogHeader className="relative z-10">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/20">
+                                    {ACCOUNT_TYPES.find(t => t.code === editingType)?.icon}
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-3xl font-black italic tracking-tighter uppercase">
+                                        {ACCOUNT_TYPES.find(t => t.code === editingType)?.name}
+                                    </DialogTitle>
+                                    <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Institutional Override</p>
                                 </div>
                             </div>
+                            <DialogDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 p-0">
+                                Configure specific financial parameters for {ACCOUNT_TYPES.find(t => t.code === editingType)?.name}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
 
-                            <div className="p-6 space-y-4">
-                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                    <p className="text-xs text-yellow-800">
-                                        💡 يمكنك تحديد سعر مخصص أو نسبة خصم. الخصم يُطبق على جميع الأسعار تلقائياً.
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">السعر الأصلي (USD)</label>
+                    <div className="p-10 space-y-8">
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Retail Rate</label>
                                     <input
                                         type="number"
                                         value={editForm.original_price}
                                         onChange={(e) => setEditForm({ ...editForm, original_price: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-400 line-through transition-all"
                                         placeholder="60"
                                     />
                                 </div>
-
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">السعر بعد الخصم (USD)</label>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest ml-1">Strategy Price</label>
                                     <input
                                         type="number"
                                         value={editForm.price}
                                         onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full h-14 px-6 bg-white border-2 border-blue-500/20 rounded-2xl font-black text-slate-900 focus:border-blue-500 transition-all text-xl"
                                         placeholder="35"
                                     />
                                 </div>
+                            </div>
 
-                                <div className="text-center text-sm text-gray-500">— أو —</div>
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div className="w-full border-t border-slate-100"></div>
+                                </div>
+                                <div className="relative flex justify-center">
+                                    <span className="bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">or define reduction</span>
+                                </div>
+                            </div>
 
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">نسبة الخصم (%)</label>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Reduction Protocol (%)</label>
+                                <div className="relative">
                                     <input
                                         type="number"
                                         value={editForm.discount_percentage}
                                         onChange={(e) => setEditForm({ ...editForm, discount_percentage: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
                                         placeholder="20"
                                         min="0"
                                         max="100"
                                     />
-                                    <p className="mt-1 text-xs text-gray-500">
-                                        الخصم يُطبق على السعر الأساسي وأسعار الدول تلقائياً
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="checkbox"
-                                        id="active-type"
-                                        checked={editForm.active}
-                                        onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })}
-                                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <label htmlFor="active-type" className="text-sm font-medium text-gray-700">
-                                        تفعيل السعر المخصص
-                                    </label>
+                                    <Tag className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="flex gap-3 p-6 border-t border-gray-200">
-                                <button
-                                    onClick={handleSaveTypePrice}
-                                    className="flex flex-1 gap-2 justify-center items-center px-4 py-2 font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
-                                >
-                                    <Check className="w-4 h-4" />
-                                    حفظ
-                                </button>
-                                <button
-                                    onClick={() => setEditingType(null)}
-                                    className="px-4 py-2 font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors hover:bg-gray-200"
-                                >
-                                    إلغاء
-                                </button>
+                        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${editForm.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                                <span className="text-xs font-black uppercase tracking-widest text-slate-900">Synchronized State</span>
                             </div>
-                        </motion.div>
+                            <div
+                                className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${editForm.active ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                                onClick={() => setEditForm({ ...editForm, active: !editForm.active })}
+                            >
+                                <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition duration-200 ease-in-out ${editForm.active ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setEditingType(null)}
+                                className="flex-1 h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold transition-all"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={isSaving}
+                                onClick={handleSaveTypePrice}
+                                className="flex-[2] h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Apply Protocol'}
+                            </Button>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     );
 }

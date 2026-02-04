@@ -346,8 +346,8 @@ export const PermissionGuard = ({
   requiredPermissions: (keyof EmployeePermissions)[];
   requireAll?: boolean;
   fallback?: React.ReactNode;
-}) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, loading } = useEmployeePermissions();
+}): any => {
+  const { hasAnyPermission, hasAllPermissions, loading } = useEmployeePermissions();
 
   if (loading) {
     return (
@@ -365,7 +365,7 @@ export const PermissionGuard = ({
     return fallback || null;
   }
 
-  return <>{children}</>;
+  return children;
 };
 
 // مكون عرض معلومات الصلاحيات

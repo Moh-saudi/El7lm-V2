@@ -18,7 +18,7 @@ export default function ClarityAdminPage() {
         router.push('/auth/login');
         return;
       }
-      
+
       if (userData?.accountType !== 'admin') {
         router.push('/dashboard');
         return;
@@ -52,7 +52,7 @@ export default function ClarityAdminPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Alert variant="destructive">
+            <Alert className="bg-red-50 border border-red-200 text-red-800">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 ليس لديك صلاحية للوصول إلى هذه الصفحة. هذه الصفحة مخصصة للمشرفين فقط.

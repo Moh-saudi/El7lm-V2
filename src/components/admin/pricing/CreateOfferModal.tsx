@@ -1,9 +1,18 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { X, Check, Gift, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Check, Gift, AlertCircle, Calendar, Tag, Users, Globe, Layers, Percent, DollarSign, Plus, RefreshCcw, Loader2 } from 'lucide-react';
 import { COUNTRIES } from '@/constants/countries';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CreateOfferModalProps {
     isOpen: boolean;
@@ -12,7 +21,7 @@ interface CreateOfferModalProps {
     onSave: () => void;
     onChange: (data: any) => void;
     availablePlans: any[];
-    isEditing?: boolean;  // إضافة prop لوضع التعديل
+    isEditing?: boolean;
 }
 
 export default function CreateOfferModal({
@@ -22,18 +31,16 @@ export default function CreateOfferModal({
     onSave,
     onChange,
     availablePlans,
-    isEditing = false  // قيمة افتراضية
+    isEditing = false
 }: CreateOfferModalProps) {
-    if (!isOpen) return null;
-
     const [activeSection, setActiveSection] = React.useState<'basic' | 'scope' | 'limits' | 'conditions'>('basic');
 
     const ACCOUNT_TYPES = [
-        { value: 'club', label: 'النوادي' },
-        { value: 'academy', label: 'الأكاديميات' },
-        { value: 'trainer', label: 'المدربين' },
-        { value: 'agent', label: 'الوكلاء' },
-        { value: 'player', label: 'اللاعبين' }
+        { value: 'club', label: 'Clubs', icon: <Users className="w-4 h-4" /> },
+        { value: 'academy', label: 'Academies', icon: <Users className="w-4 h-4" /> },
+        { value: 'trainer', label: 'Trainers', icon: <Users className="w-4 h-4" /> },
+        { value: 'agent', label: 'Agents', icon: <Users className="w-4 h-4" /> },
+        { value: 'player', label: 'Players', icon: <Users className="w-4 h-4" /> }
     ];
 
     const toggleAccountType = (type: string) => {
@@ -60,461 +67,378 @@ export default function CreateOfferModal({
         onChange({ ...formData, applicablePlans: updated });
     };
 
+    const SECTIONS = [
+        { id: 'basic', label: 'Protocol', icon: <Tag className="w-4 h-4" /> },
+        { id: 'scope', label: 'Audience', icon: <Users className="w-4 h-4" /> },
+        { id: 'limits', label: 'Parameters', icon: <Layers className="w-4 h-4" /> },
+        { id: 'conditions', label: 'Logic', icon: <AlertCircle className="w-4 h-4" /> }
+    ];
+
     return (
-        <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden"
-            >
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-600 to-emerald-600">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-2xl font-bold text-white flex gap-2 items-center">
-                            <Gift className="w-6 h-6" />
-                            {isEditing ? 'تعديل عرض ترويجي' : 'إنشاء عرض ترويجي جديد'}
-                        </h3>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+                    <DialogHeader className="relative z-10">
+                        <div className="flex justify-between items-start mb-6">
+                            <Badge className="bg-emerald-600 text-white border-none py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase shadow-lg shadow-emerald-500/20">
+                                Growth Accelerator
+                            </Badge>
+                            <Gift className="w-8 h-8 text-emerald-500 opacity-50" />
+                        </div>
+                        <DialogTitle className="text-4xl font-black italic tracking-tighter">
+                            {isEditing ? 'Modify Campaign' : 'Initialize Offer'}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold text-xs mt-2 p-0 max-w-md">
+                            Configure promotional protocols to optimize user acquisition and retention.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
+
+                <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-2">
+                    {SECTIONS.map((section: any) => (
                         <button
-                            onClick={onClose}
-                            className="p-2 text-white rounded-lg transition-colors hover:bg-white/20"
+                            key={section.id}
+                            onClick={() => setActiveSection(section.id)}
+                            className={`flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all
+                                ${activeSection === section.id
+                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                         >
-                            <X className="w-5 h-5" />
+                            {section.icon}
+                            {section.label}
                         </button>
-                    </div>
+                    ))}
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200 bg-gray-50">
-                    <button
-                        onClick={() => setActiveSection('basic')}
-                        className={`flex-1 px-4 py-3 font-medium transition ${activeSection === 'basic'
-                            ? 'text-green-600 border-b-2 border-green-600 bg-white'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        المعلومات الأساسية
-                    </button>
-                    <button
-                        onClick={() => setActiveSection('scope')}
-                        className={`flex-1 px-4 py-3 font-medium transition ${activeSection === 'scope'
-                            ? 'text-green-600 border-b-2 border-green-600 bg-white'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        نطاق العرض
-                    </button>
-                    <button
-                        onClick={() => setActiveSection('limits')}
-                        className={`flex-1 px-4 py-3 font-medium transition ${activeSection === 'limits'
-                            ? 'text-green-600 border-b-2 border-green-600 bg-white'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        حدود الاستخدام
-                    </button>
-                    <button
-                        onClick={() => setActiveSection('conditions')}
-                        className={`flex-1 px-4 py-3 font-medium transition ${activeSection === 'conditions'
-                            ? 'text-green-600 border-b-2 border-green-600 bg-white'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        الشروط والباقات
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                    {/* Basic Section */}
-                    {activeSection === 'basic' && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">עنوان العرض *</label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => onChange({ ...formData, title: e.target.value })}
-                                    className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    placeholder="مثلاً: خصم العيد 50%"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">الوصف</label>
-                                <textarea
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={(e) => onChange({ ...formData, description: e.target.value })}
-                                    className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    placeholder="وصف العرض..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">
-                                    رمز الخصم (Promo Code)
-                                    <span className="text-xs text-gray-500 mr-2">• اختياري - إذا تركته فارغاً، سيطبق تلقائياً</span>
-                                </label>
-                                <div className="flex gap-2">
+                <div className="p-10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <AnimatePresence mode="wait">
+                        {activeSection === 'basic' && (
+                            <motion.div
+                                key="basic"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Campaign Identity</label>
                                     <input
                                         type="text"
-                                        value={formData.code || ''}
-                                        onChange={(e) => onChange({ ...formData, code: e.target.value.toUpperCase() })}
-                                        className="px-4 py-2 flex-1 bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono uppercase"
-                                        placeholder="SUMMER2024"
-                                        maxLength={20}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const randomCode = `PROMO${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                                            onChange({ ...formData, code: randomCode });
-                                        }}
-                                        className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium whitespace-nowrap transition-colors"
-                                    >
-                                        توليد كود
-                                    </button>
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    💡 مثال: RAMADAN25, SUMMER50, VIP100 (أو اتركه فارغاً للتطبيق التلقائي)
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">نوع الخصم *</label>
-                                    <select
-                                        value={formData.discountType}
-                                        onChange={(e) => onChange({ ...formData, discountType: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    >
-                                        <option value="percentage">نسبة مئوية (%)</option>
-                                        <option value="fixed">قيمة ثابتة (USD)</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">قيمة الخصم *</label>
-                                    <input
-                                        type="number"
-                                        value={formData.discountValue}
-                                        onChange={(e) => onChange({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        placeholder={formData.discountType === 'percentage' ? '20' : '10'}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">تاريخ البداية *</label>
-                                    <input
-                                        type="date"
-                                        value={formData.startDate}
-                                        onChange={(e) => onChange({ ...formData, startDate: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        value={formData.title}
+                                        onChange={(e) => onChange({ ...formData, title: e.target.value })}
+                                        placeholder="e.g. Ramadan Performance Boost 2024..."
+                                        className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 font-bold text-slate-900 transition-all"
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">تاريخ النهاية *</label>
-                                    <input
-                                        type="date"
-                                        value={formData.endDate}
-                                        onChange={(e) => onChange({ ...formData, endDate: e.target.value })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Narrative Description</label>
+                                    <textarea
+                                        rows={3}
+                                        value={formData.description}
+                                        onChange={(e) => onChange({ ...formData, description: e.target.value })}
+                                        placeholder="Briefly define the value proposition..."
+                                        className="w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 font-bold text-slate-900"
                                     />
                                 </div>
-                            </div>
 
-                            <div className="flex gap-2 items-center">
-                                <input
-                                    type="checkbox"
-                                    id="active-offer"
-                                    checked={formData.isActive}
-                                    onChange={(e) => onChange({ ...formData, isActive: e.target.checked })}
-                                    className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500"
-                                />
-                                <label htmlFor="active-offer" className="text-sm font-medium text-gray-700">
-                                    تفعيل العرض فوراً
-                                </label>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Scope Section */}
-                    {activeSection === 'scope' && (
-                        <div className="space-y-4">
-                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                <div className="flex gap-2 items-start">
-                                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm text-blue-900">
-                                        <p className="font-semibold">نطاق العرض</p>
-                                        <p className="mt-1">حدد من يمكنه الاستفادة من هذا العرض</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">النطاق:</label>
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            value="all"
-                                            checked={formData.scope === 'all'}
-                                            onChange={(e) => onChange({ ...formData, scope: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <span className="text-sm font-medium">للكل (عام)</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            value="accountTypes"
-                                            checked={formData.scope === 'accountTypes'}
-                                            onChange={(e) => onChange({ ...formData, scope: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <span className="text-sm font-medium">أنواع حسابات محددة</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            value="countries"
-                                            checked={formData.scope === 'countries'}
-                                            onChange={(e) => onChange({ ...formData, scope: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <span className="text-sm font-medium">دول محددة</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Account Types Selection */}
-                            {formData.scope === 'accountTypes' && (
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">اختر أنواع الحسابات:</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {ACCOUNT_TYPES.map(type => (
-                                            <label
-                                                key={type.value}
-                                                className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer border-2 transition ${formData.targetAccountTypes?.includes(type.value)
-                                                    ? 'border-green-500 bg-green-50'
-                                                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.targetAccountTypes?.includes(type.value)}
-                                                    onChange={() => toggleAccountType(type.value)}
-                                                    className="w-4 h-4 text-green-600 rounded"
-                                                />
-                                                <span className="text-sm font-medium">{type.label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Countries Selection */}
-                            {formData.scope === 'countries' && (
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">اختر الدول:</label>
-                                    <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg">
-                                        {COUNTRIES.slice(0, 12).map(country => (
-                                            <label
-                                                key={country.code}
-                                                className={`flex items-center gap-2 p-2 rounded cursor-pointer border transition ${formData.targetCountries?.includes(country.code)
-                                                    ? 'border-green-500 bg-green-50'
-                                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.targetCountries?.includes(country.code)}
-                                                    onChange={() => toggleCountry(country.code)}
-                                                    className="w-4 h-4 text-green-600 rounded"
-                                                />
-                                                <span className="text-sm">{country.flag} {country.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Limits Section */}
-                    {activeSection === 'limits' && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">نوع الحد:</label>
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="usageLimitType"
-                                            value="unlimited"
-                                            checked={formData.usageLimitType === 'unlimited'}
-                                            onChange={(e) => onChange({ ...formData, usageLimitType: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium">غير محدود</span>
-                                            <p className="text-xs text-gray-500">يمكن للجميع استخدامه</p>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="usageLimitType"
-                                            value="total"
-                                            checked={formData.usageLimitType === 'total'}
-                                            onChange={(e) => onChange({ ...formData, usageLimitType: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium">حد كلي</span>
-                                            <p className="text-xs text-gray-500">عدد محدود من الاستخدامات الكلية</p>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
-                                        <input
-                                            type="radio"
-                                            name="usageLimitType"
-                                            value="perUser"
-                                            checked={formData.usageLimitType === 'perUser'}
-                                            onChange={(e) => onChange({ ...formData, usageLimitType: e.target.value })}
-                                            className="w-4 h-4 text-green-600"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium">حد لكل مستخدم</span>
-                                            <p className="text-xs text-gray-500">استخدام واحد لكل شخص</p>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {formData.usageLimitType === 'total' && (
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">الحد الأقصى للاستخدامات:</label>
-                                    <input
-                                        type="number"
-                                        value={formData.totalUsageLimit}
-                                        onChange={(e) => onChange({ ...formData, totalUsageLimit: parseInt(e.target.value) || 0 })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        placeholder="مثلاً: 100"
-                                    />
-                                </div>
-                            )}
-
-                            {formData.usageLimitType === 'perUser' && (
-                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                    <p className="text-sm text-blue-900">
-                                        سيتم تتبع استخدام كل مستخدم تلقائياً. كل مستخدم يمكنه الاستفادة من العرض مرة واحدة فقط.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Conditions Section */}
-                    {activeSection === 'conditions' && (
-                        <div className="space-y-4">
-                            {/* Applicable Plans */}
-                            <div>
-                                <label className="block mb-2 text-sm font-medium text-gray-700">الباقات المطبقة:</label>
-                                <p className="mb-2 text-xs text-gray-500">اترك فارغاً لتطبيق العرض على جميع الباقات</p>
-                                <div className="space-y-2">
-                                    {(availablePlans || []).map(plan => (
-                                        <label
-                                            key={plan.id}
-                                            className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer border transition ${formData.applicablePlans?.includes(plan.id)
-                                                ? 'border-green-500 bg-green-50'
-                                                : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                                                }`}
-                                        >
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Protocol Code</label>
+                                        <div className="flex gap-2">
                                             <input
-                                                type="checkbox"
-                                                checked={formData.applicablePlans?.includes(plan.id)}
-                                                onChange={() => togglePlan(plan.id)}
-                                                className="w-4 h-4 text-green-600 rounded"
+                                                type="text"
+                                                value={formData.code || ''}
+                                                onChange={(e) => onChange({ ...formData, code: e.target.value.toUpperCase() })}
+                                                placeholder="VIP2024"
+                                                className="flex-1 h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black tracking-widest text-slate-900"
                                             />
-                                            <span className="text-sm font-medium">{plan.title || plan.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const randomCode = `OFFER${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                                                    onChange({ ...formData, code: randomCode });
+                                                }}
+                                                className="w-14 h-14 flex items-center justify-center bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-colors"
+                                            >
+                                                <RefreshCcw className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
 
-                            {/* Min Conditions */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">حد أدنى للاعبين:</label>
-                                    <input
-                                        type="number"
-                                        value={formData.minPlayers}
-                                        onChange={(e) => onChange({ ...formData, minPlayers: parseInt(e.target.value) || 0 })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        placeholder="0 = لا يوجد حد"
-                                    />
-                                    <p className="mt-1 text-xs text-gray-500">اترك 0 إذا لم يكن هناك حد أدنى</p>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Discount Logic</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div
+                                                onClick={() => onChange({ ...formData, discountType: 'percentage' })}
+                                                className={`h-14 flex items-center justify-center gap-2 rounded-2xl cursor-pointer font-bold text-xs transition-all border
+                                                    ${formData.discountType === 'percentage' ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                                            >
+                                                <Percent className="w-4 h-4" /> Percentage
+                                            </div>
+                                            <div
+                                                onClick={() => onChange({ ...formData, discountType: 'fixed' })}
+                                                className={`h-14 flex items-center justify-center gap-2 rounded-2xl cursor-pointer font-bold text-xs transition-all border
+                                                    ${formData.discountType === 'fixed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                                            >
+                                                <DollarSign className="w-4 h-4" /> Fixed Amount
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block mb-2 text-sm font-medium text-gray-700">حد أدنى للمبلغ (USD):</label>
-                                    <input
-                                        type="number"
-                                        value={formData.minAmount}
-                                        onChange={(e) => onChange({ ...formData, minAmount: parseFloat(e.target.value) || 0 })}
-                                        className="px-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                        placeholder="0 = لا يوجد حد"
-                                    />
-                                    <p className="mt-1 text-xs text-gray-500">اترك 0 إذا لم يكن هناك حد أدنى</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Discount Value</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={formData.discountValue}
+                                                onChange={(e) => onChange({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
+                                                className="w-full h-14 px-6 bg-slate-50 border-2 border-emerald-500/20 rounded-2xl font-black text-2xl text-slate-900"
+                                            />
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-600">
+                                                {formData.discountType === 'percentage' ? '%' : 'USD'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Deployment Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.startDate}
+                                            onChange={(e) => onChange({ ...formData, startDate: e.target.value })}
+                                            className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-900"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Expiration Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.endDate}
+                                            onChange={(e) => onChange({ ...formData, endDate: e.target.value })}
+                                            className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-900"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            {(formData.minPlayers > 0 || formData.minAmount > 0) && (
-                                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                                    <p className="text-sm text-yellow-900">
-                                        <strong>تنبيه:</strong> سيتم تطبيق العرض فقط إذا تحققت الشروط التالية:
-                                    </p>
-                                    <ul className="mt-2 text-sm text-yellow-800 list-disc list-inside">
-                                        {formData.minPlayers > 0 && <li>عدد اللاعبين ≥ {formData.minPlayers}</li>}
-                                        {formData.minAmount > 0 && <li>المبلغ الإجمالي ≥ ${formData.minAmount}</li>}
-                                    </ul>
+                                <div className="flex items-center justify-between p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-3 h-3 rounded-full ${formData.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                                        <span className="text-xs font-black uppercase tracking-widest text-emerald-900">Immediate Deployment</span>
+                                    </div>
+                                    <div
+                                        className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${formData.isActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                                        onClick={() => onChange({ ...formData, isActive: !formData.isActive })}
+                                    >
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition duration-200 ease-in-out ${formData.isActive ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            </motion.div>
+                        )}
+
+                        {activeSection === 'scope' && (
+                            <motion.div
+                                key="scope"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-6">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 text-center block">Target Audience Architecture</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'all', label: 'Global (All Users)', icon: <Globe className="w-5 h-5 text-blue-500" /> },
+                                            { id: 'accountTypes', label: 'Role Specific', icon: <Users className="w-5 h-5 text-purple-500" /> },
+                                            { id: 'countries', label: 'Regional Focus', icon: <Globe className="w-5 h-5 text-emerald-500" /> }
+                                        ].map((scope) => (
+                                            <div
+                                                key={scope.id}
+                                                onClick={() => onChange({ ...formData, scope: scope.id })}
+                                                className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-3
+                                                    ${formData.scope === scope.id
+                                                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xl scale-105'
+                                                        : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                                            >
+                                                {scope.icon}
+                                                <span className="text-xs font-black uppercase tracking-tighter leading-tight">{scope.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {formData.scope === 'accountTypes' && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Target Account Roles</label>
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                            {ACCOUNT_TYPES.map(type => (
+                                                <div
+                                                    key={type.value}
+                                                    onClick={() => toggleAccountType(type.value)}
+                                                    className={`p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center gap-2
+                                                        ${formData.targetAccountTypes?.includes(type.value)
+                                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg'
+                                                            : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                                                        }`}
+                                                >
+                                                    {type.icon}
+                                                    <span className="text-[10px] font-black uppercase">{type.label}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {formData.scope === 'countries' && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Regional Parameters</label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-48 overflow-y-auto p-4 bg-slate-50 rounded-[2rem] border border-slate-100 custom-scrollbar">
+                                            {COUNTRIES.map(country => (
+                                                <div
+                                                    key={country.code}
+                                                    onClick={() => toggleCountry(country.code)}
+                                                    className={`p-3 rounded-xl cursor-pointer border-2 transition-all flex items-center gap-3
+                                                        ${formData.targetCountries?.includes(country.code)
+                                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                                            : 'bg-white text-slate-600 border-slate-100'
+                                                        }`}
+                                                >
+                                                    <span className="text-lg">{country.flag}</span>
+                                                    <span className="text-[10px] font-bold uppercase truncate">{country.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {activeSection === 'limits' && (
+                            <motion.div
+                                key="limits"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-6">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 text-center block">Usage Constraint Protocols</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'unlimited', label: 'Infinite', desc: 'No constraints', icon: <Layers className="w-5 h-5 text-slate-400" /> },
+                                            { id: 'total', label: 'Global Ceiling', desc: 'Fixed pool size', icon: <Tag className="w-5 h-5 text-emerald-500" /> },
+                                            { id: 'perUser', label: 'Individual Cap', desc: 'Once per entity', icon: <Users className="w-5 h-5 text-blue-500" /> }
+                                        ].map((limit) => (
+                                            <div
+                                                key={limit.id}
+                                                onClick={() => onChange({ ...formData, usageLimitType: limit.id })}
+                                                className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-2
+                                                    ${formData.usageLimitType === limit.id
+                                                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xl scale-105'
+                                                        : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                                            >
+                                                {limit.icon}
+                                                <span className="text-xs font-black uppercase tracking-tighter">{limit.label}</span>
+                                                <span className="text-[8px] font-bold uppercase opacity-50 tracking-widest">{limit.desc}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {formData.usageLimitType === 'total' && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 block text-center">Protocol Activation Pool Size</label>
+                                        <input
+                                            type="number"
+                                            value={formData.totalUsageLimit}
+                                            onChange={(e) => onChange({ ...formData, totalUsageLimit: parseInt(e.target.value) || 0 })}
+                                            className="w-full h-20 text-center bg-white border-2 border-slate-200 rounded-3xl font-black text-5xl text-slate-900 focus:border-emerald-500 transition-all"
+                                            placeholder="100"
+                                        />
+                                        <p className="text-[8px] font-black text-center text-slate-400 uppercase tracking-[0.2em] mt-2">Maximum valid redemptions across total network</p>
+                                    </motion.div>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {activeSection === 'conditions' && (
+                            <motion.div
+                                key="conditions"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Tier Applicability</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-48 overflow-y-auto p-4 bg-slate-50 rounded-[2rem] border border-slate-100 custom-scrollbar">
+                                        {(availablePlans || []).map(plan => (
+                                            <div
+                                                key={plan.id}
+                                                onClick={() => togglePlan(plan.id)}
+                                                className={`p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center justify-between
+                                                    ${formData.applicablePlans?.includes(plan.id)
+                                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                                                        : 'bg-white text-slate-600 border-slate-100 hover:border-slate-300'
+                                                    }`}
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-tight">{plan.title || plan.name}</span>
+                                                {formData.applicablePlans?.includes(plan.id) && <Check className="w-4 h-4" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-2">Select specific tiers or leave clear for universal eligibility</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Minimum Roster Size</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={formData.minPlayers}
+                                                onChange={(e) => onChange({ ...formData, minPlayers: parseInt(e.target.value) || 0 })}
+                                                className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                                                placeholder="0"
+                                            />
+                                            <Users className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Minimum Transaction (USD)</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={formData.minAmount}
+                                                onChange={(e) => onChange({ ...formData, minAmount: parseFloat(e.target.value) || 0 })}
+                                                className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                                                placeholder="0.00"
+                                            />
+                                            <DollarSign className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
-                {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-gray-200">
-                    <button
+                <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+                    <Button variant="ghost" onClick={onClose} className="flex-1 h-14 rounded-2xl bg-white hover:bg-slate-100 text-slate-600 font-bold transition-all">
+                        Cancel
+                    </Button>
+                    <Button
                         onClick={onSave}
-                        className="flex flex-1 gap-2 justify-center items-center px-4 py-3 font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={!formData.title || !formData.discountValue}
+                        className="flex-[2] h-14 rounded-2xl bg-emerald-600 text-white font-black uppercase tracking-widest shadow-2xl shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                        <Check className="w-5 h-5" />
-                        {isEditing ? 'حفظ التعديلات' : 'إنشاء العرض'}
-                    </button>
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-3 font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors hover:bg-gray-200"
-                    >
-                        إلغاء
-                    </button>
+                        {isEditing ? 'Authorize Updates' : 'Launch Campaign'}
+                    </Button>
                 </div>
-            </motion.div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
+

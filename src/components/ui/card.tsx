@@ -43,14 +43,23 @@ CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
+  React.HTMLAttributes<HTMLDivElement> & { variant?: 'default' | 'destructive' | 'warning' | 'success' }
+>(({ className, variant = 'default', ...props }, ref) => {
+  const variantClasses = {
+    default: "text-muted-foreground",
+    destructive: "text-destructive",
+    warning: "text-yellow-600 dark:text-yellow-500",
+    success: "text-emerald-600 dark:text-emerald-500",
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={cn("text-sm", variantClasses[variant], className)}
+      {...props}
+    />
+  )
+})
 CardDescription.displayName = "CardDescription"
 
 const CardContent = React.forwardRef<

@@ -20,6 +20,7 @@ import {
   MessageCircle,
   X,
   Info,
+  Clock,
   RotateCcw,
   Send,
   FileDown,
@@ -95,6 +96,13 @@ interface InvoiceRecord {
   };
   raw: any;
   userData?: any;
+}
+
+interface FilterState {
+  status: string;
+  country: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
 interface CollectionConfig {
@@ -685,339 +693,523 @@ export default function AdminInvoicesListPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-8" dir="rtl">
 
-      {/* 1. Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <span className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200">
-              <Banknote className="w-8 h-8" />
-            </span>
-            المدفوعات والفواتير
-          </h1>
-          <p className="mt-2 text-gray-500 font-medium">نظرة شاملة على جميع العمليات المالية والمبيعات</p>
+      {/* 1. Interactive Header Section */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-2xl shadow-blue-900/5 relative overflow-hidden"
+      >
+        {/* Abstract Background Decoration */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="relative">
+            <div className="p-4 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-200 group hover:scale-105 transition-transform duration-300">
+              <Banknote className="w-8 h-8 text-white" />
+            </div>
+            <div className="absolute -top-2 -right-2 p-1.5 bg-yellow-400 rounded-lg shadow-sm animate-bounce">
+              <Zap className="w-3.5 h-3.5 text-yellow-900" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-700">المركز المالي</span>
+            </h1>
+            <p className="text-gray-500 font-medium mt-1 flex items-center gap-2 text-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              إدارة الفواتير والعمليات المالية بدقة واحترافية
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={load} className="gap-2 bg-white hover:bg-gray-50 border-gray-200 shadow-sm text-gray-700">
-            <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            تحديث
-          </Button>
-          <Button className="gap-2 bg-gray-900 hover:bg-black text-white shadow-xl shadow-gray-200">
-            <FileDown className="w-4 h-4" />
-            تصدير التقرير
-          </Button>
-        </div>
-      </div>
-
-      {/* 2. Country Tabs */}
-      <div className="flex overflow-x-auto pb-4 gap-4 no-scrollbar">
-        {[
-          { id: 'all', label: 'الكل', icon: '🌍' },
-          { id: 'EG', label: 'مصر', icon: '🇪🇬' },
-          { id: 'QA', label: 'قطر', icon: '🇶🇦' },
-          { id: 'SA', label: 'السعودية', icon: '🇸🇦' },
-          { id: 'KW', label: 'الكويت', icon: '🇰🇼' },
-          { id: 'IQ', label: 'العراق', icon: '🇮🇶' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-                relative flex items-center gap-3 px-6 py-4 rounded-2xl border-2 transition-all min-w-[160px] group
-                ${activeTab === tab.id
-                ? 'border-blue-600 bg-blue-50/50 shadow-sm'
-                : 'border-white bg-white hover:border-gray-200 hover:bg-gray-50'
-              }
-             `}
+        <div className="flex items-center gap-4 relative z-10">
+          <Button
+            variant="ghost"
+            onClick={load}
+            className="h-12 px-6 bg-white/50 backdrop-blur-md hover:bg-white text-gray-600 hover:text-blue-600 rounded-2xl border border-white shadow-sm transition-all duration-300 font-bold"
           >
-            <span className="text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">{tab.icon}</span>
-            <div className="flex flex-col items-start">
-              <span className={`text-sm font-bold ${activeTab === tab.id ? 'text-blue-700' : 'text-gray-700'}`}>
+            <RefreshCcw className={`w-4 h-4 ml-2 ${loading ? 'animate-spin text-blue-500' : 'opacity-50'}`} />
+            تحديث البيانات
+          </Button>
+          <Button className="h-12 px-8 bg-gray-900 hover:bg-black text-white rounded-2xl shadow-xl shadow-gray-200 transition-all active:scale-95 font-bold group">
+            <FileDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
+            تصدير التقارير
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* 2. Enhanced Country Tabs */}
+      <div className="flex overflow-x-auto pb-6 gap-4 no-scrollbar -mx-2 px-2">
+        <AnimatePresence mode="popLayout">
+          {[
+            { id: 'all', label: 'الكل', icon: '🌍', color: 'blue' },
+            { id: 'EG', label: 'مصر', icon: '🇪🇬', color: 'red' },
+            { id: 'QA', label: 'قطر', icon: '🇶🇦', color: 'orange' },
+            { id: 'SA', label: 'السعودية', icon: '🇸🇦', color: 'green' },
+            { id: 'KW', label: 'الكويت', icon: '🇰🇼', color: 'cyan' },
+            { id: 'IQ', label: 'العراق', icon: '🇮🇶', color: 'gray' },
+          ].map(tab => (
+            <motion.button
+              key={tab.id}
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                relative flex flex-col items-center justify-center p-4 rounded-[2rem] border-2 transition-all min-w-[120px] h-[130px] group overflow-hidden
+                ${activeTab === tab.id
+                  ? 'border-blue-500 bg-blue-50/30'
+                  : 'border-white bg-white/60 backdrop-blur-md hover:border-blue-200 hover:bg-white'
+                }
+              `}
+            >
+              <span className="text-4xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform duration-500">{tab.icon}</span>
+              <span className={`text-sm font-black tracking-tight ${activeTab === tab.id ? 'text-blue-700' : 'text-gray-600'}`}>
                 {tab.label}
               </span>
-              <span className="text-xs text-gray-400 font-medium">
+              <div className={`mt-2 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider
+                ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}
+              `}>
                 {activeTab === 'all'
-                  ? `${records.length} فاتورة`
-                  : `${records.filter(r => r.country === tab.id).length} فاتورة`
+                  ? `${records.length}`
+                  : `${records.filter(r => r.country === tab.id).length}`
                 }
-              </span>
-            </div>
-            {activeTab === tab.id && (
-              <motion.div layoutId="activeTab" className="absolute inset-0 border-2 border-blue-600 rounded-2xl" />
-            )}
-          </button>
-        ))}
+              </div>
+
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="activeTabPill"
+                  className="absolute inset-0 border-2 border-blue-500 rounded-[2rem] pointer-events-none"
+                />
+              )}
+            </motion.button>
+          ))}
+        </AnimatePresence>
       </div>
 
-      {/* 3. Stats Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 border-none shadow-sm bg-gradient-to-br from-blue-600 to-blue-700 text-white relative overflow-hidden">
+      {/* 3. Premium Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Revenue Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="group relative p-8 rounded-[2.5rem] bg-slate-900 shadow-2xl overflow-hidden border border-white/10"
+        >
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-blue-500/20 rounded-2xl">
+                <Banknote className="w-6 h-6 text-blue-400" />
+              </div>
+              <div className="flex items-center gap-1.5 bg-green-500/20 px-2 py-1 rounded-lg">
+                <TrendingUp className="w-3 h-3 text-green-400" />
+                <span className="text-[10px] font-black text-green-400">+12.5%</span>
+              </div>
+            </div>
+            <div className="mt-8">
+              <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1">إجمالي الإيرادات</p>
+              <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(stats.total, 'EGP')}</h3>
+            </div>
+          </div>
+          {/* Decorative Elements */}
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl group-hover:bg-blue-600/30 transition-colors" />
+        </motion.div>
+
+        {/* Success Rate Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="relative p-8 rounded-[2.5rem] bg-white shadow-xl shadow-blue-900/5 group border border-white overflow-hidden"
+        >
           <div className="relative z-10">
-            <p className="text-blue-100 font-medium text-sm mb-1">إجمالي الإيرادات</p>
-            <h3 className="text-3xl font-bold tracking-tight">{formatCurrency(stats.total, 'EGP')}</h3>
-            <div className="mt-4 flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
-              <TrendingUp className="w-3 h-3" />
-              <span>+12% عن الشهر الماضي</span>
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-emerald-100 rounded-2xl">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              </div>
+              <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-tighter">
+                معدل التحصيل
+              </span>
+            </div>
+            <div className="mt-8">
+              <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1">العمليات المدفوعة</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.paid}</h3>
+                <span className="text-xs font-bold text-gray-400">/ {stats.count}</span>
+              </div>
+            </div>
+            <div className="mt-6">
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stats.paid / stats.count) * 100}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full shadow-sm"
+                />
+              </div>
+              <p className="text-[10px] font-black text-emerald-600 mt-2 text-left uppercase tracking-widest">
+                {(stats.paid / stats.count * 100).toFixed(0)}% تصفية
+              </p>
             </div>
           </div>
-          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-        </Card>
+        </motion.div>
 
-        <Card className="p-6 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-medium mb-1">العمليات الناجحة</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.paid}</h3>
+        {/* Pending Review Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="relative p-8 rounded-[2.5rem] bg-white shadow-xl shadow-blue-900/5 group border border-white overflow-hidden"
+        >
+          <div className="relative z-10">
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-amber-100 rounded-2xl group-hover:animate-pulse">
+                <Loader2 className="w-6 h-6 text-amber-600" />
+              </div>
+              <span className="text-xs font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase tracking-tighter">
+                قيد المعالجة
+              </span>
             </div>
-            <div className="p-2 bg-green-50 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600" />
+            <div className="mt-8">
+              <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1">عمليات المراجعة</p>
+              <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.pending}</h3>
             </div>
+            <p className="text-[10px] font-bold text-gray-400 mt-4 leading-relaxed">تتطلب تدخل فوري لتفعيل الاشتراكات للمشتركين الجدد</p>
           </div>
-          <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-            <div className="h-full bg-green-500 rounded-full" style={{ width: `${(stats.paid / stats.count) * 100}%` }} />
-          </div>
-          <p className="text-xs text-gray-400 mt-2 text-left">معدل نجاح {(stats.paid / stats.count * 100).toFixed(0)}%</p>
-        </Card>
+        </motion.div>
 
-        <Card className="p-6 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-medium mb-1">قيد المراجعة</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.pending}</h3>
+        {/* Active Customers Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
+          className="relative p-8 rounded-[2.5rem] bg-gradient-to-br from-indigo-600 to-purple-700 shadow-2xl group border border-white/10 overflow-hidden"
+        >
+          <div className="relative z-10 text-white">
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <ArrowUpRight className="w-5 h-5 text-white/40 group-hover:text-white transition-colors" />
             </div>
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <Loader2 className="w-5 h-5 text-yellow-600" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-medium mb-1">العملاء النشطين</p>
-              <h3 className="text-2xl font-bold text-gray-900">
+            <div className="mt-8">
+              <p className="text-indigo-100 font-black text-[10px] uppercase tracking-[0.2em] mb-1">المشتركين الفريدين</p>
+              <h3 className="text-3xl font-black text-white tracking-tight">
                 {new Set(filtered.map(r => r.customerEmail)).size}
               </h3>
             </div>
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <Users className="w-5 h-5 text-purple-600" />
+            <div className="mt-6 flex gap-2">
+              <div className="flex -space-x-2 space-x-reverse">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-6 h-6 rounded-full border-2 border-indigo-600 bg-indigo-400 flex items-center justify-center text-[8px] font-black">
+                    {String.fromCharCode(64 + i)}
+                  </div>
+                ))}
+              </div>
+              <span className="text-[10px] font-bold text-indigo-100">+24 مستخدم جديد اليوم</span>
             </div>
           </div>
-        </Card>
+          <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-colors" />
+        </motion.div>
       </div>
 
 
-      {/* 4. Filters & Search Bar */}
-      <Card className="p-4 border-none shadow-sm sticky top-4 z-20 bg-white/80 backdrop-blur-md">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ابحث برقم الفاتورة، اسم العميل، او رقم الهاتف..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pr-10 pl-4 py-2.5 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm transition-all"
-            />
+      {/* 4. Luxury Filters & Search Bar */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="sticky top-4 z-20"
+      >
+        <Card className="p-4 border border-white bg-white/70 backdrop-blur-md shadow-2xl shadow-blue-900/5 rounded-[2rem] overflow-hidden">
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
+            {/* Intelligent Search */}
+            <div className="relative flex-1 w-full group">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none transition-transform duration-300 group-focus-within:scale-110">
+                <Search className="w-5 h-5 text-blue-500/50 group-focus-within:text-blue-600" />
+              </div>
+              <input
+                type="text"
+                placeholder="ابحث برقم الفاتورة، اسم العميل، او رقم الهاتف..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pr-12 pl-6 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl outline-none text-sm font-bold transition-all placeholder:text-gray-400 shadow-inner"
+              />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <div className="px-2 py-1 bg-gray-100 rounded text-[10px] font-black text-gray-400 uppercase tracking-widest hidden md:block">
+                  Search
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Filters Group */}
+            <div className="flex items-center gap-3 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 lg:pb-0">
+              <div className="flex items-center gap-2 bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
+                <div className="p-2 bg-white rounded-xl shadow-sm">
+                  <Filter className="w-4 h-4 text-blue-600" />
+                </div>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as FilterState['status'] }))}
+                  className="bg-transparent border-none outline-none text-sm font-black text-slate-700 px-2 cursor-pointer min-w-[120px]"
+                >
+                  <option value="all">كل الحالات الائتمانية</option>
+                  <option value="paid">✅ العمليات المكتملة</option>
+                  <option value="pending">⏳ قيد المراجعة الفنية</option>
+                  <option value="pending_review">⏳ قيد المراجعة الفنية</option>
+                  <option value="cancelled">❌ العمليات الملغاة</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 min-w-fit">
+                <div className="p-2 bg-white rounded-xl shadow-sm">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                </div>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                  className="bg-transparent border-none outline-none text-sm font-black text-slate-700 px-2 cursor-pointer"
+                />
+              </div>
+
+              <Button
+                variant="ghost"
+                onClick={() => setFilters({ status: 'all', country: 'all', dateFrom: '', dateTo: '' })}
+                className="rounded-2xl h-12 w-12 p-0 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all border border-red-100"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
+        </Card>
+      </motion.div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as FilterState['status'] }))}
-              className="px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            >
-              <option value="all">كل الحالات</option>
-              <option value="paid">✅ مدفوع</option>
-              <option value="pending">⏳ قيد المراجعة</option>
-              <option value="pending_review">⏳ قيد المراجعة</option>
-              <option value="cancelled">❌ ملغي</option>
-            </select>
-
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-              className="px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* 5. Data Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* 5. Modern Data Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="bg-white rounded-[2.5rem] border border-gray-100 shadow-2xl shadow-blue-900/5 overflow-hidden border border-white"
+      >
         <div className="overflow-x-auto">
-          <table className="w-full text-right">
+          <table className="w-full text-right border-collapse">
             <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold tracking-wider">
-                <th className="px-6 py-4 w-[15%]">تفاصيل الفاتورة</th>
-                <th className="px-6 py-4 w-[20%]">العميل</th>
-                <th className="px-6 py-4 w-[10%]">القيمة</th>
-                <th className="px-6 py-4 w-[15%]">طريقة الدفع</th>
-                <th className="px-6 py-4 w-[12%]">الحالة</th>
-                <th className="px-6 py-4 w-[13%]">التاريخ</th>
-                <th className="px-6 py-4 w-[15%] text-left">إجراءات سريعة</th>
+              <tr className="bg-slate-50 border-b border-gray-100">
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">إدارة الفواتير</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">معلومات العميل</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">القيمة الصافية</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">قناة الدفع</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">الحالة</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-right">التوقيت</th>
+                <th className="px-8 py-6 text-[11px] font-black uppercase text-slate-400 tracking-[0.1em] text-center">إجراءات سريعة</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-gray-400 bg-gray-50/20">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Search className="w-8 h-8 opacity-20" />
+                  <td colSpan={7} className="text-center py-32 bg-gray-50/30">
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center gap-6"
+                    >
+                      <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-blue-500/5 group-hover:scale-110 transition-transform" />
+                        <Search className="w-10 h-10 text-blue-500/30 relative z-10" />
                       </div>
-                      <p className="text-lg font-medium text-gray-900">لا توجد نتائج</p>
-                      <p className="text-sm">جرب تغيير الفلاتر أو البحث عن شيء آخر</p>
-                    </div>
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-black text-slate-900">سجل المدفوعات نظيف</h3>
+                        <p className="text-sm text-slate-500 font-medium">لم نتمكن من العثور على أي عمليات تطابق معايير بحثك</p>
+                      </div>
+                      <Button variant="outline" onClick={() => setFilters({ status: 'all', country: 'all', dateFrom: '', dateTo: '' })} className="rounded-xl font-bold bg-white">
+                        إعادة تعيين الفلاتر
+                      </Button>
+                    </motion.div>
                   </td>
                 </tr>
               ) : (
-                filtered.map(record => (
-                  <tr
+                filtered.map((record, index) => (
+                  <motion.tr
                     key={`${record.source}-${record.id}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * index }}
                     onClick={() => setSelectedRecord(record)}
-                    className="group hover:bg-blue-50/30 transition-all duration-200 cursor-pointer"
+                    className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer relative"
                   >
-                    {/* Invoice Details */}
-                    <td className="px-6 py-4 relative">
-                      <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-blue-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-xl shadow-inner">
-                          {record.currency === 'EGP' ? '🇪🇬' :
-                            record.currency === 'QAR' ? '🇶🇦' :
-                              record.currency === 'SAR' ? '🇸🇦' : '🌍'}
+                    {/* Invoice ID */}
+                    <td className="px-8 py-6 relative">
+                      <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-600 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-xl shadow-inner border border-gray-100 group-hover:bg-white transition-colors">
+                          <span className="filter grayscale group-hover:grayscale-0 transition-all">{getFlag(record.country)}</span>
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 font-mono text-sm group-hover:text-blue-600 transition-colors">
-                            #{record.invoiceNumber}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">{record.source}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-900 font-mono text-sm tracking-tighter">#{record.invoiceNumber}</span>
+                            {record.raw?.isAutomatic && <Zap className="w-3 h-3 text-yellow-500" />}
+                          </div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 opacity-60">{record.source}</p>
                         </div>
                       </div>
                     </td>
 
                     {/* Customer */}
-                    <td className="px-6 py-4 max-w-[200px]">
-                      <div className="flex items-center gap-3">
-                        {/* Avatar */}
-                        <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden
-                                              ${record.customerImage ? 'bg-white' :
-                            ((record.customerName?.charCodeAt(0) || 0) % 3 === 0 ? 'bg-gradient-to-br from-purple-500 to-indigo-600' :
-                              (record.customerName?.charCodeAt(0) || 0) % 3 === 1 ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
-                                'bg-gradient-to-br from-emerald-500 to-teal-600')}
-                                          `}>
-                          {record.customerImage ? (
-                            <img src={record.customerImage} alt={record.customerName} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                          ) : (
-                            record.customerName?.[0]?.toUpperCase() || '?'
-                          )}
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className={`w-12 h-12 rounded-[1rem] flex-shrink-0 flex items-center justify-center text-white text-sm font-black shadow-lg overflow-hidden border-2 border-white ring-1 ring-gray-100
+                            ${record.customerImage ? 'bg-white' :
+                              ((record.customerName?.charCodeAt(0) || 0) % 4 === 0 ? 'bg-gradient-to-tr from-blue-600 to-indigo-700' :
+                                (record.customerName?.charCodeAt(0) || 0) % 4 === 1 ? 'bg-gradient-to-tr from-rose-500 to-orange-500' :
+                                  (record.customerName?.charCodeAt(0) || 0) % 4 === 2 ? 'bg-gradient-to-tr from-emerald-500 to-teal-700' :
+                                    'bg-gradient-to-tr from-purple-600 to-fuchsia-600')}
+                          `}>
+                            {record.customerImage ? (
+                              <img src={record.customerImage} className="w-full h-full object-cover" />
+                            ) : (
+                              record.customerName?.[0]?.toUpperCase()
+                            )}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                            {record.userData?.isVerified ? <CheckCircle className="w-3 h-3 text-blue-500" /> : <div className="w-2 h-2 rounded-full bg-gray-300" />}
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900 text-sm truncate" title={record.customerName}>
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-900 text-sm group-hover:text-blue-700 transition-colors truncate max-w-[150px]">
                             {record.customerName}
                           </p>
-                          <p className="text-xs text-gray-500 font-mono mt-0.5 tracking-tight truncate" title={record.customerPhone || record.customerEmail}>
-                            {record.customerPhone || record.customerEmail || 'No Contact'}
+                          <p className="text-[11px] text-slate-500 font-bold mt-0.5 truncate max-w-[150px]" dir="ltr">
+                            {record.customerPhone || record.customerEmail}
                           </p>
                         </div>
                       </div>
                     </td>
+
                     {/* Amount */}
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-6">
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-900 text-base">
+                        <span className="font-black text-slate-900 text-lg tracking-tight">
                           {formatCurrency(record.amount, record.currency)}
                         </span>
                         {record.planName && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded w-fit mt-1">
-                            {record.planName}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                              {record.planName}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </td>
 
-                    {/* Method */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {record.paymentMethod.includes('wallet') && <Wallet2 className="w-4 h-4 text-amber-600" />}
-                        {record.paymentMethod.includes('card') && <CreditCard className="w-4 h-4 text-purple-600" />}
-                        {record.paymentMethod.includes('instapay') && <Banknote className="w-4 h-4 text-blue-600" />}
-                        <span className="text-sm text-gray-700 capitalize">
-                          {record.paymentMethod || 'Unknown'}
-                        </span>
+                    {/* Payment Method */}
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-3 bg-slate-50/50 w-fit px-4 py-2 rounded-xl border border-gray-100 group-hover:bg-white transition-colors">
+                        {(() => {
+                          const details = METHOD_DETAILS[record.paymentMethod] || { icon: CreditCard, label: record.paymentMethod };
+                          const Icon = details.icon;
+                          return (
+                            <>
+                              <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                                <Icon className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <span className="text-xs font-black text-slate-700 uppercase tracking-tight">
+                                {details.label}
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
 
-                    {/* Status */}
-                    <td className="px-6 py-4">
+                    {/* Status Badge */}
+                    <td className="px-8 py-6">
                       {(() => {
                         const config = STATUS_LABELS[record.status] || STATUS_LABELS.pending;
                         return (
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${config.color.replace('bg-', 'bg-opacity-10 bg-').replace('text-', 'text-').replace('border-', 'border-opacity-20 border-')}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full bg-current`} />
-                            {config.label}
-                          </span>
+                          <div className={`
+                            inline-flex items-center gap-2 px-4 py-1.5 rounded-full border shadow-sm
+                            ${record.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                              record.status.includes('pending') ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-rose-50 text-rose-700 border-rose-100'}
+                          `}>
+                            <div className={`w-2 h-2 rounded-full border-2 ${record.status === 'paid' ? 'bg-emerald-500 border-emerald-200' : record.status.includes('pending') ? 'bg-amber-500 border-amber-200' : 'bg-rose-500 border-rose-200'} animate-pulse`} />
+                            <span className="text-[10px] font-black uppercase tracking-tight">{config.label}</span>
+                          </div>
                         );
                       })()}
                     </td>
 
-                    {/* Date */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col text-xs text-gray-500">
-                        <span className="font-medium text-gray-900">{formatDate(record.createdAt)}</span>
-                        <span>{record.createdAt?.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                    {/* Date/Time */}
+                    <td className="px-8 py-6">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-slate-900">{formatDate(record.createdAt)}</span>
+                        <div className="flex items-center gap-1 mt-1 opacity-50">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            {record.createdAt?.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                        <button
+                    {/* Quick Actions */}
+                    <td className="px-8 py-6">
+                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0">
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           title="إرسال واتساب"
-                          onClick={() => window.open(`https://wa.me/${record.customerPhone?.replace(/\D/g, '')}`, '_blank')}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-green-200 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          title="نسخ التفاصيل"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`فاتورة #${record.invoiceNumber}\nمبلغ: ${record.amount}\nالعميل: ${record.customerName}`);
-                            toast.success('تم النسخ');
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`https://wa.me/${record.customerPhone?.replace(/\D/g, '')}`, '_blank');
                           }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-all shadow-sm"
+                          className="h-10 w-10 p-0 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-100/50 transition-all hover:shadow-lg"
                         >
-                          <FileText className="w-4 h-4" />
-                        </button>
+                          <MessageCircle className="w-5 h-5" />
+                        </Button>
 
-                        <button
-                          title="عرض المزيد"
-                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="عرض التفاصيل"
+                          className="h-10 w-10 p-0 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-100/50 transition-all hover:shadow-lg"
                         >
-                          <ArrowUpRight className="w-4 h-4" />
-                        </button>
+                          <ArrowUpRight className="w-5 h-5" />
+                        </Button>
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination (Simplified) */}
-        <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-gray-50/30">
-          <p>عرض {filtered.length} من {records.length} فاتورة</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 bg-white border border-gray-200 rounded-md disabled:opacity-50" disabled>السابق</button>
-            <button className="px-3 py-1 bg-white border border-gray-200 rounded-md hover:bg-gray-50">التالي</button>
+        {/* Improved Pagination Footer */}
+        <div className="px-8 py-6 bg-slate-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-xl shadow-sm">
+              <FileText className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              عرض <span className="text-slate-900 font-black">{filtered.length}</span> من إجمالي <span className="text-slate-900 font-black">{records.length}</span> فاتورة مسجلة
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="h-11 rounded-xl px-6 font-black text-xs uppercase tracking-widest shadow-sm bg-white" disabled>
+              السابق
+            </Button>
+            <Button variant="outline" className="h-11 rounded-xl px-6 font-black text-xs uppercase tracking-widest shadow-sm bg-white">
+              التالي
+            </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Side Details Panel */}
+      {/* 6. Ultra-Premium Side Details Panel */}
       <AnimatePresence>
         {selectedRecord && (
           <>
@@ -1026,228 +1218,188 @@ export default function AdminInvoicesListPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedRecord(null)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100]"
             />
             <motion.div
-              initial={{ x: '-100%' }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 w-full max-w-md bg-white shadow-2xl border-r border-gray-100 overflow-y-auto"
-              style={{ left: 0, right: 'auto' }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed inset-y-4 left-4 right-auto z-[101] w-full max-w-xl bg-white/95 backdrop-blur-2xl shadow-[0_0_100px_rgba(0,0,0,0.1)] rounded-[3rem] border border-white overflow-hidden flex flex-col"
+              style={{ left: '1rem', right: 'auto' }}
             >
-              <div className="p-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">تفاصيل الفاتورة</h2>
-                  <button onClick={() => setSelectedRecord(null)} className="p-2 hover:bg-gray-100 rounded-full">
-                    <X className="w-5 h-5" />
-                  </button>
+              {/* Top Banner Decoration */}
+              <div className="h-32 bg-gradient-to-br from-slate-900 to-blue-900 relative">
+                <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-all border border-white/10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="px-8 pb-10 -mt-16 flex-1 overflow-y-auto no-scrollbar relative z-10">
+                {/* Profile Header */}
+                <div className="flex flex-col items-center mb-10">
+                  <div className="relative group">
+                    <div className="w-32 h-32 rounded-[2.5rem] bg-white p-1.5 shadow-2xl group-hover:rotate-3 transition-transform duration-500">
+                      <div className="w-full h-full rounded-[2.2rem] bg-slate-100 overflow-hidden border border-gray-100">
+                        {selectedRecord.customerImage ? (
+                          <img src={selectedRecord.customerImage} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl font-black text-slate-300">
+                            {selectedRecord.customerName?.[0]}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="absolute -bottom-2 -right-2 p-3 bg-blue-600 text-white rounded-2xl shadow-xl ring-4 ring-white">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <h2 className="text-2xl font-black text-slate-900">{selectedRecord.customerName}</h2>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      <p className="text-sm font-bold text-slate-400 font-mono tracking-tight" dir="ltr">{selectedRecord.customerPhone}</p>
+                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full tracking-widest">{selectedRecord.userData?.role || 'User'}</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Status & Amount */}
-                <div className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-2 border border-gray-100">
-                  <span className="text-3xl font-extrabold text-gray-900">
-                    {formatCurrency(selectedRecord.amount, selectedRecord.currency)}
-                  </span>
-                  {(() => {
-                    const config = STATUS_LABELS[selectedRecord.status] || STATUS_LABELS.pending;
-                    return (
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${config.color}`}>
-                        {config.label}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {/* User Info Expanded */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider border-b pb-2">بيانات العميل الشاملة</h3>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden shrink-0 border-2 border-white shadow-sm ring-2 ring-blue-100">
-                      {selectedRecord.customerImage ? (
-                        <img src={selectedRecord.customerImage} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl text-gray-500 font-bold">
-                          {selectedRecord.customerName?.[0]}
+                {/* Status Bar */}
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 text-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">المبلغ الإجمالي</p>
+                    <p className="text-2xl font-black text-slate-900">{formatCurrency(selectedRecord.amount, selectedRecord.currency)}</p>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 text-center flex flex-col items-center justify-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">حالة الفاتورة</p>
+                    {(() => {
+                      const config = STATUS_LABELS[selectedRecord.status] || STATUS_LABELS.pending;
+                      return (
+                        <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight
+                          ${selectedRecord.status === 'paid' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
+                            selectedRecord.status.includes('pending') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' :
+                              'bg-rose-500 text-white shadow-lg shadow-rose-500/20'}
+                        `}>
+                          {config.label}
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-bold text-lg text-gray-900">{selectedRecord.customerName} {selectedRecord.userData?.isVerified && '✅'}</p>
-                      <p className="text-sm text-gray-500 font-mono" dir="ltr">{selectedRecord.customerPhone}</p>
-                      <p className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full w-fit mt-1">
-                        {selectedRecord.userData?.role || 'User'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Detailed User Grid */}
-                  <div className="grid grid-cols-2 gap-3 text-sm bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div>
-                      <p className="text-xs text-gray-400">الدولة</p>
-                      <p className="font-medium flex items-center gap-2">
-                        <span className="text-lg">{getFlag(selectedRecord.userData?.country || selectedRecord.country)}</span>
-                        <span>{selectedRecord.userData?.country || selectedRecord.country || '-'}</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">البريد الإلكتروني</p>
-                      <p className="font-medium truncate text-xs" title={selectedRecord.customerEmail}>{selectedRecord.customerEmail}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">الباقة الحالية</p>
-                      <p className="font-medium text-purple-700">{selectedRecord.planName || selectedRecord.userData?.selectedPackage || 'غير محدد'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">المعرف (ID)</p>
-                      <p className="font-mono text-xs truncate" title={selectedRecord.userData?.dId || selectedRecord.userData?.uid || selectedRecord.customerId}>
-                        {selectedRecord.userData?.dId || selectedRecord.userData?.uid?.slice(0, 8) || selectedRecord.customerId || '-'}
-                      </p>
-                    </div>
-                    {selectedRecord.userData?.birthDate && (
-                      <div>
-                        <p className="text-xs text-gray-400">تاريخ الميلاد</p>
-                        <p className="font-medium">{selectedRecord.userData.birthDate}</p>
-                      </div>
-                    )}
-                    {selectedRecord.userData?.gender && (
-                      <div>
-                        <p className="text-xs text-gray-400">الجنس</p>
-                        <p className="font-medium">{selectedRecord.userData.gender}</p>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
 
-                {/* Invoice Data */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider border-b pb-2">تفاصيل المعاملة</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">رقم الفاتورة</p>
-                      <p className="font-mono font-medium">{selectedRecord.invoiceNumber}</p>
+                {/* Details Sections */}
+                <div className="space-y-8">
+                  {/* Transaction Details */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider">تفاصيل المعاملة المالية</h3>
                     </div>
-                    <div>
-                      <p className="text-gray-500">المصدر</p>
-                      <p className="font-medium">{selectedRecord.source}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">طريقة الدفع</p>
-                      <p className="font-medium capitalize">{selectedRecord.paymentMethod}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">التاريخ</p>
-                      <p className="font-medium">{formatDate(selectedRecord.createdAt)}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { label: 'رقم المرجعي', value: selectedRecord.invoiceNumber, isMono: true },
+                        { label: 'مصدر البيانات', value: selectedRecord.source },
+                        { label: 'بوابة الدفع', value: METHOD_DETAILS[selectedRecord.paymentMethod]?.label || selectedRecord.paymentMethod, isCapitalize: true },
+                        { label: 'تاريخ الإنشاء', value: formatDate(selectedRecord.createdAt) },
+                      ].map((item, i) => (
+                        <div key={i} className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mb-1">{item.label}</p>
+                          <p className={`text-sm font-bold text-slate-800 ${item.isMono ? 'font-mono' : ''} ${item.isCapitalize ? 'capitalize' : ''}`}>
+                            {item.value || '—'}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
+                  {/* Plan Details */}
+                  <div className="p-6 rounded-[2rem] bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl relative overflow-hidden">
+                    <div className="relative z-10 flex justify-between items-center">
+                      <div>
+                        <p className="text-indigo-100 text-[10px] font-black uppercase tracking-[0.2em] mb-1">خطة الاشتراك المختارة</p>
+                        <h4 className="text-xl font-black">{selectedRecord.planName || 'الاشتراك الأساسي'}</h4>
+                        <p className="text-indigo-200 text-xs font-bold mt-1 opacity-80">{selectedRecord.packageDuration || 'مدة باقة مخصصة'}</p>
+                      </div>
+                      <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md">
+                        <Star className="w-6 h-6 text-yellow-300 fill-yellow-300" />
+                      </div>
+                    </div>
+                    <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                  </div>
+
+                  {/* Receipt Preview if exists */}
                   {selectedRecord.receiptUrl && (
-                    <div className="mt-4 space-y-3">
-                      <p className="text-xs text-blue-600 font-bold mb-1">إيصال الدفع المرفوع</p>
-
-                      {/* Interactive Image Preview */}
-                      <div
-                        className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-blue-100 shadow-lg cursor-zoom-in group"
-                        onClick={() => setPreviewReceiptUrl(selectedRecord.receiptUrl!)}
-                      >
-                        <img
-                          src={selectedRecord.receiptUrl}
-                          alt="Receipt Preview"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Eye className="w-8 h-8 text-white" />
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                            <Receipt className="w-4 h-4" />
+                          </div>
+                          <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider">إيصال الدفع المرفق</h3>
                         </div>
+                        <Button variant="ghost" className="text-[10px] font-black text-blue-600" onClick={() => setPreviewReceiptUrl(selectedRecord.receiptUrl!)}>
+                          تكبير الصورة
+                        </Button>
                       </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-white border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl shadow-sm h-10"
-                          onClick={() => setPreviewReceiptUrl(selectedRecord.receiptUrl!)}
-                        >
-                          <Eye className="w-4 h-4 ml-2" />
-                          تكبير المعاينة
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="bg-gray-50 text-gray-500 hover:bg-gray-100 rounded-xl h-10 w-10 p-0"
-                          onClick={() => window.open(selectedRecord.receiptUrl!, '_blank')}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
+                      <div className="group relative aspect-[3/4] w-full rounded-[2.5rem] overflow-hidden border-2 border-slate-100 shadow-2xl cursor-zoom-in" onClick={() => setPreviewReceiptUrl(selectedRecord.receiptUrl!)}>
+                        <img src={selectedRecord.receiptUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                          <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-xl border border-white/20">
+                            <Eye className="w-8 h-8 text-white" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
+              </div>
 
-
-
-                {/* Footer Actions */}
-                <div className="sticky bottom-0 pt-4 bg-white border-t mt-auto flex flex-col gap-3 pb-4">
-                  <div className="flex gap-3">
-                    <Button className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 h-11 rounded-xl" onClick={() => handlePrint(selectedRecord)}>
-                      <Printer className="w-4 h-4" /> طباعة الاحترافية
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 gap-2 border-green-200 text-green-700 hover:bg-green-50"
-                      disabled={isSendingWhatsApp}
-                      onClick={() => {
-                        const targetPhone = selectedRecord.customerPhone ||
-                          selectedRecord.raw?.phone || selectedRecord.raw?.phoneNumber ||
-                          selectedRecord.userData?.phone || selectedRecord.userData?.personal_phone || selectedRecord.userData?.whatsapp;
-
-                        if (!targetPhone || targetPhone.replace(/\D/g, '').length < 8) {
-                          toast.error('عذراً، رقم الهاتف غير متوفر لهذا المستخدم');
-                          return;
-                        }
-
-                        if (selectedRecord.status === 'pending') {
-                          sendWhatsAppReminder(selectedRecord);
-                        } else {
-                          window.open(`https://wa.me/${targetPhone.replace(/\D/g, '')}`, '_blank');
-                        }
-                      }}
-                    >
-                      {isSendingWhatsApp ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <MessageCircle className="w-4 h-4" />
-                      )}
-                      {selectedRecord.status === 'pending' ? 'إرسال تذكير' : 'واتساب'}
-                    </Button>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <Button
-                      className="w-full gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg h-12 rounded-xl"
-                      disabled={isActivating || isCancelling}
-                      onClick={() => activateSubscription(selectedRecord)}
-                    >
-                      {isActivating ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
-                      {isActivating ? 'جاري التفعيل...' : 'تفعيل الاشتراك يدوياً'}
-                    </Button>
-
-                    {(selectedRecord.status === 'pending_review' || selectedRecord.status === 'pending') && (
-                      <Button
-                        variant="ghost"
-                        className="w-full gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 h-11 rounded-xl border border-transparent hover:border-red-100 transition-all font-bold"
-                        disabled={isActivating || isCancelling}
-                        onClick={() => setIsRejectModalOpen(true)}
-                      >
-                        <XCircle className="w-4 h-4" />
-                        رفض الإيصال / إلغاء الطلب
-                      </Button>
-                    )}
-                  </div>
+              {/* Action Bar Footer */}
+              <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col gap-3 relative z-20">
+                <div className="flex gap-3">
+                  <Button className="flex-1 h-14 rounded-2xl bg-white text-slate-900 border border-slate-200 font-black text-xs uppercase tracking-widest hover:bg-slate-50 shadow-sm gap-2" onClick={() => handlePrint(selectedRecord)}>
+                    <Printer className="w-4 h-4 text-blue-600" /> طباعة المستند
+                  </Button>
+                  <Button
+                    className="flex-1 h-14 rounded-2xl bg-emerald-500 text-white font-black text-xs uppercase tracking-widest hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 gap-2"
+                    onClick={() => {
+                      const targetPhone = selectedRecord.customerPhone ||
+                        selectedRecord.raw?.phone || selectedRecord.raw?.phoneNumber ||
+                        selectedRecord.userData?.phone || selectedRecord.userData?.personal_phone || selectedRecord.userData?.whatsapp;
+                      window.open(`https://wa.me/${targetPhone?.replace(/\D/g, '')}`, '_blank');
+                    }}
+                  >
+                    <MessageCircle className="w-4 h-4" /> واتساب سريع
+                  </Button>
                 </div>
+
+                <Button
+                  className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black text-sm uppercase tracking-widest shadow-2xl shadow-blue-500/30 gap-3 relative group overflow-hidden"
+                  disabled={isActivating || isCancelling}
+                  onClick={() => activateSubscription(selectedRecord)}
+                >
+                  <div className="absolute inset-0 bg-white/20 translate-x-[100%] group-hover:translate-x-[-100%] transition-transform duration-700" />
+                  {isActivating ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                  {isActivating ? 'جاري معالجة الطلب...' : 'تفعيل العضوية فوراً'}
+                </Button>
+
+                {(selectedRecord.status === 'pending_review' || selectedRecord.status === 'pending') && (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.22em] text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all border border-transparent hover:border-rose-100"
+                    disabled={isActivating || isCancelling}
+                    onClick={() => setIsRejectModalOpen(true)}
+                  >
+                    إلغاء الطلب / رفض الاعتماد
+                  </Button>
+                )}
               </div>
             </motion.div>
           </>

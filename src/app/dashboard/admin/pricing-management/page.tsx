@@ -16,6 +16,7 @@ import {
     Copy,
     Check,
     AlertCircle,
+    RefreshCcw,
     Settings,
     BarChart3,
     Filter,
@@ -27,6 +28,7 @@ import {
     Loader2,
     CreditCard,
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import EditPlanModal from '@/components/admin/pricing/EditPlanModal';
@@ -41,28 +43,52 @@ import { db } from '@/lib/firebase/config';
 import { useAbility } from '@/hooks/useAbility';
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
 import AccessDenied from '@/components/admin/AccessDenied';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger
+} from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
 // ==================== INTERFACES ====================
 
 interface SubscriptionPlan {
     id: string;
-    name: string;
-    key: 'monthly' | 'quarterly' | 'yearly' | '3months' | '6months';
-    basePrice: number;
-    currency: 'USD';
-    duration: number;
+    title: string;
+    subtitle?: string;
     period: string;
-    features: Feature[];
-    bonusFeatures: Feature[];
+    base_currency: string;
+    base_original_price: number;
+    base_price: number;
+    features: string[];
+    bonusFeatures?: string[];
     isActive: boolean;
-    displayOrder: number;
-}
-
-interface Feature {
-    id: string;
-    name: string;
-    description?: string;
-    included: boolean;
+    popular?: boolean;
+    icon?: string;
+    color?: string;
+    overrides?: Record<string, any>;
+    accountTypeOverrides?: Record<string, any>;
+    order?: number;
+    guidelines?: any;
 }
 
 interface PromotionalOffer {
@@ -364,131 +390,188 @@ export default function PricingAdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-200 shadow-sm">
-                <div className="px-6 py-6 mx-auto max-w-7xl">
-                    <div className="flex justify-between items-center">
+        <div className="min-h-screen bg-slate-50/50 pb-20">
+            {/* 1. Dynamic Premium Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative overflow-hidden bg-slate-900 rounded-[3rem] p-10 mx-6 mt-8 border border-white/10 shadow-2xl"
+            >
+                <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/10 to-transparent pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row justify-between items-center gap-8">
+                    <div className="flex items-center gap-6">
+                        <div className="p-5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] shadow-xl shadow-blue-500/20">
+                            <DollarSign className="w-10 h-10 text-white" />
+                        </div>
                         <div>
-                            <h1 className="flex gap-3 items-center text-3xl font-bold text-gray-900">
-                                <DollarSign className="w-8 h-8 text-blue-600" />
-                                إدارة الأسعار والعروض
+                            <h1 className="text-4xl font-black text-white tracking-tight flex items-center gap-3">
+                                مركز التحكم <span className="text-blue-400">بالأسعار</span>
                             </h1>
-                            <p className="mt-2 text-gray-600">
-                                التحكم الكامل في الباقات والأسعار والعروض الترويجية
+                            <p className="text-slate-400 font-medium mt-2 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                إدارة الباقات، العروض الترويجية، وشركاء الاستراتيجية
                             </p>
                         </div>
-                        <div className="flex gap-3">
-                            <button className="flex gap-2 items-center px-4 py-2 text-gray-700 bg-white rounded-lg border border-gray-300 transition-colors hover:bg-gray-50">
-                                <Download className="w-4 h-4" />
-                                تصدير
-                            </button>
-                            {can('update', 'pricing') && (
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" className="h-14 px-8 bg-white/5 hover:bg-white/10 text-white rounded-2xl border border-white/10 backdrop-blur-md font-bold transition-all" onClick={loadData}>
+                            <RefreshCcw className={`w-5 h-5 ml-2 ${loading ? 'animate-spin' : ''}`} />
+                            تحديث البيانات
+                        </Button>
+
+                        <Dialog open={showInitModal} onOpenChange={setShowInitModal}>
+                            <DialogTrigger asChild>
+                                <Button className="h-14 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 font-black tracking-widest transition-all active:scale-95">
+                                    تهيئة النظام
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md bg-white/95 backdrop-blur-2xl border-white rounded-[2.5rem] p-8">
+                                <DialogHeader className="mb-6">
+                                    <DialogTitle className="text-2xl font-black text-slate-900">نظام تهيئة الأسعار</DialogTitle>
+                                    <DialogDescription className="text-slate-500 font-medium mt-2">
+                                        سيتم إعادة ضبط الباقات والتعريفات المالية للنظام الافتراضي.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-6">
+                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3 items-start">
+                                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-amber-900 font-bold leading-relaxed">تحذير: هذا الإجراء سيقوم بتعديل جميع الباقات الحالية للقيمة الموصى بها، هل أنت متأكد؟</p>
+                                    </div>
+                                    <Button
+                                        onClick={handleApplyRecommendedPlans}
+                                        disabled={loading}
+                                        className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black"
+                                    >
+                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'بدء عملية التهيئة'}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+            </motion.div >
+
+            <div className="px-6 py-12 mx-auto max-w-7xl">
+                {/* 2. Enhanced Stats Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                        <Card className="rounded-[2.5rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl shadow-slate-200/50 overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-widest">الباقات النشطة</CardTitle>
+                                    <div className="text-4xl font-black text-slate-900">{stats.activePlans}</div>
+                                </div>
+                                <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 group-hover:rotate-12 transition-transform">
+                                    <DollarSign className="w-6 h-6" />
+                                </div>
+                            </CardHeader>
+                            <div className="h-1.5 w-full bg-blue-100 mt-4">
+                                <div className="h-full bg-blue-600 rounded-r-full" style={{ width: '70%' }} />
+                            </div>
+                        </Card>
+                    </motion.div>
+
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                        <Card className="rounded-[2.5rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl shadow-slate-200/50 overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-widest">العروض الترويجية</CardTitle>
+                                    <div className="text-4xl font-black text-slate-900">{stats.activeOffers}</div>
+                                </div>
+                                <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:rotate-12 transition-transform">
+                                    <Gift className="w-6 h-6" />
+                                </div>
+                            </CardHeader>
+                            <div className="h-1.5 w-full bg-emerald-100 mt-4">
+                                <div className="h-full bg-emerald-600 rounded-r-full" style={{ width: '45%' }} />
+                            </div>
+                        </Card>
+                    </motion.div>
+
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        <Card className="rounded-[2.5rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl shadow-slate-200/50 overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-widest">الشركاء</CardTitle>
+                                    <div className="text-4xl font-black text-slate-900">{stats.activePartners}</div>
+                                </div>
+                                <div className="p-4 bg-purple-50 rounded-2xl text-purple-600 group-hover:rotate-12 transition-transform">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                            </CardHeader>
+                            <div className="h-1.5 w-full bg-purple-100 mt-4">
+                                <div className="h-full bg-purple-600 rounded-r-full" style={{ width: '85%' }} />
+                            </div>
+                        </Card>
+                    </motion.div>
+
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                        <Card className="rounded-[2.5rem] border-slate-900 bg-slate-900 shadow-2xl shadow-blue-900/20 overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-widest">الإيرادات المتوقعة</CardTitle>
+                                    <div className="text-4xl font-black text-white">${stats.monthlyRevenue.toLocaleString()}</div>
+                                </div>
+                                <div className="p-4 bg-blue-500/20 rounded-2xl text-blue-400 group-hover:rotate-12 transition-transform">
+                                    <TrendingUp className="w-6 h-6" />
+                                </div>
+                            </CardHeader>
+                            <div className="px-6 pb-6">
+                                <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Growth +12.5% this month</p>
+                            </div>
+                        </Card>
+                    </motion.div>
+                </div>
+
+                {/* 3. Luxury Interactive Tabs */}
+                <div className="space-y-10">
+                    <div className="flex justify-center">
+                        <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl flex gap-1">
+                            {[
+                                { id: 'plans', label: 'الباقات الأساسية', icon: DollarSign },
+                                { id: 'custom', label: 'التسعير الدولي', icon: Globe },
+                                { id: 'offers', label: 'العروض', icon: Gift },
+                                { id: 'partners', label: 'الشركاء', icon: Users },
+                                { id: 'payments', label: 'إعدادات الدفع', icon: CreditCard },
+                                { id: 'guidelines', label: 'الإرشادات', icon: Star },
+                            ].map((tab) => (
                                 <button
-                                    onClick={handleApplyRecommendedPlans}
-                                    className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition-colors hover:bg-green-700"
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`
+                       px-6 py-3 rounded-[1.5rem] flex items-center gap-2 text-sm font-black transition-all
+                       ${activeTab === tab.id
+                                            ? 'bg-slate-900 text-white shadow-lg'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                        }
+                     `}
                                 >
-                                    <Check className="w-4 h-4" />
-                                    تحديث الباقات القياسية
+                                    <tab.icon className="w-4 h-4" />
+                                    {tab.label}
                                 </button>
-                            )}
-                            <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
-                                <BarChart3 className="w-4 h-4" />
-                                التقارير
-                            </button>
+                            ))}
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div className="px-6 py-6 mx-auto max-w-7xl">
-                {/* Overview Stats */}
-                <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
-                    <StatsCard
-                        title="الباقات النشطة"
-                        value={stats.activePlans}
-                        icon={<DollarSign className="w-6 h-6" />}
-                        color="blue"
-                    />
-                    <StatsCard
-                        title="العروض الفعالة"
-                        value={stats.activeOffers}
-                        icon={<Gift className="w-6 h-6" />}
-                        color="green"
-                    />
-                    <StatsCard
-                        title="الشركاء النشطين"
-                        value={stats.activePartners}
-                        icon={<Users className="w-6 h-6" />}
-                        color="purple"
-                    />
-                    <StatsCard
-                        title="الإيرادات الشهرية"
-                        value={`$${stats.monthlyRevenue.toLocaleString()}`}
-                        icon={<TrendingUp className="w-6 h-6" />}
-                        color="orange"
-                    />
-                </div>
-
-                {/* Tabs */}
-                <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <div className="flex overflow-x-auto border-b border-gray-200">
-                        <TabButton
-                            active={activeTab === 'plans'}
-                            onClick={() => setActiveTab('plans')}
-                            icon={<DollarSign className="w-5 h-5" />}
-                            label="الأسعار الأساسية"
-                        />
-                        <TabButton
-                            active={activeTab === 'custom'}
-                            onClick={() => setActiveTab('custom')}
-                            icon={<Globe className="w-5 h-5" />}
-                            label="الأسعار المخصصة"
-                        />
-                        <TabButton
-                            active={activeTab === 'accountTypes'}
-                            onClick={() => setActiveTab('accountTypes')}
-                            icon={<Users className="w-5 h-5" />}
-                            label="أسعار أنواع الحسابات"
-                        />
-                        <TabButton
-                            active={activeTab === 'guidelines'}
-                            onClick={() => setActiveTab('guidelines')}
-                            icon={<Star className="w-5 h-5" />}
-                            label="الميزات الإرشادية"
-                        />
-                        <TabButton
-                            active={activeTab === 'offers'}
-                            onClick={() => setActiveTab('offers')}
-                            icon={<Gift className="w-5 h-5" />}
-                            label="العروض الترويجية"
-                        />
-                        <TabButton
-                            active={activeTab === 'partners'}
-                            onClick={() => setActiveTab('partners')}
-                            icon={<Users className="w-5 h-5" />}
-                            label="الشركاء"
-                        />
-                        <TabButton
-                            active={activeTab === 'payments'}
-                            onClick={() => setActiveTab('payments')}
-                            icon={<CreditCard className="w-5 h-5" />}
-                            label="إعدادات الدفع"
-                        />
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="p-6">
-                        <AnimatePresence mode="wait">
-                            {activeTab === 'plans' && <BasePlansTab plans={plans} onUpdate={loadData} />}
-                            {activeTab === 'custom' && <CustomPricingTab />}
-                            {activeTab === 'accountTypes' && <AccountTypePricingTab />}
-                            {activeTab === 'guidelines' && <GuidelinesTab />}
-                            {activeTab === 'offers' && <OffersTab offers={offers} plans={plans} onUpdate={loadData} />}
-                            {activeTab === 'partners' && <PartnersTab partners={partners} onUpdate={loadData} />}
-                            {activeTab === 'payments' && <PaymentSettingsTab />}
-                        </AnimatePresence>
-                    </div>
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                        className="min-h-[600px]"
+                    >
+                        {activeTab === 'plans' && <BasePlansTab plans={plans} onUpdate={loadData} />}
+                        {activeTab === 'custom' && <CustomPricingTab />}
+                        {activeTab === 'accountTypes' && <AccountTypePricingTab />}
+                        {activeTab === 'guidelines' && <GuidelinesTab />}
+                        {activeTab === 'offers' && <OffersTab offers={offers} plans={plans} onUpdate={loadData} />}
+                        {activeTab === 'partners' && <PartnersTab partners={partners} onUpdate={loadData} />}
+                        {activeTab === 'payments' && <PaymentSettingsTab />}
+                    </motion.div>
                 </div>
             </div>
         </div>
@@ -496,71 +579,10 @@ export default function PricingAdminPage() {
 }
 
 // ==================== STATS CARD ====================
-
-interface StatsCardProps {
-    title: string;
-    value: string | number;
-    icon: React.ReactNode;
-    color: 'blue' | 'green' | 'purple' | 'orange';
-}
-
-function StatsCard({ title, value, icon, color }: StatsCardProps) {
-    const colorClasses = {
-        blue: 'bg-blue-100 text-blue-600',
-        green: 'bg-green-100 text-green-600',
-        purple: 'bg-purple-100 text-purple-600',
-        orange: 'bg-orange-100 text-orange-600',
-    };
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm transition-shadow hover:shadow-md"
-        >
-            <div className="flex justify-between items-start">
-                <div>
-                    <p className="text-sm font-medium text-gray-600">{title}</p>
-                    <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
-            </div>
-        </motion.div>
-    );
-}
+// (Removed separate component to use Card directly in grid above)
 
 // ==================== TAB BUTTON ====================
-
-interface TabButtonProps {
-    active: boolean;
-    onClick: () => void;
-    icon: React.ReactNode;
-    label: string;
-}
-
-function TabButton({ active, onClick, icon, label }: TabButtonProps) {
-    return (
-        <button
-            onClick={onClick}
-            className={`
-        flex items-center gap-2 px-6 py-4 font-medium transition-all relative
-        ${active
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }
-      `}
-        >
-            {icon}
-            <span>{label}</span>
-            {active && (
-                <motion.div
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                />
-            )}
-        </button>
-    );
-}
+// (Removed separate component to use inline buttons with framer-motion in grid above)
 
 // ==================== BASE PLANS TAB ====================
 
@@ -573,27 +595,34 @@ function BasePlansTab({ plans, onUpdate }: BasePlansTabProps) {
     const { can } = useAbility();
     return (
         <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-10"
         >
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">الباقات الأساسية</h2>
-                    <p className="mt-1 text-sm text-gray-600">الأسعار الأساسية بالدولار الأمريكي</p>
+                    <h2 className="text-2xl font-black text-slate-900">الباقات الأساسية</h2>
+                    <p className="mt-1 text-slate-500 font-medium">التعريفات المالية الشاملة لجميع أنواع العضويات</p>
                 </div>
                 {can('create', 'pricing') && (
-                    <button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700">
-                        <Plus className="w-4 h-4" />
-                        إضافة باقة جديدة
-                    </button>
+                    <Button className="h-12 px-8 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 font-bold gap-2">
+                        <Plus className="w-5 h-5" />
+                        إضافة باقة استراتيجية
+                    </Button>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {plans.map((plan) => (
-                    <PlanCard key={plan.id} plan={plan} onUpdate={onUpdate} />
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {plans.length > 0 ? (
+                    plans.map((plan, index) => (
+                        <PlanCard key={plan.id} plan={plan} onUpdate={onUpdate} index={index} />
+                    ))
+                ) : (
+                    <div className="col-span-full py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
+                        <AlertCircle className="w-16 h-16 text-slate-300 mb-4" />
+                        <p className="text-slate-400 font-black text-lg">لا توجد باقات جاهزة حالياً</p>
+                    </div>
+                )}
             </div>
         </motion.div>
     );
@@ -604,18 +633,35 @@ function BasePlansTab({ plans, onUpdate }: BasePlansTabProps) {
 interface PlanCardProps {
     plan: SubscriptionPlan;
     onUpdate: () => void;
+    index: number;
 }
 
-function PlanCard({ plan, onUpdate }: PlanCardProps) {
+function PlanCard({ plan, onUpdate, index }: PlanCardProps) {
     const { can } = useAbility();
     const [showPreview, setShowPreview] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const savings = plan.key === 'quarterly' ? 10 : plan.key === 'yearly' ? 30 : 0;
+
+    // Determine the theme based on plan key
+    const theme = plan.key === 'yearly' ? {
+        bg: 'from-slate-900 to-slate-800',
+        accent: 'blue',
+        text: 'text-white',
+        desc: 'text-slate-400'
+    } : plan.key === '6months' ? {
+        bg: 'bg-white',
+        accent: 'indigo',
+        text: 'text-slate-900',
+        desc: 'text-slate-500'
+    } : {
+        bg: 'bg-white',
+        accent: 'blue',
+        text: 'text-slate-900',
+        desc: 'text-slate-500'
+    };
 
     const handleSave = async (updatedPlan: SubscriptionPlan) => {
         try {
-            // تحويل البيانات من format الصفحة إلى format PricingService
             const planToSave = {
                 id: updatedPlan.id,
                 title: updatedPlan.name,
@@ -624,7 +670,7 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                         plan.id.includes('annual') ? 'أفضل قيمة وتوفير' : '',
                 period: updatedPlan.period,
                 base_currency: 'USD' as const,
-                base_original_price: updatedPlan.basePrice * 1.5, // افتراض أن السعر الأصلي أعلى
+                base_original_price: updatedPlan.basePrice * 1.5,
                 base_price: updatedPlan.basePrice,
                 features: updatedPlan.features.map(f => f.name),
                 bonusFeatures: updatedPlan.bonusFeatures.map(b => b.name),
@@ -635,33 +681,30 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                 color: plan.id.includes('3months') ? 'blue' as const :
                     plan.id.includes('6months') ? 'purple' as const :
                         plan.id.includes('annual') ? 'emerald' as const : 'blue' as const,
-                overrides: {}, // سيتم إدارتها من تبويب الأسعار المخصصة
+                overrides: {},
                 isActive: updatedPlan.isActive,
                 order: updatedPlan.displayOrder
             };
 
             await PricingService.updatePlan(planToSave as any);
-            toast.success('✅ Changes saved successfully');
-            onUpdate(); // Reload data
+            toast.success('✅ تم حفظ التغييرات بنجاح');
+            onUpdate();
         } catch (error) {
             console.error('Error saving plan:', error);
-            toast.error('❌ Failed to save changes');
+            toast.error('❌ فشل حفظ التغييرات');
         }
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
-            return;
-        }
-
+        if (!confirm('هل أنت متأكد من حذف هذه الباقة نهائياً؟')) return;
         setIsDeleting(true);
         try {
             await PricingService.deletePlan(plan.id);
-            toast.success('✅ Plan deleted successfully');
+            toast.success('✅ تم حذف الباقة بنجاح');
             onUpdate();
         } catch (error) {
             console.error('Error deleting plan:', error);
-            toast.error('❌ Failed to delete plan');
+            toast.error('❌ فشل حذف الباقة');
         } finally {
             setIsDeleting(false);
         }
@@ -670,72 +713,99 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
     return (
         <>
             <motion.div
-                whileHover={{ y: -4 }}
-                className="relative p-6 bg-white rounded-xl border-2 border-gray-200 shadow-sm transition-all hover:shadow-lg"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -8 }}
+                className="group relative"
             >
-                {savings > 0 && (
-                    <div className="absolute top-0 left-0 px-3 py-1 text-xs font-bold text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-tr-xl rounded-bl-xl">
-                        وفر {savings}%
-                    </div>
-                )}
+                <Card className={`overflow-hidden rounded-[3rem] border border-white/50 shadow-2xl transition-all duration-500 ${theme.bg} ${theme.text} p-2 flex flex-col h-full`}>
+                    {/* Decorative Pattern */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
-                <div className="mb-4 text-center">
-                    <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                    <div className="flex justify-center items-baseline gap-1 mt-2">
-                        <span className="text-4xl font-black text-blue-600">${plan.basePrice}</span>
-                        <span className="text-gray-500">/</span>
-                        <span className="text-sm text-gray-500">{plan.duration} يوم</span>
-                    </div>
-                </div>
+                    <div className="relative z-10 flex flex-col h-full">
+                        <CardHeader className="p-8 pb-0 space-y-0 relative">
+                            <div className="flex justify-between items-start mb-10">
+                                <div className={`p-4 rounded-2xl ${plan.key === 'yearly' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'} shadow-inner flex items-center justify-center`}>
+                                    {plan.id.includes('annual') ? <Star className="w-8 h-8" /> : <DollarSign className="w-8 h-8" />}
+                                </div>
+                                {plan.id.includes('6months') && (
+                                    <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-none py-2 px-5 rounded-full font-black text-[10px] tracking-widest uppercase shadow-xl shadow-blue-500/20 ring-2 ring-white/20">
+                                        الأكثر طلباً
+                                    </Badge>
+                                )}
+                            </div>
 
-                {/* Features Count */}
-                <div className="flex gap-4 justify-center items-center py-3 mb-4 border-t border-b border-gray-100">
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">{plan.features?.length || 0}</p>
-                        <p className="text-xs text-gray-500">ميزة</p>
-                    </div>
-                    <div className="w-px h-8 bg-gray-200" />
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">{plan.bonusFeatures?.length || 0}</p>
-                        <p className="text-xs text-gray-500">مكافأة</p>
-                    </div>
-                </div>
+                            <div>
+                                <CardTitle className="text-4xl font-black mb-2 tracking-tight">{plan.name}</CardTitle>
+                                <CardDescription className={`text-[10px] font-black uppercase tracking-[0.25em] opacity-80 ${theme.desc} p-0`}>
+                                    {plan.period}
+                                </CardDescription>
+                            </div>
+                        </CardHeader>
 
-                <div className="flex gap-2">
-                    {can('update', 'pricing') && (
-                        <button
-                            onClick={() => setShowEdit(true)}
-                            className="flex flex-1 gap-2 justify-center items-center px-4 py-2 text-blue-600 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100"
-                        >
-                            <Edit2 className="w-4 h-4" />
-                            تعديل
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setShowPreview(true)}
-                        className={`flex ${can('update', 'pricing') ? '' : 'flex-1'} gap-2 justify-center items-center px-4 py-2 text-gray-600 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100`}
-                    >
-                        <Eye className="w-4 h-4" />
-                        {!can('update', 'pricing') && <span>عرض التفاصيل</span>}
-                    </button>
-                    {can('delete', 'pricing') && (
-                        <button
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="flex gap-2 justify-center items-center px-4 py-2 text-red-600 bg-red-50 rounded-lg transition-colors hover:bg-red-100 disabled:opacity-50"
-                        >
-                            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
-                    )}
-                </div>
+                        <CardContent className="p-8 pt-10 flex-1">
+                            <div className="flex items-baseline gap-2 mb-10">
+                                <div className="flex flex-col">
+                                    <span className="text-7xl font-black tabular-nums tracking-tighter leading-none">${plan.basePrice}</span>
+                                    <span className={`text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] italic mt-2`}>per {plan.duration} days base rate</span>
+                                </div>
+                            </div>
 
-                <div className="flex gap-2 justify-center items-center mt-4">
-                    <div className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
-                    <span className="text-sm text-gray-600">{plan.isActive ? 'نشط' : 'معطل'}</span>
-                </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className={`p-5 rounded-3xl border transition-all hover:scale-[1.03] duration-300 ${plan.key === 'yearly' ? 'bg-white/5 border-white/10 hover:bg-white/10 shadow-inner' : 'bg-slate-50 border-slate-100 hover:bg-slate-100 shadow-sm'}`}>
+                                    <p className={`text-[9px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-60 ${theme.desc}`}>الميزات</p>
+                                    <p className="text-3xl font-black">{plan.features?.length || 0}</p>
+                                </div>
+                                <div className={`p-5 rounded-3xl border transition-all hover:scale-[1.03] duration-300 ${plan.key === 'yearly' ? 'bg-white/5 border-white/10 hover:bg-white/10 shadow-inner' : 'bg-slate-50 border-slate-100 hover:bg-slate-100 shadow-sm'}`}>
+                                    <p className={`text-[9px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-60 ${theme.desc}`}>المكافآت</p>
+                                    <p className="text-3xl font-black text-emerald-500">{plan.bonusFeatures?.length || 0}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+
+                        <CardFooter className="p-8 pt-4 flex flex-col gap-8 relative">
+                            <div className="flex gap-3 w-full">
+                                <Button
+                                    variant="ghost"
+                                    className={`flex-1 h-16 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all active:scale-[0.98]
+                                   ${plan.key === 'yearly' ? 'bg-white/10 hover:bg-white text-white hover:text-slate-900 border-white/20' : 'bg-slate-900 text-white hover:bg-slate-800'}
+                                 `}
+                                    onClick={() => setShowPreview(true)}
+                                >
+                                    <Eye className="w-4 h-4 ml-2" /> التفاصيل
+                                </Button>
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        className="h-16 w-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+                                        onClick={() => setShowEdit(true)}
+                                    >
+                                        <Edit2 className="w-5 h-5" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-16 w-16 rounded-[1.5rem] bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 transition-all active:scale-95"
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                    >
+                                        {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Status Indicator bubble */}
+                            <div className={`flex items-center self-end gap-2.5 px-4 py-2 rounded-full border shadow-sm transition-all
+                              ${plan.isActive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-slate-500/10 border-slate-500/20 text-slate-500'}
+                            `}>
+                                <div className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">{plan.isActive ? 'active' : 'disabled'}</span>
+                            </div>
+                        </CardFooter>
+                    </div>
+                </Card>
             </motion.div>
 
-            {/* Edit Modal */}
             <EditPlanModal
                 plan={plan}
                 isOpen={showEdit}
@@ -743,7 +813,6 @@ function PlanCard({ plan, onUpdate }: PlanCardProps) {
                 onSave={handleSave}
             />
 
-            {/* Preview Modal */}
             <PlanPreviewModal
                 plan={plan}
                 isOpen={showPreview}
@@ -762,155 +831,112 @@ interface PlanPreviewModalProps {
 }
 
 function PlanPreviewModal({ plan, isOpen, onClose }: PlanPreviewModalProps) {
-    if (!isOpen) return null;
-
-    const savings = plan.key === 'quarterly' ? 10 : plan.key === 'yearly' ? 30 : 0;
-
     return (
-        <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="overflow-hidden w-full max-w-3xl bg-white rounded-2xl shadow-2xl"
-                >
-                    {/* Header */}
-                    <div className="relative p-6 bg-gradient-to-r from-blue-600 to-blue-700">
-                        <button
-                            onClick={onClose}
-                            className="absolute top-4 left-4 p-2 text-white rounded-lg transition-colors hover:bg-white/20"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-
-                        {savings > 0 && (
-                            <div className="absolute top-4 right-4 px-3 py-1 text-xs font-bold text-green-600 bg-white rounded-full">
-                                وفر {savings}%
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+                    <DialogHeader className="relative z-10">
+                        <div className="flex justify-between items-start mb-6">
+                            <Badge className="bg-blue-600 text-white border-none py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase shadow-lg shadow-blue-500/20">
+                                {plan.isActive ? 'Active Plan' : 'Draft'}
+                            </Badge>
+                            <div className="flex items-center gap-2">
+                                <span className="text-4xl font-black italic tracking-tighter">${plan.base_price}</span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 mt-2">/ {plan.period}</span>
                             </div>
-                        )}
+                        </div>
+                        <DialogTitle className="text-4xl font-black italic tracking-tighter">
+                            {plan.title || plan.name}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold text-xs mt-2 p-0 max-w-md">
+                            Strategic operational tier designed for high-performance sports management protocols.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                        <div className="text-center text-white">
-                            <h2 className="text-3xl font-bold">{plan.name}</h2>
-                            <div className="flex justify-center items-baseline gap-2 mt-4">
-                                <span className="text-5xl font-black">${plan.basePrice}</span>
-                                <span className="text-lg opacity-80">/ {plan.duration} يوم</span>
-                            </div>
-                            <p className="mt-2 text-sm opacity-90">{plan.currency}</p>
+                <div className="p-10 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-4 mb-10">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center">
+                            <p className="text-3xl font-black text-slate-900 italic tracking-tighter">{plan.features?.length || 0}</p>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Core Protocols</p>
+                        </div>
+                        <div className="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col items-center">
+                            <p className="text-3xl font-black text-emerald-600 italic tracking-tighter">{plan.bonusFeatures?.length || 0}</p>
+                            <p className="text-[10px] font-black uppercase text-emerald-600/60 tracking-widest mt-1">Strategic Bonuses</p>
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="overflow-y-auto p-6 max-h-[60vh]">
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="p-4 text-center bg-blue-50 rounded-lg">
-                                <p className="text-2xl font-bold text-blue-600">{plan.duration}</p>
-                                <p className="text-xs text-gray-600">يوم</p>
-                            </div>
-                            <div className="p-4 text-center bg-green-50 rounded-lg">
-                                <p className="text-2xl font-bold text-green-600">{plan.features?.length || 0}</p>
-                                <p className="text-xs text-gray-600">ميزة</p>
-                            </div>
-                            <div className="p-4 text-center bg-purple-50 rounded-lg">
-                                <p className="text-2xl font-bold text-purple-600">{plan.bonusFeatures?.length || 0}</p>
-                                <p className="text-xs text-gray-600">مكافأة</p>
-                            </div>
-                        </div>
-
+                    <div className="space-y-10">
                         {/* Features */}
                         {plan.features && plan.features.length > 0 && (
-                            <div className="mb-6">
-                                <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-gray-900">
-                                    <Check className="w-5 h-5 text-blue-600" />
-                                    الميزات الأساسية
+                            <section>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                        <Check className="w-4 h-4" />
+                                    </div>
+                                    Standard Operational Features
                                 </h3>
-                                <div className="space-y-3">
-                                    {plan.features.map((feature, index) => (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {plan.features.map((feature: any, index: number) => (
                                         <motion.div
                                             key={feature.id || index}
-                                            initial={{ opacity: 0, x: -20 }}
+                                            initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: index * 0.05 }}
-                                            className="flex gap-3 items-start p-3 bg-gray-50 rounded-lg"
+                                            className="flex gap-4 items-center p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all group"
                                         >
-                                            <div className="flex-shrink-0 p-1 mt-0.5 bg-blue-100 rounded-full">
-                                                <Check className="w-4 h-4 text-blue-600" />
+                                            <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                                <Check className="w-3 h-3" />
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">
-                                                    {typeof feature === 'string' ? feature : feature?.name || ''}
-                                                </p>
-                                                {typeof feature === 'object' && feature?.description && (
-                                                    <p className="mt-1 text-sm text-gray-600">{feature.description}</p>
-                                                )}
-                                            </div>
+                                            <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
+                                                {typeof feature === 'string' ? feature : feature?.name}
+                                            </span>
                                         </motion.div>
                                     ))}
                                 </div>
-                            </div>
+                            </section>
                         )}
 
                         {/* Bonus Features */}
                         {plan.bonusFeatures && plan.bonusFeatures.length > 0 && (
-                            <div>
-                                <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-gray-900">
-                                    <Star className="w-5 h-5 text-yellow-500" />
-                                    الميزات الإضافية (المكافآت)
+                            <section>
+                                <h3 className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-6 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <Star className="w-4 h-4" />
+                                    </div>
+                                    Performance Accelerators
                                 </h3>
-                                <div className="space-y-3">
-                                    {plan.bonusFeatures.map((bonus, index) => (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {plan.bonusFeatures.map((bonus: any, index: number) => (
                                         <motion.div
                                             key={bonus.id || index}
-                                            initial={{ opacity: 0, x: -20 }}
+                                            initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: (plan.features?.length || 0) * 0.05 + index * 0.05 }}
-                                            className="flex gap-3 items-start p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg"
+                                            transition={{ delay: index * 0.05 }}
+                                            className="flex gap-4 items-center p-4 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5 transition-all group"
                                         >
-                                            <div className="flex-shrink-0 p-1 mt-0.5 bg-yellow-100 rounded-full">
-                                                <Star className="w-4 h-4 text-yellow-600" />
+                                            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shadow-inner">
+                                                <Star className="w-3 h-3 fill-current" />
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">
-                                                    {typeof bonus === 'string' ? bonus : bonus?.name || ''}
-                                                </p>
-                                                {typeof bonus === 'object' && bonus?.description && (
-                                                    <p className="mt-1 text-sm text-gray-600">{bonus.description}</p>
-                                                )}
-                                            </div>
+                                            <span className="text-sm font-bold text-emerald-900 transition-colors">
+                                                {typeof bonus === 'string' ? bonus : bonus?.name}
+                                            </span>
                                         </motion.div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Empty State */}
-                        {(!plan.features || plan.features.length === 0) && (!plan.bonusFeatures || plan.bonusFeatures.length === 0) && (
-                            <div className="py-12 text-center text-gray-500">
-                                <AlertCircle className="mx-auto mb-3 w-12 h-12 text-gray-400" />
-                                <p>لم يتم إضافة ميزات لهذه الباقة بعد</p>
-                            </div>
+                            </section>
                         )}
                     </div>
+                </div>
 
-                    {/* Footer */}
-                    <div className="flex gap-3 justify-between p-6 border-t border-gray-200 bg-gray-50">
-                        <div className="flex gap-2 items-center">
-                            <div className={`w-3 h-3 rounded-full ${plan.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
-                            <span className="text-sm font-medium text-gray-700">
-                                {plan.isActive ? 'الباقة نشطة' : 'الباقة معطلة'}
-                            </span>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2 font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
-                        >
-                            إغلاق
-                        </button>
-                    </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+                <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                    <Button onClick={onClose} className="bg-slate-900 text-white h-14 px-10 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-all">
+                        Exit Preview
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -1003,148 +1029,144 @@ function CustomPricingTab() {
 
     if (loading) {
         return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            </motion.div>
+            <div className="flex justify-center items-center py-24">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+            </div>
         );
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-        >
-            <div className="flex justify-between items-center mb-6">
+        <div className="space-y-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">الأسعار المخصصة حسب الدولة</h2>
-                    <p className="mt-1 text-sm text-gray-600">تخصيص الأسعار لكل دولة بعملتها المحلية</p>
+                    <h2 className="text-2xl font-black text-slate-900">التسعير الدولي المخصص</h2>
+                    <p className="mt-1 text-slate-500 font-medium">تخصيص التعريفات المالية لكل منطقة جغرافية وعملة</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-4 w-full md:w-auto">
                     <select
                         value={selectedPlan}
                         onChange={(e) => setSelectedPlan(e.target.value)}
-                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="h-14 px-6 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold text-slate-900 shadow-sm"
                     >
                         {plans.map(plan => (
                             <option key={plan.id} value={plan.id}>{plan.title}</option>
                         ))}
                     </select>
-                    <button
+                    <Button
                         onClick={() => {
                             setEditingOverride(null);
                             setShowOverrideModal(true);
                         }}
-                        className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                        className="h-14 px-8 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 font-black"
                     >
-                        <Plus className="w-4 h-4" />
-                        إضافة تسعير دولة
-                    </button>
+                        <Plus className="w-5 h-5 ml-2" />
+                        إضافة تسعير
+                    </Button>
                 </div>
             </div>
 
-            <div className="p-4 mb-6 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex gap-3 items-start">
-                    <AlertCircle className="flex-shrink-0 w-5 h-5 text-blue-600" />
-                    <div className="text-sm text-blue-900">
-                        <p className="font-semibold">ملاحظة مهمة</p>
-                        <p className="mt-1">
-                            الأسعار المخصصة لها الأولوية على الأسعار الأساسية. إذا لم يتم تحديد سعر مخصص، سيتم
-                            استخدام السعر الأساسي مع التحويل التلقائي للعملة.
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-1 rounded-[2.5rem] bg-slate-900 text-white border-none shadow-2xl p-8 h-fit">
+                    <CardHeader className="p-0 mb-8">
+                        <div className="p-4 bg-white/10 rounded-2xl w-fit mb-4">
+                            <Globe className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <CardTitle className="text-2xl font-black italic">Base Configuration</CardTitle>
+                        <CardDescription className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">الإصدار العالمي الافتراضي</CardDescription>
+                    </CardHeader>
+                    <div className="space-y-6">
+                        <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Currency</p>
+                            <p className="text-2xl font-black">{currentPlan?.base_currency || 'USD'}</p>
+                        </div>
+                        <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Standard Price</p>
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-3xl font-black text-emerald-400 tabular-nums">${currentPlan?.base_price || 0}</p>
+                                <p className="text-sm font-bold text-slate-500 line-through opacity-50">${currentPlan?.base_original_price || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 flex gap-4 items-center">
+                        <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg">
+                            <AlertCircle className="w-5 h-5" />
+                        </div>
+                        <p className="text-xs font-bold text-blue-900 leading-relaxed">
+                            ملاحظة استراتيجية: الأسعار المخصصة لها الأولوية القصوى. في حال غياب التعريف المخصص، سيعتمد النظام السعر القياسي مع التحويل اللحظي للعملة.
                         </p>
                     </div>
+
+                    {currentPlan?.overrides && Object.keys(currentPlan.overrides).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Object.entries(currentPlan.overrides).map(([code, override]: [string, any]) => (
+                                <motion.div
+                                    key={code}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                >
+                                    <Card className="relative overflow-hidden p-0 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl group hover:border-blue-500 transition-all">
+                                        <CardHeader className="p-8 pb-4">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-4xl shadow-inner italic border border-slate-100 group-hover:scale-110 transition-transform">
+                                                        {code === 'EG' ? '🇪🇬' : code === 'SA' ? '🇸🇦' : code === 'QA' ? '🇶🇦' : code === 'KW' ? '🇰🇼' : '🌍'}
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-2xl font-black text-slate-900 italic tracking-tighter">{code}</CardTitle>
+                                                        <CardDescription className="text-[10px] font-black uppercase text-blue-600 tracking-widest p-0">
+                                                            {override.currency} Zone
+                                                        </CardDescription>
+                                                    </div>
+                                                </div>
+                                                <Badge className={`py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase border-none ring-2 ${override.active ? 'bg-emerald-500 text-white ring-emerald-500/20' : 'bg-slate-100 text-slate-400 ring-slate-100/50'}`}>
+                                                    {override.active ? 'Active' : 'Disabled'}
+                                                </Badge>
+                                            </div>
+                                        </CardHeader>
+
+                                        <CardContent className="p-8 pt-0">
+                                            <div className="flex items-baseline gap-2 mb-8 bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 group-hover:bg-blue-50/50 transition-colors">
+                                                <span className="text-5xl font-black tabular-nums text-slate-900 tracking-tighter">{override.price}</span>
+                                                <span className="text-sm font-bold text-slate-300 line-through">{override.original_price}</span>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase italic opacity-60 ml-1">{override.currency}</span>
+                                            </div>
+                                        </CardContent>
+
+                                        <CardFooter className="p-8 bg-slate-50/50 border-t border-slate-100 flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                className="flex-1 h-12 rounded-xl bg-white hover:bg-blue-600 hover:text-white font-black text-[10px] uppercase tracking-widest border border-slate-200 shadow-sm transition-all active:scale-95"
+                                                onClick={() => {
+                                                    setEditingOverride({ code, data: override });
+                                                    setShowOverrideModal(true);
+                                                }}
+                                            >
+                                                <Edit2 className="w-4 h-4 ml-2" /> تعديل التعريفة
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-12 h-12 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center p-0 active:scale-95"
+                                                onClick={() => handleDeleteOverride(code)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="py-24 bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center p-10">
+                            <Globe className="w-16 h-16 text-slate-300 mb-6" />
+                            <p className="text-xl font-black text-slate-400">لا توجد تعريفات دولية مخصصة حالياً</p>
+                            <p className="text-sm text-slate-400 mt-2 font-medium max-w-md">قم بإضافة أسعار مخصصة للدول لزيادة معدل التحويل وجذب اللاعبين من مختلف المناطق الجغرافية.</p>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            <div className="p-4 mb-6 bg-gray-50 rounded-lg border border-gray-200">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">السعر الأساسي (عالمي)</h3>
-                <div className="flex gap-6 items-center">
-                    <div>
-                        <p className="text-xs text-gray-500">العملة</p>
-                        <p className="text-lg font-bold text-gray-900">{currentPlan?.base_currency || 'USD'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-gray-500">السعر الأصلي</p>
-                        <p className="text-lg font-bold text-gray-400 line-through">${currentPlan?.base_original_price || 0}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-gray-500">السعر بعد الخصم</p>
-                        <p className="text-lg font-bold text-green-600">${currentPlan?.base_price || 0}</p>
-                    </div>
-                </div>
-            </div>
-
-            {currentPlan?.overrides && Object.keys(currentPlan.overrides).length > 0 ? (
-                <div className="overflow-hidden bg-white rounded-lg border border-gray-200">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الدولة</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">العملة</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">السعر الأصلي</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">السعر</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الحالة</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">إجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {Object.entries(currentPlan.overrides).map(([code, override]: [string, any]) => (
-                                    <tr key={code} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2 items-center">
-                                                <span className="font-medium text-gray-900">{code}</span>
-                                                <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
-                                                    مخصص
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-900">{override.currency}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-gray-400 line-through">{override.original_price}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-lg font-bold text-green-600">{override.price}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${override.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                                                }`}>
-                                                <div className={`w-2 h-2 rounded-full ${override.active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                                {override.active ? 'نشط' : 'معطل'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingOverride({ code, data: override });
-                                                        setShowOverrideModal(true);
-                                                    }}
-                                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteOverride(code)}
-                                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ) : (
-                <div className="p-12 text-center bg-gray-50 rounded-lg border-2 border-gray-200 border-dashed">
-                    <Globe className="mx-auto w-12 h-12 text-gray-400" />
-                    <p className="mt-4 text-gray-600">لا توجد أسعار مخصصة لهذه الباقة</p>
-                    <p className="mt-2 text-sm text-gray-500">اضغط على &quot;إضافة تسعير دولة&quot; للبدء</p>
-                </div>
-            )}
 
             <EditOverrideModal
                 isOpen={showOverrideModal}
@@ -1152,7 +1174,7 @@ function CustomPricingTab() {
                 onSave={handleSaveOverride}
                 initialData={editingOverride}
             />
-        </motion.div>
+        </div>
     );
 }
 
@@ -1176,22 +1198,14 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
         startDate: '',
         endDate: '',
         isActive: true,
-
-        // نطاق العرض
         scope: 'all' as 'all' | 'accountTypes' | 'specificAccounts' | 'countries',
         targetAccountTypes: [] as ('club' | 'academy' | 'trainer' | 'agent' | 'player')[],
         targetAccountIds: [] as string[],
         targetCountries: [] as string[],
-
-        // الباقات
         applicablePlans: [] as string[],
-
-        // حدود الاستخدام
         usageLimitType: 'unlimited' as 'unlimited' | 'total' | 'perUser',
         totalUsageLimit: 0,
         perUserLimit: 1,
-
-        // شروط إضافية
         minPlayers: 0,
         minAmount: 0
     });
@@ -1207,22 +1221,14 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             isActive: true,
-
-            // نطاق العرض
             scope: 'all',
             targetAccountTypes: [],
             targetAccountIds: [],
             targetCountries: [],
-
-            // الباقات
             applicablePlans: [],
-
-            // حدود الاستخدام
             usageLimitType: 'unlimited',
             totalUsageLimit: 0,
             perUserLimit: 1,
-
-            // شروط
             minPlayers: 0,
             minAmount: 0
         });
@@ -1255,21 +1261,15 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
     };
 
     const handleDeleteOffer = async (offerId: string) => {
-        if (!confirm('هل أنت متأكد من حذف هذا العرض؟')) return;
+        if (!confirm('هل أنت متأكد من حذف هذا العرض الترويجي؟')) return;
 
         try {
-            console.log('🗑️ بدء حذف العرض:', offerId);
             const offerDoc = doc(db, 'promotional_offers', offerId);
             await deleteDoc(offerDoc);
-            console.log('✅ تم حذف العرض بنجاح من Firebase');
             toast.success('✅ تم حذف العرض بنجاح');
-
-            // إعادة تحميل البيانات
-            console.log('🔄 إعادة تحميل البيانات...');
             await onUpdate();
         } catch (error: any) {
             console.error('❌ خطأ في حذف العرض:', error);
-            console.error('تفاصيل الخطأ:', error?.message, error?.code);
             toast.error(`❌ فشل في حذف العرض: ${error?.message || 'خطأ غير معروف'}`);
         }
     };
@@ -1285,7 +1285,7 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
                 title: formData.title,
                 name: formData.title,
                 description: formData.description,
-                code: formData.code || null,  // ← إضافة الكود (أو null إذا كان فارغاً)
+                code: formData.code || null,
                 discountType: formData.discountType,
                 discountValue: formData.discountValue,
                 startDate: formData.startDate,
@@ -1305,19 +1305,14 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
             };
 
             if (editingOffer) {
-                // تعديل عرض موجود
-                console.log('✏️ تحديث العرض:', editingOffer.id);
                 const offerDoc = doc(db, 'promotional_offers', editingOffer.id);
-                // استخدام setDoc مع merge بدلاً من updateDoc
                 await setDoc(offerDoc, {
                     ...offerData,
                     updatedAt: serverTimestamp()
                 }, { merge: true });
                 toast.success('✅ تم تحديث العرض بنجاح');
             } else {
-                // إنشاء عرض جديد
                 const offersRef = collection(db, 'promotional_offers');
-                // لا نضيف id في البيانات - Firebase سيعطينا document ID تلقائياً
                 await addDoc(offersRef, {
                     ...offerData,
                     createdAt: serverTimestamp(),
@@ -1331,82 +1326,114 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
             await onUpdate();
         } catch (error: any) {
             console.error('❌ خطأ في حفظ العرض:', error);
-            console.error('تفاصيل الخطأ:', error?.message, error?.code);
-
-            if (error?.code === 'not-found' || error?.message?.includes('No document')) {
-                toast.error('❌ العرض غير موجود - ربما تم حذفه. جرِّب تحديث الصفحة');
-            } else {
-                toast.error(`❌ فشل في حفظ العرض: ${error?.message || 'خطأ غير معروف'}`);
-            }
+            toast.error(`❌ فشل في حفظ العرض: ${error?.message || 'خطأ غير معروف'}`);
         }
     };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-        >
-            <div className="flex justify-between items-center mb-6">
+        <div className="space-y-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">العروض الترويجية</h2>
-                    <p className="mt-1 text-sm text-gray-600">إدارة العروض والخصومات محددة المدة</p>
+                    <h2 className="text-2xl font-black text-slate-900">حملات العروض الترويجية</h2>
+                    <p className="mt-1 text-slate-500 font-medium">إدارة قسائم الخصم، عروض المناسبات، والحوافز المؤقتة</p>
                 </div>
-                <button
+                <Button
                     onClick={handleCreateOffer}
-                    className="flex gap-2 items-center px-4 py-2 text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg transition-all hover:shadow-lg"
+                    className="h-14 px-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-xl shadow-emerald-500/20 font-black tracking-widest transition-all"
                 >
-                    <Plus className="w-4 h-4" />
-                    إنشاء عرض جديد
-                </button>
+                    <Plus className="w-5 h-5 ml-2" />
+                    إنشاء حملة جديدة
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {offers.length > 0 ? (
-                    offers.map((offer) => (
-                        <div key={offer.id} className="p-6 bg-white rounded-lg border shadow-sm">
-                            <div className="flex justify-between items-start mb-3">
-                                <h3 className="text-lg font-semibold text-gray-900">{offer.title}</h3>
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${offer.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                                    }`}>
-                                    {offer.isActive ? 'نشط' : 'معطل'}
-                                </span>
-                            </div>
-                            <p className="mb-3 text-sm text-gray-600">{offer.description}</p>
-                            <div className="mb-4 text-sm text-gray-500">
-                                <div>الخصم: {offer.discountValue}{offer.discountType === 'percentage' ? '%' : ' USD'}</div>
-                                <div>من {new Date(offer.startDate).toLocaleDateString('ar-EG')} إلى {new Date(offer.endDate).toLocaleDateString('ar-EG')}</div>
-                            </div>
+                    offers.map((offer, index) => (
+                        <motion.div
+                            key={offer.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="group relative"
+                        >
+                            <Card className="rounded-[3rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl overflow-hidden hover:shadow-emerald-900/5 transition-all h-full flex flex-col">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
-                            {/* أزرار التعديل والحذف */}
-                            <div className="flex gap-2 pt-3 border-t border-gray-200">
-                                <button
-                                    onClick={() => handleEditOffer(offer)}
-                                    className="flex flex-1 gap-2 justify-center items-center px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg transition-colors hover:bg-blue-100"
-                                >
-                                    <Edit className="w-4 h-4" />
-                                    تعديل
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteOffer(offer.id)}
-                                    className="flex flex-1 gap-2 justify-center items-center px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg transition-colors hover:bg-red-100"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    حذف
-                                </button>
-                            </div>
-                        </div>
+                                <CardHeader className="p-8 pb-4 relative z-10">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm">
+                                            <Gift className="w-8 h-8" />
+                                        </div>
+                                        <Badge className={`py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase border-none
+                                      ${offer.isActive ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}
+                                    `}>
+                                            {offer.isActive ? 'Active' : 'Expired'}
+                                        </Badge>
+                                    </div>
+                                    <CardTitle className="text-2xl font-black text-slate-900 leading-tight mb-2">{offer.title}</CardTitle>
+                                    <CardDescription className="font-bold text-slate-500 line-clamp-2 min-h-[3rem]">{offer.description}</CardDescription>
+                                </CardHeader>
+
+                                <CardContent className="p-8 pt-0 flex-1 relative z-10">
+                                    <div className="mb-8">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-5xl font-black text-emerald-600 tabular-nums">
+                                                {offer.discountValue}{offer.discountType === 'percentage' ? '%' : '$'}
+                                            </span>
+                                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest italic">Discount</span>
+                                        </div>
+                                        {offer.code && (
+                                            <div className="mt-4 p-3 bg-slate-900 rounded-2xl flex items-center justify-between border border-white/10 shadow-lg">
+                                                <code className="text-emerald-400 font-black tracking-widest">{offer.code}</code>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => {
+                                                    navigator.clipboard.writeText(offer.code!);
+                                                    toast.success('Copied to clipboard');
+                                                }}>
+                                                    <Copy className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center text-xs font-bold text-slate-400">
+                                            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Effective Period</span>
+                                            <span className="text-slate-900">{new Date(offer.startDate).toLocaleDateString('en-US')} - {new Date(offer.endDate).toLocaleDateString('en-US')}</span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500" style={{ width: offer.isActive ? '100%' : '0%' }} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+
+                                <CardFooter className="p-8 bg-slate-50 border-t border-slate-100 gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        className="flex-1 h-14 rounded-2xl bg-white hover:bg-emerald-600 hover:text-white font-black text-xs uppercase tracking-widest border border-slate-200 shadow-sm transition-all"
+                                        onClick={() => handleEditOffer(offer)}
+                                    >
+                                        <Edit className="w-4 h-4 ml-2" /> Modify
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center p-0"
+                                        onClick={() => handleDeleteOffer(offer.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
                     ))
                 ) : (
-                    <div className="col-span-2 p-12 text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 border-dashed">
-                        <Gift className="mx-auto w-12 h-12 text-green-600" />
-                        <p className="mt-4 text-gray-900 font-semibold">لا توجد عروض فعالة حالياً</p>
-                        <p className="mt-2 text-sm text-gray-600">ابدأ بإنشاء عرضك الترويجي الأول</p>
+                    <div className="col-span-full py-24 bg-emerald-50/30 rounded-[3rem] border-2 border-dashed border-emerald-200 flex flex-col items-center justify-center text-center p-10">
+                        <Gift className="w-16 h-16 text-emerald-300 mb-6" />
+                        <p className="text-xl font-black text-emerald-400">لا توجد حملات نشطة</p>
+                        <p className="text-sm text-emerald-400 mt-2 font-medium max-w-md">ابدأ بإطلاق أول حملة ترويجية لزيادة نشاط المستخدمين في المواسم الرياضية.</p>
                     </div>
                 )}
             </div>
 
-            {/* Modal إنشاء عرض - المكون الجديد المتقدم */}
             <CreateOfferModal
                 isOpen={showCreateModal}
                 formData={formData}
@@ -1416,7 +1443,7 @@ function OffersTab({ offers, plans, onUpdate }: OffersTabProps) {
                 onSave={handleSaveOffer}
                 onChange={setFormData}
             />
-        </motion.div>
+        </div>
     );
 }
 
@@ -1435,93 +1462,105 @@ function PartnersTab({ partners, onUpdate }: PartnersTabProps) {
         if (!confirm('هل أنت متأكد من حذف هذا الشريك؟')) return;
         try {
             await deleteDoc(doc(db, 'partners', id));
-            toast.success('تم حذف الشريك');
+            toast.success('✅ تم حذف الشريك بنجاح');
             onUpdate();
         } catch (error) {
-            toast.error('خطأ في الحذف');
+            toast.error('❌ خطأ في الحذف');
         }
     };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-        >
-            <div className="flex justify-between items-center mb-6">
+        <div className="space-y-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">الشركاء والأسعار الخاصة</h2>
-                    <p className="mt-1 text-sm text-gray-600">إدارة الشركاء والأسعار غير المعلنة</p>
+                    <h2 className="text-2xl font-black text-slate-900">إدارة الشركاء الاستراتيجيين</h2>
+                    <p className="mt-1 text-slate-500 font-medium">التحكم في الاتفاقيات الخاصة، الهيئات الحكومية، والأكاديميات الدولية</p>
                 </div>
-                <button
+                <Button
                     onClick={() => { setEditingPartner(null); setShowModal(true); }}
-                    className="flex gap-2 items-center px-4 py-2 text-white bg-purple-600 rounded-lg transition-colors hover:bg-purple-700"
+                    className="h-14 px-10 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl shadow-xl shadow-purple-500/20 font-black tracking-widest transition-all"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5 ml-2" />
                     إضافة شريك جديد
-                </button>
+                </Button>
             </div>
 
             {partners.length === 0 ? (
-                <div className="p-12 text-center bg-purple-50 rounded-lg border-2 border-purple-200 border-dashed">
-                    <Users className="mx-auto w-12 h-12 text-purple-600" />
-                    <p className="mt-4 text-gray-900 font-semibold">لا يوجد شركاء حالياً</p>
-                    <p className="mt-2 text-sm text-gray-600">ميزة الشركاء تتيح لك إنشاء أسعار خاصة للهيئات والجهات الحكومية</p>
+                <div className="py-24 bg-purple-50/30 rounded-[3rem] border-2 border-dashed border-purple-200 flex flex-col items-center justify-center text-center p-10">
+                    <Users className="w-16 h-16 text-purple-300 mb-6" />
+                    <p className="text-xl font-black text-purple-400">لا يوجد شركاء مسجلين</p>
+                    <p className="text-sm text-purple-400 mt-2 font-medium max-w-md">تتيح لك هذه الميزة بناء علاقات مؤسسية وتوفير اشتراكات بمبالغ مخفضة للجهات الكبرى.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    {partners.map(partner => (
-                        <div key={partner.id} className="p-6 bg-white rounded-lg border shadow-sm flex flex-col justify-between">
-                            <div>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
-                                            <Users className="w-6 h-6" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {partners.map((partner, index) => (
+                        <motion.div
+                            key={partner.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.1 }}
+                        >
+                            <Card className="rounded-[3rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl overflow-hidden hover:shadow-purple-900/5 transition-all h-full">
+                                <CardHeader className="p-8 pb-4">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="p-4 bg-purple-100 text-purple-600 rounded-2xl shadow-sm">
+                                            <Users className="w-8 h-8" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">{partner.partnerName}</h3>
-                                            <p className="text-xs text-gray-500 font-mono">{partner.partnerCode}</p>
+                                        <Badge className={`py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase border-none
+                                      ${partner.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}
+                                    `}>
+                                            {partner.status}
+                                        </Badge>
+                                    </div>
+                                    <CardTitle className="text-2xl font-black text-slate-900 leading-tight mb-1">{partner.partnerName}</CardTitle>
+                                    <CardDescription className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center gap-2">
+                                        <Globe className="w-3 h-3" /> {partner.partnerType} • Code: {partner.partnerCode}
+                                    </CardDescription>
+                                </CardHeader>
+
+                                <CardContent className="p-8 pt-0">
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Subscriptions</p>
+                                            <p className="text-xl font-black text-slate-900">{partner.activeSubscriptions || 0}</p>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Public</p>
+                                            <p className="text-xl font-black text-slate-900">{partner.isPublic ? 'YES' : 'NO'}</p>
                                         </div>
                                     </div>
-                                    <span className={`px-2 py-1 text-xs rounded-full ${partner.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                        {partner.status === 'active' ? 'نشط' : 'غير نشط'}
-                                    </span>
-                                </div>
-                                <div className="space-y-2 mb-4">
-                                    <p className="text-sm text-gray-600 flex justify-between">
-                                        <span>نوع الشراكة:</span>
-                                        <span className="font-medium">{partner.partnerType}</span>
-                                    </p>
-                                    <p className="text-sm text-gray-600 flex justify-between">
-                                        <span>الاشتراكات النشطة:</span>
-                                        <span className="font-medium">{partner.activeSubscriptions || 0}</span>
-                                    </p>
+
                                     {partner.customPricing && (
-                                        <div className="bg-gray-50 p-2 rounded text-xs mt-2">
-                                            <p className="font-bold mb-1">أسعار خاصة:</p>
-                                            {partner.customPricing.monthly && <p>شهري: ${partner.customPricing.monthly}</p>}
-                                            {partner.customPricing.quarterly && <p>3 شهور: ${partner.customPricing.quarterly}</p>}
-                                            {partner.customPricing.yearly && <p>سنوي: ${partner.customPricing.yearly}</p>}
-                                            {!partner.customPricing.monthly && !partner.customPricing.yearly && <p>لا توجد أسعار محددة</p>}
+                                        <div className="p-5 rounded-3xl bg-slate-900 text-white shadow-xl relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl" />
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Partner Tiers</p>
+                                            <div className="space-y-2">
+                                                {partner.customPricing.monthly && <p className="flex justify-between text-xs"><span>Monthly</span><span className="font-black text-emerald-400">${partner.customPricing.monthly}</span></p>}
+                                                {partner.customPricing.quarterly && <p className="flex justify-between text-xs"><span>Quarterly</span><span className="font-black text-emerald-400">${partner.customPricing.quarterly}</span></p>}
+                                                {partner.customPricing.yearly && <p className="flex justify-between text-xs"><span>Annual</span><span className="font-black text-emerald-400">${partner.customPricing.yearly}</span></p>}
+                                            </div>
                                         </div>
                                     )}
-                                </div>
-                            </div>
-                            <div className="flex gap-2 pt-3 border-t">
-                                <button
-                                    onClick={() => { setEditingPartner(partner); setShowModal(true); }}
-                                    className="flex-1 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                                >
-                                    تعديل
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(partner.id)}
-                                    className="flex-1 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                                >
-                                    حذف
-                                </button>
-                            </div>
-                        </div>
+                                </CardContent>
+
+                                <CardFooter className="p-8 bg-slate-50 border-t border-slate-100 gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        className="flex-1 h-14 rounded-2xl bg-white hover:bg-purple-600 hover:text-white font-black text-xs uppercase tracking-widest border border-slate-200 shadow-sm transition-all"
+                                        onClick={() => { setEditingPartner(partner); setShowModal(true); }}
+                                    >
+                                        Configure
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center p-0"
+                                        onClick={() => handleDelete(partner.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
                     ))}
                 </div>
             )}
@@ -1532,7 +1571,7 @@ function PartnersTab({ partners, onUpdate }: PartnersTabProps) {
                 partner={editingPartner}
                 onSuccess={onUpdate}
             />
-        </motion.div>
+        </div>
     );
 }
 
@@ -1540,7 +1579,7 @@ function PartnersTab({ partners, onUpdate }: PartnersTabProps) {
 
 function CreatePartnerModal({ isOpen, onClose, partner, onSuccess }: any) {
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState<Partial<Partner>>({
+    const [formData, setFormData] = useState<Partial<any>>({
         partnerName: '',
         partnerCode: '',
         partnerType: 'league',
@@ -1575,7 +1614,7 @@ function CreatePartnerModal({ isOpen, onClose, partner, onSuccess }: any) {
 
             if (partner?.id) {
                 await updateDoc(doc(db, 'partners', partner.id), dataToSave);
-                toast.success('تم تحديث الشريك');
+                toast.success('✅ تم تحديث الشريك بنجاح');
             } else {
                 await addDoc(collection(db, 'partners'), {
                     ...dataToSave,
@@ -1583,123 +1622,156 @@ function CreatePartnerModal({ isOpen, onClose, partner, onSuccess }: any) {
                     totalRevenue: 0,
                     createdAt: serverTimestamp()
                 });
-                toast.success('تم إضافة شريك جديد');
+                toast.success('✅ تم إضافة شريك جديد بنجاح');
             }
             onSuccess();
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error('حدث خطأ');
+            toast.error('❌ حدث خطأ أثناء الحفظ');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div className="px-6 py-4 bg-purple-600 text-white flex justify-between items-center">
-                    <h3 className="font-bold text-lg">{partner ? 'تعديل شريك' : 'إضافة شريك جديد'}</h3>
-                    <button onClick={onClose}><X className="w-5 h-5" /></button>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+                    <DialogHeader className="relative z-10">
+                        <DialogTitle className="text-3xl font-black italic tracking-tighter">
+                            {partner ? 'Strategic Evolution' : 'New Partnership'}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 p-0">
+                            Configure institutional collaboration protocols
+                        </DialogDescription>
+                    </DialogHeader>
                 </div>
-                <div className="p-6 max-h-[80vh] overflow-y-auto">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">اسم الشريك</label>
-                            <input required type="text" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" value={formData.partnerName} onChange={e => setFormData({ ...formData, partnerName: e.target.value })} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                كود الشريك (Partner Code)
-                                <span className="text-xs text-gray-500 font-normal mr-2">• سيستخدمه العملاء للحصول على الأسعار المخصصة</span>
-                            </label>
-                            <div className="mt-1 flex gap-2">
+
+                <form onSubmit={handleSubmit} className="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Entity Name</label>
                                 <input
                                     required
                                     type="text"
-                                    className="block flex-1 rounded-md border border-gray-300 px-3 py-2 uppercase font-mono"
-                                    value={formData.partnerCode}
-                                    onChange={e => setFormData({ ...formData, partnerCode: e.target.value.toUpperCase() })}
-                                    placeholder="مثال: SAFF2024"
+                                    value={formData.partnerName}
+                                    onChange={e => setFormData({ ...formData, partnerName: e.target.value })}
+                                    placeholder="e.g. SAFF International..."
+                                    className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-purple-500/10 font-bold text-slate-900 transition-all"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const randomCode = `PARTNER${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                                        setFormData({ ...formData, partnerCode: randomCode });
-                                    }}
-                                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium whitespace-nowrap"
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Access Protocol (Code)</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        required
+                                        type="text"
+                                        value={formData.partnerCode}
+                                        onChange={e => setFormData({ ...formData, partnerCode: e.target.value.toUpperCase() })}
+                                        placeholder="CODE2024"
+                                        className="flex-1 h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-purple-500/10 font-black tracking-widest text-slate-900 transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const randomCode = `P${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+                                            setFormData({ ...formData, partnerCode: randomCode });
+                                        }}
+                                        className="w-14 h-14 flex items-center justify-center bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        <RefreshCcw className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Entity Class</label>
+                                    <select
+                                        className="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-purple-500/10 font-bold text-slate-900"
+                                        value={formData.partnerType}
+                                        onChange={e => setFormData({ ...formData, partnerType: e.target.value })}
+                                    >
+                                        <option value="federation">Federation</option>
+                                        <option value="league">League</option>
+                                        <option value="government">Government</option>
+                                        <option value="corporate">Corporate</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Status</label>
+                                    <select
+                                        className="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-purple-500/10 font-bold text-slate-900"
+                                        value={formData.status}
+                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    >
+                                        <option value="active">Operational</option>
+                                        <option value="inactive">Suspended</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                                <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest mb-6 flex items-center gap-2">
+                                    <DollarSign className="w-3.5 h-3.5" /> Institutional Tiers (USD)
+                                </p>
+                                <div className="space-y-4">
+                                    {[
+                                        { label: '3 Months Rate', key: 'quarterly' },
+                                        { label: '6 Months Rate', key: 'sixMonths' },
+                                        { label: 'Annual Strategic', key: 'yearly' }
+                                    ].map((tier) => (
+                                        <div key={tier.key} className="relative">
+                                            <label className="text-[10px] font-black text-slate-400 absolute left-5 top-2.5">{tier.label}</label>
+                                            <input
+                                                type="number"
+                                                className="w-full h-14 pt-5 pb-1 px-5 bg-white border border-slate-200 rounded-2xl font-black text-slate-900 focus:ring-4 focus:ring-purple-500/10 transition-all"
+                                                value={formData.customPricing?.[tier.key] || 0}
+                                                onChange={e => setFormData({
+                                                    ...formData,
+                                                    customPricing: { ...formData.customPricing, [tier.key]: Number(e.target.value) }
+                                                })}
+                                            />
+                                            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">USD</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-6 bg-purple-50 rounded-2xl border border-purple-100">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-3 h-3 rounded-full ${formData.isPublic ? 'bg-purple-500 animate-pulse' : 'bg-slate-300'}`} />
+                                    <span className="text-xs font-black uppercase tracking-widest text-purple-900">Public Protocol</span>
+                                </div>
+                                <div
+                                    className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${formData.isPublic ? 'bg-purple-500' : 'bg-slate-200'}`}
+                                    onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
                                 >
-                                    توليد كود
-                                </button>
-                            </div>
-                            <p className="mt-1 text-xs text-gray-500">💡 نصيحة: اختر كوداً سهل التذكر مثل اسم الشريك + السنة</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">النوع</label>
-                                <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" value={formData.partnerType} onChange={e => setFormData({ ...formData, partnerType: e.target.value as any })}>
-                                    <option value="federation">اتحاد</option>
-                                    <option value="league">دوري</option>
-                                    <option value="government">جهة حكومية</option>
-                                    <option value="corporate">شركة</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">الحالة</label>
-                                <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
-                                    <option value="active">نشط</option>
-                                    <option value="inactive">غير نشط</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="border-t pt-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                    checked={formData.isPublic}
-                                    onChange={e => setFormData({ ...formData, isPublic: e.target.checked })}
-                                />
-                                <span className="text-sm font-medium text-gray-700">
-                                    كود عام (Public Code)
-                                </span>
-                            </label>
-                            <p className="mt-1 mr-6 text-xs text-gray-500">
-                                ✅ في حالة التفعيل: يمكن للجميع استخدام الكود<br />
-                                ❌ في حالة عدم التفعيل: كود خاص فقط للجهات المعتمدة
-                            </p>
-                        </div>
-
-                        <div className="border-t pt-4 mt-2">
-                            <h4 className="font-bold text-sm text-gray-900 mb-3">أسعار خاصة (اختياري - بالدولار)</h4>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div>
-                                    <label className="text-xs text-gray-500">3 شهور</label>
-                                    <input type="number" className="w-full border rounded p-1" value={formData.customPricing?.quarterly || 0} onChange={e => setFormData({ ...formData, customPricing: { ...formData.customPricing, quarterly: Number(e.target.value) } })} />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500">6 شهور</label>
-                                    <input type="number" className="w-full border rounded p-1" value={formData.customPricing?.sixMonths || 0} onChange={e => setFormData({ ...formData, customPricing: { ...formData.customPricing, sixMonths: Number(e.target.value) } })} />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500">سنوي (12 شهر)</label>
-                                    <input type="number" className="w-full border rounded p-1" value={formData.customPricing?.yearly || 0} onChange={e => setFormData({ ...formData, customPricing: { ...formData.customPricing, yearly: Number(e.target.value) } })} />
+                                    <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition duration-200 ease-in-out ${formData.isPublic ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="pt-4 flex justify-end gap-2">
-                            <button type="button" onClick={onClose} className="px-4 py-2 border rounded-lg hover:bg-gray-50">إلغاء</button>
-                            <button disabled={loading} type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">{loading ? 'جاري الحفظ...' : 'حفظ'}</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+                    <div className="pt-6 border-t border-slate-100 flex gap-4">
+                        <Button type="button" variant="ghost" onClick={onClose} className="flex-1 h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold transition-all">Cancel</Button>
+                        <Button
+                            disabled={loading}
+                            type="submit"
+                            className="flex-1 h-14 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest shadow-2xl shadow-purple-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : partner ? 'Finalize Changes' : 'Execute Partnership'}
+                        </Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -1737,78 +1809,97 @@ function EditOverrideModal({ isOpen, onClose, onSave, initialData }: any) {
         onSave(formData);
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-gray-900">{initialData ? 'تعديل تسعير' : 'إضافة تسعير دولة'}</h3>
-                    <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-md bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                    <DialogHeader className="relative z-10">
+                        <DialogTitle className="text-3xl font-black italic tracking-tighter">
+                            {initialData ? 'Update Protocol' : 'Regional Override'}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 p-0">
+                            Configure regional financial parameters
+                        </DialogDescription>
+                    </DialogHeader>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">كود الدولة (ISO)</label>
-                        <input
-                            type="text"
-                            required
-                            placeholder="مثال: EG, SA, AE"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
-                            value={formData.countryCode}
-                            disabled={!!initialData}
-                            onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase() })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">العملة</label>
-                        <input
-                            type="text"
-                            required
-                            placeholder="XXX"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
-                            value={formData.currency}
-                            onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">السعر الأصلي</label>
+
+                <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">ISO Alpha-2</label>
                             <input
-                                type="number"
+                                type="text"
                                 required
-                                min="0"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                value={formData.originalPrice}
-                                onChange={(e) => setFormData({ ...formData, originalPrice: Number(e.target.value) })}
+                                value={formData.countryCode}
+                                onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase() })}
+                                placeholder="SA, EG, QA..."
+                                className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-black text-slate-900 transition-all"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">السعر بعد الخصم</label>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Currency</label>
                             <input
-                                type="number"
+                                type="text"
                                 required
-                                min="0"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                value={formData.price}
-                                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                                value={formData.currency}
+                                onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
+                                placeholder="SAR, EGP, USD..."
+                                className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-black text-slate-900 transition-all"
                             />
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            checked={formData.active}
-                            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                            id="activeOverride"
-                        />
-                        <label htmlFor="activeOverride" className="text-sm text-gray-700 select-none">تفعيل هذا التسعير</label>
+
+                    <div className="space-y-6 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Standard Price</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    required
+                                    value={formData.originalPrice}
+                                    onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) })}
+                                    className="w-full h-14 px-6 bg-white border border-slate-200 rounded-2xl font-black text-slate-400 line-through transition-all"
+                                />
+                                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">{formData.currency}</div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest ml-1">Override Price</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    required
+                                    value={formData.price}
+                                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                                    className="w-full h-16 px-6 bg-white border-2 border-blue-500/20 rounded-2xl shadow-xl shadow-blue-500/5 font-black text-3xl text-slate-900 focus:border-blue-500 transition-all"
+                                />
+                                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black text-blue-600 uppercase">{formData.currency}</div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="pt-4 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">إلغاء</button>
-                        <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">حفظ Changes</button>
+
+                    <div className="flex items-center justify-between p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100 group transition-all hover:bg-emerald-50">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${formData.active ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-slate-300'}`} />
+                            <span className="text-xs font-black uppercase tracking-widest text-emerald-900">Protocol Active</span>
+                        </div>
+                        <div
+                            className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${formData.active ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                            onClick={() => setFormData({ ...formData, active: !formData.active })}
+                        >
+                            <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition duration-200 ease-in-out ${formData.active ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </div>
+                    </div>
+
+                    <div className="pt-6 flex gap-4">
+                        <Button type="button" variant="ghost" onClick={onClose} className="flex-1 h-14 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold transition-all">Cancel</Button>
+                        <Button type="submit" className="flex-1 h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 active:scale-95 transition-all">
+                            Save Override
+                        </Button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

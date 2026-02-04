@@ -47,6 +47,7 @@ import {
   ChevronRight,
   MoreVertical,
   ArrowUpRight,
+  ArrowRight,
   Percent,
   FileText,
   Gift
