@@ -6,6 +6,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, query, limit, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { User, UsersStats, UsersFilters, AccountType } from '../_types';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+
+dayjs.extend(isBetween);
 
 const COLLECTIONS = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
 
@@ -89,6 +93,9 @@ export function useUsers(initialLimit = 100) {
                             profileImage: data.profile_image || data.profileImage || data.avatar ||
                                 data.photoURL || data.image || data.logo || data.club_logo ||
                                 data.academy_logo || data.photo || '',
+                            isSynced: data.isSynced || false,
+                            isGoogleUser: data.isGoogleUser || false,
+                            isPhoneAuth: data.isPhoneAuth || false,
                         };
 
                         if (usersMap.has(id)) {
@@ -109,6 +116,9 @@ export function useUsers(initialLimit = 100) {
                                     : (userData.lastLogin || existing.lastLogin),
                                 createdAt: existing.createdAt || userData.createdAt,
                                 profileCompletion: Math.max(existing.profileCompletion, userData.profileCompletion),
+                                isSynced: existing.isSynced || userData.isSynced,
+                                isGoogleUser: existing.isGoogleUser || userData.isGoogleUser,
+                                isPhoneAuth: existing.isPhoneAuth || userData.isPhoneAuth,
                             });
                         } else {
                             usersMap.set(id, userData);
@@ -205,8 +215,8 @@ export function filterUsers(users: User[], filters: UsersFilters): User[] {
             return false;
         }
 
-        // البلد
-        if (filters.country && user.country !== filters.country) {
+        // البلد (اختيار متعدد)
+        if (filters.countries && filters.countries.length > 0 && !filters.countries.includes(user.country)) {
             return false;
         }
 
@@ -216,11 +226,32 @@ export function filterUsers(users: User[], filters: UsersFilters): User[] {
             if (filters.profileCompletion === 'incomplete' && user.profileCompletion >= 100) return false;
         }
 
-        // نطاق التاريخ
-        if (filters.dateRange[0] && user.createdAt && user.createdAt < filters.dateRange[0]) {
-            return false;
+        // مصدر التسجيل
+        if (filters.loginSource !== 'all') {
+            if (filters.loginSource === 'google' && !user.isGoogleUser) return false;
+            if (filters.loginSource === 'phone' && !user.isPhoneAuth) return false;
+            if (filters.loginSource === 'email' && (user.isGoogleUser || user.isPhoneAuth)) return false;
         }
-        if (filters.dateRange[1] && user.createdAt && user.createdAt > filters.dateRange[1]) {
+
+        // حالة المزامنة
+        if (filters.isSynced !== 'all') {
+            if (filters.isSynced === 'yes' && !user.isSynced) return false;
+            if (filters.isSynced === 'no' && user.isSynced) return false;
+        }
+
+        // نطاق التاريخ - تعديل ليكون دقيقاً وشاملاً لليوم بالكامل
+        if (user.createdAt) {
+            const userDate = dayjs(user.createdAt);
+            if (filters.dateRange[0]) {
+                const startDate = dayjs(filters.dateRange[0]).startOf('day');
+                if (userDate.isBefore(startDate)) return false;
+            }
+            if (filters.dateRange[1]) {
+                const endDate = dayjs(filters.dateRange[1]).endOf('day');
+                if (userDate.isAfter(endDate)) return false;
+            }
+        } else if (filters.dateRange[0] || filters.dateRange[1]) {
+            // إذا كان هناك فلتر تاريخ والمستخدم ليس لديه تاريخ، نستبعده
             return false;
         }
 

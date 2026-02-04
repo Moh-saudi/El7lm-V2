@@ -32,6 +32,8 @@ import {
     MessageOutlined,
     SafetyCertificateOutlined,
     ExclamationCircleOutlined,
+    GoogleOutlined,
+    SyncOutlined,
 } from '@ant-design/icons';
 import {
     User,
@@ -181,6 +183,7 @@ export default function UsersTable({
                             <Text copyable={{ text: record.email }} className="text-xs">
                                 {record.email.length > 25 ? record.email.slice(0, 25) + '...' : record.email}
                             </Text>
+                            {record.isGoogleUser && <Tooltip title="سجل بواسطة جوجل"><GoogleOutlined className="text-red-500 text-[10px]" /></Tooltip>}
                         </div>
                     )}
                     {record.phone && (
@@ -189,6 +192,14 @@ export default function UsersTable({
                             <Text copyable={{ text: record.phone }} className="text-xs" dir="ltr">
                                 {record.phone}
                             </Text>
+                            {record.isPhoneAuth && <Tooltip title="سجل بواسطة الهاتف"><PhoneOutlined className="text-green-500 text-[10px]" /></Tooltip>}
+                        </div>
+                    )}
+                    {record.isSynced && (
+                        <div className="flex items-center gap-1">
+                            <Tag color="processing" className="text-[10px] m-0 px-1 py-0 leading-tight">
+                                <SyncOutlined className="mr-1" /> مسترجع
+                            </Tag>
                         </div>
                     )}
                 </div>

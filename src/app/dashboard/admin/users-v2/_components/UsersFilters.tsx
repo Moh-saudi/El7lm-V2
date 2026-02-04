@@ -5,12 +5,17 @@
 'use client';
 
 import React from 'react';
-import { Input, Select, DatePicker, Space, Button, Badge, Segmented } from 'antd';
+import { Input, Select, DatePicker, Space, Button, Badge, Segmented, Typography } from 'antd';
+const { Text } = Typography;
 import {
     SearchOutlined,
     FilterOutlined,
     ClearOutlined,
     ReloadOutlined,
+    GoogleOutlined,
+    PhoneOutlined,
+    MailOutlined,
+    SyncOutlined,
 } from '@ant-design/icons';
 import {
     UsersFilters,
@@ -32,6 +37,8 @@ interface UsersFiltersBarProps {
     loading?: boolean;
     countries: string[];
     activeFiltersCount: number;
+    totalCount: number;
+    filteredCount: number;
 }
 
 export default function UsersFiltersBar({
@@ -42,9 +49,52 @@ export default function UsersFiltersBar({
     loading,
     countries,
     activeFiltersCount,
+    totalCount,
+    filteredCount,
 }: UsersFiltersBarProps) {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            {/* صف البحث والمعلومات */}
+            <div className="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                    <Badge
+                        status="processing"
+                        text={<span className="font-bold text-gray-700 dark:text-gray-200">إجمالي النتائج: {filteredCount}</span>}
+                    />
+                    {activeFiltersCount > 0 && (
+                        <Text type="secondary" className="text-xs">
+                            (مُفلتر من إجمالي {totalCount} مستخدم)
+                        </Text>
+                    )}
+                </div>
+
+                <Space>
+                    {/* تحديث */}
+                    <Button
+                        icon={<ReloadOutlined spin={loading} />}
+                        onClick={onRefresh}
+                        loading={loading}
+                        size="middle"
+                    >
+                        تحديث البيانات
+                    </Button>
+
+                    {/* مسح الفلاتر */}
+                    {activeFiltersCount > 0 && (
+                        <Badge count={activeFiltersCount}>
+                            <Button
+                                icon={<ClearOutlined />}
+                                onClick={onReset}
+                                danger
+                                size="middle"
+                            >
+                                مسح الفلاتر
+                            </Button>
+                        </Badge>
+                    )}
+                </Space>
+            </div>
+
             {/* صف البحث الرئيسي */}
             <div className="flex flex-wrap gap-3 items-center">
                 {/* البحث */}
@@ -54,7 +104,7 @@ export default function UsersFiltersBar({
                     value={filters.search}
                     onChange={e => onFiltersChange({ search: e.target.value })}
                     allowClear
-                    className="w-64"
+                    className="w-80"
                     size="large"
                 />
 
@@ -85,30 +135,6 @@ export default function UsersFiltersBar({
                     ]}
                     size="large"
                 />
-
-                {/* تحديث */}
-                <Button
-                    icon={<ReloadOutlined spin={loading} />}
-                    onClick={onRefresh}
-                    loading={loading}
-                    size="large"
-                >
-                    تحديث
-                </Button>
-
-                {/* مسح الفلاتر */}
-                {activeFiltersCount > 0 && (
-                    <Badge count={activeFiltersCount}>
-                        <Button
-                            icon={<ClearOutlined />}
-                            onClick={onReset}
-                            danger
-                            size="large"
-                        >
-                            مسح الفلاتر
-                        </Button>
-                    </Badge>
-                )}
             </div>
 
             {/* صف الفلاتر الإضافية */}
@@ -128,21 +154,75 @@ export default function UsersFiltersBar({
                     ]}
                 />
 
+                {/* مصدر التسجيل */}
+                <Select
+                    value={filters.loginSource}
+                    onChange={value => onFiltersChange({ loginSource: value })}
+                    className="w-44"
+                    placeholder="مصدر التسجيل"
+                    options={[
+                        { value: 'all', label: 'كل المصادر' },
+                        {
+                            value: 'google', label: (
+                                <div className="flex items-center gap-2">
+                                    <GoogleOutlined className="text-red-500" />
+                                    <span>جوجل</span>
+                                </div>
+                            )
+                        },
+                        {
+                            value: 'phone', label: (
+                                <div className="flex items-center gap-2">
+                                    <PhoneOutlined className="text-green-500" />
+                                    <span>هاتف</span>
+                                </div>
+                            )
+                        },
+                        {
+                            value: 'email', label: (
+                                <div className="flex items-center gap-2">
+                                    <MailOutlined className="text-blue-500" />
+                                    <span>إيميل</span>
+                                </div>
+                            )
+                        },
+                    ]}
+                />
+
+                {/* حالة المزامنة */}
+                <Select
+                    value={filters.isSynced}
+                    onChange={value => onFiltersChange({ isSynced: value })}
+                    className="w-40"
+                    placeholder="حالة المزامنة"
+                    options={[
+                        { value: 'all', label: 'الكل (مزامنة)' },
+                        {
+                            value: 'yes', label: (
+                                <div className="flex items-center gap-2">
+                                    <SyncOutlined className="text-blue-500" />
+                                    <span>مسترجع</span>
+                                </div>
+                            )
+                        },
+                        { value: 'no', label: 'حساب أصلي' },
+                    ]}
+                />
+
                 {/* البلد */}
                 <Select
-                    value={filters.country || undefined}
-                    onChange={value => onFiltersChange({ country: value || '' })}
-                    className="w-36"
-                    placeholder="البلد"
+                    mode="multiple"
+                    value={filters.countries}
+                    onChange={value => onFiltersChange({ countries: value })}
+                    className="flex-1 min-w-[200px]"
+                    placeholder="اختر البلدان"
                     allowClear
                     showSearch
-                    options={[
-                        { value: '', label: 'كل البلدان' },
-                        ...countries.map(country => ({
-                            value: country,
-                            label: country,
-                        })),
-                    ]}
+                    maxTagCount="responsive"
+                    options={countries.map(country => ({
+                        value: country,
+                        label: country,
+                    }))}
                 />
 
                 {/* اكتمال الملف */}
@@ -176,7 +256,9 @@ export const DEFAULT_FILTERS: UsersFilters = {
     accountType: 'all',
     status: 'all',
     verification: 'all',
-    country: '',
+    countries: [],
     dateRange: [null, null],
     profileCompletion: 'all',
+    loginSource: 'all',
+    isSynced: 'all',
 };

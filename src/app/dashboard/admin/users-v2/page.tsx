@@ -130,7 +130,7 @@ function UsersPageContent() {
         if (filters.accountType !== 'all') count++;
         if (filters.status !== 'all') count++;
         if (filters.verification !== 'all') count++;
-        if (filters.country) count++;
+        if (filters.countries && filters.countries.length > 0) count++;
         if (filters.profileCompletion !== 'all') count++;
         if (filters.dateRange[0] || filters.dateRange[1]) count++;
         return count;
@@ -411,6 +411,8 @@ function UsersPageContent() {
                                 loading={loading}
                                 countries={countries}
                                 activeFiltersCount={activeFiltersCount}
+                                totalCount={users.length}
+                                filteredCount={filteredUsers.length}
                             />
 
                             {/* الجدول */}

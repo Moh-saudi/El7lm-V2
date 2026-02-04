@@ -35,6 +35,9 @@ export interface User {
     suspendReason?: string;
     suspendedAt?: Date;
     profileImage?: string;
+    isGoogleUser?: boolean;
+    isPhoneAuth?: boolean;
+    isSynced?: boolean; // هل تم استرجاعه عبر أداة المزامنة
 }
 
 // إحصائيات المستخدمين
@@ -56,9 +59,11 @@ export interface UsersFilters {
     accountType: AccountType | 'all';
     status: AccountStatus | 'all';
     verification: VerificationStatus | 'all';
-    country: string;
+    countries: string[];
     dateRange: [Date | null, Date | null];
     profileCompletion: 'all' | 'complete' | 'incomplete';
+    loginSource: 'all' | 'google' | 'phone' | 'email';
+    isSynced: 'all' | 'yes' | 'no';
 }
 
 // صلاحيات الموظفين
