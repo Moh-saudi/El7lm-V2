@@ -611,7 +611,7 @@ export default function AcademiesManagement() {
                 <h3 className="font-semibold mb-4">حالة الحساب</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant={selectedAcademy.isActive ? 'success' : 'destructive'}>
+                    <Badge variant={selectedAcademy.isActive ? 'default' : 'destructive'} className={selectedAcademy.isActive ? 'bg-green-500 hover:bg-green-600' : ''}>
                       {selectedAcademy.isActive ? 'نشط' : 'غير نشط'}
                     </Badge>
                   </div>
@@ -657,10 +657,10 @@ export default function AcademiesManagement() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Badge variant={
-                      selectedAcademy.subscription?.status === 'active' ? 'success' :
-                        selectedAcademy.subscription?.status === 'trial' ? 'warning' :
+                      selectedAcademy.subscription?.status === 'active' ? 'default' :
+                        selectedAcademy.subscription?.status === 'trial' ? 'secondary' :
                           'destructive'
-                    }>
+                    } className={selectedAcademy.subscription?.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}>
                       {selectedAcademy.subscription?.status === 'active' ? 'نشط' :
                         selectedAcademy.subscription?.status === 'trial' ? 'تجريبي' :
                           'منتهي'}
@@ -980,11 +980,11 @@ export default function AcademiesManagement() {
                       {academy.subscription && (
                         <Badge
                           variant={
-                            academy.subscription.status === 'active' ? 'success' :
-                              academy.subscription.status === 'trial' ? 'warning' :
+                            academy.subscription.status === 'active' ? 'default' :
+                              academy.subscription.status === 'trial' ? 'secondary' :
                                 'destructive'
                           }
-                          className="text-xs"
+                          className={`text-xs ${academy.subscription.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}`}
                         >
                           {academy.subscription.status === 'active' ? 'مشترك' :
                             academy.subscription.status === 'trial' ? 'تجريبي' :

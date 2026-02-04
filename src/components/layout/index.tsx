@@ -441,7 +441,7 @@ const ModernSidebar: React.FC<SidebarProps> = ({ accountType = 'admin' }) => {
     const { permissions, loading: permissionsLoading } = useEmployeePermissions(); // استدعاء الخطاف للحصول على الصلاحيات
     const router = useRouter();
     const pathname = usePathname();
-    const { isSidebarCollapsed, isMobile, closeSidebar, collapseSidebar, expandSidebar } = useLayout();
+    const { isSidebarOpen, isSidebarCollapsed, isMobile, closeSidebar, collapseSidebar, expandSidebar } = useLayout();
     const [showLogoutScreen, setShowLogoutScreen] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['الرئيسية']);
 
