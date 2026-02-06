@@ -40,7 +40,8 @@ import {
     Gift,
     MoreVertical,
     Activity,
-    History
+    History,
+    Star
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
