@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import dynamic from 'next/dynamic';
 import { 
   BookOpen, 
   Languages, 
@@ -44,18 +43,6 @@ import {
   Briefcase,
   User
 } from 'lucide-react';
-
-const UnifiedDashboardLayout = dynamic(() => import('@/components/layout/UnifiedDashboardLayout'), {
-  ssr: true,
-  loading: () => (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-        <p className="text-gray-600">جاري تحميل لوحة التحكم...</p>
-      </div>
-    </div>
-  )
-});
 
 export default function DreamAcademyPage() {
   const [selectedCategory, setSelectedCategory] = useState('languages');
@@ -241,12 +228,6 @@ export default function DreamAcademyPage() {
   const courses = getCoursesByCategory();
 
   return (
-    <UnifiedDashboardLayout 
-      accountType="player" 
-      title="أكاديمية الحلم" 
-      showFooter={true} 
-      showFloatingChat={true}
-    >
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
@@ -364,6 +345,5 @@ export default function DreamAcademyPage() {
           </div>
         </div>
       </div>
-    </UnifiedDashboardLayout>
   );
 } 
