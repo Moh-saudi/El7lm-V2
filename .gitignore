@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -105,3 +105,8 @@ prisma/migrations/
 *.backup
 *.old
 *.orig
+
+# Database Exports
+firebase_full_export.json
+firebase_auth_export.json
+bulk_payments_export.json

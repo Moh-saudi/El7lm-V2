@@ -13,6 +13,10 @@ import toast from 'react-hot-toast';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth'; // Keep for other hooks if needed, or remove? Keeping for safety.
 import { useAbility } from '@/hooks/useAbility';
 import AccessDenied from '@/components/admin/AccessDenied';
+import { 
+  Banknote, CheckCircle2, Clock, XCircle, 
+  Wallet, MessageCircle, Users, Bell, BellOff 
+} from 'lucide-react';
 
 export default function AdminPaymentsPage() {
   const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes: ['admin'] });
@@ -888,715 +892,13 @@ export default function AdminPaymentsPage() {
     try {
       setLoading(true);
 
-      const collectionNames = [
-        'payments', 'payment', 'transactions', 'orders',
-        'wallet', 'instapay', 'fawry', 'vodafone_cash',
-        'orange_money', 'etisalat_wallet', 'paymob',
-        'paypal_transactions', 'stripe_payments',
-        'bulkPayments', 'bulk_payments', 'payment_action_logs', 'payment_results',
-        'tournament_payments', 'geidea_payments', 'geidea', 'invoices', 'receipts'
-      ];
-
-      let allPayments = [];
-
-      for (const collectionName of collectionNames) {
-        try {
-          const collectionRef = collection(db, collectionName);
-          const q = query(collectionRef, orderBy('createdAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-
-          for (const paymentDoc of querySnapshot.docs) {
-            const data = paymentDoc.data();
-
-            console.log(`Collection: ${collectionName}, Data:`, data);
-
-            // تسجيل خاص لمدفوعات جيديا
-            if (data.paymentMethod === 'geidea' || collectionName === 'bulkPayments' || collectionName === 'bulk_payments') {
-              console.log(`🔍 [Geidea Payment] Found in ${collectionName}:`, {
-                id: paymentDoc.id,
-                paymentMethod: data.paymentMethod,
-                amount: data.amount,
-                status: data.status,
-                userId: data.userId
-              });
-            }
-
-            // البحث عن معرف اللاعب
-            let playerId = null;
-            const playerIdFields = [
-              'playerId', 'userId', 'customerId', 'user_id', 'player_id', 'customer_id',
-              'player', 'user', 'customer', 'accountId', 'account_id'
-            ];
-
-            for (const field of playerIdFields) {
-              if (data[field] && data[field].toString().trim() !== '') {
-                playerId = data[field].toString().trim();
-                console.log(`Found playerId in field: ${field} = ${playerId}`);
-                break;
-              }
-            }
-
-            // البحث عن بيانات اللاعب - التصحيح الصحيح!
-            let playerName = 'غير محدد';
-            let playerPhone = 'غير محدد';
-            let userName = null;
-            let playerData = null;
-            let userData = null;
-
-            // الأولوية للمدفوعات الجماعية - البحث عن أسماء اللاعبين من حقل players في bulkPayments
-            if (collectionName === 'bulkPayments' || collectionName === 'bulk_payments') {
-              if (data.players && Array.isArray(data.players) && data.players.length > 0) {
-                // إذا كان هناك لاعب واحد فقط
-                if (data.players.length === 1) {
-                  const player = data.players[0];
-                  if (player.name && typeof player.name === 'string' && player.name.trim()) {
-                    playerName = player.name.trim();
-                    console.log(`Found player name from bulkPayments players array (single): ${playerName}`);
-                  }
-                } else {
-                  // إذا كان هناك أكثر من لاعب، نجمع الأسماء
-                  const playerNames = data.players
-                    .map((p: any) => p.name || p.playerName || '')
-                    .filter((name: string) => name && name.trim() && !name.includes('@'))
-                    .map((name: string) => name.trim());
-
-                  if (playerNames.length > 0) {
-                    if (playerNames.length <= 3) {
-                      // إذا كان 3 لاعبين أو أقل، اعرض جميع الأسماء
-                      playerName = playerNames.join(' - ');
-                    } else {
-                      // إذا كان أكثر من 3، اعرض عدد اللاعبين
-                      playerName = `${playerNames[0]} و ${playerNames.length - 1} لاعب آخر`;
-                    }
-                    console.log(`Found player names from bulkPayments players array (multiple): ${playerName}`);
-                  }
-                }
-              }
-            }
-
-            // البحث الأولي في الحقول الأساسية - تحسين البحث (فقط إذا لم نجد من bulkPayments)
-            const primaryNameFields = ['full_name', 'name', 'playerName', 'customerName', 'userName', 'displayName'];
-            for (const field of primaryNameFields) {
-              if (data[field] && typeof data[field] === 'string' && data[field].trim() && !data[field].includes('@')) {
-                const foundName = data[field].trim();
-                // التحقق من أن القيمة ليست مجرد كلمة "player" أو كلمات مشابهة
-                const lowerName = foundName.toLowerCase();
-                if (lowerName !== 'player' && lowerName !== 'user' && lowerName !== 'customer' &&
-                  lowerName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
-                  playerName = foundName;
-                  console.log(`Found name in primary field '${field}': ${playerName}`);
-                  break;
-                }
-              }
-            }
-
-            // إذا كان الاسم يحتوي على إيميل أو لم نجد، نحاول البحث في حقول أخرى
-            if (playerName.includes('@') || playerName === 'غير محدد') {
-              const directNameFields = [
-                'playerName', 'customerName', 'userName', 'displayName',
-                'firstName', 'lastName', 'recipientName', 'buyerName', 'clientName',
-                'accountName', 'holderName', 'customer_name', 'user_name',
-                'first_name', 'last_name', 'recipient_name', 'buyer_name', 'client_name',
-                'customer_full_name', 'user_full_name', 'account_name', 'player_name',
-                'realName', 'actualName', 'nickName', 'preferredName',
-                'billingName', 'shippingName', 'contactName', 'primaryName'
-              ];
-
-              for (const field of directNameFields) {
-                if (data[field] && data[field].toString().trim() !== '') {
-                  const foundName = data[field].toString().trim();
-
-                  // التحقق من أن القيمة ليست إيميل وليست كلمة عامة
-                  const lowerFoundName = foundName.toLowerCase();
-                  if (!foundName.includes('@') &&
-                    lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                    foundName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
-                    playerName = foundName;
-                    console.log(`Found name directly in data: ${field} = ${playerName}`);
-                    break;
-                  } else {
-                    console.log(`Skipping invalid name in field ${field}: ${foundName}`);
-                  }
-                }
-              }
-            }
-
-            // إذا لم نجد الاسم، نبحث في جميع الحقول للعثور على اسم حقيقي
-            if (playerName === 'غير محدد') {
-              // البحث في جميع الحقول للعثور على اسم حقيقي
-              for (const [key, value] of Object.entries(data)) {
-                if (value && typeof value === 'string' && value.trim() !== '') {
-                  const lowerKey = key.toLowerCase();
-
-                  // البحث في الحقول التي قد تحتوي على أسماء
-                  if (lowerKey.includes('name') || lowerKey.includes('user') ||
-                    lowerKey.includes('customer') || lowerKey.includes('player') ||
-                    lowerKey.includes('client') || lowerKey.includes('account')) {
-
-                    const foundValue = value.toString().trim();
-
-                    // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
-                    const lowerFoundValue = foundValue.toLowerCase();
-                    if (!foundValue.includes('@') &&
-                      lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
-                      foundValue.length > 2 &&
-                      foundValue.length < 50 &&
-                      /[a-zA-Z\u0600-\u06FF]/.test(foundValue) &&
-                      !/^\d+$/.test(foundValue)) {
-
-                      playerName = foundValue;
-                      console.log(`Found real name in field: ${key} = ${playerName}`);
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-
-            // إذا لم نجد الاسم، نبحث في الإيميل ونستخرج الاسم منه (كحل أخير فقط)
-            if (playerName === 'غير محدد' && data.email) {
-              const email = data.email.toString().trim();
-              console.log(`Found email: ${email}`);
-
-              // استخراج الاسم من الإيميل (قبل علامة @) - فقط إذا كان يبدو كاسم حقيقي
-              if (email.includes('@')) {
-                const nameFromEmail = email.split('@')[0];
-                // تنظيف الاسم من الأرقام والرموز
-                const cleanName = nameFromEmail.replace(/[0-9_\-\.]/g, ' ').trim();
-
-                // التحقق من أن الاسم يبدو كاسم حقيقي (يحتوي على أحرف وليس أرقام فقط)
-                if (cleanName && cleanName.length > 2 && /[a-zA-Z\u0600-\u06FF]/.test(cleanName)) {
-                  playerName = cleanName;
-                  console.log(`Extracted name from email: ${playerName}`);
-                } else {
-                  // إذا لم يكن يبدو كاسم حقيقي، نتركه "غير محدد"
-                  console.log(`Email prefix doesn't look like a real name: ${nameFromEmail}`);
-                }
-              }
-            }
-
-            // البحث عن رقم الهاتف - التصحيح الصحيح للحقول!
-            const directPhoneFields = [
-              'phone', 'whatsapp', 'mobile', 'telephone', 'contact',
-              'phoneNumber', 'mobileNumber', 'contactNumber',
-              'customer_phone', 'user_phone', 'phone_number', 'mobile_number',
-              'customerMobile', 'userMobile', 'customerTel', 'userTel',
-              'customer_phone_number', 'user_phone_number', 'contact_phone',
-              'player_phone', 'customer_phone_number', 'user_phone_number',
-              'phoneNumber', 'mobileNumber', 'contactNumber', 'tel',
-              'customerPhone', 'userPhone', 'recipientPhone', 'buyerPhone',
-              'clientPhone', 'accountPhone', 'holderPhone', 'customer_phone',
-              'user_phone', 'recipient_phone', 'buyer_phone', 'client_phone',
-              'account_phone', 'holder_phone', 'phone_no', 'mobile_no',
-              'contact_no', 'tel_no', 'phoneNum', 'mobileNum', 'contactNum',
-              'customer_phone_no', 'user_phone_no', 'recipient_phone_no',
-              'buyer_phone_no', 'client_phone_no', 'account_phone_no',
-              'holder_phone_no', 'phoneNumber', 'mobileNumber', 'contactNumber',
-              'customerPhoneNumber', 'userPhoneNumber', 'recipientPhoneNumber',
-              'buyerPhoneNumber', 'clientPhoneNumber', 'accountPhoneNumber',
-              'holderPhoneNumber', 'phone_number', 'mobile_number', 'contact_number',
-              'customer_phone_number', 'user_phone_number', 'recipient_phone_number',
-              'buyer_phone_number', 'client_phone_number', 'account_phone_number',
-              'holder_phone_number', 'phoneNo', 'mobileNo', 'contactNo',
-              'customerPhoneNo', 'userPhoneNo', 'recipientPhoneNo',
-              'buyerPhoneNo', 'clientPhoneNo', 'accountPhoneNo', 'holderPhoneNo'
-            ];
-
-            for (const field of directPhoneFields) {
-              if (data[field] && data[field].toString().trim() !== '') {
-                playerPhone = data[field].toString().trim();
-                console.log(`Found phone directly in data: ${field} = ${playerPhone}`);
-                break;
-              }
-            }
-
-            // البحث في حقول أخرى محتملة للهاتف
-            if (playerPhone === 'غير محدد') {
-              const additionalPhoneFields = [
-                'customerPhone', 'userPhone', 'recipientPhone', 'buyerPhone',
-                'clientPhone', 'accountPhone', 'holderPhone', 'customer_phone',
-                'user_phone', 'recipient_phone', 'buyer_phone', 'client_phone',
-                'account_phone', 'holder_phone'
-              ];
-
-              for (const field of additionalPhoneFields) {
-                if (data[field] && data[field].toString().trim() !== '') {
-                  playerPhone = data[field].toString().trim();
-                  console.log(`Found phone in additional field: ${field} = ${playerPhone}`);
-                  break;
-                }
-              }
-            }
-
-            // إذا لم نجد رقم الهاتف، نبحث في الإيميل ونستخرج الرقم منه
-            if (playerPhone === 'غير محدد' && data.email) {
-              const email = data.email.toString().trim();
-              // استخراج الأرقام من الإيميل
-              const phoneMatch = email.match(/\d+/);
-              if (phoneMatch) {
-                playerPhone = phoneMatch[0];
-                console.log(`Extracted phone from email: ${playerPhone}`);
-              }
-            }
-
-            // البحث في حقول أخرى محتملة للهاتف
-            if (playerPhone === 'غير محدد') {
-              const additionalPhoneFields = [
-                'customerPhone', 'userPhone', 'recipientPhone', 'buyerPhone',
-                'clientPhone', 'accountPhone', 'holderPhone', 'customer_phone',
-                'user_phone', 'recipient_phone', 'buyer_phone', 'client_phone',
-                'account_phone', 'holder_phone', 'phone_no', 'mobile_no',
-                'contact_no', 'tel_no', 'phoneNum', 'mobileNum', 'contactNum',
-                'customer_phone_no', 'user_phone_no', 'recipient_phone_no',
-                'buyer_phone_no', 'client_phone_no', 'account_phone_no',
-                'holder_phone_no', 'phoneNumber', 'mobileNumber', 'contactNumber',
-                'customerPhoneNumber', 'userPhoneNumber', 'recipientPhoneNumber',
-                'buyerPhoneNumber', 'clientPhoneNumber', 'accountPhoneNumber',
-                'holderPhoneNumber', 'phone_number', 'mobile_number', 'contact_number',
-                'customer_phone_number', 'user_phone_number', 'recipient_phone_number',
-                'buyer_phone_number', 'client_phone_number', 'account_phone_number',
-                'holder_phone_number', 'phoneNo', 'mobileNo', 'contactNo',
-                'customerPhoneNo', 'userPhoneNo', 'recipientPhoneNo',
-                'buyerPhoneNo', 'clientPhoneNo', 'accountPhoneNo', 'holderPhoneNo'
-              ];
-
-              for (const field of additionalPhoneFields) {
-                if (data[field] && data[field].toString().trim() !== '') {
-                  playerPhone = data[field].toString().trim();
-                  console.log(`Found phone in additional field: ${field} = ${playerPhone}`);
-                  break;
-                }
-              }
-            }
-
-            // البحث في جميع الحقول المحتملة للهاتف
-            if (playerPhone === 'غير محدد') {
-              // البحث في جميع الحقول التي تحتوي على كلمة "phone" أو "mobile" أو "contact"
-              for (const [key, value] of Object.entries(data)) {
-                if (value && typeof value === 'string' && value.trim() !== '') {
-                  const lowerKey = key.toLowerCase();
-                  if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                    lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                    lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
-                    // التحقق من أن القيمة تحتوي على أرقام
-                    if (/\d/.test(value)) {
-                      playerPhone = value.toString().trim();
-                      console.log(`Found phone in field: ${key} = ${playerPhone}`);
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-
-            // البحث في جميع الحقول المحتملة للهاتف - بحث شامل
-            if (playerPhone === 'غير محدد') {
-              // البحث في جميع الحقول التي تحتوي على أرقام
-              for (const [key, value] of Object.entries(data)) {
-                if (value && typeof value === 'string' && value.trim() !== '') {
-                  // التحقق من أن القيمة تحتوي على أرقام فقط أو أرقام مع رموز
-                  if (/^[\d\s\-\+\(\)]+$/.test(value) && value.length >= 7 && value.length <= 15) {
-                    playerPhone = value.toString().trim();
-                    console.log(`Found phone-like value in field: ${key} = ${playerPhone}`);
-                    break;
-                  }
-                }
-              }
-            }
-
-            // البحث في جميع الحقول المحتملة للاسم - بحث شامل
-            if (playerName === 'غير محدد') {
-              // البحث في جميع الحقول التي تحتوي على كلمة "name" أو تبدو كأسماء
-              for (const [key, value] of Object.entries(data)) {
-                if (value && typeof value === 'string' && value.trim() !== '') {
-                  const lowerKey = key.toLowerCase();
-                  if (lowerKey.includes('name') || lowerKey.includes('user') || lowerKey.includes('customer')) {
-                    const foundValue = value.toString().trim();
-                    const lowerFoundValue = foundValue.toLowerCase();
-                    // التحقق من أن القيمة تبدو كاسم حقيقي وليست كلمة عامة
-                    if (!foundValue.includes('@') &&
-                      lowerFoundValue !== 'player' && lowerFoundValue !== 'user' && lowerFoundValue !== 'customer' &&
-                      /[a-zA-Z\u0600-\u06FF]/.test(foundValue) && foundValue.length >= 2 && foundValue.length <= 50) {
-                      playerName = foundValue;
-                      console.log(`Found name-like value in field: ${key} = ${playerName}`);
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-
-            // إذا لم نجد البيانات مباشرة، نبحث في جدول players
-            if (playerId && (playerName === 'غير محدد' || playerPhone === 'غير محدد')) {
-              try {
-                console.log(`Searching for player with ID: ${playerId}`);
-
-                // محاولة البحث باستخدام معرف المستند مباشرة أولاً
-                try {
-                  const playerDocRef = doc(db, 'players', playerId);
-                  const playerDocSnap = await getDoc(playerDocRef);
-
-                  if (playerDocSnap.exists()) {
-                    playerData = playerDocSnap.data();
-                    console.log('Player data found by document ID:', playerData);
-                  }
-                } catch (docError) {
-                  console.log('Could not find player by document ID, trying query...');
-                }
-
-                // إذا لم نجد بالبحث المباشر، نبحث باستخدام استعلام
-                if (!playerData) {
-                  const playerQuery = await getDocs(query(collection(db, 'players'),
-                    where('uid', '==', playerId)
-                  ));
-
-                  if (!playerQuery.empty) {
-                    playerData = playerQuery.docs[0].data();
-                    console.log('Player data found by uid query:', playerData);
-                  }
-                }
-
-                if (playerData) {
-                  console.log('Player data found:', playerData);
-
-                  // استخدام نفس منطق getPlayerName من player-organization.ts
-                  if (playerName === 'غير محدد') {
-                    const possibleNameFields = [
-                      'full_name', 'name', 'player_name', 'display_name', 'first_name', 'last_name',
-                      'arabic_name', 'english_name', 'nickname', 'title',
-                      'firstName', 'lastName', 'fullName', 'displayName'
-                    ];
-
-                    // البحث في جميع الحقول المحتملة
-                    for (const field of possibleNameFields) {
-                      if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim()) {
-                        const foundName = playerData[field].trim();
-                        // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
-                        const lowerFoundName = foundName.toLowerCase();
-                        if (!foundName.includes('@') &&
-                          lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                          foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
-                          playerName = foundName;
-                          console.log(`Found name in player data field '${field}': ${playerName}`);
-                          break;
-                        }
-                      }
-                    }
-
-                    // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
-                    if (playerName === 'غير محدد' && (playerData.first_name || playerData.last_name || playerData.firstName || playerData.lastName)) {
-                      const firstName = playerData.first_name || playerData.firstName || '';
-                      const lastName = playerData.last_name || playerData.lastName || '';
-                      const fullName = `${firstName} ${lastName}`.trim();
-                      if (fullName && fullName !== 'undefined undefined') {
-                        playerName = fullName;
-                        console.log(`Merged name from first/last name: ${playerName}`);
-                      }
-                    }
-
-                    // إذا لم نجد بعد، نستخدم القيمة الافتراضية
-                    if (playerName === 'غير محدد') {
-                      console.log('Could not find name in player data, keeping default');
-                    }
-                  }
-
-                  // استخدام نفس منطق صفحة إدارة المستخدمين للهاتف
-                  if (playerPhone === 'غير محدد') {
-                    playerPhone = playerData.phone || playerData.phoneNumber || playerData.whatsapp || 'غير محدد';
-                    console.log(`Found phone in player data: ${playerPhone}`);
-                  }
-
-                  // البحث في جميع الحقول المحتملة للهاتف في جدول players
-                  if (playerPhone === 'غير محدد') {
-                    for (const [key, value] of Object.entries(playerData)) {
-                      if (value && typeof value === 'string' && value.trim() !== '') {
-                        const lowerKey = key.toLowerCase();
-                        if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                          lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                          lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
-                          // التحقق من أن القيمة تحتوي على أرقام
-                          if (/\d/.test(value)) {
-                            playerPhone = value.toString().trim();
-                            console.log(`Found phone in player field: ${key} = ${playerPhone}`);
-                            break;
-                          }
-                        }
-                      }
-                    }
-                  }
-
-                  // البحث في جميع الحقول المحتملة للاسم في جدول players
-                  if (playerName === 'غير محدد') {
-                    for (const [key, value] of Object.entries(playerData)) {
-                      if (value && typeof value === 'string' && value.trim() !== '') {
-                        const lowerKey = key.toLowerCase();
-                        if (lowerKey.includes('name') || lowerKey.includes('user') || lowerKey.includes('customer')) {
-                          // التحقق من أن القيمة تبدو كاسم حقيقي
-                          if (/[a-zA-Z\u0600-\u06FF]/.test(value) && value.length >= 2 && value.length <= 50) {
-                            playerName = value.toString().trim();
-                            console.log(`Found name in player field: ${key} = ${playerName}`);
-                            break;
-                          }
-                        }
-                      }
-                    }
-                  }
-
-                  console.log(`Final result from players - Name: ${playerName}, Phone: ${playerPhone}`);
-                } else {
-                  console.log(`No player found with ID: ${playerId}`);
-
-                  // محاولة البحث في جدول users إذا لم يتم العثور في players
-                  try {
-
-                    // محاولة البحث باستخدام معرف المستند مباشرة أولاً
-                    try {
-                      const userDocRef = doc(db, 'users', playerId);
-                      const userDocSnap = await getDoc(userDocRef);
-
-                      if (userDocSnap.exists()) {
-                        userData = userDocSnap.data();
-                        console.log('User data found by document ID:', userData);
-                      }
-                    } catch (docError) {
-                      console.log('Could not find user by document ID, trying query...');
-                    }
-
-                    // إذا لم نجد بالبحث المباشر، نبحث باستخدام استعلام
-                    if (!userData) {
-                      const userQuery = await getDocs(query(collection(db, 'users'),
-                        where('uid', '==', playerId)
-                      ));
-
-                      if (!userQuery.empty) {
-                        userData = userQuery.docs[0].data();
-                        console.log('User data found by uid query:', userData);
-                      }
-                    }
-
-                    if (userData) {
-                      console.log('User data found:', userData);
-
-                      // استخدام نفس منطق getPlayerName من player-organization.ts
-                      if (playerName === 'غير محدد') {
-                        const possibleNameFields = [
-                          'full_name', 'name', 'player_name', 'display_name', 'first_name', 'last_name',
-                          'arabic_name', 'english_name', 'nickname', 'title',
-                          'firstName', 'lastName', 'fullName', 'displayName'
-                        ];
-
-                        // البحث في جميع الحقول المحتملة
-                        for (const field of possibleNameFields) {
-                          if (userData[field] && typeof userData[field] === 'string' && userData[field].trim()) {
-                            const foundName = userData[field].trim();
-                            // التحقق من أن القيمة ليست إيميل وتبدو كاسم حقيقي وليست كلمة عامة
-                            const lowerFoundName = foundName.toLowerCase();
-                            if (!foundName.includes('@') &&
-                              lowerFoundName !== 'player' && lowerFoundName !== 'user' && lowerFoundName !== 'customer' &&
-                              foundName.length > 1 && /[a-zA-Z\u0600-\u06FF]/.test(foundName)) {
-                              playerName = foundName;
-                              console.log(`Found name in user data field '${field}': ${playerName}`);
-                              break;
-                            }
-                          }
-                        }
-
-                        // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
-                        if (playerName === 'غير محدد' && (userData.first_name || userData.last_name || userData.firstName || userData.lastName)) {
-                          const firstName = userData.first_name || userData.firstName || '';
-                          const lastName = userData.last_name || userData.lastName || '';
-                          const fullName = `${firstName} ${lastName}`.trim();
-                          if (fullName && fullName !== 'undefined undefined') {
-                            playerName = fullName;
-                            console.log(`Merged name from first/last name: ${playerName}`);
-                          }
-                        }
-
-                        // إذا لم نجد بعد، نستخدم القيمة الافتراضية
-                        if (playerName === 'غير محدد') {
-                          console.log('Could not find name in user data, keeping default');
-                        }
-                      }
-
-                      // استخدام نفس منطق صفحة إدارة المستخدمين للهاتف
-                      if (playerPhone === 'غير محدد') {
-                        playerPhone = userData.phone || userData.phoneNumber || userData.whatsapp || 'غير محدد';
-                        console.log(`Found phone in user data: ${playerPhone}`);
-                      }
-
-                      // البحث في جميع الحقول المحتملة للهاتف في جدول users
-                      if (playerPhone === 'غير محدد') {
-                        for (const [key, value] of Object.entries(userData)) {
-                          if (value && typeof value === 'string' && value.trim() !== '') {
-                            const lowerKey = key.toLowerCase();
-                            if (lowerKey.includes('phone') || lowerKey.includes('mobile') ||
-                              lowerKey.includes('contact') || lowerKey.includes('tel') ||
-                              lowerKey.includes('whatsapp') || lowerKey.includes('sms')) {
-                              // التحقق من أن القيمة تحتوي على أرقام
-                              if (/\d/.test(value)) {
-                                playerPhone = value.toString().trim();
-                                console.log(`Found phone in user field: ${key} = ${playerPhone}`);
-                                break;
-                              }
-                            }
-                          }
-                        }
-                      }
-
-                      // البحث في جميع الحقول المحتملة للاسم في جدول users
-                      if (playerName === 'غير محدد') {
-                        for (const [key, value] of Object.entries(userData)) {
-                          if (value && typeof value === 'string' && value.trim() !== '') {
-                            const lowerKey = key.toLowerCase();
-                            if (lowerKey.includes('name') || lowerKey.includes('user') || lowerKey.includes('customer')) {
-                              // التحقق من أن القيمة تبدو كاسم حقيقي
-                              if (/[a-zA-Z\u0600-\u06FF]/.test(value) && value.length >= 2 && value.length <= 50) {
-                                playerName = value.toString().trim();
-                                console.log(`Found name in user field: ${key} = ${playerName}`);
-                                break;
-                              }
-                            }
-                          }
-                        }
-                      }
-
-                      console.log(`Final result from users - Name: ${playerName}, Phone: ${playerPhone}`);
-                    }
-                  } catch (userError) {
-                    console.log(`Error searching users table:`, userError);
-                  }
-                }
-              } catch (error) {
-                console.error(`Error fetching player data for ID ${playerId}:`, error);
-              }
-            } else if (!playerId) {
-              console.log('No playerId found in payment data');
-            }
-
-
-            // البحث عن اسم المستخدم إذا كان موجوداً
-            const userNameFields = ['userName', 'user_name', 'username', 'userName', 'displayName', 'display_name'];
-            for (const field of userNameFields) {
-              if (data[field] && typeof data[field] === 'string' && data[field].trim() &&
-                !data[field].includes('@') && data[field].trim().toLowerCase() !== 'player') {
-                userName = data[field].trim();
-                console.log(`Found userName in field '${field}': ${userName}`);
-                break;
-              }
-            }
-
-            // إذا لم نجد في البيانات المباشرة، نبحث في بيانات اللاعب
-            if (!userName && playerData) {
-              for (const field of userNameFields) {
-                if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim() &&
-                  !playerData[field].includes('@') && playerData[field].trim().toLowerCase() !== 'player') {
-                  userName = playerData[field].trim();
-                  console.log(`Found userName in player data field '${field}': ${userName}`);
-                  break;
-                }
-              }
-            }
-
-            // إذا لم نجد في بيانات اللاعب، نبحث في بيانات المستخدم
-            if (!userName && userData) {
-              for (const field of userNameFields) {
-                if (userData[field] && typeof userData[field] === 'string' && userData[field].trim() &&
-                  !userData[field].includes('@') && userData[field].trim().toLowerCase() !== 'player') {
-                  userName = userData[field].trim();
-                  console.log(`Found userName in user data field '${field}': ${userName}`);
-                  break;
-                }
-              }
-            }
-
-            console.log(`Final payment data - Name: ${playerName}, UserName: ${userName}, Phone: ${playerPhone}, Collection: ${collectionName}`);
-
-            // إضافة معلومات إضافية للمدفوعات الجماعية
-            const isBulkPayment = collectionName === 'bulkPayments' || collectionName === 'bulk_payments';
-            const playersCount = isBulkPayment && data.players && Array.isArray(data.players) ? data.players.length : null;
-            const playersData = isBulkPayment && data.players && Array.isArray(data.players) ? data.players : null;
-
-            // استخراج طريقة الدفع
-            const extractedPaymentMethod = data.paymentMethod || data.method || data.gateway || data.paymentType || collectionName;
-
-            // تسجيل خاص لمدفوعات جيديا بعد الاستخراج
-            if (extractedPaymentMethod === 'geidea' || data.paymentMethod === 'geidea' || collectionName === 'geidea_payments') {
-              console.log(`✅ [Geidea Payment] Extracted paymentMethod:`, {
-                collection: collectionName,
-                docId: paymentDoc.id,
-                extractedPaymentMethod: extractedPaymentMethod,
-                originalPaymentMethod: data.paymentMethod,
-                amount: data.amount,
-                status: data.status,
-                responseCode: data.responseCode,
-                detailedResponseCode: data.detailedResponseCode,
-                responseMessage: data.responseMessage || data.detailedResponseMessage,
-                playerName: playerName
-              });
-
-              // استخراج رسالة الخطأ من بيانات جيديا
-              if (data.status === 'failed' || data.status === 'rejected') {
-                console.warn(`⚠️ [Geidea Payment] Failed payment detected:`, {
-                  orderId: data.orderId || paymentDoc.id,
-                  status: data.status,
-                  responseMessage: data.responseMessage || data.detailedResponseMessage,
-                  responseCode: data.responseCode,
-                  detailedResponseCode: data.detailedResponseCode,
-                });
-              }
-            }
-
-            // استخراج رسالة الخطأ من بيانات جيديا
-            let errorMessage = null;
-            if (collectionName === 'geidea_payments' || extractedPaymentMethod === 'geidea') {
-              errorMessage = data.responseMessage || data.detailedResponseMessage || data.errorMessage || null;
-            }
-
-            // استخراج orderId و merchantReferenceId لمدفوعات جيديا
-            const geideaOrderId = data.orderId || data.geideaOrderId || null;
-            const merchantRefId = data.merchantReferenceId || data.ourMerchantReferenceId || null;
-
-            allPayments.push({
-              id: paymentDoc.id,
-              collection: collectionName,
-              playerName: playerName,
-              userName: userName,
-              playerPhone: playerPhone,
-              playerId: playerId, // إضافة playerId للاستخدام في تفعيل الاشتراك
-              userId: playerId, // إضافة userId أيضاً (قد يكون نفس playerId)
-              amount: data.amount || data.total || data.value || data.price || data.cost || data.fee || 0,
-              currency: data.currency || data.currencyCode || data.currencySymbol || 'EGP',
-              status: data.status || data.paymentStatus || data.transactionStatus || 'pending',
-              paymentMethod: extractedPaymentMethod,
-              createdAt: data.createdAt || data.timestamp || data.date || data.paymentDate || data.transactionDate || new Date(),
-              receiptImage: data.receiptImage || data.receiptUrl || data.image || data.photo || data.picture || null,
-              receiptUrl: data.receiptUrl || data.receiptImage || data.image || data.photo || data.picture || null,
-              // بيانات إضافية للمدفوعات الجماعية
-              isBulkPayment: isBulkPayment,
-              playersCount: playersCount,
-              playersData: playersData,
-              // بيانات إضافية من البيانات الأصلية
-              packageType: data.packageType || data.package_type || null,
-              packageName: data.packageName || data.package_name || data.plan_name || data.selectedPackage || null,
-              package_name: data.package_name || data.packageName || data.plan_name || null,
-              plan_name: data.plan_name || data.packageName || data.package_name || null,
-              // بيانات إضافية لمدفوعات جيديا
-              orderId: geideaOrderId || merchantRefId || paymentDoc.id, // orderId من جيديا أو merchantReferenceId
-              geideaOrderId: geideaOrderId, // orderId من جيديا (للتوضيح)
-              merchantReferenceId: merchantRefId, // merchantReferenceId الذي أرسلناه
-              responseCode: data.responseCode || null,
-              detailedResponseCode: data.detailedResponseCode || null,
-              responseMessage: errorMessage,
-              callbackReceivedAt: data.callbackReceivedAt || null,
-            });
-          }
-        } catch (error) {
-          console.log(`Collection ${collectionName} not accessible:`, error);
-        }
-      }
+      const allPayments = await fetchPaymentsOptimized({
+        showFullData: showFullData,
+        maxResults: 1000 // Get enough for admin view
+      });
 
       // حساب الإحصائيات
-      const totalAmount = allPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+      const totalAmount = allPayments.reduce((sum, payment) => Math.floor(sum + (Number(payment.amount) || 0)), 0);
       const completed = allPayments.filter(p => p.status === 'completed' || p.status === 'success' || p.status === 'paid').length;
       const pending = allPayments.filter(p => p.status === 'pending' || p.status === 'processing' || p.status === 'waiting').length;
       const cancelled = allPayments.filter(p => p.status === 'cancelled' || p.status === 'failed' || p.status === 'rejected').length;
@@ -1614,46 +916,35 @@ export default function AdminPaymentsPage() {
         customersWithMessages: messageStats.customersWithMessages
       });
 
-      console.log('إحصائيات الرسائل:', messageStats);
-      console.log('messageHistory:', messageHistory);
-
       // اكتشاف المدفوعات الجديدة
       const currentPaymentIds = new Set(allPayments.map(p => p.id));
-      const newPayments = allPayments.filter(payment => !previousPaymentIds.has(payment.id));
+      
+      // فقط إذا كانت previousPaymentIds فيها بيانات، نتحقق من الجديد (لا نرسل إشعارات عند التحميل الأول)
+      if (previousPaymentIds.size > 0) {
+        const newPayments = allPayments.filter(payment => !previousPaymentIds.has(payment.id));
 
-      // إرسال إشعارات للمدفوعات الجديدة فقط
-      if (newPayments.length > 0) {
-        console.log(`إرسال إشعارات لـ ${newPayments.length} مدفوعة جديدة`);
-        for (const newPayment of newPayments) {
-          // التحقق من أن المدفوعة جديدة فعلاً (تم إنشاؤها في آخر 5 دقائق)
-          const paymentTime = newPayment.createdAt?.toDate ? newPayment.createdAt.toDate() : new Date(newPayment.createdAt);
-          const now = new Date();
-          const timeDiff = now.getTime() - paymentTime.getTime();
-          const fiveMinutes = 5 * 60 * 1000; // 5 دقائق بالميلي ثانية
+        // إرسال إشعارات للمدفوعات الجديدة فقط
+        if (newPayments.length > 0) {
+          for (const newPayment of newPayments) {
+            const paymentTime = newPayment.createdAt?.toDate ? newPayment.createdAt.toDate() : new Date(newPayment.createdAt);
+            const now = new Date();
+            const timeDiff = now.getTime() - paymentTime.getTime();
+            const fiveMinutes = 5 * 60 * 1000;
 
-          if (timeDiff <= fiveMinutes) {
-            console.log(`إرسال إشعار لمدفوعة جديدة: ${newPayment.id} - ${newPayment.playerName}`);
-            await sendAdminNotification(newPayment);
-          } else {
-            console.log(`تجاهل مدفوعة قديمة: ${newPayment.id} - تم إنشاؤها منذ ${Math.round(timeDiff / (60 * 1000))} دقيقة`);
+            if (timeDiff <= fiveMinutes) {
+              await sendAdminNotification(newPayment);
+            }
           }
         }
-      } else {
-        console.log('لا توجد مدفوعات جديدة لإرسال إشعارات');
       }
 
       // تحديث قائمة المدفوعات السابقة
       setPreviousPaymentIds(currentPaymentIds);
-
       setPayments(allPayments);
-      console.log(`تم جلب ${allPayments.length} دفعة`);
-      console.log(`تم اكتشاف ${newPayments.length} مدفوعة جديدة`);
-      console.log('مثال على البيانات المجلوبة:', allPayments.slice(0, 3));
 
       // تحميل الرسائل بعد تحميل المدفوعات
       await fetchAllMessages();
 
-      toast.success(`تم جلب ${allPayments.length} دفعة بنجاح`);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast.error('خطأ في جلب بيانات المدفوعات');
@@ -1928,226 +1219,113 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
 
-          {/* معلومات رابط Callback من جيديا */}
-          <div className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-6 shadow-lg">
-            <div className="flex items-start gap-4">
-              <div className="text-4xl">🔗</div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">رابط Callback من جيديا</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  استخدم هذا الرابط في إعدادات جيديا (Geidea Dashboard) كـ Callback URL:
-                </p>
-                <div className="bg-white rounded-lg p-4 border-2 border-purple-300 shadow-sm">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <code className="flex-1 text-sm font-mono text-purple-700 bg-purple-50 px-3 py-2 rounded border border-purple-200 break-all">
-                      https://www.el7lm.com/api/geidea/callback
-                    </code>
-                    <button
-                      onClick={() => {
-                        const callbackUrl = 'https://www.el7lm.com/api/geidea/callback';
-                        navigator.clipboard.writeText(callbackUrl);
-                        toast.success('تم نسخ رابط Callback إلى الحافظة');
-                      }}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm whitespace-nowrap"
-                      title="نسخ الرابط"
-                    >
-                      📋 نسخ الرابط
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    <strong>💡 ملاحظة:</strong> تأكد من إضافة هذا الرابط في لوحة تحكم جيديا (Geidea Merchant Dashboard)
-                    في قسم Webhook/Callback Settings. هذا الرابط يستقبل إشعارات الدفع تلقائياً من جيديا.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* قسم التحقق من إعدادات جيديا */}
-          <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 shadow-lg">
-            <div className="flex items-start gap-4">
-              <div className="text-4xl">✅</div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">التحقق من إعدادات جلب المدفوعات من جيديا</h3>
-
-                <div className="space-y-3">
-                  {/* التحقق من مجموعة geidea_payments */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">📦</span>
-                        <span className="font-medium text-gray-700">مجموعة geidea_payments</span>
-                      </div>
-                      <span className="text-sm text-green-600 font-medium">✅ متضمنة في الجلب</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      يتم جلب جميع المدفوعات من مجموعة <code className="bg-gray-100 px-1 rounded">geidea_payments</code> تلقائياً
-                    </p>
-                  </div>
-
-                  {/* التحقق من Callback API */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">🔔</span>
-                        <span className="font-medium text-gray-700">API Callback</span>
-                      </div>
-                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      ملف <code className="bg-gray-100 px-1 rounded">/api/geidea/callback</code> جاهز لاستقبال إشعارات الدفع مع CORS headers
-                    </p>
-                  </div>
-
-                  {/* التحقق من Create Session API */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">🎫</span>
-                        <span className="font-medium text-gray-700">API Create Session</span>
-                      </div>
-                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      ملف <code className="bg-gray-100 px-1 rounded">/api/geidea/create-session</code> ينشئ جلسات الدفع بشكل صحيح
-                    </p>
-                  </div>
-
-                  {/* التحقق من معالجة البيانات */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">🔄</span>
-                        <span className="font-medium text-gray-700">معالجة البيانات</span>
-                      </div>
-                      <span className="text-sm text-green-600 font-medium">✅ جاهز</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      يتم استخراج اسم العميل، رقم الهاتف، المبلغ، والحالة من بيانات جيديا بشكل صحيح
-                    </p>
-                  </div>
-
-                  {/* إحصائيات مدفوعات جيديا */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">📊</span>
-                        <span className="font-medium text-gray-700">إحصائيات مدفوعات جيديا</span>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-lg font-bold text-gray-800">
-                          {payments.filter(p => p.paymentMethod === 'geidea' || p.collection === 'geidea_payments').length}
-                        </p>
-                        <p className="text-xs text-gray-600">إجمالي المدفوعات</p>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-lg font-bold text-green-600">
-                          {payments.filter(p => (p.paymentMethod === 'geidea' || p.collection === 'geidea_payments') &&
-                            (p.status === 'success' || p.status === 'completed' || p.status === 'paid')).length}
-                        </p>
-                        <p className="text-xs text-gray-600">مدفوعات ناجحة</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-xs text-yellow-800">
-                    <strong>⚠️ تحقق يدوي:</strong> تأكد من وجود المتغيرات البيئية التالية في Vercel:
-                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">GEIDEA_MERCHANT_PUBLIC_KEY</code>
-                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">GEIDEA_API_PASSWORD</code>
-                    <code className="block mt-1 bg-yellow-100 px-2 py-1 rounded text-xs">NEXT_PUBLIC_BASE_URL</code>
-                  </p>
-                </div>
-
-                {/* ملاحظة حول المدفوعات الفاشلة */}
-                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                  <h4 className="font-bold text-orange-800 mb-2">📝 ملاحظة حول المدفوعات الفاشلة:</h4>
-                  <ul className="text-xs text-orange-700 space-y-1 list-disc list-inside">
-                    <li>جميع المدفوعات (الناجحة والفاشلة) يتم حفظها تلقائياً في مجموعة <code className="bg-orange-100 px-1 rounded">geidea_payments</code></li>
-                    <li>المدفوعات الفاشلة (مثل رصيد غير كافي) تظهر في القائمة مع حالة <span className="bg-red-100 text-red-800 px-1 rounded">failed</span></li>
-                    <li>يمكنك عرض تفاصيل المدفوعة الفاشلة لمعرفة سبب الفشل من جيديا</li>
-                    <li>إذا لم تظهر مدفوعة فاشلة، تحقق من logs في Vercel أو تأكد من أن جيديا أرسلت callback</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* الإحصائيات السريعة */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 gap-4 mb-8">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">📊</div>
-              <p className="text-2xl font-bold mb-1">{stats.total}</p>
-              <p className="text-xs opacity-90">إجمالي المدفوعات</p>
+        {/* Modern Statistics Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Card 1: Total Amount (Hero Card) */}
+          <div className="col-span-2 lg:col-span-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-center">
+            <div className="absolute -right-6 -top-6 opacity-20 transform rotate-12">
+              <Wallet className="w-32 h-32" />
+            </div>
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-emerald-100 font-medium text-sm md:text-base mb-1">إجمالي الإيرادات المسجلة</p>
+                <div className="flex items-baseline gap-2" dir="ltr">
+                  <span className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                    {stats.totalAmount >= 1000000 
+                      ? `${(stats.totalAmount / 1000000).toFixed(2)}M` 
+                      : stats.totalAmount >= 1000 
+                        ? `${(stats.totalAmount / 1000).toFixed(1)}K` 
+                        : stats.totalAmount.toLocaleString()}
+                  </span>
+                  <span className="text-emerald-200 text-lg font-medium">EGP</span>
+                </div>
+              </div>
+              <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+                <Banknote className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">✅</div>
-              <p className="text-2xl font-bold mb-1">{stats.completed}</p>
-              <p className="text-xs opacity-90">مكتملة</p>
+          {/* Card 2: Completed Payments */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-emerald-100 text-emerald-600 p-3 rounded-xl">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">المدفوعات المكتملة</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.completed}</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">⏳</div>
-              <p className="text-2xl font-bold mb-1">{stats.pending}</p>
-              <p className="text-xs opacity-90">قيد الانتظار</p>
+          {/* Card 3: Pending Payments */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-amber-100 text-amber-600 p-3 rounded-xl">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">قيد الانتظار</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.pending}</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">❌</div>
-              <p className="text-2xl font-bold mb-1">{stats.cancelled}</p>
-              <p className="text-xs opacity-90">ملغية</p>
+          {/* Card 4: Cancelled */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-rose-100 text-rose-600 p-3 rounded-xl">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">الملغية والمرفوضة</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.cancelled}</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">💰</div>
-              <p className="text-lg font-bold mb-1">{stats.totalAmount.toLocaleString()}</p>
-              <p className="text-xs opacity-90">إجمالي المبالغ</p>
+          {/* Card 5: Notifications */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl ${adminNotificationsEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                {adminNotificationsEnabled ? <Bell className="w-6 h-6" /> : <BellOff className="w-6 h-6" />}
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">إشعارات النظام</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-bold text-slate-800">{adminNotificationsEnabled ? 'تعمل' : 'متوقفة'}</p>
+                  {sentNotifications.size > 0 && <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">{sentNotifications.size} مُرسلة</span>}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">💬</div>
-              <p className="text-2xl font-bold mb-1">{stats.messagesSent}</p>
-              <p className="text-xs opacity-90">الرسائل المرسلة</p>
+          {/* Card 6: Messages */}
+          <div className="col-span-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+                <MessageCircle className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1">احصائيات التواصل مع العملاء</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-2xl font-bold">{stats.messagesSent}</p>
+                  <span className="text-xs bg-white/20 px-2 py-1 rounded-md backdrop-blur-md">إجمالي الرسائل</span>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="text-center">
-              <div className="text-2xl mb-2">👥</div>
-              <p className="text-2xl font-bold mb-1">{stats.customersWithMessages}</p>
-              <p className="text-xs opacity-90">عملاء تم التواصل معهم</p>
-            </div>
-          </div>
-
-          <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${adminNotificationsEnabled
-            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-            : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-            }`}>
-            <div className="text-center">
-              <div className="text-2xl mb-2">{adminNotificationsEnabled ? '🔔' : '🔕'}</div>
-              <p className="text-lg font-bold mb-1">{adminNotificationsEnabled ? 'مفعلة' : 'معطلة'}</p>
-              <p className="text-xs opacity-90">إشعارات المدير</p>
-              <p className="text-xs opacity-75 mt-1">
-                {sentNotifications.size > 0 ? `تم إرسال ${sentNotifications.size} إشعار` : 'لا توجد إشعارات مرسلة'}
-              </p>
+            
+            <div className="hidden sm:flex items-center gap-3 border-r border-white/20 pr-6 mr-2">
+               <div>
+                 <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 text-left">عملاء تواصلنا معهم</p>
+                 <p className="text-2xl font-bold text-left">{stats.customersWithMessages}</p>
+               </div>
+               <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+                 <Users className="w-6 h-6 text-white" />
+               </div>
             </div>
           </div>
         </div>

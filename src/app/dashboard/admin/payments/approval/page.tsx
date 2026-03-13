@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle,
   Search, Filter, RefreshCw, Eye, Check, X,
-  FileImage, ExternalLink, Download
+  FileImage, ExternalLink, Download, Wallet, FileText
 } from 'lucide-react';
 
 interface PaymentRequest {
@@ -105,7 +105,7 @@ export default function PaymentApprovalPage() {
       pending: paymentsList.filter(p => p.status === 'pending').length,
       approved: paymentsList.filter(p => p.status === 'approved').length,
       rejected: paymentsList.filter(p => p.status === 'rejected').length,
-      totalAmount: paymentsList.reduce((sum, p) => sum + p.amount, 0)
+      totalAmount: paymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
     };
     setStats(newStats);
   };
@@ -307,66 +307,89 @@ export default function PaymentApprovalPage() {
           </button>
         </div>
 
-        {/* الإحصائيات */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Clock className="w-5 h-5 text-purple-600" />
-              </div>
+        {/* Modern Statistics Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          {/* Card 1: Total Amount (Hero Card) */}
+          <div className="col-span-2 lg:col-span-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-center">
+            <div className="absolute -left-6 -top-6 opacity-20 transform -rotate-12">
+              <Wallet className="w-32 h-32" />
+            </div>
+            <div className="relative z-10 flex items-center justify-between">
               <div>
-                <p className="text-sm text-purple-600">قيد الانتظار</p>
-                <p className="text-xl font-bold text-purple-700">{stats.pending}</p>
+                <p className="text-indigo-100 font-medium text-sm md:text-base mb-1">إجمالي المبالغ المطلوبة</p>
+                <div className="flex items-baseline gap-2" dir="ltr">
+                  <span className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                    {stats.totalAmount >= 1000000 
+                      ? `${(stats.totalAmount / 1000000).toFixed(2)}M` 
+                      : stats.totalAmount >= 1000 
+                        ? `${(stats.totalAmount / 1000).toFixed(1)}K` 
+                        : stats.totalAmount.toLocaleString()}
+                  </span>
+                  <span className="text-indigo-200 text-lg font-medium">EGP</span>
+                </div>
+              </div>
+              <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+                <FileText className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+
+          {/* Card 2: Pending Requests */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center relative overflow-hidden">
+             {/* Subtle highlight for pending which is the main action of this page */}
+             <div className="absolute top-0 right-0 w-1 h-full bg-amber-500"></div>
+            <div className="flex items-center gap-4">
+              <div className="bg-amber-100 text-amber-600 p-3 rounded-xl">
+                <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-green-600">تمت الموافقة</p>
-                <p className="text-xl font-bold text-green-700">{stats.approved}</p>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">بانتظار المراجعة</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.pending}</p>
               </div>
             </div>
           </div>
-          <div className="bg-red-50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 p-2 rounded-lg">
-                <XCircle className="w-5 h-5 text-red-600" />
+
+          {/* Card 3: Total Requests */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+             <div className="flex items-center gap-4">
+              <div className="bg-slate-100 text-slate-600 p-3 rounded-xl">
+                <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-red-600">مرفوض</p>
-                <p className="text-xl font-bold text-red-700">{stats.rejected}</p>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">إجمالي الطلبات</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-blue-600" />
+
+          {/* Card 4: Approved */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+             <div className="flex items-center gap-4">
+              <div className="bg-emerald-100 text-emerald-600 p-3 rounded-xl">
+                <CheckCircle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-blue-600">إجمالي الطلبات</p>
-                <p className="text-xl font-bold text-blue-700">{stats.total}</p>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">الطلبات المقبولة</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.approved}</p>
               </div>
             </div>
           </div>
-          <div className="bg-emerald-50 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-100 p-2 rounded-lg">
-                <span className="text-xl">💰</span>
+
+          {/* Card 5: Rejected */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-center">
+             <div className="flex items-center gap-4">
+              <div className="bg-rose-100 text-rose-600 p-3 rounded-xl">
+                <XCircle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-emerald-600">إجمالي المبالغ</p>
-                <p className="text-xl font-bold text-emerald-700">
-                  {stats.totalAmount.toLocaleString()} ج.م
-                </p>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium mb-1">الطلبات المرفوضة</p>
+                <p className="text-2xl font-bold text-slate-800">{stats.rejected}</p>
               </div>
             </div>
           </div>
         </div>
+
+
       </div>
 
       {/* أدوات الفلترة */}

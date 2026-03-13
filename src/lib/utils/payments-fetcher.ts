@@ -34,11 +34,12 @@ export async function fetchPaymentsOptimized(options: {
 
     let allPayments: any[] = [];
     const totalCollections = essentialCollections.length;
+    let completedCollections = 0;
 
-    for (let i = 0; i < essentialCollections.length; i++) {
-        const colConfig = essentialCollections[i];
+    const fetchPromises = essentialCollections.map(async (colConfig) => {
         const collectionName = colConfig.name;
         const sortField = colConfig.sortField;
+        const paymentsFromCol: any[] = [];
 
         try {
             console.log(`📥 جاري جلب البيانات من ${collectionName} (ترتيب حسب ${sortField})...`);
@@ -75,7 +76,7 @@ export async function fetchPaymentsOptimized(options: {
                     playerName,
                     playerPhone,
                     playerEmail,
-                    amount: data.amount || data.totalAmount || 0,
+                    amount: Number(data.amount) || Number(data.totalAmount) || 0,
                     currency: data.currency || 'EGP',
                     status: data.status || 'pending',
                     paymentMethod: data.paymentMethod || data.payment_method || collectionName,
@@ -96,21 +97,34 @@ export async function fetchPaymentsOptimized(options: {
 
                 // ✅ تطبيق الخصوصية
                 const maskedPayment = applyPaymentPrivacy(payment, showFullData);
-                allPayments.push(maskedPayment);
+                paymentsFromCol.push(maskedPayment);
             });
 
             console.log(`✅ تم جلب ${querySnapshot.docs.length} مدفوعة من ${collectionName}`);
 
-            // تحديث التقدم
-            if (onProgress) {
-                onProgress(i + 1, totalCollections);
-            }
-
         } catch (error: any) {
             console.warn(`⚠️ خطأ في جلب البيانات من ${collectionName}:`, error.message);
             // نستمر في الجلب من المجموعات الأخرى
+        } finally {
+            completedCollections++;
+            // تحديث التقدم
+            if (onProgress) {
+                onProgress(completedCollections, totalCollections);
+            }
         }
-    }
+        
+        return paymentsFromCol;
+    });
+
+    const results = await Promise.all(fetchPromises);
+    allPayments = results.flat();
+
+    // فرز جميع المدفوعات حسب تاريخ الإنشاء من الأحدث للأقدم
+    allPayments.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || new Date(a.createdAt).getTime() || 0;
+        const timeB = b.createdAt?.toMillis?.() || new Date(b.createdAt).getTime() || 0;
+        return timeB - timeA;
+    });
 
     console.log(`📊 إجمالي المدفوعات المجلوبة: ${allPayments.length}`);
     return allPayments;
