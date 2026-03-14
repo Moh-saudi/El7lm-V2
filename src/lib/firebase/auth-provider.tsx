@@ -56,8 +56,14 @@ interface AuthContextType {
   verifyPhoneOTP: (confirmationResult: any, otp: string, defaultRole?: UserRole, additionalData?: any) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
 }
 
-// Create context
+// Redirection to Supabase Auth
+import { useAuth as useSupabaseAuth } from '../supabase/auth-provider';
+
+// Create context placeholder for backward compatibility
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Export useAuth redirecting to Supabase
+export const useAuth = useSupabaseAuth;
 
 interface FirebaseAuthProviderProps {
   children: ReactNode;
