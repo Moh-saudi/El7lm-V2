@@ -111,7 +111,7 @@ export default function SMSOTPVerification({
     setAttempts(prev => prev + 1);
 
     try {
-      const verifyResponse = await fetch('/api/sms/verify-otp', {
+      const verifyResponse = await fetch('/api/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber, otp: otpCode }),
@@ -142,10 +142,10 @@ export default function SMSOTPVerification({
     setMessage('');
 
     try {
-      const res = await fetch('/api/whatsapp/babaservice/otp', {
+      const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber, name, lang: language }),
+        body: JSON.stringify({ phoneNumber, name, channel: 'whatsapp' }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');

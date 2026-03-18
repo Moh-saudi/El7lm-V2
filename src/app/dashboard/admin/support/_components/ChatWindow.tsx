@@ -258,7 +258,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                             variant="ghost"
                             size="sm"
                             className="h-6 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full px-2"
-                            onClick={() => onWhatsAppClick(undefined)}
+                            onClick={() => onWhatsAppClick(conversation.userPhone)}
                         >
                             <Phone className="h-3 w-3 ml-1" />
                             تواصل عبر واتساب

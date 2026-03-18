@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Phone, Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COUNTRIES_FROM_REGISTER, Country } from '@/data/countries-from-register';
+import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
 import { toast } from 'sonner';
 
 interface PhoneBasedPasswordResetProps {
@@ -34,6 +35,7 @@ export default function PhoneBasedPasswordReset({
     const [userEmail, setUserEmail] = useState(''); // البريد المحفوظ في قاعدة البيانات
     const [userId, setUserId] = useState('');
     const [userCollection, setUserCollection] = useState('');
+    const [phoneFormatError, setPhoneFormatError] = useState<string | null>(null);
 
     // Email step
     const [email, setEmail] = useState('');
@@ -43,6 +45,21 @@ export default function PhoneBasedPasswordReset({
         const defaultCountry = COUNTRIES_FROM_REGISTER.find(c => c.code === '+974') || COUNTRIES_FROM_REGISTER[0];
         setSelectedCountry(defaultCountry);
     });
+
+    // 🛡️ Real-time phone format validation
+    useEffect(() => {
+        if (!selectedCountry || !phoneNumber) {
+            setPhoneFormatError(null);
+            return;
+        }
+        const cleanPhone = phoneNumber.replace(/^0+/, '').trim().replace(/\D/g, '');
+        if (cleanPhone.length < 4) {
+            setPhoneFormatError(null);
+            return;
+        }
+        const error = validatePhoneForCountry(cleanPhone, selectedCountry.code);
+        setPhoneFormatError(error);
+    }, [phoneNumber, selectedCountry]);
 
     const handlePhoneVerification = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,6 +71,14 @@ export default function PhoneBasedPasswordReset({
 
             if (!selectedCountry) {
                 setError('يرجى اختيار الدولة');
+                setIsLoading(false);
+                return;
+            }
+
+            // 🛡️ Security: Validate phone format matches the selected country code
+            const formatError = validatePhoneForCountry(cleanPhone, selectedCountry.code);
+            if (formatError) {
+                setError(formatError);
                 setIsLoading(false);
                 return;
             }
@@ -298,11 +323,15 @@ export default function PhoneBasedPasswordReset({
                                 disabled={isLoading}
                             />
                         </div>
+                        {/* 🛡️ Phone format validation feedback */}
+                        {phoneFormatError && (
+                            <p className="text-xs text-orange-600 font-medium mt-1">⚠️ {phoneFormatError}</p>
+                        )}
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || !!phoneFormatError}
                         className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         {isLoading ? (

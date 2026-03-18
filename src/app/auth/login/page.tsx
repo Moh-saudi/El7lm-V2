@@ -1,27 +1,24 @@
 'use client';
 
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, signInWithCustomToken } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import {
-  ArrowRight,
-  CheckCircle,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
   Phone,
-  Shield,
   Star,
-  ChevronDown
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
-import { FloatingInput, FloatingSelect } from '@/components/shared/PremiumInputs';
 import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
 import Image from 'next/image';
+import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
 
 
 type LoginMethod = 'phone' | 'email';
@@ -83,7 +80,7 @@ const testimonials = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, logout, signInWithGoogle, setupRecaptcha, sendPhoneOTP, verifyPhoneOTP, user, userData, loading: authLoading } = useAuth();
+  const { login, logout, signInWithGoogle, user, userData, loading: authLoading } = useAuth();
 
   const [branding, setBranding] = useState<BrandingData | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
@@ -98,33 +95,69 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+20');
   const [password, setPassword] = useState('');
+  const [phoneFormatError, setPhoneFormatError] = useState<string | null>(null);
+  const [isLoginAttempt, setIsLoginAttempt] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [showOTPModal, setShowOTPModal] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-  const [useOTP, setUseOTP] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
+  const [useOTP, setUseOTP] = useState(true);
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const phoneCheckTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const handleWhatsAppOTPSuccess = async (_phoneNumber: string) => {
+    // التحقق والدخول تم في handleVerifyOTP
+  };
 
+  const showWelcomeToast = (name: string, isNew: boolean) => {
+    const firstName = (name || '').split(' ')[0] || '';
+    const greeting = firstName ? `مرحباً ${firstName}` : 'أهلاً بك';
+    const message = isNew
+      ? 'حسابك جاهز — انطلق وابدأ رحلتك الآن ✨'
+      : 'سعداء بعودتك — كل شيء بانتظارك 👋';
+
+    toast.custom(() => (
+      <div
+        className="flex items-start gap-3 bg-white rounded-2xl shadow-lg border border-slate-100 px-5 py-4 min-w-[260px] max-w-[320px] font-cairo"
+        dir="rtl"
+      >
+        <div className="text-2xl mt-0.5 select-none">🌟</div>
+        <div>
+          <p className="text-sm font-bold text-slate-900 leading-snug">{greeting}!</p>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{message}</p>
+        </div>
+      </div>
+    ), { duration: 2500, position: 'top-center' });
+  };
 
   const handleVerifyOTP = async (otp: string) => {
     try {
-      const result = await verifyPhoneOTP(confirmationResult, otp);
+      toast.loading('جاري التحقق وتسجيل الدخول...', { id: 'otp-login' });
 
-      if (result.isNewUser) {
-        toast.success('🎉 تم إنشاء حسابك بنجاح! مرحباً بك في الحلم');
-      } else {
-        toast.success('✅ تم تسجيل الدخول بنجاح');
+      const res = await fetch('/api/auth/otp-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: otpPhone, otp }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        toast.dismiss('otp-login');
+        throw new Error(data.error || 'فشل التحقق');
       }
 
-      if ((result.userData.accountType as any) === 'unknown' || result.userData.accountType === undefined) {
-        setTimeout(() => router.replace('/auth/select-role'), 500);
-      } else {
-        const dashboardRoute = getDashboardRoute(result.userData.accountType);
-        router.replace(dashboardRoute);
-      }
+      // تسجيل الدخول باستخدام Firebase Custom Token
+      await signInWithCustomToken(auth, data.customToken);
+
+      toast.dismiss('otp-login');
+      showWelcomeToast(data.userName || '', false);
+
+      const dashboardRoute = getDashboardRoute(data.accountType);
+      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
 
     } catch (error: any) {
-      console.error('Verify error:', error);
+      console.error('OTP login error:', error);
       throw error;
     }
   };
@@ -174,6 +207,43 @@ export default function LoginPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Debounced phone validation against the database + format validation
+  useEffect(() => {
+    if (loginMethod !== 'phone') return;
+    const cleanPhone = phone.trim().replace(/^0+/, '').replace(/\s+/g, '');
+    if (cleanPhone.length < 7) {
+      setPhoneStatus('idle');
+      setPhoneFormatError(null);
+      return;
+    }
+
+    // 🛡️ Validate phone number format matches the selected country code
+    const formatError = validatePhoneForCountry(cleanPhone, countryCode);
+    setPhoneFormatError(formatError);
+    if (formatError) {
+      setPhoneStatus('idle');
+      return;
+    }
+
+    setPhoneStatus('checking');
+    if (phoneCheckTimer.current) clearTimeout(phoneCheckTimer.current);
+    phoneCheckTimer.current = setTimeout(async () => {
+      try {
+        const fullPhone = `${countryCode.trim()}${cleanPhone}`;
+        const res = await fetch('/api/auth/check-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: fullPhone }),
+        });
+        const data = await res.json();
+        setPhoneStatus(data.exists ? 'valid' : 'invalid');
+      } catch {
+        setPhoneStatus('idle');
+      }
+    }, 800);
+    return () => { if (phoneCheckTimer.current) clearTimeout(phoneCheckTimer.current); };
+  }, [phone, countryCode, loginMethod]);
 
   useEffect(() => {
     const savedRememberMe = localStorage.getItem('rememberMe');
@@ -242,14 +312,11 @@ export default function LoginPage() {
 
       const result = await signInWithGoogle('player');
 
-      if (result.isNewUser) {
-        toast.success('🎉 تم إنشاء حسابك بنجاح! مرحباً بك في الحلم', { id: 'google-signin' });
-      } else {
-        toast.success('✅ تم تسجيل الدخول بنجاح!', { id: 'google-signin' });
-      }
+      toast.dismiss('google-signin');
+      showWelcomeToast(result.userData.full_name || result.userData.name || '', result.isNewUser);
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => router.replace(dashboardRoute), 500);
+      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
 
     } catch (err: unknown) {
       console.error('Google Sign-In failed:', err);
@@ -268,6 +335,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setIsLoginAttempt(true);
     let loginEmail: string = '';
 
     try {
@@ -284,35 +352,65 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
+
+        // 🛡️ Security: Validate phone format matches country code BEFORE any action
+        const preCleanPhone = phone.trim().replace(/^0+/, '').replace(/\s+/g, '');
+        const preFormatError = validatePhoneForCountry(preCleanPhone, countryCode);
+        if (preFormatError) {
+          toast.error(`⚠️ ${preFormatError}`);
+          setLoading(false);
+          return;
+        }
       }
 
       const cleanPhone = phone.trim().replace(/^0+/, '').replace(/\s+/g, '');
       const fullPhone = `${countryCode.trim()}${cleanPhone}`;
 
-      // --- OTP Login Flow ---
-      if (useOTP) {
+      // --- OTP Login Flow via WhatsApp (ChatAman) ---
+      if (useOTP && loginMethod === 'phone') {
+        // Validate phone exists before wasting a WhatsApp message
+        if (phoneStatus === 'checking') {
+          toast.error('جاري التحقق من الرقم، يرجى الانتظار لحظة...');
+          setLoading(false);
+          return;
+        }
+        if (phoneStatus === 'invalid') {
+          toast.error('رقم الهاتف غير مسجل. يرجى إنشاء حساب أولاً');
+          setLoading(false);
+          return;
+        }
         try {
-          toast.loading('جاري إرسال رمز التحقق...', { id: 'login' });
+          toast.loading('جاري إرسال رمز التحقق عبر WhatsApp...', { id: 'login' });
 
-          let appVerifier = (window as any).recaptchaVerifier;
-          if (!appVerifier) {
-            appVerifier = await setupRecaptcha('recaptcha-container-login');
+          const res = await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phoneNumber: fullPhone,
+              purpose: 'login',
+              channel: 'whatsapp',
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'فشل إرسال رمز التحقق');
           }
 
-          const confirmation = await sendPhoneOTP(fullPhone, appVerifier);
-          setConfirmationResult(confirmation);
+          setOtpPhone(fullPhone);
           setShowOTPModal(true);
-          toast.success('تم إرسال الرمز بنجاح', { id: 'login' });
+          toast.success('تم إرسال الرمز عبر WhatsApp ✅', { id: 'login' });
           setLoading(false);
-          return; // Stop here, wait for OTP
+          return;
         } catch (error: any) {
           console.error('Send OTP Error:', error);
-          toast.error(error.message || '❌ فشل إرسال رمز التحقق لرقم الهاتف', { id: 'login' });
+          toast.error(error.message || '❌ فشل إرسال رمز التحقق', { id: 'login' });
           setLoading(false);
           return;
         }
       }
-      // ----------------------
+      // -----------------------------------------------
 
       toast.loading('جاري التحقق...', { id: 'login' });
       const firebaseEmail = generateEmailFromPhone(fullPhone);
@@ -408,9 +506,11 @@ export default function LoginPage() {
         localStorage.removeItem('userPhone');
       }
 
-      toast.success('✅ تم تسجيل الدخول بنجاح!', { id: 'login' });
+      toast.dismiss('login');
+      showWelcomeToast(result.userData.full_name || result.userData.name || '', false);
+
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => router.replace(dashboardRoute), 500);
+      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
 
     } catch (err: unknown) {
       console.error('Login failed:', err);
@@ -472,6 +572,31 @@ export default function LoginPage() {
             // ⬅️ معالجة الاستجابة حتى لو كانت status غير 200
             const verifyData = await verifyResponse.json().catch(() => ({}));
             console.log('[Sync Check] Response data:', verifyData);
+
+            // إذا وُجد المستخدم لكن بإيميل Firebase Auth مختلف (مثلاً: سجّل بهاتف لكن أدخل Gmail)
+            if (
+              verifyData.existsInAuth &&
+              verifyData.firebaseEmail &&
+              verifyData.firebaseEmail !== loginEmail &&
+              verifyData.hasPassword
+            ) {
+              try {
+                toast.loading('جاري التحقق...', { id: 'login' });
+                const retryResult = await login(verifyData.firebaseEmail, password);
+                toast.dismiss('login');
+                if (rememberMe) {
+                  localStorage.setItem('rememberMe', 'true');
+                  if (loginMethod === 'email') localStorage.setItem('userEmail', email);
+                }
+                showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
+                const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
+                setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                setLoading(false);
+                return;
+              } catch (_retryErr) {
+                // تابع لعرض رسالة خطأ كلمة المرور
+              }
+            }
 
             if (verifyData.needsSync) {
               errorMessage = 'حسابك يحتاج إلى تفعيل';
@@ -545,8 +670,39 @@ export default function LoginPage() {
               setLoading(false);
               return;
             } else if (verifyData.existsInFirestore === false) {
+              // ⬅️ قد يكون رمز البلد خاطئاً (مثلاً: اكتشاف اليونان بدلاً من مصر)
+              // نحاول البحث بالرقم الخام بدون رمز البلد
+              if (loginMethod === 'phone') {
+                try {
+                  const rawPhone = phone.trim(); // رقم المستخدم كما أدخله (مثلاً: 01017799580)
+                  const phoneRes = await fetch('/api/auth/check-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: rawPhone }),
+                  });
+                  const phoneData = await phoneRes.json();
+                  if (phoneData.exists && phoneData.email) {
+                    // وجدنا الحساب الحقيقي — نعيد المحاولة بالبريد الصحيح
+                    toast.loading('جاري التحقق...', { id: 'login' });
+                    const retryResult = await login(phoneData.email, password);
+                    toast.dismiss('login');
+                    if (rememberMe) {
+                      localStorage.setItem('rememberMe', 'true');
+                      localStorage.setItem('userPhone', phone);
+                    }
+                    showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
+                    const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
+                    setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                    setLoading(false);
+                    return;
+                  }
+                } catch (_retryErr) {
+                  // إذا فشلت إعادة المحاولة، نكمل لعرض رسالة خطأ كلمة المرور
+                }
+              }
+
               // ⬅️ المستخدم غير موجود في قاعدة البيانات
-              errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
+              errorMessage = loginMethod === 'phone' ? 'رقم الهاتف غير مسجل في النظام' : 'البريد الإلكتروني غير مسجل في النظام';
 
               // رسالة خطأ محسنة مع زر للتسجيل
               toast.custom((t: any) => (
@@ -769,265 +925,304 @@ export default function LoginPage() {
   };
 
   // Redirect to dashboard if user is already logged in
+  // 🛡️ Security: show choices instead of auto-redirecting to prevent accidental bypass
   useEffect(() => {
-    if (user && userData && !authLoading) {
-      // Email verification enforcement removed for smoother flow
-      router.replace(getDashboardRoute(userData.accountType));
-    }
-  }, [user, userData, authLoading, router]);
+    // We only auto-redirect if NOT in a login attempt and NOT in the middle of loading
+  }, [user, userData, authLoading, router, isLoginAttempt]);
 
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-purple-950 to-black" dir="rtl">
-        <div className="relative">
-          <div className="absolute -inset-4 bg-purple-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-          <Loader2 className="relative w-16 h-16 text-purple-400 animate-spin" />
+      <div className="flex justify-center items-center min-h-screen bg-[#f7f7f8]" dir="rtl">
+        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+      </div>
+    );
+  }
+
+  // 🛡️ Already Logged In Case — prevent automatic bypass
+  if (user && userData && !isLoginAttempt) {
+    const dashRoute = getDashboardRoute(userData.accountType);
+    return (
+      <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center px-4 font-cairo" dir="rtl">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-7 text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4 font-inter text-white">
+            <span className="text-3xl">👤</span>
+          </div>
+          <h2 className="text-lg font-bold text-slate-900 mb-1">أنت مسجل الدخول بالفعل</h2>
+          <p className="text-sm text-slate-500 mb-6">
+            {userData.full_name || userData.name ? `مرحباً ${userData.full_name || userData.name}` : 'أهلاً بك مجدداً'}
+          </p>
+          <button
+            onClick={() => router.replace(dashRoute)}
+            className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors mb-3"
+          >
+            الذهاب إلى لوحة التحكم
+          </button>
+          <button
+            onClick={async () => {
+              await logout();
+              window.location.reload();
+            }}
+            className="w-full h-11 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+          >
+            تسجيل خروج ودخول بحساب آخر
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      <Toaster
-        position="top-center"
-        dir="rtl"
-        richColors
-        toastOptions={{
-          className: '!text-sm sm:!text-base font-cairo',
-          style: {
-            fontFamily: 'Cairo, sans-serif',
-          },
-        }}
-      />
+    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center p-4 font-cairo" dir="rtl">
+      <Toaster position="top-center" dir="rtl" richColors />
 
       {/* OTP Modal */}
       {showOTPModal && (
         <WhatsAppOTPVerification
-          phoneNumber={phone}
+          phoneNumber={otpPhone}
           isOpen={showOTPModal}
-          onVerificationSuccess={() => { }}
+          onVerificationSuccess={handleWhatsAppOTPSuccess}
           onVerificationFailed={(err) => toast.error(err)}
           onClose={() => setShowOTPModal(false)}
           onOTPVerify={handleVerifyOTP}
-          title="تفعيل الدخول"
-          subtitle="أدخل الرمز المرسل لهاتفك"
+          title="تسجيل الدخول عبر WhatsApp"
+          subtitle="أدخل رمز التحقق المرسل إلى WhatsApp"
         />
       )}
 
-      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-purple-950 to-indigo-950 font-sans relative overflow-hidden" dir="rtl">
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
 
-        {/* Decorative Background Glows */}
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" aria-hidden="true"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] opacity-60" aria-hidden="true"></div>
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-7">
+          <div className="w-10 h-10 rounded-xl overflow-hidden relative mb-4 flex items-center justify-center bg-slate-100">
+            {branding?.logoUrl ? (
+              <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-1.5" />
+            ) : (
+              <Star className="w-6 h-6 text-slate-700 fill-slate-700" />
+            )}
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 text-center">تسجيل الدخول</h1>
+          <p className="text-sm text-slate-500 mt-1 text-center">أهلاً بك مجدداً في منصة الحلم</p>
+        </div>
 
-        <div className="w-full max-w-[350px] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        {/* Google */}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={googleLoading || loading}
+          className="w-full h-11 flex items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-5"
+        >
+          {googleLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              <span>المتابعة بـ Google</span>
+            </>
+          )}
+        </button>
 
-          <div className="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.6)] border border-white/20 overflow-hidden relative transition-all duration-500">
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">أو</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
 
-            {/* Top Slim Gradient Bar */}
-            <div className="h-2 w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600"></div>
+        {/* Method tabs */}
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden mb-5 bg-slate-50 p-1 gap-1">
+          <button
+            type="button"
+            onClick={() => { setLoginMethod('phone'); setPhoneStatus('idle'); }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm rounded-md transition-all ${
+              loginMethod === 'phone'
+                ? 'bg-white shadow-sm text-slate-900 font-semibold'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Phone className="w-3.5 h-3.5" />
+            هاتف
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLoginMethod('email'); setPhoneStatus('idle'); }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm rounded-md transition-all ${
+              loginMethod === 'email'
+                ? 'bg-white shadow-sm text-slate-900 font-semibold'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            بريد إلكتروني
+          </button>
+        </div>
 
-            <div className="p-4">
+        {/* Form */}
+        <form onSubmit={handleLogin} className="space-y-4">
 
-              <div className="text-center mb-4">
-                <div className="inline-flex justify-center items-center mb-2 w-12 h-12 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl shadow-lg border border-white ring-2 ring-purple-500/5 overflow-hidden relative">
-                  {branding?.logoUrl ? (
-                    <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-2" />
-                  ) : (
-                    <Star className="w-10 h-10 text-purple-600 fill-purple-600 animate-pulse" aria-hidden="true" />
-                  )}
+          {loginMethod === 'phone' ? (
+            <>
+              {/* Phone field */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">رقم الهاتف</label>
+                <div className="flex gap-2">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="w-28 h-11 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 px-2 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+                  >
+                    {countries.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="501234567"
+                    dir="ltr"
+                    required
+                    className={`flex-1 h-11 rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                      phoneStatus === 'valid'
+                        ? 'border-green-400 focus:ring-green-500'
+                        : phoneStatus === 'invalid'
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-slate-200 focus:ring-slate-900'
+                    }`}
+                  />
                 </div>
-                <h1 className="text-xl font-black text-slate-900 mb-0.5 font-cairo tracking-tight">أهلاً بك مجدداً</h1>
-                <p className="text-slate-500 text-xs font-medium">سجل دخولك لتكمل مسيرة أحلامك</p>
-              </div>
-
-              {/* Google Login - Premium Style */}
-              <div className="mb-4">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading || loading}
-                  className="w-full h-10 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group"
-                >
-                  {googleLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                      </svg>
-                      <span>المتابعة باستخدام Google</span>
-                    </>
+                {/* Phone validation feedback */}
+                <div className="mt-1.5 min-h-[1rem]">
+                  {phoneFormatError && (
+                    <span className="text-xs text-orange-600 font-medium">⚠️ {phoneFormatError}</span>
                   )}
-                </button>
-              </div>
-
-              <div className="relative flex items-center mb-4">
-                <div className="flex-grow border-t border-slate-100"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">أو عبر البيانات</span>
-                <div className="flex-grow border-t border-slate-100"></div>
-              </div>
-
-              {/* Login Method Toggle - Modern Glass Pill */}
-              <div className="p-1 bg-slate-100/80 rounded-[1rem] mb-4 relative border border-slate-200/50 flex">
-                <button
-                  onClick={() => setLoginMethod('phone')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black rounded-[0.8rem] transition-all duration-500 relative z-10 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <Phone className={`w-3.5 h-3.5 ${loginMethod === 'phone' ? 'text-white' : 'text-slate-400'}`} />
-                  رقم الهاتف
-                </button>
-                <button
-                  onClick={() => setLoginMethod('email')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black rounded-[0.8rem] transition-all duration-500 relative z-10 ${loginMethod === 'email' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <Mail className={`w-3.5 h-3.5 ${loginMethod === 'email' ? 'text-white' : 'text-slate-400'}`} />
-                  البريد الإلكتروني
-                </button>
-                <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-slate-900 rounded-[0.6rem] transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) shadow-lg ${loginMethod === 'phone' ? 'translate-x-0' : 'translate-x-[calc(-100%-8px)]'}`}></div>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-3">
-
-                {loginMethod === 'phone' ? (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-right-8 duration-500">
-                    <FloatingSelect
-                      id="country-select"
-                      label="البلد"
-                      value={countryCode}
-                      onChange={(e: any) => setCountryCode(e.target.value)}
-                      icon={Shield}
-                      isCompact
-                    >
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}
-                    </FloatingSelect>
-
-                    <div className="relative">
-                      <FloatingInput
-                        id="phone-input"
-                        label="رقم الهاتف"
-                        type="tel"
-                        value={phone}
-                        onChange={(e: any) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        className={`text-left font-sans tracking-widest pl-20`}
-                        placeholder="50xxxxxxx"
-                        dir="ltr"
-                        required
-                        icon={Phone}
-                        isCompact
-                      />
-                      <div className="absolute left-3 top-[-36px] z-30 pointer-events-none mt-12">
-                        <span className="text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-xl border border-purple-100 shadow-sm">
-                          {countryCode}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-2xl border border-purple-100 cursor-pointer group"
-                      onClick={() => setUseOTP(!useOTP)}
-                      onKeyDown={(e) => e.key === 'Enter' || e.key === ' ' ? setUseOTP(!useOTP) : null}
-                      role="switch"
-                      aria-checked={useOTP}
-                      tabIndex={0}
-                    >
-                      <div className={`w-11 h-6 rounded-full relative transition-all duration-300 ${useOTP ? 'bg-purple-600' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${useOTP ? 'left-1' : 'left-6'}`}></div>
-                      </div>
-                      <span className="text-xs font-black text-purple-900 select-none">الدخول السريع (رمز تحقق للهاتف)</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="animate-in fade-in slide-in-from-left-8 duration-500">
-                    <FloatingInput
-                      id="email-input"
-                      label="البريد الإلكتروني"
-                      type="email"
-                      value={email}
-                      onChange={(e: any) => setEmail(e.target.value)}
-                      icon={Mail}
-                      required
-                      isCompact
-                    />
-                  </div>
-                )}
-
-                {(loginMethod === 'email' || !useOTP) && (
-                  <div className="space-y-1 animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-center pr-1 mb-1">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الأمان</span>
-                      <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest bg-purple-50 px-3 py-1 rounded-full transition-all min-h-[28px] flex items-center">نسيت كلمة المرور؟</button>
-                    </div>
-                    <div className="relative">
-                      <FloatingInput
-                        id="password-input"
-                        label="كلمة المرور"
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e: any) => setPassword(e.target.value)}
-                        icon={Lock}
-                        required={!useOTP}
-                        isCompact
-                      />
+                  {!phoneFormatError && phoneStatus === 'checking' && (
+                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin" /> جاري التحقق...
+                    </span>
+                  )}
+                  {!phoneFormatError && phoneStatus === 'valid' && (
+                    <span className="text-xs text-green-600 font-medium">✓ رقم مسجل</span>
+                  )}
+                  {!phoneFormatError && phoneStatus === 'invalid' && (
+                    <span className="text-xs text-red-500">
+                      ✗ رقم غير مسجل —{' '}
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2 z-30"
-                        aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                        onClick={() => router.push('/auth/register')}
+                        className="underline hover:text-red-700 transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        إنشاء حساب
                       </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2">
-                  <label htmlFor="remember-me" className="flex gap-3 items-center cursor-pointer group select-none">
-                    <div className="relative flex items-center">
-                      <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="peer sr-only" />
-                      <div className="w-5 h-5 border-2 border-slate-300 rounded-lg bg-white peer-checked:bg-purple-600 peer-checked:border-purple-600 transition-all"></div>
-                      <CheckCircle className="w-3.5 h-3.5 text-white absolute left-0.75 top-0.75 opacity-0 peer-checked:opacity-100 transition-all scale-50 peer-checked:scale-100" aria-hidden="true" />
-                    </div>
-                    <span className="text-xs font-black text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-widest">تذكرني</span>
-                  </label>
+                    </span>
+                  )}
                 </div>
+              </div>
 
+              {/* OTP toggle */}
+              <button
+                type="button"
+                onClick={() => setUseOTP(!useOTP)}
+                className={`w-full h-11 flex items-center justify-between px-4 rounded-lg border text-sm transition-all ${
+                  useOTP
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <span>{useOTP ? 'الدخول برمز WhatsApp ✓' : 'الدخول برمز WhatsApp'}</span>
+                <div className={`w-9 h-5 rounded-full relative transition-all ${useOTP ? 'bg-green-400' : 'bg-slate-200'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${useOTP ? 'right-0.5' : 'left-0.5'}`} />
+                </div>
+              </button>
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">البريد الإلكتروني</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                dir="ltr"
+                required
+                className="w-full h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+              />
+            </div>
+          )}
+
+          {/* Password */}
+          {(loginMethod === 'email' || !useOTP) && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-slate-700">كلمة المرور</label>
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-10 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-black shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden group"
+                  type="button"
+                  onClick={() => router.push('/auth/forgot-password')}
+                  className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="relative z-10 flex items-center gap-2">
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (useOTP && loginMethod === 'phone' ? 'إرسال رمز التحقق' : 'تسجيل الدخول')}
-                    {!loading && <ArrowRight className="w-4 h-4 rtl:rotate-180" />}
-                  </span>
+                  نسيت كلمة المرور؟
                 </button>
-
-                <div className="text-center pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 font-medium tracking-tight">
-                    ليس لديك حساب حتى الآن؟
-                    <button type="button" onClick={() => router.push('/auth/register')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-black px-4 py-1.5 rounded-full mr-2 transition-all hover:scale-105">إنشاء حساب جديد</button>
-                  </p>
-                </div>
-              </form>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required={!useOTP}
+                  className="w-full h-11 rounded-lg border border-slate-200 bg-white px-3 pl-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="mt-4 text-center space-y-2">
-            <div className="flex justify-center gap-4 text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">
-              <a href="/terms" className="hover:text-white transition-colors">الشروط</a>
-              <a href="/privacy" className="hover:text-white transition-colors">الخصوصية</a>
-              <a href="/support" className="hover:text-white transition-colors">المساعدة</a>
-            </div>
-            <p className="text-[10px] text-white/20 font-black tracking-widest">منصة الحلم © 2024 - جميع الحقوق محفوظة</p>
-          </div>
-        </div>
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              useOTP && loginMethod === 'phone' ? 'إرسال رمز التحقق' : 'تسجيل الدخول'
+            )}
+          </button>
+        </form>
+
+        {/* Register link */}
+        <p className="text-center text-sm text-slate-500 mt-6">
+          ليس لديك حساب؟{' '}
+          <button
+            type="button"
+            onClick={() => router.push('/auth/register')}
+            className="text-slate-900 font-semibold hover:underline"
+          >
+            إنشاء حساب
+          </button>
+        </p>
       </div>
-    </>
+
+      {/* Footer */}
+      <div className="flex items-center gap-4 mt-6 text-xs text-slate-400">
+        <a href="/terms" className="hover:text-slate-600 transition-colors">الشروط</a>
+        <span>·</span>
+        <a href="/privacy" className="hover:text-slate-600 transition-colors">الخصوصية</a>
+        <span>·</span>
+        <a href="/support" className="hover:text-slate-600 transition-colors">المساعدة</a>
+      </div>
+    </div>
   );
 }

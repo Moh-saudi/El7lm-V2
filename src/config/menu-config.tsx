@@ -199,6 +199,15 @@ export const COMMUNICATION_GROUP: MenuGroup = {
             bgColor: 'bg-green-50',
             permission: { action: 'manage', resource: 'communications' }
         },
+        {
+            id: 'admin-ai-messenger',
+            label: 'المركز الذكي للمراسلات AI',
+            icon: Zap,
+            href: '/dashboard/admin/ai-messenger',
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            permission: { action: 'manage', resource: 'communications' }
+        },
     ]
 };
 

@@ -1,375 +1,181 @@
 /**
- * Firestore OTP Manager
- * نظام إدارة OTP باستخدام Firestore بدلاً من الذاكرة
- * 
- * المميزات:
- * - تخزين دائم (لا يضيع عند إعادة التشغيل)
- * - يعمل مع عدة خوادم
- * - آمن ومشفر
- * - تنظيف تلقائي للـ OTP المنتهية
+ * Firestore OTP Manager (Admin SDK)
+ * يستخدم Firebase Admin SDK لتجاوز قواعد الأمان من server-side
  */
 
-import { db } from '@/lib/firebase/config';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-  collection,
-  query,
-  where,
-  getDocs,
-  writeBatch
-} from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase/admin';
+
 const OTP_COLLECTION = 'otp_verifications';
-const OTP_EXPIRY_MINUTES = 1; // 1 دقيقة (طلب المستخدم)
-const MAX_ATTEMPTS = 5; // أقصى 5 محاولات للتحقق
-const RATE_LIMIT_MINUTES = 0.5; // منع إرسال OTP جديد خلال 30 ثانية
+const OTP_EXPIRY_MINUTES = 5;
+const MAX_ATTEMPTS = 5;
+const RATE_LIMIT_SECONDS = 30;
 
-interface OTPRecord {
-  phoneNumber: string;
-  otpHash: string; // OTP مشفر
-  attempts: number;
-  createdAt: Timestamp;
-  expiresAt: Timestamp;
-  verified: boolean;
-  purpose?: 'registration' | 'login' | 'password_reset' | 'verification'; // Added 'verification'
-}
-
-/**
- * تشفير OTP قبل التخزين
- * يستخدم Node.js crypto (API routes تعمل دائماً على server-side)
- */
 function hashOTP(otp: string): string {
-  // في Next.js API routes، نحن دائماً على server-side
   const crypto = require('crypto');
   return crypto.createHash('sha256').update(otp).digest('hex');
 }
 
-/**
- * إنشاء معرف فريد لرقم الهاتف
- */
 function getPhoneDocId(phoneNumber: string): string {
-  // تنظيف الرقم وإزالة الأحرف الخاصة
-  const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
-  return `otp_${cleanPhone}`;
+  return `otp_${phoneNumber.replace(/[^0-9]/g, '')}`;
 }
 
-/**
- * حفظ OTP في Firestore
- */
+function getDb(): FirebaseFirestore.Firestore {
+  if (!adminDb) throw new Error('Firebase Admin not initialized');
+  return adminDb as unknown as FirebaseFirestore.Firestore;
+}
+
 export async function storeOTPInFirestore(
   phoneNumber: string,
   otp: string,
-  purpose: 'registration' | 'login' | 'password_reset' | 'verification' = 'registration'
+  purpose: string = 'registration'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const phoneDocId = getPhoneDocId(phoneNumber);
-    const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
+    const db = getDb();
+    const docId = getPhoneDocId(phoneNumber);
+    const otpRef = db.collection(OTP_COLLECTION).doc(docId);
 
-    // التحقق من وجود OTP سابق
-    const existingDoc = await getDoc(otpRef);
-    if (existingDoc.exists()) {
-      const data = existingDoc.data() as OTPRecord;
+    const existing = await otpRef.get();
+    if (existing.exists) {
+      const data = existing.data()!;
       const now = Date.now();
-      const expiresAt = data.expiresAt.toMillis();
-      const timeUntilExpiry = expiresAt - now;
-      const minutesUntilExpiry = timeUntilExpiry / (60 * 1000);
+      const expiresAt = data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (data.expiresAt?.seconds * 1000 || 0);
+      const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt?.seconds * 1000 || 0);
+      const secondsSinceCreation = (now - createdAt) / 1000;
 
-      // Rate Limiting: إذا كان OTP نشط (أكثر من 30 ثانية متبقية)، نمنع الإرسال
-      if (!data.verified && expiresAt > now && minutesUntilExpiry > RATE_LIMIT_MINUTES) {
-        const remainingSeconds = Math.ceil((expiresAt - now) / 1000);
-
-        // رسالة خطأ واضحة مع الوقت المتبقي
-        const timeMessage = remainingSeconds >= 60
-          ? `${Math.floor(remainingSeconds / 60)} دقيقة و ${remainingSeconds % 60} ثانية`
-          : `${remainingSeconds} ثانية`;
-
+      if (!data.verified && expiresAt > now && secondsSinceCreation < RATE_LIMIT_SECONDS) {
+        const waitSeconds = Math.ceil(RATE_LIMIT_SECONDS - secondsSinceCreation);
         return {
           success: false,
-          error: `يوجد رمز تحقق نشط بالفعل. يرجى الانتظار ${timeMessage} أو استخدام الرمز المرسل سابقاً`
+          error: `يرجى الانتظار ${waitSeconds} ثانية قبل طلب رمز جديد`,
         };
       }
 
-      // إذا كان OTP منتهي أو قريب من الانتهاء، نحذفه ونسمح بإرسال جديد
-      await deleteDoc(otpRef);
-      console.log(`🗑️ [Firestore OTP] تم حذف OTP قديم لـ ${phoneNumber} قبل إنشاء جديد`);
+      await otpRef.delete();
     }
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    const otpHash = hashOTP(otp);
-
-    const otpRecord: Omit<OTPRecord, 'createdAt' | 'expiresAt'> & {
-      createdAt: any;
-      expiresAt: any;
-    } = {
-      phoneNumber: phoneNumber,
-      otpHash: otpHash,
+    await otpRef.set({
+      phoneNumber,
+      otpHash: hashOTP(otp),
       attempts: 0,
-      createdAt: serverTimestamp(),
-      expiresAt: Timestamp.fromDate(expiresAt),
+      createdAt: now,
+      expiresAt,
       verified: false,
-      purpose: purpose
-    };
+      purpose,
+    });
 
-    await setDoc(otpRef, otpRecord, { merge: false });
-
-    console.log(`✅ [Firestore OTP] تم حفظ OTP لـ ${phoneNumber} في Firestore`);
+    console.log(`✅ [OTP] Stored for ${phoneNumber}`);
     return { success: true };
   } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في حفظ OTP:', error);
-    return {
-      success: false,
-      error: error.message || 'فشل في حفظ OTP'
-    };
+    console.error('❌ [OTP] Store error:', error);
+    return { success: false, error: error.message || 'فشل في حفظ رمز التحقق' };
   }
 }
 
-/**
- * التحقق من OTP في Firestore
- */
 export async function verifyOTPInFirestore(
   phoneNumber: string,
   otp: string
-): Promise<{
-  success: boolean;
-  error?: string;
-  attemptsRemaining?: number;
-}> {
+): Promise<{ success: boolean; error?: string; attemptsRemaining?: number }> {
   try {
-    const phoneDocId = getPhoneDocId(phoneNumber);
-    const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
+    const db = getDb();
+    const docId = getPhoneDocId(phoneNumber);
+    const otpRef = db.collection(OTP_COLLECTION).doc(docId);
 
-    const otpDoc = await getDoc(otpRef);
-
-    if (!otpDoc.exists()) {
-      console.error(`❌ [Firestore OTP] لا يوجد OTP لـ ${phoneNumber}`);
-      return {
-        success: false,
-        error: 'رمز التحقق غير موجود أو منتهي الصلاحية. يرجى طلب رمز جديد'
-      };
+    const otpDoc = await otpRef.get();
+    if (!otpDoc.exists) {
+      return { success: false, error: 'رمز التحقق غير موجود أو منتهي الصلاحية' };
     }
 
-    const data = otpDoc.data() as OTPRecord;
+    const data = otpDoc.data()!;
+    const now = Date.now();
+    const expiresAt = data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (data.expiresAt instanceof Date ? data.expiresAt.getTime() : 0);
 
-    // التحقق من انتهاء الصلاحية
-    if (data.expiresAt.toMillis() < Date.now()) {
-      await deleteDoc(otpRef);
-      return {
-        success: false,
-        error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد'
-      };
+    if (expiresAt < now) {
+      await otpRef.delete();
+      return { success: false, error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد' };
     }
 
-    // التحقق من عدد المحاولات
     if (data.attempts >= MAX_ATTEMPTS) {
-      await deleteDoc(otpRef);
-      return {
-        success: false,
-        error: 'تم تجاوز الحد الأقصى لمحاولات التحقق. يرجى طلب رمز جديد',
-        attemptsRemaining: 0
-      };
+      await otpRef.delete();
+      return { success: false, error: 'تم تجاوز الحد الأقصى للمحاولات. يرجى طلب رمز جديد', attemptsRemaining: 0 };
     }
 
-    // التحقق من أن OTP لم يتم التحقق منه مسبقاً
     if (data.verified) {
-      return {
-        success: false,
-        error: 'تم استخدام رمز التحقق مسبقاً. يرجى طلب رمز جديد'
-      };
+      return { success: false, error: 'تم استخدام رمز التحقق مسبقاً' };
     }
 
-    // التحقق من تطابق OTP
-    const otpHash = hashOTP(otp);
-    if (data.otpHash !== otpHash) {
-      // زيادة عدد المحاولات
+    if (data.otpHash !== hashOTP(otp)) {
       const newAttempts = data.attempts + 1;
-      await setDoc(otpRef, {
-        attempts: newAttempts
-      }, { merge: true });
-
+      await otpRef.update({ attempts: newAttempts });
       const remaining = MAX_ATTEMPTS - newAttempts;
       return {
         success: false,
         error: `رمز التحقق غير صحيح. المحاولات المتبقية: ${remaining}`,
-        attemptsRemaining: remaining
+        attemptsRemaining: remaining,
       };
     }
 
-    // OTP صحيح - تحديث الحالة وحذف المستند
-    await setDoc(otpRef, {
-      verified: true,
-      verifiedAt: serverTimestamp()
-    }, { merge: true });
+    await otpRef.update({ verified: true, verifiedAt: new Date() });
 
-    // حذف OTP بعد التحقق الناجح (اختياري - يمكن الاحتفاظ به للتدقيق)
-    // await deleteDoc(otpRef);
-
-    console.log(`✅ [Firestore OTP] تم التحقق من OTP بنجاح لـ ${phoneNumber}`);
+    console.log(`✅ [OTP] Verified for ${phoneNumber}`);
     return { success: true };
   } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في التحقق من OTP:', error);
-    return {
-      success: false,
-      error: error.message || 'حدث خطأ أثناء التحقق من رمز التحقق'
-    };
+    console.error('❌ [OTP] Verify error:', error);
+    return { success: false, error: error.message || 'حدث خطأ أثناء التحقق' };
   }
 }
 
-/**
- * حذف OTP من Firestore
- */
 export async function deleteOTPFromFirestore(phoneNumber: string): Promise<void> {
   try {
-    const phoneDocId = getPhoneDocId(phoneNumber);
-    const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
-    await deleteDoc(otpRef);
-    console.log(`🗑️ [Firestore OTP] تم حذف OTP لـ ${phoneNumber}`);
+    const db = getDb();
+    await db.collection(OTP_COLLECTION).doc(getPhoneDocId(phoneNumber)).delete();
   } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في حذف OTP:', error);
+    console.error('❌ [OTP] Delete error:', error);
   }
 }
 
-/**
- * تنظيف OTP المنتهية تلقائياً
- * يمكن استدعاء هذه الدالة بشكل دوري (مثلاً كل ساعة)
- */
-export async function cleanupExpiredOTPs(): Promise<number> {
+export async function hasActiveOTP(phoneNumber: string): Promise<boolean> {
   try {
-    const now = Timestamp.now();
-    const otpCollection = collection(db, OTP_COLLECTION);
-    const expiredQuery = query(
-      otpCollection,
-      where('expiresAt', '<', now)
-    );
+    const db = getDb();
+    const snap = await db.collection(OTP_COLLECTION).doc(getPhoneDocId(phoneNumber)).get();
+    if (!snap.exists) return false;
 
-    const snapshot = await getDocs(expiredQuery);
-    const batch = writeBatch(db);
-    let deletedCount = 0;
-
-    snapshot.forEach((doc) => {
-      batch.delete(doc.ref);
-      deletedCount++;
-    });
-
-    if (deletedCount > 0) {
-      await batch.commit();
-      console.log(`🧹 [Firestore OTP] تم حذف ${deletedCount} OTP منتهي الصلاحية`);
-    }
-
-    return deletedCount;
-  } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في تنظيف OTP المنتهية:', error);
-    return 0;
-  }
-}
-
-/**
- * التحقق من وجود OTP نشط لرقم هاتف
- * يحذف OTP المنتهية تلقائياً
- * 
- * @param phoneNumber - رقم الهاتف
- * @param allowExpiredMinutes - السماح بإرسال OTP جديد إذا كان القديم منتهي خلال X دقائق (افتراضي: 1)
- */
-export async function hasActiveOTP(
-  phoneNumber: string,
-  allowExpiredMinutes: number = RATE_LIMIT_MINUTES
-): Promise<boolean> {
-  try {
-    const phoneDocId = getPhoneDocId(phoneNumber);
-    const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
-    const otpDoc = await getDoc(otpRef);
-
-    if (!otpDoc.exists()) {
-      return false;
-    }
-
-    const data = otpDoc.data() as OTPRecord;
+    const data = snap.data()!;
     const now = Date.now();
-    const expiresAt = data.expiresAt.toMillis();
-    const timeUntilExpiry = expiresAt - now;
-    const minutesUntilExpiry = timeUntilExpiry / (60 * 1000);
+    const expiresAt = data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (data.expiresAt instanceof Date ? data.expiresAt.getTime() : 0);
 
-    // إذا كان OTP محقق، نحذفه ونرجع false
-    if (data.verified) {
-      await deleteDoc(otpRef);
+    if (data.verified || expiresAt < now || data.attempts >= MAX_ATTEMPTS) {
+      await snap.ref.delete();
       return false;
     }
 
-    // إذا كان OTP منتهي الصلاحية، نحذفه ونرجع false
-    if (expiresAt <= now) {
-      await deleteDoc(otpRef);
-      return false;
-    }
-
-    // إذا تجاوز عدد المحاولات، نحذفه ونرجع false
-    if (data.attempts >= MAX_ATTEMPTS) {
-      await deleteDoc(otpRef);
-      return false;
-    }
-
-    // إذا كان OTP سينتهي خلال X دقائق، نسمح بإرسال جديد (نحذف القديم)
-    if (minutesUntilExpiry <= allowExpiredMinutes) {
-      console.log(`⚠️ [Firestore OTP] OTP سينتهي خلال ${minutesUntilExpiry.toFixed(1)} دقائق - السماح بإرسال جديد`);
-      await deleteDoc(otpRef);
-      return false;
-    }
-
-    // OTP نشط وصالح (أكثر من X دقائق متبقية)
     return true;
-  } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في التحقق من وجود OTP نشط:', error);
+  } catch {
     return false;
   }
 }
 
-/**
- * الحصول على معلومات OTP (للتشخيص فقط)
- */
-export async function getOTPInfo(phoneNumber: string): Promise<{
-  exists: boolean;
-  verified: boolean;
-  expired: boolean;
-  attempts: number;
-  expiresAt?: Date;
-}> {
+export async function cleanupExpiredOTPs(): Promise<number> {
   try {
-    const phoneDocId = getPhoneDocId(phoneNumber);
-    const otpRef = doc(db, OTP_COLLECTION, phoneDocId);
-    const otpDoc = await getDoc(otpRef);
+    const db = getDb();
+    const now = new Date();
+    const snapshot = await db
+      .collection(OTP_COLLECTION)
+      .where('expiresAt', '<', now)
+      .get();
 
-    if (!otpDoc.exists()) {
-      return {
-        exists: false,
-        verified: false,
-        expired: true,
-        attempts: 0
-      };
-    }
+    if (snapshot.empty) return 0;
 
-    const data = otpDoc.data() as OTPRecord;
-    const now = Date.now();
-    const expired = data.expiresAt.toMillis() < now;
+    const batch = db.batch();
+    snapshot.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
 
-    return {
-      exists: true,
-      verified: data.verified,
-      expired: expired,
-      attempts: data.attempts,
-      expiresAt: data.expiresAt.toDate()
-    };
+    console.log(`🧹 [OTP] Cleaned ${snapshot.size} expired records`);
+    return snapshot.size;
   } catch (error: any) {
-    console.error('❌ [Firestore OTP] خطأ في الحصول على معلومات OTP:', error);
-    return {
-      exists: false,
-      verified: false,
-      expired: true,
-      attempts: 0
-    };
+    console.error('❌ [OTP] Cleanup error:', error);
+    return 0;
   }
 }
-

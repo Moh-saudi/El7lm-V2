@@ -56,14 +56,18 @@ interface AuthContextType {
   verifyPhoneOTP: (confirmationResult: any, otp: string, defaultRole?: UserRole, additionalData?: any) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
 }
 
-// Redirection to Supabase Auth
-import { useAuth as useSupabaseAuth } from '../supabase/auth-provider';
 
 // Create context placeholder for backward compatibility
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Export useAuth redirecting to Supabase
-export const useAuth = useSupabaseAuth;
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
 
 interface FirebaseAuthProviderProps {
   children: ReactNode;
@@ -279,12 +283,13 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // تجنب التكرار في التهيئة
-      if (isInitialized) {
-        console.log('🔄 AuthProvider - Skipping duplicate initialization');
+      // تجنب التكرار فقط إذا كان نفس المستخدم (تحديث غير ضروري)
+      if (isInitialized && user) {
         return;
       }
-      isInitialized = true;
+      if (user) {
+        isInitialized = true;
+      }
       try {
         if (user && isSubscribed) {
           setUser(user);
@@ -334,7 +339,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                   collectionName = 'employees';
                 } else {
                   // البحث في المجموعات الأخرى
-                  const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
+                  const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
                   for (const col of accountTypes) {
                     const d = await getDoc(doc(db, col, user.uid));
                     if (d.exists()) {
@@ -1865,14 +1870,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       )}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }
 
 

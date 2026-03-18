@@ -110,6 +110,8 @@ self.addEventListener('fetch', (event) => {
       event.request.url.includes('/api/') ||
       event.request.url.includes('googletagmanager.com') ||
       event.request.url.includes('clarity.ms') ||
+      event.request.url.includes('supabase.co') ||
+      event.request.url.includes('assets.el7lm.com') ||
       event.request.url.includes('google-analytics.com') ||
       event.request.url.includes('googleadservices.com') ||
       event.request.url.includes('googlesyndication.com') ||

@@ -24,6 +24,7 @@ import { TicketList } from './_components/TicketList';
 import { TicketTableView } from './_components/TicketTableView';
 import { ChatWindow } from './_components/ChatWindow';
 import { CustomerProfile } from './_components/CustomerProfile';
+import { ChatAmanModal } from './_components/ChatAmanModal';
 import { Button } from '@/components/ui/button';
 import { LayoutList, LayoutGrid, X } from 'lucide-react';
 import {
@@ -57,6 +58,10 @@ const AdminSupportPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table'); // Default to 'table' for productivity
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ChatAman Integration
+  const [isChatAmanOpen, setIsChatAmanOpen] = useState(false);
+  const [chatAmanPhone, setChatAmanPhone] = useState('');
 
   // Initial Load
   useEffect(() => {
@@ -232,16 +237,8 @@ const AdminSupportPage: React.FC = () => {
   const handleWhatsApp = (phone?: string) => {
     if (!selectedConversation) return;
 
-    // In a real app, you'd want the user's actual phone number.
-    // We'll use the test number if not available or pass the conversation context.
-
-    const message = `مرحباً ${selectedConversation.userName}، بخصوص تذكرتك رقم #${selectedConversation.id}...`;
-    const targetPhone = phone || '201017799580'; // fallback
-
-    const result = openWhatsAppShare(targetPhone, message);
-    if (!result.success) {
-      toast.error(result.error);
-    }
+    setChatAmanPhone(phone || '201017799580'); // fallback
+    setIsChatAmanOpen(true);
   };
 
   return (
@@ -383,6 +380,14 @@ const AdminSupportPage: React.FC = () => {
           </SheetContent>
         </Sheet>
       )}
+
+      <ChatAmanModal 
+        open={isChatAmanOpen} 
+        onOpenChange={setIsChatAmanOpen} 
+        targetPhone={chatAmanPhone} 
+        targetName={selectedConversation?.userName || ''} 
+        conversationId={selectedConversation?.id}
+      />
     </div>
   );
 };

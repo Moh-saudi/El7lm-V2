@@ -301,6 +301,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
       'referrals': { action: 'manage', resource: 'users' },
       'messages': { action: 'read', resource: 'communications' },
       'notifications': { action: 'read', resource: 'communications' },
+      'chataman-messenger': { action: 'manage', resource: 'communications' },
     };
 
     const requirement = menuItemMapping[menuItemId];
@@ -418,6 +419,7 @@ const ModernEnhancedSidebar: React.FC<ModernEnhancedSidebarProps> = ({
         { id: 'media', label: 'مركز مراجعة الوسائط', icon: Video, href: `/dashboard/admin/media`, color: 'text-red-600', bgColor: 'bg-red-50' },
         { id: 'content', label: 'إدارة المحتوى', icon: LayoutTemplate, href: `/dashboard/admin/content`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
         { id: 'whatsapp', label: 'إدارة الواتساب', icon: MessageSquare, href: `/dashboard/admin/whatsapp`, color: 'text-green-600', bgColor: 'bg-green-50' },
+        { id: 'chataman-messenger', label: 'مركز إرسال ChatAman', icon: Send, href: `/dashboard/admin/chataman-messenger`, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
         { id: 'system', label: 'إعدادات النظام', icon: Settings, href: `/dashboard/admin/system`, color: 'text-slate-600', bgColor: 'bg-slate-50' },
         { id: 'referrals', label: 'إدارة سفراء الحلم', icon: Users, href: `/dashboard/admin/users/referrals`, color: 'text-pink-600', bgColor: 'bg-pink-50' },
       ]

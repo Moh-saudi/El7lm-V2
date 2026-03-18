@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { detectCountryFromPhone } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
+import { ChatAmanTemplateSelector } from '@/components/messaging/ChatAmanTemplateSelector';
 import { AlertCircle, Bell, Check, Clock, DollarSign, Info, MessageSquare, Search, Send, Settings, Shield, Users, Video } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
@@ -48,11 +49,38 @@ export default function AdminNotificationCenterPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [instanceId, setInstanceId] = useState('68F243B3A8D8D');
 
+  // ChatAman integration states
+  const [useChatAman, setUseChatAman] = useState(false);
+  const [chatAmanTemplates, setChatAmanTemplates] = useState<ChatAmanTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<ChatAmanTemplate | null>(null);
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
+
   React.useEffect(() => {
     if (user?.uid) {
       loadNotifications();
     }
   }, [user?.uid]);
+
+  React.useEffect(() => {
+    if (showWhatsAppDialog) {
+      loadChatAmanSettings();
+    }
+  }, [showWhatsAppDialog]);
+
+  const loadChatAmanSettings = async () => {
+    try {
+      const config = await ChatAmanService.getConfig();
+      if (config && config.isActive && config.apiKey) {
+        setUseChatAman(true);
+        const fetchedTemplates = await ChatAmanService.getTemplates();
+        setChatAmanTemplates(fetchedTemplates);
+      } else {
+        setUseChatAman(false);
+      }
+    } catch (error) {
+      console.error('Error loading ChatAman settings:', error);
+    }
+  };
 
   React.useEffect(() => {
     filterNotifications();
@@ -290,8 +318,20 @@ export default function AdminNotificationCenterPage() {
 
   // دالة إرسال رسالة WhatsApp
   const sendWhatsAppMessage = async () => {
-    if (!phoneNumber || !whatsappMessage.title || !whatsappMessage.body) {
-      toast.error('يرجى إدخال رقم الهاتف والعنوان والرسالة');
+    const isTemplateMessage = useChatAman && selectedTemplate;
+
+    if (!phoneNumber) {
+      toast.error('يرجى إدخال رقم الهاتف');
+      return;
+    }
+
+    if (isTemplateMessage) {
+      if (templateVariables.some(v => !v.trim())) {
+        toast.error('يرجى ملء جميع متغيرات القالب');
+        return;
+      }
+    } else if (!whatsappMessage.title || !whatsappMessage.body) {
+      toast.error('يرجى إدخال عنوان ومحتوى الرسالة');
       return;
     }
 
@@ -299,56 +339,42 @@ export default function AdminNotificationCenterPage() {
     try {
       // تنسيق رقم الهاتف
       let formattedPhone = phoneNumber.replace(/\D/g, '');
-
-      // محاولة اكتشاف البلد من الرقم
-      const detectedCountry = detectCountryFromPhone(phoneNumber);
-
-      if (detectedCountry) {
-        const countryCode = detectedCountry.code.replace(/\D/g, '');
-        const localNumber = formattedPhone.replace(/^0+/, '');
-        formattedPhone = countryCode + localNumber;
-
-        console.log('🔍 تم اكتشاف البلد من الرقم:', {
-          detectedCountry: detectedCountry.name,
-          countryCode: detectedCountry.code,
-          originalPhone: phoneNumber,
-          formattedPhone: formattedPhone
-        });
-      } else {
-        // افتراضي: مصر
-        const localNumber = formattedPhone.replace(/^0+/, '');
-        formattedPhone = '20' + localNumber;
-
-        console.log('⚠️ استخدام البلد الافتراضي (مصر):', {
-          originalPhone: phoneNumber,
-          formattedPhone: formattedPhone
-        });
-      }
+      const localNumber = formattedPhone.replace(/^0+/, '');
+      // افتراضي للمنطقة
+      formattedPhone = formattedPhone.length > 10 ? formattedPhone : '20' + localNumber;
 
       const whatsappPhone = formattedPhone.startsWith('+') ? formattedPhone : `+${formattedPhone}`;
       const whatsappMessageText = `*${whatsappMessage.title}*\n\n${whatsappMessage.body}\n\n---\nمنصة الحلم`;
 
-      console.log('📧 إرسال رسالة WhatsApp:', {
-        originalPhone: phoneNumber,
-        formattedPhone: formattedPhone,
-        whatsappPhone: whatsappPhone,
-        messageLength: whatsappMessageText.length,
-        instanceId: instanceId
-      });
+      if (isTemplateMessage) {
+        console.log('📧 إرسال رسالة قالب ChatAman:', {
+          phone: whatsappPhone,
+          template: selectedTemplate.name,
+          params: templateVariables
+        });
 
-      // فحص حالة Instance ID أولاً
-      console.log('🔍 فحص حالة Instance ID...');
-      try {
-        const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
-        const statusResult = await statusResponse.json();
-        console.log('📊 حالة API:', statusResult);
+        const result = await ChatAmanService.sendTemplate(whatsappPhone, selectedTemplate.name, {
+          language: selectedTemplate.language || 'ar',
+          bodyParams: templateVariables
+        });
 
-        const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
-        const configResult = await configResponse.json();
-        console.log('⚙️ تكوين API:', configResult);
-      } catch (error) {
-        console.error('❌ خطأ في فحص حالة API:', error);
+        if (result.success) {
+          toast.success(`✅ تم إرسال قالب WhatsApp بنجاح`);
+          setShowWhatsAppDialog(false);
+          setSelectedTemplate(null);
+          setTemplateVariables([]);
+        } else {
+          toast.error(`فشل الإرسال: ${result.error || 'خطأ غير معروف'}`);
+        }
+
+        setSendingMessage(false);
+        return;
       }
+
+      console.log('📧 إرسال رسالة WhatsApp (Babaservice):', {
+        whatsappPhone,
+        instanceId
+      });
 
       const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
         method: 'POST',
@@ -362,6 +388,7 @@ export default function AdminNotificationCenterPage() {
       });
 
       const whatsappResult = await whatsappResponse.json();
+      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
       console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
 
       if (whatsappResult.success) {
@@ -523,27 +550,44 @@ export default function AdminNotificationCenterPage() {
                         className="mt-1"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="title">عنوان الرسالة</Label>
-                      <Input
-                        id="title"
-                        value={whatsappMessage.title}
-                        onChange={(e) => setWhatsappMessage(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="عنوان الرسالة"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="body">محتوى الرسالة</Label>
-                      <Textarea
-                        id="body"
-                        value={whatsappMessage.body}
-                        onChange={(e) => setWhatsappMessage(prev => ({ ...prev, body: e.target.value }))}
-                        placeholder="اكتب محتوى الرسالة هنا..."
-                        className="mt-1"
-                        rows={4}
-                      />
-                    </div>
+                    {useChatAman && (
+                      <div className="border p-3 rounded-lg bg-green-50/50 border-green-200">
+                        <ChatAmanTemplateSelector
+                          onSelect={(template, vars) => {
+                             setSelectedTemplate(template);
+                             setTemplateVariables(vars);
+                          }}
+                          targetPhone={phoneNumber}
+                        />
+                      </div>
+                    )}
+
+
+                    {!selectedTemplate && (
+                      <>
+                        <div>
+                          <Label htmlFor="title">عنوان الرسالة</Label>
+                          <Input
+                            id="title"
+                            value={whatsappMessage.title}
+                            onChange={(e) => setWhatsappMessage(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="عنوان الرسالة"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="body">محتوى الرسالة</Label>
+                          <Textarea
+                            id="body"
+                            value={whatsappMessage.body}
+                            onChange={(e) => setWhatsappMessage(prev => ({ ...prev, body: e.target.value }))}
+                            placeholder="اكتب محتوى الرسالة هنا..."
+                            className="mt-1"
+                            rows={4}
+                          />
+                        </div>
+                      </>
+                    )}
                     <div className="flex gap-2">
                       <Button
                         onClick={sendWhatsAppMessage}

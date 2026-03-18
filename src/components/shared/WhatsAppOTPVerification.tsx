@@ -119,11 +119,11 @@ export default function WhatsAppOTPVerification({
         setMessage('تم التحقق بنجاح!');
         setTimeout(() => onVerificationSuccess(phoneNumber), 1000);
       } else {
-        // API call to verify OTP
-        const verifyResponse = await fetch('/api/sms/verify-otp', { // Uses the same unified endpoint
+        // API call to verify OTP via unified Firestore-based endpoint
+        const verifyResponse = await fetch('/api/otp/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber, otp: otpCode, method: 'whatsapp' }),
+          body: JSON.stringify({ phoneNumber, otp: otpCode }),
         });
 
         const verifyResult = await verifyResponse.json();
@@ -153,10 +153,10 @@ export default function WhatsAppOTPVerification({
     setMessage('');
 
     try {
-      const res = await fetch('/api/whatsapp/babaservice/otp', {
+      const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber, name, lang: language, method: 'whatsapp' }),
+        body: JSON.stringify({ phoneNumber, name, channel: 'whatsapp' }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');

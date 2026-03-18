@@ -1,781 +1,801 @@
 'use client';
 
-import { toast, Toaster } from 'sonner';
-import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
-import { useAuth } from '@/lib/firebase/auth-provider';
-import { FloatingInput, FloatingSelect } from '@/components/shared/PremiumInputs';
-import { type UserRole } from '@/types';
-import { updatePassword, sendEmailVerification } from 'firebase/auth'; // Added sendEmailVerification
-import { auth } from '@/lib/firebase/config'; // Added auth import
-import {
-  AlertTriangle,
-  AlertCircle,
-  CheckCircle,
-  Eye,
-  EyeOff,
-  Home,
-  Loader2,
-  Lock,
-  Mail,
-  Star,
-  User,
-  UserCheck,
-  Users,
-  ArrowRight,
-  Globe,
-  Phone,
-  Briefcase,
-  ChevronLeft,
-  ChevronDown,
-  Inbox,
-  X
-} from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { organizationReferralService } from '@/lib/organization/organization-referral-service';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { signOut } from 'firebase/auth';
+import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
 import { countries } from '@/lib/constants/countries';
+import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
+import { toast, Toaster } from 'sonner';
+import Image from 'next/image';
+import { Loader2, Star, ChevronRight, X } from 'lucide-react';
+import type { UserRole } from '@/types';
 
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-};
+type Step = 'phone' | 'otp';
 
 const getDashboardRoute = (accountType: string) => {
-  switch (accountType) {
-    case 'player': return '/dashboard/player';
-    case 'club': return '/dashboard/club';
-    case 'agent': return '/dashboard/agent';
-    case 'academy': return '/dashboard/academy';
-    case 'trainer': return '/dashboard/trainer';
-    case 'marketer': return '/dashboard/marketer';
-    default: return '/dashboard';
-  }
+  const routes: Record<string, string> = {
+    player: '/dashboard/player',
+    club: '/dashboard/club',
+    agent: '/dashboard/agent',
+    academy: '/dashboard/academy',
+    trainer: '/dashboard/trainer',
+    marketer: '/dashboard/marketer',
+    admin: '/dashboard/admin',
+  };
+  return routes[accountType] || '/dashboard';
 };
 
+const accountTypes = [
+  { value: 'player',   label: 'لاعب',     emoji: '⚽', desc: 'لاعب كرة قدم' },
+  { value: 'club',     label: 'نادي',      emoji: '🏟️', desc: 'نادي رياضي' },
+  { value: 'academy',  label: 'أكاديمية',  emoji: '🎓', desc: 'أكاديمية تدريب' },
+  { value: 'agent',    label: 'وكيل',      emoji: '🤝', desc: 'وكيل لاعبين' },
+  { value: 'trainer',  label: 'مدرب',      emoji: '💪', desc: 'مدرب رياضي' },
+  { value: 'marketer', label: 'مسوّق',     emoji: '📢', desc: 'مسوّق رياضي' },
+];
 
+const TERMS_TEXT = `شروط وأحكام منصة الحلم
+
+1. الأهلية والتسجيل
+يجب أن لا يقل عمر المستخدم عن 18 عاماً، أو بموافقة ولي الأمر إن كان أصغر. تتعهد بأن جميع البيانات المدخلة صحيحة.
+
+2. طبيعة الخدمات
+منصة "الحلم" توفر أدوات تحليلية وفرص عرض أمام الأندية، لكنها لا تضمن الاحتراف أو تحقيق دخل مالي للاعب.
+
+3. الاشتراكات والمدفوعات
+تقبل المنصة المدفوعات الإلكترونية فقط. رسوم الاشتراكات غير قابلة للاسترداد بعد تفعيل الخدمة.
+
+4. الملكية الفكرية
+جميع الخوارزميات والشعارات هي ملكية حصرية لشركة ميسك. بمجرد رفع أي فيديو، تمنح المنصة ترخيصاً لاستخدامه في التحليل والتسويق.
+
+5. الخصوصية
+نجمع بيانات شخصية (الاسم، الهاتف) وبيانات رياضية لتقديم الخدمة. يحق لك طلب حذف حسابك عبر info@el7lm.com.
+
+6. القانون الواجب التطبيق
+تخضع هذه الشروط لقوانين دولة قطر، ويتم الفصل في النزاعات عبر التحكيم في الدوحة.
+
+بضغطك على "إرسال رمز التحقق" فإنك توافق على جميع البنود أعلاه.`;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register: registerUser, signInWithGoogle } = useAuth();
-  const t = (key: string) => key;
+  const { signInWithGoogle, user, userData, loading: authLoading } = useAuth();
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    country: '',
-    countryCode: '',
-    password: '',
-    confirmPassword: '',
-    accountType: 'player' as UserRole,
-    organizationCode: '',
-    agreeToTerms: false
-  });
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState(''); // Keep for general/critical errors
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); // Field-specific errors
+  const [branding, setBranding] = useState<BrandingData | null>(null);
+  const [step, setStep] = useState<Step>('phone');
   const [loading, setLoading] = useState(false);
-  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [phoneExistsError, setPhoneExistsError] = useState('');
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'exists' | 'available' | 'invalid'>('idle');
-  const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone' | 'google'>('phone');
-  const phoneCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Clear field error when user starts typing
-  const clearFieldError = (fieldName: string) => {
-    setFieldErrors(prev => {
-      const updated = { ...prev };
-      delete updated[fieldName];
-      return updated;
-    });
-  };
+  // Step 1
+  const [name, setName] = useState('');
+  const [accountType, setAccountType] = useState<UserRole>('player');
+  const [selectedCountry, setSelectedCountry] = useState(
+    () => countries.find(c => c.code === '+20') || countries[0]
+  );
+  const [phone, setPhone] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const accountTypes = [
-    { value: 'player', label: 'لاعب', icon: Star },
-    { value: 'club', label: 'نادي', icon: Home },
-    { value: 'academy', label: 'أكاديمية', icon: Users },
-    { value: 'agent', label: 'وكيل', icon: UserCheck },
-    { value: 'trainer', label: 'مدرب', icon: User },
-    { value: 'marketer', label: 'مسوق', icon: Briefcase }
-  ];
+  // Step 2 — OTP
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [resendSeconds, setResendSeconds] = useState(30);
+  const [canResend, setCanResend] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const resendTimer = useRef<NodeJS.Timeout | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  const [welcomeName, setWelcomeName] = useState('');
+  const [phoneFormatError, setPhoneFormatError] = useState<string | null>(null);
+  const [phoneExistsError, setPhoneExistsError] = useState<string | null>(null);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const phoneCheckTimer = useRef<NodeJS.Timeout | null>(null);
 
-  /* --- Logic Handlers --- */
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (name === 'phone') {
-      const nums = value.replace(/[^0-9]/g, '');
-      setFormData(p => ({ ...p, [name]: nums }));
-      setPhoneStatus('idle');
-      setPhoneExistsError('');
-      clearFieldError('phone'); // Clear phone error when typing
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
-      if (phoneCheckTimeoutRef.current) clearTimeout(phoneCheckTimeoutRef.current);
+  useEffect(() => {
+    getBrandingData().then(setBranding).catch(() => {});
+  }, []);
 
-      const country = countries.find(c => c.name === formData.country);
-      if (!country) return;
+  const [forceRegister, setForceRegister] = useState(false);
 
-      // Real-time Validation & Search
-      if (nums.length === country.phoneLength) {
-        setPhoneStatus('checking');
-        phoneCheckTimeoutRef.current = setTimeout(async () => {
-          try {
-            console.log(`[Real-time Check] Fetching for phone: ${nums}`);
-            const res = await fetch('/api/auth/check-user-exists', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone: nums, countryCode: formData.countryCode.replace('+', '') })
-            });
-            const data = await res.json();
-            console.log(`[Real-time Check] API Response:`, data);
-
-            if (data.phoneExists) {
-              console.log(`[Real-time Check] 🔴 Setting status to 'exists'`);
-              setPhoneStatus('exists');
-              setPhoneExistsError('📱 هذا الرقم مسجل بالفعل في النظام');
-              setFieldErrors({ phone: 'هذا الرقم مسجل بالفعل في النظام' });
-            } else {
-              console.log(`[Real-time Check] ✅ Setting status to 'available'`);
-              setPhoneStatus('available');
-              setPhoneExistsError('');
-            }
-          } catch (err) {
-            console.error(`[Real-time Check] ❌ Error:`, err);
-            setPhoneStatus('idle');
-          }
-        }, 600);
-      } else if (nums.length > 0 && nums.length !== country.phoneLength) {
-        if (nums.length > country.phoneLength) {
-          setPhoneStatus('invalid');
-          setPhoneExistsError(`الرقم طويل جداً، طول الرقم في ${country.name} هو ${country.phoneLength} أرقام`);
-        } else {
-          // Keep idle or show 'typing' if needed
+  // Auto-detect country
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then(r => r.json())
+      .then(data => {
+        const map: Record<string, string> = {
+          SA: '+966', AE: '+971', KW: '+965', QA: '+974', BH: '+973',
+          OM: '+968', EG: '+20', JO: '+962', LB: '+961', IQ: '+964',
+          SY: '+963', MA: '+212', DZ: '+213', TN: '+216', LY: '+218',
+          SD: '+249', YE: '+967', TR: '+90', FR: '+33', GB: '+44',
+        };
+        const code = map[data.country_code];
+        if (code) {
+          const c = countries.find(x => x.code === code);
+          if (c) setSelectedCountry(c);
         }
-      }
-      return;
-    }
-    setFormData(p => ({ ...p, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }));
-    // Clear error for the field being edited
-    clearFieldError(name);
-  };
+      })
+      .catch(() => {});
+  }, []);
 
-  const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const c = countries.find(x => x.name === e.target.value);
-    setFormData(p => ({ ...p, country: c?.name || '', countryCode: c?.code || '', phone: '' }));
-    setPhoneStatus('idle');
-    setPhoneExistsError('');
-  };
-
-  const handleGoogleSignUp = async () => {
-    if (!formData.accountType) { setError('اختر نوع الحساب'); return; }
-    try {
-      const res = await signInWithGoogle(formData.accountType as any);
-      router.replace(getDashboardRoute(res.userData.accountType));
-    } catch (e: any) { setError(e.message); }
-  };
-
-  /* --- Register Handler --- */
-  /* --- Register Handler --- */
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setPhoneExistsError('');
-    setFieldErrors({}); // Clear all field errors
-
-    if (!formData.name) {
-      setFieldErrors({ name: 'الاسم الكامل مطلوب' });
-      return;
-    }
-    if (!formData.country) {
-      setFieldErrors({ country: 'يرجى اختيار الدولة' });
-      return;
-    }
-
-    // Validate Method Specifics
-    console.log(`🔍 [Registration] Validating ${registrationMethod} method`);
-    if (registrationMethod === 'email') {
-      if (!formData.email) {
-        setFieldErrors({ email: 'البريد الإلكتروني مطلوب' });
-        return;
-      }
-      if (!isValidEmail(formData.email)) {
-        setFieldErrors({ email: 'صيغة البريد الإلكتروني غير صحيحة' });
-        return;
-      }
-    } else {
-      const country = countries.find(c => c.name === formData.country);
-      const rawPhone = formData.phone.replace(/^0+/, '');
-      if (!formData.phone) {
-        setFieldErrors({ phone: 'رقم الهاتف مطلوب' });
-        return;
-      }
-      if (country && rawPhone.length !== country.phoneLength) {
-        setFieldErrors({ phone: `رقم الهاتف في ${country.name} يجب أن يكون ${country.phoneLength} أرقام (بدون الصفر)` });
-        return;
-      }
-
-      // Mandatory API re-check ONLY if we haven't already verified in real-time
-      if (phoneStatus !== 'available') {
-        setLoading(true);
-        console.log(`🔍 [Registration] Final phone check: ${rawPhone} (${formData.countryCode})`);
-        const checkStartTime = Date.now();
-
-        try {
-          // Add timeout to prevent indefinite hanging
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout (reduced)
-
-          const checkRes = await fetch('/api/auth/check-user-exists', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: rawPhone, countryCode: formData.countryCode.replace('+', '') }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-          const checkDuration = Date.now() - checkStartTime;
-          console.log(`✅ [Registration] Final check completed in ${checkDuration}ms`);
-
-          const checkData = await checkRes.json();
-
-          if (checkData.phoneExists || checkData.exists) {
-            setPhoneStatus('exists');
-            setLoading(false);
-            console.log(`⚠️ [Registration] Phone ${rawPhone} already exists`);
-            setFieldErrors({ phone: '📱 رقم الهاتف مسجل بالفعل في النظام. يرجى تسجيل الدخول أو استخدام رقم هاتف آخر.' });
-            return;
-          }
-          setPhoneStatus('available');
-          console.log(`✅ [Registration] Phone ${rawPhone} is available`);
-        } catch (checkErr: any) {
-          const checkDuration = Date.now() - checkStartTime;
-          console.error(`❌ [Registration] Final check failed after ${checkDuration}ms:`, checkErr);
-
-          // If timeout or network error
-          if (checkErr.name === 'AbortError') {
-            setLoading(false);
-            setFieldErrors({ phone: '⏱️ انتهت مهلة التحقق من رقم الهاتف. يرجى التأكد من اتصال الإنترنت والمحاولة مرة أخرى.' });
-            return;
-          }
-
-          setLoading(false);
-          setFieldErrors({ phone: '❌ فشل التحقق من توفر رقم الهاتف. يرجى التأكد من اتصالك بالإنترنت والمحاولة مرة أخرى.' });
-          return;
-        }
-      } else {
-        console.log(`⚡ [Registration] Skipping final check - already verified as available`);
-      }
-    }
-
-    console.log('✅ [Registration] All validations passed');
-    if (formData.password.length < 8) {
-      setFieldErrors({ password: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' });
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setFieldErrors({ confirmPassword: 'كلمات المرور غير متطابقة' });
-      return;
-    }
-    if (!formData.agreeToTerms) {
-      setError('موافقة الشروط مطلوبة');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      console.log(`🚀 Registration via ${registrationMethod} (Bypass Mode)`);
-
-      const finalEmail = registrationMethod === 'email'
-        ? formData.email
-        : `${formData.countryCode.replace('+', '')}${formData.phone}@el7lm.com`;
-
-      const rawPhone = formData.phone.replace(/^0+/, '');
-      const fullPhone = formData.phone ? `${formData.countryCode}${rawPhone}` : '';
-
-      const res = await registerUser(finalEmail, formData.password, formData.accountType as any, {
-        full_name: formData.name,
-        country: formData.country,
-        countryCode: formData.countryCode,
-        organizationCode: formData.organizationCode,
-        phone: fullPhone,
-        email: formData.email, // Preserve original email if provided
-        isVerifiedLocal: true,
-        // ⚠️ لا نُرسل createdAt من هنا - auth-provider يتولى إضافة التاريخ بشكل صحيح
+  const startResendTimer = useCallback(() => {
+    setResendSeconds(30);
+    setCanResend(false);
+    if (resendTimer.current) clearInterval(resendTimer.current);
+    resendTimer.current = setInterval(() => {
+      setResendSeconds(prev => {
+        if (prev <= 1) { clearInterval(resendTimer.current!); setCanResend(true); return 0; }
+        return prev - 1;
       });
+    }, 1000);
+  }, []);
 
-      // Auto-create join request if code is provided
-      if (formData.organizationCode && formData.accountType === 'player' && res) {
-        try {
-          await organizationReferralService.createJoinRequest(res.uid, res, formData.organizationCode);
-          console.log('✅ Auto-join request created for code:', formData.organizationCode);
-        } catch (joinErr) {
-          console.warn('⚠️ Could not create auto-join request:', joinErr);
-        }
-      }
+  useEffect(() => () => { if (resendTimer.current) clearInterval(resendTimer.current); }, []);
 
-      toast.success('تم إنشاء حسابك بنجاح! جاري التحويل...');
+  const fullPhone = `${selectedCountry.code}${phone.replace(/^0+/, '').trim()}`;
 
-      const dashboardRoute = getDashboardRoute(formData.accountType);
-      router.replace(dashboardRoute);
-
-    } catch (err: any) {
-      // Customize error messages based on registration method
-      let errorMessage = err.message || 'فشل التسجيل';
-
-      // Phone-specific errors
-      if (registrationMethod === 'phone') {
-        if (errorMessage.includes('email-already-in-use') || errorMessage.includes('already in use') || errorMessage.includes('مسجل بالفعل')) {
-          errorMessage = '📱 رقم الهاتف مسجل بالفعل في النظام';
-          // Show prominent toast
-          toast.error(errorMessage + ' - يرجى تسجيل الدخول أو استخدام رقم آخر', {
-            id: 'registration-error',
-            duration: 8000
-          });
-          setFieldErrors({ phone: errorMessage });
-        } else if (errorMessage.includes('invalid-phone')) {
-          errorMessage = '❌ رقم الهاتف غير صحيح. يرجى التحقق من الرقم والمحاولة مرة أخرى.';
-          setFieldErrors({ phone: errorMessage });
-        } else if (errorMessage.includes('weak-password')) {
-          errorMessage = '🔒 كلمة المرور ضعيفة. يرجى استخدام كلمة مرور أقوى (8 أحرف على الأقل).';
-          setFieldErrors({ password: errorMessage });
-        } else {
-          setError(errorMessage);
-        }
-      }
-      // Email-specific errors
-      else if (registrationMethod === 'email') {
-        if (errorMessage.includes('email-already-in-use') || errorMessage.includes('already in use')) {
-          errorMessage = '📧 البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني آخر.';
-          setFieldErrors({ email: errorMessage });
-        } else if (errorMessage.includes('invalid-email')) {
-          errorMessage = '❌ صيغة البريد الإلكتروني غير صحيحة.';
-          setFieldErrors({ email: errorMessage });
-        } else if (errorMessage.includes('weak-password')) {
-          errorMessage = '🔒 كلمة المرور ضعيفة. يرجى استخدام كلمة مرور أقوى (8 أحرف على الأقل).';
-          setFieldErrors({ password: errorMessage });
-        } else {
-          setError(errorMessage);
-        }
-      } else {
-        setError(errorMessage);
-      }
-
-      console.error('Registration error:', err);
-    } finally { setLoading(false); }
+  const showWelcomePopup = (name: string, route: string) => {
+    setWelcomeName((name || '').split(' ')[0]);
+    setWelcomeVisible(true);
+    setTimeout(() => { window.location.href = route; }, 3200);
   };
 
-  // Success Screen (Email)
-  if (emailVerificationSent) {
+  // 🛡️ Real-time phone format validation
+  useEffect(() => {
+    const cleanPhone = phone.replace(/^0+/, '').trim().replace(/\D/g, '');
+    if (cleanPhone.length < 4) {
+      setPhoneFormatError(null);
+      return;
+    }
+    const error = validatePhoneForCountry(cleanPhone, selectedCountry.code);
+    setPhoneFormatError(error);
+  }, [phone, selectedCountry]);
+
+  // 🛡️ Debounced phone existence check
+  useEffect(() => {
+    const cleanPhone = phone.replace(/^0+/, '').trim().replace(/\D/g, '');
+    if (cleanPhone.length < 7 || phoneFormatError) {
+      setPhoneExistsError(null);
+      return;
+    }
+    if (phoneCheckTimer.current) clearTimeout(phoneCheckTimer.current);
+    setCheckingPhone(true);
+    phoneCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/auth/check-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: `${selectedCountry.code}${cleanPhone}` }),
+        });
+        const data = await res.json();
+        if (data.exists) {
+          const typeLabels: Record<string, string> = {
+            player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
+            agent: 'وكيل', trainer: 'مدرب', marketer: 'مسوّق', admin: 'مدير',
+          };
+          const typeName = typeLabels[data.accountType] || data.accountType || '';
+          setPhoneExistsError(typeName ? `هذا الرقم مسجل بالفعل كـ "${typeName}" — يمكنك تسجيل الدخول` : 'هذا الرقم مسجل بالفعل — يمكنك تسجيل الدخول');
+        } else {
+          setPhoneExistsError(null);
+        }
+      } catch {
+        setPhoneExistsError(null);
+      } finally {
+        setCheckingPhone(false);
+      }
+    }, 700);
+    return () => { if (phoneCheckTimer.current) clearTimeout(phoneCheckTimer.current); };
+  }, [phone, selectedCountry, phoneFormatError]);
+
+  /* ─── Step 1: Send OTP ─── */
+  const handleSendOTP = async () => {
+    if (!agreedToTerms) {
+      toast.error('يجب الموافقة على الشروط والأحكام أولاً');
+      return;
+    }
+    if (!name.trim()) {
+      toast.error('يرجى إدخال اسمك الكامل');
+      return;
+    }
+    const cleanPhone = phone.replace(/^0+/, '').trim();
+    if (cleanPhone.length < 7) {
+      toast.error('يرجى إدخال رقم واتساب صحيح');
+      return;
+    }
+
+    // 🛡️ Security: Validate phone format matches the selected country code
+    const formatError = validatePhoneForCountry(cleanPhone, selectedCountry.code);
+    if (formatError) {
+      toast.error(`⚠️ ${formatError}`);
+      return;
+    }
+    // 🛡️ Security: Block registration with already-registered phone
+    if (phoneExistsError) {
+      toast.error(phoneExistsError);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'registration', channel: 'whatsapp' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرمز');
+
+      toast.success('تم إرسال رمز التحقق عبر WhatsApp ✅');
+      setOtp(['', '', '', '', '', '']);
+      setStep('otp');
+      startResendTimer();
+      setTimeout(() => otpRefs.current[0]?.focus(), 150);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ─── Step 2: OTP handlers ─── */
+  const handleOTPChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = [...otp];
+    newOtp[index] = digit;
+    setOtp(newOtp);
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus();
+    if (newOtp.every(Boolean) && newOtp.join('').length === 6) handleVerifyOTP(newOtp.join(''));
+  };
+
+  const handleOTPKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) otpRefs.current[index - 1]?.focus();
+  };
+
+  const handleOTPPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const newOtp = Array(6).fill('');
+    for (let i = 0; i < pasted.length; i++) newOtp[i] = pasted[i];
+    setOtp(newOtp);
+    if (pasted.length === 6) handleVerifyOTP(pasted);
+    else otpRefs.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
+  /* ─── Step 2: Verify OTP → route ─── */
+  const handleVerifyOTP = async (otpCode: string) => {
+    if (verifyLoading) return;
+    setVerifyLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp-and-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: fullPhone, otp: otpCode }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        toast.error(data.error || 'رمز غير صحيح');
+        setOtp(['', '', '', '', '', '']);
+        setTimeout(() => otpRefs.current[0]?.focus(), 50);
+        setVerifyLoading(false);
+        return;
+      }
+
+      if (!data.isNew) {
+        // Existing user — check if selected type matches
+        if (data.accountType && data.accountType !== accountType) {
+          const typeLabels: Record<string, string> = {
+            player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
+            agent: 'وكيل', trainer: 'مدرب', marketer: 'مسوّق', admin: 'مدير',
+          };
+          toast.error(`هذا الرقم مسجل بالفعل كـ "${typeLabels[data.accountType] || data.accountType}" — سيتم توجيهك للوحتك`);
+        }
+        await signInWithCustomToken(auth, data.customToken);
+        showWelcomePopup(data.userName || '', getDashboardRoute(data.accountType));
+      } else {
+        const createRes = await fetch('/api/auth/create-user-with-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: fullPhone, accountType, name: name.trim() }),
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok || !createData.success) throw new Error(createData.error || 'فشل إنشاء الحساب');
+
+        await signInWithCustomToken(auth, createData.customToken);
+        showWelcomePopup(createData.userName || name.trim(), getDashboardRoute(createData.accountType || accountType));
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+      setVerifyLoading(false);
+    }
+  };
+
+  /* ─── Resend OTP ─── */
+  const handleResend = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'registration', channel: 'whatsapp' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
+      toast.success('تم إعادة الإرسال ✅');
+      setOtp(['', '', '', '', '', '']);
+      startResendTimer();
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ─── Google ─── */
+  const handleGoogleSignIn = async () => {
+    if (!agreedToTerms) {
+      toast.error('يجب الموافقة على الشروط والأحكام أولاً');
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle(accountType);
+      showWelcomePopup(result.userData.full_name || (result.userData as any).name || '', getDashboardRoute(result.userData.accountType || accountType));
+    } catch (err: any) {
+      toast.error(err.message || 'فشل تسجيل الدخول بـ Google');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 font-sans" dir="rtl">
-        <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center space-y-4 animate-in fade-in zoom-in-95">
-          <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto text-teal-600 mb-2">
-            <Inbox className="w-8 h-8" />
+      <div className="flex justify-center items-center min-h-screen bg-[#f7f7f8]">
+        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+      </div>
+    );
+  }
+
+  // Already logged in — show options instead of auto-redirecting
+  if (user && userData && !forceRegister) {
+    const dashRoute = getDashboardRoute(userData.accountType);
+    return (
+      <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center px-4 font-cairo" dir="rtl">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-7 text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">👋</span>
           </div>
-          <h2 className="text-xl font-black text-slate-800 font-cairo">تحقق من بريدك</h2>
-          <p className="text-sm text-slate-500 leading-relaxed">
-            لقد أرسلنا رابط تفعيل إلى: <br />
-            <span className="font-bold text-slate-800">{formData.email}</span>
+          <h2 className="text-lg font-bold text-slate-900 mb-1">أنت مسجل الدخول بالفعل</h2>
+          <p className="text-sm text-slate-500 mb-6">
+            {(userData as any).full_name ? `مرحباً ${(userData as any).full_name}` : 'يمكنك الذهاب إلى لوحة التحكم'}
           </p>
-          <div className="bg-orange-50/50 border border-orange-100 p-3 rounded-lg text-xs font-bold text-orange-700 animate-pulse">
-            ⚠️ لم تجد الرسالة؟ تحقق من مجلد "الرسائل غير المرغوب فيها" (Spam) ومجلد "الرسائل الترويجية"
-          </div>
-          <div className="pt-4">
-            <button onClick={() => router.push('/auth/login')} className="w-full bg-slate-900 text-white font-bold h-12 rounded-xl text-sm shadow-md hover:bg-black transition-all">
-              الانتقال لتسجيل الدخول
-            </button>
-            <button onClick={() => { setEmailVerificationSent(false); }} className="mt-4 text-xs font-bold text-slate-400 hover:text-purple-600">
-              العودة
-            </button>
-          </div>
+          <button
+            onClick={() => router.replace(dashRoute)}
+            className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors mb-3"
+          >
+            الذهاب إلى لوحة التحكم
+          </button>
+          <button
+            onClick={async () => { await signOut(auth); setForceRegister(true); }}
+            className="w-full h-11 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
+          >
+            تسجيل خروج وإنشاء حساب جديد
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      <Toaster position="top-center" dir="rtl" richColors toastOptions={{ className: '!text-sm font-cairo' }} />
+    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center py-4 sm:py-10 px-4 font-cairo" dir="rtl">
+      <Toaster position="top-center" dir="rtl" richColors />
 
-      {/* Terms of Service Modal */}
-      <AlertDialog open={showTerms} onOpenChange={setShowTerms}>
-        <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white rounded-3xl p-8 border-none shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-          <AlertDialogHeader className="relative pb-4 border-b border-slate-100 mb-6">
-            <AlertDialogTitle className="text-2xl font-black text-slate-800 font-cairo flex items-center gap-3">
-              <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
-                <Star className="w-6 h-6" />
-              </div>
-              شروط وأحكام منصة الحلم
-            </AlertDialogTitle>
-            <button onClick={() => setShowTerms(false)} className="absolute left-0 top-1 p-2 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all">
-              <X className="w-5 h-5" />
-            </button>
-          </AlertDialogHeader>
+      {/* Welcome Popup */}
+      {welcomeVisible && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl px-8 py-10 flex flex-col items-center text-center max-w-xs w-full mx-4 animate-in zoom-in-95 duration-300">
+            {/* Confetti dots */}
+            <div className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-yellow-400 opacity-80" />
+            <div className="absolute -top-1 left-4 w-4 h-4 rounded-full bg-emerald-400 opacity-80" />
+            <div className="absolute -bottom-2 -left-2 w-5 h-5 rounded-full bg-blue-400 opacity-70" />
+            <div className="absolute bottom-4 -right-2 w-3 h-3 rounded-full bg-pink-400 opacity-80" />
 
-          <div className="space-y-8 text-sm text-slate-600 leading-relaxed font-medium text-right" dir="rtl">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-              <p className="text-slate-800 font-black mb-1">الجهة المالكة: شركة ميسك ذات مسؤولية محدودة (Mesk LLC)</p>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">تاريخ آخر تحديث: يناير 2026</p>
+            {/* Icon */}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center mb-5 shadow-lg">
+              <span className="text-4xl">🏆</span>
             </div>
 
-            {/* Document 1: Terms of Service */}
-            <section className="space-y-4">
-              <div className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-black mb-2">
-                الوثيقة الأولى: شروط الخدمة والاستخدام
-              </div>
-              <h3 className="text-base font-black text-slate-800">مقدمة:</h3>
-              <p>أهلاً بك في منصة "الحلم" (El7lm). بمجرد تسجيلك أو استخدامك لتطبيقنا أو موقعنا الإلكتروني، فإنك توافق، دون قيد أو شرط، على الالتزام بهذه الشروط. إذا كنت لا توافق على أي بند، يرجى التوقف عن استخدام المنصة فوراً.</p>
+            {/* Text */}
+            <h2 className="text-xl font-extrabold text-slate-900 mb-2">
+              {welcomeName ? `مرحباً ${welcomeName}!` : 'مرحباً بك!'}
+            </h2>
+            <p className="text-2xl font-black text-slate-900 leading-snug mb-3">
+              خطوة واحدة<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">
+                تفصلك عن الاحتراف
+              </span>
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              حسابك جاهز — ابدأ رحلتك نحو القمة الآن 🚀
+            </p>
 
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-800">1. الأهلية والتسجيل</h4>
-                <ul className="list-disc pr-5 space-y-1">
-                  <li><span className="font-bold">السن القانوني:</span> إذا كان عمرك أقل من 18 عاماً، لا يجوز لك إنشاء حساب إلا بموافقة وإشراف "ولي الأمر". يحتفظ النظام بحق طلب وثائق إثبات الهوية في أي وقت.</li>
-                  <li><span className="font-bold">دقة البيانات:</span> تتعهد بأن جميع البيانات المدخلة (الاسم، تاريخ الميلاد، الجنسية) صحيحة تماماً. نحن نطبق سياسة "صفر تسامح" مع تزوير الأعمار، وأي تلاعب يؤدي للحظر النهائي دون استرداد للأموال.</li>
-                </ul>
-
-                <h4 className="font-black text-slate-800">2. طبيعة الخدمات (إخلاء مسؤولية)</h4>
-                <ul className="list-disc pr-5 space-y-1">
-                  <li><span className="font-bold">أداة وليست وعداً:</span> منصة "الحلم" توفر أدوات تحليلية، بيانات إحصائية، وفرص عرض أمام الأندية، لكننا لا نضمن ولا نعد بالاحتراف في نادٍ معين أو تحقيق دخل مالي للاعب.</li>
-                  <li><span className="font-bold">التقييم الفني:</span> تقييمات الذكاء الاصطناعي (AI Ratings) هي استرشادية وتعتمد على جودة الفيديو المدخل، ولا يحق للمستخدم الاعتراض عليها قانونياً.</li>
-                </ul>
-
-                <h4 className="font-black text-slate-800">3. الاشتراكات والمدفوعات</h4>
-                <ul className="list-disc pr-5 space-y-1">
-                  <li><span className="font-bold">سياسة الدفع غير النقدي (Cashless Policy):</span> تقبل المنصة المدفوعات الإلكترونية فقط. يُحظر دفع أي مبالغ نقدية لموظفينا.</li>
-                  <li><span className="font-bold">الاسترداد (Refunds):</span> رسوم الاشتراكات والباقات واشتراك البطولات غير قابلة للاسترداد بمجرد تفعيل الخدمة أو الانسحاب الطوعي.</li>
-                </ul>
-
-                <h4 className="font-black text-slate-800">4. التزامات الوكلاء والمدربين</h4>
-                <p>إذا كنت مسجلاً كـ "شريك" أو "سفير"، فإن علاقتك بالشركة هي علاقة "تعاقد حر" (Freelance) وليست علاقة توظيف.</p>
-
-                <h4 className="font-black text-slate-800">5. الملكية الفكرية</h4>
-                <p>جميع الخوارزميات والشعارات هي ملكية حصرية لشركة ميسك. بمجرد رفع أي فيديو، فإنك تمنحنا ترخيصاً لاستخدامه في التحليل والتسويق.</p>
-
-                <h4 className="font-black text-slate-800">6. القانون الواجب التطبيق</h4>
-                <p>تخضع هذه الشروط لقوانين دولة قطر، ويتم الفصل في النزاعات عبر التحكيم في الدوحة.</p>
-              </div>
-            </section>
-
-            <hr className="border-slate-100" />
-
-            {/* Document 2: Privacy Policy */}
-            <section className="space-y-4">
-              <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black mb-2">
-                الوثيقة الثانية: سياسة الخصوصية وحماية البيانات
-              </div>
-              <p className="font-bold">نحن نأخذ خصوصيتك وخصوصية أطفالك على محمل الجد.</p>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-800">1. البيانات التي نجمعها</h4>
-                <p>نجمع البيانات الشخصية (الاسم، الهاتف) والبيانات الرياضية (مقاطع الفيديو، بيانات أجهزة التتبع GPS مثل السرعة والمسافة ونبضات القلب).</p>
-
-                <h4 className="font-black text-slate-800">2. معالجة الذكاء الاصطناعي (V-Lab)</h4>
-                <p>بموافقتك، نستخدم خوارزميات الذكاء الاصطناعي لاستخراج الإحصائيات وبناء "بطاقة اللاعب" ومشاركتها مع الكشافة والأندية.</p>
-
-                <h4 className="font-black text-slate-800">3. حماية القاصرين</h4>
-                <p>لا يتم نشر بيانات الاتصال المباشرة للقاصرين علناً. التواصل يتم حصراً من خلال "ولي الأمر" المسجل.</p>
-
-                <h4 className="font-black text-slate-800">4. الحق في النسيان</h4>
-                <p>يحق لك طلب حذف حسابك وبياناتك نهائياً عبر info@el7lm.com، وسيتم التنفيذ خلال 30 يوماً.</p>
-              </div>
-            </section>
-
-            <hr className="border-slate-100" />
-
-            {/* Document 3: Event Waiver */}
-            <section className="space-y-4">
-              <div className="inline-block px-3 py-1 bg-teal-100 text-teal-700 rounded-lg text-xs font-black mb-2">
-                الوثيقة الثالثة: إقرار المشاركة الميدانية وإخلاء المسؤولية
-              </div>
-              <p className="font-bold text-xs text-slate-500">خاص باللاعبين المشاركين في البطولات والمعسكرات</p>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-800">1. الإقرار الطبي</h4>
-                <p>أقر بأنني (أو ابني) لائق بدنياً لممارسة كرة القدم ولا أعاني من أمراض مزمنة تمنعني من اللعب.</p>
-
-                <h4 className="font-black text-slate-800">2. إخلاء المسؤولية عن الإصابات</h4>
-                <p>أوافق على إخلاء مسؤولية شركة ميسك ومنصة الحلم عن أي إصابات جسدية تقع أثناء المباريات أو التدريبات.</p>
-
-                <h4 className="font-black text-slate-800">3. الموافقة الإعلامية</h4>
-                <p>أمنح شركة ميسك الحق في تصويري واستخدام صورتي واسمي في البث المباشر والمواد الترويجية دون تعويض مالي.</p>
-              </div>
-            </section>
-
-            <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 text-center">
-              <p className="text-sm text-purple-800 font-black">
-                بضغطك على زر "موافق" أو "تسجيل"، فإنك تقر بأنك قرأت وفهمت ووافقت على كافة البنود الواردة أعلاه.
-              </p>
+            {/* Progress bar */}
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-slate-800 to-slate-600 rounded-full"
+                style={{ animation: 'progress-fill 3s linear forwards' }}
+              />
             </div>
+            <p className="text-[10px] text-slate-400 mt-2">جارٍ الانتقال إلى لوحة التحكم...</p>
           </div>
-
-          <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-            <button
-              onClick={() => setShowTerms(false)}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-black px-8 py-3 rounded-xl transition-all shadow-lg shadow-purple-200"
-            >
-              فهمت وأوافق
-            </button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 font-sans" dir="rtl">
-
-        <div className="w-full max-w-[350px] animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="text-center mb-2">
-            <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-indigo-700 font-cairo mb-1">منصة الحلم</h1>
-            <p className="text-slate-500 text-xs font-medium">ابدأ رحلتك الرياضية اليوم</p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-purple-200/50 border border-white overflow-hidden">
-
-
-
-            <div className="p-3">
-              <form onSubmit={handleRegister} className="space-y-3">
-
-                {/* Only show generic error for critical issues (like terms not agreed) */}
-                {error && !Object.keys(fieldErrors).length && (
-                  <div className="p-4 bg-red-50/80 backdrop-blur-sm text-red-600 rounded-2xl text-xs font-bold flex gap-3 items-center border border-red-100 animate-in shake duration-500">
-                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    {error}
-                  </div>
-                )}
-
-                <div className="space-y-3 animate-in fade-in duration-500">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">اختر دورك</label>
-                      <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">مطلوب</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-between">
-                      {accountTypes.map(t => (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => setFormData(p => ({ ...p, accountType: t.value as UserRole }))}
-                          className={`flex-1 min-w-[70px] group relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl border transition-all duration-300 ${formData.accountType === t.value
-                            ? 'border-purple-600 bg-purple-50/50 text-purple-700 ring-1 ring-purple-600/20 shadow-sm'
-                            : 'border-slate-100 bg-white text-slate-500 hover:border-purple-200'
-                            }`}
-                        >
-                          <div className={`p-1.5 rounded-lg transition-all duration-300 ${formData.accountType === t.value ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-purple-100'}`}>
-                            <t.icon className="w-4 h-4" />
-                          </div>
-                          <span className="text-[8px] font-black underline-offset-2">{t.label}</span>
-                          {formData.accountType === t.value && <CheckCircle className="absolute top-1 left-1 w-3 h-3 text-purple-600" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-slate-100 my-1"></div>
-
-                  {/* Method Tabs */}
-                  <div className="bg-slate-100/50 border border-slate-200 p-1 rounded-xl flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => { setRegistrationMethod('phone'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'phone' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
-                    >
-                      <Phone className={`w-3.5 h-3.5 ${registrationMethod === 'phone' ? 'text-white' : 'text-slate-400'}`} />
-                      <span>رقم الهاتف</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setRegistrationMethod('email'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'email' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
-                    >
-                      <Mail className={`w-3.5 h-3.5 ${registrationMethod === 'email' ? 'text-white' : 'text-slate-400'}`} />
-                      <span>البريد الإلكتروني</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setRegistrationMethod('google'); setError(''); setPhoneExistsError(''); setPhoneStatus('idle'); }}
-                      className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1.5 ${registrationMethod === 'google' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-purple-700 hover:bg-purple-50/50'}`}
-                    >
-                      <svg className={`w-3.5 h-3.5 ${registrationMethod === 'google' ? 'text-white' : 'text-slate-400'}`} viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                      <span>Google</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {registrationMethod === 'google' ? (
-                      <div className="py-8 space-y-6 text-center animate-in zoom-in duration-500">
-                        <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-purple-100/50">
-                          <svg className="w-10 h-10" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-black text-slate-800 mb-1">تسجيل سريع وآمن</h3>
-                          <p className="text-sm text-slate-500">استخدم حساب Google لإنشاء حسابك في ثوانٍ</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleGoogleSignUp}
-                          className="w-full flex items-center justify-center gap-4 h-15 bg-white hover:bg-slate-50 border-2 border-slate-100 rounded-2xl transition-all shadow-sm group py-4"
-                        >
-                          <svg className="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                          <span className="text-base font-black text-slate-700">المتابعة باستخدام Google</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <FloatingInput id="reg-name" name="name" label="الاسم الكامل" value={formData.name} onChange={handleInputChange} icon={User} error={fieldErrors.name} required isCompact />
-
-                        <div className="flex flex-col gap-2">
-                          <FloatingSelect
-                            id="reg-country"
-                            name="country"
-                            label="الدولة"
-                            value={formData.country}
-                            onChange={handleCountryChange}
-                            icon={Globe}
-                            error={fieldErrors.country}
-                            required
-                            isCompact
-                          >
-                            <option value="">📍 اختر دولتك</option>
-                            {countries.map(c => (
-                              <option key={c.code} value={c.name}>
-                                {c.name} ({c.code})
-                              </option>
-                            ))}
-                          </FloatingSelect>
-
-                          {registrationMethod === 'phone' ? (
-                            <div className="relative">
-                              <FloatingInput
-                                id="reg-phone"
-                                name="phone"
-                                label="رقم الهاتف"
-                                type="tel"
-                                dir="ltr"
-                                value={formData.phone}
-                                onChange={handleInputChange}
-                                icon={
-                                  phoneStatus === 'checking' ? Loader2 :
-                                    phoneStatus === 'available' ? CheckCircle :
-                                      phoneStatus === 'exists' ? AlertTriangle :
-                                        Phone
-                                }
-                                className={`text-left font-mono tracking-wider text-lg ${formData.countryCode ? 'pl-24' : ''}`}
-                                placeholder={formData.countryCode ? '123456789' : 'اختر الدولة أولاً'}
-                                error={fieldErrors.phone || phoneExistsError || (phoneStatus === 'invalid' ? 'رقم غير صحيح' : '')}
-                                required
-                                disabled={!formData.country}
-                                isCompact
-                              />
-                              {/* Country Code Badge - Inside Input */}
-                              {formData.countryCode && (
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                                  <span className="text-sm font-black text-white bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 rounded-lg shadow-md border-2 border-white">
-                                    {formData.countryCode}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <FloatingInput id="reg-email" name="email" label="البريد الإلكتروني" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} error={fieldErrors.email} required isCompact />
-                          )}
-                        </div>
-
-
-                        <div className="flex flex-col gap-2">
-                          <div className="relative">
-                            <FloatingInput id="reg-password" name="password" label="كلمة المرور" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} icon={Lock} error={fieldErrors.password} required isCompact />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-1 z-10">
-                              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                          <div className="relative">
-                            <FloatingInput id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} icon={Lock} error={fieldErrors.confirmPassword} required isCompact />
-                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 transition-colors p-1 z-10">
-                              {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {formData.accountType === 'player' && (
-                          <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3 flex gap-2 items-center">
-                            <Users className="w-5 h-5 text-purple-600 shrink-0" />
-                            <div className="flex-1">
-                              <FloatingInput
-                                id="reg-org-code"
-                                name="organizationCode"
-                                label="كود الانضمام لنادي أو أكاديمية (اختياري)"
-                                value={formData.organizationCode}
-                                onChange={handleInputChange}
-                                className="bg-white"
-                                isCompact
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        <div className={`flex items-start gap-3 p-3 border rounded-2xl transition-all ${error && error.includes('شروط') ? 'bg-red-50/50 border-red-300' : 'bg-slate-50/50 border-slate-100'}`}>
-                          <input
-                            id="terms-checkbox"
-                            type="checkbox"
-                            checked={formData.agreeToTerms}
-                            onChange={(e) => { setFormData(p => ({ ...p, agreeToTerms: e.target.checked })); setError(''); }}
-                            className="w-5 h-5 mt-0.5 rounded-lg border-slate-200 text-purple-600 cursor-pointer accent-purple-600"
-                          />
-                          <label htmlFor="terms-checkbox" className="text-[10px] text-slate-500 font-medium leading-normal">
-                            أوافق على <button type="button" onClick={() => setShowTerms(true)} className="text-purple-700 font-black underline decoration-purple-200 underline-offset-2 hover:text-purple-900 transition-colors">شروط الخدمة</button> و سياسة الخصوصية الخاصة بمنصة الحلم.
-                          </label>
-                        </div>
-                        {error && error.includes('شروط') && (
-                          <div className="flex items-start gap-2 mt-[-8px] mb-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200 animate-in slide-in-from-top-1 duration-200" role="alert">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span className="flex-1">{error}</span>
-                          </div>
-                        )}
-
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          onClick={(e) => {
-                            console.log('🔴 [DEBUG] Submit button clicked!');
-                            console.log('🔴 [DEBUG] Form data:', { name: formData.name, country: formData.country, phone: formData.phone, agreeToTerms: formData.agreeToTerms });
-                          }}
-                          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black h-10 rounded-xl text-xs shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 group"
-                        >
-                          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
-                            <>
-                              <span>إنشاء حسابك الآن</span>
-                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 rtl:rotate-180 transition-transform" />
-                            </>
-                          )}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-center pt-4 border-t border-slate-50/50">
-                  <p className="text-xs text-slate-400 font-medium">
-                    لديك حساب بالفعل؟
-                    <button type="button" onClick={() => router.push('/auth/login')} className="bg-slate-100 hover:bg-slate-200 text-purple-700 font-black px-3 py-1 rounded-full mr-1 transition-all text-xs">دخول</button>
-                  </p>
-                </div>
-              </form>
-            </div>
-          </div>
-
         </div>
+      )}
+
+      <style>{`
+        @keyframes progress-fill {
+          from { width: 0% }
+          to { width: 100% }
+        }
+      `}</style>
+
+      {/* Terms Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">الشروط والأحكام</h2>
+              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 max-h-[55vh] overflow-y-auto">
+              <pre className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-cairo">{TERMS_TEXT}</pre>
+            </div>
+            <div className="px-5 py-4 border-t border-slate-100">
+              <button
+                onClick={() => { setAgreedToTerms(true); setShowTermsModal(false); }}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                أوافق على الشروط والأحكام
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress dots */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`transition-all duration-300 rounded-full ${step === 'phone' ? 'w-6 h-2 bg-slate-900' : 'w-2 h-2 bg-slate-400'}`} />
+        <div className={`transition-all duration-300 rounded-full ${step === 'otp' ? 'w-6 h-2 bg-slate-900' : 'w-2 h-2 bg-slate-200'}`} />
       </div>
-    </>
+
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
+
+        {/* Logo + heading */}
+        <div className="flex flex-col items-center mb-5 sm:mb-7">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden relative mb-3 flex items-center justify-center bg-slate-100">
+            {branding?.logoUrl ? (
+              <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-1.5" />
+            ) : (
+              <Star className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 fill-slate-700" />
+            )}
+          </div>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900">
+            {step === 'phone' ? 'إنشاء حساب' : 'رمز التحقق'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 text-center">
+            {step === 'phone'
+              ? 'اختر نوعك وأدخل بياناتك'
+              : `مرحباً ${name}، أُرسل رمز التحقق عبر WhatsApp`}
+          </p>
+        </div>
+
+        {/* ══ STEP 1 ══ */}
+        {step === 'phone' && (
+          <div className="space-y-3 sm:space-y-4">
+
+            {/* Account type — pills on mobile / cards on desktop */}
+            <div>
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-400 mb-2 uppercase tracking-widest">أنا...</p>
+
+              {isDesktop ? (
+                /* Desktop: 3×2 cards */
+                <div className="grid grid-cols-3 gap-2">
+                  {accountTypes.map(t => {
+                    const active = accountType === t.value;
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setAccountType(t.value as UserRole)}
+                        className={`relative flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border-2 transition-all hover:scale-[1.02] ${
+                          active
+                            ? 'border-slate-900 bg-slate-900'
+                            : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50'
+                        }`}
+                      >
+                        {active && (
+                          <svg className="absolute top-1.5 left-1.5 w-3 h-3 text-white/60" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        <span className="text-xl leading-none">{t.emoji}</span>
+                        <span className={`text-xs font-semibold ${active ? 'text-white' : 'text-slate-600'}`}>
+                          {t.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Mobile: horizontal pills */
+                <div className="flex flex-wrap gap-1.5">
+                  {accountTypes.map(t => {
+                    const active = accountType === t.value;
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setAccountType(t.value as UserRole)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
+                          active
+                            ? 'bg-slate-900 border-slate-900 text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
+                        }`}
+                      >
+                        <span className="text-sm leading-none">{t.emoji}</span>
+                        <span>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-slate-100" />
+
+            {/* Google */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading}
+              className="w-full h-10 sm:h-11 flex items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                <>
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  <span>المتابعة بـ Google</span>
+                </>
+              )}
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs text-slate-400">أو عبر WhatsApp</span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            {/* Full Name */}
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
+              placeholder="الاسم الكامل"
+              maxLength={60}
+              className="w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+            />
+
+            {/* Country + Phone */}
+            <div className="flex gap-2">
+              <select
+                value={selectedCountry.code}
+                onChange={e => {
+                  const c = countries.find(x => x.code === e.target.value);
+                  if (c) { setSelectedCountry(c); setPhone(''); setPhoneExistsError(null); }
+                }}
+                className="w-24 sm:w-28 h-10 sm:h-11 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm text-slate-700 px-2 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+              >
+                {countries.map(c => (
+                  <option key={c.code} value={c.code}>{c.code} {c.name}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
+                placeholder="رقم الواتساب"
+                dir="ltr"
+                maxLength={selectedCountry.phoneLength + 1}
+                className={`flex-1 h-10 sm:h-11 rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                  phoneExistsError
+                    ? 'border-red-400 focus:ring-red-400'
+                    : phoneFormatError
+                    ? 'border-orange-400 focus:ring-orange-400'
+                    : 'border-slate-200 focus:ring-slate-900'
+                }`}
+              />
+            </div>
+            {/* 🛡️ Phone format validation feedback */}
+            {phoneFormatError && !phoneExistsError && (
+              <p className="text-xs text-orange-600 font-medium mt-1">⚠️ {phoneFormatError}</p>
+            )}
+            {/* 🛡️ Phone already registered feedback */}
+            {checkingPhone && phone.length >= 7 && !phoneFormatError && (
+              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> جاري التحقق من الرقم...
+              </p>
+            )}
+            {phoneExistsError && (
+              <p className="text-xs text-red-600 font-medium mt-1">
+                🚫 {phoneExistsError}{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/login')}
+                  className="underline font-bold hover:text-red-800"
+                >
+                  سجّل الدخول
+                </button>
+              </p>
+            )}
+
+            {/* Terms */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <div
+                onClick={() => setAgreedToTerms(v => !v)}
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 rounded sm:rounded-md border-2 flex items-center justify-center transition-all ${
+                  agreedToTerms ? 'bg-slate-900 border-slate-900' : 'border-slate-300 hover:border-slate-500'
+                }`}
+              >
+                {agreedToTerms && (
+                  <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-xs sm:text-sm text-slate-500">
+                أوافق على{' '}
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setShowTermsModal(true); }}
+                  className="text-slate-900 font-semibold underline underline-offset-2 hover:text-slate-700"
+                >
+                  الشروط والأحكام
+                </button>
+              </span>
+            </label>
+
+            {/* Submit */}
+            <button
+              type="button"
+              onClick={handleSendOTP}
+              disabled={loading || !agreedToTerms || phone.length < 7 || !!phoneFormatError || !!phoneExistsError || checkingPhone}
+              className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال رمز التحقق عبر WhatsApp'}
+            </button>
+
+            <p className="text-center text-xs sm:text-sm text-slate-500">
+              لديك حساب؟{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/auth/login')}
+                className="text-slate-900 font-semibold hover:underline"
+              >
+                تسجيل الدخول
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* ══ STEP 2: OTP ══ */}
+        {step === 'otp' && (
+          <div className="space-y-4 sm:space-y-5">
+
+            {/* Type badge */}
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full text-xs text-slate-600 font-medium">
+                <span>{accountTypes.find(t => t.value === accountType)?.emoji}</span>
+                <span>{accountTypes.find(t => t.value === accountType)?.label}</span>
+                <button
+                  type="button"
+                  onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
+                  className="text-slate-400 hover:text-slate-700 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* OTP boxes */}
+            <div className="flex justify-center gap-2 sm:gap-2.5" dir="ltr">
+              {otp.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={el => { otpRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handleOTPChange(i, e.target.value)}
+                  onKeyDown={e => handleOTPKeyDown(i, e)}
+                  onPaste={i === 0 ? handleOTPPaste : undefined}
+                  disabled={verifyLoading || loading}
+                  className={`w-10 h-12 sm:w-11 sm:h-13 text-center text-lg font-bold rounded-xl border-2 transition-all focus:outline-none ${
+                    digit
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-900 focus:border-slate-900'
+                  } disabled:opacity-50`}
+                />
+              ))}
+            </div>
+
+            {verifyLoading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                <p className="text-xs text-slate-400">جاري التحقق وإنشاء حسابك...</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                {canResend ? (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={loading}
+                    className="text-sm text-slate-900 font-semibold hover:underline disabled:opacity-50"
+                  >
+                    إعادة إرسال الرمز
+                  </button>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    إعادة الإرسال خلال{' '}
+                    <span className="font-mono font-bold text-slate-600">
+                      0:{String(resendSeconds).padStart(2, '0')}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
+              className="w-full flex items-center justify-center gap-1 text-sm text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+              تغيير الرقم أو نوع الحساب
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center gap-4 mt-5 text-xs text-slate-400">
+        <button type="button" onClick={() => setShowTermsModal(true)} className="hover:text-slate-600 transition-colors">الشروط</button>
+        <span>·</span>
+        <a href="/privacy" className="hover:text-slate-600 transition-colors">الخصوصية</a>
+        <span>·</span>
+        <a href="/support" className="hover:text-slate-600 transition-colors">المساعدة</a>
+      </div>
+    </div>
   );
 }
-

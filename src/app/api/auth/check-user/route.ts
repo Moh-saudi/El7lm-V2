@@ -1,14 +1,17 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 
 const COLLECTIONS_TO_SEARCH = [
-  'users',
   'players',
   'clubs',
   'academies',
   'agents',
+  'trainers',
+  'marketers',
+  'admins',
   'employees',
-  'trainers'
+  'users',
 ];
 
 const PHONE_FIELDS = [
@@ -23,7 +26,7 @@ const PHONE_FIELDS = [
 // دالة لتوليد جميع الصيغ الممكنة لرقم الهاتف
 function generatePhoneVariants(phoneNumber: string): string[] {
   const variants: string[] = [];
-  const cleaned = phoneNumber.replace(/\D/g, ''); // إزالة أي رموز
+  const cleaned = cleanPhoneNumber(phoneNumber); // 🛡️ استخدام أداة التنظيف الموحدة
 
   variants.push(phoneNumber); // الرقم الأصلي
   variants.push(cleaned); // الرقم المنظف
@@ -115,6 +118,7 @@ async function findUserByPhone(phoneNumber: string): Promise<{
   exists: boolean;
   userName?: string;
   accountType?: string;
+  email?: string;
 }> {
   if (!phoneNumber) {
     return { exists: false };
@@ -146,12 +150,14 @@ async function findUserByPhone(phoneNumber: string): Promise<{
 
             const userName = userData.full_name || userData.name || userData.displayName || 'مستخدم';
             const accountType = userData.accountType || collectionName.slice(0, -1); // Remove 's' from collection name
+            const email = userData.email || userData.userEmail || userData.firebaseEmail;
 
             console.log(`✅ [check-user] User found in ${collectionName} with variant "${variant}": ${userName}`);
             return {
               exists: true,
               userName,
-              accountType
+              accountType,
+              email
             };
           }
         } catch (error) {
@@ -195,6 +201,7 @@ export async function POST(request: NextRequest) {
         exists: true,
         userName: result.userName,
         accountType: result.accountType,
+        email: result.email,
         message: 'المستخدم موجود في النظام'
       });
     } else {

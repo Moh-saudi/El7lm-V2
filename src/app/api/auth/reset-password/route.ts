@@ -137,6 +137,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🛡️ Security: Ensure OTP was recently verified for this phone
+    const { cleanPhoneNumber } = await import('@/lib/validation/phone-validation');
+    const cleanDigits = cleanPhoneNumber(phoneNumber);
+    const otpDoc = await (adminDb as any).collection('otp_verifications').doc(`otp_${cleanDigits}`).get();
+    if (!otpDoc.exists || !otpDoc.data()?.verified) {
+      return NextResponse.json({ success: false, error: 'يجب التحقق من رقم الهاتف عبر WhatsApp أولاً' }, { status: 403 });
+    }
+    const verifiedAt = otpDoc.data()?.verifiedAt;
+    if (verifiedAt) {
+      const ms = verifiedAt.toMillis ? verifiedAt.toMillis() : (verifiedAt instanceof Date ? verifiedAt.getTime() : 0);
+      if (Date.now() - ms > 15 * 60 * 1000) {
+        return NextResponse.json({ success: false, error: 'انتهت صلاحية التحقق، يرجى إعادة إرسال رمز واتساب' }, { status: 403 });
+      }
+    }
+    // Clean up OTP after use
+    await (adminDb as any).collection('otp_verifications').doc(`otp_${cleanDigits}`).delete();
+
     // التحقق من قوة كلمة المرور - 8 أحرف على الأقل
     if (newPassword.length < 8) {
       console.error('❌ [reset-password] Password too short');

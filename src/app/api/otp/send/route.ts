@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       purpose = 'registration',
       channel = 'auto',
       customOTP,
-      instanceId
     } = body;
 
     if (!phoneNumber) {
@@ -34,7 +33,6 @@ export async function POST(request: NextRequest) {
       purpose: purpose as any,
       channel: channel as any,
       customOTP,
-      instanceId
     };
 
     const result = await sendOTP(options);

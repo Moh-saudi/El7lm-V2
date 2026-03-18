@@ -11,7 +11,7 @@
  */
 
 import { storeOTPInFirestore, hasActiveOTP } from './firestore-otp-manager';
-import { ChatAmanService } from '@/lib/services/chataman-service';
+import { adminDb } from '@/lib/firebase/admin';
 
 // تنسيق رقم الهاتف
 const formatPhoneNumber = (phone: string): string => {
@@ -21,10 +21,6 @@ const formatPhoneNumber = (phone: string): string => {
     cleaned = cleaned.substring(1);
   }
   return cleaned.trim();
-};
-
-const BABASERVICE_CONFIG = {
-  INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID || '68F243B3A8D8D'
 };
 
 export type OTPChannel = 'whatsapp' | 'sms' | 'firebase_phone' | 'auto';
@@ -44,7 +40,6 @@ export interface SendOTPOptions {
   purpose?: OTPPurpose;
   channel?: OTPChannel;
   customOTP?: string; // إذا كان null، سيتم توليد OTP تلقائياً
-  instanceId?: string; // لـ WhatsApp
 }
 
 /**
@@ -57,68 +52,87 @@ function generateOTP(): string {
 /**
  * إرسال OTP عبر WhatsApp (Babaservice)
  */
+/**
+ * جلب إعدادات ChatAman من Firestore باستخدام Admin SDK
+ */
+async function getChatAmanConfig(): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
+  try {
+    if (!adminDb) return null;
+    const snap = await (adminDb as any).collection('system_configs').doc('chataman_config').get();
+    if (!snap.exists) return null;
+    return snap.data() as { apiKey: string; baseUrl: string; isActive: boolean };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * إرسال OTP مباشرةً لـ ChatAman API (server-to-server)
+ */
+async function sendOTPViaChatAman(phone: string, otp: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getChatAmanConfig();
+    if (!config || !config.isActive || !config.apiKey) {
+      return { success: false, error: 'ChatAman not configured' };
+    }
+
+    // تنسيق رقم الهاتف
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
+    else if (cleaned.startsWith('1') && cleaned.length === 10) cleaned = `20${cleaned}`;
+    const formattedPhone = `+${cleaned}`;
+
+    const baseUrl = (config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
+
+    const payload = {
+      phone: formattedPhone,
+      template: {
+        name: 'otp_el7lmplatform',
+        language: { code: 'ar' },
+        components: [
+          { type: 'body', parameters: [{ type: 'text', text: otp }] },
+          { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otp }] },
+        ],
+      },
+    };
+
+    const response = await fetch(`${baseUrl}/api/send/template`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey.trim()}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await response.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch { data = { message: text }; }
+
+    console.log('📡 [ChatAman] HTTP status:', response.status);
+    console.log('📡 [ChatAman] Full response:', JSON.stringify(data, null, 2));
+
+    if (!response.ok || data.status === 'error' || data.success === false) {
+      console.error('❌ [ChatAman] Failed:', data.message || data.error || 'Unknown error');
+      return { success: false, error: data.message || 'ChatAman API error' };
+    }
+
+    console.log('✅ [OTP] Sent via ChatAman to', formattedPhone);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 async function sendOTPViaWhatsApp(
   phoneNumber: string,
   otp: string,
-  name: string,
-  instanceId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-
-    // 1. Try ChatAman First (Official BSP)
-    try {
-      const config = await ChatAmanService.getConfig();
-      if (config && config.isActive) {
-        console.log('Using ChatAman for OTP...');
-        const result = await ChatAmanService.sendOtp(formattedPhone, otp);
-        if (result.success) {
-          return { success: true };
-        } else {
-          console.warn('ChatAman OTP failed, falling back to legacy provider:', result.error);
-        }
-      }
-    } catch (e) {
-      console.error('Error checking ChatAman config:', e);
-    }
-
-    // 2. Fallback to Babaservice (Legacy)
-    const targetInstanceId = instanceId || BABASERVICE_CONFIG.INSTANCE_ID;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-    // Check if we are running on server or client to determine fetch URL correctly if needed, 
-    // but usually calling internal API via full URL is safer for Next.js API routes if not separated.
-    // However, calling internal API from internal service is weird. 
-    // Usually Babaservice logic should be internal here or external URL.
-    // Assuming existing logic works for legacy.
-
-    const response = await fetch(`${baseUrl}/api/whatsapp/babaservice/otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phoneNumber: formattedPhone,
-        otp: otp,
-        name: name || 'عزيزي المستخدم',
-        instance_id: targetInstanceId
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.success) {
-      return { success: true };
-    } else {
-      return {
-        success: false,
-        error: data.error || 'فشل في إرسال OTP عبر WhatsApp'
-      };
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'حدث خطأ في إرسال OTP عبر WhatsApp'
-    };
-  }
+  const formattedPhone = formatPhoneNumber(phoneNumber);
+  const result = await sendOTPViaChatAman(formattedPhone, otp);
+  if (!result.success) console.warn('ChatAman OTP failed:', result.error);
+  return result;
 }
 
 /**
@@ -185,7 +199,6 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
     purpose = 'registration',
     channel = 'auto',
     customOTP,
-    instanceId
   } = options;
 
   try {
@@ -216,7 +229,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
     let sendResult: { success: boolean; error?: string } = { success: false };
 
     if (selectedChannel === 'whatsapp') {
-      sendResult = await sendOTPViaWhatsApp(formattedPhone, otp, name, instanceId);
+      sendResult = await sendOTPViaWhatsApp(formattedPhone, otp);
 
       // إذا فشل WhatsApp و channel هو auto، جرب SMS (إذا كان متاحاً)
       if (!sendResult.success && channel === 'auto') {
@@ -236,7 +249,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
       // إذا فشل SMS و channel هو auto، جرب WhatsApp
       if (!sendResult.success && channel === 'auto') {
         console.log('⚠️ SMS failed or not available, trying WhatsApp...');
-        sendResult = await sendOTPViaWhatsApp(formattedPhone, otp, name, instanceId);
+        sendResult = await sendOTPViaWhatsApp(formattedPhone, otp);
         if (sendResult.success) {
           selectedChannel = 'whatsapp';
         }

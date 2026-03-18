@@ -62,27 +62,36 @@ export const ChatAmanService = {
     }
 
     try {
-      // Format phone number
-      const formattedPhone = phone.replace(/\D/g, '');
+      let cleaned = phone.replace(/\D/g, '');
+      if (cleaned.startsWith('01') && cleaned.length === 11) {
+        cleaned = `20${cleaned.substring(1)}`;
+      } else if (cleaned.startsWith('1') && cleaned.length === 10) {
+        cleaned = `20${cleaned}`;
+      }
+      const formattedPhone = `+${cleaned}`;
 
-      const response = await fetch(`${config.baseUrl || 'https://chataman.com'}/api/send`, {
+      const payload = {
+        phone: formattedPhone,
+        message: message
+      };
+
+      const response = await fetch('/api/chataman/send-message', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${config.apiKey.trim()}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          phone: formattedPhone,
-          message: message
+          payload: payload,
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl || 'https://chataman.com'
         })
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send message via ChatAman');
+      if (!data.success) {
+        const errorDetails = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        throw new Error(`${data.message || 'Failed to send'}: ${errorDetails}`);
       }
 
       return { success: true, data: data };
@@ -99,8 +108,7 @@ export const ChatAmanService = {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiKey.trim()}`,
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Accept': 'application/json'
         }
       });
       return response.status === 200;
@@ -120,20 +128,45 @@ export const ChatAmanService = {
     }
 
     try {
-      const response = await fetch(`${config.baseUrl || 'https://chataman.com'}/api/templates`, {
-        method: 'GET',
+      const response = await fetch('/api/chataman/get-templates', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${config.apiKey.trim()}`,
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl || 'https://chataman.com'
+        })
       });
 
       if (!response.ok) return [];
 
-      const data = await response.json();
-      // Adjust based on actual API response structure (assuming data.data or direct array)
-      return Array.isArray(data) ? data : (data.data || []);
+      const result = await response.json();
+      const data = result.data || []; // Extract from proxy response wrapper .data
+
+      const rawTemplates = Array.isArray(data) ? data : (data.data || []);
+
+      // Fix: If items list has stringified metadata, parse it and assign to body
+      const parsedTemplates = rawTemplates.map((item: any) => {
+        if (item.metadata) {
+          try {
+            const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+            if (meta.body_text) {
+              item.body = meta.body_text;
+            } else if (meta.components) {
+              const bodyComp = meta.components.find((c: any) => c.type === 'BODY' || c.type === 'body');
+              if (bodyComp && bodyComp.text) {
+                item.body = bodyComp.text;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse metadata for template", item.name, e);
+          }
+        }
+        return item;
+      });
+
+      return parsedTemplates;
     } catch (error) {
       console.error('ChatAman Templates Error:', error);
       return [];
@@ -143,7 +176,7 @@ export const ChatAmanService = {
   // Send a template message
   sendTemplate: async (
     phone: string,
-    templateId: string,
+    templateName: string, // Changed from templateId to templateName based on documentation
     params: {
       language: string,
       bodyParams?: string[],
@@ -160,40 +193,83 @@ export const ChatAmanService = {
     }
 
     try {
-      const formattedPhone = phone.replace(/\D/g, '');
+      let cleaned = phone.replace(/\D/g, '');
+      
+      // Auto-correct standard Egyptian numbers (starts with 01xx and length 11)
+      if (cleaned.startsWith('01') && cleaned.length === 11) {
+        cleaned = `20${cleaned.substring(1)}`; // Replace leading 0 with 20 -> 201xxxx
+      } else if (cleaned.startsWith('1') && cleaned.length === 10) {
+        cleaned = `20${cleaned}`; // Add 20 directly -> 201xxxx
+      }
 
-      const payload: any = {
+      // Ensure formatted number ALWAYS starts with '+' as required by the backend
+      const formattedPhone = `+${cleaned}`;
+
+      // Build components based on parameters
+      const components: any[] = [];
+
+      // Add Header if it's an image/media template
+      if (params.headerUrl) {
+        components.push({
+          type: "header",
+          parameters: [
+            {
+              type: "image",
+              image: {
+                link: params.headerUrl
+              }
+            }
+          ]
+        });
+      }
+
+      // Add Body Parameters
+      if (params.bodyParams && params.bodyParams.length > 0) {
+        components.push({
+          type: "body",
+          parameters: params.bodyParams.map(param => ({
+            type: "text",
+            text: param
+          }))
+        });
+      }
+
+      // Add Buttons if present
+      if (params.buttons && params.buttons.length > 0) {
+        // Map any custom button structures if needed, or push as is
+        // Documentation shows: { type: "button", sub_type: "quick_reply", index: "...", parameters: [{ type: "payload", payload: "..." }] }
+        params.buttons.forEach(btn => components.push(btn));
+      }
+
+      const payload = {
         phone: formattedPhone,
-        template_id: templateId, // or template_uuid/name depending on API
-        language: params.language || 'ar',
-        params: params.bodyParams || [] // ChatAman likely expects params as array
+        template: {
+          name: templateName,
+          language: {
+            code: params.language || 'ar'
+          },
+          components: components
+        }
       };
 
-      // Add header/media if applicable
-      if (params.headerUrl) {
-        payload.media = params.headerUrl;
-      }
-
-      // Add buttons if applicable
-      if (params.buttons) {
-        payload.buttons = params.buttons;
-      }
-
-      const response = await fetch(`${config.baseUrl || 'https://chataman.com'}/api/send/template`, {
+      // Call our internal Next.js Back-End API route that will safely Proxy request to ChatAman
+      const response = await fetch('/api/chataman/send-template', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${config.apiKey.trim()}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          payload: payload,
+          apiKey: config.apiKey,
+          baseUrl: (config.baseUrl || 'https://chataman.com').trim()
+        })
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send template');
+      if (!data.success) {
+        const errorDetails = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
+        throw new Error(`${data.message || 'Failed to send'}: ${errorDetails}`);
       }
 
       return { success: true, data: data };
@@ -427,38 +503,14 @@ export const ChatAmanService = {
   // Specialized Template Helpers
   // ---------------------------------------------------
 
-  // 1. Send OTP
+  // 1. Send OTP via otp_el7lmplatform template
   sendOtp: async (phone: string, otpCode: string, language: string = 'ar') => {
-    // Template Name: auth_otp (suggested)
-    // Params: {{1}} = otp code
-    // Note: Authentication templates usually have fixed structure enforced by Meta. 
-    // We assume a template that takes one parameter (the code).
-    // Sometimes Auth templates use specific 'Copy Code' button components which are handled in the template config itself,
-    // but the variable mapping remains the same.
-
-    // We need to fetch templates to find the exact ID if we want to be dynamic, 
-    // OR we can store the Template ID in config.
-    // For now, let's assume the user configures the ID in a constant or passed in config.
-    // We'll search for a template named 'auth_otp' or 'otp_code'.
-
-    // Ideally, we get the template ID from the config.
     const config = await ChatAmanService.getConfig();
     if (!config || !config.isActive) return { success: false, error: 'Service inactive' };
 
-    // Fallback: search for template by name
-    const templates = await ChatAmanService.getTemplates(config.apiKey);
-    const otpTemplate = templates.find(t => t.name.includes('otp') || t.name.includes('auth'));
-
-    if (!otpTemplate) {
-      return { success: false, error: 'OTP Template not found' };
-    }
-
-    return await ChatAmanService.sendTemplate(phone, otpTemplate.uuid, {
+    return await ChatAmanService.sendTemplate(phone, 'otp_el7lmplatform', {
       language: language,
       bodyParams: [otpCode],
-      // Auth templates often require the button parameter for the code copy button
-      // Format: { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otpCode }] }
-      // We'll add this just in case the template uses a copy code button
       buttons: [
         {
           type: 'button',
@@ -484,7 +536,7 @@ export const ChatAmanService = {
 
     if (!template) return { success: false, error: 'Profile Notification template not found' };
 
-    return await ChatAmanService.sendTemplate(targetPhone, template.uuid, {
+    return await ChatAmanService.sendTemplate(targetPhone, template.name, {
       language: 'ar',
       bodyParams: [userName, viewerName]
     });
@@ -503,7 +555,7 @@ export const ChatAmanService = {
 
     if (!template) return { success: false, error: 'Message Alert template not found' };
 
-    return await ChatAmanService.sendTemplate(targetPhone, template.uuid, {
+    return await ChatAmanService.sendTemplate(targetPhone, template.name, {
       language: 'ar',
       bodyParams: [senderName]
     });
@@ -527,7 +579,7 @@ export const ChatAmanService = {
     // We can check template.language or default to 'en' for 'our_website' and 'ar' for others.
     const lang = template.name === 'our_website' ? 'en' : 'ar';
 
-    return await ChatAmanService.sendTemplate(targetPhone, template.uuid, {
+    return await ChatAmanService.sendTemplate(targetPhone, template.name, {
       language: lang,
       bodyParams: [userName, verificationItem]
     });
@@ -543,7 +595,7 @@ export const ChatAmanService = {
 
     if (!template) return { success: false, error: 'Activation Reminder template not found' };
 
-    return await ChatAmanService.sendTemplate(targetPhone, template.uuid, {
+    return await ChatAmanService.sendTemplate(targetPhone, template.name, {
       language: 'ar',
       bodyParams: [userName, promoCode]
     });
@@ -559,7 +611,7 @@ export const ChatAmanService = {
 
     if (!template) return { success: false, error: `Template ${templateName} not found` };
 
-    return await ChatAmanService.sendTemplate(targetPhone, template.uuid, {
+    return await ChatAmanService.sendTemplate(targetPhone, template.name, {
       language,
       bodyParams
     });

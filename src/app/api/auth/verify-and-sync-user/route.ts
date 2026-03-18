@@ -2,13 +2,15 @@ import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 const COLLECTIONS_TO_SEARCH = [
-  'users',
   'players',
   'clubs',
   'academies',
   'agents',
+  'trainers',
+  'marketers',
+  'admins',
   'employees',
-  'trainers'
+  'users',
 ];
 
 /**
@@ -33,22 +35,50 @@ export async function POST(request: NextRequest) {
     let firestoreUid: string | null = null;
 
     if (email) {
+      // البحث بجميع حقول الإيميل الممكنة
+      const emailFields = ['email', 'userEmail', 'googleEmail', 'firebaseEmail', 'personalEmail'];
+      outer:
       for (const coll of COLLECTIONS_TO_SEARCH) {
-        try {
-          const snapshot = await adminDb
-            .collection(coll)
-            .where('email', '==', email)
-            .limit(1)
-            .get();
+        for (const field of emailFields) {
+          try {
+            const snapshot = await adminDb
+              .collection(coll)
+              .where(field, '==', email)
+              .limit(1)
+              .get();
 
-          if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            firestoreUser = doc.data();
-            firestoreUid = firestoreUser.uid || doc.id;
-            break;
+            if (!snapshot.empty) {
+              const doc = snapshot.docs[0];
+              firestoreUser = doc.data();
+              firestoreUid = firestoreUser.uid || doc.id;
+              break outer;
+            }
+          } catch (error) {
+            console.warn(`Could not search in ${coll} by ${field}:`, error);
           }
-        } catch (error) {
-          console.warn(`Could not search in ${coll}:`, error);
+        }
+      }
+
+      // إذا لم نجد في Firestore، نجرّب Firebase Auth مباشرة
+      if (!firestoreUid) {
+        try {
+          const authUserByEmail = await adminAuth.getUserByEmail(email);
+          if (authUserByEmail) {
+            const providers = authUserByEmail.providerData.map(p => p.providerId);
+            return NextResponse.json({
+              success: true,
+              existsInAuth: true,
+              existsInFirestore: false,
+              needsSync: false,
+              uid: authUserByEmail.uid,
+              providers,
+              hasPassword: providers.includes('password'),
+              hasGoogle: providers.includes('google.com'),
+              message: 'المستخدم موجود في Firebase Auth فقط'
+            });
+          }
+        } catch (_authErr) {
+          // لم يُوجد في Auth أيضاً
         }
       }
     }
@@ -63,7 +93,7 @@ export async function POST(request: NextRequest) {
           existsInAuth: false,
           existsInFirestore: false
         },
-        { status: 200 } // ⬅️ نعيد 200 لأن هذا ليس خطأ في الـ API، بل المستخدم غير موجود
+        { status: 200 }
       );
     }
 
@@ -73,6 +103,8 @@ export async function POST(request: NextRequest) {
       const providers = authUser.providerData.map(p => p.providerId);
       const hasPassword = providers.includes('password');
       const hasGoogle = providers.includes('google.com');
+      // الإيميل الحقيقي المستخدم في Firebase Auth (قد يختلف عن الإيميل المُدخل)
+      const firebaseEmail = authUser.email;
 
       return NextResponse.json({
         success: true,
@@ -83,6 +115,7 @@ export async function POST(request: NextRequest) {
         providers,
         hasPassword,
         hasGoogle,
+        firebaseEmail,
         message: 'المستخدم موجود'
       });
     } catch (authError: any) {

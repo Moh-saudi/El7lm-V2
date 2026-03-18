@@ -136,7 +136,6 @@ export default function UnifiedOTPVerification({
         subtitle={t ? t('otp.subtitle_whatsapp') : (subtitle || getOTPMessage('whatsapp', countryName))}
         otpExpirySeconds={otpExpirySeconds}
         maxAttempts={maxAttempts}
-        serviceType="business"
         language={language}
         t={t}
       />

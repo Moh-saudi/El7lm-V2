@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { COUNTRIES_FROM_REGISTER } from '@/data/countries-from-register';
+import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
 
 // تنسيق رقم الهاتف
 const formatPhoneNumber = (phone: string): string => {
@@ -65,6 +66,7 @@ export default function WhatsAppPasswordReset() {
     const [resendCooldown, setResendCooldown] = useState(0);
     const [whatsappStatus, setWhatsappStatus] = useState<'checking' | 'connected' | 'disconnected' | null>(null);
     const [detailedError, setDetailedError] = useState<string>('');
+    const [phoneFormatError, setPhoneFormatError] = useState<string | null>(null);
 
     // تسجيل الخروج ومسح البيانات المحفوظة عند تحميل الصفحة
     useEffect(() => {
@@ -96,6 +98,17 @@ export default function WhatsAppPasswordReset() {
         return () => clearTimeout(timer);
     }, [resendCooldown]);
 
+    // 🛡️ Real-time phone format validation
+    useEffect(() => {
+        const cleanPhone = phoneNumber.replace(/^0+/, '').trim().replace(/\D/g, '');
+        if (cleanPhone.length < 4) {
+            setPhoneFormatError(null);
+            return;
+        }
+        const error = validatePhoneForCountry(cleanPhone, countryCode);
+        setPhoneFormatError(error);
+    }, [phoneNumber, countryCode]);
+
     const handlePhoneSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
         setLoading(true);
@@ -103,6 +116,16 @@ export default function WhatsAppPasswordReset() {
         setWhatsappStatus('checking');
         const fullNumber = `${countryCode}${phoneNumber}`;
         setFullPhoneNumber(fullNumber);
+
+        // 🛡️ Security: Validate phone format matches the selected country code
+        const cleanPhone = phoneNumber.replace(/^0+/, '').trim().replace(/\D/g, '');
+        const formatError = validatePhoneForCountry(cleanPhone, countryCode);
+        if (formatError) {
+            toast.error(`⚠️ ${formatError}`);
+            setWhatsappStatus(null);
+            setLoading(false);
+            return;
+        }
 
         try {
             // تنسيق رقم الهاتف بالطريقة الجديدة باستخدام formatPhoneNumber
@@ -206,7 +229,7 @@ export default function WhatsAppPasswordReset() {
                 throw new Error('رقم الهاتف غير موجود. يرجى طلب رمز جديد');
             }
 
-            const verifyResponse = await fetch('/api/whatsapp/babaservice/verify-otp', {
+            const verifyResponse = await fetch('/api/otp/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -434,6 +457,10 @@ export default function WhatsAppPasswordReset() {
                                         dir="ltr"
                                     />
                                 </div>
+                                {/* 🛡️ Phone format validation feedback */}
+                                {phoneFormatError && (
+                                    <p className="text-xs text-orange-600 font-medium mt-1">⚠️ {phoneFormatError}</p>
+                                )}
                             </div>
 
                             {/* عرض حالة WhatsApp أو رسائل الخطأ */}
@@ -457,7 +484,7 @@ export default function WhatsAppPasswordReset() {
                             )}
                         </CardContent>
                         <CardFooter>
-                            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
+                            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading || !!phoneFormatError}>
                                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
                                 إرسال الرمز
                             </Button>

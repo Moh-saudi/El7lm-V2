@@ -460,6 +460,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-notification-center': 'canManageSupport',
       'admin-notifications': 'canManageSupport',
       'admin-chataman': 'canManageSupport',
+      'admin-chataman-messenger': 'canManageSupport',
       'admin-shared-messages': 'canManageSupport',
       'admin-marketing-ads': 'canManageContent',
       'admin-marketing-campaigns': 'canManageContent',
