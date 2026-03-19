@@ -101,8 +101,71 @@ body,
   font-family: 'Cairo', sans-serif !important;
 }
 
-/* EL7LM Layout Design Tokens — must be before @tailwind */
-@import '../styles/layout-tokens.css';
+/* ============================================================
+   EL7LM PLATFORM — Layout Design Tokens (inlined)
+   ============================================================ */
+
+:root {
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 56px;
+  --sidebar-w-mobile: 280px;
+  --header-h: 56px;
+  --sidebar-transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --main-transition: margin-inline-start 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-bg-active: var(--accent-current, #3b82f6);
+  --sidebar-text: #4b5563;
+  --sidebar-text-active: #ffffff;
+  --sidebar-text-muted: #9ca3af;
+  --sidebar-border: rgba(0, 0, 0, 0.07);
+  --sidebar-group-label: #9ca3af;
+  --sidebar-icon-size: 18px;
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --header-backdrop: blur(12px);
+  --header-border: rgba(0, 0, 0, 0.07);
+  --header-text: #0f172a;
+  --header-text-muted: #64748b;
+  --header-icon-btn-hover: rgba(0, 0, 0, 0.05);
+  --main-bg: #f1f5f9;
+  --main-padding: 1.5rem;
+  --main-padding-mobile: 1rem;
+  --accent-player: #3b82f6;
+  --accent-admin: #ef4444;
+  --accent-club: #10b981;
+  --accent-academy: #6366f1;
+  --accent-agent: #f97316;
+  --accent-trainer: #ec4899;
+  --accent-marketer: #8b5cf6;
+  --accent-dream-academy: #a855f7;
+  --accent-parent: #14b8a6;
+  --accent-current: var(--accent-player);
+}
+
+[data-account="player"]        { --accent-current: var(--accent-player); }
+[data-account="admin"]         { --accent-current: var(--accent-admin); }
+[data-account="club"]          { --accent-current: var(--accent-club); }
+[data-account="academy"]       { --accent-current: var(--accent-academy); }
+[data-account="agent"]         { --accent-current: var(--accent-agent); }
+[data-account="trainer"]       { --accent-current: var(--accent-trainer); }
+[data-account="marketer"]      { --accent-current: var(--accent-marketer); }
+[data-account="dream-academy"] { --accent-current: var(--accent-dream-academy); }
+[data-account="parent"]        { --accent-current: var(--accent-parent); }
+
+.dark {
+  --sidebar-bg: #0f172a;
+  --sidebar-bg-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-text: #94a3b8;
+  --sidebar-text-muted: #475569;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-group-label: #334155;
+  --header-bg: rgba(15, 23, 42, 0.95);
+  --header-border: rgba(255, 255, 255, 0.07);
+  --header-text: #f1f5f9;
+  --header-text-muted: #94a3b8;
+  --header-icon-btn-hover: rgba(255, 255, 255, 0.08);
+  --main-bg: #020617;
+}
 
 @tailwind base;
 @tailwind components;
