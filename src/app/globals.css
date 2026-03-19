@@ -105,6 +105,9 @@ body,
 @tailwind components;
 @tailwind utilities;
 
+/* EL7LM Layout Design Tokens */
+@import '../styles/layout-tokens.css';
+
 /* رسوم متحركة لمراقب التحديث */
 @keyframes pulse {
   0% {

@@ -1,0 +1,316 @@
+/* ============================================================
+   EL7LM PLATFORM — Layout Design Tokens
+   Single source of truth for all layout CSS variables.
+   Import once in globals.css via: @import './layout-tokens.css';
+   ============================================================ */
+
+:root {
+  /* ── Sidebar dimensions ───────────────────────────────── */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 56px;
+  --sidebar-w-mobile: 280px;
+  --header-h: 56px;
+
+  /* ── Transitions ──────────────────────────────────────── */
+  --sidebar-transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --main-transition: margin-inline-start 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --fade-in: opacity 150ms ease;
+
+  /* ── Sidebar colors (always dark, like ClickUp) ─────────  */
+  --sidebar-bg: #0f172a;
+  --sidebar-bg-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-bg-active: var(--accent-current, #3b82f6);
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-text-muted: #475569;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-group-label: #334155;
+  --sidebar-icon-size: 18px;
+
+  /* ── Header colors — Light mode ──────────────────────── */
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --header-backdrop: blur(12px);
+  --header-border: rgba(0, 0, 0, 0.07);
+  --header-text: #0f172a;
+  --header-text-muted: #64748b;
+  --header-icon-btn-hover: rgba(0, 0, 0, 0.05);
+
+  /* ── Main content area ───────────────────────────────── */
+  --main-bg: #f1f5f9;
+  --main-padding: 1.5rem;
+  --main-padding-mobile: 1rem;
+
+  /* ── Per-account accent palette ──────────────────────── */
+  --accent-player:        #3b82f6;   /* blue-500 */
+  --accent-admin:         #ef4444;   /* red-500 */
+  --accent-club:          #10b981;   /* emerald-500 */
+  --accent-academy:       #6366f1;   /* indigo-500 */
+  --accent-agent:         #f97316;   /* orange-500 */
+  --accent-trainer:       #ec4899;   /* pink-500 */
+  --accent-marketer:      #8b5cf6;   /* violet-500 */
+  --accent-dream-academy: #a855f7;   /* purple-500 */
+  --accent-parent:        #14b8a6;   /* teal-500 */
+
+  /* Default accent = player until overridden by data-account attr */
+  --accent-current: var(--accent-player);
+}
+
+/* ── Account accent injection via data attribute ──────────
+   Set data-account="club" on AppShell root div, CSS handles the rest. */
+[data-account="player"]        { --accent-current: var(--accent-player); }
+[data-account="admin"]         { --accent-current: var(--accent-admin); }
+[data-account="club"]          { --accent-current: var(--accent-club); }
+[data-account="academy"]       { --accent-current: var(--accent-academy); }
+[data-account="agent"]         { --accent-current: var(--accent-agent); }
+[data-account="trainer"]       { --accent-current: var(--accent-trainer); }
+[data-account="marketer"]      { --accent-current: var(--accent-marketer); }
+[data-account="dream-academy"] { --accent-current: var(--accent-dream-academy); }
+[data-account="parent"]        { --accent-current: var(--accent-parent); }
+
+/* ── Dark mode overrides ─────────────────────────────────  */
+.dark {
+  --header-bg: rgba(15, 23, 42, 0.95);
+  --header-border: rgba(255, 255, 255, 0.07);
+  --header-text: #f1f5f9;
+  --header-text-muted: #94a3b8;
+  --header-icon-btn-hover: rgba(255, 255, 255, 0.08);
+  --main-bg: #020617;
+}
+
+/* ── AppShell structural layout ─────────────────────────── */
+
+/* Sidebar: fixed, full height, inline-end = right in RTL */
+.app-sidebar {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sidebar-w);
+  transition: var(--sidebar-transition);
+  z-index: 40;
+  background-color: var(--sidebar-bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-sidebar.collapsed {
+  width: var(--sidebar-w-collapsed);
+}
+
+/* Mobile: sidebar hidden by default, slides in as overlay */
+@media (max-width: 767px) {
+  .app-sidebar {
+    width: var(--sidebar-w-mobile);
+    transform: translateX(-100%);
+    transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* RTL: slide from right */
+  [dir="rtl"] .app-sidebar {
+    transform: translateX(100%);
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+  }
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}
+
+/* Header: sticky, spans content area only */
+.app-header {
+  position: sticky;
+  top: 0;
+  height: var(--header-h);
+  margin-inline-start: var(--sidebar-w);
+  transition: var(--main-transition);
+  z-index: 30;
+  background-color: var(--header-bg);
+  backdrop-filter: var(--header-backdrop);
+  border-bottom: 1px solid var(--header-border);
+  display: flex;
+  align-items: center;
+}
+
+.app-header.collapsed {
+  margin-inline-start: var(--sidebar-w-collapsed);
+}
+
+@media (max-width: 767px) {
+  .app-header {
+    margin-inline-start: 0;
+  }
+}
+
+/* Main content area */
+.app-main {
+  margin-inline-start: var(--sidebar-w);
+  transition: var(--main-transition);
+  min-height: calc(100vh - var(--header-h));
+  background-color: var(--main-bg);
+  padding: var(--main-padding);
+}
+
+.app-main.collapsed {
+  margin-inline-start: var(--sidebar-w-collapsed);
+}
+
+@media (max-width: 767px) {
+  .app-main {
+    margin-inline-start: 0;
+    padding: var(--main-padding-mobile);
+  }
+}
+
+/* Mobile overlay backdrop */
+.app-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 39;
+}
+
+@media (max-width: 767px) {
+  .app-sidebar-backdrop.visible {
+    display: block;
+  }
+}
+
+/* ── Sidebar nav items ───────────────────────────────────── */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 1px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--sidebar-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.sidebar-item:hover {
+  background-color: var(--sidebar-bg-hover);
+  color: var(--sidebar-text-active);
+}
+
+.sidebar-item.active {
+  background-color: var(--sidebar-bg-active);
+  color: var(--sidebar-text-active);
+}
+
+.sidebar-item .item-icon {
+  width: var(--sidebar-icon-size);
+  height: var(--sidebar-icon-size);
+  flex-shrink: 0;
+}
+
+.sidebar-item .item-label {
+  transition: opacity 150ms ease, width 150ms ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Collapsed: hide labels */
+.app-sidebar.collapsed .item-label {
+  opacity: 0;
+  width: 0;
+  pointer-events: none;
+}
+
+/* Collapsed: center icons */
+.app-sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding: 10px;
+  margin: 1px 6px;
+}
+
+/* Group header label */
+.sidebar-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-group-label);
+  padding: 12px 20px 4px;
+  transition: opacity 150ms ease;
+}
+
+.app-sidebar.collapsed .sidebar-group-label {
+  opacity: 0;
+  height: 4px;
+  padding: 2px 0;
+  overflow: hidden;
+}
+
+/* Divider between groups */
+.sidebar-group-divider {
+  height: 1px;
+  background-color: var(--sidebar-border);
+  margin: 4px 12px;
+}
+
+/* ── Sidebar tooltip (no JS) ────────────────────────────── */
+.sidebar-item[data-tooltip] {
+  position: relative;
+}
+
+.app-sidebar.collapsed .sidebar-item[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  inset-inline-start: calc(var(--sidebar-w-collapsed) - 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #1e293b;
+  color: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.app-sidebar.collapsed .sidebar-item[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* ── Header action buttons ──────────────────────────────── */
+.header-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--header-text-muted);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+  position: relative;
+}
+
+.header-action-btn:hover {
+  background-color: var(--header-icon-btn-hover);
+  color: var(--header-text);
+}
+
+/* Notification badge */
+.notif-badge {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-current);
+  border: 2px solid var(--header-bg);
+}
