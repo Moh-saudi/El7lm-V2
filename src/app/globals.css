@@ -101,12 +101,12 @@ body,
   font-family: 'Cairo', sans-serif !important;
 }
 
+/* EL7LM Layout Design Tokens — must be before @tailwind */
+@import '../styles/layout-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* EL7LM Layout Design Tokens */
-@import '../styles/layout-tokens.css';
 
 /* رسوم متحركة لمراقب التحديث */
 @keyframes pulse {

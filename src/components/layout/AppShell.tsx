@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { doc, onSnapshot } from 'firebase/firestore';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { AppShellProvider, useAppShell } from './AppShellContext';
+import AppFooter from './AppFooter';
 import AppHeader from './AppHeader';
 import Sidebar from './Sidebar';
 
@@ -180,7 +181,12 @@ function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
   const collapsed = !isMobile && isCollapsed;
 
   return (
-    <div dir="rtl" className="min-h-screen font-cairo" data-account={accountType}>
+    <div
+      dir="rtl"
+      className="min-h-screen"
+      style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
+      data-account={accountType}
+    >
       {/* Sidebar */}
       <Sidebar
         menuGroups={menuGroups}
@@ -210,6 +216,9 @@ function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
       >
         {children}
       </main>
+
+      {/* Footer */}
+      {!noPadding && <AppFooter />}
     </div>
   );
 }

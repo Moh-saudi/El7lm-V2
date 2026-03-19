@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Moon, Settings, Sun, User } from 'lucide-react';
+import { Globe, LogOut, Moon, Settings, Sun, User } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 
@@ -73,7 +73,19 @@ export default function HeaderActions({
     : '?';
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}>
+      {/* Language switcher — قيد التطوير */}
+      <button
+        className="header-action-btn gap-1 px-2 text-xs font-semibold"
+        title="تغيير اللغة (قريباً)"
+        aria-label="تغيير اللغة"
+        disabled
+        style={{ opacity: 0.5, cursor: 'not-allowed', width: 'auto' }}
+      >
+        <Globe size={15} />
+        <span className="hidden sm:inline">AR</span>
+      </button>
+
       {/* Dark mode toggle */}
       <button
         onClick={toggle}
