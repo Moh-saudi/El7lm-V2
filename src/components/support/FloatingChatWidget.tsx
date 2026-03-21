@@ -120,8 +120,8 @@ const FloatingChatWidget: React.FC = () => {
     // إخفاء الأيقونة إذا كان المستخدم من نوع admin
     if (userData?.accountType === 'admin') return true;
     
-    // إظهار الأيقونة في جميع لوحات التحكم الأخرى (trainer, player, academy, club, agent, marketer)
-    console.log('🔧 FloatingChatWidget - shouldHideWidget:', false, 'pathname:', pathname, 'user:', !!user, 'accountType:', userData?.accountType);
+    // إخفاء الأيقونة إذا لم تكتمل بيانات المستخدم بعد
+    if (!userData?.accountType) return true;
     return false;
   };
 
@@ -137,13 +137,10 @@ const FloatingChatWidget: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user && userData) {
-      console.log('🔄 تحميل المحادثات للمستخدم:', user.uid);
+    if (user && userData?.accountType) {
       loadExistingConversation();
-    } else {
-      console.log('❌ لا يمكن تحميل المحادثات: المستخدم أو البيانات غير متوفرة');
     }
-  }, [user, userData]);
+  }, [user, userData?.accountType]);
 
   useEffect(() => {
     if (conversation) {

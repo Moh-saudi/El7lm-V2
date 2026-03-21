@@ -16,8 +16,6 @@ const ClarityScript: React.FC<ClarityScriptProps> = ({ projectId }) => {
     return null;
   }
 
-  console.log('🔧 Loading Microsoft Clarity with Project ID:', projectId);
-
   return (
     <Script
       id="clarity-script"

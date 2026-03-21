@@ -10,6 +10,7 @@ import { Toaster } from 'sonner';
 import dynamic from 'next/dynamic';
 
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
+const ProfileCompletionReminder = dynamic(() => import('@/components/profile/ProfileCompletionReminder'), { ssr: false });
 
 export default function DashboardLayout({
   children,
@@ -20,10 +21,21 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, userData: authUserData, loading: authLoading } = useAuth();
 
+  // استخراج نوع الحساب من URL — يُستخدم فقط كـ fallback أول تحميل
+  // لا يُفعَّل إذا كانت userData محملة (منعاً لـ sidebar خاطئ عند التنقل لصفحات مشتركة)
+  const accountTypeFromPath = useMemo(() => {
+    const segment = pathname?.split('/')[2]; // /dashboard/{accountType}/...
+    const known = ['player', 'academy', 'club', 'trainer', 'agent', 'marketer', 'admin'];
+    return known.includes(segment) ? segment : null;
+  }, [pathname]);
+
   const accountType = useMemo(() => {
-    if (!authUserData?.accountType) return 'player';
-    return authUserData.accountType;
-  }, [authUserData?.accountType]);
+    // الأولوية دائماً لـ userData من Firebase
+    if (authUserData?.accountType) return authUserData.accountType;
+    // URL fallback فقط إذا لم تُحمَّل بيانات المستخدم بعد
+    if (!authLoading && accountTypeFromPath) return accountTypeFromPath;
+    return 'player';
+  }, [authUserData?.accountType, accountTypeFromPath, authLoading]);
 
   // Loading state
   if (authLoading) {
@@ -33,6 +45,15 @@ export default function DashboardLayout({
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin" />
           <p className="text-gray-600 font-medium">جار التحميل...</p>
         </div>
+      </div>
+    );
+  }
+
+  // إذا كان المستخدم موجوداً لكن بياناته لم تكتمل بعد ولا يوجد fallback من URL
+  if (user && !authUserData && !accountTypeFromPath) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="w-12 h-12 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin" />
       </div>
     );
   }
@@ -68,6 +89,9 @@ export default function DashboardLayout({
       <FloatingChatWidget />
       <PushNotificationSetup />
       <ProfessionalAdPopup location={accountType as any} />
+      {user && accountType !== 'admin' && (
+        <ProfileCompletionReminder uid={user.uid} accountType={accountType} />
+      )}
     </>
   );
 }

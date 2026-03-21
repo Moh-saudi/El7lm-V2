@@ -54,12 +54,13 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     }
 
     // Check if account is deleted (priority check)
+    // نسمح بإعادة التسجيل بعد الحذف — يُعامَل كمستخدم جديد في auth-provider
     if (userData.isDeleted === true) {
-      console.log('❌ Account Status Check - Account is deleted:', userId);
+      console.log('⚠️ Account Status Check - Account is deleted, will allow re-registration:', userId);
       return {
         isActive: false,
         canLogin: false,
-        message: 'تم حذف حسابك من النظام. يرجى التواصل مع الإدارة.',
+        message: 'تم حذف حسابك — يمكنك إنشاء حساب جديد.',
         messageType: 'error'
       };
     }

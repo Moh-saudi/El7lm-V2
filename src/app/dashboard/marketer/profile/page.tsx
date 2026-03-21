@@ -7,7 +7,7 @@ import {
   Edit, Users, FileText, Trophy, User, MapPin, Phone, Mail, Globe,
   Facebook, Twitter, Instagram, Calendar, Star, Briefcase, Plus,
   Trash2, Save, X, Camera, ArrowLeft, TrendingUp, Handshake,
-  Linkedin, Shield
+  Linkedin, Shield, Award
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -97,6 +97,16 @@ const getImageUrl = (path: string) => {
   return `${CDN}/marketers/${path}`;
 };
 
+const REQUIRED_FIELDS_MARKETER: { key: keyof MarketerData; label: string }[] = [
+  { key: 'full_name',      label: 'الاسم الكامل' },
+  { key: 'phone',          label: 'رقم الهاتف' },
+  { key: 'email',          label: 'البريد الإلكتروني' },
+  { key: 'city',           label: 'المدينة' },
+  { key: 'country',        label: 'الدولة' },
+  { key: 'specialization', label: 'التخصص' },
+  { key: 'bio',            label: 'نبذة شخصية' },
+];
+
 export default function MarketerProfilePage() {
   const { userData, user } = useAuth();
   const router = useRouter();
@@ -110,6 +120,8 @@ export default function MarketerProfilePage() {
     client_name: '', client_type: 'player', from_club: '', to_club: '',
     deal_value: '', season: '', year: '', notes: ''
   });
+  const [errors, setErrors] = useState<Partial<Record<keyof MarketerData, string>>>({});
+  const [showCompletionBanner, setShowCompletionBanner] = useState(false);
 
   const clientLabel = marketerData.client_type === 'trainer' ? 'مدرب' : 'لاعب';
   const clientsLabel = marketerData.client_type === 'trainer' ? 'المدربون' : 'اللاعبون';
@@ -156,6 +168,41 @@ export default function MarketerProfilePage() {
   useEffect(() => {
     if (user && userData) fetchData();
   }, [user, userData, fetchData]);
+
+  const BANNER_SNOOZE_KEY = `marketer_profile_banner_snoozed_${user?.uid}`;
+  const SNOOZE_DAYS = 3;
+
+  const missingFields = REQUIRED_FIELDS_MARKETER.filter(({ key }) => {
+    const val = marketerData[key];
+    return !val || (typeof val === 'string' && !val.trim());
+  });
+
+  useEffect(() => {
+    if (loading || missingFields.length === 0) return;
+    const snoozedAt = localStorage.getItem(BANNER_SNOOZE_KEY);
+    if (snoozedAt) {
+      const daysSince = (Date.now() - Number(snoozedAt)) / (1000 * 60 * 60 * 24);
+      if (daysSince < SNOOZE_DAYS) return;
+    }
+    setShowCompletionBanner(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<keyof MarketerData, string>> = {};
+    REQUIRED_FIELDS_MARKETER.forEach(({ key, label }) => {
+      const val = marketerData[key];
+      if (!val || (typeof val === 'string' && !val.trim())) {
+        newErrors[key] = `${label} مطلوب`;
+      }
+    });
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('يرجى استكمال البيانات الأساسية المطلوبة');
+      return false;
+    }
+    return true;
+  };
 
   const handleChange = (field: string, value: unknown, parent?: string) => {
     setMarketerData(prev => {
@@ -209,12 +256,14 @@ export default function MarketerProfilePage() {
 
   const handleSave = async () => {
     if (!user?.uid) return;
+    if (!validateForm()) return;
     setUploading(true);
     try {
       const ref = doc(db, 'marketers', user.uid);
       const snap = await getDoc(ref);
       const dataToSave = {
         ...marketerData,
+        name: marketerData.full_name,
         updatedAt: new Date(),
         full_name: marketerData.full_name,
       };
@@ -223,6 +272,13 @@ export default function MarketerProfilePage() {
       } else {
         await setDoc(ref, { ...dataToSave, createdAt: new Date(), accountType: 'marketer' });
       }
+      try {
+        const usersRef = doc(db, 'users', user.uid);
+        const usersSnap = await getDoc(usersRef);
+        if (usersSnap.exists()) {
+          await updateDoc(usersRef, { name: marketerData.full_name, full_name: marketerData.full_name });
+        }
+      } catch (_) { /* ignore */ }
       toast.success('تم حفظ الملف الشخصي بنجاح');
       setEditMode(false);
     } catch (err) {
@@ -317,6 +373,38 @@ export default function MarketerProfilePage() {
       {/* Main Content */}
       <div className="px-4 py-8 mx-auto max-w-4xl">
 
+        {/* Profile Completion Banner */}
+        {showCompletionBanner && !editMode && (
+          <div className="flex gap-4 items-start p-4 mb-6 bg-amber-50 rounded-xl border-2 border-amber-300 shadow-sm">
+            <div className="flex-shrink-0 mt-0.5 p-2 bg-amber-100 rounded-full">
+              <Award className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
+              <p className="mb-2 text-xs text-amber-700">أكمل بياناتك الأساسية لتحسين ظهورك وجذب الفرص. الحقول الناقصة:</p>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {missingFields.map(({ label }) => (
+                  <span key={label} className="px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-full border border-amber-300">
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-3 items-center">
+                <button onClick={() => setEditMode(true)} className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600">
+                  استكمال البيانات الآن
+                </button>
+                <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { localStorage.setItem(BANNER_SNOOZE_KEY, String(Date.now())); setShowCompletionBanner(false); }}
+              className="text-amber-400 hover:text-amber-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Cover Image */}
         <div className="overflow-hidden relative mb-8 h-52 rounded-2xl shadow-lg">
           <img
@@ -364,9 +452,9 @@ export default function MarketerProfilePage() {
               <input
                 type="text"
                 value={marketerData.full_name}
-                onChange={e => handleChange('full_name', e.target.value)}
+                onChange={e => { handleChange('full_name', e.target.value); setErrors(p => ({ ...p, full_name: '' })); }}
                 placeholder="الاسم الكامل"
-                className="mb-2 w-full text-2xl font-bold text-right text-gray-900 bg-transparent border-b-2 border-indigo-300 focus:outline-none focus:border-indigo-600"
+                className={`mb-2 w-full text-2xl font-bold text-right text-gray-900 bg-transparent border-b-2 focus:outline-none focus:border-indigo-600 ${errors.full_name ? 'border-red-400' : 'border-indigo-300'}`}
               />
             ) : (
               <h2 className="mb-1 text-2xl font-bold text-indigo-700">{marketerData.full_name || 'المسوق الكروي'}</h2>
@@ -376,9 +464,9 @@ export default function MarketerProfilePage() {
               <input
                 type="text"
                 value={marketerData.specialization}
-                onChange={e => handleChange('specialization', e.target.value)}
+                onChange={e => { handleChange('specialization', e.target.value); setErrors(p => ({ ...p, specialization: '' })); }}
                 placeholder="التخصص (مثال: وكيل لاعبين، مسوق رياضي...)"
-                className="mb-3 w-full text-right text-gray-600 bg-transparent border-b border-gray-200 focus:outline-none focus:border-indigo-400"
+                className={`mb-3 w-full text-right text-gray-600 bg-transparent border-b focus:outline-none focus:border-indigo-400 ${errors.specialization ? 'border-red-400' : 'border-gray-200'}`}
               />
             ) : (
               <p className="mb-3 text-gray-600">{marketerData.specialization || 'مسوق كروي'}</p>
@@ -388,12 +476,12 @@ export default function MarketerProfilePage() {
               <span className="flex gap-1 items-center">
                 <MapPin size={15} />
                 {editMode ? (
-                  <input type="text" value={marketerData.city} onChange={e => handleChange('city', e.target.value)}
-                    placeholder="المدينة" className="w-20 bg-transparent border-b border-gray-200 focus:outline-none" />
+                  <input type="text" value={marketerData.city} onChange={e => { handleChange('city', e.target.value); setErrors(p => ({ ...p, city: '' })); }}
+                    placeholder="المدينة" className={`w-20 bg-transparent border-b focus:outline-none ${errors.city ? 'border-red-400' : 'border-gray-200'}`} />
                 ) : (marketerData.city || '—')}
                 {editMode ? (
-                  <input type="text" value={marketerData.country} onChange={e => handleChange('country', e.target.value)}
-                    placeholder="الدولة" className="w-20 bg-transparent border-b border-gray-200 focus:outline-none" />
+                  <input type="text" value={marketerData.country} onChange={e => { handleChange('country', e.target.value); setErrors(p => ({ ...p, country: '' })); }}
+                    placeholder="الدولة" className={`w-20 bg-transparent border-b focus:outline-none ${errors.country ? 'border-red-400' : 'border-gray-200'}`} />
                 ) : (marketerData.country ? `, ${marketerData.country}` : '')}
               </span>
               <span className="flex gap-1 items-center">
@@ -472,10 +560,10 @@ export default function MarketerProfilePage() {
             {editMode ? (
               <textarea
                 value={marketerData.bio}
-                onChange={e => handleChange('bio', e.target.value)}
+                onChange={e => { handleChange('bio', e.target.value); setErrors(p => ({ ...p, bio: '' })); }}
                 rows={5}
                 placeholder="اكتب نبذة عن خبراتك ومسيرتك المهنية..."
-                className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className={`p-3 w-full text-right text-sm rounded-lg border resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 ${errors.bio ? 'border-red-400' : 'border-gray-200'}`}
               />
             ) : (
               <p className="text-sm leading-relaxed text-right text-gray-600">
@@ -504,8 +592,8 @@ export default function MarketerProfilePage() {
                     <input
                       type={type}
                       value={marketerData[field as keyof MarketerData] as string}
-                      onChange={e => handleChange(field, e.target.value)}
-                      className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      onChange={e => { handleChange(field, e.target.value); setErrors(p => ({ ...p, [field]: '' })); }}
+                      className={`flex-1 px-2 py-1 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-indigo-300 ${errors[field as keyof MarketerData] ? 'border-red-400' : 'border-gray-200'}`}
                     />
                   ) : (
                     <span className="text-sm text-gray-700">{(marketerData[field as keyof MarketerData] as string) || '—'}</span>

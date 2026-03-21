@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, Briefcase, Edit, X, AlertCircle } from "lucide-react";
+import { Loader2, Save, Briefcase, Edit, X, AlertCircle, Award } from "lucide-react";
 import { usePlayerProfile } from "./hooks/usePlayerProfile";
 import { toast } from "sonner";
 import { PersonalTab } from "./_components/PersonalTab";
@@ -16,6 +16,15 @@ import { MedicalTab } from "./_components/MedicalTab";
 import { SkillsTab } from "./_components/SkillsTab";
 import { EducationTab } from "./_components/EducationTab";
 import { ContractsTab } from "./_components/ContractsTab";
+
+const REQUIRED_PROFILE_FIELDS = [
+  { key: 'name',        label: 'الاسم الكامل' },
+  { key: 'nationality', label: 'الجنسية' },
+  { key: 'position',    label: 'المركز' },
+  { key: 'phone',       label: 'رقم الهاتف' },
+  { key: 'birth_date',  label: 'تاريخ الميلاد' },
+  { key: 'country',     label: 'الدولة' },
+];
 
 // Placeholder for pending tabs
 const PlaceholderTab = ({ title, icon: Icon }: { title: string, icon: any }) => (
@@ -33,6 +42,27 @@ export default function PlayerProfilePage() {
   const { form, loading, saving, saveProfile, user, isEditing, setIsEditing } = usePlayerProfile();
   const [errorTabs, setErrorTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("personal");
+  const [showCompletionBanner, setShowCompletionBanner] = useState(false);
+
+  const BANNER_SNOOZE_KEY = `player_profile_banner_snoozed_${user?.uid}`;
+  const SNOOZE_DAYS = 3;
+  const formValues = form.watch();
+
+  const missingFields = REQUIRED_PROFILE_FIELDS.filter(({ key }) => {
+    const val = formValues[key as keyof typeof formValues];
+    return !val || (typeof val === 'string' && !val.trim());
+  });
+
+  useEffect(() => {
+    if (loading || missingFields.length === 0) return;
+    const snoozedAt = localStorage.getItem(BANNER_SNOOZE_KEY);
+    if (snoozedAt) {
+      const daysSince = (Date.now() - Number(snoozedAt)) / (1000 * 60 * 60 * 24);
+      if (daysSince < SNOOZE_DAYS) return;
+    }
+    setShowCompletionBanner(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const onInvalid = (errors: any) => {
     const errorFields = Object.keys(errors);
@@ -248,6 +278,42 @@ export default function PlayerProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {showCompletionBanner && !isEditing && (
+                <div className="flex gap-4 items-start p-4 mb-6 bg-amber-50 rounded-xl border-2 border-amber-300 shadow-sm">
+                  <div className="flex-shrink-0 mt-0.5 p-2 bg-amber-100 rounded-full">
+                    <Award className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
+                    <p className="mb-2 text-xs text-amber-700">أكمل بياناتك الأساسية لتحسين ظهورك وجذب الفرص. الحقول الناقصة:</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {missingFields.map(({ label }) => (
+                        <span key={label} className="px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-full border border-amber-300">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-3 items-center">
+                      <button
+                        type="button"
+                        onClick={() => { setIsEditing(true); setActiveTab('personal'); }}
+                        className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600"
+                      >
+                        استكمال البيانات الآن
+                      </button>
+                      <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { localStorage.setItem(BANNER_SNOOZE_KEY, String(Date.now())); setShowCompletionBanner(false); }}
+                    className="text-amber-400 hover:text-amber-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
               <fieldset disabled={!isEditing} className="group-disabled:pointer-events-none min-h-[500px] mt-6">
                 <div className={`transition-opacity duration-300 ${!isEditing ? 'opacity-80 pointer-events-none' : 'opacity-100'}`}>

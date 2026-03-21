@@ -122,7 +122,7 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',       label: 'البحث عن الفرص والأندية', icon: Search,   href: '/dashboard/player/search' },
+          { id: 'search-opps',       label: 'استكشاف الفرص والأندية', icon: Search,   href: '/dashboard/player/explore-opportunities' },
           { id: 'my-applications',  label: 'طلباتي',                   icon: FileText, href: '/dashboard/player/my-applications' },
           { id: 'search-players',  label: 'البحث عن لاعبين',           icon: Users,   href: '/dashboard/player/search-players' },
           { id: 'player-cinema',   label: 'سينما اللاعبين',             icon: Play,    href: '/dashboard/player/player-videos' },
@@ -190,7 +190,7 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',    label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
+          { id: 'search-opps',    label: 'استكشاف الفرص والأندية', icon: Search, href: '/dashboard/club/explore-opportunities' },
           { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: '/dashboard/club/search-players' },
           { id: 'player-cinema',  label: 'سينما اللاعبين',            icon: Play,   href: '/dashboard/club/player-videos' },
           { id: 'tournaments',    label: 'البطولات الحالية',           icon: Trophy, href: '/tournaments/unified-registration' },
@@ -244,7 +244,7 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',    label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
+          { id: 'search-opps',    label: 'استكشاف الفرص والأندية', icon: Search, href: '/dashboard/academy/explore-opportunities' },
           { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: '/dashboard/academy/search-players' },
           { id: 'player-cinema',  label: 'سينما اللاعبين',            icon: Play,   href: '/dashboard/academy/player-videos' },
           { id: 'tournaments',    label: 'البطولات الحالية',           icon: Trophy, href: '/tournaments/unified-registration' },
@@ -301,7 +301,7 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',    label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
+          { id: 'search-opps',    label: 'استكشاف الفرص والأندية', icon: Search, href: `/dashboard/${accountType}/explore-opportunities` },
           { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: `/dashboard/${accountType}/search-players` },
           { id: 'player-cinema',  label: 'سينما اللاعبين',            icon: Play,   href: `/dashboard/${accountType}/player-videos` },
           { id: 'tournaments',    label: 'البطولات الحالية',           icon: Trophy, href: '/tournaments/unified-registration' },
@@ -357,7 +357,7 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',    label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
+          { id: 'search-opps',    label: 'استكشاف الفرص والأندية', icon: Search, href: '/dashboard/marketer/explore-opportunities' },
           { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: '/dashboard/marketer/search-players' },
           { id: 'player-cinema',  label: 'سينما اللاعبين',            icon: Play,   href: '/dashboard/marketer/videos' },
           { id: 'tournaments',    label: 'البطولات الحالية',           icon: Trophy, href: '/tournaments/unified-registration' },

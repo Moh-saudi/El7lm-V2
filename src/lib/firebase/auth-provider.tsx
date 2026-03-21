@@ -376,6 +376,29 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
               const data = snapshot.data() || {};
 
+              // إذا كان الحساب محذوفاً — نستخدم نوع الحساب المحفوظ مؤقتاً أو نترك userData كما هي
+              if ((data as any).isDeleted === true) {
+                if (isSubscribed) {
+                  const savedRole = typeof window !== 'undefined'
+                    ? sessionStorage.getItem('reregister_accountType')
+                    : null;
+                  if (savedRole) {
+                    setUserData(prev => prev ? prev : {
+                      uid: user.uid,
+                      email: user.email || '',
+                      accountType: savedRole as UserRole,
+                      full_name: user.displayName || '',
+                      phone: user.phoneNumber || '',
+                      profile_image: user.photoURL || '',
+                      isNewUser: true,
+                    } as UserData);
+                  }
+                  setLoading(false);
+                  setHasInitialized(true);
+                }
+                return;
+              }
+
               // جلب بيانات إضافية من مجموعة users لضمان عدم فقدان الحقول القديمة (مثل role)
               let legacyData = {};
               if (collectionName !== 'users') {
@@ -395,7 +418,7 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
                 uid: user.uid,
                 email: user.email || data.email || (legacyData as any).email || '',
                 accountType: userAccountType,
-                full_name: data.full_name || data.name || (legacyData as any).full_name || (legacyData as any).name || '',
+                full_name: data.full_name || data.name || data.academy_name || data.club_name || (legacyData as any).full_name || (legacyData as any).name || '',
                 phone: data.phone || (legacyData as any).phone || '',
                 profile_image: data.profile_image || data.profileImage || data.avatar || (legacyData as any).profile_image || '',
                 ...legacyData, // الحقول القديمة أولاً
@@ -997,8 +1020,36 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       if (!isNewUser) {
         const accountStatus = await checkAccountStatus(user.uid);
         if (!accountStatus.canLogin) {
-          await signOut(auth);
-          throw new Error(accountStatus.message);
+          // إذا كان الحساب محذوفاً — نسمح بالتسجيل من جديد كمستخدم جديد
+          if (accountStatus.message.includes('حذف') || accountStatus.message.includes('جديد')) {
+            // قراءة نوع الحساب من URL إن وُجد، وإلا defaultRole
+            const pathSegment = typeof window !== 'undefined'
+              ? window.location.pathname.split('/')[2]
+              : '';
+            const knownTypes = ['player', 'academy', 'club', 'trainer', 'agent', 'marketer'];
+            const detectedRole = (knownTypes.includes(pathSegment) ? pathSegment : (defaultRole || 'player')) as UserRole;
+
+            isNewUser = true;
+            userData = {
+              uid: user.uid,
+              email: user.email || '',
+              accountType: detectedRole,
+              full_name: user.displayName || '',
+              phone: user.phoneNumber || '',
+              profile_image: user.photoURL || '',
+              isNewUser: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            } as UserData;
+            // حفظ نوع الحساب مؤقتاً حتى يكتمل التسجيل
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('reregister_accountType', detectedRole);
+            }
+          } else {
+            // إيقاف تعليق أو سبب آخر — نرفض الدخول
+            await signOut(auth);
+            throw new Error(accountStatus.message);
+          }
         }
       }
 
