@@ -19,10 +19,14 @@ import {
   Target,
   Users,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  MapPin,
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { getExploreOpportunities } from '@/lib/firebase/opportunities';
+import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
+import { Opportunity } from '@/types/opportunities';
 import ReferralWelcomeModal from '@/components/referrals/ReferralWelcomeModal';
 import PlayerOrganizationCard from '@/components/referrals/PlayerOrganizationCard';
 import PhoneCollectionModal from '@/components/player/PhoneCollectionModal';
@@ -39,6 +43,11 @@ export default function PlayerDashboard() {
   const [isTablet, setIsTablet] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+
+  useEffect(() => {
+    getExploreOpportunities().then(list => setOpportunities(list.slice(0, 3))).catch(() => {});
+  }, []);
 
   // كشف نوع الجهاز
   useEffect(() => {
@@ -408,6 +417,93 @@ export default function PlayerDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Opportunities Section */}
+        {opportunities.length > 0 && (
+          <div className="mb-6 md:mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg md:text-2xl font-semibold text-gray-900">آخر الفرص المتاحة</h2>
+              <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
+                عرض الكل ←
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {opportunities.map(opp => {
+                const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
+                return (
+                  <Link
+                    key={opp.id}
+                    href={`/dashboard/opportunities/${opp.id}`}
+                    className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white"
+                        style={{ backgroundColor: cfg.color }}
+                      >
+                        {cfg.emoji} {cfg.label}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-1">{opp.title}</h3>
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {opp.organizerName}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recommended Opportunities Section */}
+        {(() => {
+          const playerPos = userData?.position || userData?.playing_position || '';
+          const playerCountry = userData?.country || '';
+          const recommended = opportunities.filter(opp => {
+            const posMatch = playerPos && opp.targetPositions?.includes(playerPos);
+            const countryMatch = playerCountry && opp.country === playerCountry;
+            return posMatch || countryMatch;
+          }).slice(0, 3);
+          if (recommended.length === 0) return null;
+          return (
+            <div className="mb-6 md:mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-2xl font-semibold text-gray-900">موصى بها لك</h2>
+                <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
+                  عرض الكل ←
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {recommended.map(opp => {
+                  const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
+                  return (
+                    <Link
+                      key={opp.id}
+                      href={`/dashboard/opportunities/${opp.id}`}
+                      className="bg-white rounded-xl border border-green-100 shadow-sm p-4 hover:shadow-md transition-shadow relative"
+                    >
+                      <span className="absolute top-2 left-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                        مناسب لك
+                      </span>
+                      <div className="flex items-center gap-2 mb-2 mt-4">
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white"
+                          style={{ backgroundColor: cfg.color }}
+                        >
+                          {cfg.emoji} {cfg.label}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-1">{opp.title}</h3>
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> {opp.organizerName}
+                      </p>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Quick Actions */}
         <div className="mb-6 md:mb-8">

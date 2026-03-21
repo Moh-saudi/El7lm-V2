@@ -146,6 +146,14 @@ export const usePlayerProfile = () => {
             // Prepare Valid Data (remove undefined)
             const dataToSave = JSON.parse(JSON.stringify(values));
 
+            // Stamp createdAt on new videos that don't have one
+            if (Array.isArray(dataToSave.videos)) {
+                dataToSave.videos = dataToSave.videos.map((v: any) => ({
+                    ...v,
+                    createdAt: v.createdAt || new Date().toISOString(),
+                }));
+            }
+
             // Update Player Doc
             await setDoc(playerDocRef, {
                 ...dataToSave,

@@ -1,0 +1,264 @@
+{
+  "timestamp": "2026-03-15T12:32:05.667Z",
+  "targetUrl": "https://chataman.com/api/send/template",
+  "payload": {
+    "phone": "+201062025687",
+    "template": {
+      "name": "new_message_alert",
+      "language": {
+        "code": "ar"
+      },
+      "components": [
+        {
+          "type": "body",
+          "parameters": [
+            {
+              "type": "text",
+              "text": "Ziad Abdulaal"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "responseStatus": 200,
+  "responseData": {
+    "statusCode": 200,
+    "data": {
+      "success": true,
+      "data": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "+201062025687",
+            "wa_id": "201062025687"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSMzQ0NTgxNjNFN0FBNDQ0RUJFAA==",
+            "message_status": "accepted"
+          }
+        ],
+        "chat": {
+          "organization_id": 92,
+          "wam_id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSMzQ0NTgxNjNFN0FBNDQ0RUJFAA==",
+          "contact_id": 324187,
+          "type": "outbound",
+          "user_id": 0,
+          "metadata": "{\"type\":\"text\",\"text\":{\"body\":\"\\u0645\\u0631\\u062d\\u0628\\u0627\\u064b\\u060c\\r\\n\\u0644\\u062f\\u064a\\u0643 \\u0631\\u0633\\u0627\\u0644\\u0629 \\u062c\\u062f\\u064a\\u062f\\u0629 \\u0645\\u0646 Ziad Abdulaal \\u0639\\u0644\\u0649 \\u062d\\u0633\\u0627\\u0628\\u0643.\\r\\n\\u064a\\u0631\\u062c\\u0649 \\u062a\\u0633\\u062c\\u064a\\u0644 \\u0627\\u0644\\u062f\\u062e\\u0648\\u0644 \\u0644\\u0644\\u0627\\u0637\\u0644\\u0627\\u0639 \\u0639\\u0644\\u0649 \\u0627\\u0644\\u0631\\u0633\\u0627\\u0644\\u0629 \\u0648\\u0627\\u0644\\u0631\\u062f \\u0639\\u0644\\u064a\\u0647\\u0627.\"},\"buttons\":[{\"type\":\"URL\",\"text\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\",\"value\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\"}]}",
+          "media_id": null,
+          "status": "accepted",
+          "created_at": "2026-03-15 12:32:04",
+          "uuid": "f11797b5-45d0-493d-a02d-5b4854cfb63f",
+          "id": 470939,
+          "contact": {
+            "id": 324187,
+            "uuid": "f4dbe16b-b307-4893-b932-cf149456ae65",
+            "organization_id": 92,
+            "first_name": "",
+            "last_name": "",
+            "phone": "+201062025687",
+            "channel_identifiers": null,
+            "whatsapp_user_id": null,
+            "whatsapp_username": null,
+            "whatsapp_country_code": null,
+            "email": null,
+            "latest_chat_created_at": "2026-03-15 12:32:04",
+            "avatar": null,
+            "address": null,
+            "metadata": null,
+            "contact_group_id": null,
+            "is_favorite": 0,
+            "ai_assistance_enabled": 0,
+            "created_by": 0,
+            "created_at": "2026-03-15 12:32:05",
+            "updated_at": "2026-03-15 12:32:05",
+            "last_autoresponse_sent_at": null,
+            "deleted_at": null,
+            "ai_assistant": 0,
+            "full_name": " ",
+            "formatted_phone_number": "+20 10 62025687"
+          }
+        }
+      },
+      "reached_meta": true
+    }
+  }
+}
+{
+  "timestamp": "2026-03-15T12:32:37.752Z",
+  "targetUrl": "https://chataman.com/api/send/template",
+  "payload": {
+    "phone": "+201062025687",
+    "template": {
+      "name": "new_message_alert",
+      "language": {
+        "code": "ar"
+      },
+      "components": [
+        {
+          "type": "body",
+          "parameters": [
+            {
+              "type": "text",
+              "text": "Ziad Abdulaal"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "responseStatus": 200,
+  "responseData": {
+    "statusCode": 200,
+    "data": {
+      "success": true,
+      "data": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "+201062025687",
+            "wa_id": "201062025687"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSRjgzMjIwNTJEQzVGM0I0OEUzAA==",
+            "message_status": "accepted"
+          }
+        ],
+        "chat": {
+          "organization_id": 92,
+          "wam_id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSRjgzMjIwNTJEQzVGM0I0OEUzAA==",
+          "contact_id": 324187,
+          "type": "outbound",
+          "user_id": 0,
+          "metadata": "{\"type\":\"text\",\"text\":{\"body\":\"\\u0645\\u0631\\u062d\\u0628\\u0627\\u064b\\u060c\\r\\n\\u0644\\u062f\\u064a\\u0643 \\u0631\\u0633\\u0627\\u0644\\u0629 \\u062c\\u062f\\u064a\\u062f\\u0629 \\u0645\\u0646 Ziad Abdulaal \\u0639\\u0644\\u0649 \\u062d\\u0633\\u0627\\u0628\\u0643.\\r\\n\\u064a\\u0631\\u062c\\u0649 \\u062a\\u0633\\u062c\\u064a\\u0644 \\u0627\\u0644\\u062f\\u062e\\u0648\\u0644 \\u0644\\u0644\\u0627\\u0637\\u0644\\u0627\\u0639 \\u0639\\u0644\\u0649 \\u0627\\u0644\\u0631\\u0633\\u0627\\u0644\\u0629 \\u0648\\u0627\\u0644\\u0631\\u062f \\u0639\\u0644\\u064a\\u0647\\u0627.\"},\"buttons\":[{\"type\":\"URL\",\"text\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\",\"value\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\"}]}",
+          "media_id": null,
+          "status": "accepted",
+          "created_at": "2026-03-15 12:32:36",
+          "uuid": "50d2c287-df83-48b7-ad3e-9db9302d2f89",
+          "id": 470943,
+          "contact": {
+            "id": 324187,
+            "uuid": "f4dbe16b-b307-4893-b932-cf149456ae65",
+            "organization_id": 92,
+            "first_name": "",
+            "last_name": "",
+            "phone": "+201062025687",
+            "channel_identifiers": null,
+            "whatsapp_user_id": null,
+            "whatsapp_username": null,
+            "whatsapp_country_code": null,
+            "email": null,
+            "latest_chat_created_at": "2026-03-15 12:32:36",
+            "avatar": null,
+            "address": null,
+            "metadata": null,
+            "contact_group_id": null,
+            "is_favorite": 0,
+            "ai_assistance_enabled": 0,
+            "created_by": 0,
+            "created_at": "2026-03-15 12:32:37",
+            "updated_at": "2026-03-15 12:32:37",
+            "last_autoresponse_sent_at": null,
+            "deleted_at": null,
+            "ai_assistant": 0,
+            "full_name": " ",
+            "formatted_phone_number": "+20 10 62025687"
+          }
+        }
+      },
+      "reached_meta": true
+    }
+  }
+}
+{
+  "timestamp": "2026-03-15T12:33:21.776Z",
+  "targetUrl": "https://chataman.com/api/send/template",
+  "payload": {
+    "phone": "+201062025687",
+    "template": {
+      "name": "new_message_alert",
+      "language": {
+        "code": "ar"
+      },
+      "components": [
+        {
+          "type": "body",
+          "parameters": [
+            {
+              "type": "text",
+              "text": "Ziad Abdulaal"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "responseStatus": 200,
+  "responseData": {
+    "statusCode": 200,
+    "data": {
+      "success": true,
+      "data": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "+201062025687",
+            "wa_id": "201062025687"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSOEFFNjMwMkE3MThGMUY1QjUzAA==",
+            "message_status": "accepted"
+          }
+        ],
+        "chat": {
+          "organization_id": 92,
+          "wam_id": "wamid.HBgMMjAxMDYyMDI1Njg3FQIAERgSOEFFNjMwMkE3MThGMUY1QjUzAA==",
+          "contact_id": 324187,
+          "type": "outbound",
+          "user_id": 0,
+          "metadata": "{\"type\":\"text\",\"text\":{\"body\":\"\\u0645\\u0631\\u062d\\u0628\\u0627\\u064b\\u060c\\r\\n\\u0644\\u062f\\u064a\\u0643 \\u0631\\u0633\\u0627\\u0644\\u0629 \\u062c\\u062f\\u064a\\u062f\\u0629 \\u0645\\u0646 Ziad Abdulaal \\u0639\\u0644\\u0649 \\u062d\\u0633\\u0627\\u0628\\u0643.\\r\\n\\u064a\\u0631\\u062c\\u0649 \\u062a\\u0633\\u062c\\u064a\\u0644 \\u0627\\u0644\\u062f\\u062e\\u0648\\u0644 \\u0644\\u0644\\u0627\\u0637\\u0644\\u0627\\u0639 \\u0639\\u0644\\u0649 \\u0627\\u0644\\u0631\\u0633\\u0627\\u0644\\u0629 \\u0648\\u0627\\u0644\\u0631\\u062f \\u0639\\u0644\\u064a\\u0647\\u0627.\"},\"buttons\":[{\"type\":\"URL\",\"text\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\",\"value\":\"\\u0632\\u064a\\u0627\\u0631\\u0629 \\u0627\\u0644\\u0645\\u0646\\u0635\\u0629\"}]}",
+          "media_id": null,
+          "status": "accepted",
+          "created_at": "2026-03-15 12:33:20",
+          "uuid": "443a9f6a-ee3f-434b-b4fd-be8c79e04e1d",
+          "id": 470944,
+          "contact": {
+            "id": 324187,
+            "uuid": "f4dbe16b-b307-4893-b932-cf149456ae65",
+            "organization_id": 92,
+            "first_name": "",
+            "last_name": "",
+            "phone": "+201062025687",
+            "channel_identifiers": null,
+            "whatsapp_user_id": null,
+            "whatsapp_username": null,
+            "whatsapp_country_code": null,
+            "email": null,
+            "latest_chat_created_at": "2026-03-15 12:33:20",
+            "avatar": null,
+            "address": null,
+            "metadata": null,
+            "contact_group_id": null,
+            "is_favorite": 0,
+            "ai_assistance_enabled": 0,
+            "created_by": 0,
+            "created_at": "2026-03-15 12:33:21",
+            "updated_at": "2026-03-15 12:33:21",
+            "last_autoresponse_sent_at": null,
+            "deleted_at": null,
+            "ai_assistant": 0,
+            "full_name": " ",
+            "formatted_phone_number": "+20 10 62025687"
+          }
+        }
+      },
+      "reached_meta": true
+    }
+  }
+}

@@ -49,13 +49,26 @@ import {
   Heart,
   ShieldCheck,
   LayoutGrid,
-  ListFilter
+  ListFilter,
+  Target,
+  Calendar,
+  X,
+  Users,
+  Bookmark,
+  BookmarkCheck,
+  Share2,
+  Copy,
 } from 'lucide-react';
 import SendMessageButton from '@/components/messaging/SendMessageButton';
 import { toast, Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+import { getExploreOpportunities, applyToOpportunity, incrementViewCount, getPlayerApplications } from '@/lib/firebase/opportunities';
+import { notifyNewApplication } from '@/lib/opportunities/notifications';
+import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
+import { Opportunity, OpportunityType } from '@/types/opportunities';
+import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 
 // --- Types ---
 interface SearchEntity {
@@ -223,6 +236,8 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const [userData, setUserData] = useState<any>(null);
 
+  const [activeSection, setActiveSection] = useState<'entities' | 'opportunities'>('opportunities');
+
   const [filters, setFilters] = useState<FilterOptions>({
     searchQuery: '',
     type: 'all',
@@ -233,6 +248,61 @@ export default function SearchPage() {
   });
 
   const [allData, setAllData] = useState<SearchEntity[]>([]);
+
+  // Opportunities state
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [oppLoading, setOppLoading] = useState(true);
+  const [oppTypeFilter, setOppTypeFilter] = useState<OpportunityType | 'all'>('all');
+  const [oppSearch, setOppSearch] = useState('');
+  const [applyModalOpp, setApplyModalOpp] = useState<Opportunity | null>(null);
+  const [detailOpp, setDetailOpp] = useState<Opportunity | null>(null);
+  const [applyMessage, setApplyMessage] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  const [applySuccessOpp, setApplySuccessOpp] = useState<Opportunity | null>(null);
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [myApplications, setMyApplications] = useState<Record<string, { status: string; reviewNote?: string }>>({});
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [filterForMe, setFilterForMe] = useState(false);
+
+  useEffect(() => {
+    getExploreOpportunities()
+      .then(list => setOpportunities(list))
+      .catch(() => {})
+      .finally(() => setOppLoading(false));
+  }, []);
+
+  // جلب طلبات اللاعب مع حالتها
+  useEffect(() => {
+    if (!user?.uid) return;
+    getPlayerApplications(user.uid).then(apps => {
+      setAppliedIds(new Set(apps.map(a => a.opportunityId)));
+      const map: Record<string, { status: string; reviewNote?: string }> = {};
+      apps.forEach(a => { map[a.opportunityId] = { status: a.status, reviewNote: a.reviewNote }; });
+      setMyApplications(map);
+    }).catch(() => {});
+  }, [user?.uid]);
+
+  // تحميل الفرص المحفوظة من localStorage
+  useEffect(() => {
+    if (!user?.uid) return;
+    try {
+      const raw = localStorage.getItem(`opp_saved_${user.uid}`);
+      if (raw) setSavedIds(new Set(JSON.parse(raw)));
+    } catch { /* ignore */ }
+  }, [user?.uid]);
+
+  const toggleSave = (oppId: string) => {
+    if (!user?.uid) return;
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(oppId)) next.delete(oppId);
+      else next.add(oppId);
+      try {
+        localStorage.setItem(`opp_saved_${user.uid}`, JSON.stringify([...next]));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -380,6 +450,65 @@ export default function SearchPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentEntities = filteredEntities.slice(startIndex, startIndex + itemsPerPage);
 
+  const filteredOpportunities = opportunities.filter(opp => {
+    const matchType = oppTypeFilter === 'all' || opp.opportunityType === oppTypeFilter;
+    const matchSearch = !oppSearch || opp.title.includes(oppSearch) || opp.organizerName.includes(oppSearch);
+    if (!matchType || !matchSearch) return false;
+    if (filterForMe) {
+      const playerPos = userData?.position || userData?.playing_position || '';
+      const playerAge = userData?.age ? Number(userData.age) : undefined;
+      const posMatch = !opp.targetPositions?.length || (playerPos && opp.targetPositions.includes(playerPos));
+      const ageMatch = !playerAge || (
+        (!opp.ageMin || playerAge >= opp.ageMin) &&
+        (!opp.ageMax || playerAge <= opp.ageMax)
+      );
+      return !!(posMatch && ageMatch);
+    }
+    return true;
+  });
+
+  const handleApply = async () => {
+    if (!user || !applyModalOpp) return;
+    setIsApplying(true);
+    try {
+      const userDoc = await getDoc(doc(db, 'players', user.uid));
+      const pd = userDoc.exists() ? userDoc.data() : {};
+      const avatarPath = pd.profile_image || pd.profileImage || pd.avatar || '';
+      const avatarUrl = avatarPath ? (getSupabaseImageUrl(avatarPath) || avatarPath) : '';
+
+      const playerName = userData?.full_name || userData?.fullName || user.displayName || 'لاعب';
+      await applyToOpportunity(applyModalOpp.id, user.uid, {
+        opportunityTitle: applyModalOpp.title,
+        organizerName: applyModalOpp.organizerName,
+        organizerType: applyModalOpp.organizerType,
+        playerName,
+        playerPhone: userData?.phone || '',
+        playerPosition: pd.position || pd.playing_position || '',
+        playerCountry: pd.country || pd.nationality || '',
+        playerAge: pd.age ? Number(pd.age) : undefined,
+        playerHeight: pd.height ? Number(pd.height) : undefined,
+        playerWeight: pd.weight ? Number(pd.weight) : undefined,
+        playerFoot: pd.preferred_foot || pd.foot || '',
+        playerCurrentClub: pd.current_club || pd.club || '',
+        playerContractStatus: pd.contract_status || '',
+        playerAvatarUrl: avatarUrl,
+        playerStats: pd.stats || {},
+        message: applyMessage,
+      });
+      await notifyNewApplication(applyModalOpp.organizerId, applyModalOpp.organizerType, playerName, applyModalOpp.title, applyModalOpp.id);
+      await incrementViewCount(applyModalOpp.id);
+      toast.success('تم إرسال طلب التقديم بنجاح');
+      setAppliedIds(prev => new Set(prev).add(applyModalOpp.id));
+      setApplySuccessOpp(applyModalOpp);
+      setApplyModalOpp(null);
+      setApplyMessage('');
+    } catch {
+      toast.error('فشل إرسال الطلب');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   const handleFollow = async (entity: SearchEntity) => {
     if (!user || isActionLoading) return;
     setIsActionLoading(`follow-${entity.id}`);
@@ -432,7 +561,537 @@ export default function SearchPage() {
 
       <div className="container mx-auto px-6 mt-8">
 
-        {/* Filters Panel */}
+        {/* Section Switcher */}
+        <div className="flex gap-2 mb-8 bg-white rounded-2xl p-1.5 border border-slate-100 shadow-sm max-w-sm mx-auto">
+          <button
+            onClick={() => setActiveSection('opportunities')}
+            className={cn(
+              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
+              activeSection === 'opportunities' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            🎯 الفرص المتاحة
+          </button>
+          <button
+            onClick={() => setActiveSection('entities')}
+            className={cn(
+              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
+              activeSection === 'entities' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
+            )}
+          >
+            🏟️ الأندية والوكلاء
+          </button>
+        </div>
+
+        {/* Opportunities Section */}
+        {activeSection === 'opportunities' && (
+          <div>
+            {/* Opportunities search + type filter */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              <div className="flex items-center bg-white rounded-2xl px-4 h-12 border border-slate-100 shadow-sm flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-300 ml-2" />
+                <input
+                  value={oppSearch}
+                  onChange={e => setOppSearch(e.target.value)}
+                  placeholder="ابحث في الفرص..."
+                  className="flex-1 text-sm font-medium bg-transparent outline-none text-slate-800"
+                />
+              </div>
+              <button
+                onClick={() => setFilterForMe(prev => !prev)}
+                className={cn(
+                  'h-12 px-4 rounded-2xl text-sm font-bold border transition-all flex items-center gap-2',
+                  filterForMe
+                    ? 'bg-green-500 text-white border-green-500 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-100 hover:border-green-300'
+                )}
+              >
+                <Target className="w-4 h-4" />
+                مناسب لي
+              </button>
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  onClick={() => setOppTypeFilter('all')}
+                  className={cn('px-3 py-1.5 rounded-xl text-xs font-bold transition-all', oppTypeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-500')}
+                >
+                  الكل
+                </button>
+                {Object.entries(OPPORTUNITY_TYPES).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    onClick={() => setOppTypeFilter(key as OpportunityType)}
+                    className={cn('px-3 py-1.5 rounded-xl text-xs font-bold transition-all', oppTypeFilter === key ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-500')}
+                  >
+                    {cfg.emoji} {cfg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {oppLoading ? (
+              <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>
+            ) : filteredOpportunities.length === 0 ? (
+              <div className="text-center py-20 text-slate-400">
+                <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">لا توجد فرص متاحة حالياً</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredOpportunities.map(opp => {
+                  const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
+                  return (
+                    <div key={opp.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="h-1 w-full" style={{ backgroundColor: cfg.color }} />
+                      <div className="p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-white"
+                            style={{ backgroundColor: cfg.color }}
+                          >
+                            {cfg.emoji} {cfg.label}
+                          </span>
+                          {opp.isFeatured && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> مميزة
+                            </span>
+                          )}
+                          {opp.applicationDeadline && (
+                            <span className="text-xs text-slate-400 flex items-center gap-1 mr-auto">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(opp.applicationDeadline).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => toggleSave(opp.id)}
+                            className="p-1 rounded-lg hover:bg-slate-50 transition-colors"
+                            title={savedIds.has(opp.id) ? 'إلغاء الحفظ' : 'حفظ الفرصة'}
+                          >
+                            {savedIds.has(opp.id)
+                              ? <BookmarkCheck className="w-4 h-4 text-yellow-500 fill-yellow-400" />
+                              : <Bookmark className="w-4 h-4 text-slate-400" />
+                            }
+                          </button>
+                        </div>
+                        <h3 className="font-bold text-slate-900 mb-1 line-clamp-2">{opp.title}</h3>
+                        <p className="text-sm text-slate-500 mb-3">{opp.organizerName}</p>
+                        {opp.description && (
+                          <p className="text-xs text-slate-400 line-clamp-2 mb-4">{opp.description}</p>
+                        )}
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => setDetailOpp(opp)}
+                            className="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> عرض كامل تفاصيل الفرصة
+                          </button>
+                          <div className="flex gap-2">
+                            {appliedIds.has(opp.id) ? (
+                              <div className="flex-1 py-2.5 bg-green-50 text-green-600 border border-green-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5" /> تم التقديم
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setApplyModalOpp(opp); setApplyMessage(''); }}
+                                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <Target className="w-3.5 h-3.5" /> تقديم على الفرصة
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Details Modal */}
+        {detailOpp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetailOpp(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden max-h-[93vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="px-2.5 py-0.5 text-xs font-bold rounded-full text-white"
+                      style={{ backgroundColor: OPPORTUNITY_TYPES[detailOpp.opportunityType]?.color ?? '#6B7280' }}>
+                      {OPPORTUNITY_TYPES[detailOpp.opportunityType]?.emoji} {OPPORTUNITY_TYPES[detailOpp.opportunityType]?.label ?? detailOpp.opportunityType}
+                    </span>
+                    {detailOpp.isFeatured && (
+                      <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">مميزة</span>
+                    )}
+                  </div>
+                  <h2 className="font-black text-gray-900 text-base leading-snug">{detailOpp.title}</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">{detailOpp.organizerName}</p>
+                </div>
+                <button onClick={() => setDetailOpp(null)} className="text-gray-400 hover:text-gray-600 shrink-0 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+
+                {/* حالة طلب التقديم */}
+                {myApplications[detailOpp.id] && (() => {
+                  const app = myApplications[detailOpp.id];
+                  const statusMap: Record<string, { label: string; color: string }> = {
+                    pending:  { label: 'قيد المراجعة',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                    accepted: { label: 'تم القبول ✓',   color: 'bg-green-50 text-green-700 border-green-200'  },
+                    rejected: { label: 'لم يتم القبول', color: 'bg-red-50 text-red-600 border-red-200'        },
+                  };
+                  const s = statusMap[app.status] ?? statusMap.pending;
+                  return (
+                    <div className={`rounded-xl border px-4 py-3 text-sm font-bold ${s.color}`}>
+                      حالة طلبك: {s.label}
+                      {app.reviewNote && <p className="font-normal mt-1 text-xs opacity-80">{app.reviewNote}</p>}
+                    </div>
+                  );
+                })()}
+
+                {/* الوصف */}
+                {detailOpp.description && (
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">نبذة عن الفرصة</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{detailOpp.description}</p>
+                  </div>
+                )}
+
+                {/* المراكز المطلوبة */}
+                {detailOpp.targetPositions && detailOpp.targetPositions.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">المراكز المطلوبة</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detailOpp.targetPositions.map(pos => (
+                        <span key={pos} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">{pos}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* التفاصيل الأساسية */}
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">التفاصيل</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {detailOpp.applicationDeadline && (
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                        <p className="text-[10px] text-amber-500 font-bold mb-0.5">آخر موعد للتقديم</p>
+                        <p className="text-sm font-bold text-amber-800">{new Date(detailOpp.applicationDeadline).toLocaleDateString('ar-SA')}</p>
+                      </div>
+                    )}
+                    {detailOpp.startDate && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">تاريخ البداية</p>
+                        <p className="text-sm font-bold text-slate-700">{new Date(detailOpp.startDate).toLocaleDateString('ar-SA')}</p>
+                      </div>
+                    )}
+                    {detailOpp.endDate && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">تاريخ الانتهاء</p>
+                        <p className="text-sm font-bold text-slate-700">{new Date(detailOpp.endDate).toLocaleDateString('ar-SA')}</p>
+                      </div>
+                    )}
+                    {detailOpp.durationDays > 0 && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">المدة</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.durationDays} يوم</p>
+                      </div>
+                    )}
+                    {(detailOpp.country || detailOpp.city) && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">الموقع</p>
+                        <p className="text-sm font-bold text-slate-700">{[detailOpp.city, detailOpp.country].filter(Boolean).join(' — ')}</p>
+                      </div>
+                    )}
+                    {detailOpp.location && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">العنوان</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.location}</p>
+                      </div>
+                    )}
+                    {(detailOpp.ageMin || detailOpp.ageMax) && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">الفئة العمرية</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {detailOpp.ageMin && detailOpp.ageMax ? `${detailOpp.ageMin} – ${detailOpp.ageMax} سنة`
+                            : detailOpp.ageMin ? `من ${detailOpp.ageMin} سنة`
+                            : `حتى ${detailOpp.ageMax} سنة`}
+                        </p>
+                      </div>
+                    )}
+                    {detailOpp.gender && detailOpp.gender !== 'both' && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">الجنس</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.gender === 'male' ? 'ذكور' : 'إناث'}</p>
+                      </div>
+                    )}
+                    {detailOpp.nationality && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">الجنسية المطلوبة</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.nationality}</p>
+                      </div>
+                    )}
+                    {detailOpp.maxApplicants > 0 && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">أماكن متاحة</p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {detailOpp.maxApplicants - (detailOpp.currentApplicants || 0)} من {detailOpp.maxApplicants}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* الرسوم والتعويض */}
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">الرسوم والتعويض</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={`rounded-xl p-3 ${detailOpp.isPaid ? 'bg-red-50 border border-red-100' : 'bg-green-50 border border-green-100'}`}>
+                      <p className="text-[10px] font-bold mb-0.5 text-gray-500">رسوم التسجيل</p>
+                      {detailOpp.isPaid && detailOpp.fee
+                        ? <p className="text-sm font-bold text-red-700">{detailOpp.fee} {detailOpp.currency ?? ''}</p>
+                        : <p className="text-sm font-bold text-green-700">مجاني</p>
+                      }
+                    </div>
+                    {detailOpp.compensation && (
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                        <p className="text-[10px] font-bold mb-0.5 text-gray-500">التعويض / المكافأة</p>
+                        <p className="text-sm font-bold text-blue-700">{detailOpp.compensation}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* المزايا المقدمة */}
+                {(detailOpp.providesAccommodation || detailOpp.providesMeals || detailOpp.providesTransport) && (
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">المزايا المقدمة</p>
+                    <div className="flex flex-wrap gap-2">
+                      {detailOpp.providesAccommodation && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">إقامة مُوفّرة</span>}
+                      {detailOpp.providesMeals && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">وجبات مُوفّرة</span>}
+                      {detailOpp.providesTransport && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">مواصلات مُوفّرة</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* المتطلبات */}
+                {detailOpp.requirements && (
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">المتطلبات والشروط</p>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-800 leading-relaxed">
+                      {detailOpp.requirements}
+                    </div>
+                  </div>
+                )}
+
+                {/* مشاركة */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const link = `${window.location.origin}/dashboard/opportunities?id=${detailOpp.id}`;
+                      navigator.clipboard.writeText(link).then(() => toast.success('تم نسخ الرابط')).catch(() => {});
+                    }}
+                    className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> نسخ الرابط
+                  </button>
+                  <button
+                    onClick={() => {
+                      const link = `${window.location.origin}/dashboard/opportunities?id=${detailOpp.id}`;
+                      const text = `${detailOpp.title} — ${detailOpp.organizerName}\n${link}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                    }}
+                    className="flex-1 py-2 bg-green-50 border border-green-200 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Share2 className="w-3.5 h-3.5" /> مشاركة واتساب
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer — أزرار الإجراءات */}
+              <div className="px-5 py-4 border-t border-gray-100 flex gap-2">
+                {!appliedIds.has(detailOpp.id) ? (
+                  <button
+                    onClick={() => { setDetailOpp(null); setApplyModalOpp(detailOpp); setApplyMessage(''); }}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Target className="w-4 h-4" /> تقديم على الفرصة
+                  </button>
+                ) : (
+                  <div className="flex-1 py-3 bg-green-50 text-green-600 border border-green-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                    <CheckCircle className="w-4 h-4" /> تقدّمت على هذه الفرصة
+                  </div>
+                )}
+                <SendMessageButton
+                  user={user}
+                  userData={userData}
+                  getUserDisplayName={() => userData?.fullName || userData?.full_name || 'لاعب'}
+                  targetUserId={detailOpp.organizerId}
+                  targetUserName={detailOpp.organizerName}
+                  targetUserType={detailOpp.organizerType}
+                  redirectToMessages={true}
+                  buttonText="مراسلة"
+                  buttonVariant="outline"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Apply Modal */}
+        {applyModalOpp && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={() => setApplyModalOpp(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                  <h2 className="font-bold text-gray-900 text-base">نموذج التقديم</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">تقديم على فرصة رياضية</p>
+                </div>
+                <button onClick={() => setApplyModalOpp(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+                {/* بيانات الفرصة */}
+                <div className="bg-blue-50 rounded-xl p-4 space-y-2">
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">الفرصة</p>
+                  <h3 className="font-bold text-gray-900 text-sm leading-snug">{applyModalOpp.title}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded-full">
+                      {OPPORTUNITY_TYPES[applyModalOpp.opportunityType]?.label ?? applyModalOpp.opportunityType}
+                    </span>
+                    <span className="text-xs text-gray-500">{applyModalOpp.organizerName}</span>
+                    {applyModalOpp.country && <span className="text-xs text-gray-400">{applyModalOpp.country}</span>}
+                  </div>
+                  {applyModalOpp.applicationDeadline && (
+                    <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      آخر موعد: {new Date(applyModalOpp.applicationDeadline).toLocaleDateString('ar-SA')}
+                    </p>
+                  )}
+                </div>
+
+                {/* بيانات اللاعب التي ستُرسل */}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">بياناتك التي ستُرسل</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-gray-600">
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                      <span className="text-gray-400">الاسم:</span>
+                      <span className="font-semibold truncate">{userData?.full_name || userData?.fullName || '—'}</span>
+                    </div>
+                    {(userData?.position || userData?.playing_position) && (
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
+                        <span className="text-gray-400">المركز:</span>
+                        <span className="font-semibold">{userData.position || userData.playing_position}</span>
+                      </div>
+                    )}
+                    {userData?.country && (
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
+                        <span className="text-gray-400">الدولة:</span>
+                        <span className="font-semibold">{userData.country}</span>
+                      </div>
+                    )}
+                    {userData?.phone && (
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                        <span className="text-gray-400">الهاتف:</span>
+                        <span className="font-semibold">{userData.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">سيتم إرفاق ملفك الكامل (صورة، إحصائيات، بيانات فيزيائية) تلقائياً</p>
+                </div>
+
+                {/* رسالة / استفسار */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
+                    رسالة أو استفسار لصاحب الفرصة
+                    <span className="text-gray-400 font-normal">(اختياري)</span>
+                  </label>
+                  <textarea
+                    value={applyMessage}
+                    onChange={e => setApplyMessage(e.target.value)}
+                    placeholder="مثال: هل يُقبل اللاعبون من خارج البلاد؟ أو أي استفسار قبل التقديم..."
+                    rows={3}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 flex gap-2">
+                <button
+                  onClick={() => setApplyModalOpp(null)}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleApply}
+                  disabled={isApplying}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                >
+                  {isApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+                  تقديم الطلب
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Apply Success Modal */}
+        {applySuccessOpp && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle className="w-9 h-9 text-green-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900 text-lg">تم إرسال طلبك بنجاح!</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  تقدّمت على <span className="font-semibold text-gray-700">{applySuccessOpp.title}</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">سيتم التواصل معك من قِبل {applySuccessOpp.organizerName}</p>
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
+                <SendMessageButton
+                  user={user}
+                  userData={userData}
+                  getUserDisplayName={() => userData?.fullName || userData?.full_name || 'لاعب'}
+                  targetUserId={applySuccessOpp.organizerId}
+                  targetUserName={applySuccessOpp.organizerName}
+                  targetUserType={applySuccessOpp.organizerType}
+                  redirectToMessages={true}
+                  buttonText="أرسل رسالة لصاحب الفرصة"
+                  buttonVariant="default"
+                  className="w-full"
+                />
+                <button
+                  onClick={() => setApplySuccessOpp(null)}
+                  className="w-full py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  لاحقاً
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Entities Section */}
+        {activeSection === 'entities' && (<>
         <AnimatePresence mode="wait">
           {showFilters && (
             <motion.div
@@ -636,6 +1295,7 @@ export default function SearchPage() {
             </p>
           </div>
         )}
+        </>)}
       </div>
     </div>
   );

@@ -1,31 +1,44 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo, memo } from 'react';
+import Comments from '@/components/video/Comments';
+import MessageComposerSheet from '@/components/shared/MessageComposerSheet';
+import PlayerImage from '@/components/ui/player-image';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import {
-  Heart, MessageCircle, Share2, Music, Play, UserPlus, Search, Filter, Volume2, VolumeX, Calendar
-} from 'lucide-react';
-import Comments from '@/components/video/Comments';
-import PlayerImage from '@/components/ui/player-image';
-import ReactPlayer from 'react-player';
+import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { safeNavigate } from '@/lib/utils/url-validator';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-dayjs.extend(relativeTime);
 import 'dayjs/locale/ar';
-import { motion, AnimatePresence } from 'framer-motion';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
+import {
+  ArrowRight,
+  Calendar,
+  Eye,
+  Film,
+  Heart,
+  MessageCircle,
+  MessageSquare,
+  Music,
+  Play,
+  RefreshCw,
+  Search,
+  Send,
+  UserCheck,
+  UserPlus,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactPlayer from 'react-player';
 
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Mousewheel, Keyboard } from 'swiper/modules';
-import type { Swiper as SwiperType } from 'swiper';
+dayjs.extend(relativeTime);
 
-import 'swiper/css';
-import 'swiper/css/mousewheel';
-import 'swiper/css/keyboard';
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Video {
   id: string;
@@ -37,283 +50,493 @@ interface Video {
   likes: number;
   comments: number;
   shares: number;
+  views: number;
   music: string;
   playerId: string;
-  createdAt: any;
+  createdAt: string | Date | null;
 }
 
 interface PlayerVideosPageProps {
   accountType: 'club' | 'academy' | 'trainer' | 'agent' | 'player';
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const STREAMING_PLATFORMS = [
+  'youtube.com', 'youtu.be', 'facebook.com', 'fb.watch',
+  'instagram.com', 'vimeo.com', 'tiktok.com',
+];
+
+function resolveVideoUrl(raw: string): string | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (STREAMING_PLATFORMS.some(p => lower.includes(p))) return raw;
+  const resolved = getSupabaseImageUrl(raw, 'videos');
+  return resolved || null;
+}
+
 function isDirectVideo(url: string) {
   if (!url) return false;
-  const lowerUrl = url.toLowerCase();
-
-  // Explicitly exclude common social media players that need ReactPlayer
-  if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be') ||
-    lowerUrl.includes('facebook.com') || lowerUrl.includes('fb.watch') ||
-    lowerUrl.includes('instagram.com') || lowerUrl.includes('vimeo.com') ||
-    lowerUrl.includes('tiktok.com')) {
-    return false;
-  }
-
-  const cleanUrl = url.split('?')[0].toLowerCase();
-  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') ||
-    url.includes('supabase.co/storage') || url.includes('assets.el7lm.com') || url.includes('r2.dev') ||
-    url.includes('firebasestorage.googleapis.com');
+  const lower = url.toLowerCase();
+  if (STREAMING_PLATFORMS.some(p => lower.includes(p))) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return (
+    clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov') ||
+    url.includes('supabase.co/storage') || url.includes('assets.el7lm.com') ||
+    url.includes('r2.dev') || url.includes('firebasestorage.googleapis.com')
+  );
 }
 
-function getVideoThumbnail(url: string) {
-  if (!url) return undefined;
-  const youtubeMatch = url.match(/(?:youtube\.com.*[?&]v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
-  return youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : undefined;
+function getYoutubeThumbnail(url: string): string | undefined {
+  const m = url.match(/(?:youtube\.com.*[?&]v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : undefined;
 }
 
-// Sub-component for each slide to optimize rendering
-const VideoSlide = memo(({
-  video,
-  isActive,
-  isNear,
-  muted,
-  playing,
-  onTogglePlay,
-  onLike,
-  onComment,
-  onShare,
-  onFollow,
-  isLiked,
-  isFollowing,
-  router
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}م`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}ك`;
+  return String(n);
+}
+
+const COLLECTION_MAP: Record<string, string> = {
+  club: 'clubs', academy: 'academies', trainer: 'trainers', agent: 'agents', player: 'players',
+};
+
+// ─── HUD Action Button ────────────────────────────────────────────────────────
+
+const HudButton = memo(({
+  icon, label, active, activeColor = 'text-red-400', activeBg = 'bg-red-500/20', onClick,
 }: {
-  video: Video;
-  isActive: boolean;
-  isNear: boolean;
-  muted: boolean;
-  playing: boolean;
-  onTogglePlay: () => void;
-  onLike: (id: string) => void;
-  onComment: (id: string) => void;
-  onShare: (v: Video) => void;
-  onFollow: (id: string) => void;
-  isLiked: boolean;
-  isFollowing: boolean;
-  router: any;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  activeColor?: string;
+  activeBg?: string;
+  onClick: (e: React.MouseEvent) => void;
+}) => (
+  <motion.button
+    onClick={(e) => { e.stopPropagation(); onClick(e); }}
+    whileTap={{ scale: 0.80 }}
+    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+    className="flex flex-col items-center gap-2"
+    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', minWidth: 52 }}
+  >
+    {/* Icon circle */}
+    <div
+      className={`w-13 h-13 flex items-center justify-center rounded-full border shadow-lg transition-all duration-200
+        ${active
+          ? `${activeColor} ${activeBg} border-current/30`
+          : 'text-white bg-black/40 border-white/15 backdrop-blur-md'}`}
+      style={{ width: 52, height: 52 }}
+    >
+      {icon}
+    </div>
+    {/* Count label — larger and always white */}
+    <span
+      className="text-white text-sm font-black tabular-nums leading-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
+      style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
+    >
+      {label}
+    </span>
+  </motion.button>
+));
+HudButton.displayName = 'HudButton';
+
+// ─── VideoSlide ───────────────────────────────────────────────────────────────
+
+const VideoSlide = memo(({
+  video, isActive, isNear, muted, playing,
+  onTogglePlay, onLike, onComment, onShare, onFollow, onView, onMessage, onProfileClick,
+  isLiked, isFollowing, router,
+}: {
+  video: Video; isActive: boolean; isNear: boolean; muted: boolean; playing: boolean;
+  onTogglePlay: () => void; onLike: (id: string) => void; onComment: (id: string) => void;
+  onShare: (v: Video) => void; onFollow: (id: string) => void; onView: (id: string) => void;
+  onMessage: (v: Video) => void; onProfileClick: (playerId: string) => void;
+  isLiked: boolean; isFollowing: boolean; router: any;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
-  const [isStuck, setIsStuck] = useState(false);
+  const [errorType, setErrorType] = useState<'network' | 'format' | 'timeout' | 'unknown'>('unknown');
   const [isLoading, setIsLoading] = useState(true);
-  const stuckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [retryKey, setRetryKey] = useState(0); // increment to force remount
+  const stuckRef = useRef<NodeJS.Timeout | null>(null);
+  const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isDirect = useMemo(() => isDirectVideo(video.url), [video.url]);
+  const isYouTube = useMemo(() => video.url.includes('youtube.com') || video.url.includes('youtu.be'), [video.url]);
+
+  // Play / pause sync
   useEffect(() => {
-    // Shared stuck detection for both video element and ReactPlayer
     if (isActive && playing) {
-      setIsStuck(false);
-      if (stuckTimeoutRef.current) clearTimeout(stuckTimeoutRef.current);
-
-      stuckTimeoutRef.current = setTimeout(() => {
-        // If still loading after 10 seconds and we're active
-        if (isLoading) {
-          console.warn("Video load timeout (10s):", video.url);
-          setIsStuck(true);
-          setHasError(true);
-          setIsLoading(false);
-        }
-      }, 10000); // 10 seconds is safer for varied connections
-
-      if (videoRef.current) {
-        videoRef.current.play().catch(err => {
-          if (err.name !== 'AbortError') {
-            console.warn("Playback failed:", err);
-          }
-        });
-      }
+      // YouTube needs more time to initialize; direct files need less
+      const timeout = isYouTube ? 25000 : 18000;
+      stuckRef.current = setTimeout(() => {
+        if (isLoading) { setHasError(true); setErrorType('timeout'); setIsLoading(false); }
+      }, timeout);
+      videoRef.current?.play().catch(() => {});
     } else {
-      if (stuckTimeoutRef.current) {
-        clearTimeout(stuckTimeoutRef.current);
-        stuckTimeoutRef.current = null;
-      }
-      if (videoRef.current) videoRef.current.pause();
+      if (stuckRef.current) clearTimeout(stuckRef.current);
+      videoRef.current?.pause();
     }
+    return () => { if (stuckRef.current) clearTimeout(stuckRef.current); };
+  }, [isActive, playing, isLoading, isYouTube]);
 
-    return () => {
-      if (stuckTimeoutRef.current) clearTimeout(stuckTimeoutRef.current);
-    };
-  }, [isActive, playing, video.url, isLoading]);
-
-  // Handle successful play/canplay
-  const handlePlaybackStarted = () => {
-    setIsLoading(false);
-    setIsStuck(false);
-    if (stuckTimeoutRef.current) {
-      clearTimeout(stuckTimeoutRef.current);
-      stuckTimeoutRef.current = null;
+  // View count: register after 3s of watching
+  useEffect(() => {
+    if (isActive && playing && !hasError) {
+      viewTimerRef.current = setTimeout(() => onView(video.id), 3000);
+    } else {
+      if (viewTimerRef.current) clearTimeout(viewTimerRef.current);
     }
-  };
+    return () => { if (viewTimerRef.current) clearTimeout(viewTimerRef.current); };
+  }, [isActive, playing, hasError, video.id, onView]);
 
-  // Reset states when video changes
   useEffect(() => {
     setHasError(false);
-    setIsStuck(false);
     setIsLoading(true);
+    setVideoProgress(0);
+    setRetryKey(k => k + 1);
   }, [video.url]);
 
+  const onReady = useCallback(() => {
+    setIsLoading(false);
+    if (stuckRef.current) { clearTimeout(stuckRef.current); stuckRef.current = null; }
+  }, []);
+
+  const handleRetry = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHasError(false);
+    setIsLoading(true);
+    setRetryKey(k => k + 1);
+  }, []);
+
+  const handleVideoError = useCallback((e?: any) => {
+    if (stuckRef.current) clearTimeout(stuckRef.current);
+    const code = e?.target?.error?.code;
+    if (code === 2) setErrorType('network');
+    else if (code === 3 || code === 4) setErrorType('format');
+    else setErrorType('unknown');
+    setHasError(true);
+    setIsLoading(false);
+  }, []);
+
+  const handleTimeUpdate = useCallback(() => {
+    const el = videoRef.current;
+    if (el && el.duration > 0) setVideoProgress(el.currentTime / el.duration);
+  }, []);
+
+  const thumbnail = useMemo(
+    () => getYoutubeThumbnail(video.url) || video.playerImage || '/default-player-avatar.png',
+    [video.url, video.playerImage],
+  );
+
+  const bottomOffset = 'calc(env(safe-area-inset-bottom, 0px) + 28px)';
+
+  const errorMessages: Record<string, string> = {
+    network: 'تعذّر الوصول للفيديو — تحقق من الاتصال',
+    format: 'صيغة الفيديو غير مدعومة',
+    timeout: 'استغرق التحميل وقتاً طويلاً',
+    unknown: 'تعذّر تشغيل الفيديو',
+  };
+
   return (
-    <div className="w-full h-full relative bg-black overflow-hidden flex items-center justify-center" onClick={onTogglePlay}>
-      {/* Video Content */}
-      <div className="absolute inset-0 w-full h-full z-0">
-        {isNear && !hasError ? (
-          isDirectVideo(video.url) ? (
+    <div className="absolute inset-0 bg-black overflow-hidden" onClick={onTogglePlay}>
+
+      {/* Thumbnail base layer */}
+      <div
+        className="absolute inset-0 z-0 bg-zinc-900 bg-cover bg-center"
+        style={{ backgroundImage: `url(${thumbnail})` }}
+      />
+
+      {/* Video layer */}
+      {isNear && !hasError && (
+        <div key={retryKey} className="absolute inset-0 z-[1]">
+          {isDirect ? (
             <video
               ref={videoRef}
               src={video.url}
+              poster={thumbnail}
               className="w-full h-full object-cover"
-              loop
-              muted={muted}
-              playsInline
-              onCanPlay={handlePlaybackStarted}
-              onPlaying={handlePlaybackStarted}
-              onLoadedData={handlePlaybackStarted}
+              loop muted={muted} playsInline preload="metadata"
+              onCanPlay={onReady} onPlaying={onReady} onLoadedData={onReady}
               onWaiting={() => setIsLoading(true)}
-              onError={() => {
-                console.error("Video element error:", video.url);
-                setHasError(true);
-              }}
-              style={{ display: 'block' }}
+              onTimeUpdate={handleTimeUpdate}
+              onError={handleVideoError}
             />
           ) : (
-            <div className="w-full h-full">
-              <ReactPlayer
-                url={video.url}
-                playing={isActive && playing}
-                loop
-                muted={muted}
-                width="100%"
-                height="100%"
-                playsinline
-                onStart={handlePlaybackStarted}
-                onPlay={handlePlaybackStarted}
-                onReady={handlePlaybackStarted}
-                onBuffer={() => setIsLoading(true)}
-                onBufferEnd={() => setIsLoading(false)}
-                onError={(e) => {
-                  console.error("ReactPlayer error:", e, video.url);
-                  setHasError(true);
-                }}
-                config={{
-                  youtube: { playerVars: { showinfo: 0, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3, autoplay: 1 } },
-                  facebook: { attributes: { 'data-show-text': 'false' } },
-                  file: {
-                    attributes: {
-                      style: { objectFit: 'cover', width: '100%', height: '100%' }
-                    }
-                  }
-                }}
-              />
-            </div>
-          )
-        ) : (
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${getVideoThumbnail(video.url) || video.playerImage || '/default-player-avatar.png'})` }}
-          >
-            {hasError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm text-white p-6 text-center z-50">
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
-                  <Play className="w-8 h-8 opacity-40" />
-                </div>
-                <p className="font-bold text-lg mb-2">عذراً، تعذر تشغيل الفيديو</p>
-                <p className="text-sm opacity-60">
-                  {isStuck ? "الفيديو يستغرق وقتاً طويلاً في التحميل" : "قد يكون الرابط غير متاح حالياً"}
-                </p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); window.open(video.url, '_blank'); }}
-                  className="mt-6 px-6 py-2 bg-white text-black rounded-full font-bold hover:scale-105 transition-transform"
-                >
-                  فتح الفيديو الأصلي
-                </button>
-              </div>
+            <ReactPlayer
+              url={video.url}
+              playing={isActive && playing}
+              loop muted={muted}
+              width="100%" height="100%"
+              playsinline
+              onStart={onReady} onPlay={onReady} onReady={onReady}
+              onBuffer={() => setIsLoading(true)}
+              onBufferEnd={onReady}
+              onError={() => handleVideoError()}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              config={{
+                youtube: {
+                  playerVars: {
+                    showinfo: 0,
+                    controls: 0,
+                    rel: 0,
+                    modestbranding: 1,
+                    autoplay: 1,
+                    // ✅ mute:1 required for autoplay in browsers
+                    mute: muted ? 1 : 0,
+                    playsinline: 1,
+                    iv_load_policy: 3,
+                    fs: 0,
+                  },
+                },
+                facebook: { appId: '966242223397117', playerId: 'fb-player' },
+                vimeo: { playerOptions: { autopause: false, muted: true } },
+                file: {
+                  attributes: {
+                    style: { objectFit: 'cover', width: '100%', height: '100%' },
+                    playsInline: true,
+                  },
+                  forceVideo: true,
+                },
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Error overlay */}
+      {hasError && (
+        <div
+          className="absolute inset-0 z-[2] flex flex-col items-center justify-center bg-black/85 text-white p-6 text-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-16 h-16 rounded-full bg-white/8 flex items-center justify-center mb-4 border border-white/10">
+            <Play className="w-7 h-7 opacity-30" />
+          </div>
+          <p className="font-black text-base mb-1">{errorMessages[errorType]}</p>
+          {errorType === 'timeout' && (
+            <p className="text-xs text-white/40 mb-5">قد يكون الاتصال بطيئاً</p>
+          )}
+          {errorType === 'format' && (
+            <p className="text-xs text-white/40 mb-5">جرّب الفتح في المتصفح</p>
+          )}
+          {(errorType === 'network' || errorType === 'unknown') && (
+            <p className="text-xs text-white/40 mb-5">قد يكون الفيديو محذوفاً أو خاصاً</p>
+          )}
+          <div className="flex items-center gap-3 mt-2">
+            {/* Retry */}
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/20 rounded-full font-bold text-sm active:scale-95 transition-transform"
+            >
+              <RefreshCw className="w-4 h-4" /> إعادة المحاولة
+            </button>
+            {/* Open externally */}
+            {isYouTube ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); window.open(video.url, '_blank'); }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600/80 rounded-full font-bold text-sm active:scale-95 transition-transform"
+              >
+                ▶ يوتيوب
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); window.open(video.url, '_blank'); }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/20 rounded-full font-bold text-sm active:scale-95 transition-transform"
+              >
+                فتح في المتصفح
+              </button>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Loading Spinner for specific video slide */}
-        {isActive && isLoading && !hasError && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-            <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+      {/* Loading spinner */}
+      {isActive && isLoading && !hasError && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 z-30 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.85) 100%)' }}
+      />
+
+      {/* Progress bar (direct video only) */}
+      {isActive && videoProgress > 0 && (
+        <div className="absolute bottom-0 inset-x-0 z-40 h-0.5 pointer-events-none">
+          <div className="h-full bg-white/25">
+            <div
+              className="h-full bg-white/80 transition-none"
+              style={{ width: `${videoProgress * 100}%` }}
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/70 pointer-events-none z-10" />
-
-      {/* Interactions Hud */}
-      <div className="absolute right-4 bottom-24 flex flex-col items-center gap-7 z-30 pointer-events-auto">
-        <div className="relative mb-2">
-          <div onClick={(e) => { e.stopPropagation(); safeNavigate(router, `/dashboard/shared/player-profile/${video.playerId}`); }} className="w-16 h-16 rounded-full border-2 border-white/90 p-0.5 cursor-pointer shadow-2xl overflow-hidden bg-zinc-800 transition-transform active:scale-90">
+      {/* ── Right-side HUD ─────────────────────────────── */}
+      <div
+        className="absolute right-3 flex flex-col items-center gap-4 z-40 pointer-events-auto"
+        style={{ bottom: bottomOffset }}
+      >
+        {/* Avatar + Follow */}
+        <div className="flex flex-col items-center gap-2">
+          <div
+            onClick={(e) => { e.stopPropagation(); onProfileClick(video.playerId); }}
+            className="w-12 h-12 rounded-full border-[2.5px] border-white/90 overflow-hidden bg-zinc-800 cursor-pointer shadow-xl active:scale-95 transition-transform"
+          >
             <PlayerImage src={video.playerImage} alt={video.playerName} className="w-full h-full rounded-full object-cover" />
           </div>
-          {!isFollowing && (
-            <button onClick={(e) => { e.stopPropagation(); onFollow(video.playerId); }} className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-6 bg-[#FE2C55] rounded-full flex items-center justify-center border-2 border-black shadow-lg hover:scale-110 transition-transform">
-              <UserPlus className="w-3.5 h-3.5 text-white" />
-            </button>
+          {/* Follow button — below avatar, not overlapping */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onFollow(video.playerId); }}
+            className={`flex items-center justify-center w-7 h-7 rounded-full border-2 border-black shadow-lg transition-all duration-200 active:scale-90
+              ${isFollowing ? 'bg-green-500' : 'bg-red-500'}`}
+            style={{ touchAction: 'manipulation' }}
+            title={isFollowing ? 'تمت المتابعة' : 'متابعة'}
+          >
+            {isFollowing
+              ? <UserCheck className="w-3.5 h-3.5 text-white" />
+              : <UserPlus className="w-3.5 h-3.5 text-white" />
+            }
+          </button>
+        </div>
+
+        {/* Like */}
+        <HudButton
+          icon={<Heart className={`w-7 h-7 transition-all duration-150 ${isLiked ? 'fill-current' : ''}`} />}
+          label={formatCount(video.likes)}
+          active={isLiked}
+          activeColor="text-red-400"
+          activeBg="bg-red-500/25"
+          onClick={() => onLike(video.id)}
+        />
+
+        {/* Comments */}
+        <HudButton
+          icon={<MessageCircle className="w-7 h-7" />}
+          label={formatCount(video.comments)}
+          onClick={() => onComment(video.id)}
+        />
+
+        {/* Share */}
+        <HudButton
+          icon={<Send className="w-6 h-6" />}
+          label={formatCount(video.shares)}
+          onClick={() => onShare(video)}
+        />
+
+        {/* Views (display only) */}
+        <HudButton
+          icon={<Eye className="w-6 h-6 opacity-75" />}
+          label={formatCount(video.views)}
+          onClick={() => {}}
+        />
+
+        {/* Message player */}
+        <HudButton
+          icon={<MessageSquare className="w-6 h-6" />}
+          label="رسالة"
+          activeColor="text-blue-400"
+          activeBg="bg-blue-500/20"
+          onClick={() => onMessage(video)}
+        />
+      </div>
+
+      {/* ── Bottom-left info ───────────────────────────── */}
+      <div
+        className="absolute left-0 z-40 text-white flex flex-col gap-2 pointer-events-none"
+        style={{ bottom: bottomOffset, right: '72px', paddingInlineStart: '16px' }}
+      >
+        {/* Name + position */}
+        <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
+          <h3
+            onClick={(e) => { e.stopPropagation(); onProfileClick(video.playerId); }}
+            className="text-base font-black cursor-pointer drop-shadow-md leading-tight"
+          >
+            @{video.playerName}
+          </h3>
+          {video.playerPosition && (
+            <span className="text-[10px] bg-blue-500/80 backdrop-blur-sm px-2 py-0.5 rounded-md font-bold border border-blue-400/30">
+              {video.playerPosition}
+            </span>
           )}
         </div>
 
-        <button onClick={(e) => { e.stopPropagation(); onLike(video.id); }} className="flex flex-col items-center">
-          <div className={`w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 transition-all ${isLiked ? 'text-[#FE2C55]' : 'text-white'}`}>
-            <Heart className={`w-8 h-8 ${isLiked ? 'fill-current' : ''}`} />
-          </div>
-          <span className="text-white text-sm font-black mt-2 drop-shadow-md">{video.likes}</span>
-        </button>
+        {/* Description */}
+        {video.description && (
+          <p className="text-sm font-medium line-clamp-2 opacity-85 leading-relaxed drop-shadow">
+            {video.description}
+          </p>
+        )}
 
-        <button onClick={(e) => { e.stopPropagation(); onComment(video.id); }} className="flex flex-col items-center">
-          <div className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white transition-all">
-            <MessageCircle className="w-8 h-8" />
-          </div>
-          <span className="text-white text-sm font-black mt-2 drop-shadow-md">{video.comments}</span>
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); onShare(video); }} className="flex flex-col items-center text-white">
-          <div className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/10 transition-all">
-            <Share2 className="w-7 h-7" />
-          </div>
-          <span className="text-white text-sm font-black mt-2 drop-shadow-md">{video.shares}</span>
-        </button>
-      </div>
-
-      {/* Info Hud */}
-      <div className="absolute bottom-8 left-0 right-20 p-8 z-20 text-white flex flex-col gap-3 pointer-events-none drop-shadow-2xl">
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <h3 onClick={(e) => { e.stopPropagation(); safeNavigate(router, `/dashboard/shared/player-profile/${video.playerId}`); }} className="text-2xl font-black cursor-pointer hover:underline">@{video.playerName}</h3>
-          {video.playerPosition && <span className="text-[10px] bg-blue-600 px-2 py-1 rounded text-white font-black shadow-lg">{video.playerPosition}</span>}
-        </div>
-        <p className="text-base font-medium line-clamp-2 leading-relaxed opacity-95 pr-3 border-r-2 border-white/30 pointer-events-auto">{video.description || "أداء مذهل في الملعب! 🔥"}</p>
-        <div className="flex items-center gap-4 text-sm font-bold text-white/70 mt-1">
-          <div className="flex items-center gap-2"><Music className="w-4 h-4 text-blue-400" /><span>{video.music}</span></div>
-          <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-purple-400" /><span>{dayjs(video.createdAt).locale('ar').fromNow()}</span></div>
+        {/* Meta row */}
+        <div className="flex items-center gap-3 text-[11px] text-white/55">
+          <span className="flex items-center gap-1">
+            <Music className="w-3 h-3 shrink-0" />
+            <span className="truncate max-w-[120px]">{video.music}</span>
+          </span>
+          {video.createdAt && (
+            <span className="flex items-center gap-1 shrink-0">
+              <Calendar className="w-3 h-3" />
+              {dayjs(video.createdAt).locale('ar').fromNow()}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Play/Pause Indicator */}
-      {!playing && isActive && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 bg-black/10">
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-20 h-20 bg-black/40 backdrop-blur-3xl rounded-full flex items-center justify-center text-white border border-white/20 shadow-2xl">
-            <Play className="w-10 h-10 fill-current ml-2" />
+      {/* Play/Pause indicator */}
+      <AnimatePresence>
+        {!playing && isActive && (
+          <motion.div
+            key="pause-icon"
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 1.2, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+          >
+            <div className="w-16 h-16 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/20 shadow-xl">
+              <Play className="w-7 h-7 fill-current ml-1" />
+            </div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 });
-
 VideoSlide.displayName = 'VideoSlide';
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 gap-6">
+      <Film className="w-20 h-20 opacity-20" />
+      <div>
+        <h2 className="text-2xl font-black mb-2">لا توجد فيديوهات</h2>
+        <p className="text-white/50 text-sm">لم يرفع اللاعبون فيديوهات بعد</p>
+      </div>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 rounded-full font-bold active:scale-95 transition-transform"
+      >
+        <ArrowRight className="w-4 h-4" />
+        العودة
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps) {
   const [videos, setVideos] = useState<Video[]>([]);
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
@@ -321,231 +544,426 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'following'>('all');
-  const [mounted, setMounted] = useState(false);
-
   const [likedVideos, setLikedVideos] = useState<string[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
+  const [messageTarget, setMessageTarget] = useState<Video | null>(null);
 
-  const swiperRef = useRef<SwiperType | null>(null);
-  const { user } = useAuth();
+  // Track videos viewed in this session to avoid duplicate view counts
+  const viewedRef = useRef<Set<string>>(new Set());
+  // Track profile views in this session
+  const profileViewedRef = useRef<Set<string>>(new Set());
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { user, userData } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
     fetchVideos();
     if (user) loadUserPreferences();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // ── Scroll-snap index tracking ──
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollTop / el.clientHeight);
+    if (idx !== currentIndex) {
+      setCurrentIndex(idx);
+      setPlaying(true);
+    }
+  }, [currentIndex]);
+
+  // ── Fetch ──
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const playersSnapshot = await getDocs(collection(db, 'players'));
-      const allVideos: Video[] = [];
-      for (const playerDoc of playersSnapshot.docs) {
-        const playerData = playerDoc.data();
-        if (playerData.isDeleted) continue;
-        const playerVideos = playerData.videos || [];
-        playerVideos.forEach((video: any, index: number) => {
-          if (!video.url) return; // Skip videos without URLs
-
-          let videoDate = video.createdAt || video.updated_at || new Date();
-          if (videoDate?.toDate) videoDate = videoDate.toDate();
-
-          const videoUrl = getSupabaseImageUrl(video.url, 'videos');
+      const snap = await getDocs(collection(db, 'players'));
+      const all: Video[] = [];
+      for (const playerDoc of snap.docs) {
+        const d = playerDoc.data();
+        if (d.isDeleted) continue;
+        (d.videos || []).forEach((v: any, idx: number) => {
+          if (!v.url) return;
+          const videoUrl = resolveVideoUrl(v.url);
           if (!videoUrl) return;
-
-          allVideos.push({
-            id: `${playerDoc.id}_${index}`,
+          let createdAt = v.createdAt || v.updated_at || null;
+          if (createdAt?.toDate) createdAt = createdAt.toDate();
+          all.push({
+            id: `${playerDoc.id}_${idx}`,
             url: videoUrl,
-            playerName: playerData.full_name || playerData.name || 'لاعب',
-            playerImage: getPlayerAvatarUrl(playerData) || '/default-player-avatar.png',
-            playerPosition: playerData.primary_position || '',
-            description: video.description || '',
-            likes: video.likes || 0,
-            comments: video.comments || 0,
-            shares: video.shares || 0,
-            music: video.music || 'Original Sound',
+            playerName: d.full_name || d.name || 'لاعب',
+            playerImage: getPlayerAvatarUrl(d) || '/default-player-avatar.png',
+            playerPosition: d.primary_position || '',
+            description: v.description || v.desc || '',
+            likes: v.likes || 0,
+            comments: Array.isArray(v.comments) ? v.comments.length : (v.commentsCount || v.comments || 0),
+            shares: v.shares || 0,
+            views: v.views || 0,
+            music: v.music || 'Original Sound',
             playerId: playerDoc.id,
-            createdAt: videoDate,
+            createdAt,
           });
         });
       }
-      setVideos(allVideos.sort(() => Math.random() - 0.5));
+      // Shuffle
+      for (let i = all.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [all[i], all[j]] = [all[j], all[i]];
+      }
+      setVideos(all);
+    } catch (err) {
+      console.error('fetchVideos error:', err);
+    } finally {
       setLoading(false);
-    } catch (err) { console.error(err); setLoading(false); }
+    }
   };
 
   const loadUserPreferences = async () => {
     if (!user) return;
     try {
-      const mapping = { club: 'clubs', academy: 'academies', trainer: 'trainers', agent: 'agents', player: 'players' };
-      const col = mapping[accountType] || 'players';
-      const docSnap = await getDoc(doc(db, col, user.uid));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setLikedVideos(data.likedVideos || []);
-        setFollowing(data.following || []);
+      const snap = await getDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid));
+      if (snap.exists()) {
+        setLikedVideos(snap.data().likedVideos || []);
+        setFollowing(snap.data().following || []);
       }
-    } catch (err) { console.error(err); }
+    } catch {}
   };
 
   const filteredVideos = useMemo(() => {
     let f = videos;
-    if (searchQuery) f = f.filter(v => v.playerName.toLowerCase().includes(searchQuery.toLowerCase()) || v.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      f = f.filter(v => v.playerName.toLowerCase().includes(q) || v.description.toLowerCase().includes(q));
+    }
     if (filterType === 'following') f = f.filter(v => following.includes(v.playerId));
     return f;
   }, [videos, searchQuery, filterType, following]);
 
-  const handleLike = async (id: string) => {
+  const handleLike = useCallback(async (id: string) => {
     if (!user) return;
-    const isLiked = likedVideos.includes(id);
-    const newList = isLiked ? likedVideos.filter(vid => vid !== id) : [...likedVideos, id];
-    setLikedVideos(newList);
-    // Update player videos count
+    const liked = likedVideos.includes(id);
+    const next = liked ? likedVideos.filter(x => x !== id) : [...likedVideos, id];
+    setLikedVideos(next);
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, likes: Math.max(0, v.likes + (liked ? -1 : 1)) } : v));
     try {
-      const [pid, vidIdx] = id.split('_');
-      const idx = parseInt(vidIdx);
-      const playerRef = doc(db, 'players', pid);
-      const pDoc = await getDoc(playerRef);
-      if (pDoc.exists()) {
-        const vids = pDoc.data().videos || [];
-        if (vids[idx]) {
-          vids[idx].likes = Math.max(0, (vids[idx].likes || 0) + (isLiked ? -1 : 1));
-          await updateDoc(playerRef, { videos: vids });
+      const [pid, idxStr] = id.split('_');
+      const pRef = doc(db, 'players', pid);
+      const pSnap = await getDoc(pRef);
+      if (pSnap.exists()) {
+        const vids = [...(pSnap.data().videos || [])];
+        const i = parseInt(idxStr);
+        if (vids[i]) {
+          vids[i] = { ...vids[i], likes: Math.max(0, (vids[i].likes || 0) + (liked ? -1 : 1)) };
+          await updateDoc(pRef, { videos: vids });
         }
       }
-      // Update current user data
-      const mapping = { club: 'clubs', academy: 'academies', trainer: 'trainers', agent: 'agents', player: 'players' };
-      const col = mapping[accountType] || 'players';
-      await updateDoc(doc(db, col, user.uid), { likedVideos: newList });
-    } catch (err) { console.error(err); }
-  };
+      await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { likedVideos: next });
+    } catch {}
+  }, [user, likedVideos, accountType]);
 
-  const handleFollow = async (pid: string) => {
+  const handleFollow = useCallback(async (pid: string) => {
     if (!user) return;
-    const isFollowing = following.includes(pid);
-    const newList = isFollowing ? following.filter(id => id !== pid) : [...following, pid];
-    setFollowing(newList);
+    const isF = following.includes(pid);
+    const next = isF ? following.filter(x => x !== pid) : [...following, pid];
+    setFollowing(next);
     try {
-      const mapping = { club: 'clubs', academy: 'academies', trainer: 'trainers', agent: 'agents', player: 'players' };
-      const col = mapping[accountType] || 'players';
-      await updateDoc(doc(db, col, user.uid), { following: newList });
-    } catch (err) { console.error(err); }
-  };
+      await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { following: next });
+    } catch {}
+  }, [user, following, accountType]);
 
-  const handleShare = (v: Video) => {
+  const handleShare = useCallback((v: Video) => {
     const url = `${window.location.origin}/videos/${v.id}`;
+    setVideos(prev => prev.map(vid => vid.id === v.id ? { ...vid, shares: vid.shares + 1 } : vid));
     if (navigator.share) navigator.share({ title: v.playerName, url });
-    else navigator.clipboard.writeText(url);
-  };
+    else navigator.clipboard.writeText(url).then(() => {});
+    // Persist share count
+    try {
+      const [pid, idxStr] = v.id.split('_');
+      getDoc(doc(db, 'players', pid)).then(snap => {
+        if (!snap.exists()) return;
+        const vids = [...(snap.data().videos || [])];
+        const i = parseInt(idxStr);
+        if (vids[i]) {
+          vids[i] = { ...vids[i], shares: (vids[i].shares || 0) + 1 };
+          updateDoc(doc(db, 'players', pid), { videos: vids });
+        }
+      });
+    } catch {}
+  }, []);
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-black text-white">
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-lg font-bold">جاري تحميل التجربة...</p>
-    </div>
-  );
+  const handleView = useCallback(async (id: string) => {
+    if (viewedRef.current.has(id)) return;
+    viewedRef.current.add(id);
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, views: v.views + 1 } : v));
+    try {
+      const [pid, idxStr] = id.split('_');
+      const pRef = doc(db, 'players', pid);
+      const pSnap = await getDoc(pRef);
+      if (pSnap.exists()) {
+        const vids = [...(pSnap.data().videos || [])];
+        const i = parseInt(idxStr);
+        if (vids[i]) {
+          vids[i] = { ...vids[i], views: (vids[i].views || 0) + 1 };
+          await updateDoc(pRef, { videos: vids });
+        }
+      }
+      // Send video view notification (only if viewer ≠ owner)
+      if (user && user.uid !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+        dispatchNotification({
+          eventType: 'video_view',
+          targetUserId: pid,
+          actorId: user.uid,
+          actorName: viewerName,
+          actorAccountType: accountType,
+          metadata: { videoId: id },
+        });
+      }
+    } catch {}
+  }, [user, userData, accountType]);
+
+  const handleProfileClick = useCallback((playerId: string) => {
+    if (user && user.uid !== playerId && !profileViewedRef.current.has(playerId)) {
+      profileViewedRef.current.add(playerId);
+      const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      dispatchNotification({
+        eventType: 'profile_view',
+        targetUserId: playerId,
+        actorId: user.uid,
+        actorName: viewerName,
+        actorAccountType: accountType,
+      });
+    }
+    safeNavigate(router, `/dashboard/shared/player-profile/${playerId}`);
+  }, [user, userData, accountType, router]);
+
+  const handleMessage = useCallback((v: Video) => {
+    setMessageTarget(v);
+  }, []);
+
+  const handleComment = useCallback((id: string) => setSelectedVideoId(id), []);
+  const handleTogglePlay = useCallback(() => setPlaying(p => !p), []);
+  const handleToggleMute = useCallback(() => setMuted(m => !m), []);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-black text-white gap-4" style={{ zIndex: 60 }}>
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+        </div>
+        <p className="text-sm font-bold opacity-50 tracking-wide">جاري تحميل الفيديوهات</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full h-full flex-1 bg-black overflow-hidden flex justify-center selection:bg-blue-500/30">
-      {/* Background Aura - Optimized for performance */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none">
-        {filteredVideos[currentVideoIndex] && (
+    <div
+      className="fixed inset-0 bg-black"
+      style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif", zIndex: 60 }}
+      dir="rtl"
+    >
+      {/* Ambient aura background */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {filteredVideos[currentIndex] && (
           <div
-            key={filteredVideos[currentVideoIndex].id}
-            className="absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out"
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center blur-[80px] brightness-[0.3] saturate-[1.2] opacity-60"
-              style={{ backgroundImage: `url(${getVideoThumbnail(filteredVideos[currentVideoIndex].url) || filteredVideos[currentVideoIndex].playerImage})` }}
-            />
-            <div className="absolute inset-0 bg-black/50" />
-          </div>
+            className="absolute inset-0 bg-cover bg-center blur-[100px] brightness-[0.2] saturate-200 opacity-60 transition-[background-image] duration-1000"
+            style={{ backgroundImage: `url(${getYoutubeThumbnail(filteredVideos[currentIndex].url) || filteredVideos[currentIndex].playerImage})` }}
+          />
         )}
+        <div className="absolute inset-0 bg-black/60" />
       </div>
 
-      {/* Header HUD */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] z-[60] px-4 py-8 pointer-events-none">
-        <div className="flex items-center justify-between pointer-events-auto">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowSearch(!showSearch)} className="p-3 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-white/10 transition-all shadow-xl">
+      {/* ── Video column ── */}
+      <div
+        className="absolute inset-0 mx-auto w-full max-w-[500px]"
+        style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+      >
+        {/* ── Scroll-snap feed ── */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="cinema-scroll absolute inset-0 overflow-y-scroll"
+          style={{
+            scrollSnapType: 'y mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          } as React.CSSProperties}
+        >
+          {filteredVideos.length > 0 ? filteredVideos.map((video, index) => (
+            <div
+              key={video.id}
+              className="relative"
+              style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+            >
+              <VideoSlide
+                video={video}
+                isActive={index === currentIndex}
+                isNear={Math.abs(index - currentIndex) <= 1}
+                muted={muted}
+                playing={playing}
+                onTogglePlay={handleTogglePlay}
+                onLike={handleLike}
+                onComment={handleComment}
+                onShare={handleShare}
+                onFollow={handleFollow}
+                onView={handleView}
+                onMessage={handleMessage}
+                onProfileClick={handleProfileClick}
+                isLiked={likedVideos.includes(video.id)}
+                isFollowing={following.includes(video.playerId)}
+                router={router}
+              />
+            </div>
+          )) : (
+            <EmptyState onBack={() => router.back()} />
+          )}
+        </div>
+
+        {/* ── Top HUD ── */}
+        <div
+          className="absolute top-0 inset-x-0 z-50 px-3 flex items-center justify-between gap-2 pointer-events-auto"
+          style={{
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            paddingBottom: '12px',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
+          }}
+        >
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white active:scale-90 transition-transform"
+          >
+            <ArrowRight className="w-5 h-5" />
+          </button>
+
+          <div className="flex bg-black/50 backdrop-blur-xl border border-white/10 rounded-full p-1">
+            {(['all', 'following'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-5 py-1.5 rounded-full text-sm font-black transition-all duration-200
+                  ${filterType === type ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white/80'}`}
+              >
+                {type === 'all' ? 'لك' : 'متابعة'}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSearch(s => !s)}
+              className="p-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white active:scale-90 transition-transform"
+            >
               <Search className="w-5 h-5" />
             </button>
-            <button className="p-3 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white transition-all shadow-xl">
-              <Filter className="w-5 h-5" />
+            <button
+              onClick={handleToggleMute}
+              className="p-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white active:scale-90 transition-transform"
+            >
+              {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
           </div>
-          <div className="flex bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full p-1.5 shadow-2xl">
-            <button onClick={() => setFilterType('all')} className={`px-6 py-1.5 rounded-full text-sm font-black transition-all ${filterType === 'all' ? 'bg-white text-black shadow-lg scale-105' : 'text-white/50'}`}>لك</button>
-            <button onClick={() => setFilterType('following')} className={`px-6 py-1.5 rounded-full text-sm font-black transition-all ${filterType === 'following' ? 'bg-white text-black shadow-lg scale-105' : 'text-white/50'}`}>متابعة</button>
-          </div>
-          <button onClick={() => setMuted(!muted)} className="p-3 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-white/10 shadow-xl">
-            {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
         </div>
-      </div>
 
-      {/* Swiper "Special Frame" Container */}
-      <div className="relative w-full max-w-[500px] h-full z-10 bg-black shadow-[0_0_150px_rgba(0,0,0,1)] border-x border-white/10 ring-1 ring-white/5">
-        {mounted && filteredVideos.length > 0 && (
-          <Swiper
-            direction="vertical"
-            modules={[Mousewheel, Keyboard]}
-            mousewheel={{ forceToAxis: true, sensitivity: 1 }}
-            keyboard={{ enabled: true }}
-            className="h-full w-full"
-            onSlideChange={(s) => setCurrentVideoIndex(s.activeIndex)}
-            speed={400}
-            threshold={10}
-            resistanceRatio={0.5}
-            nested={true}
-          >
-            {filteredVideos.map((video, index) => (
-              <SwiperSlide key={video.id} className="h-full w-full">
-                <VideoSlide
-                  video={video}
-                  isActive={index === currentVideoIndex}
-                  isNear={Math.abs(index - currentVideoIndex) <= 2} // Pre-load 2 neighbors for better balance
-                  muted={muted}
-                  playing={playing}
-                  onTogglePlay={() => setPlaying(!playing)}
-                  onLike={handleLike}
-                  onComment={(id) => setSelectedVideoId(id)}
-                  onShare={handleShare}
-                  onFollow={handleFollow}
-                  isLiked={likedVideos.includes(video.id)}
-                  isFollowing={following.includes(video.playerId)}
-                  router={router}
-                />
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        )}
-      </div>
-
-      {/* Full-screen Comments Modal */}
-      <AnimatePresence>
-        {selectedVideoId && (
-          <div className="fixed inset-0 z-[100] flex justify-center pointer-events-none">
-            <div className="w-full max-w-[500px] h-full relative pointer-events-auto shadow-[0_0_100px_rgba(0,0,0,0.8)]">
-              <Comments videoId={selectedVideoId} isOpen={true} onClose={() => setSelectedVideoId(null)} inline={true} />
-            </div>
+        {/* Video counter pill */}
+        {filteredVideos.length > 0 && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <span className="text-white/35 text-xs font-bold tabular-nums">
+              {currentIndex + 1} / {filteredVideos.length}
+            </span>
           </div>
         )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {showSearch && (
-          <motion.div initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }} className="absolute top-24 left-1/2 w-full max-w-[460px] z-[70] px-4">
-            <div className="bg-zinc-900/98 backdrop-blur-3xl p-6 rounded-[2.5rem] border border-white/20 shadow-full">
-              <div className="relative">
-                <input type="text" placeholder="ابحث عن المهارة..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-full py-4 px-8 text-white outline-none focus:ring-2 focus:ring-blue-500/50" />
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+        {/* Search bar */}
+        <AnimatePresence>
+          {showSearch && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="absolute top-16 inset-x-3 z-50"
+            >
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  placeholder="ابحث عن لاعب أو مهارة..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-full bg-zinc-900/95 backdrop-blur-xl border border-white/20 rounded-full py-3 pr-4 pl-10 text-white text-sm outline-none placeholder-white/30"
+                  style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
+                />
+                <button
+                  onClick={() => { setSearchQuery(''); setShowSearch(false); }}
+                  className="absolute left-3 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Swipe hint */}
+        {filteredVideos.length > 1 && currentIndex === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 1, 0] }}
+            transition={{ delay: 2, duration: 2.5, times: [0, 0.2, 0.7, 1] }}
+            className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-1"
+          >
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ repeat: 2, duration: 0.8, delay: 2 }}
+              className="w-8 h-8 rounded-full border-2 border-white/40 flex items-center justify-center"
+            >
+              <span className="text-white/60 text-lg">↑</span>
+            </motion.div>
+            <span className="text-white/50 text-xs font-bold">اسحب للأعلى</span>
           </motion.div>
         )}
+      </div>
+
+      {/* Comments panel */}
+      <AnimatePresence>
+        {selectedVideoId && (
+          <div className="absolute inset-0 z-[100] flex justify-center pointer-events-none">
+            <div className="w-full max-w-[500px] h-full relative pointer-events-auto">
+              <Comments
+                videoId={selectedVideoId}
+                isOpen={true}
+                onClose={(newCount?: number) => {
+                  if (newCount !== undefined && selectedVideoId) {
+                    setVideos(prev => prev.map(v => v.id === selectedVideoId ? { ...v, comments: newCount } : v));
+                  }
+                  setSelectedVideoId(null);
+                }}
+                inline={true}
+              />
+            </div>
+          </div>
+        )}
       </AnimatePresence>
+
+      {/* Message composer */}
+      {messageTarget && (
+        <div className="absolute inset-0 z-[110] flex justify-center pointer-events-none">
+          <div className="w-full max-w-[500px] h-full relative pointer-events-auto">
+            <MessageComposerSheet
+              playerId={messageTarget.playerId}
+              playerName={messageTarget.playerName}
+              playerImage={messageTarget.playerImage}
+              playerPosition={messageTarget.playerPosition}
+              isOpen={!!messageTarget}
+              onClose={() => setMessageTarget(null)}
+              senderAccountType={accountType}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

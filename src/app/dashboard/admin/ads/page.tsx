@@ -195,7 +195,7 @@ export default function AdminAdsPage() {
                     تنبيه: bucket الإعلانات غير موجود
                   </h3>
                   <p className="text-sm text-yellow-700 leading-relaxed">
-                    يجب إنشاء bucket باسم "ads" في Supabase Storage أو Cloudflare R2 لتمكين رفع ملفات الإعلانات.
+                    مساحة تخزين الإعلانات غير مُهيَّأة. يرجى التواصل مع فريق التقنية لإعداد التخزين.
                   </p>
                 </div>
               </div>

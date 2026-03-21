@@ -268,7 +268,7 @@ export default function TrainerProfilePage() {
       // استخدام storageManager للرفع
       const { storageManager } = await import('@/lib/storage');
 
-      console.log(`📤 محاولة رفع إلى Cloudflare R2: ${bucketName}/${fileName}`);
+      // upload in progress
 
       const result = await storageManager.upload(
         bucketName,

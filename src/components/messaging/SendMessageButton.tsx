@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 
 interface SendMessageButtonProps {
   // الخصائص المشتركة
@@ -435,7 +436,19 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       });
 
       toast.success(isNewConversation ? 'تم إنشاء المحادثة وإرسال الرسالة بنجاح' : 'تم إرسال الرسالة بنجاح');
-      
+
+      // Dispatch WhatsApp + in-app notification to receiver
+      if (targetUserId && user) {
+        dispatchNotification({
+          eventType: 'message_received',
+          targetUserId,
+          actorId: user.uid,
+          actorName: getUserDisplayName(),
+          actorAccountType: userData?.accountType || 'user',
+          metadata: { messagePreview: finalMessage.substring(0, 40) },
+        });
+      }
+
       // إعادة تعيين النموذج
       setSubject('');
       setMessage('');

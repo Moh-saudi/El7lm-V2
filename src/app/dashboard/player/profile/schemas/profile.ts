@@ -38,6 +38,7 @@ export const videoSchema = z.object({
     title: z.string().min(2, "العنوان مطلوب"),
     url: z.string().url("رابط غير صحيح"),
     type: z.enum(['youtube', 'vimeo', 'other', 'uploaded']).default('youtube'),
+    createdAt: z.string().optional(),
 });
 
 export const injurySchema = z.object({

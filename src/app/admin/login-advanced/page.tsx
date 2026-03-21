@@ -324,9 +324,7 @@ export default function AdminLoginAdvancedPage() {
             <div className="mt-4 p-3 bg-gray-800 rounded-lg">
               <h4 className="text-yellow-400 mb-2">معلومات النظام</h4>
               <div className="space-y-1 text-xs text-gray-300">
-                <div>🌐 /admin/login-advanced</div>
-                <div>🔥 Firebase: {auth ? '✅' : '❌'}</div>
-                <div>💾 Firestore: {db ? '✅' : '❌'}</div>
+                <div>🔗 الحالة: {auth && db ? '✅ متصل' : '❌ غير متصل'}</div>
               </div>
             </div>
           </CardContent>

@@ -485,7 +485,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                 </Button>
               )}
               {(!subscription || subscription.status !== 'active') && (
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6 font-bold shadow-lg shadow-blue-200" onClick={() => window.location.href = '/dashboard/subscription/bulk'}>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6 font-bold shadow-lg shadow-blue-200" onClick={() => window.location.href = '/dashboard/shared/bulk-payment'}>
                   تفعيل الاشتراك الآن
                 </Button>
               )}
@@ -724,7 +724,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             <div className="space-y-4">
               <button
                 className="w-full flex items-center justify-between p-6 rounded-[1.5rem] border-2 border-slate-50 hover:border-blue-500 hover:bg-blue-50/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all group text-right active:scale-[0.98]"
-                onClick={() => window.location.href = `/dashboard/subscription/bulk?action=renew`}
+                onClick={() => window.location.href = `/dashboard/shared/bulk-payment?action=renew`}
               >
                 <div className="flex items-center gap-5">
                   <div className="p-4 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
@@ -740,7 +740,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
 
               <button
                 className="w-full flex items-center justify-between p-6 rounded-[1.5rem] border-2 border-slate-50 hover:border-indigo-500 hover:bg-indigo-50/50 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group text-right active:scale-[0.98]"
-                onClick={() => window.location.href = `/dashboard/subscription/bulk?action=upgrade`}
+                onClick={() => window.location.href = `/dashboard/shared/bulk-payment?action=upgrade`}
               >
                 <div className="flex items-center gap-5">
                   <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">

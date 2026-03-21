@@ -97,6 +97,51 @@ export function AppShellProvider({ children, defaultCollapsed = false }: AppShel
     }
   }, [isCollapsed]);
 
+  // ── Swipe gesture to open/close sidebar on mobile ──
+  useEffect(() => {
+    const EDGE_THRESHOLD = 30;   // px from edge to start swipe detection
+    const MIN_SWIPE = 50;        // minimum px moved to trigger open/close
+
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      // RTL: sidebar is on the right — detect swipe from right edge
+      const fromRightEdge = window.innerWidth - touch.clientX < EDGE_THRESHOLD;
+      tracking = fromRightEdge || isMobileOpen;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+
+      // Ignore vertical scrolls
+      if (Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }
+
+      if (!isMobileOpen && dx < -MIN_SWIPE) {
+        // Swipe left → open (RTL: reveals right sidebar)
+        setIsMobileOpen(true);
+      } else if (isMobileOpen && dx > MIN_SWIPE) {
+        // Swipe right → close
+        setIsMobileOpen(false);
+      }
+      tracking = false;
+    };
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isMobileOpen]);
+
   // ── Breakpoint listeners — fire only on boundary crossings ──
   useEffect(() => {
     const queries = [

@@ -1,6 +1,7 @@
 'use client';
 
 import SendMessageButton from '@/components/messaging/SendMessageButton';
+import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -192,6 +193,9 @@ const Pagination: React.FC<PaginationProps> = ({
             <SelectItem value="12">12</SelectItem>
             <SelectItem value="24">24</SelectItem>
             <SelectItem value="48">48</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+            <SelectItem value="200">200</SelectItem>
+            <SelectItem value="500">500</SelectItem>
           </SelectContent>
         </Select>
         <span>لاعب في الصفحة</span>
@@ -1387,6 +1391,19 @@ https://el7lm.com/dashboard/player
                             }
                           } catch (error) {
                             console.error('❌ خطأ في إرسال إشعار واتساب:', error);
+                          }
+
+                          // Dispatch in-app + ChatAman notification for profile view
+                          if (user && user.uid !== player.id) {
+                            const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+                            const viewerType = userData?.accountType || userData?.type || 'user';
+                            dispatchNotification({
+                              eventType: 'profile_view',
+                              targetUserId: player.id,
+                              actorId: user.uid,
+                              actorName: viewerName,
+                              actorAccountType: viewerType,
+                            });
                           }
 
                           // الانتقال لملف اللاعب مع حفظ رقم الصفحة الحالي

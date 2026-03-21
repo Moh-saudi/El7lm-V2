@@ -526,7 +526,7 @@ const FloatingChatWidget: React.FC = () => {
     <>
       {/* أيقونة الدعم الفني - ثابتة في أسفل يسار الشاشة */}
       {!shouldHideWidget() && (
-        <div className="fixed bottom-6 left-6 z-[9999]">
+        <div className="fixed bottom-6 left-6 z-[9999] md:bottom-6 bottom-[76px]">
           <div className="relative">
             {/* تأثير النبض */}
             <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20"></div>

@@ -386,9 +386,7 @@ export default function AdminLoginNewPage() {
             <div className="mt-4 p-3 bg-gray-800 rounded-lg">
               <h4 className="text-sm font-semibold text-yellow-400 mb-2">ℹ️ معلومات النظام</h4>
               <div className="space-y-1 text-xs text-gray-300">
-                <div>🌐 العنوان: http://localhost:3000/admin/login-new</div>
-                <div>🔥 Firebase: {auth ? '✅ متصل' : '❌ غير متصل'}</div>
-                <div>💾 Firestore: {db ? '✅ متصل' : '❌ غير متصل'}</div>
+                <div>🔗 الحالة: {auth && db ? '✅ متصل' : '❌ غير متصل'}</div>
                 <div>📅 الوقت: {new Date().toLocaleString('ar-SA')}</div>
               </div>
             </div>

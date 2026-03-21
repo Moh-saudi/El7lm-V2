@@ -233,7 +233,7 @@ function UsersPageContent() {
                             />
                             <div className="bg-gray-50 list-none p-3 rounded-lg border border-gray-100">
                                 <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                    <span className="text-gray-600">إجمالي الحسابات في Firebase Auth:</span>
+                                    <span className="text-gray-600">إجمالي الحسابات المسجّلة:</span>
                                     <span className="font-bold text-blue-600">{data.totalAuthUsers}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-gray-200">

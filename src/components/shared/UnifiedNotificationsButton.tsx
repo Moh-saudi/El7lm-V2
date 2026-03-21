@@ -59,14 +59,38 @@ export default function UnifiedNotificationsButton() {
     return null;
   };
 
+  const isBroadcastSeen = (id: string) =>
+    typeof window !== 'undefined' && localStorage.getItem(`bc_seen_${id}_${user?.uid}`) === '1';
+  const markBroadcastSeen = (id: string) => {
+    if (typeof window !== 'undefined' && user?.uid)
+      localStorage.setItem(`bc_seen_${id}_${user.uid}`, '1');
+  };
+
   useEffect(() => {
     if (!user?.uid) return;
 
     const NOTIF_LIMIT = 20;
     const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
     const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
+    const q3 = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10));
 
-    const enrichAndMerge = async (docs1: any[], docs2: any[]) => {
+    const enrichAndMerge = async (docs1: any[], docs2: any[], docs3: any[]) => {
+      const broadcastItems = docs3.map(d => {
+        const data = d.data();
+        return {
+          id: `bc_${d.id}`,
+          title: 'فرصة جديدة 🎯',
+          message: `${data.organizerName} نشر: ${data.opportunityTitle}`,
+          isRead: isBroadcastSeen(d.id),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          senderName: data.organizerName || 'النظام',
+          senderAvatar: undefined,
+          type: 'opportunity',
+          category: 'system' as const,
+          actionUrl: data.actionUrl || '/dashboard/opportunities',
+        };
+      });
+
       const rawItems = [
         ...docs1.map(d => ({ ...d.data(), id: d.id, category: 'system' })),
         ...docs2.map(d => ({ ...d.data(), id: d.id, category: 'interaction' }))
@@ -101,19 +125,21 @@ export default function UnifiedNotificationsButton() {
         };
       }));
 
-      processed.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      setNotifications(processed);
-      setUnreadCount(processed.filter(n => !n.isRead).length);
+      const combined = [...processed, ...broadcastItems];
+      combined.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setNotifications(combined);
+      setUnreadCount(combined.filter(n => !n.isRead).length);
       setLoading(false);
     };
 
-    let unsub1: any, unsub2: any;
-    let d1: any[] = [], d2: any[] = [];
+    let unsub1: any, unsub2: any, unsub3: any;
+    let d1: any[] = [], d2: any[] = [], d3: any[] = [];
 
-    unsub1 = onSnapshot(q1, (s) => { d1 = s.docs; enrichAndMerge(d1, d2); });
-    unsub2 = onSnapshot(q2, (s) => { d2 = s.docs; enrichAndMerge(d1, d2); });
+    unsub1 = onSnapshot(q1, (s) => { d1 = s.docs; enrichAndMerge(d1, d2, d3); });
+    unsub2 = onSnapshot(q2, (s) => { d2 = s.docs; enrichAndMerge(d1, d2, d3); });
+    unsub3 = onSnapshot(q3, (s) => { d3 = s.docs; enrichAndMerge(d1, d2, d3); });
 
-    return () => { unsub1?.(); unsub2?.(); };
+    return () => { unsub1?.(); unsub2?.(); unsub3?.(); };
   }, [user]);
 
   const markAllRead = async () => {
@@ -121,17 +147,29 @@ export default function UnifiedNotificationsButton() {
     try {
       const batch = writeBatch(db);
       notifications.filter(n => !n.isRead).forEach(n => {
-        const coll = n.category === 'system' ? 'notifications' : 'interaction_notifications';
-        batch.update(doc(db, coll, n.id), { isRead: true });
+        if (n.id.startsWith('bc_')) {
+          markBroadcastSeen(n.id.slice(3));
+        } else {
+          const coll = n.category === 'system' ? 'notifications' : 'interaction_notifications';
+          batch.update(doc(db, coll, n.id), { isRead: true });
+        }
       });
       await batch.commit();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
     } catch (e) { console.error(e); }
   };
 
   const markRead = async (id: string, category: string) => {
     try {
-      const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
-      await updateDoc(doc(db, coll, id), { isRead: true });
+      if (id.startsWith('bc_')) {
+        markBroadcastSeen(id.slice(3));
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } else {
+        const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
+        await updateDoc(doc(db, coll, id), { isRead: true });
+      }
     } catch (e) { console.error(e); }
   };
 

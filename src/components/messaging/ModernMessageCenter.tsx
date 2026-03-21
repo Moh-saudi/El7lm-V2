@@ -157,7 +157,7 @@ const ModernMessageCenter: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showEmojiPicker]);
 
-    const cloudflareUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-ef6e461732904df2ba5b13e7ec5e9bb5.r2.dev';
+    const cloudflareUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || process.env.NEXT_PUBLIC_CDN_URL || '';
 
     const getAvatarUrl = (userId: string, type: string) => {
         if (type === 'club') {

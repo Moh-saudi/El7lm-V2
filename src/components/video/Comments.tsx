@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Send, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -24,7 +24,7 @@ interface Comment {
 interface CommentsProps {
   videoId: string;
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (newCount?: number) => void;
   inline?: boolean;
 }
 
@@ -72,14 +72,13 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
   };
 
   const handleSubmitComment = async () => {
-    // منع الإرسال المتكرر
-    if (submitting) {
-      console.log('🛑 Comment submission blocked - already submitting');
-      return;
-    }
-
+    if (submitting) return;
     if (!newComment.trim()) {
       setError('يرجى إدخال تعليق');
+      return;
+    }
+    if (!user) {
+      setError('يجب تسجيل الدخول أولاً');
       return;
     }
 
@@ -88,28 +87,70 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
     setMessage('');
 
     try {
-      const response = await fetch('/api/comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          videoId: videoId,
-          comment: newComment,
-          userId: user?.uid
-        })
-      });
+      const [playerId, videoIndex] = videoId.split('_');
+      const playerRef = doc(db, 'players', playerId);
+      const playerSnap = await getDoc(playerRef);
 
-      const result = await response.json();
-
-      if (result.success) {
-        setMessage('تم إرسال التعليق بنجاح!');
-        setComments(prev => [...prev, result.comment]);
-        setNewComment('');
-      } else {
-        setError(result.error || 'فشل في إرسال التعليق');
+      if (!playerSnap.exists()) {
+        setError('لم يتم العثور على الفيديو');
+        return;
       }
-    } catch (error: any) {
+
+      // Fetch commenter's display info
+      let userName = user.displayName || 'مستخدم';
+      let userImage = user.photoURL || '';
+      try {
+        const userSnap = await getDoc(doc(db, 'users', user.uid));
+        if (userSnap.exists()) {
+          const ud = userSnap.data();
+          userName = ud.displayName || ud.full_name || ud.name || userName;
+          userImage = ud.photoURL || ud.avatar || userImage;
+        }
+        const playerSnap2 = await getDoc(doc(db, 'players', user.uid));
+        if (playerSnap2.exists()) {
+          const pd = playerSnap2.data();
+          userName = pd.full_name || pd.name || userName;
+          userImage = pd.avatar || pd.image || userImage;
+        }
+      } catch {}
+
+      const newCommentObj: Comment = {
+        id: `${user.uid}_${Date.now()}`,
+        text: newComment.trim(),
+        userId: user.uid,
+        userName,
+        userImage,
+        createdAt: { toDate: () => new Date() }, // local mock for instant display
+      };
+
+      // Write to Firestore
+      const videos = [...(playerSnap.data().videos || [])];
+      const idx = parseInt(videoIndex);
+      if (videos[idx]) {
+        const existingComments = Array.isArray(videos[idx].comments) ? videos[idx].comments : [];
+        const firestoreComment = {
+          id: newCommentObj.id,
+          text: newCommentObj.text,
+          userId: user.uid,
+          userName,
+          userImage,
+          createdAt: new Date().toISOString(),
+        };
+        videos[idx] = {
+          ...videos[idx],
+          comments: [...existingComments, firestoreComment],
+          commentsCount: (videos[idx].commentsCount || existingComments.length) + 1,
+        };
+        await updateDoc(playerRef, { videos });
+      }
+
+      // Optimistic UI update
+      setComments(prev => [...prev, newCommentObj]);
+      setNewComment('');
+      setMessage('تم إرسال التعليق بنجاح!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('Comment error:', err);
       setError('حدث خطأ في إرسال التعليق');
     } finally {
       setSubmitting(false);
@@ -125,7 +166,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onClick={() => onClose(comments.length)}
         className={inline ? "absolute inset-0 bg-black/40 backdrop-blur-sm" : "absolute inset-0 bg-black/60 backdrop-blur-md"}
       />
 
@@ -151,7 +192,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
             </span>
           </h2>
           <button
-            onClick={onClose}
+            onClick={() => onClose(comments.length)}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-all"
             aria-label="إغلاق"
           >
@@ -192,7 +233,13 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-white">{comment.userName}</span>
                     <span className="text-[10px] text-white/30">
-                      {comment.createdAt?.toDate?.() ? dayjs(comment.createdAt.toDate()).locale('ar').fromNow() : ''}
+                      {comment.createdAt
+                        ? dayjs(
+                            typeof comment.createdAt.toDate === 'function'
+                              ? comment.createdAt.toDate()
+                              : comment.createdAt
+                          ).locale('ar').fromNow()
+                        : ''}
                     </span>
                   </div>
                   <div className="bg-white/5 rounded-2xl p-3 text-white/90 text-sm leading-relaxed">
@@ -205,31 +252,41 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
         </div>
 
         {/* Comment Input */}
-        <div className="p-6 border-t border-white/10 bg-zinc-900/80 backdrop-blur-md pb-10">
+        <div className="px-4 pt-3 pb-safe border-t border-white/10 bg-zinc-900/90 backdrop-blur-md"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+        >
+          {/* Error / success feedback */}
+          {(error || message) && (
+            <div className={`mb-2 px-4 py-2 rounded-xl text-xs font-bold text-center
+              ${error ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+              {error || message}
+            </div>
+          )}
           <form
             onSubmit={(e) => { e.preventDefault(); handleSubmitComment(); }}
-            className="relative flex items-center"
+            className="flex items-center gap-2"
           >
-            <div className="relative flex-1 group">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="أضف تعليقاً..."
-                className="w-full bg-white/5 border border-white/10 rounded-full py-4 pl-14 pr-6 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white/10 transition-all text-sm"
-              />
-              <button
-                type="submit"
-                disabled={!newComment.trim() || submitting}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white disabled:bg-white/5 disabled:text-white/20 transition-all hover:bg-blue-500 active:scale-95 shadow-lg shadow-blue-600/20"
-              >
-                {submitting ? (
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5 -rotate-45 ml-1" />
-                )}
-              </button>
-            </div>
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => { setNewComment(e.target.value); if (error) setError(''); }}
+              placeholder="أضف تعليقاً..."
+              className="flex-1 bg-white/8 border border-white/10 rounded-full py-3 px-5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:bg-white/10 transition-all text-sm"
+              style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
+            />
+            <button
+              type="submit"
+              disabled={!newComment.trim() || submitting}
+              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full bg-blue-600 text-white
+                disabled:opacity-30 transition-all active:scale-90 shadow-lg shadow-blue-600/30"
+              style={{ touchAction: 'manipulation' }}
+            >
+              {submitting ? (
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
           </form>
         </div>
       </motion.div>

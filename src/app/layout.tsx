@@ -21,7 +21,13 @@ import '@/utils/console-filter';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#0f172a',
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)',  color: '#0f172a' },
+  ],
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {

@@ -66,8 +66,6 @@ async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
         const timestamp = Date.now();
         const filePath = `videos/${user.uid}/${timestamp}.${fileExt}`;
 
-        // طباعة للتشخيص
-        console.log('رفع فيديو إلى Cloudflare R2:', { bucket: 'videos', filePath, file });
 
         const { storageManager } = await import('@/lib/storage');
 

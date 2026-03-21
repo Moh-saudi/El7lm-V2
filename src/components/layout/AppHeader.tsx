@@ -9,6 +9,7 @@
  * Margin-inline-start is driven by CSS classes (see layout-tokens.css).
  */
 
+import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
 import { cn } from '@/lib/utils';
 import { Menu, Search, X } from 'lucide-react';
 import React, { useState } from 'react';
@@ -79,6 +80,38 @@ export default function AppHeader({
 
   const collapsed = !isMobile && isCollapsed;
 
+  // ── Mobile header: simplified (hamburger + logo + notifications only) ──
+  if (isMobile) {
+    return (
+      <header className="app-header">
+        <div className="flex items-center justify-between w-full px-3">
+          {/* Hamburger */}
+          <button
+            onClick={toggleMobile}
+            className="header-action-btn flex-shrink-0"
+            aria-label="فتح القائمة"
+          >
+            <Menu size={22} />
+          </button>
+
+          {/* Brand name — centered */}
+          <span
+            className="font-bold text-base tracking-tight"
+            style={{ color: 'var(--header-text)' }}
+          >
+            EL7LM
+          </span>
+
+          {/* Notifications only */}
+          <div className="header-action-btn p-0">
+            <UnifiedNotificationsButton />
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // ── Desktop header: full ──
   return (
     <header
       className={cn(
@@ -90,18 +123,6 @@ export default function AppHeader({
 
         {/* ── Left side ─────────────────────────────────── */}
         <div className="flex items-center gap-3 min-w-0">
-          {/* Mobile hamburger */}
-          {isMobile && (
-            <button
-              onClick={toggleMobile}
-              className="header-action-btn flex-shrink-0"
-              aria-label="فتح القائمة"
-            >
-              <Menu size={20} />
-            </button>
-          )}
-
-          {/* Greeting / page title */}
           {greeting && (
             <p
               className="text-sm font-medium truncate hidden sm:block"

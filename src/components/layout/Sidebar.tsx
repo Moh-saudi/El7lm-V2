@@ -42,7 +42,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
       {!collapsed && (
         <span
           className="font-bold text-base tracking-tight truncate"
-          style={{ color: 'var(--sidebar-text-active)' }}
+          style={{ color: 'var(--sidebar-text)' }}
         >
           EL7LM
         </span>

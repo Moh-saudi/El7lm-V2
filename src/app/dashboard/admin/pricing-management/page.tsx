@@ -388,7 +388,7 @@ export default function PricingAdminPage() {
 
         } catch (error) {
             console.error('❌ Error loading data:', error);
-            toast.error('Failed to load data from Firebase');
+            toast.error('فشل تحميل البيانات، يرجى المحاولة لاحقاً');
             setPlans([]);
             setOffers([]);
         } finally {

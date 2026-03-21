@@ -182,7 +182,7 @@ export default function GeideaSettingsPage() {
 
         // معالجة خاصة لأخطاء Quota
         if (errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('Quota exceeded')) {
-          toast.error('تم تجاوز الحصة المسموحة في Firestore. يرجى المحاولة مرة أخرى بعد قليل.', {
+          toast.error('تم تجاوز الحد الأقصى للطلبات. يرجى المحاولة مرة أخرى بعد قليل.', {
             duration: 8000,
           });
         } else {

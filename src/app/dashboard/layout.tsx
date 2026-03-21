@@ -50,7 +50,7 @@ export default function DashboardLayout({
     );
   }
 
-  const noPadding = pathname.includes('player-videos') || pathname.includes('shared-videos');
+  const isCinema = pathname.includes('player-videos') || pathname.includes('shared-videos');
 
   return (
     <>
@@ -58,7 +58,9 @@ export default function DashboardLayout({
 
       <AppShell
         accountType={accountType}
-        noPadding={noPadding}
+        noPadding={isCinema}
+        showHeader={!isCinema}
+        showFooter={!isCinema}
       >
         {children}
       </AppShell>

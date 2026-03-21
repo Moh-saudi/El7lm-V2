@@ -301,7 +301,7 @@ export default function EmployeeForm({ initialValues, roles, isEditing, form }: 
                             </p>
                             <p className="ant-upload-text">اضغط أو اسحب الملفات هنا للرفع</p>
                             <p className="ant-upload-hint">
-                                سيتم رفع الملفات مباشرة إلى السحابة (Cloudflare R2).
+                                سيتم رفع الملفات مباشرةً وبأمان إلى التخزين السحابي.
                             </p>
                         </Dragger>
                     </Form.Item>

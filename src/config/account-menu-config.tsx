@@ -122,10 +122,11 @@ export function getAccountMenuGroups(
         title: 'اكتشاف الفرص',
         icon: Search,
         items: [
-          { id: 'search-opps',     label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
-          { id: 'search-players',  label: 'البحث عن لاعبين',          icon: Users,  href: '/dashboard/player/search-players' },
-          { id: 'player-cinema',   label: 'سينما اللاعبين',            icon: Play,   href: '/dashboard/player/player-videos' },
-          { id: 'tournaments',     label: 'البطولات الحالية',           icon: Trophy, href: '/dashboard/player/tournaments' },
+          { id: 'search-opps',       label: 'البحث عن الفرص والأندية', icon: Search,   href: '/dashboard/player/search' },
+          { id: 'my-applications',  label: 'طلباتي',                   icon: FileText, href: '/dashboard/player/my-applications' },
+          { id: 'search-players',  label: 'البحث عن لاعبين',           icon: Users,   href: '/dashboard/player/search-players' },
+          { id: 'player-cinema',   label: 'سينما اللاعبين',             icon: Play,    href: '/dashboard/player/player-videos' },
+          { id: 'tournaments',     label: 'البطولات الحالية',            icon: Trophy,  href: '/dashboard/player/tournaments' },
         ],
       },
       {
@@ -334,9 +335,10 @@ export function getAccountMenuGroups(
         title: 'إدارة التسويق',
         icon: Users,
         items: [
-          { id: 'players',     label: 'إدارة اللاعبين',         icon: Users,    href: '/dashboard/marketer/players' },
-          { id: 'contracts',   label: 'العقود',                   icon: FileText, href: '/dashboard/marketer/contracts' },
-          { id: 'ai-analysis', label: 'تحليل الذكاء الاصطناعي', icon: Zap,      href: '/dashboard/marketer/ai-analysis' },
+          { id: 'players',        label: 'إدارة اللاعبين',         icon: Users,    href: '/dashboard/marketer/players' },
+          { id: 'contracts',      label: 'العقود',                   icon: FileText, href: '/dashboard/marketer/contracts' },
+          { id: 'ai-analysis',    label: 'تحليل الذكاء الاصطناعي', icon: Zap,      href: '/dashboard/marketer/ai-analysis' },
+          { id: 'opportunities',  label: 'الفرص والخدمات',            icon: Target,   href: '/dashboard/opportunities' },
         ],
       },
       {
@@ -356,7 +358,7 @@ export function getAccountMenuGroups(
         icon: Search,
         items: [
           { id: 'search-opps',    label: 'البحث عن الفرص والأندية', icon: Search, href: '/dashboard/player/search' },
-          { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: '/dashboard/marketer/search' },
+          { id: 'search-players', label: 'البحث عن لاعبين',          icon: Search, href: '/dashboard/marketer/search-players' },
           { id: 'player-cinema',  label: 'سينما اللاعبين',            icon: Play,   href: '/dashboard/marketer/videos' },
           { id: 'tournaments',    label: 'البطولات الحالية',           icon: Trophy, href: '/tournaments/unified-registration' },
         ],

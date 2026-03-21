@@ -512,6 +512,26 @@ export default function SharedPlayerForm({
         if (docSnap.exists()) {
           const data = docSnap.data();
           console.log('[player-form] ✅ تم العثور على بيانات اللاعب:', data);
+
+          // التحقق من الملكية قبل السماح بالتعديل
+          const isOwner =
+            data.created_by   === user?.uid ||
+            data.club_id      === user?.uid ||
+            data.clubId       === user?.uid ||
+            data.academy_id   === user?.uid ||
+            data.academyId    === user?.uid ||
+            data.trainer_id   === user?.uid ||
+            data.trainerId    === user?.uid ||
+            data.agent_id     === user?.uid ||
+            data.agentId      === user?.uid ||
+            data.marketerId   === user?.uid ||
+            accountType       === 'admin';
+          if (!isOwner) {
+            setError('ليس لديك صلاحية تعديل بيانات هذا اللاعب');
+            setIsLoading(false);
+            return;
+          }
+
           const processedData = {
             ...defaultPlayerFields,
             ...data
@@ -880,6 +900,9 @@ export default function SharedPlayerForm({
           case 'agent':
             playerData.agent_id = user.uid;
             playerData.agentId = user.uid;
+            break;
+          case 'marketer':
+            playerData.marketerId = user.uid;
             break;
           default:
             // للحالات الأخرى، استخدم club_id كافتراضي

@@ -72,6 +72,9 @@ export const getPlayerAvatarUrl = (userData: any, user?: any) => {
   const imageFields = [
     userData.profile_image_url,
     userData.profile_image,
+    userData.profile_photo,
+    userData.photo,
+    userData.logo,
     userData.avatar,
     userData.photoURL,
     userData.profilePicture,

@@ -19,7 +19,8 @@ import {
     MessageCircle,
     Mail,
     Phone,
-    QrCode
+    QrCode,
+    Target
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';

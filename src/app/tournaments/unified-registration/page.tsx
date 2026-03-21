@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import GeideaPaymentModal from '@/components/GeideaPaymentModal';
-import ResponsiveLayoutWrapper from '@/components/layout/ResponsiveLayout';
+import AppShell from '@/components/layout/AppShell';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,14 @@ import {
   CheckCircle,
   Copy,
   CreditCard,
+  Globe,
   MapPin,
   Trophy,
   Users,
   Wallet,
   Clock,
-  DollarSign
+  DollarSign,
+  Zap,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
@@ -554,11 +556,7 @@ export default function UnifiedTournamentRegistrationPage() {
   const progress = (currentStep / 3) * 100;
 
   return (
-    <ResponsiveLayoutWrapper
-      accountType={userData?.accountType || 'player'}
-      showSidebar={true}
-      showHeader={true}
-    >
+    <AppShell accountType={userData?.accountType || 'player'}>
       <style>{scrollbarStyles}</style>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
@@ -1166,6 +1164,6 @@ export default function UnifiedTournamentRegistrationPage() {
           </Card>
         </div>
       )}
-    </ResponsiveLayoutWrapper>
+    </AppShell>
   );
 }

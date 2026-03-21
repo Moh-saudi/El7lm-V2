@@ -26,6 +26,7 @@ import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { AppShellProvider, useAppShell } from './AppShellContext';
 import AppFooter from './AppFooter';
 import AppHeader from './AppHeader';
+import MobileBottomNav from './MobileBottomNav';
 import Sidebar from './Sidebar';
 
 // ─── Default employee permissions ────────────────────────────────────────────
@@ -84,6 +85,8 @@ function resolveDisplayName(userData: any, user: any, accountType: string): stri
       return userData.agent_name || userData.full_name || userData.name || user?.displayName || 'وكيل';
     case 'trainer':
       return userData.trainer_name || userData.full_name || userData.name || user?.displayName || 'مدرب';
+    case 'marketer':
+      return userData.full_name || userData.name || user?.displayName || 'مسوق كروي';
     default:
       return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
   }
@@ -107,9 +110,11 @@ interface InnerShellProps {
   accountType: string;
   children: ReactNode;
   noPadding?: boolean;
+  showHeader?: boolean;
+  showSidebar?: boolean;
 }
 
-function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
+function InnerShell({ accountType, children, noPadding, showHeader = true, showSidebar = true }: InnerShellProps) {
   const { isCollapsed, isMobile } = useAppShell();
   const { user, userData, logout } = useAuth();
 
@@ -188,23 +193,27 @@ function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
       data-account={accountType}
     >
       {/* Sidebar */}
-      <Sidebar
-        menuGroups={menuGroups}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        logoUrl={accountType === 'club' ? clubLogo : null}
-        roleName={roleName}
-        onLogout={handleLogout}
-      />
+      {showSidebar && (
+        <Sidebar
+          menuGroups={menuGroups}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          logoUrl={accountType === 'club' ? clubLogo : null}
+          roleName={roleName}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Header */}
-      <AppHeader
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        roleName={roleName}
-        profileHref={profileHref}
-        onLogout={handleLogout}
-      />
+      {showHeader && (
+        <AppHeader
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          roleName={roleName}
+          profileHref={profileHref}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Main content */}
       <main
@@ -212,6 +221,8 @@ function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
           'app-main',
           collapsed && 'collapsed',
           noPadding && '!p-0',
+          !showSidebar && '!ms-0',
+          !showHeader && 'cinema-main',
         )}
       >
         {children}
@@ -219,6 +230,9 @@ function InnerShell({ accountType, children, noPadding }: InnerShellProps) {
 
       {/* Footer */}
       {!noPadding && <AppFooter />}
+
+      {/* Mobile bottom navigation */}
+      {showSidebar && <MobileBottomNav accountType={accountType} />}
     </div>
   );
 }
@@ -237,10 +251,17 @@ export default function AppShell({
   accountType,
   children,
   noPadding,
+  showHeader = true,
+  showFooter = true,
 }: AppShellProps) {
   return (
     <AppShellProvider>
-      <InnerShell accountType={accountType} noPadding={noPadding}>
+      <InnerShell
+        accountType={accountType}
+        noPadding={noPadding}
+        showHeader={showHeader}
+        showSidebar={showFooter}
+      >
         {children}
       </InnerShell>
     </AppShellProvider>
