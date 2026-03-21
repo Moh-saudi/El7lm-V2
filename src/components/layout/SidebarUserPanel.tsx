@@ -28,7 +28,9 @@ export default function SidebarUserPanel({
   roleName,
   logoUrl,
 }: SidebarUserPanelProps) {
-  const { isCollapsed } = useAppShell();
+  const { isCollapsed, isMobile } = useAppShell();
+  // على الموبايل السايدبار دائماً موسّع (لا يُطبّق الطي)
+  const collapsed = !isMobile && isCollapsed;
 
   const initials = displayName
     ? displayName.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
@@ -41,7 +43,7 @@ export default function SidebarUserPanel({
       className={cn(
         'flex items-center gap-3 px-3 py-4 border-b',
         'transition-all duration-200',
-        isCollapsed ? 'justify-center px-2' : 'px-4',
+        collapsed ? 'justify-center px-2' : 'px-4',
       )}
       style={{ borderColor: 'var(--sidebar-border)' }}
     >
@@ -55,17 +57,17 @@ export default function SidebarUserPanel({
         </AvatarFallback>
       </Avatar>
 
-      {!isCollapsed && (
+      {!collapsed && (
         <div className="min-w-0 flex-1 overflow-hidden">
           <p
             className="text-sm font-semibold truncate leading-tight"
-            style={{ color: 'var(--sidebar-text-active)' }}
+            style={{ color: 'var(--sidebar-text-strong, var(--sidebar-text))' }}
           >
             {displayName}
           </p>
           <p
             className="text-xs truncate mt-0.5"
-            style={{ color: 'var(--sidebar-text)' }}
+            style={{ color: 'var(--sidebar-text-muted, var(--sidebar-text))' }}
           >
             {roleName}
           </p>
