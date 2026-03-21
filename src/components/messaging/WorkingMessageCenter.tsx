@@ -1300,8 +1300,8 @@ const WorkingMessageCenter: React.FC = () => {
                 <Input
                   type="text"
                   placeholder="ابحث بالاسم أو اسم المنظمة..."
-                  value={newChatSearchTerm}
-                  onChange={(e) => setNewChatSearchTerm(e.target.value)}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pr-12 pl-4 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-base"
                 />
                 <Search className="h-5 w-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -1340,7 +1340,7 @@ const WorkingMessageCenter: React.FC = () => {
                   {contacts
                     .filter((c) => filterType === 'all' ? true : c.type === filterType)
                     .filter((c) => {
-                      const term = newChatSearchTerm.trim().toLowerCase();
+                      const term = searchTerm.trim().toLowerCase();
                       if (!term) return true;
                       const name = (c.name || '').toLowerCase();
                       const org = (c.organizationName ? String(c.organizationName) : '').toLowerCase();

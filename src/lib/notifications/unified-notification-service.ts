@@ -35,6 +35,10 @@ export interface MessageData {
   priority: 'low' | 'medium' | 'high';
   senderName: string;
   senderAvatar?: string;
+  receiverName?: string;
+  receiverAvatar?: string;
+  senderAccountType?: string;
+  receiverAccountType?: string;
   read?: boolean;
   metadata?: Record<string, any>;
 }

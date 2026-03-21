@@ -1,5 +1,5 @@
 import { db } from './config';
-import { enableNetwork, disableNetwork, clearPersistence } from 'firebase/firestore';
+import { enableNetwork, disableNetwork } from 'firebase/firestore';
 
 // إعدادات تحسين الأداء
 export class FirebasePerformanceOptimizer {
@@ -31,7 +31,8 @@ export class FirebasePerformanceOptimizer {
   // مسح الـ cache عند الحاجة
   static async clearCache() {
     try {
-      await clearPersistence(db);
+      // clearPersistence removed: not exported by firebase/firestore in this SDK version
+      // await clearPersistence(db);
       console.log('🧹 Firebase cache cleared');
     } catch (error) {
       console.error('❌ Failed to clear cache:', error);

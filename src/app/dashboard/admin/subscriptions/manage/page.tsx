@@ -101,7 +101,7 @@ interface SubscriptionPlan {
 }
 
 interface EditingPlan extends Omit<SubscriptionPlan, 'createdAt' | 'updatedAt'> {
-  id?: string;
+  id: string;
 }
 
 // تم إزالة الميزات الافتراضية - سيعتمد النظام على البيانات الحقيقية فقط
@@ -202,6 +202,7 @@ export default function SubscriptionPlansManagement() {
 
   const startCreating = () => {
     setEditingPlan({
+      id: '',
       name: '',
       nameEn: '',
       description: 'باقة اشتراك مميزة مع مجموعة من الخدمات',

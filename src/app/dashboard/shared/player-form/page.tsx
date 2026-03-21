@@ -462,9 +462,10 @@ export default function SharedPlayerForm({
   const [createdAccountInfo, setCreatedAccountInfo] = useState<{
     email: string;
     password: string;
-    name: string;
-    phone: string;
-    whatsapp: string;
+    name?: string;
+    phone?: string;
+    whatsapp?: string;
+    success?: boolean;
   } | null>(null);
 
   // كلمة المرور الثابتة الموحدة
@@ -902,7 +903,7 @@ export default function SharedPlayerForm({
             playerData.agentId = user.uid;
             break;
           case 'marketer':
-            playerData.marketerId = user.uid;
+            (playerData as any).marketerId = user.uid;
             break;
           default:
             // للحالات الأخرى، استخدم club_id كافتراضي
@@ -931,7 +932,10 @@ export default function SharedPlayerForm({
                 academy_id: playerData.academy_id,
                 trainer_id: playerData.trainer_id,
                 agent_id: playerData.agent_id,
-                ...updateData
+                ...updateData,
+                profile_image: typeof updateData.profile_image === 'object' && updateData.profile_image !== null
+                  ? (updateData.profile_image as { url: string }).url
+                  : (updateData.profile_image as string | undefined) ?? undefined,
               },
               'players',
               UNIFIED_PASSWORD // استخدام كلمة المرور الثابتة
@@ -1037,10 +1041,10 @@ export default function SharedPlayerForm({
               }}
               password={createdAccountInfo.password}
               accountOwner={{
-                name: user?.full_name || user?.displayName,
-                organizationName: user?.organizationName || user?.full_name || 'المنظمة',
-                phone: user?.phone,
-                whatsapp: user?.whatsapp,
+                name: (user as any)?.full_name || user?.displayName,
+                organizationName: (user as any)?.organizationName || (user as any)?.full_name || 'المنظمة',
+                phone: (user as any)?.phone,
+                whatsapp: (user as any)?.whatsapp,
                 accountType: accountType
               }}
               onClose={() => setShowLoginCredentials(false)}
@@ -1120,7 +1124,7 @@ export default function SharedPlayerForm({
                             className="w-30 h-30 rounded-full object-cover border-4 border-white shadow-lg"
                             style={{ width: '120px', height: '120px' }}
                             onError={(e) => {
-                              console.log('❌ خطأ في تحميل الصورة:', formData.profile_image.url);
+                              console.log('❌ خطأ في تحميل الصورة:', (formData.profile_image as { url: string })?.url);
                               e.currentTarget.src = '/images/default-avatar.png';
                             }}
                           />
@@ -1938,7 +1942,7 @@ export default function SharedPlayerForm({
                             className="w-30 h-30 rounded-full object-cover border-4 border-white shadow-lg"
                             style={{ width: '120px', height: '120px' }}
                             onError={(e) => {
-                              console.log('❌ خطأ في تحميل الصورة:', formData.profile_image.url);
+                              console.log('❌ خطأ في تحميل الصورة:', (formData.profile_image as { url: string })?.url);
                               e.currentTarget.src = '/images/default-avatar.png';
                             }}
                           />
@@ -2136,7 +2140,7 @@ export default function SharedPlayerForm({
                       <div key={index} className="flex items-center gap-4 p-3 bg-white rounded-lg">
                         <div className="flex-1">
                           <p className="text-sm font-medium">{video.name}</p>
-                          <p className="text-xs text-gray-500">{video.size}</p>
+                          <p className="text-xs text-gray-500">{(video as any).size}</p>
                         </div>
                         <button
                           onClick={() => {
@@ -2318,7 +2322,7 @@ export default function SharedPlayerForm({
                     <label key={objective} className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={formData.objectives[objective] || false}
+                        checked={!!formData.objectives[objective]}
                         onChange={(e) => {
                           setFormData(prev => ({
                             ...prev,
@@ -2341,7 +2345,7 @@ export default function SharedPlayerForm({
                     أهداف أخرى
                   </label>
                   <textarea
-                    value={formData.objectives.other || ''}
+                    value={(formData.objectives.other as string) || ''}
                     onChange={(e) => {
                       setFormData(prev => ({
                         ...prev,
