@@ -15,6 +15,7 @@ import {
 import { StatsOverview } from './_components/StatsOverview';
 import { LiveChatView } from './_components/LiveChatView';
 import { CampaignManager } from './_components/CampaignManager';
+import { NotificationSettings } from './_components/NotificationSettings';
 
 export default function AIMessengerDashboard() {
   const [activeTab, setActiveTab] = useState<'stats' | 'chat' | 'campaigns' | 'settings'>('stats');
@@ -67,12 +68,7 @@ export default function AIMessengerDashboard() {
          {activeTab === 'stats' && <StatsOverview />}
          {activeTab === 'chat' && <LiveChatView />}
          {activeTab === 'campaigns' && <CampaignManager />}
-         {activeTab === 'settings' && (
-            <div className="flex items-center justify-center p-20 text-slate-400 text-sm h-full rounded-2xl border border-dashed border-slate-200 bg-white/50">
-               <Settings className="w-6 h-6 ml-2 stroke-[1.5]" />
-               شاشة الإعدادات قيد التهيئة حالياً
-            </div>
-         )}
+         {activeTab === 'settings' && <NotificationSettings />}
       </div>
     </div>
   );

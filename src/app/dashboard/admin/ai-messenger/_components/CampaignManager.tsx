@@ -10,15 +10,16 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
 import { ChatAmanTemplateSelector } from '@/components/messaging/ChatAmanTemplateSelector';
 import { toast } from 'sonner';
-import { 
-  Megaphone, 
-  Users, 
-  Send, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Settings, 
-  Sparkles, 
-  UserSquare2 
+import {
+  Megaphone,
+  Users,
+  Send,
+  CheckCircle2,
+  AlertTriangle,
+  Settings,
+  Sparkles,
+  UserSquare2,
+  Info,
 } from 'lucide-react';
 
 const getCountryFlag = (phone: string, country?: string): string => {
@@ -248,12 +249,19 @@ export const CampaignManager: React.FC = () => {
 
                   <div className="space-y-1 md:col-span-2">
                      <Label className="text-xs font-bold text-slate-700">4. قالب الحملة الحصرية</Label>
-                     <ChatAmanTemplateSelector 
+                     <ChatAmanTemplateSelector
                         onSelect={(template, vars) => {
                            setSelectedTemplate(template);
                            setTemplateVariables(vars);
                         }}
                      />
+                  </div>
+
+                  <div className="md:col-span-2 flex items-start gap-1.5 p-2 rounded-lg bg-blue-50 border border-blue-100">
+                     <Info className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
+                     <p className="text-[10px] text-blue-700 leading-relaxed">
+                        ملاحظة: المتغير {'{{1}}'} يُملأ تلقائياً باسم صاحب الحساب
+                     </p>
                   </div>
                </div>
 
