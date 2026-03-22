@@ -16,7 +16,7 @@ export const usePlayerProfile = () => {
     const [user, setUser] = useState<any>(null);
 
     const form = useForm<ProfileFormValues>({
-        resolver: zodResolver(profileSchema),
+        resolver: zodResolver(profileSchema) as any,
         defaultValues: {
             name: '',
             birth_date: '',

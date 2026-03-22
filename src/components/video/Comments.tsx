@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import { Send, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PlayerImage from '@/components/ui/player-image';
@@ -142,6 +143,20 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
           commentsCount: (videos[idx].commentsCount || existingComments.length) + 1,
         };
         await updateDoc(playerRef, { videos });
+      }
+
+      // Dispatch video_comment notification
+      if (user.uid !== playerId) {
+        const userSnapForType = await getDoc(doc(db, 'users', user.uid)).catch(() => null);
+        const actorAccountType = userSnapForType?.data()?.accountType || 'player';
+        dispatchNotification({
+          eventType: 'video_comment',
+          targetUserId: playerId,
+          actorId: user.uid,
+          actorName: userName,
+          actorAccountType,
+          metadata: { videoId, commentText: newComment.trim().substring(0, 40) },
+        });
       }
 
       // Optimistic UI update

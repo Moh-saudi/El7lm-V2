@@ -1,106 +1,233 @@
-import React from 'react';
+'use client';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  BarChart, 
-  CheckCircle2, 
-  Send, 
-  XCircle, 
-  Clock, 
-  Users, 
-  TrendingUp, 
-  Sparkles, 
-  Zap 
+import {
+  BarChart,
+  CheckCircle2,
+  Send,
+  Eye,
+  Users,
+  TrendingUp,
+  MessageSquare,
+  Heart,
+  UserCheck,
+  Loader2,
 } from 'lucide-react';
+import { db } from '@/lib/firebase/config';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+
+interface DayStat { label: string; count: number; }
+interface TypeStat { type: string; label: string; count: number; icon: React.ElementType; color: string; }
+
+const TYPE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  profile_view:     { label: 'مشاهدة ملف شخصي', icon: Eye,          color: 'text-indigo-500' },
+  video_view:       { label: 'مشاهدة فيديو',      icon: Eye,          color: 'text-blue-500'   },
+  message_received: { label: 'رسالة واردة',         icon: MessageSquare,color: 'text-emerald-500'},
+  video_like:       { label: 'إعجاب بفيديو',        icon: Heart,        color: 'text-rose-500'  },
+  follow:           { label: 'متابعة جديدة',        icon: UserCheck,    color: 'text-amber-500' },
+};
+
+const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
 export const StatsOverview: React.FC = () => {
-  const metrics = [
-    { title: 'إجمالي الرسائل', value: '4,842', trend: '+12%', icon: Send, color: 'indigo' },
-    { title: 'وصلت وقُرأت', value: '88%', trend: '+4%', icon: CheckCircle2, color: 'emerald' },
-    { title: 'فشل الإرسال', value: '2.4%', trend: '-1%', icon: XCircle, color: 'rose' },
-    { title: 'جمهور الحملة', value: '1,250', trend: '+200', icon: Users, color: 'amber' }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [totalNotifs, setTotalNotifs] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [typeStats, setTypeStats] = useState<TypeStat[]>([]);
+  const [dayStats, setDayStats] = useState<DayStat[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        // ── 1. Notifications (last 30 days) ──────────────────────────────
+        const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const notifsSnap = await getDocs(
+          query(collection(db, 'interaction_notifications'),
+            where('createdAt', '>=', Timestamp.fromDate(since30)))
+        );
+        const notifs = notifsSnap.docs.map(d => d.data());
+        setTotalNotifs(notifs.length);
+
+        // ── 2. By type ────────────────────────────────────────────────────
+        const typeCounts: Record<string, number> = {};
+        notifs.forEach(n => {
+          const t = n.type || 'unknown';
+          typeCounts[t] = (typeCounts[t] || 0) + 1;
+        });
+        const stats: TypeStat[] = Object.entries(typeCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, count]) => ({
+            type, count,
+            label: TYPE_META[type]?.label || type,
+            icon:  TYPE_META[type]?.icon  || Send,
+            color: TYPE_META[type]?.color || 'text-slate-400',
+          }));
+        setTypeStats(stats);
+
+        // ── 3. Last 7 days activity ────────────────────────────────────────
+        const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const days7: Record<string, number> = {};
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+          days7[d.toDateString()] = 0;
+        }
+        notifs.forEach(n => {
+          const ts = n.createdAt;
+          if (!ts) return;
+          const date = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+          if (date >= since7) {
+            const key = date.toDateString();
+            if (key in days7) days7[key]++;
+          }
+        });
+        setDayStats(
+          Object.entries(days7).map(([dateStr, count]) => {
+            const d = new Date(dateStr);
+            return { label: DAY_NAMES[d.getDay()], count };
+          })
+        );
+
+        // ── 4. Total users with phone ──────────────────────────────────────
+        const userCols = ['users', 'players', 'academies', 'clubs', 'trainers', 'agents', 'parents'];
+        const counts = await Promise.all(
+          userCols.map(col => getDocs(query(collection(db, col))).then(s => s.size).catch(() => 0))
+        );
+        setTotalUsers(counts.reduce((a, b) => a + b, 0));
+
+      } catch (err) {
+        console.error('StatsOverview load error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const maxDay = Math.max(...dayStats.map(d => d.count), 1);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+        <span className="mr-2 text-sm text-slate-500">جاري تحميل الإحصائيات...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 h-full overflow-y-auto custom-scrollbar p-1">
-      {/* Upper Grid Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, idx) => {
-          const Icon = m.icon;
-          const colorMap: any = {
-            indigo: 'from-indigo-500 to-blue-600 shadow-indigo-100/50 text-indigo-600',
-            emerald: 'from-emerald-500 to-teal-500 shadow-emerald-100/50 text-emerald-600',
-            rose: 'from-rose-500 to-red-600 shadow-rose-100/50 text-rose-600',
-            amber: 'from-amber-500 to-orange-500 shadow-amber-100/50 text-amber-600'
-          };
+    <div className="space-y-6 h-full overflow-y-auto custom-scrollbar p-1" dir="rtl">
+      {/* ── Top metrics ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Total notifications */}
+        <Card className="border-none shadow-xl">
+          <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-bold text-slate-500">إجمالي الإشعارات (30 يوم)</CardTitle>
+            <Send className="w-4 h-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-slate-800">{totalNotifs.toLocaleString('ar')}</div>
+            <p className="text-[10px] text-slate-400 mt-1">إشعار تفاعلي في آخر 30 يوم</p>
+          </CardContent>
+        </Card>
 
-          return (
-            <Card key={idx} className="border-none shadow-xl hover:shadow-2xl transition-all duration-300 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br opacity-5 rounded-full -mr-10 -mt-10 group-hover:scale-125 transition-all duration-500"></div>
-              <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-bold text-slate-500">{m.title}</CardTitle>
-                <div className={`p-1.5 rounded-lg bg-slate-50 ${m.color === 'emerald' ? 'text-emerald-500' : m.color === 'rose' ? 'text-rose-500' : 'text-slate-500'}`}>
-                   <Icon className="w-4 h-4" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="text-2xl font-black text-slate-800 tracking-tight">{m.value}</div>
-                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                   <TrendingUp className="w-3 h-3 text-emerald-500" />
-                   <span className="text-emerald-500 font-semibold">{m.trend}</span>
-                   مقارنة بالشهر الماضي
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {/* Total audience */}
+        <Card className="border-none shadow-xl">
+          <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-bold text-slate-500">إجمالي قاعدة المستخدمين</CardTitle>
+            <Users className="w-4 h-4 text-amber-500" />
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-slate-800">{totalUsers.toLocaleString('ar')}</div>
+            <p className="text-[10px] text-slate-400 mt-1">مستخدم مسجل في المنصة</p>
+          </CardContent>
+        </Card>
+
+        {/* Today's activity */}
+        <Card className="border-none shadow-xl">
+          <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-bold text-slate-500">نشاط اليوم</CardTitle>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-slate-800">
+              {(dayStats[dayStats.length - 1]?.count ?? 0).toLocaleString('ar')}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">إشعار منذ بداية اليوم</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Row 2: Analytics Grid placeholder with AI Suggestion Cards */}
+      {/* ── Charts row ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-         <Card className="lg:col-span-2 border-none shadow-xl h-[300px] flex flex-col">
-            <CardHeader className="p-4 pb-2">
-               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
-                  <BarChart className="w-4 h-4 text-emerald-500" />
-                  تحليلات معدل تفاعل المراسلات
-               </CardTitle>
-               <CardDescription className="text-[10px] text-slate-400">تدفق نشاط الوصول والقرأت في الـ 7 أيام الأخيرة</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex items-center justify-center text-slate-400 text-xs">
-               <div className="flex flex-col items-center gap-2">
-                  <BarChart className="w-10 h-10 stroke-[1.2] opacity-30 text-indigo-500 animate-pulse" />
-                  رسم بياني تدفقي (قيد الربط بمحرك التحليلات)
-               </div>
-            </CardContent>
-         </Card>
+        {/* 7-day bar chart */}
+        <Card className="lg:col-span-2 border-none shadow-xl">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
+              <BarChart className="w-4 h-4 text-emerald-500" />
+              نشاط الإشعارات — آخر 7 أيام
+            </CardTitle>
+            <CardDescription className="text-[10px] text-slate-400">عدد الإشعارات التفاعلية يومياً</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-2">
+            {dayStats.every(d => d.count === 0) ? (
+              <div className="flex items-center justify-center h-28 text-slate-400 text-xs">
+                لا توجد بيانات في آخر 7 أيام
+              </div>
+            ) : (
+              <div className="flex items-end gap-2 h-28">
+                {dayStats.map((d, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-slate-600">{d.count}</span>
+                    <div
+                      className="w-full rounded-t-md bg-gradient-to-t from-emerald-500 to-teal-400 transition-all duration-500"
+                      style={{ height: `${Math.max((d.count / maxDay) * 80, d.count > 0 ? 4 : 0)}px` }}
+                    />
+                    <span className="text-[9px] text-slate-400 truncate w-full text-center">{d.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-         <Card className="border-none shadow-xl h-[300px] flex flex-col bg-gradient-to-br from-slate-900 to-indigo-950 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 filter blur-3xl opacity-20 -mr-10 -mt-10"></div>
-            <CardHeader className="p-4 pb-2">
-               <CardTitle className="text-sm font-bold flex items-center gap-1">
-                  <Sparkles className="w-4 h-4 text-amber-400 fill-amber-300" />
-                  كابتن AI: توصيات ومقترحات الذكاء
-               </CardTitle>
-               <CardDescription className="text-[10px] text-slate-400">اقتراحات مولدة آلياً لتحسين تفاعل عملائك</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col p-4 justify-between">
-               <div className="space-y-3">
-                  {[
-                    "💡 معدل قراءة קوالب 'الحسابات' ارتفع بـ 22% الأسبوع الماضي.",
-                    "⚠️ حملة 'Academy Warning' تفشل بـ 4% لعدم تطابق الرموز.",
-                    "📣 يُقترح إرسال رسائل تذكير تلقائية غداً للعملاء غير المتفاعلين."
-                  ].map((text, idx) => (
-                    <div key={idx} className="p-2 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 text-[11px] leading-relaxed transition-all hover:bg-white/10 cursor-pointer">
-                       {text}
+        {/* By type breakdown */}
+        <Card className="border-none shadow-xl">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4 text-indigo-500" />
+              توزيع الإشعارات بالنوع
+            </CardTitle>
+            <CardDescription className="text-[10px] text-slate-400">آخر 30 يوم</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 space-y-2">
+            {typeStats.length === 0 ? (
+              <div className="text-center text-slate-400 text-xs py-8">لا توجد إشعارات بعد</div>
+            ) : (
+              typeStats.map((t, i) => {
+                const Icon = t.icon;
+                const pct = totalNotifs > 0 ? Math.round((t.count / totalNotifs) * 100) : 0;
+                return (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`flex items-center gap-1 text-[11px] font-medium text-slate-600`}>
+                        <Icon className={`w-3 h-3 ${t.color}`} />
+                        {t.label}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-700">{t.count} <span className="text-slate-400 font-normal">({pct}%)</span></span>
                     </div>
-                  ))}
-               </div>
-
-               <button className="w-full mt-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white text-xs font-bold h-9 rounded-xl flex items-center justify-center gap-1 shadow-lg shadow-emerald-500/10">
-                  <Zap className="w-3.5 h-3.5" />
-                  تحسين الحملة التالية الآن
-               </button>
-            </CardContent>
-         </Card>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

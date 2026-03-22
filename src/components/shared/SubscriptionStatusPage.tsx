@@ -28,7 +28,8 @@ import {
   MessageSquare,
   Send,
   ChevronLeft,
-  Crown
+  Crown,
+  Info
 } from 'lucide-react';
 import {
   Dialog,

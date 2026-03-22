@@ -194,12 +194,25 @@ export const ChatAmanService = {
 
     try {
       let cleaned = phone.replace(/\D/g, '');
-      
-      // Auto-correct standard Egyptian numbers (starts with 01xx and length 11)
-      if (cleaned.startsWith('01') && cleaned.length === 11) {
-        cleaned = `20${cleaned.substring(1)}`; // Replace leading 0 with 20 -> 201xxxx
-      } else if (cleaned.startsWith('1') && cleaned.length === 10) {
-        cleaned = `20${cleaned}`; // Add 20 directly -> 201xxxx
+
+      if (cleaned.length >= 7) {
+        if (cleaned.startsWith('01') && cleaned.length === 11) {
+          // Egypt
+          cleaned = `20${cleaned.substring(1)}`;
+        } else if (cleaned.startsWith('05') && cleaned.length === 10) {
+          // Saudi Arabia (most common)
+          cleaned = `966${cleaned.substring(1)}`;
+        } else if (cleaned.startsWith('0') && cleaned.length >= 9) {
+          // Generic: strip leading 0 — user stored local format, we don't know country
+          // Keep as-is with +, API will validate
+          cleaned = cleaned.substring(1);
+        }
+        // If already has country code (length > 10) — keep as-is
+      }
+
+      // Validate minimum length (country code + number)
+      if (cleaned.length < 7) {
+        return { success: false, error: `رقم غير صالح (قصير جداً): "${phone}" → "${cleaned}"` };
       }
 
       // Ensure formatted number ALWAYS starts with '+' as required by the backend
@@ -268,13 +281,15 @@ export const ChatAmanService = {
       const data = await response.json();
 
       if (!data.success) {
-        const errorDetails = typeof data.error === 'object' ? JSON.stringify(data.error) : data.error;
-        throw new Error(`${data.message || 'Failed to send'}: ${errorDetails}`);
+        const errorDetails = typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || '');
+        const phoneErrors = data.errors?.phone ? ` | هاتف: ${data.errors.phone.join(', ')}` : '';
+        const msg = `فشل الإرسال إلى ${formattedPhone}${phoneErrors} — ${data.message || errorDetails}`;
+        throw new Error(msg);
       }
 
       return { success: true, data: data };
     } catch (error: any) {
-      console.error('ChatAman Template Send Error:', error);
+      console.error(`ChatAman Send Error [${phone}]:`, error.message);
       return { success: false, error: error.message };
     }
   },

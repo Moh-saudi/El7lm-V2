@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,28 @@ import {
   Sparkles,
   UserSquare2,
   Info,
+  ChevronDown,
+  X,
+  Tag,
+  Loader2,
 } from 'lucide-react';
+import { useCampaign, CampaignUser, VarMapping } from '@/lib/campaign/campaign-context';
+import { CampaignHistory } from './CampaignHistory';
+
+// ─── Variable mapping types ────────────────────────────────────────────────────
+type VarSource = 'account_name' | 'country' | 'role' | 'custom';
+
+const VAR_SOURCE_LABELS: Record<VarSource, string> = {
+  account_name: '👤 اسم صاحب الحساب',
+  country:      '🌍 الدولة',
+  role:         '🏷️ الفئة',
+  custom:       '✏️ نص ثابت',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
+  trainer: 'مدرب', agent: 'وكيل', parent: 'ولي أمر',
+};
 
 const getCountryFlag = (phone: string, country?: string): string => {
    if (country) {
@@ -39,7 +60,7 @@ const getCountryFlag = (phone: string, country?: string): string => {
    }
 
    if (!phone) return '🌍';
-   const d = phone.replace(/\D/g, ''); 
+   const d = phone.replace(/\D/g, '');
    if (d.startsWith('20')) return '🇪🇬';
    if (d.startsWith('966')) return '🇸🇦';
    if (d.startsWith('965')) return '🇰🇼';
@@ -54,25 +75,38 @@ const getCountryFlag = (phone: string, country?: string): string => {
 };
 
 export const CampaignManager: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'builder' | 'history'>('builder');
+  const { campaign, startCampaign } = useCampaign();
+
   const [targetSegment, setTargetSegment] = useState<string>('all');
-  const [targetCountry, setTargetCountry] = useState<string>('all');
+  const [targetCountries, setTargetCountries] = useState<string[]>([]);   // multi-select
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
   const [campaignType, setCampaignType] = useState<string>('promo');
-  
-  const [sending, setSending] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const [users, setUsers] = useState<any[]>([]);
   const [templates, setTemplates] = useState<ChatAmanTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<ChatAmanTemplate | null>(null);
-  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
-  
-  const [aggregatedStats, setAggregatedStats] = useState({
-     total: 0,
-     success: 0,
-     failed: 0
-  });
+  const [varMappings, setVarMappings] = useState<VarMapping[]>([]);
 
   const uniqueCountries = Array.from(new Set(users.map(u => u.country))).filter(Boolean);
+
+  // Close country dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggleCountry = (c: string) => {
+    setTargetCountries(prev =>
+      prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
+    );
+  };
 
   // 📋 1. Load Real Users on mount (Multi-collection aggregations)
   useEffect(() => {
@@ -91,7 +125,7 @@ export const CampaignManager: React.FC = () => {
         const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || 'مستخدم مجهول';
         const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
         const country = data.country || data.countryName || '';
-        
+
         let avatar = '';
         if (data.profile_image_url) {
           avatar = data.profile_image_url;
@@ -123,65 +157,34 @@ export const CampaignManager: React.FC = () => {
     loadTemplates();
   }, []);
 
-  const handleSelectTemplate = (templateName: string) => {
-     const template = templates.find(t => t.name === templateName);
-     if (!template) return;
+  const handleSelectTemplate = (template: ChatAmanTemplate, _vars: string[]) => {
      setSelectedTemplate(template);
      const matches = template.body ? template.body.match(/\{\{(\d+)\}\}/g) : [];
      const numbers = matches ? matches.map(m => parseInt(m.replace(/\D/g, ''), 10)) : [];
      const varCount = numbers.length > 0 ? Math.max(...numbers) : 0;
-     setTemplateVariables(Array(varCount).fill(''));
+     // Default: first var = account_name, rest = custom
+     setVarMappings(Array.from({ length: varCount }, (_, i) =>
+       i === 0 ? { source: 'account_name' } : { source: 'custom', customValue: '' }
+     ));
   };
 
   const handleStartCampaign = async () => {
-     if (!selectedTemplate) {
-        toast.error('يرجى تحديد قالب للحملة');
-        return;
-     }
-
-     const filterBySegment = users.filter(u => {
-        const roleMatch = targetSegment === 'all' || u.role === targetSegment;
-        const countryMatch = targetCountry === 'all' || u.country === targetCountry;
-        return roleMatch && countryMatch;
-     });
-
-     if (filterBySegment.length === 0) {
-        toast.error('لا يوجد مستخدمين متاحين في هذه الشريحة المستهدفة');
-        return;
-     }
-
-     setSending(true);
-     setProgress(0);
-     let successCount = 0;
-     let failCount = 0;
-
-     for (let i = 0; i < filterBySegment.length; i++) {
-        const user = filterBySegment[i];
-        const vars = [...templateVariables];
-        
-        // Autofill Name shortcuts if first variable is blank
-        if (vars[0] === '' && user.name) vars[0] = user.name; 
-
-        try {
-           const res = await ChatAmanService.sendTemplate(user.phone, selectedTemplate.name, {
-              language: selectedTemplate.language || 'ar',
-              bodyParams: vars
-           });
-
-           if (res.success) successCount++;
-           else failCount++;
-        } catch (e) {
-           failCount++;
-        }
-
-        setProgress(Math.floor(((i + 1) / filterBySegment.length) * 100));
-        setAggregatedStats({ total: filterBySegment.length, success: successCount, failed: failCount });
-        
-        await new Promise(r => setTimeout(r, 3000));
-     }
-
-     setSending(false);
-     toast.success(`✅ جرى اكتمال الحملة! بنجاح: ${successCount}، فشل: ${failCount}`);
+    if (!selectedTemplate) { toast.error('يرجى تحديد قالب للحملة'); return; }
+    const filtered = users.filter(u => {
+      const roleMatch = targetSegment === 'all' || u.role === targetSegment;
+      const countryMatch = targetCountries.length === 0 || targetCountries.includes(u.country);
+      return roleMatch && countryMatch;
+    });
+    if (filtered.length === 0) { toast.error('لا يوجد مستخدمين متاحين'); return; }
+    await startCampaign(
+      filtered as CampaignUser[],
+      selectedTemplate.name,
+      selectedTemplate.body || '',
+      selectedTemplate.language || 'ar',
+      varMappings,
+      targetSegment,
+      targetCountries,
+    );
   };
 
   return (
@@ -195,107 +198,205 @@ export const CampaignManager: React.FC = () => {
                   إنشاء حملة مراسلة جماعية ذكية
                </CardTitle>
                <CardDescription className="text-[10px] text-slate-400">تحديد الجمهور والقوالب وبدء الإرسال الدفعي الآمن</CardDescription>
+
+               {/* Tab switcher */}
+               <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg mt-3">
+                 {[
+                   { id: 'builder', label: '🚀 إنشاء حملة' },
+                   { id: 'history', label: '📋 سجل الحملات' },
+                 ].map(t => (
+                   <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+                     className={`flex-1 text-[10px] font-bold py-1 rounded-md transition-all ${activeTab === t.id ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}>
+                     {t.label}
+                   </button>
+                 ))}
+               </div>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
-               {/* Segment Filters */}
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 border p-3 rounded-xl border-slate-100 bg-slate-50/50">
-                  <div className="space-y-1">
-                     <Label className="text-xs font-bold text-slate-700">1. تصفية الفئة</Label>
-                     <Select onValueChange={setTargetSegment} defaultValue="all">
-                        <SelectTrigger className="h-9 text-xs border-slate-200">
-                           <SelectValue placeholder="اختر الفئة..." />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs">
-                           <SelectItem value="all">الكل ({users.length})</SelectItem>
-                           <SelectItem value="player">لاعبين ({users.filter(u => u.role === 'player').length})</SelectItem>
-                           <SelectItem value="academy">أكاديميات ({users.filter(u => u.role === 'academy').length})</SelectItem>
-                           <SelectItem value="trainer">مدربين ({users.filter(u => u.role === 'trainer').length})</SelectItem>
-                           <SelectItem value="parent">أولياء أمور ({users.filter(u => u.role === 'parent').length})</SelectItem>
-                        </SelectContent>
-                     </Select>
-                  </div>
+               {activeTab === 'builder' && (
+                 <>
+                   {/* Segment Filters */}
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 border p-3 rounded-xl border-slate-100 bg-slate-50/50">
+                      <div className="space-y-1">
+                         <Label className="text-xs font-bold text-slate-700">1. تصفية الفئة</Label>
+                         <Select onValueChange={setTargetSegment} defaultValue="all">
+                            <SelectTrigger className="h-9 text-xs border-slate-200">
+                               <SelectValue placeholder="اختر الفئة..." />
+                            </SelectTrigger>
+                            <SelectContent className="text-xs">
+                               <SelectItem value="all">الكل ({users.length})</SelectItem>
+                               <SelectItem value="player">لاعبين ({users.filter(u => u.role === 'player').length})</SelectItem>
+                               <SelectItem value="academy">أكاديميات ({users.filter(u => u.role === 'academy').length})</SelectItem>
+                               <SelectItem value="trainer">مدربين ({users.filter(u => u.role === 'trainer').length})</SelectItem>
+                               <SelectItem value="parent">أولياء أمور ({users.filter(u => u.role === 'parent').length})</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </div>
 
-                  <div className="space-y-1">
-                     <Label className="text-xs font-bold text-slate-700">2. تصفية الدولة</Label>
-                     <Select onValueChange={setTargetCountry} defaultValue="all">
-                        <SelectTrigger className="h-9 text-xs border-slate-200">
-                           <SelectValue placeholder="اختر الدولة..." />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs">
-                           <SelectItem value="all">كل الدول ({users.length})</SelectItem>
-                           {uniqueCountries.map((c, i) => (
-                              <SelectItem key={i} value={c}>
-                                 {getCountryFlag('', c)} {c} ({users.filter(u => u.country === c).length})
-                              </SelectItem>
-                           ))}
-                        </SelectContent>
-                     </Select>
-                  </div>
+                      {/* Multi-select countries */}
+                      <div className="space-y-1" ref={countryDropdownRef}>
+                         <Label className="text-xs font-bold text-slate-700">2. تصفية الدولة (متعدد)</Label>
+                         <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setCountryDropdownOpen(o => !o)}
+                              className="w-full h-9 px-3 flex items-center justify-between border border-slate-200 rounded-md bg-white text-xs text-slate-700 hover:border-slate-300 focus:outline-none"
+                            >
+                              <span className="truncate">
+                                {targetCountries.length === 0
+                                  ? `كل الدول (${users.length})`
+                                  : `${targetCountries.length} دولة محددة`}
+                              </span>
+                              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                            </button>
+                            {countryDropdownOpen && (
+                              <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                                {/* Select all / clear */}
+                                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+                                  <button type="button" onClick={() => setTargetCountries(uniqueCountries as string[])} className="text-[10px] text-emerald-600 font-bold hover:underline">تحديد الكل</button>
+                                  <button type="button" onClick={() => setTargetCountries([])} className="text-[10px] text-slate-400 hover:underline">إلغاء الكل</button>
+                                </div>
+                                {uniqueCountries.map((c, i) => (
+                                  <label key={i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={targetCountries.includes(c as string)}
+                                      onChange={() => toggleCountry(c as string)}
+                                      className="accent-emerald-500 w-3.5 h-3.5"
+                                    />
+                                    <span className="text-xs text-slate-700 flex-1">
+                                      {getCountryFlag('', c as string)} {c}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">{users.filter(u => u.country === c).length}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                         </div>
+                         {/* Selected country badges */}
+                         {targetCountries.length > 0 && (
+                           <div className="flex flex-wrap gap-1 mt-1">
+                             {targetCountries.map((c, i) => (
+                               <span key={i} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] px-2 py-0.5">
+                                 {getCountryFlag('', c)} {c}
+                                 <button type="button" onClick={() => toggleCountry(c)} className="hover:text-red-500">
+                                   <X className="w-2.5 h-2.5" />
+                                 </button>
+                               </span>
+                             ))}
+                           </div>
+                         )}
+                      </div>
 
-                  <div className="space-y-1">
-                     <Label className="text-xs font-bold text-slate-700">3. نوع الحملة</Label>
-                     <Select onValueChange={setCampaignType} defaultValue="promo">
-                        <SelectTrigger className="h-9 text-xs border-slate-200">
-                           <SelectValue placeholder="اختر النوع..." />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs">
-                           <SelectItem value="promo">📢 ترويجية وإعلانات</SelectItem>
-                           <SelectItem value="awareness">💡 توعية وإرشاد</SelectItem>
-                           <SelectItem value="notification">🔔 تنبيهات وإشعارات</SelectItem>
-                           <SelectItem value="administrative">📁 إدارية وخاصة</SelectItem>
-                        </SelectContent>
-                     </Select>
-                  </div>
+                      <div className="space-y-1">
+                         <Label className="text-xs font-bold text-slate-700">3. نوع الحملة</Label>
+                         <Select onValueChange={setCampaignType} defaultValue="promo">
+                            <SelectTrigger className="h-9 text-xs border-slate-200">
+                               <SelectValue placeholder="اختر النوع..." />
+                            </SelectTrigger>
+                            <SelectContent className="text-xs">
+                               <SelectItem value="promo">📢 ترويجية وإعلانات</SelectItem>
+                               <SelectItem value="awareness">💡 توعية وإرشاد</SelectItem>
+                               <SelectItem value="notification">🔔 تنبيهات وإشعارات</SelectItem>
+                               <SelectItem value="administrative">📁 إدارية وخاصة</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </div>
 
-                  <div className="space-y-1 md:col-span-2">
-                     <Label className="text-xs font-bold text-slate-700">4. قالب الحملة الحصرية</Label>
-                     <ChatAmanTemplateSelector
-                        onSelect={(template, vars) => {
-                           setSelectedTemplate(template);
-                           setTemplateVariables(vars);
-                        }}
-                     />
-                  </div>
+                      <div className="space-y-1 md:col-span-2">
+                         <Label className="text-xs font-bold text-slate-700">4. قالب الحملة الحصرية</Label>
+                         <ChatAmanTemplateSelector onSelect={handleSelectTemplate} />
+                      </div>
+                   </div>
 
-                  <div className="md:col-span-2 flex items-start gap-1.5 p-2 rounded-lg bg-blue-50 border border-blue-100">
-                     <Info className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
-                     <p className="text-[10px] text-blue-700 leading-relaxed">
-                        ملاحظة: المتغير {'{{1}}'} يُملأ تلقائياً باسم صاحب الحساب
-                     </p>
-                  </div>
-               </div>
-
-
-               {/* Bulk Campaign Settings (Time Delay, Limits) */}
-               <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-100 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
-                  <div>
-                     <h4 className="text-[10px] font-bold text-amber-800">حماية الخادم ضد الحجب (Safe Delay Mode)</h4>
-                     <p className="text-[9px] text-amber-700 leading-relaxed mt-0.5">سيقوم محرك الحملات المراسلة بجدولة فاصل تأخير روتيني تبلغ **3 ثوانٍ** لمنع حظر الرقم والمظهر العشوائي.</p>
-                  </div>
-               </div>
-
-               {/* Trigger Click and Progress Bar */}
-               {sending ? (
-                  <div className="space-y-2">
-                     <div className="flex items-center justify-between text-xs text-slate-600">
-                        <span>جاري إرسال الحملة...</span>
-                        <span className="font-bold">{progress}%</span>
+                   {/* ─── Variables Mapping ─────────────────────────────────────── */}
+                   {selectedTemplate && varMappings.length > 0 && (
+                     <div className="border border-slate-100 rounded-xl p-3 bg-slate-50/60 space-y-2">
+                       <div className="flex items-center gap-1.5 mb-1">
+                         <Tag className="w-3.5 h-3.5 text-purple-500" />
+                         <p className="text-xs font-bold text-slate-700">إعداد متغيرات القالب</p>
+                       </div>
+                       {varMappings.map((mapping, idx) => (
+                         <div key={idx} className="flex items-center gap-2">
+                           <span className="text-[10px] font-bold text-slate-500 w-8 shrink-0 text-center bg-slate-200 rounded-md py-1">
+                             {`{{${idx + 1}}}`}
+                           </span>
+                           <Select
+                             value={mapping.source}
+                             onValueChange={(v) => {
+                               const updated = [...varMappings];
+                               updated[idx] = { source: v as VarSource, customValue: '' };
+                               setVarMappings(updated);
+                             }}
+                           >
+                             <SelectTrigger className="h-8 text-xs flex-1 border-slate-200 bg-white">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent className="text-xs">
+                               {(Object.keys(VAR_SOURCE_LABELS) as VarSource[]).map(src => (
+                                 <SelectItem key={src} value={src}>{VAR_SOURCE_LABELS[src]}</SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                           {mapping.source === 'custom' && (
+                             <Input
+                               value={mapping.customValue || ''}
+                               onChange={(e) => {
+                                 const updated = [...varMappings];
+                                 updated[idx] = { ...updated[idx], customValue: e.target.value };
+                                 setVarMappings(updated);
+                               }}
+                               placeholder="أدخل النص الثابت..."
+                               className="h-8 text-xs flex-1 border-slate-200"
+                             />
+                           )}
+                         </div>
+                       ))}
+                       {/* Template body preview */}
+                       {selectedTemplate.body && (
+                         <div className="mt-2 p-2 bg-white border border-slate-100 rounded-lg text-[10px] text-slate-500 leading-relaxed">
+                           {selectedTemplate.body}
+                         </div>
+                       )}
                      </div>
-                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-500 to-green-600 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                   )}
+
+                   {/* Bulk Campaign Settings (Time Delay, Limits) */}
+                   <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-100 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                      <div>
+                         <h4 className="text-[10px] font-bold text-amber-800">حماية الخادم ضد الحجب (Safe Delay Mode)</h4>
+                         <p className="text-[9px] text-amber-700 leading-relaxed mt-0.5">سيقوم محرك الحملات المراسلة بجدولة فاصل تأخير روتيني تبلغ **3 ثوانٍ** لمنع حظر الرقم والمظهر العشوائي.</p>
+                      </div>
+                   </div>
+
+                   {/* Trigger Click and Progress Bar */}
+                   {campaign.status === 'running' ? (
+                     <div className="space-y-2">
+                       <div className="flex items-center justify-between text-xs text-slate-600">
+                         <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin text-emerald-500" /> جاري الإرسال — يمكنك التنقل بحرية</span>
+                         <span className="font-bold">{campaign.progress}%</span>
+                       </div>
+                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                         <div className="h-full bg-gradient-to-r from-emerald-500 to-green-600 transition-all duration-300" style={{ width: `${campaign.progress}%` }} />
+                       </div>
+                       <div className="flex gap-4 text-[10px] text-slate-500">
+                         <span className="text-emerald-600 font-bold">✅ {campaign.success} نجح</span>
+                         <span className="text-rose-500 font-bold">❌ {campaign.failed} فشل</span>
+                         <span>من {campaign.total}</span>
+                       </div>
                      </div>
-                     <p className="text-[10px] text-slate-400 text-center">تم إرسال {aggregatedStats.success + aggregatedStats.failed} من أصل {aggregatedStats.total} رسالة</p>
-                  </div>
-               ) : (
-                  <Button 
-                    onClick={handleStartCampaign}
-                    className="w-full h-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-1.5"
-                  >
-                     <Send className="w-3.5 h-3.5 ml-0.5" />
-                     إطلاق الحملة الجماعية الآن
-                  </Button>
+                   ) : (
+                     <Button onClick={handleStartCampaign}
+                       className="w-full h-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-1.5">
+                       <Send className="w-3.5 h-3.5 ml-0.5" />
+                       إطلاق الحملة الجماعية الآن
+                     </Button>
+                   )}
+                 </>
                )}
+
+               {activeTab === 'history' && <CampaignHistory />}
             </CardContent>
          </Card>
       </div>

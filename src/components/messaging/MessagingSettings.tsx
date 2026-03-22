@@ -131,7 +131,7 @@ const MessagingSettingsComponent: React.FC = () => {
 
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'messaging_settings', user.uid), settings);
+      await updateDoc(doc(db, 'messaging_settings', user.uid), settings as any);
       toast.success('تم حفظ الإعدادات بنجاح');
     } catch (error) {
       console.error('خطأ في حفظ الإعدادات:', error);

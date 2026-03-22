@@ -522,38 +522,7 @@ export default function AdminPaymentsPage() {
       console.log(`رسالة SMS: ${smsData.message} (${smsData.length} حرف)`);
 
       // التحقق من طول الرسالة
-      if (smsData.length > 65) {
-        console.warn(`⚠️ الرسالة طويلة جداً: ${smsData.length} حرف`);
-        // إنشاء رسالة أقصر
-        const customerName = payment.playerName || payment.playerId || 'غير محدد';
-        const shortName = customerName.length > 5 ? customerName.substring(0, 4) + '..' : customerName;
-        const amount = payment.amount || 0;
-        const currency = payment.currency || 'EGP';
-        const shortMessage = `💰 مدفوعة جديدة!\n👤 ${shortName}\n💵 ${amount} ${currency}`;
-
-        console.log(`رسالة مختصرة: ${shortMessage} (${shortMessage.length} حرف)`);
-
-        await fetch('/api/whatsapp/babaservice/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'sms',
-            phoneNumbers: [adminPhone],
-            message: shortMessage
-          })
-        });
-      } else {
-        // إرسال SMS للمدير
-        await fetch('/api/whatsapp/babaservice/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'sms',
-            phoneNumbers: [adminPhone],
-            message: smsData.message
-          })
-        });
-      }
+      // SMS notifications removed — BabaService deprecated, use ChatAman templates
 
       // حفظ الإشعار في قاعدة البيانات
       await addDoc(collection(db, 'admin_notifications'), {
@@ -739,17 +708,6 @@ export default function AdminPaymentsPage() {
       }
 
       if (notificationMessage) {
-        // إرسال SMS
-        await fetch('/api/whatsapp/babaservice/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'sms',
-            phoneNumbers: [payment.playerPhone],
-            message: notificationMessage
-          })
-        });
-
         // حفظ الإشعار في قاعدة البيانات
         await addDoc(collection(db, 'notifications'), {
           userId: payment.playerId || payment.userId,
@@ -981,84 +939,21 @@ export default function AdminPaymentsPage() {
       return;
     }
 
-    try {
-      await fetch('/api/whatsapp/babaservice/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'sms',
-          phoneNumbers: [selectedPayment.playerPhone],
-          message: messageText
-        })
-      });
-
-      toast.success('تم إرسال SMS بنجاح');
-
-      // إغلاق الموديول وتنظيف النص بعد الإرسال الناجح
-      setShowMessageDialog(false);
-      setMessageText('');
-
-      // تحديث تاريخ الرسائل
-      const messages = await fetchMessageHistory(selectedPayment.id, selectedPayment.playerPhone);
-      setMessageHistory(prev => ({
-        ...prev,
-        [selectedPayment.id]: messages
-      }));
-
-      // تحديث الإحصائيات
-      const messageStats = calculateMessageStats();
-      setStats(prev => ({
-        ...prev,
-        messagesSent: messageStats.totalMessages,
-        customersWithMessages: messageStats.customersWithMessages
-      }));
-
-    } catch (error) {
-      console.error('خطأ في إرسال SMS:', error);
-      toast.error('فشل في إرسال SMS');
-    }
+    toast.success('استخدم AI Messenger لإرسال رسائل WhatsApp عبر قوالب ChatAman المعتمدة');
   };
 
   // إرسال WhatsApp
   const sendWhatsApp = async () => {
-    if (!messageText.trim()) {
-      toast.error('يرجى كتابة رسالة');
+    if (!selectedPayment?.playerPhone) {
+      toast.error('رقم الهاتف غير متوفر');
       return;
     }
-
-    if (!selectedPayment.playerPhone || selectedPayment.playerPhone === 'غير محدد') {
-      toast.error('رقم الهاتف غير متوفر للإرسال');
-      return;
-    }
-
-    try {
-      await fetch('/api/whatsapp/babaservice/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'whatsapp',
-          phoneNumbers: [selectedPayment.playerPhone],
-          message: messageText
-        })
-      });
-      toast.success('تم إرسال الرسالة عبر WhatsApp بنجاح');
-
-      // إغلاق الموديول وتنظيف النص بعد فتح WhatsApp
-      setShowMessageDialog(false);
-      setMessageText('');
-
-      // تحديث الإحصائيات (لأن WhatsApp يُفتح في نافذة جديدة)
-      const messageStats = calculateMessageStats();
-      setStats(prev => ({
-        ...prev,
-        messagesSent: messageStats.totalMessages,
-        customersWithMessages: messageStats.customersWithMessages
-      }));
-
-    } catch (error) {
-      console.error('خطأ في فتح WhatsApp:', error);
-      toast.error('فشل في فتح WhatsApp');
-    }
+    // Open WhatsApp directly via web link
+    const phone = String(selectedPayment.playerPhone).replace(/\D/g, '');
+    const text = encodeURIComponent(messageText.trim());
+    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+    setShowMessageDialog(false);
+    setMessageText('');
   };
 
   // الدالة القديمة للتوافق مع الكود الموجود

@@ -385,7 +385,7 @@ class AdminNotificationService {
 
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
-        await updateDoc(snapshot.docs[0].ref, settings);
+        await updateDoc(snapshot.docs[0].ref, settings as any);
       } else {
         await addDoc(collection(db, 'admin_notification_settings'), settings);
       }

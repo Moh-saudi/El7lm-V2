@@ -435,7 +435,7 @@ export default function AdminSubscriptionsView() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan={7} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
                           <p className="text-lg font-medium">لا توجد اشتراكات</p>
@@ -492,7 +492,7 @@ export default function AdminSubscriptionsView() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center">
+                      <td colSpan={6} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
                           <p className="text-lg font-medium">لا توجد فواتير</p>

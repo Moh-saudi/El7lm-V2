@@ -17,6 +17,7 @@ import {
   Calendar,
   Eye,
   Film,
+  Filter,
   Heart,
   MessageCircle,
   MessageSquare,
@@ -25,6 +26,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  SlidersHorizontal,
   UserCheck,
   UserPlus,
   Volume2,
@@ -54,10 +56,34 @@ interface Video {
   music: string;
   playerId: string;
   createdAt: string | Date | null;
+  // Search fields
+  country?: string;
+  nationality?: string;
+  age?: number;
+  phone?: string;
+}
+
+interface SearchFilters {
+  name: string;
+  position: string;
+  ageMin: string;
+  ageMax: string;
+  country: string;
+  phone: string;
+}
+
+function calcAge(birthDate: any): number | undefined {
+  if (!birthDate) return undefined;
+  try {
+    const d = birthDate?.toDate ? birthDate.toDate() : new Date(birthDate);
+    const diff = Date.now() - d.getTime();
+    const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    return age > 0 && age < 100 ? age : undefined;
+  } catch { return undefined; }
 }
 
 interface PlayerVideosPageProps {
-  accountType: 'club' | 'academy' | 'trainer' | 'agent' | 'player';
+  accountType: 'club' | 'academy' | 'trainer' | 'agent' | 'player' | 'marketer';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -541,8 +567,9 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [filters, setFilters] = useState<SearchFilters>({ name: '', position: '', ageMin: '', ageMax: '', country: '', phone: '' });
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const [filterType, setFilterType] = useState<'all' | 'following'>('all');
   const [likedVideos, setLikedVideos] = useState<string[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
@@ -589,6 +616,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           if (!videoUrl) return;
           let createdAt = v.createdAt || v.updated_at || null;
           if (createdAt?.toDate) createdAt = createdAt.toDate();
+          const age = d.age || calcAge(d.birth_date);
           all.push({
             id: `${playerDoc.id}_${idx}`,
             url: videoUrl,
@@ -603,6 +631,10 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
             music: v.music || 'Original Sound',
             playerId: playerDoc.id,
             createdAt,
+            country: d.country || d.nationality || '',
+            nationality: d.nationality || d.country || '',
+            age,
+            phone: d.phone || d.whatsapp || '',
           });
         });
       }
@@ -630,15 +662,53 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     } catch {}
   };
 
+  // Dynamic positions fetched directly from DB (all players, not just those with videos)
+  const [uniquePositions, setUniquePositions] = useState<string[]>([]);
+
+  // Dynamic countries fetched directly from DB (all players, not just those with videos)
+  const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
+
+  useEffect(() => {
+    getDocs(collection(db, 'players')).then(snap => {
+      const countries = new Set<string>();
+      const positions = new Set<string>();
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const c = data.country || data.nationality;
+        if (c && typeof c === 'string' && c.trim()) countries.add(c.trim());
+        const p = data.primary_position || data.position;
+        if (p && typeof p === 'string' && p.trim()) positions.add(p.trim());
+      });
+      setUniqueCountries(Array.from(countries).sort());
+      setUniquePositions(Array.from(positions).sort());
+    }).catch(() => {});
+  }, []);
+
   const filteredVideos = useMemo(() => {
     let f = videos;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+    const { name, position, ageMin, ageMax, country, phone } = filters;
+
+    if (name) {
+      const q = name.toLowerCase();
       f = f.filter(v => v.playerName.toLowerCase().includes(q) || v.description.toLowerCase().includes(q));
     }
+    if (position) f = f.filter(v => v.playerPosition === position);
+    if (ageMin) f = f.filter(v => v.age !== undefined && v.age >= parseInt(ageMin));
+    if (ageMax) f = f.filter(v => v.age !== undefined && v.age <= parseInt(ageMax));
+    if (country) {
+      const cq = country.toLowerCase();
+      f = f.filter(v => (v.country || v.nationality || '').toLowerCase().includes(cq));
+    }
+    if (phone) f = f.filter(v => (v.phone || '').replace(/\D/g, '').includes(phone.replace(/\D/g, '')));
     if (filterType === 'following') f = f.filter(v => following.includes(v.playerId));
     return f;
-  }, [videos, searchQuery, filterType, following]);
+  }, [videos, filters, filterType, following]);
+
+  // Keep active filters count updated
+  useEffect(() => {
+    const { name, position, ageMin, ageMax, country, phone } = filters;
+    setActiveFiltersCount([name, position, ageMin, ageMax, country, phone].filter(Boolean).length);
+  }, [filters]);
 
   const handleLike = useCallback(async (id: string) => {
     if (!user) return;
@@ -659,8 +729,20 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         }
       }
       await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { likedVideos: next });
+      // Dispatch video_like notification only when adding a like
+      if (!liked && user.uid !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+        dispatchNotification({
+          eventType: 'video_like',
+          targetUserId: pid,
+          actorId: user.uid,
+          actorName: viewerName,
+          actorAccountType: accountType,
+          metadata: { videoId: id },
+        });
+      }
     } catch {}
-  }, [user, likedVideos, accountType]);
+  }, [user, likedVideos, accountType, userData]);
 
   const handleFollow = useCallback(async (pid: string) => {
     if (!user) return;
@@ -669,15 +751,26 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     setFollowing(next);
     try {
       await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { following: next });
+      // Dispatch follow notification only when following (not unfollowing)
+      if (!isF && user.uid !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+        dispatchNotification({
+          eventType: 'follow',
+          targetUserId: pid,
+          actorId: user.uid,
+          actorName: viewerName,
+          actorAccountType: accountType,
+        });
+      }
     } catch {}
-  }, [user, following, accountType]);
+  }, [user, following, accountType, userData]);
 
   const handleShare = useCallback((v: Video) => {
     const url = `${window.location.origin}/videos/${v.id}`;
     setVideos(prev => prev.map(vid => vid.id === v.id ? { ...vid, shares: vid.shares + 1 } : vid));
     if (navigator.share) navigator.share({ title: v.playerName, url });
     else navigator.clipboard.writeText(url).then(() => {});
-    // Persist share count
+    // Persist share count + dispatch notification
     try {
       const [pid, idxStr] = v.id.split('_');
       getDoc(doc(db, 'players', pid)).then(snap => {
@@ -689,8 +782,19 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           updateDoc(doc(db, 'players', pid), { videos: vids });
         }
       });
+      if (user && user.uid !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+        dispatchNotification({
+          eventType: 'video_share',
+          targetUserId: pid,
+          actorId: user.uid,
+          actorName: viewerName,
+          actorAccountType: accountType,
+          metadata: { videoId: v.id },
+        });
+      }
     } catch {}
-  }, []);
+  }, [user, userData, accountType]);
 
   const handleView = useCallback(async (id: string) => {
     if (viewedRef.current.has(id)) return;
@@ -854,9 +958,14 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSearch(s => !s)}
-              className="p-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white active:scale-90 transition-transform"
+              className="relative p-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white active:scale-90 transition-transform"
             >
-              <Search className="w-5 h-5" />
+              <SlidersHorizontal className="w-5 h-5" />
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 text-[9px] font-black text-white flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
             </button>
             <button
               onClick={handleToggleMute}
@@ -876,34 +985,188 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           </div>
         )}
 
-        {/* Search bar */}
+        {/* ── Filter panel ─────────────────────────────── */}
         <AnimatePresence>
           {showSearch && (
+            <>
+              {/* Backdrop — click anywhere to close */}
+              <div
+                className="absolute inset-0 z-40"
+                onClick={() => setShowSearch(false)}
+              />
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
+              initial={{ opacity: 0, y: -16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              className="absolute top-16 inset-x-3 z-50"
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="absolute top-[60px] inset-x-2 z-50"
+              style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif", maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}
             >
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  placeholder="ابحث عن لاعب أو مهارة..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                  className="w-full bg-zinc-900/95 backdrop-blur-xl border border-white/20 rounded-full py-3 pr-4 pl-10 text-white text-sm outline-none placeholder-white/30"
-                  style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
-                />
-                <button
-                  onClick={() => { setSearchQuery(''); setShowSearch(false); }}
-                  className="absolute left-3 text-white/40 hover:text-white/70 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              <div className="rounded-2xl p-3 shadow-2xl space-y-3" style={{ background: 'rgba(18,18,20,0.98)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(24px)' }}>
+
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                    <Filter className="w-3.5 h-3.5" style={{ color: '#34d399' }} />
+                    فلترة اللاعبين
+                    {activeFiltersCount > 0 && (
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: '#10b981', color: '#fff' }}>
+                        {activeFiltersCount} فلتر
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activeFiltersCount > 0 && (
+                      <button
+                        onClick={() => setFilters({ name: '', position: '', ageMin: '', ageMax: '', country: '', phone: '' })}
+                        className="text-[10px] font-bold"
+                        style={{ color: '#f87171' }}
+                      >
+                        مسح الكل
+                      </button>
+                    )}
+                    <button onClick={() => setShowSearch(false)} style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Name search */}
+                <div className="relative">
+                  <Search className="absolute right-3 top-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                  <input
+                    type="text"
+                    placeholder="اسم اللاعب أو وصف الفيديو..."
+                    value={filters.name}
+                    onChange={e => setFilters(p => ({ ...p, name: e.target.value }))}
+                    autoFocus
+                    className="w-full rounded-xl py-2 pr-9 pl-3 text-xs outline-none transition-colors"
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#fff',
+                      caretColor: '#34d399',
+                      fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                    }}
+                  />
+                </div>
+
+                {/* Position + Country */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>المركز</p>
+                    <select
+                      value={filters.position}
+                      onChange={e => setFilters(p => ({ ...p, position: e.target.value }))}
+                      className="w-full rounded-xl py-2 pr-3 pl-2 text-xs outline-none appearance-none cursor-pointer"
+                      style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#fff',
+                        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                      }}
+                    >
+                      <option value="" style={{ background: '#18181b', color: '#fff' }}>كل المراكز</option>
+                      {uniquePositions.map(p => (
+                        <option key={p} value={p} style={{ background: '#18181b', color: '#fff' }}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>الدولة</p>
+                    <select
+                      value={filters.country}
+                      onChange={e => setFilters(p => ({ ...p, country: e.target.value }))}
+                      className="w-full rounded-xl py-2 pr-3 pl-2 text-xs outline-none appearance-none cursor-pointer"
+                      style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#fff',
+                        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                      }}
+                    >
+                      <option value="" style={{ background: '#18181b', color: '#fff' }}>كل الدول</option>
+                      {uniqueCountries.map(c => (
+                        <option key={c} value={c} style={{ background: '#18181b', color: '#fff' }}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Age range */}
+                <div>
+                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>السن</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="من"
+                      min={5} max={50}
+                      value={filters.ageMin}
+                      onChange={e => setFilters(p => ({ ...p, ageMin: e.target.value }))}
+                      className="w-full rounded-xl py-2 px-3 text-xs outline-none text-center"
+                      style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#fff',
+                        caretColor: '#34d399',
+                        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                      }}
+                    />
+                    <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
+                    <input
+                      type="number"
+                      placeholder="إلى"
+                      min={5} max={50}
+                      value={filters.ageMax}
+                      onChange={e => setFilters(p => ({ ...p, ageMax: e.target.value }))}
+                      className="w-full rounded-xl py-2 px-3 text-xs outline-none text-center"
+                      style={{
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#fff',
+                        caretColor: '#34d399',
+                        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>رقم الهاتف</p>
+                  <input
+                    type="tel"
+                    placeholder="ابحث برقم الهاتف..."
+                    value={filters.phone}
+                    onChange={e => setFilters(p => ({ ...p, phone: e.target.value }))}
+                    className="w-full rounded-xl py-2 px-3 text-xs outline-none font-mono"
+                    dir="ltr"
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#fff',
+                      caretColor: '#34d399',
+                    }}
+                  />
+                </div>
+
+                {/* Result count */}
+                <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    {filteredVideos.length} فيديو من {videos.length}
+                  </span>
+                  <button
+                    onClick={() => setShowSearch(false)}
+                    className="text-[10px] font-black"
+                    style={{ color: '#34d399' }}
+                  >
+                    عرض النتائج ←
+                  </button>
+                </div>
               </div>
             </motion.div>
+            </>
           )}
         </AnimatePresence>
 

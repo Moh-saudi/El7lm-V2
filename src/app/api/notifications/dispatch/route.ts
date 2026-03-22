@@ -2,7 +2,7 @@
  * /api/notifications/dispatch
  *
  * Central server-side notification dispatcher.
- * Called by any part of the system when an interaction event occurs.
+ * Uses Firebase Admin SDK to bypass Firestore security rules.
  *
  * Does 3 things per event:
  *  1. Creates an in-app interaction_notification in Firestore
@@ -11,10 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/config';
-import {
-  collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, Timestamp,
-} from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,22 +91,24 @@ function buildInAppContent(payload: DispatchPayload) {
   return map[payload.eventType];
 }
 
-// ─── Deduplication check ──────────────────────────────────────────────────────
+// ─── Deduplication check (Admin SDK) ─────────────────────────────────────────
 
-async function hasDuplicateRecent(targetUserId: string, actorId: string, eventType: string, windowMs = 5 * 60 * 1000): Promise<boolean> {
+async function hasDuplicateRecent(
+  targetUserId: string, actorId: string, eventType: string, windowMs = 5 * 60 * 1000
+): Promise<boolean> {
   try {
+    const db = getAdminDb();
     const since = new Date(Date.now() - windowMs);
-    const q = query(
-      collection(db, 'interaction_notifications'),
-      where('userId', '==', targetUserId),
-      where('viewerId', '==', actorId),
-      where('type', '==', eventType),
-    );
-    const snap = await getDocs(q);
+    const snap = await db.collection('interaction_notifications')
+      .where('userId', '==', targetUserId)
+      .where('viewerId', '==', actorId)
+      .where('type', '==', eventType)
+      .get();
+
     return snap.docs.some(d => {
       const ts = d.data().createdAt;
       if (!ts) return false;
-      const date = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+      const date = ts.toDate ? ts.toDate() : new Date(ts);
       return date > since;
     });
   } catch {
@@ -116,20 +116,20 @@ async function hasDuplicateRecent(targetUserId: string, actorId: string, eventTy
   }
 }
 
-// ─── WhatsApp sending ─────────────────────────────────────────────────────────
+// ─── WhatsApp helpers (Admin SDK) ─────────────────────────────────────────────
 
 async function getPhoneForUser(userId: string): Promise<string | null> {
   try {
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    if (userSnap.exists()) {
-      const phone = userSnap.data().phone || userSnap.data().phoneNumber;
+    const db = getAdminDb();
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (userSnap.exists) {
+      const phone = userSnap.data()?.phone || userSnap.data()?.phoneNumber;
       if (phone) return phone;
     }
-    // Fallback: check players/clubs collections
     for (const col of ['players', 'clubs', 'academies', 'agents', 'trainers']) {
-      const snap = await getDoc(doc(db, col, userId));
-      if (snap.exists()) {
-        const phone = snap.data().phone || snap.data().phoneNumber;
+      const snap = await db.collection(col).doc(userId).get();
+      if (snap.exists) {
+        const phone = snap.data()?.phone || snap.data()?.phoneNumber;
         if (phone) return phone;
       }
     }
@@ -139,31 +139,40 @@ async function getPhoneForUser(userId: string): Promise<string | null> {
 
 async function getChatAmanConfig(): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
   try {
-    const snap = await getDoc(doc(db, 'system_configs', 'chataman_config'));
-    if (snap.exists()) {
-      const d = snap.data();
-      if (d.isActive && d.apiKey) return d as any;
+    const db = getAdminDb();
+    const snap = await db.collection('system_configs').doc('chataman_config').get();
+    if (snap.exists) {
+      const d = snap.data() as any;
+      if (d.isActive && d.apiKey) return d;
     }
   } catch {}
   return null;
 }
 
 async function getTemplateConfig(): Promise<Record<string, { templateName: string; params: string[] } | null>> {
-  // Default mapping — can be overridden by Firestore
   const defaults: Record<string, { templateName: string; params: string[] } | null> = {
-    profile_view:     { templateName: 'profile_notification',  params: ['recipientName'] },
-    video_view:       { templateName: 'profile_notification',  params: ['recipientName'] },
-    message_received: { templateName: 'new_message_alert',     params: ['actorName'] },
-    video_like:       null,
-    video_comment:    null,
-    video_share:      null,
+    profile_view:     { templateName: 'profile_notification',  params: ['recipientName', 'actorName'] },
+    video_view:       { templateName: 'video_notfiation',    params: ['recipientName', 'actorName'] },
+    video_like:       { templateName: 'video_notfiation',    params: ['recipientName', 'actorName'] },
+    video_comment:    { templateName: 'video_notfiation',    params: ['recipientName', 'actorName'] },
+    video_share:      { templateName: 'video_notfiation',    params: ['recipientName', 'actorName'] },
+    message_received: { templateName: 'new_message_notification',        params: ['recipientName', 'actorName'] },
     follow:           null,
   };
 
   try {
-    const snap = await getDoc(doc(db, 'system_configs', 'notification_templates'));
-    if (snap.exists()) {
-      return { ...defaults, ...snap.data() };
+    const db = getAdminDb();
+    const snap = await db.collection('system_configs').doc('notification_templates').get();
+    if (snap.exists) {
+      const saved = snap.data() || {};
+      const merged = { ...defaults };
+      for (const [key, val] of Object.entries(saved)) {
+        // Only override if explicitly set to a valid template — null means "not configured yet, use default"
+        if (val && typeof val === 'object' && (val as any).templateName) {
+          merged[key] = val as any;
+        }
+      }
+      return merged;
     }
   } catch {}
   return defaults;
@@ -174,14 +183,16 @@ async function sendWhatsAppTemplate(
   templateName: string,
   bodyParams: string[],
   config: { apiKey: string; baseUrl: string },
+  reqUrl: string,
 ): Promise<boolean> {
   try {
     let cleaned = phone.replace(/\D/g, '');
     if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('1') && cleaned.length === 10) cleaned = `20${cleaned}`;
+    else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
+    else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
     const formattedPhone = `+${cleaned}`;
 
-    const payload = {
+    const whatsappPayload = {
       phone: formattedPhone,
       template: {
         name: templateName,
@@ -193,19 +204,43 @@ async function sendWhatsAppTemplate(
       },
     };
 
-    const cleanBaseUrl = config.baseUrl.trim().replace(/\/+$/, '');
-    const response = await fetch(`${cleanBaseUrl}/api/send/template`, {
+    const origin = new URL(reqUrl).origin;
+    const proxyUrl = `${origin}/api/chataman/send-template`;
+
+    console.log(`[dispatch] ── sendWhatsAppTemplate ──`);
+    console.log(`[dispatch] phone raw: ${phone} → formatted: ${formattedPhone}`);
+    console.log(`[dispatch] template: ${templateName}`);
+    console.log(`[dispatch] bodyParams: [${bodyParams.join(', ')}]`);
+    console.log(`[dispatch] proxy URL: ${proxyUrl}`);
+    console.log(`[dispatch] chataman baseUrl: ${config.baseUrl}`);
+    console.log(`[dispatch] chataman apiKey (first 10): ${config.apiKey.substring(0, 10)}...`);
+    console.log(`[dispatch] full payload:`, JSON.stringify(whatsappPayload, null, 2));
+
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey.trim()}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payload: whatsappPayload,
+        apiKey: config.apiKey.trim(),
+        baseUrl: config.baseUrl.trim(),
+      }),
     });
 
-    return response.ok;
-  } catch {
+    const responseText = await response.text().catch(() => '');
+    console.log(`[dispatch] proxy HTTP status: ${response.status}`);
+    console.log(`[dispatch] proxy raw response: ${responseText}`);
+
+    let data: any = {};
+    try { data = JSON.parse(responseText); } catch { data = {}; }
+
+    if (!data.success) {
+      console.error(`[dispatch] ChatAman proxy error:`, JSON.stringify(data));
+      return false;
+    }
+    console.log(`[dispatch] ChatAman proxy success:`, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.error('[dispatch] sendWhatsAppTemplate error:', e);
     return false;
   }
 }
@@ -221,13 +256,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Skip self-notifications
     if (targetUserId === actorId) {
       return NextResponse.json({ success: true, skipped: 'self' });
     }
 
-    // Deduplication (5 min window for views, 0 for messages/likes)
-    const dedupWindow = ['profile_view', 'video_view'].includes(eventType) ? 5 * 60 * 1000 : 0;
+    // video_view: one WhatsApp per visitor per player per day (24h) regardless of how many videos watched
+    // profile_view: 1 hour dedup
+    const dedupWindow =
+      eventType === 'video_view'   ? 24 * 60 * 60 * 1000 :
+      eventType === 'profile_view' ?  1 * 60 * 60 * 1000 :
+      0;
     if (dedupWindow > 0) {
       const isDuplicate = await hasDuplicateRecent(targetUserId, actorId, eventType, dedupWindow);
       if (isDuplicate) {
@@ -236,10 +274,11 @@ export async function POST(req: NextRequest) {
     }
 
     const content = buildInAppContent(body);
+    const db = getAdminDb();
 
     // ── 1. Create in-app notification ──
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await addDoc(collection(db, 'interaction_notifications'), {
+    await db.collection('interaction_notifications').add({
       userId: targetUserId,
       viewerId: actorId,
       viewerName: actorName,
@@ -252,7 +291,7 @@ export async function POST(req: NextRequest) {
       isRead: false,
       priority: content.priority,
       metadata: metadata || {},
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       expiresAt,
     });
 
@@ -264,15 +303,26 @@ export async function POST(req: NextRequest) {
       getPhoneForUser(targetUserId),
     ]);
 
-    if (chatAmanConfig && phone) {
+    console.log(`[dispatch] ${eventType} → phone=${phone ?? 'NOT FOUND'} chataman=${chatAmanConfig ? 'active' : 'inactive'}`);
+
+    if (!chatAmanConfig) {
+      console.warn('[dispatch] ChatAman config not found or inactive');
+    } else if (!phone) {
+      console.warn(`[dispatch] Phone not found for user ${targetUserId}`);
+    } else {
       const tmpl = templateConfig[eventType];
-      if (tmpl) {
-        // Get recipient name for templates that need it
+      if (!tmpl) {
+        console.warn(`[dispatch] No template configured for event: ${eventType}`);
+      } else {
         let recipientName = 'اللاعب';
         try {
-          const targetSnap = await getDoc(doc(db, 'users', targetUserId));
-          if (targetSnap.exists()) {
-            recipientName = targetSnap.data().displayName || targetSnap.data().full_name || recipientName;
+          // Try users first, then all profile collections
+          for (const col of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers']) {
+            const snap = await db.collection(col).doc(targetUserId).get();
+            if (snap.exists) {
+              const name = snap.data()?.full_name || snap.data()?.displayName || snap.data()?.name;
+              if (name) { recipientName = name; break; }
+            }
           }
         } catch {}
 
@@ -284,12 +334,14 @@ export async function POST(req: NextRequest) {
         };
         const bodyParams = tmpl.params.map(p => paramMap[p] || p);
 
-        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig);
+        console.log(`[dispatch] Sending "${tmpl.templateName}" to ${phone} params=[${bodyParams.join(', ')}]`);
+        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig, req.url);
         whatsappResult = ok ? 'sent' : 'failed';
+        console.log(`[dispatch] WhatsApp result: ${whatsappResult}`);
       }
     }
 
-    return NextResponse.json({ success: true, whatsapp: whatsappResult });
+    return NextResponse.json({ success: true, whatsapp: whatsappResult, _debug: { phone: phone || null, targetUserId } });
   } catch (error: any) {
     console.error('[dispatch] Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

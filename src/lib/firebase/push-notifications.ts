@@ -283,7 +283,7 @@ export async function testLocalNotification(): Promise<void> {
       vibrate: [200, 100, 200],
       dir: 'rtl',
       lang: 'ar'
-    });
+    } as NotificationOptions & { vibrate?: number[] });
 
     toast.success('تم إرسال إشعار تجريبي!');
   } catch (error) {

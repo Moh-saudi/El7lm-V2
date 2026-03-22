@@ -371,52 +371,13 @@ export default function AdminNotificationCenterPage() {
         return;
       }
 
-      console.log('📧 إرسال رسالة WhatsApp (Babaservice):', {
-        whatsappPhone,
-        instanceId
-      });
-
-      const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumbers: [whatsappPhone],
-          message: whatsappMessageText,
-          type: 'admin_notification',
-          instance_id: instanceId !== 'موجود' ? instanceId : undefined
-        })
-      });
-
-      const whatsappResult = await whatsappResponse.json();
-      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
-      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
-
-      if (whatsappResult.success) {
-        toast.success(`✅ تم إرسال الرسالة عبر WhatsApp بنجاح`);
-        toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
-
-        if (whatsappResult.data?.results?.[0]?.data) {
-          console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
-        }
-
-        setShowWhatsAppDialog(false);
-        setWhatsappMessage({ title: '', body: '' });
-        setPhoneNumber('');
-      } else {
-        toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
-
-        if (whatsappResult.data?.errors?.[0]?.error) {
-          console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
-          toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
-
-          if (whatsappResult.data.errors[0].error.includes('instance') ||
-            whatsappResult.data.errors[0].error.includes('Instance') ||
-            whatsappResult.data.errors[0].error.includes('connection')) {
-            toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
-          }
-        }
-      }
-
+      // BabaService removed — open WhatsApp Web directly
+      const cleanPhone = whatsappPhone.replace(/\D/g, '');
+      const encodedMsg = encodeURIComponent(whatsappMessageText);
+      window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+      setShowWhatsAppDialog(false);
+      setWhatsappMessage({ title: '', body: '' });
+      setPhoneNumber('');
     } catch (error) {
       console.error('خطأ في إرسال الرسالة:', error);
       toast.error('حدث خطأ في إرسال الرسالة');

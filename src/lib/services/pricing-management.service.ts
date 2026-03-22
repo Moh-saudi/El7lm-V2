@@ -12,6 +12,7 @@ import {
     Timestamp,
     writeBatch,
 } from 'firebase/firestore';
+// @ts-ignore
 import { db } from './config';
 
 // ==================== INTERFACES ====================

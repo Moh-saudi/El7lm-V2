@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+// @ts-ignore
 import Clarity from '@microsoft/clarity';
 
 export const useClarity = () => {

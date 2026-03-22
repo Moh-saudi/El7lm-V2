@@ -185,7 +185,7 @@ export function AdminNotificationsDropdown() {
             <DropdownMenuContent
                 align="end"
                 className="w-[400px] p-0 border-0 shadow-2xl rounded-2xl bg-white/95 backdrop-blur-xl ring-1 ring-black/5 overflow-hidden mt-2"
-                dir="rtl"
+                {...({ dir: 'rtl' } as any)}
             >
                 <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex justify-between items-center sticky top-0 z-10 backdrop-blur-md">
                     <div>

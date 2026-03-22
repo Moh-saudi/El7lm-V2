@@ -39,11 +39,12 @@ export async function POST(req: NextRequest) {
     
     console.log(`[Proxy] Response from ChatAman:`, JSON.stringify(data, null, 2));
 
-    if (!response.ok || data.status === 'error' || data.success === false) {
-      return NextResponse.json({ 
-        success: false, 
-        message: data.message || 'Failed to send template through provider', 
-        error: data 
+    const innerSuccess = data?.data?.success;
+    if (!response.ok || data.status === 'error' || data.success === false || innerSuccess === false) {
+      return NextResponse.json({
+        success: false,
+        message: data.message || data?.data?.data?.error?.message || 'Failed to send template through provider',
+        error: data
       }, { status: response.ok ? 400 : response.status });
     }
 

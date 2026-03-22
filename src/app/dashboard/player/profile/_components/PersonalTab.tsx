@@ -198,7 +198,7 @@ export function PersonalTab() {
                     <div className="col-span-1 md:col-span-2">
                         <FormField
                             control={control}
-                            name="brief"
+                            name={"brief" as any}
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>نبذة مختصرة</FormLabel>
@@ -221,7 +221,7 @@ export function PersonalTab() {
             {/* 2. Guardian Alert Section */}
             {
                 isMinor && (
-                    <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in zoom-in-95 duration-300">
+                    <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in zoom-in-95 duration-300">
                         <ShieldAlert className="h-6 w-6 text-amber-600 ml-3" />
                         <AlertTitle className="text-lg font-bold text-amber-800 mb-2">مطلوب موافقة ولي الأمر</AlertTitle>
                         <AlertDescription className="text-amber-700 leading-relaxed">

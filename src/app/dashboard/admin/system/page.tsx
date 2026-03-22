@@ -125,7 +125,7 @@ export default function SystemMonitoring() {
       await Promise.all(collections.map(async (colName) => {
         try {
           const snapshot = await getCountFromServer(collection(db, colName));
-          stats[colName as keyof DatabaseStats] = snapshot.data().count;
+          (stats as any)[colName] = snapshot.data().count;
         } catch (error) {
           console.warn(`Failed to fetch stats for ${colName}:`, error);
         }

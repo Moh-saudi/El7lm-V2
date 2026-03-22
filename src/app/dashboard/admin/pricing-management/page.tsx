@@ -814,7 +814,7 @@ function PlanCard({ plan, onUpdate, index }: PlanCardProps) {
             </motion.div>
 
             <EditPlanModal
-                plan={plan}
+                plan={plan as any}
                 isOpen={showEdit}
                 onClose={() => setShowEdit(false)}
                 onSave={handleSave}

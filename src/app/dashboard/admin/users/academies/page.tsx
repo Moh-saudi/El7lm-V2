@@ -339,8 +339,8 @@ export default function AcademiesManagement() {
         const lastLogin = basicData.lastLogin?.toDate ? basicData.lastLogin.toDate() : basicData.lastLogin;
         const verifiedAt = basicData.verifiedAt?.toDate ? basicData.verifiedAt.toDate() : basicData.verifiedAt;
         const subscriptionData = subscription ? {
-          status: subscription.status,
-          plan: subscription.plan,
+          status: (subscription as any).status,
+          plan: (subscription as any).plan,
           expiresAt: subscription.expiresAt
         } : undefined;
 

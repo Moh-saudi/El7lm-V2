@@ -18,7 +18,7 @@ export default function SafeLink({
   ...props 
 }: SafeLinkProps) {
   // Ensure crossOrigin is always the same on server and client
-  const safeCrossOrigin = crossOrigin || 'anonymous';
+  const safeCrossOrigin = (crossOrigin || 'anonymous') as "anonymous";
   
   return (
     <link 

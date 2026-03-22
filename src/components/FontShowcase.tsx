@@ -4,7 +4,7 @@
 import FontProvider, { FontHeading, FontText, MixedFontText } from '@/components/shared/FontProvider';
 
 export default function FontShowcase() {
-  const locale = 'ar';
+  const locale: string = 'ar';
   const t = (key: string) => key;
 
   return (

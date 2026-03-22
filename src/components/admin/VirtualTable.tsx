@@ -1,5 +1,4 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { FixedSizeList as List } from 'react-window';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils/index';
 
@@ -103,16 +102,15 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
         ))}
       </div>
 
-      {/* Virtual List */}
-      <List
-        height={height}
-        itemCount={data.length}
-        itemSize={itemHeight}
-        width="100%"
+      {/* Scrollable List */}
+      <div
+        style={{ height, overflowY: 'auto' }}
         className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
       >
-        {Row}
-      </List>
+        {data.map((row, index) => (
+          <Row key={row.id ?? index} index={index} style={{}} />
+        ))}
+      </div>
     </div>
   );
 };

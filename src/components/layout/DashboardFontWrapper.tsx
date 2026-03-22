@@ -34,7 +34,7 @@ export function DashboardHeading({
   const locale: string = 'ar';
   const fontClass = locale === 'en' ? 'font-english' : 'font-arabic';
 
-  const Tag = level as keyof JSX.IntrinsicElements;
+  const Tag = level as React.ElementType;
 
   return (
     <Tag className={`${fontClass} ${className}`} lang={locale}>

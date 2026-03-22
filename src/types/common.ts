@@ -17,7 +17,7 @@ export type FirestoreTimestamp = {
 export type DateOrTimestamp = Date | FirestoreTimestamp | string | any; // إضافة any لدعم serverTimestamp
 
 // User account types
-export type AccountType = 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin' | 'marketer' | 'parent' | 'unknown';
+export type AccountType = 'player' | 'club' | 'academy' | 'trainer' | 'agent' | 'admin' | 'marketer' | 'parent' | 'unknown' | 'independent';
 
 export type UserRole = AccountType;
 

@@ -203,7 +203,7 @@ export default function AdFileUpload({
       // محاكاة اختيار الملف
       const event = {
         target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
       handleFileSelect(event);
     }
   }, []);

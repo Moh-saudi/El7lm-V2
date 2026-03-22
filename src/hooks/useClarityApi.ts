@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { createClarityApiService, ClarityApiService } from '@/services/clarityApi';
+import ClarityApiService, { createClarityApiService } from '@/services/clarityApi';
 
 interface UseClarityApiReturn {
   clarityApi: ClarityApiService | null;

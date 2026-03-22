@@ -27,6 +27,8 @@ export interface GeideaSessionResponse {
   message?: string;
   error?: string;
   details?: string;
+  responseCode?: string;
+  detailedResponseCode?: string;
 }
 
 /**

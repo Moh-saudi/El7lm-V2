@@ -503,157 +503,7 @@ export default function SendNotificationsPage() {
       await Promise.all(notificationPromises);
       console.log(`✅ تم حفظ ${notificationPromises.length} إشعار في Firebase`);
 
-      // إرسال SMS لجميع المستخدمين (رسالة مخصصة لكل مستخدم)
-      if (form.sendMethods.sms) {
-        const smsPromises = targetUsers
-          .filter(user => user.phone)
-          .map(async (targetUser) => {
-            try {
-              // استبدال المتغيرات في الرسالة
-              const personalizedMessage = replaceMessageVariables(form.message, targetUser);
-              const personalizedTitle = replaceMessageVariables(form.title, targetUser);
-
-              const smsRes = await fetch('/api/whatsapp/babaservice/notifications', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({
-                  phoneNumbers: [targetUser.phone],
-                  message: `${personalizedTitle}\n\n${personalizedMessage}`,
-                  type: 'sms'
-                })
-              });
-
-              if (smsRes.ok) {
-                const result = await smsRes.json();
-                if (result.success) {
-                  console.log(`📱 تم إرسال SMS إلى ${targetUser.displayName || targetUser.phone}`);
-                  return true;
-                }
-              }
-              return false;
-            } catch (error) {
-              console.error(`❌ فشل إرسال SMS إلى ${targetUser.phone}:`, error);
-              return false;
-            }
-          });
-
-        try {
-          await Promise.all(smsPromises);
-          console.log('📱 تم إرسال جميع رسائل SMS');
-        } catch (error) {
-          console.error('❌ فشل إرسال بعض رسائل SMS:', error);
-          toast.error('فشل في إرسال بعض الرسائل النصية');
-        }
-      }
-
-      // الكود القديم للإرسال الجماعي (محذوف - تم استبداله بالكود أعلاه)
-      if (false && form.sendMethods.sms) {
-        const smsPhones = targetUsers.filter(user => user.phone).map(user => user.phone);
-        if (smsPhones.length > 0) {
-          try {
-            // محاولة إرسال عبر baba service أولاً
-            const smsRes = await fetch('/api/whatsapp/babaservice/notifications', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json; charset=utf-8' },
-              body: JSON.stringify({
-                phoneNumbers: smsPhones,
-                message: `${form.title}\n\n${form.message}`,
-                type: 'sms'
-              })
-            });
-
-            if (smsRes.ok) {
-              const result = await smsRes.json();
-              if (result.success) {
-                console.log('📱 تم إرسال SMS عبر baba service');
-              } else {
-                throw new Error('baba service فشل');
-              }
-            } else {
-              throw new Error('baba service غير متاح');
-            }
-          } catch (error) {
-            console.error('❌ فشل إرسال SMS عبر baba service:', error);
-            toast.error('فشل في إرسال الرسائل النصية');
-          }
-        }
-      }
-
-      // إرسال WhatsApp لجميع المستخدمين (رسالة مخصصة لكل مستخدم)
-      if (form.sendMethods.whatsapp) {
-        const whatsappPromises = targetUsers
-          .filter(user => user.phone)
-          .map(async (targetUser) => {
-            try {
-              // استبدال المتغيرات في الرسالة
-              const personalizedMessage = replaceMessageVariables(form.message, targetUser);
-              const personalizedTitle = replaceMessageVariables(form.title, targetUser);
-
-              const whatsappRes = await fetch('/api/whatsapp/babaservice/notifications', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({
-                  phoneNumbers: [targetUser.phone],
-                  message: `${personalizedTitle}\n\n${personalizedMessage}`,
-                  type: 'whatsapp'
-                })
-              });
-
-              if (whatsappRes.ok) {
-                const result = await whatsappRes.json();
-                if (result.success) {
-                  console.log(`📱 تم إرسال WhatsApp إلى ${targetUser.displayName || targetUser.phone}`);
-                  return true;
-                }
-              }
-              return false;
-            } catch (error) {
-              console.error(`❌ فشل إرسال WhatsApp إلى ${targetUser.phone}:`, error);
-              return false;
-            }
-          });
-
-        try {
-          await Promise.all(whatsappPromises);
-          console.log('📱 تم إرسال جميع رسائل WhatsApp');
-        } catch (error) {
-          console.error('❌ فشل إرسال بعض رسائل WhatsApp:', error);
-          toast.error('فشل في إرسال بعض رسائل WhatsApp');
-        }
-      }
-
-      // الكود القديم للإرسال الجماعي (محذوف - تم استبداله بالكود أعلاه)
-      if (false && form.sendMethods.whatsapp) {
-        const whatsappPhones = targetUsers.filter(user => user.phone).map(user => user.phone);
-        if (whatsappPhones.length > 0) {
-          try {
-            // محاولة إرسال عبر baba service أولاً
-            const whatsappRes = await fetch('/api/whatsapp/babaservice/notifications', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json; charset=utf-8' },
-              body: JSON.stringify({
-                phoneNumbers: whatsappPhones,
-                message: `${form.title}\n\n${form.message}`,
-                type: 'whatsapp'
-              })
-            });
-
-            if (whatsappRes.ok) {
-              const result = await whatsappRes.json();
-              if (result.success) {
-                console.log('📱 تم إرسال WhatsApp عبر baba service');
-              } else {
-                throw new Error('baba service فشل');
-              }
-            } else {
-              throw new Error('baba service غير متاح');
-            }
-          } catch (error) {
-            console.error('❌ فشل إرسال WhatsApp عبر baba service:', error);
-            toast.error('فشل في إرسال رسائل WhatsApp');
-          }
-        }
-      }
+      // WhatsApp/SMS bulk send via BabaService removed — use AI Messenger with ChatAman templates
 
       // عرض رسالة النجاح
       const successMessage = `✅ تم إرسال الإشعار بنجاح إلى ${targetUsers.length} مستخدم`;
@@ -735,59 +585,14 @@ export default function SendNotificationsPage() {
         instanceId: instanceId
       });
 
-      // فحص حالة Instance ID أولاً
-      console.log('🔍 فحص حالة Instance ID...');
-      try {
-        const statusResponse = await fetch('/api/whatsapp/babaservice?action=status');
-        const statusResult = await statusResponse.json();
-        console.log('📊 حالة API:', statusResult);
-
-        const configResponse = await fetch('/api/whatsapp/babaservice?action=config');
-        const configResult = await configResponse.json();
-        console.log('⚙️ تكوين API:', configResult);
-      } catch (error) {
-        console.error('❌ خطأ في فحص حالة API:', error);
-      }
-
-      const whatsappResponse = await fetch('/api/whatsapp/babaservice/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumbers: [whatsappPhone],
-          message: whatsappMessageText,
-          type: 'admin_notification',
-          instance_id: instanceId !== 'موجود' ? instanceId : undefined
-        })
-      });
-
-      const whatsappResult = await whatsappResponse.json();
-      console.log('📧 نتيجة إرسال WhatsApp:', whatsappResult);
-
-      if (whatsappResult.success) {
-        toast.success(`✅ تم إرسال الرسالة عبر WhatsApp بنجاح`);
-        toast.info('💡 ملاحظة: قد تستغرق الرسالة بضع دقائق للوصول. تأكد من أن رقم الهاتف صحيح ومتصل بالإنترنت.');
-
-        if (whatsappResult.data?.results?.[0]?.data) {
-          console.log('📱 تفاصيل الرسالة المرسلة:', whatsappResult.data.results[0].data);
-        }
-
-        setShowWhatsAppDialog(false);
-        setWhatsappMessage({ title: '', body: '' });
-        setPhoneNumber('');
-      } else {
-        toast.error(`فشل إرسال الرسالة: ${whatsappResult.error || 'خطأ غير معروف'}`);
-
-        if (whatsappResult.data?.errors?.[0]?.error) {
-          console.error('❌ تفاصيل الخطأ:', whatsappResult.data.errors[0].error);
-          toast.error(`تفاصيل الخطأ: ${whatsappResult.data.errors[0].error}`);
-
-          if (whatsappResult.data.errors[0].error.includes('instance') ||
-            whatsappResult.data.errors[0].error.includes('Instance') ||
-            whatsappResult.data.errors[0].error.includes('connection')) {
-            toast.error('💡 يبدو أن Instance ID غير متصل. يرجى الذهاب إلى صفحة إدارة الربط لإعادة ربط WhatsApp.');
-          }
-        }
-      }
+      // BabaService removed — open WhatsApp Web directly for free-text messages
+      // For bulk template campaigns use AI Messenger
+      const cleanPhone = whatsappPhone.replace(/\D/g, '');
+      const encodedMsg = encodeURIComponent(whatsappMessageText);
+      window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+      setShowWhatsAppDialog(false);
+      setWhatsappMessage({ title: '', body: '' });
+      setPhoneNumber('');
 
     } catch (error) {
       console.error('خطأ في إرسال الرسالة:', error);

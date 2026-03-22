@@ -218,7 +218,7 @@ const PlayerStatsCards: React.FC<PlayerStatsCardsProps> = ({ player }) => {
                 {Object.entries(player.technical_skills).slice(0, 3).map(([skill, value]) => (
                   <div key={skill} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">{skill}</span>
-                    <span className="font-bold text-blue-600">{value}/5</span>
+                    <span className="font-bold text-blue-600">{value as React.ReactNode}/5</span>
                   </div>
                 ))}
               </div>
@@ -233,7 +233,7 @@ const PlayerStatsCards: React.FC<PlayerStatsCardsProps> = ({ player }) => {
                 {Object.entries(player.physical_skills || {}).slice(0, 3).map(([skill, value]) => (
                   <div key={skill} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">{skill}</span>
-                    <span className="font-bold text-green-600">{value}/5</span>
+                    <span className="font-bold text-green-600">{value as React.ReactNode}/5</span>
                   </div>
                 ))}
               </div>
@@ -248,7 +248,7 @@ const PlayerStatsCards: React.FC<PlayerStatsCardsProps> = ({ player }) => {
                 {Object.entries(player.social_skills || {}).slice(0, 3).map(([skill, value]) => (
                   <div key={skill} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">{skill}</span>
-                    <span className="font-bold text-yellow-600">{value}/5</span>
+                    <span className="font-bold text-yellow-600">{value as React.ReactNode}/5</span>
                   </div>
                 ))}
               </div>

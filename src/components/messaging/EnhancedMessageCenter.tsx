@@ -271,13 +271,14 @@ const EnhancedMessageCenter: React.FC = () => {
         let isDependent = false;
         let parentAccountId = null;
         let parentAccountType = null;
-        
+        let profileData: any = null;
+
         try {
           const profileCollection = accountType === 'admin' ? 'users' : `${accountType}s`;
           const profileDocRef = doc(db, profileCollection, userDocSnapshot.id);
           const profileDocSnapshot = await getDoc(profileDocRef);
           if (profileDocSnapshot.exists()) {
-            const profileData = profileDocSnapshot.data() as any;
+            profileData = profileDocSnapshot.data() as any;
             if (accountType === 'player') {
               contactName = profileData.full_name || profileData.name || profileData.displayName || 'لاعب';
               if (profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id) {

@@ -157,7 +157,7 @@ export class AppPerformanceOptimizer {
     XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
       this._startTime = performance.now();
       return originalXHROpen.call(this, method, url, async, user, password);
-    };
+    } as any;
 
     const originalXHRSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.send = function(data) {

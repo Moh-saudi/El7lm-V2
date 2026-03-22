@@ -8,6 +8,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
 import dynamic from 'next/dynamic';
+import { CampaignProvider } from '@/lib/campaign/campaign-context';
+import { CampaignProgressFloat } from '@/components/campaign/CampaignProgressFloat';
 
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
 const ProfileCompletionReminder = dynamic(() => import('@/components/profile/ProfileCompletionReminder'), { ssr: false });
@@ -74,7 +76,7 @@ export default function DashboardLayout({
   const isCinema = pathname.includes('player-videos') || pathname.includes('shared-videos');
 
   return (
-    <>
+    <CampaignProvider>
       <Toaster position="top-center" richColors />
 
       <AppShell
@@ -92,6 +94,7 @@ export default function DashboardLayout({
       {user && accountType !== 'admin' && (
         <ProfileCompletionReminder uid={user.uid} accountType={accountType} />
       )}
-    </>
+      <CampaignProgressFloat />
+    </CampaignProvider>
   );
 }

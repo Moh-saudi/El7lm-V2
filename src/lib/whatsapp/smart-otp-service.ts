@@ -70,7 +70,7 @@ class SmartOTPService {
       success: true,
       otp: ADMIN_BACKUP_OTP,
       message: 'تم إنشاء رمز التحقق (كود احتياطي للإدارة)',
-      method: 'admin_backup'
+      method: 'admin_backup' as any
     };
 
     // لا نحتاج لإرسال حقيقي - نستخدم الكود الاحتياطي
@@ -78,7 +78,7 @@ class SmartOTPService {
       success: true,
       otp: ADMIN_BACKUP_OTP,
       message: 'تم إنشاء رمز التحقق (كود احتياطي للإدارة)',
-      method: 'admin_backup'
+      method: 'admin_backup' as any
     };
   }
 

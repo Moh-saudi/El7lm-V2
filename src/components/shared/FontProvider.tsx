@@ -35,10 +35,11 @@ export function FontHeading({
 
   const Tag = level as keyof JSX.IntrinsicElements;
 
+  const AnyTag = Tag as any;
   return (
-    <Tag className={`${fontClass} ${className}`} lang={locale}>
+    <AnyTag className={`${fontClass} ${className}`} lang={locale}>
       {children}
-    </Tag>
+    </AnyTag>
   );
 }
 

@@ -30,16 +30,30 @@ export interface DispatchOptions {
 
 /**
  * Fire-and-forget — sends a notification event to the central dispatcher.
- * Never throws; failures are silently swallowed so callers don't need try/catch.
+ * Logs the result in dev; never throws.
  */
 export async function dispatchNotification(opts: DispatchOptions): Promise<void> {
   try {
-    await fetch('/api/notifications/dispatch', {
+    const res = await fetch('/api/notifications/dispatch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(opts),
     });
-  } catch {
-    // intentionally silent — notifications are non-critical
+    const data = await res.json().catch(() => ({}));
+    if (process.env.NODE_ENV === 'development') {
+      if (data.skipped) {
+        console.log(`[notify] ${opts.eventType} skipped (${data.skipped})`);
+      } else if (data.whatsapp === 'sent') {
+        console.log(`[notify] ✅ ${opts.eventType} — in-app ✓ whatsapp ✓ → phone: ${data._debug?.phone ?? 'unknown'}`);
+      } else if (data.whatsapp === 'failed') {
+        console.warn(`[notify] ⚠️ ${opts.eventType} — in-app ✓ whatsapp ✗ → phone: ${data._debug?.phone ?? 'NOT FOUND'}`);
+      } else {
+        console.log(`[notify] ${opts.eventType} →`, data);
+      }
+    }
+  } catch (e) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[notify] fetch failed:', e);
+    }
   }
 }

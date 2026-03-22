@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle, Clock, Globe, TrendingUp, ExternalLink } from 'lucide-react';
-import { getCurrencyRates, forceUpdateRates, getSystemStatus, getRatesAge } from '@/lib/currency-rates';
+import { getCurrencyRates, forceUpdateRates, getRatesAge } from '@/lib/currency-rates';
 
 interface CurrencyStatus {
   cacheStatus: 'valid' | 'expired' | 'missing';
@@ -22,15 +22,16 @@ export default function CurrencyStatusPanel() {
 
   // تحديث معلومات الحالة
   const updateStatus = () => {
-    const systemStatus = getSystemStatus();
-    const ratesAge = getRatesAge();
-    
+    const ratesAgeMs = getRatesAge();
+    const ageInHours = ratesAgeMs / (1000 * 60 * 60);
+    const lastUpdatedDate = ratesAgeMs > 0 ? new Date(Date.now() - ratesAgeMs).toISOString() : null;
+
     setStatus({
-      cacheStatus: systemStatus.cacheStatus,
-      lastUpdated: systemStatus.lastUpdated,
-      expiresAt: systemStatus.expiresAt,
-      ageInHours: ratesAge.ageInHours,
-      totalCurrencies: systemStatus.totalCurrencies
+      cacheStatus: ratesAgeMs < 24 * 60 * 60 * 1000 ? 'valid' : 'expired',
+      lastUpdated: lastUpdatedDate,
+      expiresAt: lastUpdatedDate ? new Date(Date.now() - ratesAgeMs + 24 * 60 * 60 * 1000).toISOString() : null,
+      ageInHours: ratesAgeMs > 0 ? ageInHours : null,
+      totalCurrencies: 19
     });
   };
 

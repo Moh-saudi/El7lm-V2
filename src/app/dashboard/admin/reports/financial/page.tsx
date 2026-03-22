@@ -373,13 +373,13 @@ export default function FinancialReports() {
       marketShare: totalRevenue > 0 ? (data.totalAmountEGP / totalRevenue) * 100 : 0,
       averageTransaction: data.transactionCount > 0 ? data.totalAmountEGP / data.transactionCount : 0,
       exchangeRate: data.exchangeRate,
-      trend: Math.random() > 0.5 ? 'up' : 'down', // مبسط - يمكن تحسينه بحساب الاتجاه الفعلي
+      trend: (Math.random() > 0.5 ? 'up' : 'down') as 'up' | 'down' | 'stable', // مبسط - يمكن تحسينه بحساب الاتجاه الفعلي
       trendPercentage: Math.random() * 20,
-      countries: Array.from(data.countries),
+      countries: Array.from(data.countries) as string[],
       userCount: data.userIds.size
     })).sort((a, b) => b.totalAmountEGP - a.totalAmountEGP);
 
-    setCurrencyPerformance(performanceData);
+    setCurrencyPerformance(performanceData as any);
   };
 
   // تحليل الإيرادات الجغرافية

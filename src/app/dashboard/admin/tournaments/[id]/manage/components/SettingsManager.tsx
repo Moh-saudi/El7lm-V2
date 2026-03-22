@@ -18,7 +18,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ tournament }) 
     const [formData, setFormData] = useState({
         name: tournament.name,
         isActive: tournament.isActive,
-        country: tournament.country || tournament.location_country || 'EG',
+        country: tournament.country || (tournament as any).location_country || 'EG',
     });
     const [loading, setLoading] = useState(false);
 
