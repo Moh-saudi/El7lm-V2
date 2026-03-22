@@ -29,13 +29,15 @@ export default function PushNotificationSetup() {
       const currentPermission = getNotificationPermission();
       setPermission(currentPermission);
 
-      // تم تعطيل عرض prompt التلقائي - يمكن للمستخدم تفعيله يدوياً من الزر
-      // if (currentPermission === 'default' && user) {
-      //   const timer = setTimeout(() => {
-      //     setShowPrompt(true);
-      //   }, 5000);
-      //   return () => clearTimeout(timer);
-      // }
+      // عرض الـ prompt بعد 8 ثوانٍ إذا لم يختر المستخدم بعد
+      if (currentPermission === 'default' && user) {
+        const dismissed = localStorage.getItem('notification-prompt-dismissed');
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        if (!dismissed || Number(dismissed) < weekAgo) {
+          const timer = setTimeout(() => setShowPrompt(true), 8000);
+          return () => clearTimeout(timer);
+        }
+      }
     }
   }, [user]);
 

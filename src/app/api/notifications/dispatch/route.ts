@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,31 @@ async function hasDuplicateRecent(
     });
   } catch {
     return false;
+  }
+}
+
+// ─── FCM Push helper ──────────────────────────────────────────────────────────
+
+async function sendFCMPush(
+  fcmToken: string,
+  title: string,
+  body: string,
+  actionUrl: string,
+): Promise<void> {
+  try {
+    await getMessaging().send({
+      token: fcmToken,
+      notification: { title, body },
+      data: { click_action: actionUrl, url: actionUrl },
+      android: { priority: 'high', notification: { icon: 'ic_notification', sound: 'default' } },
+      webpush: {
+        notification: { icon: '/icon-192x192.png', badge: '/icon-192x192.png', dir: 'rtl', lang: 'ar' },
+        fcmOptions: { link: actionUrl },
+      },
+    });
+    console.log(`[dispatch] FCM push sent to token: ${fcmToken.substring(0, 20)}...`);
+  } catch (e: any) {
+    console.warn(`[dispatch] FCM push failed:`, e?.message || e);
   }
 }
 
@@ -295,7 +321,21 @@ export async function POST(req: NextRequest) {
       expiresAt,
     });
 
-    // ── 2. WhatsApp template ──
+    // ── 2. FCM Push Notification ──
+    try {
+      const userSnap = await db.collection('users').doc(targetUserId).get();
+      const fcmToken = userSnap.data()?.fcmToken;
+      if (fcmToken) {
+        const notifPath = `/dashboard/${body.actorAccountType || 'player'}/notifications`;
+        await sendFCMPush(fcmToken, content.title, content.message, notifPath);
+      } else {
+        console.log(`[dispatch] No FCM token for user ${targetUserId}`);
+      }
+    } catch (e) {
+      console.warn('[dispatch] FCM push error (non-fatal):', e);
+    }
+
+    // ── 3. WhatsApp template ──
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';
     const [chatAmanConfig, templateConfig, phone] = await Promise.all([
       getChatAmanConfig(),

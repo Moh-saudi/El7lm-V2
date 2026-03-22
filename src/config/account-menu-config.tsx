@@ -8,6 +8,7 @@
 
 import {
   BarChart3,
+  Bell,
   Briefcase,
   Building,
   Clock,
@@ -105,6 +106,7 @@ export function getAccountMenuGroups(
           { id: 'stats',      label: 'إحصائياتي',           icon: BarChart3,   href: '/dashboard/player/stats' },
           { id: 'reports',    label: 'تقارير الكشافين',     icon: FileText,    href: '/dashboard/player/reports' },
           { id: 'referrals',  label: 'سفراء الحلم',         icon: UserPlus,    href: '/dashboard/player/referrals' },
+          { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/player/notifications' },
         ],
       },
       {
@@ -150,6 +152,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',       icon: Home,     href: '/dashboard/club' },
           { id: 'profile',   label: 'الملف الشخصي',   icon: Building, href: '/dashboard/club/profile' },
+          { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/club/notifications' },
         ],
       },
       {
@@ -217,6 +220,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',       icon: Home,         href: '/dashboard/academy' },
           { id: 'profile',   label: 'الملف الشخصي',   icon: GraduationCap, href: '/dashboard/academy/profile' },
+          { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/academy/notifications' },
         ],
       },
       {
@@ -274,6 +278,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',      icon: Home,     href: `/dashboard/${accountType}` },
           { id: 'profile',   label: 'الملف الشخصي',  icon: typeIcon, href: `/dashboard/${accountType}/profile` },
+          { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/${accountType}/notifications` },
         ],
       },
       {
@@ -328,6 +333,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',      icon: Home,     href: '/dashboard/marketer' },
           { id: 'profile',   label: 'الملف الشخصي',  icon: Briefcase, href: '/dashboard/marketer/profile' },
+          { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/marketer/notifications' },
         ],
       },
       {
