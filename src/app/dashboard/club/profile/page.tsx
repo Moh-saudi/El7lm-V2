@@ -11,6 +11,7 @@ import {
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase/config';
+import { broadcastClubWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -340,6 +341,7 @@ export default function ClubProfilePage() {
       };
       const ref = doc(db, 'clubs', user.uid);
       const snap = await getDoc(ref);
+      const isNewClub = !snap.exists();
       if (snap.exists()) { await updateDoc(ref, toSave); }
       else { await setDoc(ref, { ...toSave, createdAt: new Date() }); }
       try {
@@ -349,6 +351,14 @@ export default function ClubProfilePage() {
           await updateDoc(usersRef, { name: clubData.name, club_name: clubData.name });
         }
       } catch (_) { /* ignore */ }
+      // Broadcast WhatsApp + in-app to all users when a new club joins
+      if (isNewClub && clubData.name) {
+        broadcastClubWhatsApp({
+          clubId: user.uid,
+          clubName: clubData.name,
+          country: clubData.country,
+        }).catch(() => {});
+      }
       setOriginal(clubData);
       setEditMode(false);
       toast.success('تم حفظ بيانات النادي');

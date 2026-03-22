@@ -180,7 +180,8 @@ export default function ChatAmanSettingsPage() {
     } else {
       if (!selectedTemplateId) { toast.error('اختر قالباً'); setIsTesting(false); return; }
       const tpl = templates.find(t => t.uuid === selectedTemplateId);
-      result = await ChatAmanService.sendTemplate(testPhone, selectedTemplateId, {
+      if (!tpl?.name) { toast.error('لم يتم العثور على اسم القالب'); setIsTesting(false); return; }
+      result = await ChatAmanService.sendTemplate(testPhone, tpl.name, {
         language: tpl?.language || 'ar',
         bodyParams: templateParams,
       });
