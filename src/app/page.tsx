@@ -185,8 +185,8 @@ export default function Home() {
     <div dir={t.dir} lang={t.lang}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Tajawal',sans-serif;background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
-        .hl{font-family:'Tajawal',sans-serif}
+        body{background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
+        .hl{}
         .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;word-wrap:normal;white-space:nowrap;direction:ltr}
         .gp{background:rgba(47,52,72,0.4);backdrop-filter:blur(20px)}
         @keyframes scroll-rtl{0%{transform:translateX(0)}100%{transform:translateX(calc(250px * 7))}}
@@ -206,7 +206,7 @@ export default function Home() {
         .inp:focus{border-color:#bdc4ef}
         section{padding:6rem 0; background: ${theme.bg}; color: ${theme.text}; transition: background 0.3s, color 0.3s;}
         .ct{max-width:1280px;margin:0 auto;padding:0 2rem}
-        .st{font-family:'Tajawal',sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em}
+        .st{font-weight:900;text-transform:uppercase;letter-spacing:-0.05em}
         .wa{position:fixed;bottom:1.5rem;${isRTL?'left':'right'}:1.5rem;z-index:100;background:#25D366;color:white;border-radius:50%;width:3.5rem;height:3.5rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.4);text-decoration:none}
         @media(max-width:900px){
           .hm{display:none!important}
@@ -226,7 +226,7 @@ export default function Home() {
           .htxt-container{flex: 1!important; order: 1!important; text-align: right!important; min-width: 0!important; display: flex!important; flexDirection: column!important; align-items: flex-start!important;}
           .hero-btns{justify-content: flex-end!important; flex-direction: row!important; gap: 0.5rem!important; display: flex!important; width: 100%; margin-top: 1.5rem!important;}
           .hero-btns a{width: auto!important; font-size: 0.8rem!important; padding: 0.6rem 0.8rem!important; flex: 1!important; min-width: 90px!important; text-align: center!important;}
-          .hero-title{font-size: 3rem!important; line-height: 1.1!important; margin-bottom: 0!important; width: 100%!important;}
+          .hero-title{font-size: 2.2rem!important; line-height: 1.1!important; margin-bottom: 0!important; width: 100%!important;}
           .hero-sub{font-size: 0.9rem!important; margin: 1rem 0 1.5rem 0!important; line-height: 1.5!important; text-align: right!important; width: 100%!important;}
           .hero-badge{font-size: 1rem!important; padding: 0.4rem 0.8rem!important; white-space: nowrap!important; margin-bottom: 0.8rem!important; align-self: flex-start!important;}
           .score-card{transform: scale(0.85) !important; bottom: -0.5rem!important; right: -0.75rem!important; left: auto!important; position: absolute!important;}
@@ -236,7 +236,7 @@ export default function Home() {
           .hero-img-container{max-width: 450px!important;}
         }
       `}</style>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" />
+
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
       {/* HEADER */}
@@ -395,7 +395,7 @@ export default function Home() {
 
               {/* TEXT PART (TITLE ONLY) */}
               <div className="htxt-container" style={{textAlign:isRTL?'right':'left',order:isRTL?1:2, flex: '1'}}>
-                <h1 className="hero-title" style={{fontSize:'8rem',fontWeight:900,lineHeight:1,marginBottom:0,color:'#f8fafc',fontFamily:'"Tajawal", sans-serif'}}>
+                <h1 className="hero-title" style={{fontSize:'5.5rem',fontWeight:900,lineHeight:1.1,marginBottom:0,color:'#f8fafc',fontFamily:'"Tajawal", sans-serif'}}>
                   {t.h1a}<br/><span style={{color:'#bdc4ef'}}>{t.h1b}</span>
                 </h1>
               </div>

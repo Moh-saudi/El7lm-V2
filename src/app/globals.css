@@ -90,7 +90,7 @@
 html,
 body,
 * {
-  font-family: 'Cairo', sans-serif !important;
+  font-family: var(--font-tajawal), 'Tajawal', sans-serif !important;
 }
 
 [lang="en"] {
@@ -98,7 +98,7 @@ body,
 }
 
 [lang="ar"] {
-  font-family: 'Cairo', sans-serif !important;
+  font-family: var(--font-tajawal), 'Tajawal', sans-serif !important;
 }
 
 /* ============================================================
@@ -191,7 +191,7 @@ body,
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-family: 'Cairo', 'Tajawal', sans-serif;
+  font-family: var(--font-tajawal), 'Tajawal', sans-serif;
 }
 
 .app-sidebar.collapsed {
@@ -272,7 +272,7 @@ body,
   background-color: var(--header-bg);
   backdrop-filter: var(--header-backdrop);
   border-top: 1px solid var(--header-border);
-  font-family: 'Cairo', 'Tajawal', sans-serif;
+  font-family: var(--font-tajawal), 'Tajawal', sans-serif;
 }
 
 .app-footer.collapsed {
@@ -639,7 +639,7 @@ body,
 
 @layer base {
   html {
-    font-family: var(--font-cairo), 'Cairo', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-tajawal), 'Tajawal', ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: 'kern' 1, 'liga' 1;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -649,14 +649,14 @@ body,
   }
 
   body {
-    font-family: var(--font-cairo), 'Cairo', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-tajawal), 'Tajawal', ui-sans-serif, system-ui, sans-serif;
     font-weight: 400;
     line-height: 1.6;
     /* سيتم تعيين الاتجاه ديناميكياً حسب اللغة */
   }
 
   * {
-    font-family: var(--font-cairo), 'Cairo', sans-serif;
+    font-family: var(--font-tajawal), 'Tajawal', sans-serif;
   }
 
   /* دعم الاتجاهات المختلفة */
@@ -681,7 +681,7 @@ body,
 
   /* Language-specific font classes */
   .font-arabic {
-    font-family: var(--font-cairo), 'Cairo', sans-serif;
+    font-family: var(--font-tajawal), 'Tajawal', sans-serif;
   }
 
   .font-english {
@@ -690,7 +690,7 @@ body,
 
   /* Auto font switching based on language */
   [lang="ar"] {
-    font-family: var(--font-cairo), 'Cairo', sans-serif;
+    font-family: var(--font-tajawal), 'Tajawal', sans-serif;
   }
 
   [lang="en"] {

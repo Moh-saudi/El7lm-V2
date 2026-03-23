@@ -1,4 +1,4 @@
-import { Inter, Cairo } from 'next/font/google';
+import { Inter, Cairo, Tajawal } from 'next/font/google';
 
 export const inter = Inter({
   subsets: ['latin'],
@@ -21,6 +21,25 @@ export const inter = Inter({
 export const cairo = Cairo({
   subsets: ['arabic'],
   variable: '--font-cairo',
+  display: 'swap',
+  preload: false,
+  fallback: [
+    'system-ui',
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Segoe UI',
+    'Roboto',
+    'Helvetica Neue',
+    'Arial',
+    'sans-serif',
+  ],
+  adjustFontFallback: false,
+});
+
+export const tajawal = Tajawal({
+  subsets: ['arabic'],
+  weight: ['200', '300', '400', '500', '700', '800', '900'],
+  variable: '--font-tajawal',
   display: 'swap',
   preload: false,
   fallback: [
@@ -63,6 +82,10 @@ export const checkFontLoading = () => {
 
     if (!checkFont('Inter')) {
       console.warn('Inter font not loaded yet');
+    }
+
+    if (!checkFont('Tajawal')) {
+      console.warn('Tajawal font not loaded yet');
     }
   }
 };

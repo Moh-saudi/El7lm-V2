@@ -6,7 +6,7 @@ import GTMDataLayer from '@/components/analytics/GTMDataLayer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import HydrationFix from '@/components/security/HydrationFix';
 import ReactErrorBoundary from '@/components/security/ReactErrorBoundary';
-import { cairo, inter } from '@/lib/fonts';
+import { cairo, inter, tajawal } from '@/lib/fonts';
 import '@mantine/core/styles.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'react-hot-toast';
@@ -72,14 +72,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" className={`${inter.variable} ${cairo.variable}`} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={`${inter.variable} ${cairo.variable} ${tajawal.variable}`} suppressHydrationWarning>
       <head>
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID || 'GTM-WR4X2BD8'} />
         <ClarityScript projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 't69agqt6n4'} />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
       </head>
-      <body className={`${cairo.className} antialiased`}>
+      <body className={`${tajawal.className} antialiased`}>
         <Providers>
           <ReactErrorBoundary>
             <HydrationFix>
@@ -101,7 +101,7 @@ export default function RootLayout({
               style: {
                 background: '#363636',
                 color: '#fff',
-                fontFamily: 'Cairo, sans-serif',
+                fontFamily: 'Tajawal, sans-serif',
               },
             }}
           />
