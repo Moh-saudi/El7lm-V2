@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TR = {
   ar: {
@@ -131,15 +131,15 @@ const TR = {
 };
 
 const PLAYER_IMGS = [
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuBpCANwPXzcB4XNxsd5g0IzBXx85qulaAgiHB3VEV4mJ-HnKFpKiTNkRg_i5FhhltP7wmmW-xKSRcRyDAZ89f-Vla0pCdcidR6K-b8Py_4SOooyZsNK61gNzel3gnQVSJsn0hxHNjO8l8mozJm4KW-BIkOoJ5Jptaux-VEA85fEqu6AY50y215pz9GeY--ENImRv8l1pQJ_JR2ppU9lwdQpqvXyLqnQG4iF7ei90E-QbPczGapaiGskvBSJZmqG_QdAwnOn5iovOew',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuAkI3L0Mpa8_973I0Ox0HL-j62lTN_3ov_unRBls1Z1jaol8ZvAWESi9wE6sDsKK2wFg7mTnrLeyXGrnLsXPh0YBDuxjsIFSB9PSbv9sdSB4hSwtWkF6Ajv2wIjX4ST4dhI8oP0Ox03xJIMnAvhb8lsGtRMukryUyWDsVhxAlyFhR-PfoM9b2L48_6DCy5hvI7tE_InVXgrKUQO5BQ7I89AHeDG_i5WpV--EEDYYfxBfBnvVUJQWTYZc6TgI-7eTUDV3zEWT_D2dds',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuB3ZDHDlZzwuUsxjVz7wq1t3xcQ9Xb5TbP3GUGsM0bXfZvCtkP1EzmxtKDQq74YF4aVjhhT6eWGkl-VxyrXs2DTyVOLrig7Fm-2kp_0WtuXBKTPyRQhfhJakA97kxzD1g9vh_auMsg0rluOCYjB6VD7o9vEn4MnrMq_F4D2uQQNLwyCRdHU_ZCAY-bMK1CgHfOdbDutBo7Jn_ryeBH4Xs_ubUFRUi0vRMinubLUYWQcOK-fd3NNWTIFTPXd45hhxeeiYk2POJCp00A',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuC7pJ6T_fIPrBl66Do8SwqeB-Fx9cES7a71aJGZiyHbhp4mAd90TD9vogaKOwyeL5_SPf2RdnnIw73vCeFi1AWMfDioHk7UyaD3CJDroo9bPCSgqS5MfeXIt5IIYvpEFaEG3pc7GF2iEJE2GxkGRzp7Mi4U4SP5dHz02Di-073_IxIP6LRmUBx3y4gFplD2GQtjos7lwBoQ-sHB4_gwP04gqcgNTZd72LeWXj60MaWce2q-6RWuihXTyAhW_2Ef23GPBUfYVUc9vQA',
+  '/images/player-1.jpg',
+  '/images/player-2.jpg',
+  '/images/player-3.jpg',
+  '/images/player-4.jpg',
 ];
 const TOUR_IMGS = [
-  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800&auto=format&fit=crop', // Cairo Stadium View (Elite)
-  'https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=800&auto=format&fit=crop', // Football Turf/Action (Alamein)
-  '/doha-medal.jpg'  // Doha Medal (Mesk El7lm)
+  '/images/stadium-pro.jpg',
+  '/images/stadium-pro.jpg',
+  '/images/arab-dream-cup.jpg' 
 ];
 const PLAYER_STATS = [
   [{l:'Pace',v:88},{l:'Shot',v:92},{l:'Pass',v:95}],
@@ -153,7 +153,15 @@ const PARTNERS = ['AL AHLI FC','ZAMALEK SC','PYRAMIDS FC','LIVERPOOL FC','NIKE F
 
 export default function Home() {
   const [langAr, setLangAr] = useState(true);
-  const [dark, setDark] = useState(true); 
+  const [dark, setDark] = useState(true);
+  const [activePlayerIdx, setActivePlayerIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActivePlayerIdx((prev) => (prev + 1) % PLAYER_IMGS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []); 
   const t = TR[langAr ? 'ar' : 'en'];
   const isRTL = langAr;
 
@@ -177,8 +185,8 @@ export default function Home() {
     <div dir={t.dir} lang={t.lang}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Inter','IBM Plex Sans Arabic',sans-serif;background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
-        .hl{font-family:'Space Grotesk','IBM Plex Sans Arabic',sans-serif}
+        body{font-family:'Tajawal',sans-serif;background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
+        .hl{font-family:'Tajawal',sans-serif}
         .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;word-wrap:normal;white-space:nowrap;direction:ltr}
         .gp{background:rgba(47,52,72,0.4);backdrop-filter:blur(20px)}
         @keyframes scroll-rtl{0%{transform:translateX(0)}100%{transform:translateX(calc(250px * 7))}}
@@ -186,17 +194,49 @@ export default function Home() {
         .rtl-scroll{animation:scroll-rtl 40s linear infinite}
         .ltr-scroll{animation:scroll-ltr 40s linear infinite}
         @keyframes pulse{50%{opacity:.5}}.ap{animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite}
+        @keyframes float {
+          0% { transform: rotate(2deg) translateY(0px); }
+          50% { transform: rotate(2.5deg) translateY(-10px); }
+          100% { transform: rotate(2deg) translateY(0px); }
+        }
+        .hero-card-tilt { animation: float 6s ease-in-out infinite; }
         .fm{-webkit-mask-image:linear-gradient(to left,transparent,black 10%,black 90%,transparent);mask-image:linear-gradient(to left,transparent,black 10%,black 90%,transparent)}
         .tc{transition:all .2s}.tc5{transition:all .5s}.tc7{transition:all .7s}
         .inp{background:#161b2e;border:1px solid rgba(70,70,78,.3);border-radius:2px;padding:1rem;color:#dde1fc;width:100%;font-size:1rem;outline:none;text-align:${isRTL?'right':'left'}}
         .inp:focus{border-color:#bdc4ef}
         section{padding:6rem 0; background: ${theme.bg}; color: ${theme.text}; transition: background 0.3s, color 0.3s;}
         .ct{max-width:1280px;margin:0 auto;padding:0 2rem}
-        .st{font-family:'Space Grotesk','IBM Plex Sans Arabic',sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em}
+        .st{font-family:'Tajawal',sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em}
         .wa{position:fixed;bottom:1.5rem;${isRTL?'left':'right'}:1.5rem;z-index:100;background:#25D366;color:white;border-radius:50%;width:3.5rem;height:3.5rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.4);text-decoration:none}
-        @media(max-width:900px){.hm{display:none!important}.g2, .g3{grid-template-columns:1fr!important}.g4{grid-template-columns:1fr 1fr!important}.htxt{font-size:3rem!important}.fc{grid-template-columns:1fr!important}}
+        @media(max-width:900px){
+          .hm{display:none!important}
+          .g2, .g3{grid-template-columns:1fr!important}
+          .g4{grid-template-columns:1fr 1fr!important}
+          .htxt{font-size:3rem!important; text-align: center!important;}
+          .fc{grid-template-columns:1fr!important}
+          header{padding: 0 1rem!important; height: 3.5rem!important;}
+          main{padding-top: 3.5rem!important;}
+          .h-logo-txt{display:none!important;}
+          .h-lang-toggle{padding: 0.25rem!important; font-size: 0.7rem!important; transform: scale(0.8); transform-origin: right;}
+          .h-theme-toggle{transform: scale(0.7);}
+          .h-join-btn{padding: 0.35rem 0.7rem!important; font-size: 0.65rem!important;}
+          .hero-grid{gap: 1rem!important; padding: 0 1rem!important; margin-top: 0.5rem!important;}
+          .hero-grid > div:first-child { flex-direction: row!important; display: flex!important; align-items: center!important; justify-content: space-between!important; width: 100%!important; gap: 0.75rem!important; }
+          .hero-img-container{width: 45%!important; min-height: 140px!important; order: 2!important; margin-top: 0!important;}
+          .htxt-container{flex: 1!important; order: 1!important; text-align: right!important; min-width: 0!important; display: flex!important; flexDirection: column!important; align-items: flex-start!important;}
+          .hero-btns{justify-content: flex-end!important; flex-direction: row!important; gap: 0.5rem!important; display: flex!important; width: 100%; margin-top: 1.5rem!important;}
+          .hero-btns a{width: auto!important; font-size: 0.8rem!important; padding: 0.6rem 0.8rem!important; flex: 1!important; min-width: 90px!important; text-align: center!important;}
+          .hero-title{font-size: 3rem!important; line-height: 1.1!important; margin-bottom: 0!important; width: 100%!important;}
+          .hero-sub{font-size: 0.9rem!important; margin: 1rem 0 1.5rem 0!important; line-height: 1.5!important; text-align: right!important; width: 100%!important;}
+          .hero-badge{font-size: 1rem!important; padding: 0.4rem 0.8rem!important; white-space: nowrap!important; margin-bottom: 0.8rem!important; align-self: flex-start!important;}
+          .score-card{transform: scale(0.85) !important; bottom: -0.5rem!important; right: -0.75rem!important; left: auto!important; position: absolute!important;}
+          .hero-section{align-items: flex-start!important; padding-top: 1.5rem!important; min-height: auto!important;}
+        }
+        @media(min-width:901px){
+          .hero-img-container{max-width: 450px!important;}
+        }
       `}</style>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
       {/* HEADER */}
@@ -212,7 +252,7 @@ export default function Home() {
                   target.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDYisGk25r4m6K2o21yV3_S9X_X4X-Xo_LzWkP6_A2h9S-k4r5M6z7_N8W9X0"; // Fallback URL
                 }}/>
             </div>
-            <span className="hl hm" style={{fontSize:'1.5rem',fontWeight:900,color:'#bdc4ef',textTransform:'uppercase',letterSpacing:'-0.05em'}}>EL7LM</span>
+            <span className="hl hm h-logo-txt" style={{fontSize:'1.5rem',fontWeight:900,color:'#bdc4ef',textTransform:'uppercase',letterSpacing:'-0.05em'}}>EL7LM</span>
           </div>
           <nav className="hm" style={{display:'flex',gap:'2rem'}}>
             {t.nav.map((item,i)=>(
@@ -223,15 +263,15 @@ export default function Home() {
           </nav>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-          <div style={{display:'flex',alignItems:'center',background:'#24293d',borderRadius:'12px',padding:'4px',border:'1px solid rgba(70,70,78,.3)'}}>
+          <div className="h-lang-toggle" style={{display:'flex',alignItems:'center',background:'#24293d',borderRadius:'12px',padding:'4px',border:'1px solid rgba(70,70,78,.3)'}}>
             {['AR','EN'].map((l,i)=>{
               const active=(i===0&&langAr)||(i===1&&!langAr);
               return <button key={l} onClick={()=>setLangAr(i===0)} className="hl" style={{padding:'4px 12px',borderRadius:'8px',fontSize:'.75rem',fontWeight:700,background:active?'#bdc4ef':'transparent',color:active?'#272e50':'#c6c5cf',border:'none',cursor:'pointer',transition:'all .2s'}}>{l}</button>;
             })}
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:'.5rem',color:theme.text,borderRight:`1px solid ${theme.border}`,paddingRight:'1rem',marginRight:'.5rem',direction:'ltr'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'.5rem',color:theme.text,borderRight:`1px solid ${theme.border}`,paddingRight:'0.5rem',marginRight:'.5rem',direction:'ltr'}}>
             {/* Theme Toggle */}
-            <span onClick={()=>setDark(!dark)} className="tc" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
+            <span onClick={()=>setDark(!dark)} className="tc h-theme-toggle" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
               onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=dark?'rgba(189,196,239,.1)':'rgba(0,0,0,.05)'}
               onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
               {dark ? 
@@ -246,14 +286,8 @@ export default function Home() {
               onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             </span>
-            {/* User Account SVG */}
-            <span className="tc hm" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=dark?'rgba(189,196,239,.1)':'rgba(0,0,0,.05)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            </span>
           </div>
-          <a href="/auth/register" className="hl hm" style={{padding:'.5rem 1.5rem',borderRadius:'2px',background:'linear-gradient(135deg,#bdc4ef,#161e3f)',color:'#272e50',fontWeight:900,fontSize:'.875rem',textDecoration:'none',transition:'filter .2s'}}
+          <a href="/auth/register" className="hl h-join-btn" style={{padding:'.5rem 1.5rem',borderRadius:'2px',background:'#84d993',color:'#0d1225',fontWeight:900,fontSize:'.875rem',textDecoration:'none',transition:'filter .2s'}}
             onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.filter='brightness(1.1)'}
             onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.filter='none'}>{t.joinBtn}</a>
         </div>
@@ -261,47 +295,124 @@ export default function Home() {
 
       <main style={{paddingTop:'5rem'}}>
         {/* HERO */}
-        <section style={{minHeight:'90vh',display:'flex',alignItems:'center',overflow:'hidden',position:'relative',padding:0}}>
-          <div style={{position:'absolute',inset:0,zIndex:0}}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpd9Dfe0sZKczpg1MkiIZpCAuJMqrsU2hJvPdSMlRhlgtpp3jRSyz2JR7PrTAyGIg2yPgWi2RAS2RWo04cEgY7NkNaQIXaR2lLdeqoNzxyxSW8KyY5vGSoaErfjOSS8OXiIjbYbDIQQCDjoAvK57vWU3Ki1HBIUKbQtYc2U5Jq09Lq3gfqvfLdelpZnyrHBsKQNFUXpJuV3-bg1yKgihT1PX8BZiQ-tgP4kVyKO-6IWWPzk5h1rGO6RLSPseDsERrMhERNosPqmOU" alt="stadium" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.3}}/>
+        <section className="hero-section" style={{minHeight:'90vh',display:'flex',alignItems:'center',overflow:'hidden',position:'relative',padding:0}}>
+          <div style={{position:'absolute',inset:0,zIndex:0, pointerEvents:'none'}}>
+            <img src="/images/hero-bg.png" alt="stadium" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.3}} 
+              onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200&auto=format&fit=crop"; }}/>
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,#0d1225 30%,rgba(13,18,37,.6) 60%,transparent)'}}></div>
           </div>
-          <div className="ct" style={{position:'relative',zIndex:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:'3rem',alignItems:'center'}}>
-            <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
-              <span className={`ap hl`} style={{display:'inline-block',background:'#2e1d00',color:'#fdba45',padding:'.25rem 1rem',borderRadius:'2px',fontSize:'.875rem',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',marginBottom:'1.5rem'}}>{t.badge}</span>
-              <h1 className="hl htxt" style={{fontSize:'5rem',fontWeight:900,lineHeight:1.1,marginBottom:'1.5rem',color:'#dde1fc'}}>
-                {t.h1a}<br/><span style={{color:'#bdc4ef',fontStyle:'italic'}}>{t.h1b}</span>
-              </h1>
-              <p style={{fontSize:'1.25rem',color:'#c6c5cf',maxWidth:'36rem',marginLeft:isRTL?'auto':'0',marginRight:isRTL?'0':'auto',marginBottom:'2.5rem',lineHeight:1.625}}>{t.heroSub}</p>
-              <div style={{display:'flex',flexDirection:isRTL?'row-reverse':'row',gap:'1rem'}}>
-                <a href="/auth/register" className="hl" style={{padding:'1.25rem 3rem',borderRadius:'2px',background:'linear-gradient(135deg,#bdc4ef,#161e3f)',color:'#272e50',fontWeight:900,fontSize:'1.25rem',textDecoration:'none',display:'inline-block',transition:'filter .2s'}}
-                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.filter='brightness(1.1)'}
-                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.filter='none'}>{t.startFree}</a>
-                <a href="/auth/login" className="hl" style={{padding:'1.25rem 3rem',borderRadius:'2px',background:'transparent',border:'1px solid rgba(70,70,78,.5)',color:'#dde1fc',fontWeight:700,fontSize:'1.25rem',textDecoration:'none',display:'inline-block',transition:'background .2s'}}
-                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.background='#1a1f32'}
-                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.background='transparent'}>{t.login}</a>
-              </div>
-            </div>
-
-            <div className="hm" style={{position:'relative',order:isRTL?2:1}}>
-              <div style={{position:'absolute',inset:'-2.5rem',background:'rgba(189,196,239,.2)',filter:'blur(100px)',borderRadius:'50%'}}></div>
-              <div className="gp tc7" style={{borderRadius:'12px',padding:'.5rem',border:'1px solid rgba(70,70,78,.3)',position:'relative',transform:'rotate(2deg)'}}
-                onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.transform='rotate(0deg)'}
-                onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.transform='rotate(2deg)'}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCb66OeMwh9mOvKU8i2lmJ1wd0HFriOIRlTiTELXTcq6sxveWSeUYlj1ibG6kUiYgRuna7rsJ6yw6gDanex07N-9eM4TBaYwZ63cARuZKE0yx-YfmTVAD704QR4L0O1vXapYcUgcyEu4IGHPKkNPq0i0a4QG_wddbgmWGiKn30SFeTfoXLcjtnRnMOaNRUDSMtpFcA5JIo2R2Jd7rLbrCcsVYKezK625To7qfzVGlGXvYKoC9zj2LEEtsjWTKN43AqWkwUL_9G8T78" alt="player" style={{borderRadius:'8px',width:'100%'}}/>
-                <div style={{position:'absolute',bottom:'-2.5rem',left:'-2.5rem',background:'#2f3448',padding:'1.5rem',borderRadius:'8px',border:'1px solid rgba(132,217,147,.3)',backdropFilter:'blur(12px)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-                    <div style={{width:'3.5rem',height:'3.5rem',borderRadius:'50%',background:'#84d993',display:'flex',alignItems:'center',justifyContent:'center',color:'#003916'}}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                    </div>
-                    <div>
-                      <p style={{fontSize:'10px',color:'#c6c5cf',fontWeight:700,textTransform:'uppercase'}}>Performance Score</p>
-                      <p className="hl" style={{fontSize:'1.875rem',fontWeight:900,color:'#84d993',lineHeight:1}}>ELITE 98.4</p>
+          <div className="ct hero-grid" style={{position:'relative',zIndex:10,display:'flex',flexDirection:'column',gap:'2rem'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'2rem',flexWrap:'wrap'}}>
+              {/* IMAGE PART */}
+              <div className="hero-img-container" style={{position:'relative',order:isRTL?2:1, minHeight: '180px', flex: '0 0 auto', width: '45%'}}>
+                <span className={`ap hl hero-badge`} style={{
+                  display:'inline-block',
+                  background:'rgba(255,140,0,0.05)',
+                  padding:'.5rem 1.2rem',
+                  borderRadius:'4px',
+                  fontSize:'1.25rem',
+                  fontWeight:900,
+                  letterSpacing:'.1em',
+                  textTransform:'uppercase',
+                  marginBottom:'.75rem',
+                  border:'1px solid rgba(255,140,0,0.2)'
+                }}>
+                  <span style={{
+                    backgroundImage: 'linear-gradient(45deg, #ff8c00, #ffa500)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    display: 'inline-block'
+                  }}>{t.badge}</span>
+                </span>
+                <div style={{position:'absolute',inset:'-2.5rem',background:'rgba(189,196,239,.2)',filter:'blur(100px)',borderRadius:'50%'}}></div>
+                <div className="gp tc7 hero-card-tilt" style={{
+                  borderRadius:'12px',
+                  padding:'.5rem',
+                  border:'1px solid rgba(70,70,78,.3)',
+                  position:'relative', 
+                  overflow: 'visible',
+                  transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'rotate(2deg)',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={e=>{
+                  (e.currentTarget as HTMLDivElement).style.animation = 'none';
+                  (e.currentTarget as HTMLDivElement).style.transform = 'rotate(0deg) scale(1.05)';
+                }}
+                onMouseLeave={e=>{
+                  (e.currentTarget as HTMLDivElement).style.animation = 'float 6s ease-in-out infinite';
+                  (e.currentTarget as HTMLDivElement).style.transform = 'rotate(2deg) scale(1)';
+                }}>
+                  <div style={{position: 'relative', width: '100%', aspectRatio: '4/5', overflow: 'hidden', borderRadius: '8px'}}>
+                    {PLAYER_IMGS.map((img, idx) => (
+                      <img 
+                        key={idx}
+                        src={img} 
+                        alt={`Professional Player ${idx + 1}`} 
+                        style={{
+                          borderRadius:'8px',
+                          width:'100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          opacity: activePlayerIdx === idx ? 1 : 0,
+                          transition: 'opacity 1s ease-in-out',
+                          display:'block'
+                        }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?q=80&w=800&auto=format&fit=crop"; }}
+                      />
+                    ))}
+                  </div>
+                  {/* ENLARGED SCORE CARD */}
+                  <div className="tc5 score-card" style={{
+                    position:'absolute',
+                    bottom:'-1rem',
+                    left:isRTL?'auto':'-1rem',
+                    right:isRTL?'-1rem':'auto',
+                    background:'#2f3448',
+                    padding:'0.6rem 1rem',
+                    borderRadius:'8px',
+                    border:'2px solid rgba(132,217,147,.6)',
+                    backdropFilter:'blur(12px)',
+                    zIndex:20,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                    transform: 'scale(1.2)'
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                      <div style={{width:'2rem',height:'2rem',borderRadius:'50%',background:'#84d993',display:'flex',alignItems:'center',justifyContent:'center',color:'#003916', flexShrink:0}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                      </div>
+                      <div>
+                        <p style={{fontSize:'8px',color:'#c6c5cf',fontWeight:700,textTransform:'uppercase', margin:0, letterSpacing: '0.1em'}}>Performance</p>
+                        <p className="hl" style={{fontSize:'14px',fontWeight:900,color:'#84d993',lineHeight:1, margin:0}}>98.4 ELITE</p>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* TEXT PART (TITLE ONLY) */}
+              <div className="htxt-container" style={{textAlign:isRTL?'right':'left',order:isRTL?1:2, flex: '1'}}>
+                <h1 className="hero-title" style={{fontSize:'8rem',fontWeight:900,lineHeight:1,marginBottom:0,color:'#f8fafc',fontFamily:'"Tajawal", sans-serif'}}>
+                  {t.h1a}<br/><span style={{color:'#bdc4ef'}}>{t.h1b}</span>
+                </h1>
+              </div>
+            </div>
+
+            {/* FULL WIDTH SUBTITLE AND BUTTONS */}
+            <div style={{textAlign:isRTL?'right':'left', marginTop: '1rem'}}>
+              <p className="hero-sub" style={{fontSize:'1.25rem',color:'#c6c5cf',width:'100%', marginBottom:'2.5rem',lineHeight:1.6}}>
+                {t.heroSub}
+              </p>
+              <div className="hero-btns" style={{display:'flex',gap:'1rem',justifyContent:isRTL?'flex-end':'flex-start'}}>
+                <a href="/auth/register" style={{padding:'1rem 2.5rem',borderRadius:'2px',background:'#84d993',color:'#0d1225',fontWeight:900,fontSize:'1.1rem',textDecoration:'none',display:'inline-block',transition:'all .2s'}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.filter='brightness(1.1)'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.filter='none'}>{t.startFree}</a>
+                <a href="/auth/login" style={{padding:'1rem 2.5rem',borderRadius:'2px',background:'transparent',border:'1px solid rgba(189,196,239,.3)',color:'#dde1fc',fontWeight:700,fontSize:'1.1rem',textDecoration:'none',display:'inline-block',transition:'background .2s'}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.background='#1a1f32'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.background='transparent'}>{t.login}</a>
               </div>
             </div>
           </div>
