@@ -1,691 +1,659 @@
 'use client';
+import { useState } from 'react';
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay } from 'swiper/modules';
-import 'swiper/css';
-import {
-    Search, User, Menu, X, Trophy, Globe, ChevronRight, ChevronDown, Star, LogIn, UserPlus,
-    MessageCircle, Phone, MapPin, Facebook, Twitter, Instagram,
-    Linkedin, Youtube, Sun, Moon, CheckCircle2, TrendingUp
-} from 'lucide-react';
-import Image from 'next/image';
-import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
-import { LANDING_TRANSLATIONS } from '@/data/landing-translations';
-import { getLandingData } from '@/data/landing-data';
-import { getLandingStats, LandingStats } from '@/lib/content/stats-service';
-import { getPartners, PartnerItem } from '@/lib/content/partners-service';
-import { getSuccessStories, SuccessStory } from '@/lib/content/success-stories-service';
-import { getSliderItems, SliderItem } from '@/lib/content/slider-service';
-import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
-import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+const TR = {
+  ar: {
+    dir:'rtl', lang:'ar',
+    joinBtn:'انضم الآن',
+    nav:['الرئيسية','تطبيق حجز','الأكاديمية','الأندية','البطولات'],
+    badge:'EL7LM platform with V Lab Ai.',
+    h1a:'لا تؤجل حلمك،',
+    h1b:'واجعل البداية اليوم.',
+    heroSub:'أكبر منصة لاكتشاف المواهب الكروية في الشرق الأوسط. نستخدم الذكاء الاصطناعي لتحليل أدائك وربطك مباشرة مع أفضل الكشافين والأندية العالمية.',
+    startFree:'ابدأ رحلتك مجاناً',
+    login:'تسجيل الدخول',
+    partnerLabel:'شركاء موثوقون من أفضل المؤسسات',
+    featuresTitle:'أدوات النجاح الرقمية',
+    features:[
+      {icon:'analytics',title:'تحليل المهارات بالذكاء الاصطناعي',desc:'نستخدم أحدث تقنيات الرؤية الحاسوبية لتحليل فيديوهات أدائك واستخراج إحصائيات دقيقة حول السرعة، التمرير، ودقة التسديد.'},
+      {icon:'visibility',title:'الظهور أمام الكشافين',desc:'ملفك الشخصي يظهر مباشرة في لوحة تحكم الكشافين المعتمدين محلياً ودولياً، مما يزيد فرصك في الحصول على تجربة أداء.'},
+      {icon:'hub',title:'تواصل مباشر مع الأندية',desc:'نظام مراسلة آمن يربطك بمدراء الأكاديميات والمدربين مباشرة عند اهتمامهم بمهاراتك المسجلة على المنصة.'},
+    ],
+    aiVideoTitle:'تحليل الفيديو الذكي',
+    aiVideoBadge:'تقنية الجيل القادم',
+    aiVideoDesc:'حول لقطاتك إلى بيانات احترافية. تقنياتنا تحلل كل حركة، تمريرة، وتسديدة لتعطيك تقييماً دقيقاً مبنياً على معايير الأندية العالمية.',
+    aiVideoFeatures:[
+      {icon:'label_important',color:'#84d993',title:'وسم تلقائي للأهداف والمراوغات',desc:'يقوم الذكاء الاصطناعي بتحديد أفضل لحظاتك وتقسيمها إلى مقاطع فيديو جاهزة للمشاركة مع الكشافين.'},
+      {icon:'map',color:'#bdc4ef',title:'خرائط حرارية لتحركاتك',desc:'تتبع دقيق لموقعك في الملعب طوال المباراة لفهم توزيع مجهودك البدني وذكائك التكتيكي.'},
+      {icon:'leaderboard',color:'#fdba45',title:'مقاييس أداء متقدمة',desc:'إحصائيات فورية عن سرعة الجري، دقة التمرير، وقوة التسديد مدمجة مباشرة فوق لقطات الفيديو الخاصة بك.'},
+    ],
+    tourTitle:'البطولات والمنافسات',
+    tourSub:'شارك في أقوى الفعاليات لرفع تقييمك الرقمي',
+    tournaments:[
+      {title:'بطولة النخبة - القاهرة',desc:'مباريات دولية وبطولات رسمية بحضور أفضل الكشافين في مصر.',btn:'شاهد على إنستغرام'},
+      {title:'بطولة العلمين الدولية',desc:'بطولات رسمية ومباريات في مدينة العلمين الجديدة بمشاركة كبار الكشافين.',btn:'شاهد على إنستغرام'},
+      {title:'بطولة الحلم العربي - الدوحة',desc:'اختبارات أداء فنية تحت إشراف مدربي الدوري القطري.',btn:'شاهد على إنستغرام'},
+    ],
+    talentsTitle:'مواهب صاعدة',
+    talentsSub:'الأكثر بحثاً وتفاعلاً من قبل الأندية هذا الأسبوع',
+    viewAll:'عرض جميع اللاعبين',
+    players:[
+      {name:'أحمد كريم',pos:'وسط • 19 سنة',badge:'نخبة'},
+      {name:'ياسين عمر',pos:'مهاجم • 17 سنة',badge:null},
+      {name:'مريم حسن',pos:'مهاجمة • 18 سنة',badge:'اختيار الكشاف'},
+      {name:'زياد علي',pos:'مدافع • 20 سنة',badge:null},
+    ],
+    contactTitle:'تواصل معنا',
+    contactSub:'فريق الدعم الفني وخدمة العملاء متاح للإجابة على جميع استفساراتكم حول المنصة والاشتراكات.',
+    contacts:[
+      {href:'https://wa.me/97470542458',icon:'chat',color:'#84d993',bg:'rgba(132,217,147,.1)',hb:'rgba(132,217,147,.5)',title:'واتساب',sub:'+974 7054 2458'},
+      {href:'tel:+97470542458',icon:'call',color:'#bdc4ef',bg:'rgba(189,196,239,.1)',hb:'rgba(189,196,239,.5)',title:'اتصل بنا',sub:'+974 7054 2458'},
+      {href:'mailto:info@el7lm.com',icon:'mail',color:'#fdba45',bg:'rgba(253,186,69,.1)',hb:'rgba(253,186,69,.5)',title:'البريد الإلكتروني',sub:'info@el7lm.com'},
+    ],
+    emailLbl:'البريد الإلكتروني', nameLbl:'الاسم الكامل', subjectLbl:'الموضوع', msgLbl:'الرسالة',
+    emailPh:'example@mail.com', namePh:'أدخل اسمك هنا', subjectPh:'كيف يمكننا مساعدتك؟', msgPh:'اكتب تفاصيل استفسارك هنا...',
+    sendBtn:'إرسال الرسالة',
+    ctaTitle:'جاهز لتكون النجم القادم؟',
+    ctaSub:'انضم إلى آلاف اللاعبين الذين بدأوا مسيرتهم الاحترافية من خلال EL7LM platform with V Lab Ai.',
+    ctaBtn:'أنشئ ملفك المجاني الآن',
+    footerDesc:'منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.',
+    footerCols:[
+      {title:'روابط سريعة',links:[{l:'البحث عن المواهب',h:'#'},{l:'تقارير الأداء',h:'#'},{l:'الأكاديمية الرقمية',h:'#'},{l:'جدول المباريات',h:'#'},{l:'أخبار النجوم',h:'#'}]},
+      {title:'الشركة',links:[{l:'من نحن',h:'/about'},{l:'الوظائف',h:'/careers'},{l:'شركاء النجاح',h:'/success-stories'},{l:'اتصل بنا',h:'/contact'}]},
+      {title:'الدعم القانوني',links:[{l:'سياسة الخصوصية',h:'/privacy'},{l:'الشروط والأحكام',h:'/terms'},{l:'معايير الكشافة',h:'#'},{l:'الدعم الفني',h:'/support'}]},
+    ],
+    copyright:'© 2024 EL7LM platform with V Lab Ai. جميع الحقوق محفوظة.',
+    designedFor:'صُمِّم للأبطال',
+  },
+  en: {
+    dir:'ltr', lang:'en',
+    joinBtn:'Join Now',
+    nav:['Home','Hagzz App','Academy','Clubs','Tournaments'],
+    badge:'EL7LM platform with V Lab Ai.',
+    h1a:"Don't delay your dream,",
+    h1b:'Make today the beginning.',
+    heroSub:'The largest football talent discovery platform in the Middle East. We use AI to analyze your performance and connect you directly with top scouts and international clubs.',
+    startFree:'Start for Free',
+    login:'Login',
+    partnerLabel:'Trusted By Professional Partners',
+    featuresTitle:'Digital Success Tools',
+    features:[
+      {icon:'analytics',title:'AI Skill Analysis',desc:'We use the latest computer vision technology to analyze your performance videos and extract precise statistics on speed, passing, and shooting accuracy.'},
+      {icon:'visibility',title:'Scout Visibility',desc:'Your profile appears directly on the dashboards of certified scouts locally and internationally, increasing your chances of getting a performance trial.'},
+      {icon:'hub',title:'Club Direct Contact',desc:'A secure messaging system that connects you with academy directors and coaches directly when they show interest in your recorded skills on the platform.'},
+    ],
+    aiVideoTitle:'AI Video Analysis',
+    aiVideoBadge:'Next-Gen Technology',
+    aiVideoDesc:'Transform your footage into professional data. Our technology analyzes every move, pass, and shot to give you an accurate assessment based on international club standards.',
+    aiVideoFeatures:[
+      {icon:'label_important',color:'#84d993',title:'Auto-tag Goals & Dribbles',desc:'AI identifies your best moments and splits them into video clips ready to share with scouts.'},
+      {icon:'map',color:'#bdc4ef',title:'Heat Maps of Your Movement',desc:'Precise tracking of your position on the pitch throughout the match to understand your physical effort and tactical intelligence.'},
+      {icon:'leaderboard',color:'#fdba45',title:'Advanced Performance Metrics',desc:'Real-time stats on running speed, passing accuracy, and shot power overlaid directly on your video footage.'},
+    ],
+    tourTitle:'Tournaments & Competitions',
+    tourSub:'Participate in the strongest events to boost your digital ranking',
+    tournaments:[
+      {title:'Elite Tournament - Cairo',desc:'International matches and official tournaments with Egypt\'s top scouts.',btn:'View on Instagram'},
+      {title:'Al Alamein International',desc:'Official tournaments in the new Al Alamein city with elite scouting.',btn:'View on Instagram'},
+      {title:'Arab Dream Cup - Doha',desc:'Technical performance tests under the supervision of Qatar League coaches.',btn:'View on Instagram'},
+    ],
+    talentsTitle:'Rising Talents',
+    talentsSub:'Most searched and engaged by clubs this week',
+    viewAll:'View All Players',
+    players:[
+      {name:'Ahmed Kareem',pos:'Midfielder • 19 yrs',badge:'Elite Rank'},
+      {name:'Yassine Omar',pos:'Forward • 17 yrs',badge:null},
+      {name:'Mariam Hassan',pos:'Striker • 18 yrs',badge:'Scout Choice'},
+      {name:'Ziad Ali',pos:'Defender • 20 yrs',badge:null},
+    ],
+    contactTitle:'Contact Us',
+    contactSub:'Our technical support and customer service team is available to answer all your inquiries about the platform and subscriptions.',
+    contacts:[
+      {href:'https://wa.me/97470542458',icon:'chat',color:'#84d993',bg:'rgba(132,217,147,.1)',hb:'rgba(132,217,147,.5)',title:'WhatsApp',sub:'+974 7054 2458'},
+      {href:'tel:+97470542458',icon:'call',color:'#bdc4ef',bg:'rgba(189,196,239,.1)',hb:'rgba(189,196,239,.5)',title:'Call Us',sub:'+974 7054 2458'},
+      {href:'mailto:info@el7lm.com',icon:'mail',color:'#fdba45',bg:'rgba(253,186,69,.1)',hb:'rgba(253,186,69,.5)',title:'Email Us',sub:'info@el7lm.com'},
+    ],
+    emailLbl:'Email Address', nameLbl:'Full Name', subjectLbl:'Subject', msgLbl:'Message',
+    emailPh:'example@mail.com', namePh:'Enter your name', subjectPh:'How can we help you?', msgPh:'Write your inquiry details here...',
+    sendBtn:'Send Message',
+    ctaTitle:'Ready to be the next star?',
+    ctaSub:'Join thousands of players who started their professional journey through EL7LM platform with V Lab Ai.',
+    ctaBtn:'Create Your Free Profile Now',
+    footerDesc:'A leading platform aiming to empower Arab football talents using modern technology and artificial intelligence to reach global recognition.',
+    footerCols:[
+      {title:'Quick Links',links:[{l:'Talent Search',h:'#'},{l:'Performance Reports',h:'#'},{l:'Digital Academy',h:'#'},{l:'Match Schedule',h:'#'},{l:'Star News',h:'#'}]},
+      {title:'Company',links:[{l:'About Us',h:'/about'},{l:'Careers',h:'/careers'},{l:'Success Stories',h:'/success-stories'},{l:'Contact',h:'/contact'}]},
+      {title:'Legal',links:[{l:'Privacy Policy',h:'/privacy'},{l:'Terms & Conditions',h:'/terms'},{l:'Scouting Standards',h:'#'},{l:'Technical Support',h:'/support'}]},
+    ],
+    copyright:'© 2024 EL7LM platform with V Lab Ai. ALL RIGHTS RESERVED.',
+    designedFor:'Designed for Champions',
+  },
+};
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-type Language = 'ar' | 'en' | 'fr' | 'es';
+const PLAYER_IMGS = [
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuBpCANwPXzcB4XNxsd5g0IzBXx85qulaAgiHB3VEV4mJ-HnKFpKiTNkRg_i5FhhltP7wmmW-xKSRcRyDAZ89f-Vla0pCdcidR6K-b8Py_4SOooyZsNK61gNzel3gnQVSJsn0hxHNjO8l8mozJm4KW-BIkOoJ5Jptaux-VEA85fEqu6AY50y215pz9GeY--ENImRv8l1pQJ_JR2ppU9lwdQpqvXyLqnQG4iF7ei90E-QbPczGapaiGskvBSJZmqG_QdAwnOn5iovOew',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAkI3L0Mpa8_973I0Ox0HL-j62lTN_3ov_unRBls1Z1jaol8ZvAWESi9wE6sDsKK2wFg7mTnrLeyXGrnLsXPh0YBDuxjsIFSB9PSbv9sdSB4hSwtWkF6Ajv2wIjX4ST4dhI8oP0Ox03xJIMnAvhb8lsGtRMukryUyWDsVhxAlyFhR-PfoM9b2L48_6DCy5hvI7tE_InVXgrKUQO5BQ7I89AHeDG_i5WpV--EEDYYfxBfBnvVUJQWTYZc6TgI-7eTUDV3zEWT_D2dds',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuB3ZDHDlZzwuUsxjVz7wq1t3xcQ9Xb5TbP3GUGsM0bXfZvCtkP1EzmxtKDQq74YF4aVjhhT6eWGkl-VxyrXs2DTyVOLrig7Fm-2kp_0WtuXBKTPyRQhfhJakA97kxzD1g9vh_auMsg0rluOCYjB6VD7o9vEn4MnrMq_F4D2uQQNLwyCRdHU_ZCAY-bMK1CgHfOdbDutBo7Jn_ryeBH4Xs_ubUFRUi0vRMinubLUYWQcOK-fd3NNWTIFTPXd45hhxeeiYk2POJCp00A',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuC7pJ6T_fIPrBl66Do8SwqeB-Fx9cES7a71aJGZiyHbhp4mAd90TD9vogaKOwyeL5_SPf2RdnnIw73vCeFi1AWMfDioHk7UyaD3CJDroo9bPCSgqS5MfeXIt5IIYvpEFaEG3pc7GF2iEJE2GxkGRzp7Mi4U4SP5dHz02Di-073_IxIP6LRmUBx3y4gFplD2GQtjos7lwBoQ-sHB4_gwP04gqcgNTZd72LeWXj60MaWce2q-6RWuihXTyAhW_2Ef23GPBUfYVUc9vQA',
+];
+const TOUR_IMGS = [
+  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800&auto=format&fit=crop', // Cairo Stadium View (Elite)
+  'https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=800&auto=format&fit=crop', // Football Turf/Action (Alamein)
+  '/doha-medal.jpg'  // Doha Medal (Mesk El7lm)
+];
+const PLAYER_STATS = [
+  [{l:'Pace',v:88},{l:'Shot',v:92},{l:'Pass',v:95}],
+  [{l:'Pace',v:96},{l:'Shot',v:85},{l:'Drib',v:91}],
+  [{l:'Pace',v:90},{l:'Shot',v:94},{l:'Phys',v:82}],
+  [{l:'Def',v:93},{l:'Phys',v:95},{l:'Pass',v:84}],
+];
+const RATINGS = [94,89,91,87];
+const PARTNERS = ['AL AHLI FC','ZAMALEK SC','PYRAMIDS FC','LIVERPOOL FC','NIKE FOOTBALL','ADIDAS','AL NASSR',
+  'AL AHLI FC','ZAMALEK SC','PYRAMIDS FC','LIVERPOOL FC','NIKE FOOTBALL','ADIDAS','AL NASSR'];
 
 export default function Home() {
-    // --- State ---
-    const [currentLanguage, setCurrentLanguage] = useState<Language>('ar');
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isMarketExpanded, setIsMarketExpanded] = useState(false);
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [landingStats, setLandingStats] = useState<LandingStats | null>(null);
-    const [partners, setPartners] = useState<PartnerItem[]>([]);
-    const [successStoriesData, setSuccessStoriesData] = useState<SuccessStory[]>([]); // Added state
-    const [sliderData, setSliderData] = useState<SliderItem[]>([]); // Added state
-    const [branding, setBranding] = useState<BrandingData | null>(null);
+  const [langAr, setLangAr] = useState(true);
+  const [dark, setDark] = useState(true); 
+  const t = TR[langAr ? 'ar' : 'en'];
+  const isRTL = langAr;
 
-    // --- Derived State ---
-    const t = LANDING_TRANSLATIONS[currentLanguage];
-    const isRTL = currentLanguage === 'ar';
-    const theme = isDarkMode ? 'dark' : 'light';
+  const theme = {
+    bg: dark ? '#0d1225' : '#f8fafc',
+    text: dark ? '#dde1fc' : '#1e293b',
+    subText: dark ? '#c6c5cf' : '#64748b',
+    navText: dark ? '#46464e' : '#94a3b8',
+    cardBg: dark ? 'rgba(36,41,61,0.5)' : '#ffffff',
+    border: dark ? 'rgba(70,70,78,.2)' : 'rgba(226,232,240,.8)',
+    headerBg: dark ? 'rgba(13,18,37,0.92)' : 'rgba(255,255,255,0.92)',
+    accent: '#bdc4ef'
+  };
 
-    // Get dynamic data based on language
-    const { topPlayers, latestRegistrations, tournaments, successStories } = getLandingData(currentLanguage);
+  const hov = (el: HTMLElement, on: Partial<CSSStyleDeclaration>, off: Partial<CSSStyleDeclaration>) => ({
+    onMouseEnter: () => Object.assign(el.style, on),
+    onMouseLeave: () => Object.assign(el.style, off),
+  });
 
-    // Transform Success Stories
-    const tooltipItems = successStoriesData.length > 0 ? successStoriesData.map((story: any) => ({
-        id: story.id,
-        name: story.name,
-        designation: story.club ? `${story.role} - ${story.club}` : story.role,
-        image: story.image || `https://ui-avatars.com/api/?name=${story.name}&background=random`
-    })) : successStories;
+  return (
+    <div dir={t.dir} lang={t.lang}>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter','IBM Plex Sans Arabic',sans-serif;background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
+        .hl{font-family:'Space Grotesk','IBM Plex Sans Arabic',sans-serif}
+        .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;word-wrap:normal;white-space:nowrap;direction:ltr}
+        .gp{background:rgba(47,52,72,0.4);backdrop-filter:blur(20px)}
+        @keyframes scroll-rtl{0%{transform:translateX(0)}100%{transform:translateX(calc(250px * 7))}}
+        @keyframes scroll-ltr{0%{transform:translateX(0)}100%{transform:translateX(calc(-250px * 7))}}
+        .rtl-scroll{animation:scroll-rtl 40s linear infinite}
+        .ltr-scroll{animation:scroll-ltr 40s linear infinite}
+        @keyframes pulse{50%{opacity:.5}}.ap{animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite}
+        .fm{-webkit-mask-image:linear-gradient(to left,transparent,black 10%,black 90%,transparent);mask-image:linear-gradient(to left,transparent,black 10%,black 90%,transparent)}
+        .tc{transition:all .2s}.tc5{transition:all .5s}.tc7{transition:all .7s}
+        .inp{background:#161b2e;border:1px solid rgba(70,70,78,.3);border-radius:2px;padding:1rem;color:#dde1fc;width:100%;font-size:1rem;outline:none;text-align:${isRTL?'right':'left'}}
+        .inp:focus{border-color:#bdc4ef}
+        section{padding:6rem 0; background: ${theme.bg}; color: ${theme.text}; transition: background 0.3s, color 0.3s;}
+        .ct{max-width:1280px;margin:0 auto;padding:0 2rem}
+        .st{font-family:'Space Grotesk','IBM Plex Sans Arabic',sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em}
+        .wa{position:fixed;bottom:1.5rem;${isRTL?'left':'right'}:1.5rem;z-index:100;background:#25D366;color:white;border-radius:50%;width:3.5rem;height:3.5rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.4);text-decoration:none}
+        @media(max-width:900px){.hm{display:none!important}.g2, .g3{grid-template-columns:1fr!important}.g4{grid-template-columns:1fr 1fr!important}.htxt{font-size:3rem!important}.fc{grid-template-columns:1fr!important}}
+      `}</style>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
-    // --- Effects ---
-    useEffect(() => {
-        const savedLang = localStorage.getItem('language') as Language;
-        if (savedLang) setCurrentLanguage(savedLang);
-
-        // Auto-detect system preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setIsDarkMode(true);
-        }
-
-        // Fetch Stats
-        getLandingStats().then(data => {
-            console.log('Stats loaded:', data);
-            setLandingStats(data);
-        }).catch(err => console.error('Failed to load stats:', err));
-
-        // Fetch Partners
-        getPartners().then(setPartners).catch(err => console.error('Failed to load partners:', err));
-
-        // Fetch Success Stories
-        getSuccessStories().then(setSuccessStoriesData).catch(err => console.error('Failed to load success stories:', err));
-
-        // Fetch Slider
-        getSliderItems().then(setSliderData).catch(err => console.error('Failed to load slider:', err));
-
-        // Fetch Branding
-        getBrandingData().then(setBranding).catch(err => console.error('Failed to load branding:', err));
-    }, []);
-
-    const heroSlides = sliderData.length > 0 ? sliderData.map(item => ({
-        image: getSupabaseImageUrl(item.image, 'content'),
-        title: item.title,
-        subtitle: item.subtitle,
-        cta: item.ctaText,
-        link: item.ctaLink
-    })) : [
-        {
-            image: '/images/hero-1.jpg',
-            title: t.hero.slide1_title,
-            subtitle: t.hero.slide1_subtitle,
-            cta: t.hero.slide1_cta,
-            link: '/auth/register'
-        },
-        {
-            image: '/images/hero-1.jpg',
-            title: t.hero.slide2_title,
-            subtitle: t.hero.slide2_subtitle,
-            cta: t.hero.slide2_cta,
-            link: '#features'
-        },
-        {
-            image: '/images/hero-1.jpg',
-            title: "El7lm Academy",
-            subtitle: "Join the best football academy in the region.",
-            cta: "Join Academy",
-            link: '/academy/join'
-        }
-    ];
-
-    // Marquee content logic
-    const marqueeItems = partners.length > 0 ? partners : [
-        { id: '1', name: "VLab", logoUrl: "" },
-        { id: '2', name: "QSTP", logoUrl: "" },
-        { id: '3', name: "QFC", logoUrl: "" },
-        { id: '4', name: "MCIT", logoUrl: "" },
-        { id: '5', name: "Vodafone", logoUrl: "" },
-        { id: '6', name: "Ooredoo", logoUrl: "" },
-        { id: '7', name: "Aspire", logoUrl: "" },
-    ];
-    const marqueeContent = marqueeItems;
-
-    // Auto-rotate slider
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, [heroSlides.length]);
-
-    const toggleLanguage = () => {
-        const langs: Language[] = ['ar', 'en', 'fr', 'es'];
-        const nextIndex = (langs.indexOf(currentLanguage) + 1) % langs.length;
-        const nextLang = langs[nextIndex];
-        setCurrentLanguage(nextLang);
-        localStorage.setItem('language', nextLang);
-    };
-
-    // --- Theme Colors Helper ---
-    const colors = {
-        bg: 'bg-background',
-        cardBg: 'bg-card',
-        cardBorder: 'border-border',
-        headerBg: 'bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b border-border sticky top-0',
-        text: 'text-foreground',
-        subText: 'text-muted-foreground',
-        accent: 'text-primary',
-        accentBg: 'bg-primary',
-        sectionHeader: 'bg-muted/30'
-    };
-
-    // --- Sub-Components ---
-    const TMHeader = () => (
-        <header className={`${colors.headerBg} transition-colors duration-300 z-50`}>
-            {/* Top Bar */}
-            <div className={`border-b border-border/50 ${isDarkMode ? 'bg-muted/20' : 'bg-muted/50'}`}>
-                <div className="container mx-auto px-4 h-9 flex items-center justify-between text-[10px] sm:text-xs">
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                        {/* Language Switcher */}
-                        <button onClick={toggleLanguage} className="cursor-pointer hover:text-foreground flex items-center gap-1 transition-colors">
-                            <Globe size={12} />
-                            <span className="uppercase">{currentLanguage}</span>
-                        </button>
-
-                        {/* Theme Toggle */}
-                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="cursor-pointer hover:text-foreground flex items-center gap-1 transition-colors">
-                            {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
-                        </button>
-                    </div>
-
-                    <div className="hidden sm:inline text-muted-foreground opacity-80">support@el7lm.com</div>
-                </div>
+      {/* HEADER */}
+      <header style={{position:'fixed',top:0,left:0,width:'100%',zIndex:50,display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 3rem',height:'5rem',background:theme.headerBg,backdropFilter:'blur(24px)',borderBottom:`1px solid ${theme.border}`,transition:'background 0.3s'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'3rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'.75rem'}}>
+            {/* Logo Image */}
+            <div style={{height:'3.5rem',width:'3.5rem',position:'relative'}}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/el7lm-logo.png" alt="Logo" style={{width:'100%',height:'100%',objectFit:'contain'}} 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDYisGk25r4m6K2o21yV3_S9X_X4X-Xo_LzWkP6_A2h9S-k4r5M6z7_N8W9X0"; // Fallback URL
+                }}/>
             </div>
-
-            {/* Main Nav & Branding */}
-            <div className="container mx-auto px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
-                    {/* 1. Logo Section */}
-                    <div className="flex items-center gap-3 shrink-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-xl md:text-2xl shadow-lg overflow-hidden relative group">
-                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            {branding?.logoUrl ? (
-                                <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-cover" />
-                            ) : (
-                                <span>7</span>
-                            )}
-                        </div>
-                        <div className="hidden min-[380px]:block">
-                            <h1 className={`text-xl md:text-2xl font-bold leading-none tracking-tight ${colors.text}`}>{branding?.siteName || 'EL7LM'}</h1>
-                            <span className={`text-[9px] md:text-[10px] uppercase tracking-widest block font-medium ${colors.accent}`}>{branding?.slogan || t.header.slogan}</span>
-                        </div>
-                    </div>
-
-                    {/* 2. Search Bar (Desktop) */}
-                    <div className="hidden md:flex flex-1 max-w-lg mx-auto relative px-6">
-                        <div className="relative w-full group">
-                            <input
-                                type="text"
-                                placeholder={t.header.search_placeholder}
-                                className={`w-full h-11 pl-4 pr-12 rounded-xl text-sm transition-all border border-transparent focus:border-primary/50 ${isDarkMode ? 'bg-muted/50 text-white placeholder-muted-foreground focus:bg-muted' : 'bg-gray-100 text-gray-900 focus:bg-white'} focus:ring-4 focus:ring-primary/10 outline-none`}
-                            />
-                            <button className={`absolute ${isRTL ? 'left-2' : 'right-2'} top-2 h-7 w-7 bg-background text-primary rounded-lg shadow-sm flex items-center justify-center hover:scale-105 transition-all`}>
-                                <Search size={14} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* 3. Action Buttons & Mobile Toggle */}
-                    <div className="flex items-center gap-2 md:gap-3">
-                        {/* Login */}
-                        <a href="/auth/login" className={`flex items-center justify-center w-9 h-9 md:w-auto md:h-auto md:px-5 md:py-2.5 rounded-xl font-bold text-sm transition-all border ${colors.cardBorder} hover:bg-muted text-foreground`}>
-                            <LogIn size={16} />
-                            <span className="hidden md:inline md:ml-2">{t.header.login}</span>
-                        </a>
-
-                        {/* Join */}
-                        <a href="/auth/register" className="flex items-center justify-center h-9 px-3 md:h-auto md:px-6 md:py-2.5 rounded-xl font-bold text-xs md:text-sm bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/25 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
-                            <UserPlus size={16} className="md:mr-2" />
-                            <span className="hidden md:inline">{t.header.join}</span>
-                            <span className="md:hidden ml-1">{t.header.join}</span>
-                        </a>
-
-                        {/* Mobile Menu Toggle */}
-                        <button className={`md:hidden p-2 ml-1 rounded hover:bg-muted ${colors.text}`} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Categories Nav (Desktop) */}
-            <div className="hidden md:block border-t border-border/40">
-                <div className="container mx-auto px-4">
-                    <nav className="flex items-center gap-1 text-sm font-medium overflow-x-auto no-scrollbar">
-                        {Object.values(t.nav).map((item, i) => (
-                            <a key={i} href="#" className={`px-4 py-3 hover:text-primary transition-colors border-b-2 border-transparent hover:border-primary whitespace-nowrap ${colors.subText}`}>
-                                {item}
-                            </a>
-                        ))}
-                    </nav>
-                </div>
-            </div>
-        </header>
-    );
-
-    const SectionHeader = ({ title, icon: Icon, color, onClick, isOpen }: any) => (
-        <div
-            onClick={onClick}
-            className={`${color || colors.sectionHeader} px-4 py-3 flex items-center justify-between rounded-t-xl transition-colors duration-300 border-b border-border/50 ${onClick ? 'cursor-pointer hover:bg-muted/70' : ''}`}
-        >
-            <div className="flex items-center gap-2">
-                {Icon && <Icon size={18} className="text-primary" />}
-                <h3 className={`font-bold text-sm uppercase tracking-wide ${colors.text}`}>{title}</h3>
-            </div>
-            {onClick ? (
-                <div className={`md:hidden ${colors.text}`}>
-                    {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </div>
-            ) : (
-                <button className={`text-[10px] ${colors.accentBg}/10 ${colors.accent} px-2 py-0.5 rounded hover:bg-primary hover:text-white transition-colors`}>View All</button>
-            )}
+            <span className="hl hm" style={{fontSize:'1.5rem',fontWeight:900,color:'#bdc4ef',textTransform:'uppercase',letterSpacing:'-0.05em'}}>EL7LM</span>
+          </div>
+          <nav className="hm" style={{display:'flex',gap:'2rem'}}>
+            {t.nav.map((item,i)=>(
+              <a key={i} href="#" className="hl" style={{fontWeight:700,textTransform:'uppercase',letterSpacing:'-0.025em',textDecoration:'none',color:i===0?'#bdc4ef':'#46464e',borderBottom:i===0?'2px solid #bdc4ef':'none',paddingBottom:i===0?'2px':'0',transition:'color .2s'}}
+                onMouseEnter={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color='#bdc4ef'}}
+                onMouseLeave={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color='#46464e'}}>{item}</a>
+            ))}
+          </nav>
         </div>
-    );
-
-    const ContactSection = () => (
-        <div className={`${colors.cardBg} border ${colors.cardBorder} rounded-xl p-8 mb-6 relative overflow-hidden group`}>
-            {/* Glossy Effect */}
-            <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full -mr-40 -mt-20 blur-3xl group-hover:bg-primary/10 transition-colors"></div>
-
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div>
-                    <h3 className={`text-2xl font-bold mb-2 ${colors.text}`}>{t.sections.contact_us}</h3>
-                    <p className={`${colors.subText} mb-6 text-sm`}>{t.sections.contact_subtitle}</p>
-                    <div className="space-y-4">
-                        {/* Clickable Phone */}
-                        <a href="https://wa.me/97470542458" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group cursor-pointer hover:bg-muted/50 p-3 rounded-lg transition-colors -mx-3">
-                            <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 shrink-0 group-hover:bg-green-500 group-hover:text-white transition-all">
-                                <MessageCircle size={20} />
-                            </div>
-                            <div>
-                                <div className={`text-xs ${colors.subText} mb-1`}>Customer Service (WhatsApp)</div>
-                                <div className={`text-base font-bold font-mono ${colors.text}`} dir="ltr">+974 7054 2458</div>
-                            </div>
-                        </a>
-
-                        <a href="tel:+97470542458" className="flex items-start gap-4 group cursor-pointer hover:bg-muted/50 p-3 rounded-lg transition-colors -mx-3">
-                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all"><Phone size={20} /></div>
-                            <div>
-                                <div className={`text-xs ${colors.subText} mb-1`}>Call Us Directly</div>
-                                <div className={`text-base font-bold font-mono ${colors.text}`} dir="ltr">+974 7054 2458</div>
-                            </div>
-                        </a>
-
-                        <div className="flex items-start gap-4 p-3 -mx-3">
-                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0"><MapPin size={20} /></div>
-                            <div>
-                                <div className={`text-xs ${colors.subText} mb-1`}>Qatar HQ 🇶🇦</div>
-                                <div className={`text-sm font-medium leading-snug ${colors.text}`}>Doha - QFC Tower</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <form className={`p-6 rounded-xl border ${colors.cardBorder} bg-muted/20 backdrop-blur-sm`}>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input type="text" placeholder={t.sections.name_placeholder} className={`bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg h-11 px-4 focus:ring-2 focus:ring-primary/20 outline-none`} />
-                        <input type="email" placeholder={t.sections.email_placeholder} className={`bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg h-11 px-4 focus:ring-2 focus:ring-primary/20 outline-none`} />
-                    </div>
-                    <textarea placeholder={t.sections.msg_placeholder} rows={3} className={`w-full bg-background border ${colors.cardBorder} ${colors.text} text-sm rounded-lg p-4 mb-4 focus:ring-2 focus:ring-primary/20 outline-none`}></textarea>
-                    <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-lg text-sm transition-all shadow-lg hover:shadow-primary/25">{t.sections.send_message}</button>
-                </form>
-            </div>
-        </div>
-    );
-
-    const Footer = () => (
-        <footer className={`mt-12 ${colors.cardBg} border-t ${colors.cardBorder} pt-12 pb-6 px-4`}>
-            <div className="container mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-                    {/* Brand Column */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden relative">
-                                {branding?.footerLogoUrl || branding?.logoUrl ? (
-                                    <Image src={branding?.footerLogoUrl || branding?.logoUrl || ''} alt="Logo" fill className="object-cover" />
-                                ) : (
-                                    <span>7</span>
-                                )}
-                            </div>
-                            <h2 className={`text-xl font-bold ${colors.text}`}>{branding?.siteName || 'EL7LM'}</h2>
-                        </div>
-                        <p className={`text-sm ${colors.subText} mb-4 leading-relaxed`}>
-                            {branding?.slogan || t.header.slogan}. موثقون من VLab و QFC. نصنع مستقبل الرياضة بالبيانات والذكاء الاصطناعي.
-                        </p>
-                        <div className="flex gap-4">
-                            {/* Facebook */}
-                            <a href="https://www.facebook.com/profile.php?id=61577797509887" target="_blank" rel="noopener noreferrer" className={`${colors.subText} hover:text-primary transition-colors`}>
-                                <Facebook size={18} />
-                            </a>
-                            {/* Instagram */}
-                            <a href="https://www.instagram.com/hagzzel7lm/" target="_blank" rel="noopener noreferrer" className={`${colors.subText} hover:text-primary transition-colors`}>
-                                <Instagram size={18} />
-                            </a>
-                            {/* LinkedIn */}
-                            <a href="https://www.linkedin.com/showcase/el7lm" target="_blank" rel="noopener noreferrer" className={`${colors.subText} hover:text-primary transition-colors`}>
-                                <Linkedin size={18} />
-                            </a>
-                            {/* YouTube */}
-                            <a href="https://www.youtube.com/@el7lm25" target="_blank" rel="noopener noreferrer" className={`${colors.subText} hover:text-primary transition-colors`}>
-                                <Youtube size={18} />
-                            </a>
-                            {/* TikTok - Custom SVG */}
-                            <a href="https://www.tiktok.com/@meskel7lm" target="_blank" rel="noopener noreferrer" className={`${colors.subText} hover:text-primary transition-colors`}>
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5v4a9 9 0 0 1-9-9" />
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Links Columns */}
-                    <div>
-                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.platform}</h4>
-                        <ul className={`space-y-2 text-sm ${colors.subText}`}>
-                            <li><a href="/about" className="hover:text-primary transition-colors">{t.footer.links.about}</a></li>
-                            <li><a href="/about" className="hover:text-primary transition-colors">{t.footer.links.who_we_are}</a></li>
-                            <li><a href="/success-stories" className="hover:text-primary transition-colors">{t.footer.links.success}</a></li>
-                            <li><a href="/careers" className="hover:text-primary transition-colors">{t.footer.links.careers}</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.support}</h4>
-                        <ul className={`space-y-2 text-sm ${colors.subText}`}>
-                            <li><a href="/contact" className="hover:text-primary transition-colors">{t.footer.links.help}</a></li>
-                            <li><a href="/terms" className="hover:text-primary transition-colors">{t.footer.links.terms}</a></li>
-                            <li><a href="/privacy" className="hover:text-primary transition-colors">{t.footer.links.privacy}</a></li>
-                            <li><a href="/contact" className="hover:text-primary transition-colors">{t.footer.links.contact}</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className={`font-bold mb-4 ${colors.text}`}>{t.footer.mobile_title}</h4>
-                        <p className={`text-sm ${colors.subText} mb-3`}>{t.footer.mobile_text}</p>
-                        <div className="flex gap-2">
-                            <div className={`w-24 h-8 bg-muted rounded border border-border flex items-center justify-center text-[10px] ${colors.subText} cursor-not-allowed`}>App Store</div>
-                            <div className={`w-24 h-8 bg-muted rounded border border-border flex items-center justify-center text-[10px] ${colors.subText} cursor-not-allowed`}>Google Play</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className={`border-t border-border/50 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs ${colors.subText}`}>
-                    <div>
-                        جميع الحقوق محفوظة لشركة <a href="https://mesk.qa" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors font-bold">ميسك القطرية</a> 2024
-                    </div>
-                    <div className="flex gap-4">
-                        <a href="/privacy" className="hover:text-primary">Privacy</a>
-                        <a href="/terms" className="hover:text-primary">Terms</a>
-                        <a href="#" className="hover:text-primary">Sitemap</a>
-                    </div>
-                </div>
-            </div>
-        </footer>
-    );
-
-    const WhatsAppFloat = () => (
-        <a
-            href="https://wa.me/97470542458"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`fixed bottom-6 ${isRTL ? 'left-6' : 'right-6'} z-50 bg-[#25D366] text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform flex items-center gap-2 group`}
-        >
-            <MessageCircle size={24} fill="white" className="text-[#25D366]" />
-            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap font-bold text-sm">
-                تواصل معنا
+        <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+          <div style={{display:'flex',alignItems:'center',background:'#24293d',borderRadius:'12px',padding:'4px',border:'1px solid rgba(70,70,78,.3)'}}>
+            {['AR','EN'].map((l,i)=>{
+              const active=(i===0&&langAr)||(i===1&&!langAr);
+              return <button key={l} onClick={()=>setLangAr(i===0)} className="hl" style={{padding:'4px 12px',borderRadius:'8px',fontSize:'.75rem',fontWeight:700,background:active?'#bdc4ef':'transparent',color:active?'#272e50':'#c6c5cf',border:'none',cursor:'pointer',transition:'all .2s'}}>{l}</button>;
+            })}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:'.5rem',color:theme.text,borderRight:`1px solid ${theme.border}`,paddingRight:'1rem',marginRight:'.5rem',direction:'ltr'}}>
+            {/* Theme Toggle */}
+            <span onClick={()=>setDark(!dark)} className="tc" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=dark?'rgba(189,196,239,.1)':'rgba(0,0,0,.05)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
+              {dark ? 
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                : 
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              }
             </span>
-        </a>
-    );
+            {/* Notification SVG */}
+            <span className="tc hm" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=dark?'rgba(189,196,239,.1)':'rgba(0,0,0,.05)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            </span>
+            {/* User Account SVG */}
+            <span className="tc hm" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background=dark?'rgba(189,196,239,.1)':'rgba(0,0,0,.05)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </span>
+          </div>
+          <a href="/auth/register" className="hl hm" style={{padding:'.5rem 1.5rem',borderRadius:'2px',background:'linear-gradient(135deg,#bdc4ef,#161e3f)',color:'#272e50',fontWeight:900,fontSize:'.875rem',textDecoration:'none',transition:'filter .2s'}}
+            onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.filter='brightness(1.1)'}
+            onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.filter='none'}>{t.joinBtn}</a>
+        </div>
+      </header>
 
+      <main style={{paddingTop:'5rem'}}>
+        {/* HERO */}
+        <section style={{minHeight:'90vh',display:'flex',alignItems:'center',overflow:'hidden',position:'relative',padding:0}}>
+          <div style={{position:'absolute',inset:0,zIndex:0}}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpd9Dfe0sZKczpg1MkiIZpCAuJMqrsU2hJvPdSMlRhlgtpp3jRSyz2JR7PrTAyGIg2yPgWi2RAS2RWo04cEgY7NkNaQIXaR2lLdeqoNzxyxSW8KyY5vGSoaErfjOSS8OXiIjbYbDIQQCDjoAvK57vWU3Ki1HBIUKbQtYc2U5Jq09Lq3gfqvfLdelpZnyrHBsKQNFUXpJuV3-bg1yKgihT1PX8BZiQ-tgP4kVyKO-6IWWPzk5h1rGO6RLSPseDsERrMhERNosPqmOU" alt="stadium" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.3}}/>
+            <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,#0d1225 30%,rgba(13,18,37,.6) 60%,transparent)'}}></div>
+          </div>
+          <div className="ct" style={{position:'relative',zIndex:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:'3rem',alignItems:'center'}}>
+            <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
+              <span className={`ap hl`} style={{display:'inline-block',background:'#2e1d00',color:'#fdba45',padding:'.25rem 1rem',borderRadius:'2px',fontSize:'.875rem',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',marginBottom:'1.5rem'}}>{t.badge}</span>
+              <h1 className="hl htxt" style={{fontSize:'5rem',fontWeight:900,lineHeight:1.1,marginBottom:'1.5rem',color:'#dde1fc'}}>
+                {t.h1a}<br/><span style={{color:'#bdc4ef',fontStyle:'italic'}}>{t.h1b}</span>
+              </h1>
+              <p style={{fontSize:'1.25rem',color:'#c6c5cf',maxWidth:'36rem',marginLeft:isRTL?'auto':'0',marginRight:isRTL?'0':'auto',marginBottom:'2.5rem',lineHeight:1.625}}>{t.heroSub}</p>
+              <div style={{display:'flex',flexDirection:isRTL?'row-reverse':'row',gap:'1rem'}}>
+                <a href="/auth/register" className="hl" style={{padding:'1.25rem 3rem',borderRadius:'2px',background:'linear-gradient(135deg,#bdc4ef,#161e3f)',color:'#272e50',fontWeight:900,fontSize:'1.25rem',textDecoration:'none',display:'inline-block',transition:'filter .2s'}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.filter='brightness(1.1)'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.filter='none'}>{t.startFree}</a>
+                <a href="/auth/login" className="hl" style={{padding:'1.25rem 3rem',borderRadius:'2px',background:'transparent',border:'1px solid rgba(70,70,78,.5)',color:'#dde1fc',fontWeight:700,fontSize:'1.25rem',textDecoration:'none',display:'inline-block',transition:'background .2s'}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.background='#1a1f32'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.background='transparent'}>{t.login}</a>
+              </div>
+            </div>
 
-
-    return (
-        <div className={`min-h-screen ${colors.bg} ${colors.text} font-cairo transition-colors duration-300`} dir={isRTL ? 'rtl' : 'ltr'}>
-            <TMHeader />
-
-            <main className="container mx-auto px-4 py-6">
-
-                {/* --- Top Section --- */}
-                <div className="w-full mb-6">
-
-                    {/* LEFT: Hero Slider */}
-                    <div className={`w-full ${colors.cardBg} shadow-sm rounded-sm overflow-hidden border ${colors.cardBorder} flex flex-col`}>
-                        <SectionHeader title={t.sections.featured_stories} icon={Star} />
-
-                        {/* Fixed Height Slider - No flex-1 to verify visibility */}
-                        <div className="relative w-full h-[320px] md:h-[450px] bg-slate-900 group cursor-pointer overflow-hidden rounded-b-sm shrink-0">
-                            {/* Fallback Background (Shown if image is missing or loading) */}
-                            <div className={`absolute inset-0 bg-gradient-to-br transition-opacity duration-1000 ${currentSlide === 0 ? 'from-primary to-violet-900' : 'from-slate-900 to-gray-800'}`}></div>
-
-                            {/* Background Image */}
-                            {heroSlides[currentSlide].image && (
-                                <Image
-                                    src={heroSlides[currentSlide].image}
-                                    alt={heroSlides[currentSlide].title}
-                                    fill
-                                    className="object-cover transition-all duration-1000 group-hover:scale-105"
-                                    priority
-                                />
-                            )}
-
-                            {/* Overlay Gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-10"></div>
-
-                            <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8 z-20">
-                                <motion.div
-                                    key={currentSlide}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.5 }}
-                                >
-                                    <span className={`${colors.accentBg} text-white text-xs px-2 py-1 font-bold rounded-sm mb-3 inline-block`}>
-                                        {currentSlide === 0 ? 'EL7LM' : 'Partners'}
-                                    </span>
-                                    <h2 className="text-2xl md:text-4xl font-bold text-white mb-3 leading-tight">
-                                        {heroSlides[currentSlide].title}
-                                    </h2>
-                                    <p className="text-gray-300 text-sm md:text-base mb-6 max-w-xl">
-                                        {heroSlides[currentSlide].subtitle}
-                                    </p>
-
-                                    {/* Buttons Container */}
-                                    <div className="flex items-center gap-3">
-                                        {/* Main CTA */}
-                                        <button className={`${colors.accentBg} hover:bg-white hover:text-primary text-primary-foreground px-6 py-2 rounded-xl font-bold text-sm transition-colors`}>
-                                            {heroSlides[currentSlide].cta}
-                                        </button>
-
-                                        {/* Login CTA - Added as requested */}
-                                        <a href="/auth/login" className="bg-white/10 hover:bg-white/20 text-white border border-white/30 px-6 py-2 rounded font-bold text-sm transition-colors flex items-center gap-2">
-                                            <LogIn size={16} />
-                                            {t.header.login}
-                                        </a>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        </div>
-
-                        {/* Stats Strip */}
-                        {/* Stats Strip */}
-                        <div className={`grid grid-cols-3 divide-x divide-x-reverse border-t border-white/5 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-white'}`}>
-                            <div className="p-6 text-center group hover:bg-white/5 transition-colors">
-                                <div className="text-3xl font-black text-primary mb-1">
-                                    {landingStats?.players || 1240}
-                                </div>
-                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t.hero.stats_players}</div>
-                            </div>
-
-                            <div className="p-6 text-center group hover:bg-white/5 transition-colors relative">
-                                <div className="text-3xl font-black text-primary mb-1">
-                                    {landingStats?.countries || 6}
-                                </div>
-                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{t.hero.stats_countries}</div>
-                                <div className="text-[10px] text-slate-400 font-medium leading-tight max-w-[150px] mx-auto opacity-0 group-hover:opacity-100 transition-opacity absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-2 py-1 rounded shadow-lg z-10 w-max pointer-events-none">
-                                    قطر - مصر - العراق - المغرب - الأردن - البرتغال
-                                </div>
-                                {/* Static list for mobile/always visible if preferred, but hover is cleaner. Let's keep it visible but subtle as per request context */}
-                                <div className="text-[9px] text-slate-400 mt-1 hidden md:block">
-                                    قطر - مصر - العراق - المغرب - الأردن - البرتغال
-                                </div>
-                            </div>
-
-                            <div className="p-6 text-center group hover:bg-white/5 transition-colors">
-                                <div className="text-3xl font-black text-emerald-500 mb-1">
-                                    {landingStats?.successRate || 89}%
-                                </div>
-                                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t.hero.stats_success}</div>
-                            </div>
-                        </div>
+            <div className="hm" style={{position:'relative',order:isRTL?2:1}}>
+              <div style={{position:'absolute',inset:'-2.5rem',background:'rgba(189,196,239,.2)',filter:'blur(100px)',borderRadius:'50%'}}></div>
+              <div className="gp tc7" style={{borderRadius:'12px',padding:'.5rem',border:'1px solid rgba(70,70,78,.3)',position:'relative',transform:'rotate(2deg)'}}
+                onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.transform='rotate(0deg)'}
+                onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.transform='rotate(2deg)'}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCb66OeMwh9mOvKU8i2lmJ1wd0HFriOIRlTiTELXTcq6sxveWSeUYlj1ibG6kUiYgRuna7rsJ6yw6gDanex07N-9eM4TBaYwZ63cARuZKE0yx-YfmTVAD704QR4L0O1vXapYcUgcyEu4IGHPKkNPq0i0a4QG_wddbgmWGiKn30SFeTfoXLcjtnRnMOaNRUDSMtpFcA5JIo2R2Jd7rLbrCcsVYKezK625To7qfzVGlGXvYKoC9zj2LEEtsjWTKN43AqWkwUL_9G8T78" alt="player" style={{borderRadius:'8px',width:'100%'}}/>
+                <div style={{position:'absolute',bottom:'-2.5rem',left:'-2.5rem',background:'#2f3448',padding:'1.5rem',borderRadius:'8px',border:'1px solid rgba(132,217,147,.3)',backdropFilter:'blur(12px)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+                    <div style={{width:'3.5rem',height:'3.5rem',borderRadius:'50%',background:'#84d993',display:'flex',alignItems:'center',justifyContent:'center',color:'#003916'}}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
+                    <div>
+                      <p style={{fontSize:'10px',color:'#c6c5cf',fontWeight:700,textTransform:'uppercase'}}>Performance Score</p>
+                      <p className="hl" style={{fontSize:'1.875rem',fontWeight:900,color:'#84d993',lineHeight:1}}>ELITE 98.4</p>
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-                {/* --- New Mid-Page CTA Section --- */}
-                <div className="mb-8 relative overflow-hidden rounded-xl shadow-2xl group border border-white/5">
-                    {/* Elegant Dark Background */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a]"></div>
+        {/* PARTNERS */}
+        <section style={{padding:'3rem 0',background:'#080d20',borderTop:'1px solid rgba(70,70,78,.1)',borderBottom:'1px solid rgba(70,70,78,.1)',overflow:'hidden'}}>
+          <div className="ct" style={{marginBottom:'1.5rem'}}>
+            <p className="hl" style={{textAlign:'center',color:'#c6c5cf',fontWeight:700,textTransform:'uppercase',letterSpacing:'.3em',fontSize:'.75rem'}}>{t.partnerLabel}</p>
+          </div>
+          <div className="fm" style={{overflow:'hidden'}}>
+            <div className={isRTL?'rtl-scroll':'ltr-scroll'} style={{display:'flex',gap:'4rem',whiteSpace:'nowrap',alignItems:'center',padding:'1rem 0'}}>
+              {PARTNERS.map((name,i)=>(
+                <div key={i} className="hl tc" style={{fontSize:'1.5rem',fontWeight:900,color:'rgba(198,197,207,0.4)',textTransform:'uppercase',cursor:'pointer',flexShrink:0}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.color='#bdc4ef'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.color='rgba(198,197,207,0.4)'}>{name}</div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-                    {/* Subtle Texture/Pattern */}
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-
-                    {/* Decorative Background Elements (Refined) */}
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full -mr-32 -mt-32 blur-[100px] animate-pulse"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-violet-900/20 rounded-full -ml-20 -mb-20 blur-[80px]"></div>
-
-                    <div className="relative z-10 py-16 px-6 text-center flex flex-col items-center justify-center">
-                        <div className="mb-8">
-                            <h2 className="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight leading-tight drop-shadow-md">
-                                {t.sections.cta.title}
-                            </h2>
-                            <p className="text-slate-300 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
-                                {t.sections.cta.subtitle}
-                            </p>
-                        </div>
-
-                        <a
-                            href="/auth/register"
-                            className="group relative inline-flex items-center gap-3 px-10 py-4 bg-white text-black hover:bg-gray-100 rounded-full font-bold text-xl md:text-2xl shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all transform hover:-translate-y-1 overflow-hidden"
-                        >
-                            {/* Button Shine Effect */}
-                            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></span>
-
-                            <UserPlus size={24} className="group-hover:scale-110 transition-transform" />
-                            <span>{t.sections.cta.button}</span>
-                        </a>
-
-                        <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-slate-400 font-medium">
-                            <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5"><CheckCircle2 size={14} className="text-emerald-500" /> مجاني بالكامل</span>
-                            <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5"><CheckCircle2 size={14} className="text-emerald-500" /> وصول مباشر للأندية</span>
-                            <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5"><CheckCircle2 size={14} className="text-emerald-500" /> تقارير احترافية</span>
-                        </div>
+        {/* FEATURES */}
+        <section style={{background:'#0d1225'}}>
+          <div className="ct">
+            <div style={{textAlign:'center',marginBottom:'5rem'}}>
+              <h2 className="st" style={{fontSize:'2.5rem',marginBottom:'1rem'}}>{t.featuresTitle}</h2>
+              <div style={{width:'6rem',height:'6px',background:'#84d993',margin:'0 auto',borderRadius:'9999px'}}></div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'2rem'}} className="fc">
+              {t.features.map((f,i)=>{
+                const colors=['#bdc4ef','#84d993','#fdba45'];
+                const borders=['rgba(189,196,239,0.5)','rgba(132,217,147,0.5)','rgba(253,186,69,0.5)'];
+                return (
+                  <div key={i} className="tc5" style={{background:'#1a1f32',borderRadius:'12px',padding:'3rem',position:'relative',overflow:'hidden',border:'1px solid rgba(70,70,78,.1)',cursor:'default'}}
+                    onMouseEnter={e=>{const el=e.currentTarget as HTMLDivElement;el.style.background='#24293d';el.style.borderColor=borders[i];el.style.transform='translateY(-6px)'}}
+                    onMouseLeave={e=>{const el=e.currentTarget as HTMLDivElement;el.style.background='#1a1f32';el.style.borderColor='rgba(70,70,78,.1)';el.style.transform='none'}}>
+                    <div style={{position:'absolute',top:'-2.5rem',right:'-2.5rem',width:'8rem',height:'8rem',background:`${colors[i]}`,opacity:0.05,borderRadius:'50%'}}></div>
+                    <div style={{marginBottom:'2rem',color:colors[i]}}>
+                      {i===0 && <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m6.7 6.7 10.6 10.6"></path><path d="m6.7 17.3 10.6-10.6"></path></svg>}
+                      {i===1 && <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>}
+                      {i===2 && <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}
+                      {i===3 && <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>}
                     </div>
+                    <h3 className="hl" style={{fontSize:'1.5rem',fontWeight:700,marginBottom:'1rem',color:'#dde1fc'}}>{f.title}</h3>
+                    <p style={{color:'#c6c5cf',lineHeight:1.625}}>{f.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* AI VIDEO ANALYSIS */}
+        <section style={{background:'#1a1f32',position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',opacity:.1}}>
+            <div style={{position:'absolute',top:0,right:0,width:'500px',height:'500px',background:'#bdc4ef',filter:'blur(120px)',borderRadius:'50%'}}></div>
+            <div style={{position:'absolute',bottom:0,left:0,width:'500px',height:'500px',background:'#84d993',filter:'blur(120px)',borderRadius:'50%'}}></div>
+          </div>
+          <div className="ct" style={{position:'relative',zIndex:10}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}} className="g2">
+              {/* Text Side */}
+              <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
+                <div style={{display:'inline-flex',alignItems:'center',gap:'.5rem',background:'rgba(189,196,239,.1)',color:'#bdc4ef',padding:'.25rem 1rem',borderRadius:'9999px',fontSize:'.75rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'1.5rem'}}>
+                  <span className="material-symbols-outlined" style={{fontSize:'.875rem'}}>rocket_launch</span>
+                  {t.aiVideoBadge}
                 </div>
-
-                {/* --- Grid Section --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    {/* Latest Registrations */}
-                    <div className={`col-span-2 ${colors.cardBg} shadow-sm rounded-sm border ${colors.cardBorder}`}>
-                        <SectionHeader title={t.sections.latest_transfers} icon={User} />
-                        <table className="w-full text-sm">
-                            <thead className={`text-xs ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'} ${colors.subText} border-b ${colors.cardBorder}`}>
-                                <tr>
-                                    <th className={`py-2 px-4 ${isRTL ? 'text-right' : 'text-left'}`}>{t.table.player}</th>
-                                    <th className="py-2 text-center">{t.table.age}</th>
-                                    <th className={`py-2 ${isRTL ? 'text-right' : 'text-left'}`}>{t.table.from}</th>
-                                    <th className={`py-2 ${isRTL ? 'text-right' : 'text-left'}`}>{t.table.to}</th>
-                                    <th className={`py-2 ${isRTL ? 'text-right' : 'text-left'}`}>{t.table.date}</th>
-                                </tr>
-                            </thead>
-                            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                                {latestRegistrations.map((reg, i) => (
-                                    <tr key={i} className={`${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-50'}`}>
-                                        <td className={`py-2 px-4 font-bold ${colors.text} cursor-pointer hover:underline`}>{reg.name}</td>
-                                        <td className={`text-center text-xs ${colors.subText}`}>{reg.age}</td>
-                                        <td className={`text-xs ${colors.subText}`}>
-                                            <div className="flex items-center gap-1">
-                                                <MapPin size={10} className="text-red-400" /> {reg.from}
-                                            </div>
-                                        </td>
-                                        <td className="text-xs text-green-600 font-medium">
-                                            <div className="flex items-center gap-1">
-                                                <MapPin size={10} className="text-green-500" /> {reg.to}
-                                            </div>
-                                        </td>
-                                        <td className={`text-[10px] ${colors.subText}`}>{reg.date}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Active Tournaments - Expanded to fill space */}
-                    <div className={`col-span-2 ${colors.cardBg} shadow-sm rounded-sm border ${colors.cardBorder}`}>
-                        <SectionHeader title={t.sections.active_tournaments} icon={Trophy} />
-                        <div className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                            {tournaments.map((comp, i) => (
-                                <div key={i} className={`p-3 flex items-center gap-3 ${isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-gray-50'} cursor-pointer`}>
-                                    <div className={`w-10 h-10 border ${colors.cardBorder} rounded flex items-center justify-center p-1`}>
-                                        <Trophy size={20} className="text-yellow-500" />
-                                    </div>
-                                    <div>
-                                        <div className={`font-bold ${colors.text} text-sm hover:underline`}>{comp.name}</div>
-                                        <div className={`text-[10px] ${colors.subText} flex gap-2`}>
-                                            <span>{comp.clubs} Clubs</span>
-                                            <span className="text-green-500">• {comp.status}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                <h2 className="hl" style={{fontSize:'3rem',fontWeight:900,letterSpacing:'-0.05em',marginBottom:'1.5rem'}}>{t.aiVideoTitle}</h2>
+                <p style={{fontSize:'1.125rem',color:'#c6c5cf',marginBottom:'3rem',lineHeight:1.625,maxWidth:'36rem',marginLeft:isRTL?'auto':'0'}}>{t.aiVideoDesc}</p>
+                <div style={{display:'flex',flexDirection:'column',gap:'2rem'}}>
+                  {t.aiVideoFeatures.map((f,i)=>(
+                    <div key={i} style={{display:'flex',flexDirection:isRTL?'row-reverse':'row',alignItems:'flex-start',gap:'1.5rem'}}>
+                      <div className="tc" style={{width:'3.5rem',height:'3.5rem',flexShrink:0,borderRadius:'12px',background:'#24293d',border:'1px solid rgba(70,70,78,.3)',display:'flex',alignItems:'center',justifyContent:'center'}}
+                        onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.borderColor=f.color}
+                        onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.borderColor='rgba(70,70,78,.3)'}>
+                        <div style={{color:f.color}}>
+                          {i===0 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.5-1 1-4c2 0 3 .5 3 .5s.5 1 .5 3.5Z"></path><path d="M12 15v5s1 .5 4 1c0-2-.5-3-.5-3s-1-.5-3.5-.5Z"></path></svg>}
+                          {i===1 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>}
+                          {i===2 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>}
+                          {i===3 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>}
                         </div>
+                      </div>
+                      <div style={{textAlign:isRTL?'right':'left'}}>
+                        <h4 className="hl" style={{fontSize:'1.125rem',fontWeight:700,marginBottom:'.5rem'}}>{f.title}</h4>
+                        <p style={{color:'#c6c5cf',fontSize:'.875rem',lineHeight:1.625}}>{f.desc}</p>
+                      </div>
                     </div>
+                  ))}
                 </div>
-
-                {/* --- Success Stories --- */}
-                <div className="mb-6">
-                    <div className={`${colors.cardBg} shadow-sm rounded-sm border ${colors.cardBorder} p-6 flex flex-col md:flex-row items-center justify-between gap-6`}>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Star size={20} className="text-yellow-500 fill-yellow-500" />
-                                <h3 className={`font-bold text-xl ${colors.text}`}>{t.sections.success_stories}</h3>
-                            </div>
-                            <p className={`${colors.subText} text-sm max-w-lg leading-relaxed`}>
-                                {t.sections.success_subtitle}
-                            </p>
-                            <button className={`mt-4 text-xs ${colors.sectionHeader} text-white px-4 py-2 rounded hover:opacity-90 transition-colors`}>
-                                {t.sections.view_report}
-                            </button>
-                        </div>
-                        <div className={`flex flex-row items-center justify-center w-full md:w-auto p-4 ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'} rounded-xl border border-dashed ${colors.cardBorder}`}>
-                            <AnimatedTooltip items={tooltipItems} />
-                        </div>
+              </div>
+              {/* Video Mockup Side */}
+              <div className="hm" style={{position:'relative',order:isRTL?2:1}}>
+                <div style={{position:'absolute',inset:'-1rem',background:'linear-gradient(135deg,rgba(189,196,239,.3),rgba(132,217,147,.3))',filter:'blur(3rem)',borderRadius:'2rem',opacity:.5}}></div>
+                <div style={{position:'relative',background:'#000',borderRadius:'1rem',border:'1px solid rgba(70,70,78,.3)',overflow:'hidden',aspectRatio:'16/9'}}>
+                  {/* Video BG */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQ5x1hv6Yam_5ctQ4gx21HoD0cLmcyMGjnTG_mD1y2_udS_zdljaoqjjjXXShqMnicuomYEtzH3K_4y02JyBl-wCZSaJ2UvTGRZGt-0UwH76FMh2qFKUaltOd8j2sStd0KujZvsuPgNilFZW66OVgBolg29jtT9X-IldBUvMFme_xwhaB0olsmX7MqVc5OJuAGY1aCiY2VtNwLAbhTH1kvyHQJ0N7eelQPe3Pwgj0nJFQskg_GJun1toVf1az0XCvoig9hIrwUtvY" alt="AI Video Analysis" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:.7}}/>
+                  <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.8),transparent)'}}></div>
+                  {/* Tracking Badge */}
+                  <div className="ap gp" style={{position:'absolute',top:'2.5rem',left:'2.5rem',padding:'1rem',border:'1px solid rgba(189,196,239,.4)',borderRadius:'8px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'.75rem'}}>
+                      <div className="ap" style={{width:'12px',height:'12px',background:'#bdc4ef',borderRadius:'50%'}}></div>
+                      <span className="hl" style={{fontSize:'10px',fontWeight:700,letterSpacing:'.1em',color:'#bdc4ef',textTransform:'uppercase'}}>Tracking Active</span>
                     </div>
-                </div>
-
-                {/* --- Partners Section (Redesigned) --- */}
-                <div className={`py-20 relative overflow-hidden ${isDarkMode ? 'bg-slate-900/30' : 'bg-blue-50/50'} backdrop-blur-sm mb-12`}>
-                    {/* Background Gradients */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-primary/5 rounded-full blur-[100px] -z-10"></div>
-
-                    <div className="container mx-auto px-4 text-center">
-                        <div className="flex flex-col items-center justify-center mb-12">
-                            <h3 className={`text-2xl md:text-3xl font-extrabold text-black dark:text-white mb-3 flex items-center gap-3`}>
-                                <span className="w-12 h-[2px] bg-gradient-to-r from-transparent to-black/50 dark:to-white/50 hidden md:block"></span>
-                                {t.sections.partners}
-                                <span className="w-12 h-[2px] bg-gradient-to-l from-transparent to-black/50 dark:to-white/50 hidden md:block"></span>
-                            </h3>
-                            <div className={`h-1 w-24 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50`}></div>
+                    <p className="hl" style={{fontSize:'1.5rem',fontWeight:900,marginTop:'.5rem'}}>32.4 km/h</p>
+                    <p style={{fontSize:'8px',color:'#909099',textTransform:'uppercase'}}>Current Speed</p>
+                  </div>
+                  {/* Stats Panel */}
+                  <div style={{position:'absolute',bottom:'2.5rem',right:'2.5rem',padding:'1.5rem',background:'rgba(13,18,37,.8)',backdropFilter:'blur(12px)',border:'1px solid rgba(132,217,147,.4)',borderRadius:'12px'}}>
+                    <div style={{display:'flex',gap:'1rem'}}>
+                      {[{label:'Precision',val:'92%',color:'#84d993'},{label:'Stamina',val:'88%',color:'#bdc4ef'}].map((s,i)=>(
+                        <div key={i} style={{textAlign:'center'}}>
+                          <div style={{width:'3rem',height:'3rem',borderRadius:'50%',border:`3px solid ${s.color}`,borderTopColor:'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'.5rem'}}>
+                            <span style={{fontSize:'10px',fontWeight:700}}>{s.val}</span>
+                          </div>
+                          <p style={{fontSize:'8px',fontWeight:700,textTransform:'uppercase',color:'#c6c5cf'}}>{s.label}</p>
                         </div>
-
-                        <div className="flex flex-row items-center justify-center mb-10 w-full">
-                            <AnimatedTooltip marquee={true} items={marqueeContent.map((partner, idx) => ({
-                                id: idx + 100,
-                                name: partner.name,
-                                designation: (partner as any).type === 'academy' ? 'Accredited Academy' : 'Strategic Partner',
-                                image: partner.logoUrl || `https://ui-avatars.com/api/?name=${partner.name}&background=random`
-                            }))} />
-                        </div>
+                      ))}
                     </div>
+                  </div>
+                  {/* Spin indicator */}
+                  <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}>
+                    <div style={{width:'8rem',height:'8rem',border:'2px dashed rgba(255,255,255,.4)',borderRadius:'50%',animation:'spin 10s linear infinite'}}></div>
+                    <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:'1rem',height:'1rem',background:'white',borderRadius:'50%',boxShadow:'0 0 20px white'}}></div>
+                    </div>
+                    <div style={{position:'absolute',top:0,right:0,background:'#84d993',color:'#003916',padding:'2px 8px',borderRadius:'4px',fontSize:'8px',fontWeight:900,textTransform:'uppercase'}}>PLAYER_01</div>
+                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
+        {/* TOURNAMENTS */}
+        <section style={{background:'#080d20'}}>
+          <div className="ct">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4rem',flexWrap:'wrap',gap:'1rem'}}>
+              <div style={{textAlign:isRTL?'right':'left'}}>
+                <h2 className="st" style={{fontSize:'2.25rem'}}>{t.tourTitle}</h2>
+                <p style={{color:'#c6c5cf',marginTop:'.5rem'}}>{t.tourSub}</p>
+              </div>
+              <div style={{display:'flex',gap:'1rem'}}>
+                {['next','prev'].map((ic,i)=>(
+                  <button key={i} className="tc" style={{width:'3rem',height:'3rem',borderRadius:'50%',border:'1px solid rgba(70,70,78,.5)',background:'transparent',color:'#dde1fc',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}
+                    onMouseEnter={e=>(e.currentTarget as HTMLButtonElement).style.background='#1a1f32'}
+                    onMouseLeave={e=>(e.currentTarget as HTMLButtonElement).style.background='transparent'}>
+                    {ic==='prev' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>}
+                    {ic==='next' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'2rem'}} className="g3">
+              {t.tournaments.map((tour,i)=>(
+                <div key={i} style={{position:'relative',borderRadius:'12px',overflow:'hidden',height:'400px',cursor:'pointer'}}
+                  onMouseEnter={e=>{const img=e.currentTarget.querySelector('img') as HTMLImageElement;if(img)img.style.transform='scale(1.1)'}}
+                  onMouseLeave={e=>{const img=e.currentTarget.querySelector('img') as HTMLImageElement;if(img)img.style.transform='scale(1)'}}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={TOUR_IMGS[i]} alt={tour.title} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transition:'transform 1s'}}/>
+                  <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.9),rgba(0,0,0,.2),transparent)',opacity:.8}}></div>
+                  <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'2rem',textAlign:isRTL?'right':'left'}}>
+                    <h4 className="hl" style={{fontSize:'1.875rem',fontWeight:900,color:'white',marginBottom:'.5rem'}}>{tour.title}</h4>
+                    <p style={{color:'#d1d5db',marginBottom:'1.5rem'}}>{tour.desc}</p>
+                    <a href="https://www.instagram.com/hagzzel7lm/" target="_blank" rel="noopener noreferrer" className="tc hl" style={{background:'white',color:'black',padding:'.75rem 2rem',borderRadius:'2px',fontWeight:700,textDecoration:'none',display:'inline-block'}}
+                      onMouseEnter={e=>{const a=e.currentTarget as HTMLAnchorElement;a.style.background='#fdba45';a.style.color='#432c00'}}
+                      onMouseLeave={e=>{const a=e.currentTarget as HTMLAnchorElement;a.style.background='white';a.style.color='black'}}>{tour.btn}</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-                <ContactSection />
-            </main >
+        {/* TALENTS */}
+        <section style={{background:'#0d1225'}}>
+          <div className="ct">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'4rem',flexWrap:'wrap',gap:'1rem'}}>
+              <div style={{textAlign:isRTL?'right':'left'}}>
+                <h2 className="st" style={{fontSize:'2.25rem'}}>{t.talentsTitle}</h2>
+                <p style={{color:'#c6c5cf',marginTop:'.5rem'}}>{t.talentsSub}</p>
+              </div>
+              <a href="/auth/register" className="tc" style={{color:'#84d993',fontWeight:700,display:'flex',alignItems:'center',gap:'.5rem',textDecoration:'none'}}
+                onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.transform=isRTL?'translateX(-8px)':'translateX(8px)'}
+                onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.transform='none'}>
+                {isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform:'rotate(180deg)'}}><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
+                {t.viewAll}
+                {!isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
+              </a>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'1.5rem'}} className="g4">
+              {t.players.map((p,i)=>(
+                <div key={i} className="tc5" style={{background:'#161b2e',borderRadius:'12px',overflow:'hidden',border:'1px solid rgba(70,70,78,.1)',cursor:'pointer'}}
+                  onMouseEnter={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor='rgba(189,196,239,.5)';el.style.transform='translateY(-8px)';const img=el.querySelector('.pi') as HTMLImageElement;if(img){img.style.filter='grayscale(0)';img.style.transform='scale(1)'}}}
+                  onMouseLeave={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor='rgba(70,70,78,.1)';el.style.transform='none';const img=el.querySelector('.pi') as HTMLImageElement;if(img){img.style.filter='grayscale(100%)';img.style.transform='scale(1.05)'}}}>
+                  <div style={{height:'20rem',position:'relative',overflow:'hidden'}}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="pi tc7" src={PLAYER_IMGS[i]} alt={p.name} style={{width:'100%',height:'100%',objectFit:'cover',filter:'grayscale(100%)',transform:'scale(1.05)'}}/>
+                    {p.badge && <div className="hl" style={{position:'absolute',top:'1rem',right:isRTL?'1rem':'auto',left:isRTL?'auto':'1rem',background:'#fdba45',color:'#432c00',padding:'.25rem .75rem',fontSize:'10px',fontWeight:900,textTransform:'uppercase',borderRadius:'2px'}}>{p.badge}</div>}
+                  </div>
+                  <div style={{padding:'1.5rem'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1rem'}}>
+                      <div style={{textAlign:isRTL?'right':'left'}}>
+                        <h4 className="hl" style={{fontSize:'1.25rem',fontWeight:700,color:'#dde1fc'}}>{p.name}</h4>
+                        <p style={{fontSize:'.75rem',color:'#c6c5cf',textTransform:'uppercase',letterSpacing:'.1em'}}>{p.pos}</p>
+                      </div>
+                      <div style={{background:'#2f3448',padding:'.25rem .75rem',borderRadius:'2px',border:'1px solid rgba(70,70,78,.2)'}}>
+                        <span className="hl" style={{color:'#bdc4ef',fontWeight:900}}>{RATINGS[i]}</span>
+                      </div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'.5rem'}}>
+                      {PLAYER_STATS[i].map((s,j)=>(
+                        <div key={j} style={{background:'#24293d',padding:'.5rem',borderRadius:'2px',textAlign:'center',fontSize:'10px',fontWeight:700,color:'#909099',textTransform:'uppercase'}}>
+                          {s.l}<br/><span style={{color:'#dde1fc',fontSize:'.875rem'}}>{s.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-            <Footer />
-            <WhatsAppFloat />
-        </div >
-    );
+        {/* CONTACT */}
+        <section style={{background:'#161b2e',borderTop:'1px solid rgba(70,70,78,.1)',borderBottom:'1px solid rgba(70,70,78,.1)'}}>
+          <div className="ct">
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}} className="g2">
+              <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
+                <h2 className="hl" style={{fontSize:'2.25rem',fontWeight:900,marginBottom:'1.5rem'}}>{t.contactTitle}</h2>
+                <p style={{color:'#c6c5cf',marginBottom:'2.5rem',fontSize:'1.125rem'}}>{t.contactSub}</p>
+                <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+                  {t.contacts.map((c,i)=>(
+                    <a key={i} href={c.href} className="tc" style={{display:'flex',flexDirection:isRTL?'row-reverse':'row',alignItems:'center',gap:'1.5rem',padding:'1rem',borderRadius:'12px',textDecoration:'none',border:'1px solid transparent',color:'inherit'}}
+                      onMouseEnter={e=>{const el=e.currentTarget as HTMLAnchorElement;el.style.background='#1a1f32';el.style.borderColor=c.hb}}
+                      onMouseLeave={e=>{const el=e.currentTarget as HTMLAnchorElement;el.style.background='transparent';el.style.borderColor='transparent'}}>
+                      <div style={{width:'3.5rem',height:'3.5rem',background:c.bg,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        {i===0 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>}
+                        {i===1 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 1 .7 2.81 2 2 0 0 1-.45 1.11L7.82 9.11a15 15 0 0 0 6 6l1.27-1.27a2 2 0 0 1 1.11-.45 12.84 12.84 0 0 1 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>}
+                        {i===2 && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>}
+                      </div>
+                      <div style={{textAlign:isRTL?'right':'left'}}>
+                        <h4 className="hl" style={{fontWeight:700,fontSize:'1.25rem'}}>{c.title}</h4>
+                        <p style={{color:'#c6c5cf'}} dir="ltr">{c.sub}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div style={{background:'#1a1f32',padding:'3rem',borderRadius:'16px',border:'1px solid rgba(70,70,78,.2)',order:isRTL?2:1}}>
+                <form style={{display:'flex',flexDirection:'column',gap:'1.5rem',textAlign:isRTL?'right':'left'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.5rem'}}>
+                    {[{lbl:t.emailLbl,ph:t.emailPh,type:'email'},{lbl:t.nameLbl,ph:t.namePh,type:'text'}].map((f,i)=>(
+                      <div key={i}>
+                        <label style={{display:'block',fontSize:'.75rem',fontWeight:700,textTransform:'uppercase',marginBottom:'.5rem',color:'#909099'}}>{f.lbl}</label>
+                        <input className="inp" type={f.type} placeholder={f.ph}/>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:'.75rem',fontWeight:700,textTransform:'uppercase',marginBottom:'.5rem',color:'#909099'}}>{t.subjectLbl}</label>
+                    <input className="inp" type="text" placeholder={t.subjectPh}/>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:'.75rem',fontWeight:700,textTransform:'uppercase',marginBottom:'.5rem',color:'#909099'}}>{t.msgLbl}</label>
+                    <textarea className="inp" placeholder={t.msgPh} rows={4} style={{resize:'vertical'}}></textarea>
+                  </div>
+                  <button className="hl" style={{width:'100%',padding:'1rem',borderRadius:'2px',background:'linear-gradient(135deg,#bdc4ef,#161e3f)',color:'#272e50',fontWeight:900,fontSize:'1rem',letterSpacing:'.1em',textTransform:'uppercase',border:'none',cursor:'pointer',transition:'filter .2s'}}
+                    onMouseEnter={e=>(e.currentTarget as HTMLButtonElement).style.filter='brightness(1.1)'}
+                    onMouseLeave={e=>(e.currentTarget as HTMLButtonElement).style.filter='none'}>{t.sendBtn}</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section style={{position:'relative',overflow:'hidden',background:'#0d1225'}}>
+          <div style={{position:'absolute',inset:0,background:'rgba(189,196,239,.05)'}}></div>
+          <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,#080d20,transparent)'}}></div>
+          <div className="ct" style={{position:'relative',zIndex:10,textAlign:'center'}}>
+            <h2 className="hl" style={{fontSize:'4rem',fontWeight:900,marginBottom:'2rem',lineHeight:1.25}}>{t.ctaTitle}</h2>
+            <p style={{fontSize:'1.25rem',color:'#c6c5cf',marginBottom:'3rem',maxWidth:'42rem',margin:'0 auto 3rem'}}>{t.ctaSub}</p>
+            <a href="/auth/register" className="hl tc" style={{background:'#84d993',color:'#003916',padding:'1.5rem 3rem',borderRadius:'2px',fontWeight:900,fontSize:'1.5rem',textDecoration:'none',display:'inline-block',boxShadow:'0 25px 50px rgba(132,217,147,.4)'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.transform='scale(1.1)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.transform='scale(1)'}>{t.ctaBtn}</a>
+          </div>
+        </section>
+      </main>
+
+      <footer style={{background:'#080d20',borderTop:'1px solid rgba(70,70,78,.1)'}}>
+        <div className="ct" style={{paddingTop:'5rem',paddingBottom:'2.5rem'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'3rem',marginBottom:'5rem',textAlign:isRTL?'right':'left'}} className="fc">
+            <div>
+              <div style={{display:'flex',alignItems:'center',gap:'.75rem',justifyContent:isRTL?'flex-end':'flex-start',marginBottom:'1.5rem'}}>
+                <img src="/el7lm-logo.png" alt="EL7LM" style={{height:'4rem',width:'auto',objectFit:'contain'}}/>
+                <span className="hl" style={{fontSize:'1.5rem',fontWeight:900,color:'#bdc4ef',textTransform:'uppercase',letterSpacing:'-0.05em'}}>EL7LM</span>
+              </div>
+              <p style={{color:'#c6c5cf',fontSize:'.875rem',lineHeight:1.75,marginBottom:'1.5rem'}}>{t.footerDesc}</p>
+              <div style={{display:'flex',gap:'.75rem',justifyContent:isRTL?'flex-end':'flex-start',flexWrap:'wrap'}}>
+                {[
+                  { id: 'fb', url: 'https://www.facebook.com/profile.php?id=61577797509887', icon: <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path> },
+                  { id: 'tt', url: 'https://www.tiktok.com/@meskel7lm', icon: <path d="M21 8V1c-2.4 0-4.8 1.4-5.4 3.6C14.8 6.4 15.5 8.7 17 10h-2c-3.1 0-5.6 2.5-5.6 5.6 0 2.2 1.3 4.1 3.2 5 1 .5 2.1.8 3.3.8 3.8 0 6.9-3.1 6.9-6.9 0-.4 0-.8-.1-1.2l-.1-.4C22.2 11.1 21.8 9.5 21 8z"></path> },
+                  { id: 'yt', url: 'https://www.youtube.com/@el7lm25', icon: <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.42a2.78 2.78 0 0 0-1.94 2C1 8.11 1 12 1 12s0 3.89.46 5.58a2.78 2.78 0 0 0 1.94 2c1.72.42 8.6.42 8.6.42s6.88 0 8.6-.42a2.78 2.78 0 0 0 1.94-2C23 15.89 23 12 23 12s0-3.89-.46-5.58z M9.75 15.02V8.98L15.45 12z"></path> },
+                  { id: 'ig', url: 'https://www.instagram.com/hagzzel7lm/', icon: <path d="M17 2H7a5 5 0 0 0-5 5v10a5 5 0 0 0 5 5h10a5 5 0 0 0 5-5V7a5 5 0 0 0-5-5z M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z M17.5 6.5h.01"></path> },
+                  { id: 'li', url: 'https://www.linkedin.com/showcase/108259352', icon: <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2zM4 2a2 2 0 1 1-2 2 2 2 0 0 1 2-2z"></path> }
+                ].map((s, idx) => (
+                  <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer" className="tc" style={{width:'2.5rem',height:'2.5rem',borderRadius:'50%',background:dark?'#1a1f32':'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',color:theme.subText,textDecoration:'none',border:`1px solid ${theme.border}`}}
+                    onMouseEnter={e=>{const a=e.currentTarget as HTMLAnchorElement;a.style.background='#84d993';a.style.color='#003916';a.style.transform='translateY(-3px)'}}
+                    onMouseLeave={e=>{const a=e.currentTarget as HTMLAnchorElement;a.style.background=dark?'#1a1f32':'#f1f5f9';a.style.color=theme.subText;a.style.transform='none'}}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {s.icon}
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+            {t.footerCols.map((col,i)=>(
+              <div key={i}>
+                <h4 className="hl" style={{color:'#dde1fc',fontWeight:700,marginBottom:'2rem',fontSize:'1.25rem'}}>{col.title}</h4>
+                <nav style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+                  {col.links.map((lk,j)=>(
+                    <a key={j} href={lk.h} className="tc" style={{color:'#c6c5cf',fontSize:'.875rem',textDecoration:'none'}}
+                      onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.color='#bdc4ef'}
+                      onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.color='#c6c5cf'}>{lk.l}</a>
+                  ))}
+                </nav>
+              </div>
+            ))}
+          </div>
+          <div style={{paddingTop:'2rem',borderTop:'1px solid rgba(70,70,78,.1)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'1rem'}}>
+            <p style={{fontSize:'.75rem',color:'#c6c5cf',fontWeight:500,letterSpacing:'.025em'}}>{t.copyright}</p>
+            <div style={{display:'flex',alignItems:'center',gap:'1.5rem'}}>
+              <div style={{textAlign:isRTL?'right':'left'}}>
+                <span style={{fontSize:'.75rem',color:'#c6c5cf',display:'block'}}>{t.designedFor}</span>
+                <span className="hl" style={{fontSize:'.875rem',color:'#84d993',fontWeight:900,letterSpacing:'.05em'}}>Mesk llc Qatar</span>
+              </div>
+              <div style={{width:'3.5rem',height:'3.5rem',borderRadius:'12px',background:'linear-gradient(135deg, rgba(132,217,147,0.2), rgba(132,217,147,0.05))',border:'1px solid rgba(132,217,147,0.3)',display:'flex',alignItems:'center',justifyContent:'center',color:'#84d993',boxShadow:'0 10px 20px rgba(132,217,147,0.1)'}} className="ap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* WhatsApp Float */}
+      <a href="https://wa.me/97470542458" target="_blank" rel="noopener noreferrer" className="wa tc"
+        onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.transform='scale(1.1)'}
+        onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.transform='none'}>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.63 1.438h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </a>
+    </div>
+  );
 }

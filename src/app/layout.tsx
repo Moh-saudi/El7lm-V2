@@ -47,8 +47,13 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
   },
   openGraph: {
     title: "El7lm - منصة كرة القدم المتكاملة",
@@ -71,6 +76,8 @@ export default function RootLayout({
       <head>
         <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID || 'GTM-WR4X2BD8'} />
         <ClarityScript projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 't69agqt6n4'} />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
       </head>
       <body className={`${cairo.className} antialiased`}>
         <Providers>

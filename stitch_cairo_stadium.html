@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&amp;family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary": "#272e50",
+              "on-secondary-fixed-variant": "#005323",
+              "outline": "#909099",
+              "on-surface-variant": "#c6c5cf",
+              "tertiary-fixed": "#ffdeae",
+              "surface-variant": "#2f3448",
+              "on-tertiary-container": "#b57d00",
+              "on-primary-fixed": "#11193a",
+              "on-background": "#dde1fc",
+              "surface-container-highest": "#2f3448",
+              "primary-container": "#161e3f",
+              "secondary": "#84d993",
+              "outline-variant": "#46464e",
+              "on-secondary-fixed": "#00210a",
+              "on-error-container": "#ffdad6",
+              "secondary-fixed-dim": "#84d993",
+              "primary-fixed-dim": "#bdc4ef",
+              "on-tertiary-fixed-variant": "#604100",
+              "on-secondary": "#003916",
+              "inverse-primary": "#555c81",
+              "tertiary-container": "#2e1d00",
+              "on-primary-fixed-variant": "#3d4568",
+              "tertiary-fixed-dim": "#fdba45",
+              "primary": "#bdc4ef",
+              "on-tertiary-fixed": "#281800",
+              "on-primary-container": "#7e86ad",
+              "inverse-surface": "#dde1fc",
+              "surface-tint": "#bdc4ef",
+              "secondary-fixed": "#a0f6ad",
+              "surface-container-lowest": "#080d20",
+              "error": "#ffb4ab",
+              "tertiary": "#fdba45",
+              "on-error": "#690005",
+              "error-container": "#93000a",
+              "inverse-on-surface": "#2b2f44",
+              "surface": "#0d1225",
+              "surface-container-high": "#24293d",
+              "surface-bright": "#33384d",
+              "surface-container-low": "#161b2e",
+              "secondary-container": "#00632b",
+              "primary-fixed": "#dde1ff",
+              "background": "#0d1225",
+              "surface-dim": "#0d1225",
+              "on-secondary-container": "#87dc96",
+              "surface-container": "#1a1f32",
+              "on-tertiary": "#432c00",
+              "on-surface": "#dde1fc"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk", "IBM Plex Sans Arabic"],
+              "body": ["Inter", "IBM Plex Sans Arabic"],
+              "label": ["Inter", "IBM Plex Sans Arabic"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }
+        .font-headline { font-family: 'Space Grotesk', 'IBM Plex Sans Arabic', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { background: rgba(47, 52, 72, 0.4); backdrop-filter: blur(20px); }
+        .hero-gradient { background: linear-gradient(135deg, rgba(189, 196, 239, 0.1) 0%, rgba(22, 30, 63, 0.8) 100%); }
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(-250px * 7)); }
+        }
+        .animate-scroll {
+            animation: scroll 40s linear infinite;
+        }
+        .rtl-scroll {
+            animation: scroll-rtl 40s linear infinite;
+        }
+        @keyframes scroll-rtl {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(250px * 7)); }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-secondary selection:text-on-secondary overflow-x-hidden" data-mode="connect">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 lg:px-12 h-20 bg-[#0d1225]/90 backdrop-blur-xl border-b border-outline-variant/20">
+<div class="flex items-center gap-8 lg:gap-12">
+<div class="flex items-center gap-3">
+<img alt="EL7LM Logo" class="h-12 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uiyjSZq_cEyAp6Wqa1bmLNcaWgWjLdZ_OCf_3Ve-xuJrPgqMxQx__13FbwAdREW9Ncrfnw8Loq1_T50dRIJMgdopdl6mSZwWsZ1Q0R_Nq0ZEz5CPBwCJ4knTqowGqGSWot44flLS_Rwa7P4JKuTSXiv_IgwdCOacw2YI1_DIQ3yzHATRoW0LpdPjECKf0ASui3c157avfCcAB9zSHLqIfRSDTMfwliWantDgxguxISUkSE0vn93ORjxWhrwLDaZ1p0q9B-YZxKkxA"/>
+<div class="text-xl font-black text-[#bdc4ef] tracking-tighter font-headline uppercase hidden sm:block">EL7LM</div>
+</div>
+<nav class="hidden md:flex gap-6 lg:gap-8">
+<a class="font-headline tracking-tight font-bold uppercase text-[#bdc4ef] border-b-2 border-[#bdc4ef] pb-1" href="#">Home</a>
+<a class="font-headline tracking-tight font-bold uppercase text-[#46464e] hover:text-[#bdc4ef] transition-colors" href="#">hagzz app</a>
+<a class="font-headline tracking-tight font-bold uppercase text-[#46464e] hover:text-[#bdc4ef] transition-colors" href="#">Academy</a>
+<a class="font-headline tracking-tight font-bold uppercase text-[#46464e] hover:text-[#bdc4ef] transition-colors" href="#">club</a>
+<a class="font-headline tracking-tight font-bold uppercase text-[#46464e] hover:text-[#bdc4ef] transition-colors" href="#">Tournaments</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 lg:gap-6">
+<!-- Theme & Lang Switcher -->
+<div class="flex items-center bg-surface-container-high rounded-full p-1 border border-outline-variant/30">
+<button class="px-3 py-1 text-xs font-bold font-headline rounded-full bg-primary text-on-primary transition-all">AR</button>
+<button class="px-3 py-1 text-xs font-bold font-headline text-on-surface-variant hover:text-on-surface transition-all">EN</button>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<div class="flex items-center gap-2 text-[#bdc4ef] border-r border-outline-variant/30 pr-4 mr-2">
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#1a1f32] p-2 rounded-lg transition-all">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#1a1f32] p-2 rounded-lg transition-all">account_circle</span>
+</div>
+<button class="hidden sm:block bg-gradient-to-br from-primary to-primary-container text-on-primary px-5 py-2 rounded-sm font-headline font-bold uppercase tracking-tight hover:brightness-110 transition-all">
+            Join Lab
+        </button>
+</div>
+</header>
+<main class="pt-20">
+<!-- Hero Section -->
+<section class="relative min-h-[90vh] flex items-center overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-30" data-alt="Atmospheric wide shot of a futuristic football stadium at night" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpd9Dfe0sZKczpg1MkiIZpCAuJMqrsU2hJvPdSMlRhlgtpp3jRSyz2JR7PrTAyGIg2yPgWi2RAS2RWo04cEgY7NkNaQIXaR2lLdeqoNzxyxSW8KyY5vGSoaErfjOSS8OXiIjbYbDIQQCDjoAvK57vWU3Ki1HBIUKbQtYc2U5Jq09Lq3gfqvfLdelpZnyrHBsKQNFUXpJuV3-bg1yKgihT1PX8BZiQ-tgP4kVyKO-6IWWPzk5h1rGO6RLSPseDsERrMhERNosPqmOU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent"></div>
+</div>
+<div class="container mx-auto px-8 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="text-right">
+<span class="inline-block bg-tertiary-container text-tertiary px-4 py-1 rounded-sm text-sm font-bold tracking-widest uppercase mb-6 animate-pulse">The Elite Performance Lab</span>
+<h1 class="text-5xl md:text-8xl font-black font-headline text-on-surface leading-[1.1] mb-6 drop-shadow-2xl">
+                    لا تؤجل حلمك، <br/>
+<span class="text-primary italic">واجعل البداية اليوم.</span>
+</h1>
+<p class="text-xl text-on-surface-variant max-w-xl ml-auto mb-10 leading-relaxed font-body">
+                    أكبر منصة لاكتشاف المواهب الكروية في الشرق الأوسط. نستخدم الذكاء الاصطناعي لتحليل أدائك وربطك مباشرة مع أفضل الكشافين والأندية العالمية.
+                </p>
+<div class="flex flex-row-reverse gap-4">
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 lg:px-12 py-5 rounded-sm font-headline font-black text-xl hover:scale-105 transition-all shadow-xl shadow-primary/10">
+                        ابدأ رحلتك مجاناً
+                    </button>
+<button class="border border-outline-variant hover:bg-surface-container transition-all px-8 lg:px-12 py-5 rounded-sm font-headline font-bold text-xl">
+                        مشاهدة التفاصيل
+                    </button>
+</div>
+</div>
+<div class="hidden lg:block relative group">
+<div class="absolute -inset-10 bg-primary/20 blur-[100px] rounded-full transition-all group-hover:bg-primary/30"></div>
+<div class="relative glass-panel rounded-xl p-2 border border-outline-variant/30 rotate-2 group-hover:rotate-0 transition-transform duration-700">
+<img class="rounded-lg shadow-2xl" data-alt="Dynamic close up of a professional soccer player training" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCb66OeMwh9mOvKU8i2lmJ1wd0HFriOIRlTiTELXTcq6sxveWSeUYlj1ibG6kUiYgRuna7rsJ6yw6gDanex07N-9eM4TBaYwZ63cARuZKE0yx-YfmTVAD704QR4L0O1vXapYcUgcyEu4IGHPKkNPq0i0a4QG_wddbgmWGiKn30SFeTfoXLcjtnRnMOaNRUDSMtpFcA5JIo2R2Jd7rLbrCcsVYKezK625To7qfzVGlGXvYKoC9zj2LEEtsjWTKN43AqWkwUL_9G8T78"/>
+<div class="absolute -bottom-10 -left-10 bg-surface-container-highest p-6 rounded-lg shadow-2xl border border-secondary/30 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary text-3xl">trending_up</span>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tighter">Performance Score</p>
+<p class="text-3xl font-headline font-black text-secondary leading-none">ELITE 98.4</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Partners Section (Scrolling) -->
+<section class="py-12 bg-surface-container-lowest border-y border-outline-variant/10 overflow-hidden">
+<div class="container mx-auto px-8 mb-6">
+<p class="text-center text-on-surface-variant font-headline font-bold uppercase tracking-[0.3em] text-xs">Trusted By Professional Partners</p>
+</div>
+<div class="relative flex overflow-hidden group">
+<div class="flex gap-16 whitespace-nowrap rtl-scroll items-center py-4">
+<!-- Duplicate logos for seamless scroll -->
+<div class="flex items-center gap-16 px-8">
+<img alt="Partner 1" class="h-8 opacity-40 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4nVavhWrX-PS_xIfZKogQia5QZ26dK938IyFhZCcKNfkHeBeLIxG1eq185fA-tZ9mac8Qli1o7NmqHo3W29OChIlhne567kCTIG-GFCUe9slb1sEZfmU59vF1Bf2pyxjIg7SIQ8180ctaOKszWf7WHsQYLwO80aMvkBbsgDN57DOAKy3-xOmg12FA9EWXTtGPCvFfJUFi0-3cQBBMlD1Rz6DvfAnmwxsh5omvzugmD0G0O0vjxw1OXulz-bk9iFJ3Emf54ooChmg"/>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">AL AHLI FC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">ZAMALEK SC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">PYRAMIDS</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">LIVERPOOL FC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">NIKE FOOTBALL</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">ADIDAS</div>
+</div>
+<div class="flex items-center gap-16 px-8">
+<img alt="Partner 1" class="h-8 opacity-40 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvCm4mwcqAXgY2kHX6PKtTbGnRcz6kZQZT4rsb2kZbR4iBe_jKuI52_p6W761OPPZyXo12ZqltRHNN4Gba27zMhTvrUX6IasF9DhDM7DdxNkxsm-LCkXSSKltIoSG3jUm_NJilDOSPRawYOC4bLYtHW7aqcBC0YTV2Y1GZhe3Al1-_HHBLw9U2K3Xbkb98hg00CgDxfqjQcf-FZRpopZ7bcQPpuZ501HZkvP8EAVLEmzrMgUHD71adkAS5FU3AxDhtE2m-GYp-4AE"/>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">AL AHLI FC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">ZAMALEK SC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">PYRAMIDS</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">LIVERPOOL FC</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">NIKE FOOTBALL</div>
+<div class="text-2xl font-black text-on-surface-variant/40 hover:text-primary transition-colors cursor-pointer uppercase font-headline">ADIDAS</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="py-24 bg-surface">
+<div class="container mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl lg:text-5xl font-headline font-black uppercase mb-4 tracking-tighter">أدوات النجاح الرقمية</h2>
+<div class="w-24 h-1.5 bg-secondary mx-auto rounded-full"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Feature 1 -->
+<div class="bg-surface-container-low p-12 rounded-xl group hover:bg-surface-container-high transition-all duration-500 border border-outline-variant/10 hover:border-primary/50 relative overflow-hidden">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+<span class="material-symbols-outlined text-6xl text-primary mb-8 block" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<h3 class="text-2xl font-headline font-bold mb-4 text-on-surface">AI Skill Analysis</h3>
+<p class="text-on-surface-variant leading-relaxed">نستخدم أحدث تقنيات الرؤية الحاسوبية لتحليل فيديوهات أدائك واستخراج إحصائيات دقيقة حول السرعة، التمرير، ودقة التسديد.</p>
+</div>
+<!-- Feature 2 -->
+<div class="bg-surface-container-low p-12 rounded-xl group hover:bg-surface-container-high transition-all duration-500 border border-outline-variant/10 hover:border-secondary/50 relative overflow-hidden">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+<span class="material-symbols-outlined text-6xl text-secondary mb-8 block" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<h3 class="text-2xl font-headline font-bold mb-4 text-on-surface">Scout Visibility</h3>
+<p class="text-on-surface-variant leading-relaxed">ملفك الشخصي يظهر مباشرة في لوحة تحكم الكشافين المعتمدين محلياً ودولياً، مما يزيد فرصك في الحصول على تجربة أداء.</p>
+</div>
+<!-- Feature 3 -->
+<div class="bg-surface-container-low p-12 rounded-xl group hover:bg-surface-container-high transition-all duration-500 border border-outline-variant/10 hover:border-tertiary/50 relative overflow-hidden">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-tertiary/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+<span class="material-symbols-outlined text-6xl text-tertiary mb-8 block" style="font-variation-settings: 'FILL' 1;">hub</span>
+<h3 class="text-2xl font-headline font-bold mb-4 text-on-surface">Club Direct Contact</h3>
+<p class="text-on-surface-variant leading-relaxed">نظام مراسلة آمن يربطك بمدراء الأكاديميات والمدربين مباشرة عند اهتمامهم بمهاراتك المسجلة على المنصة.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Tournaments Section -->
+<section class="py-24 bg-surface-container-lowest">
+<div class="container mx-auto px-8">
+<div class="flex flex-col md:flex-row justify-between items-center mb-16 gap-4">
+<div class="text-right md:text-right w-full">
+<h2 class="text-4xl font-headline font-black uppercase tracking-tighter">البطولات والمنافسات</h2>
+<p class="text-on-surface-variant mt-2">شارك في أقوى الفعاليات لرفع تقييمك الرقمي</p>
+</div>
+<div class="flex gap-4 shrink-0">
+<button class="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+<button class="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Tournament 1 -->
+<div class="relative group rounded-xl overflow-hidden h-[400px]">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQ5x1hv6Yam_5ctQ4gx21HoD0cLmcyMGjnTG_mD1y2_udS_zdljaoqjjjXXShqMnicuomYEtzH3K_4y02JyBl-wCZSaJ2UvTGRZGt-0UwH76FMh2qFKUaltOd8j2sStd0KujZvsuPgNilFZW66OVgBolg29jtT9X-IldBUvMFme_xwhaB0olsmX7MqVc5OJuAGY1aCiY2VtNwLAbhTH1kvyHQJ0N7eelQPe3Pwgj0nJFQskg_GJun1toVf1az0XCvoig9hIrwUtvY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80"></div>
+<div class="absolute bottom-0 left-0 right-0 p-8 text-right">
+<span class="px-3 py-1 text-xs font-black uppercase mb-4 inline-block bg-tertiary text-on-tertiary">Upcoming</span>
+<h4 class="text-3xl font-headline font-black text-white mb-2">تحدي النخبة: الرياض</h4>
+<p class="text-gray-300 mb-6">اختبارات أداء فنية تحت إشراف مدربي الدوري السعودي للمحترفين.</p>
+<button class="bg-white text-black px-8 py-3 rounded-sm font-headline font-bold hover:bg-primary hover:text-on-primary transition-all">تذكير بالموعد</button>
+</div>
+</div>
+<!-- Tournament 2 -->
+<div class="relative group rounded-xl overflow-hidden h-[400px]">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8-Rv7KdQ1g0souDdQUefUBV2vd9S3AnwtqRHaRBR6vyfskhRNKRAffhXNgaSS7p-kPxaHewL00hMEcyoKIE9lkAL6jhp82Opnj-4gKk3hHwe-ARJL0BLR22CP11rG9mMJJ8lKlEnkJ5lXbY0c-a3TOz1YnMdSqKapovMsLMIZJNx05HvdwaLY3VjD8pHiDuvAfCQ6GN0FqTEUfwu2Qo03h9-wwY6mbXpwSwvfEqNf_kPDpGM1TpC5I_NIgvLafnYe9zpnRjz5zzA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80"></div>
+<div class="absolute bottom-0 left-0 right-0 p-8 text-right">
+<span class="bg-tertiary text-on-tertiary px-3 py-1 text-xs font-black uppercase mb-4 inline-block">Upcoming</span>
+<h4 class="text-3xl font-headline font-black text-white mb-2">بطولة الحلم العربي -الدوحة</h4>
+<p class="text-gray-300 mb-6">اختبارات أداء فنية تحت إشراف مدربي الدوري القطري .</p>
+<button class="bg-white/10 backdrop-blur-md border border-white/30 text-white px-8 py-3 rounded-sm font-headline font-bold hover:bg-white hover:text-black transition-all">سجل الآن</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Featured Talents Grid -->
+<section class="py-24 bg-surface">
+<div class="container mx-auto px-8">
+<div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
+<div class="text-right">
+<h2 class="text-4xl font-headline font-black uppercase tracking-tighter">مواهب صاعدة</h2>
+<p class="text-on-surface-variant mt-2">الأكثر بحثاً وتفاعلاً من قبل الأندية هذا الأسبوع</p>
+</div>
+<a class="text-secondary font-bold flex items-center gap-2 hover:translate-x-[-8px] transition-transform" href="#">
+                    عرض جميع اللاعبين
+                    <span class="material-symbols-outlined">arrow_back</span>
+</a>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Talent Card 1 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group border border-outline-variant/10 hover:border-primary/50 transition-all duration-500 hover:-translate-y-2">
+<div class="h-80 relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100" data-alt="Portrait of a young determined soccer player" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpCANwPXzcB4XNxsd5g0IzBXx85qulaAgiHB3VEV4mJ-HnKFpKiTNkRg_i5FhhltP7wmmW-xKSRcRyDAZ89f-Vla0pCdcidR6K-b8Py_4SOooyZsNK61gNzel3gnQVSJsn0hxHNjO8l8mozJm4KW-BIkOoJ5Jptaux-VEA85fEqu6AY50y215pz9GeY--ENImRv8l1pQJ_JR2ppU9lwdQpqvXyLqnQG4iF7ei90E-QbPczGapaiGskvBSJZmqG_QdAwnOn5iovOew"/>
+<div class="absolute top-4 right-4 bg-tertiary text-on-tertiary px-3 py-1 text-[10px] font-black uppercase rounded-sm">Elite Rank</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="text-xl font-headline font-bold text-on-surface">أحمد كريم</h4>
+<p class="text-xs text-on-surface-variant uppercase tracking-widest">Midfielder • 19 yrs</p>
+</div>
+<div class="bg-surface-container-highest px-3 py-1 rounded-sm border border-outline-variant/20">
+<span class="text-primary font-black font-headline">94</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[10px] font-bold text-outline uppercase">
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Pace <br/><span class="text-on-surface text-sm">88</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Shot <br/><span class="text-on-surface text-sm">92</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Pass <br/><span class="text-on-surface text-sm">95</span></div>
+</div>
+</div>
+</div>
+<!-- Talent Card 2 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group border border-outline-variant/10 hover:border-primary/50 transition-all duration-500 hover:-translate-y-2">
+<div class="h-80 relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100" data-alt="Action shot of a young soccer goalkeeper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkI3L0Mpa8_973I0Ox0HL-j62lTN_3ov_unRBls1Z1jaol8ZvAWESi9wE6sDsKK2wFg7mTnrLeyXGrnLsXPh0YBDuxjsIFSB9PSbv9sdSB4hSwtWkF6Ajv2wIjX4ST4dhI8oP0Ox03xJIMnAvhb8lsGtRMukryUyWDsVhxAlyFhR-PfoM9b2L48_6DCy5hvI7tE_InVXgrKUQO5BQ7I89AHeDG_i5WpV--EEDYYfxBfBnvVUJQWTYZc6TgI-7eTUDV3zEWT_D2dds"/>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="text-xl font-headline font-bold text-on-surface">ياسين عمر</h4>
+<p class="text-xs text-on-surface-variant uppercase tracking-widest">Forward • 17 yrs</p>
+</div>
+<div class="bg-surface-container-highest px-3 py-1 rounded-sm border border-outline-variant/20">
+<span class="text-primary font-black font-headline">89</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[10px] font-bold text-outline uppercase">
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Pace <br/><span class="text-on-surface text-sm">96</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Shot <br/><span class="text-on-surface text-sm">85</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Drib <br/><span class="text-on-surface text-sm">91</span></div>
+</div>
+</div>
+</div>
+<!-- Talent Card 3 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group border border-outline-variant/10 hover:border-primary/50 transition-all duration-500 hover:-translate-y-2">
+<div class="h-80 relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100" data-alt="Portrait of a young female soccer player" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3ZDHDlZzwuUsxjVz7wq1t3xcQ9Xb5TbP3GUGsM0bXfZvCtkP1EzmxtKDQq74YF4aVjhhT6eWGkl-VxyrXs2DTyVOLrig7Fm-2kp_0WtuXBKTPyRQhfhJakA97kxzD1g9vh_auMsg0rluOCYjB6VD7o9vEn4MnrMq_F4D2uQQNLwyCRdHU_ZCAY-bMK1CgHfOdbDutBo7Jn_ryeBH4Xs_ubUFRUi0vRMinubLUYWQcOK-fd3NNWTIFTPXd45hhxeeiYk2POJCp00A"/>
+<div class="absolute top-4 right-4 bg-tertiary text-on-tertiary px-3 py-1 text-[10px] font-black uppercase rounded-sm">Scout Choice</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="text-xl font-headline font-bold text-on-surface">مريم حسن</h4>
+<p class="text-xs text-on-surface-variant uppercase tracking-widest">Striker • 18 yrs</p>
+</div>
+<div class="bg-surface-container-highest px-3 py-1 rounded-sm border border-outline-variant/20">
+<span class="text-primary font-black font-headline">91</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[10px] font-bold text-outline uppercase">
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Pace <br/><span class="text-on-surface text-sm">90</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Shot <br/><span class="text-on-surface text-sm">94</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Phys <br/><span class="text-on-surface text-sm">82</span></div>
+</div>
+</div>
+</div>
+<!-- Talent Card 4 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden group border border-outline-variant/10 hover:border-primary/50 transition-all duration-500 hover:-translate-y-2">
+<div class="h-80 relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100" data-alt="Soccer player on training field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7pJ6T_fIPrBl66Do8SwqeB-Fx9cES7a71aJGZiyHbhp4mAd90TD9vogaKOwyeL5_SPf2RdnnIw73vCeFi1AWMfDioHk7UyaD3CJDroo9bPCSgqS5MfeXIt5IIYvpEFaEG3pc7GF2iEJE2GxkGRzp7Mi4U4SP5dHz02Di-073_IxIP6LRmUBx3y4gFplD2GQtjos7lwBoQ-sHB4_gwP04gqcgNTZd72LeWXj60MaWce2q-6RWuihXTyAhW_2Ef23GPBUfYVUc9vQA"/>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="text-xl font-headline font-bold text-on-surface">زياد علي</h4>
+<p class="text-xs text-on-surface-variant uppercase tracking-widest">Defender • 20 yrs</p>
+</div>
+<div class="bg-surface-container-highest px-3 py-1 rounded-sm border border-outline-variant/20">
+<span class="text-primary font-black font-headline">87</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[10px] font-bold text-outline uppercase">
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Def <br/><span class="text-on-surface text-sm">93</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Phys <br/><span class="text-on-surface text-sm">95</span></div>
+<div class="bg-surface-container-high p-2 rounded-sm text-center">Pass <br/><span class="text-on-surface text-sm">84</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Contact Us Section -->
+<section class="py-24 bg-surface-container-low border-y border-outline-variant/10">
+<div class="container mx-auto px-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div class="text-right order-2 lg:order-1">
+<h2 class="text-4xl font-headline font-black mb-6">تواصل معنا</h2>
+<p class="text-on-surface-variant mb-10 text-lg">فريق الدعم الفني وخدمة العملاء متاح للإجابة على جميع استفساراتكم حول المنصة والاشتراكات.</p>
+<div class="space-y-6">
+<a class="flex flex-row-reverse items-center gap-6 group p-4 rounded-xl hover:bg-surface-container transition-all border border-transparent hover:border-secondary/20" href="https://wa.me/97470542458"><div class="w-14 h-14 bg-secondary/10 rounded-full flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-on-secondary transition-all"><span class="material-symbols-outlined text-3xl">chat</span></div><div class="text-right"><h4 class="font-headline font-bold text-xl">واتساب</h4><p class="text-on-surface-variant text-left" dir="ltr">+974 7054 2458</p></div></a>
+<a class="flex flex-row-reverse items-center gap-6 group p-4 rounded-xl hover:bg-surface-container transition-all border border-transparent hover:border-primary/20" href="tel:+97470542458"><div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-all"><span class="material-symbols-outlined text-3xl">call</span></div><div class="text-right"><h4 class="font-headline font-bold text-xl">اتصل بنا</h4><p class="text-on-surface-variant text-left" dir="ltr">+974 7054 2458</p></div></a>
+<a class="flex flex-row-reverse items-center gap-6 group p-4 rounded-xl hover:bg-surface-container transition-all border border-transparent hover:border-tertiary/20" href="mailto:info@el7lm.com"><div class="w-14 h-14 bg-tertiary/10 rounded-full flex items-center justify-center text-tertiary group-hover:bg-tertiary group-hover:text-on-tertiary transition-all"><span class="material-symbols-outlined text-3xl">mail</span></div><div class="text-right"><h4 class="font-headline font-bold text-xl">البريد الإلكتروني</h4><p class="text-on-surface-variant">info@el7lm.com</p></div></a><div class="flex flex-row-reverse items-center gap-6 group p-4 rounded-xl hover:bg-surface-container transition-all border border-transparent hover:border-white/20"><div class="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all"><span class="material-symbols-outlined text-3xl">location_on</span></div><div class="text-right"><h4 class="font-headline font-bold text-xl">Qatar HQ 🇶🇦</h4><p class="text-on-surface-variant">Doha - QFC Tower</p></div></div>
+</div>
+</div>
+<div class="order-1 lg:order-2">
+<div class="bg-surface-container p-8 lg:p-12 rounded-2xl border border-outline-variant/20 shadow-2xl">
+<form class="space-y-6 text-right">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-xs font-bold uppercase mb-2 text-outline">البريد الإلكتروني</label>
+<input class="w-full bg-surface-container-low border border-outline-variant/30 rounded-sm p-4 focus:border-primary transition-colors text-right" placeholder="example@mail.com" type="email"/>
+</div>
+<div>
+<label class="block text-xs font-bold uppercase mb-2 text-outline">الاسم الكامل</label>
+<input class="w-full bg-surface-container-low border border-outline-variant/30 rounded-sm p-4 focus:border-primary transition-colors text-right" placeholder="أدخل اسمك هنا" type="text"/>
+</div>
+</div>
+<div class="">
+<label class="block text-xs font-bold uppercase mb-2 text-outline">الموضوع</label>
+<input class="w-full bg-surface-container-low border border-outline-variant/30 rounded-sm p-4 focus:border-primary transition-colors text-right" placeholder="كيف يمكننا مساعدتك؟" type="text"/>
+</div>
+<div class="">
+<label class="block text-xs font-bold uppercase mb-2 text-outline">الرسالة</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant/30 rounded-sm p-4 focus:border-primary transition-colors text-right" placeholder="اكتب تفاصيل استفسارك هنا..." rows="4"></textarea>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 font-headline font-black uppercase tracking-widest hover:brightness-110 transition-all rounded-sm">إرسال الرسالة</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA Section -->
+<section class="py-32 relative overflow-hidden">
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 bg-primary/20 mix-blend-color"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-container-lowest to-transparent"></div>
+</div>
+<div class="container mx-auto px-8 relative z-10 text-center">
+<h2 class="text-5xl md:text-7xl font-black font-headline mb-8 max-w-4xl mx-auto leading-tight">جاهز لتكون النجم القادم؟</h2>
+<p class="text-xl text-on-surface-variant mb-12 max-w-2xl mx-auto">انضم إلى آلاف اللاعبين الذين بدأوا مسيرتهم الاحترافية من خلال EL7LM PERFORMANCE LAB.</p>
+<button class="bg-secondary text-on-secondary px-12 py-6 rounded-sm font-headline font-black text-2xl hover:scale-110 transition-transform shadow-2xl shadow-secondary/40">
+                أنشئ ملفك المجاني الآن
+            </button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest pt-20 pb-10 px-8 border-t border-outline-variant/10">
+<div class="container mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20 text-right">
+<!-- Brand & Contact -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 justify-end">
+<img alt="EL7LM Logo" class="h-10 w-auto" src="https://lh3.googleusercontent.com/aida/ADBb0uiyjSZq_cEyAp6Wqa1bmLNcaWgWjLdZ_OCf_3Ve-xuJrPgqMxQx__13FbwAdREW9Ncrfnw8Loq1_T50dRIJMgdopdl6mSZwWsZ1Q0R_Nq0ZEz5CPBwCJ4knTqowGqGSWot44flLS_Rwa7P4JKuTSXiv_IgwdCOacw2YI1_DIQ3yzHATRoW0LpdPjECKf0ASui3c157avfCcAB9zSHLqIfRSDTMfwliWantDgxguxISUkSE0vn93ORjxWhrwLDaZ1p0q9B-YZxKkxA"/>
+<div class="text-2xl font-black text-[#bdc4ef] font-headline uppercase tracking-tighter">EL7LM</div>
+</div>
+<p class="text-on-surface-variant text-sm leading-relaxed">
+                    منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.
+                </p>
+<div class="flex gap-4 justify-end">
+<a class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">language</span>
+</a>
+<a class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">share</span>
+</a>
+</div>
+</div>
+<!-- Site Links -->
+<div>
+<h4 class="text-on-surface font-headline font-bold mb-8 text-xl">روابط سريعة</h4>
+<nav class="flex flex-col gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">البحث عن المواهب</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">تقارير الأداء</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">الأكاديمية الرقمية</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">جدول المباريات</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">أخبار النجوم</a>
+</nav>
+</div>
+<!-- Corporate Links -->
+<div class="">
+<h4 class="text-on-surface font-headline font-bold mb-8 text-xl">الشركة</h4>
+<nav class="flex flex-col gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">من نحن</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">الوظائف</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">شركاء النجاح</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">اتصل بنا</a>
+</nav>
+</div>
+<!-- Support Links -->
+<div>
+<h4 class="text-on-surface font-headline font-bold mb-8 text-xl">الدعم القانوني</h4>
+<nav class="flex flex-col gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">سياسة الخصوصية</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">الشروط والأحكام</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">معايير الكشافة</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-sm" href="#">الدعم الفني</a>
+</nav>
+</div>
+</div>
+<div class="pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4 text-center">
+<p class="text-xs text-on-surface-variant font-medium tracking-wide">© 2024 EL7LM PERFORMANCE LAB. ALL RIGHTS RESERVED.</p>
+<div class="flex items-center gap-6">
+<span class="text-xs text-on-surface-variant">Designed for Champions</span>
+<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">sports_soccer</span>
+</div>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

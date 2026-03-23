@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\(''''firebase-admin/firestore''''\\)\")",
+      "Bash(awk \"NR>=80 && NR<=90\" d:/el7lm-backup/.next/static/chunks/app/layout.js)",
+      "Bash(npx next:*)",
+      "Bash(node -e \":*)",
+      "Bash(python3 -c \":*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(taskkill /F /IM node.exe /FI 'WINDOWTITLE eq *next*')",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(taskkill /F /PID 23672)",
+      "Bash(echo 'FILE NOT FOUND' ls src/hooks/useAccountTypeAuth*)",
+      "Bash(grep -n \"useAccountTypeAuth\\\\|allowedTypes\" d:/el7lm-backup/src/app/dashboard/*/page.tsx)",
+      "Bash(ls d:/el7lm-backup/src/app/dashboard/[accountType]/)",
+      "Bash(npm run:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//d/el7lm-backup/src/app/dashboard/$f/**)",
+      "Bash(done)",
+      "Bash(ls d:/el7lm-backup/src/components/shared/Unified*.tsx)",
+      "Bash(\"d:/el7lm-backup/.env.local\":*)",
+      "Bash(taskkill /F /IM node.exe)"
+    ]
+  }
+}
