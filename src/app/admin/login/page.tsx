@@ -352,7 +352,9 @@ export default function AdminLoginPage() {
 
       let errorMessage = 'An error occurred during login';
 
-      if (error.message?.includes('Invalid login credentials')) {
+      if (error.message?.includes('Failed to fetch') || error.name === 'AuthRetryableFetchError') {
+        errorMessage = 'خطأ في الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والتحقق من إعدادات Vercel (NEXT_PUBLIC_SUPABASE_URL)';
+      } else if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Email address not confirmed';
