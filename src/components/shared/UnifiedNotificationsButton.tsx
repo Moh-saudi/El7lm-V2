@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { Bell, Settings, MoreHorizontal, Check, Trash2, CheckCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,7 +13,6 @@ import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -45,9 +42,8 @@ export default function UnifiedNotificationsButton() {
     if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
     try {
       for (const col of ['users', 'players', 'clubs', 'academies', 'employees', 'admins']) {
-        const d = await getDoc(doc(db, col, senderId));
-        if (d.exists()) {
-          const data = d.data();
+        const { data } = await supabase.from(col).select('*').eq('id', senderId).single();
+        if (data) {
           const name = data.displayName || data.name || data.full_name || data.fullName;
           const avatar = data.photoURL || data.avatar || data.image || data.logo;
           const res = { senderId, senderName: name, senderAvatar: avatar };
@@ -60,101 +56,102 @@ export default function UnifiedNotificationsButton() {
   };
 
   const isBroadcastSeen = (id: string) =>
-    typeof window !== 'undefined' && localStorage.getItem(`bc_seen_${id}_${user?.uid}`) === '1';
+    typeof window !== 'undefined' && localStorage.getItem(`bc_seen_${id}_${user?.id}`) === '1';
   const markBroadcastSeen = (id: string) => {
-    if (typeof window !== 'undefined' && user?.uid)
-      localStorage.setItem(`bc_seen_${id}_${user.uid}`, '1');
+    if (typeof window !== 'undefined' && user?.id)
+      localStorage.setItem(`bc_seen_${id}_${user.id}`, '1');
+  };
+
+  const loadAndMerge = async () => {
+    if (!user?.id) return;
+    const NOTIF_LIMIT = 20;
+
+    const [{ data: d1 }, { data: d2 }, { data: d3 }] = await Promise.all([
+      supabase.from('notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(NOTIF_LIMIT),
+      supabase.from('interaction_notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(NOTIF_LIMIT),
+      supabase.from('broadcasts').select('*').order('createdAt', { ascending: false }).limit(10),
+    ]);
+
+    const broadcastItems = (d3 || []).map((row: any) => ({
+      id: `bc_${row.id}`,
+      title: 'فرصة جديدة 🎯',
+      message: `${row.organizerName} نشر: ${row.opportunityTitle}`,
+      isRead: isBroadcastSeen(row.id),
+      createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+      senderName: row.organizerName || 'النظام',
+      senderAvatar: undefined,
+      type: 'opportunity',
+      category: 'system' as const,
+      actionUrl: row.actionUrl || '/dashboard/opportunities',
+    }));
+
+    const rawItems = [
+      ...(d1 || []).map((r: any) => ({ ...r, category: 'system' })),
+      ...(d2 || []).map((r: any) => ({ ...r, category: 'interaction' }))
+    ];
+
+    const processed = await Promise.all(rawItems.map(async (item: any) => {
+      const metadata = normalizeNotificationMetadata(item.metadata);
+      let senderId = item.senderId || metadata?.senderId;
+      let avatar = item.senderAvatar;
+      let name = item.senderName;
+
+      if (senderId && (!name || !avatar)) {
+        const info = await fetchSenderInfo(senderId);
+        if (info) {
+          name = info.senderName || name;
+          avatar = info.senderAvatar || avatar;
+        }
+      }
+      if (!avatar && name) avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
+
+      return {
+        id: item.id,
+        title: item.title,
+        message: item.message,
+        isRead: item.isRead || false,
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+        senderName: name || 'System',
+        senderAvatar: avatar,
+        type: item.type || 'info',
+        category: item.category as any,
+        actionUrl: item.actionUrl || item.link || metadata?.link
+      };
+    }));
+
+    const combined = [...processed, ...broadcastItems];
+    combined.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    setNotifications(combined);
+    setUnreadCount(combined.filter(n => !n.isRead).length);
+    setLoading(false);
   };
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
-    const NOTIF_LIMIT = 20;
-    const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
-    const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(NOTIF_LIMIT));
-    const q3 = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10));
+    loadAndMerge();
 
-    const enrichAndMerge = async (docs1: any[], docs2: any[], docs3: any[]) => {
-      const broadcastItems = docs3.map(d => {
-        const data = d.data();
-        return {
-          id: `bc_${d.id}`,
-          title: 'فرصة جديدة 🎯',
-          message: `${data.organizerName} نشر: ${data.opportunityTitle}`,
-          isRead: isBroadcastSeen(d.id),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          senderName: data.organizerName || 'النظام',
-          senderAvatar: undefined,
-          type: 'opportunity',
-          category: 'system' as const,
-          actionUrl: data.actionUrl || '/dashboard/opportunities',
-        };
-      });
+    const channel = supabase
+      .channel(`unified-notifs-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `userId=eq.${user.id}` }, () => loadAndMerge())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interaction_notifications', filter: `userId=eq.${user.id}` }, () => loadAndMerge())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => loadAndMerge())
+      .subscribe();
 
-      const rawItems = [
-        ...docs1.map(d => ({ ...d.data(), id: d.id, category: 'system' })),
-        ...docs2.map(d => ({ ...d.data(), id: d.id, category: 'interaction' }))
-      ];
-
-      const processed = await Promise.all(rawItems.map(async (item: any) => {
-        const metadata = normalizeNotificationMetadata(item.metadata);
-        let senderId = item.senderId || metadata?.senderId;
-        let avatar = item.senderAvatar;
-        let name = item.senderName;
-
-        if (senderId && (!name || !avatar)) {
-          const info = await fetchSenderInfo(senderId);
-          if (info) {
-            name = info.senderName || name;
-            avatar = info.senderAvatar || avatar;
-          }
-        }
-        if (!avatar && name) avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
-
-        return {
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          isRead: item.isRead || false,
-          createdAt: item.createdAt?.toDate() || new Date(),
-          senderName: name || 'System',
-          senderAvatar: avatar,
-          type: item.type || 'info',
-          category: item.category as any,
-          actionUrl: item.actionUrl || item.link || metadata?.link
-        };
-      }));
-
-      const combined = [...processed, ...broadcastItems];
-      combined.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      setNotifications(combined);
-      setUnreadCount(combined.filter(n => !n.isRead).length);
-      setLoading(false);
-    };
-
-    let unsub1: any, unsub2: any, unsub3: any;
-    let d1: any[] = [], d2: any[] = [], d3: any[] = [];
-
-    unsub1 = onSnapshot(q1, (s) => { d1 = s.docs; enrichAndMerge(d1, d2, d3); });
-    unsub2 = onSnapshot(q2, (s) => { d2 = s.docs; enrichAndMerge(d1, d2, d3); });
-    unsub3 = onSnapshot(q3, (s) => { d3 = s.docs; enrichAndMerge(d1, d2, d3); });
-
-    return () => { unsub1?.(); unsub2?.(); unsub3?.(); };
-  }, [user]);
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   const markAllRead = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const batch = writeBatch(db);
-      notifications.filter(n => !n.isRead).forEach(n => {
-        if (n.id.startsWith('bc_')) {
-          markBroadcastSeen(n.id.slice(3));
-        } else {
-          const coll = n.category === 'system' ? 'notifications' : 'interaction_notifications';
-          batch.update(doc(db, coll, n.id), { isRead: true });
-        }
-      });
-      await batch.commit();
+      const systemIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_') && n.category === 'system').map(n => n.id);
+      const interactionIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_') && n.category === 'interaction').map(n => n.id);
+      const bcItems = notifications.filter(n => !n.isRead && n.id.startsWith('bc_'));
+
+      if (systemIds.length) await supabase.from('notifications').update({ isRead: true }).in('id', systemIds);
+      if (interactionIds.length) await supabase.from('interaction_notifications').update({ isRead: true }).in('id', interactionIds);
+      bcItems.forEach(n => markBroadcastSeen(n.id.slice(3)));
+
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (e) { console.error(e); }
@@ -168,7 +165,7 @@ export default function UnifiedNotificationsButton() {
         setUnreadCount(prev => Math.max(0, prev - 1));
       } else {
         const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
-        await updateDoc(doc(db, coll, id), { isRead: true });
+        await supabase.from(coll).update({ isRead: true }).eq('id', id);
       }
     } catch (e) { console.error(e); }
   };
@@ -361,7 +358,6 @@ export default function UnifiedNotificationsButton() {
           )}
         </ScrollArea>
 
-        {/* Global Footer */}
         <div className="p-4 bg-gradient-to-t from-slate-50/50 to-transparent dark:from-slate-900/50">
           <Link href={`${dashboardPath}/notifications`} onClick={() => setIsOpen(false)}>
             <Button variant="outline" className="w-full flex items-center justify-between px-6 h-12 rounded-2xl font-black text-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition-all group">

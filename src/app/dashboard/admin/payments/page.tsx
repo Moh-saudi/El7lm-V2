@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { SubscriptionPlan } from '@/types/pricing';
 import { openWhatsAppShare, testWhatsAppShare } from '@/lib/utils/whatsapp-share';
 import { maskPhoneNumber, maskEmail, maskName, applyPaymentPrivacy } from '@/lib/utils/privacy-utils';
 import { fetchPaymentsOptimized } from '@/lib/utils/payments-fetcher';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth'; // Keep for other hooks if needed, or remove? Keeping for safety.
@@ -180,14 +179,14 @@ export default function AdminPaymentsPage() {
     // فلتر التاريخ
     if (filters.dateFrom) {
       filtered = filtered.filter(payment => {
-        const paymentDate = payment.createdAt?.toDate ? payment.createdAt.toDate() : new Date(payment.createdAt);
+        const paymentDate = new Date(payment.createdAt);
         return paymentDate >= new Date(filters.dateFrom);
       });
     }
 
     if (filters.dateTo) {
       filtered = filtered.filter(payment => {
-        const paymentDate = payment.createdAt?.toDate ? payment.createdAt.toDate() : new Date(payment.createdAt);
+        const paymentDate = new Date(payment.createdAt);
         return paymentDate <= new Date(filters.dateTo);
       });
     }
@@ -206,8 +205,8 @@ export default function AdminPaymentsPage() {
         aValue = a.status || '';
         bValue = b.status || '';
       } else {
-        aValue = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-        bValue = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        aValue = new Date(a.createdAt);
+        bValue = new Date(b.createdAt);
       }
 
       if (filters.sortOrder === 'asc') {
@@ -307,12 +306,11 @@ export default function AdminPaymentsPage() {
 
     try {
       // تحديث الحالة في قاعدة البيانات
-      const paymentRef = doc(db, updatingPayment.collection, updatingPayment.id);
-      await updateDoc(paymentRef, {
+      await supabase.from(updatingPayment.collection).update({
         status: newStatus,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
         updatedBy: 'admin'
-      });
+      }).eq('id', updatingPayment.id);
 
       // إذا كانت الحالة "مقبولة" أو "مكتملة"، فعّل الاشتراك
       if (newStatus === 'completed' || newStatus === 'accepted' || newStatus === 'success') {
@@ -370,26 +368,25 @@ export default function AdminPaymentsPage() {
       const expiresAt = new Date(Date.now() + subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
 
       const subscriptionData = {
-        userId: userId,
+        user_id: userId,
         plan_name: packageInfo.name || packageName,
         package_name: packageInfo.name || packageName,
         packageType: bestMatch.plan?.id || pkgType,
         package_duration: packageInfo.duration || packageDuration,
         package_price: payment.amount,
         payment_id: payment.id,
-        activated_at: new Date(),
-        expires_at: expiresAt,
-        end_date: expiresAt,
+        activated_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        end_date: expiresAt.toISOString(),
         status: 'active',
         features: bestMatch.plan?.features || ['unlimited_access', 'premium_support', 'advanced_features'],
         invoice_number: `INV-${Date.now()}`,
         receipt_url: payment.receiptImage || payment.receiptUrl || '',
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      // حفظ الاشتراك في قاعدة البيانات باستخدام userId كمفتاح
-      const subscriptionRef = doc(db, 'subscriptions', userId);
+      // حفظ الاشتراك في قاعدة البيانات باستخدام upsert
       console.log('🔄 [Admin Payments] جاري تحديث subscriptions collection:', {
         userId,
         subscriptionData: {
@@ -400,62 +397,53 @@ export default function AdminPaymentsPage() {
         }
       });
 
-      await updateDoc(subscriptionRef, subscriptionData).catch(async () => {
-        // إذا لم يكن موجود، أنشئه
-        console.log('📝 [Admin Payments] إنشاء اشتراك جديد (لم يكن موجوداً)');
-        await addDoc(collection(db, 'subscriptions'), {
-          ...subscriptionData,
-          id: userId
-        });
-      });
+      await supabase.from('subscriptions').upsert({ id: userId, ...subscriptionData });
 
       console.log('✅ [Admin Payments] تم تحديث subscriptions collection بنجاح!');
 
       // تحديث بيانات المستخدم
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
+      await supabase.from('users').update({
         subscriptionStatus: 'active',
         subscriptionExpiresAt: subscriptionData.expires_at,
         subscriptionEndDate: subscriptionData.expires_at,
         lastPaymentId: payment.id,
         packageType: pkgType,
         selectedPackage: packageInfo.name || packageName,
-        updatedAt: new Date()
-      });
+        updatedAt: new Date().toISOString()
+      }).eq('id', userId);
 
-      // 4️⃣ تسجيل العملية في سجل المدفوعات الموحد (Unified Payment History)
+      // تسجيل العملية في سجل المدفوعات الموحد (Unified Payment History)
       try {
         const paymentHistoryData = {
-          userId: userId,
+          user_id: userId,
           amount: payment.amount,
           currency: payment.currency || 'EGP',
           status: 'completed',
           package_name: packageInfo.name || packageName,
           packageType: pkgType,
-          payment_date: new Date(),
-          createdAt: new Date(),
+          payment_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
           transaction_id: payment.transactionId || payment.paymentId || payment.id,
           source: payment.collection || 'manual_activation',
           customer_name: payment.playerName || payment.customerName || '',
           customer_email: payment.playerEmail || payment.customerEmail || ''
         };
-        await addDoc(collection(db, 'payments'), paymentHistoryData);
+        await supabase.from('payments').insert(paymentHistoryData);
         console.log('✅ [Admin Payments] سجل الدفع الموحد تم إنشاؤه');
       } catch (historyError) {
         console.warn('⚠️ [Admin Payments] فشل تسجيل الدفع في السجل الموحد ولكن تم التفعيل:', historyError);
       }
 
-      // تحديث حالة الدفع في الجدول الأصلي إذا كانت من bulkPayments
+      // تحديث حالة الدفع في الجدول الأصلي إذا كانت من bulk_payments
       if (payment.collection === 'bulkPayments' || payment.collection === 'bulk_payments') {
         try {
-          const bulkPaymentRef = doc(db, payment.collection, payment.id);
-          await updateDoc(bulkPaymentRef, {
+          await supabase.from(payment.collection).update({
             status: 'completed',
             subscription_status: 'active',
             subscription_expires_at: subscriptionData.expires_at,
-            updatedAt: new Date(),
-            updated_at: new Date()
-          });
+            updatedAt: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }).eq('id', payment.id);
           console.log(`تم تحديث الدفعة في جدول ${payment.collection} بنجاح`);
         } catch (bulkError: any) {
           console.log(`خطأ في تحديث جدول ${payment.collection}:`, bulkError);
@@ -503,7 +491,7 @@ export default function AdminPaymentsPage() {
     }
 
     // التحقق من أن المدفوعة جديدة فعلاً (تم إنشاؤها في آخر 10 دقائق)
-    const paymentTime = payment.createdAt?.toDate ? payment.createdAt.toDate() : new Date(payment.createdAt);
+    const paymentTime = new Date(payment.createdAt);
     const now = new Date();
     const timeDiff = now.getTime() - paymentTime.getTime();
     const tenMinutes = 10 * 60 * 1000; // 10 دقائق بالميلي ثانية
@@ -525,14 +513,14 @@ export default function AdminPaymentsPage() {
       // SMS notifications removed — BabaService deprecated, use ChatAman templates
 
       // حفظ الإشعار في قاعدة البيانات
-      await addDoc(collection(db, 'admin_notifications'), {
+      await supabase.from('admin_notifications').insert({
         type: 'new_payment',
         title: 'مدفوعة جديدة',
         message: `مدفوعة جديدة من ${payment.playerName || payment.playerId || 'غير محدد'} بقيمة ${payment.amount?.toLocaleString()} ${payment.currency || 'EGP'}`,
         paymentId: payment.id,
         paymentData: payment,
         isRead: false,
-        createdAt: new Date()
+        createdAt: new Date().toISOString()
       });
 
       // إضافة المدفوعة إلى قائمة الإشعارات المرسلة
@@ -601,7 +589,7 @@ export default function AdminPaymentsPage() {
             <table class="details-table">
               <tr><th>المبلغ المدفوع</th><td>${payment.amount?.toLocaleString()} ${payment.currency}</td></tr>
               <tr><th>طريقة الدفع</th><td>${payment.paymentMethod || 'غير محدد'}</td></tr>
-              <tr><th>تاريخ الدفع</th><td>${payment.createdAt?.toDate ? payment.createdAt.toDate().toLocaleDateString('ar-EG') : new Date(payment.createdAt).toLocaleDateString('ar-EG')}</td></tr>
+              <tr><th>تاريخ الدفع</th><td>${new Date(payment.createdAt).toLocaleDateString('ar-EG')}</td></tr>
               <tr><th>المصدر</th><td>${payment.collection}</td></tr>
               <tr><th>رقم العملية</th><td>${payment.transactionId || payment.id}</td></tr>
             </table>
@@ -709,14 +697,14 @@ export default function AdminPaymentsPage() {
 
       if (notificationMessage) {
         // حفظ الإشعار في قاعدة البيانات
-        await addDoc(collection(db, 'notifications'), {
-          userId: payment.playerId || payment.userId,
+        await supabase.from('notifications').insert({
+          user_id: payment.playerId || payment.userId,
           type: 'payment_status_update',
           title: 'تحديث حالة الدفعة',
           message: notificationMessage,
           paymentId: payment.id,
           status: status,
-          sentAt: new Date(),
+          sentAt: new Date().toISOString(),
           sentVia: 'sms'
         });
 
@@ -736,20 +724,16 @@ export default function AdminPaymentsPage() {
       }
 
       // البحث في جدول notifications
-      const notificationsRef = collection(db, 'notifications');
-      const q = query(
-        notificationsRef,
-        where('phoneNumber', '==', phoneNumber),
-        where('type', 'in', ['sms', 'whatsapp', 'payment_notification']),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-      );
+      const { data: rows } = await supabase.from('notifications')
+        .select('*')
+        .eq('phoneNumber', phoneNumber)
+        .in('type', ['sms', 'whatsapp', 'payment_notification'])
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      const snapshot = await getDocs(q);
-      const messages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
+      const messages = (rows || []).map(row => ({
+        ...row,
+        createdAt: new Date(row.created_at || row.createdAt)
       }));
 
       return messages;
@@ -806,18 +790,13 @@ export default function AdminPaymentsPage() {
   // تحميل جميع الرسائل المرسلة
   const fetchAllMessages = async () => {
     try {
-      const notificationsRef = collection(db, 'notifications');
-      // إزالة orderBy لتجنب مشكلة Firebase index
-      const q = query(
-        notificationsRef,
-        where('type', 'in', ['sms', 'whatsapp', 'payment_notification'])
-      );
+      const { data: rows } = await supabase.from('notifications')
+        .select('*')
+        .in('type', ['sms', 'whatsapp', 'payment_notification']);
 
-      const snapshot = await getDocs(q);
-      const allMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
+      const allMessages = (rows || []).map(row => ({
+        ...row,
+        createdAt: new Date(row.created_at || row.createdAt)
       }));
 
       // ترتيب البيانات يدوياً لتجنب مشاكل Firebase Indexing
@@ -884,7 +863,7 @@ export default function AdminPaymentsPage() {
         // إرسال إشعارات للمدفوعات الجديدة فقط
         if (newPayments.length > 0) {
           for (const newPayment of newPayments) {
-            const paymentTime = newPayment.createdAt?.toDate ? newPayment.createdAt.toDate() : new Date(newPayment.createdAt);
+            const paymentTime = new Date(newPayment.createdAt as string | number);
             const now = new Date();
             const timeDiff = now.getTime() - paymentTime.getTime();
             const fiveMinutes = 5 * 60 * 1000;
@@ -972,9 +951,8 @@ export default function AdminPaymentsPage() {
     if (!deletingPayment) return;
 
     try {
-      // حذف المدفوعة من Firebase
-      const paymentRef = doc(db, deletingPayment.collection, deletingPayment.id);
-      await deleteDoc(paymentRef);
+      // حذف المدفوعة من Supabase
+      await supabase.from(deletingPayment.collection).delete().eq('id', deletingPayment.id);
 
       // تحديث البيانات المحلية
       setPayments(prev => prev.filter(p => p.id !== deletingPayment.id));
@@ -1479,10 +1457,7 @@ export default function AdminPaymentsPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-xs sm:text-sm text-gray-600 font-medium">📅 التاريخ:</span>
                       <span className="font-medium text-xs sm:text-sm text-gray-700">
-                        {payment.createdAt?.toDate ?
-                          payment.createdAt.toDate().toLocaleDateString('en-GB') :
-                          new Date(payment.createdAt).toLocaleDateString('en-GB')
-                        }
+                        {new Date(payment.createdAt).toLocaleDateString('en-GB')}
                       </span>
                     </div>
                   </div>
@@ -1640,10 +1615,7 @@ export default function AdminPaymentsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {payment.createdAt?.toDate ?
-                            payment.createdAt.toDate().toLocaleDateString('ar-EG') :
-                            new Date(payment.createdAt).toLocaleDateString('ar-EG')
-                          }
+                          {new Date(payment.createdAt).toLocaleDateString('ar-EG')}
                         </td>
                         <td className="px-4 py-3 text-sm text-orange-600">
                           {payment.collection}
@@ -1789,7 +1761,7 @@ export default function AdminPaymentsPage() {
                       العملة: p.currency,
                       الحالة: p.status,
                       طريقة_الدفع: p.paymentMethod,
-                      التاريخ: p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString('ar-EG') : new Date(p.createdAt).toLocaleDateString('ar-EG'),
+                      التاريخ: new Date(p.createdAt).toLocaleDateString('ar-EG'),
                       المصدر: p.collection
                     }));
 
@@ -1955,10 +1927,7 @@ export default function AdminPaymentsPage() {
                 <div>
                   <label className="font-medium text-gray-700">التاريخ:</label>
                   <p className="text-gray-900">
-                    {selectedPayment.createdAt?.toDate ?
-                      selectedPayment.createdAt.toDate().toLocaleString('ar-EG') :
-                      new Date(selectedPayment.createdAt).toLocaleString('ar-EG')
-                    }
+                    {new Date(selectedPayment.createdAt).toLocaleString('ar-EG')}
                   </p>
                 </div>
                 {/* عرض رسالة الخطأ للمدفوعات الفاشلة من جيديا */}
@@ -2026,10 +1995,7 @@ export default function AdminPaymentsPage() {
                     <div>
                       <span className="text-gray-600 font-medium">التاريخ:</span>
                       <p className="text-gray-700">
-                        {selectedPayment.createdAt?.toDate ?
-                          selectedPayment.createdAt.toDate().toLocaleDateString('en-GB') :
-                          new Date(selectedPayment.createdAt).toLocaleDateString('en-GB')
-                        }
+                        {new Date(selectedPayment.createdAt).toLocaleDateString('en-GB')}
                       </p>
                     </div>
                   </div>

@@ -19,8 +19,7 @@ import {
   Zap,
   Trophy
 } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 interface AdAnalytics {
   id: string;
@@ -55,26 +54,22 @@ export default function AdAnalytics({ className = '', timeRange = 'week' }: AdAn
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      // Try the optimized query with index first
-      const q = query(
-        collection(db, 'ads'),
-        where('isActive', '==', true),
-        orderBy('priority', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      
-      const adsData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const views = data.views || 0;
-        const clicks = data.clicks || 0;
+      const { data: rows, error } = await supabase
+        .from('ads')
+        .select('*')
+        .eq('isActive', true)
+        .order('priority', { ascending: false });
+
+      if (error) throw error;
+
+      const adsData = (rows || []).map((row: any) => {
+        const views = row.views || 0;
+        const clicks = row.clicks || 0;
         const ctr = views > 0 ? (clicks / views) * 100 : 0;
-        const avgViewTime = data.avgViewTime || 0;
-        const conversionRate = data.conversionRate || 0;
-        const revenue = data.revenue || 0;
-        const cost = data.cost || 0;
+        const revenue = row.revenue || 0;
+        const cost = row.cost || 0;
         const roi = cost > 0 ? ((revenue - cost) / cost) * 100 : 0;
-        
-        // Calculate performance based on metrics
+
         let performance: 'excellent' | 'good' | 'average' | 'poor' = 'average';
         if (ctr > 5 && roi > 200) performance = 'excellent';
         else if (ctr > 3 && roi > 100) performance = 'good';
@@ -82,83 +77,27 @@ export default function AdAnalytics({ className = '', timeRange = 'week' }: AdAn
         else performance = 'poor';
 
         return {
-          id: doc.id,
-          title: data.title,
+          id: row.id,
+          title: row.title,
           views,
           clicks,
           ctr,
-          avgViewTime,
-          conversionRate,
+          avgViewTime: row.avgViewTime || 0,
+          conversionRate: row.conversionRate || 0,
           revenue,
           cost,
           roi,
-          urgency: data.urgency || 'medium',
-          popupType: data.popupType || 'modal',
+          urgency: row.urgency || 'medium',
+          popupType: row.popupType || 'modal',
           performance,
-          priority: data.priority || 0
+          priority: row.priority || 0
         };
       });
 
-      // Sort by priority in memory if query succeeded
-      adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
       setAnalytics(adsData);
-    } catch (error: any) {
-      // If index is missing, fallback to simpler query
-      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
-        try {
-          const fallbackQ = query(
-            collection(db, 'ads'),
-            where('isActive', '==', true)
-          );
-          const fallbackSnapshot = await getDocs(fallbackQ);
-          
-          const adsData = fallbackSnapshot.docs.map(doc => {
-            const data = doc.data();
-            const views = data.views || 0;
-            const clicks = data.clicks || 0;
-            const ctr = views > 0 ? (clicks / views) * 100 : 0;
-            const avgViewTime = data.avgViewTime || 0;
-            const conversionRate = data.conversionRate || 0;
-            const revenue = data.revenue || 0;
-            const cost = data.cost || 0;
-            const roi = cost > 0 ? ((revenue - cost) / cost) * 100 : 0;
-            
-            // Calculate performance based on metrics
-            let performance: 'excellent' | 'good' | 'average' | 'poor' = 'average';
-            if (ctr > 5 && roi > 200) performance = 'excellent';
-            else if (ctr > 3 && roi > 100) performance = 'good';
-            else if (ctr > 1 && roi > 0) performance = 'average';
-            else performance = 'poor';
-
-            return {
-              id: doc.id,
-              title: data.title,
-              views,
-              clicks,
-              ctr,
-              avgViewTime,
-              conversionRate,
-              revenue,
-              cost,
-              roi,
-              urgency: data.urgency || 'medium',
-              popupType: data.popupType || 'modal',
-              performance,
-              priority: data.priority || 0
-            };
-          });
-
-          // Sort by priority in memory
-          adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setAnalytics(adsData);
-        } catch (fallbackError) {
-          console.error('Error fetching analytics (fallback also failed):', fallbackError);
-          setAnalytics([]);
-        }
-      } else {
-        console.error('Error fetching analytics:', error);
-        setAnalytics([]);
-      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      setAnalytics([]);
     } finally {
       setLoading(false);
     }

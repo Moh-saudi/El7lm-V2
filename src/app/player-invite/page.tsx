@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { createPlayerLoginAccount, PlayerLoginData } from '@/lib/utils/player-login-account';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,46 +37,31 @@ export default function PlayerInvitePage() {
     try {
       const results: PlayerResult[] = [];
 
-      // البحث في مجموعة players
-      const playersQuery1 = query(collection(db, 'players'), where('full_name', '>=', searchQuery));
-      const playersQuery2 = query(collection(db, 'players'), where('email', '==', searchQuery));
-      const playersQuery3 = query(collection(db, 'players'), where('phone', '==', searchQuery));
-
-      const [snapshot1, snapshot2, snapshot3] = await Promise.all([
-        getDocs(playersQuery1),
-        getDocs(playersQuery2),
-        getDocs(playersQuery3)
+      // البحث في مجموعتي players و player بالتوازي
+      const [pByName, pByEmail, pByPhone, p2ByName, p2ByEmail, p2ByPhone] = await Promise.all([
+        supabase.from('players').select('*').ilike('full_name', `%${searchQuery}%`),
+        supabase.from('players').select('*').eq('email', searchQuery),
+        supabase.from('players').select('*').eq('phone', searchQuery),
+        supabase.from('player').select('*').ilike('full_name', `%${searchQuery}%`),
+        supabase.from('player').select('*').eq('email', searchQuery),
+        supabase.from('player').select('*').eq('phone', searchQuery),
       ]);
 
-      // البحث في مجموعة player
-      const playerQuery1 = query(collection(db, 'player'), where('full_name', '>=', searchQuery));
-      const playerQuery2 = query(collection(db, 'player'), where('email', '==', searchQuery));
-      const playerQuery3 = query(collection(db, 'player'), where('phone', '==', searchQuery));
-
-      const [snapshot4, snapshot5, snapshot6] = await Promise.all([
-        getDocs(playerQuery1),
-        getDocs(playerQuery2),
-        getDocs(playerQuery3)
-      ]);
-
-      // جمع النتائج
-      const allSnapshots = [
-        { docs: snapshot1.docs, source: 'players' as const },
-        { docs: snapshot2.docs, source: 'players' as const },
-        { docs: snapshot3.docs, source: 'players' as const },
-        { docs: snapshot4.docs, source: 'player' as const },
-        { docs: snapshot5.docs, source: 'player' as const },
-        { docs: snapshot6.docs, source: 'player' as const }
+      const allSnapshots: { docs: any[]; source: 'players' | 'player' }[] = [
+        { docs: pByName.data || [], source: 'players' },
+        { docs: pByEmail.data || [], source: 'players' },
+        { docs: pByPhone.data || [], source: 'players' },
+        { docs: p2ByName.data || [], source: 'player' },
+        { docs: p2ByEmail.data || [], source: 'player' },
+        { docs: p2ByPhone.data || [], source: 'player' },
       ];
 
       const processedIds = new Set<string>();
 
       allSnapshots.forEach(({ docs, source }) => {
-        docs.forEach(doc => {
-          if (processedIds.has(doc.id)) return;
-          processedIds.add(doc.id);
-
-          const data = doc.data();
+        docs.forEach(data => {
+          if (processedIds.has(data.id)) return;
+          processedIds.add(data.id);
 
           // التحقق من أن اللاعب تابع لمنظمة
           const isDependent = !!(data.club_id || data.academy_id || data.trainer_id || data.agent_id);
@@ -90,7 +74,7 @@ export default function PlayerInvitePage() {
           else if (data.agent_id) organizationInfo = 'تابع لوكيل';
 
           results.push({
-            id: doc.id,
+            id: data.id,
             full_name: data.full_name || data.name || '',
             email: data.email,
             phone: data.phone,

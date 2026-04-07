@@ -2,20 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  getDocs,
-  getDoc,
-  limit,
-  addDoc,
-  updateDoc,
-  doc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,7 +110,7 @@ const WorkingMessageCenter: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const hasSetupConversationsRef = useRef<boolean>(false);
-  const conversationsUnsubRef = useRef<null | (() => void)>(null);
+  const conversationsChannelRef = useRef<any>(null);
   const hasFetchedContactsRef = useRef<boolean>(false);
   const isFetchingContactsRef = useRef<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -142,63 +129,73 @@ const WorkingMessageCenter: React.FC = () => {
     setIsClient(true);
 
     // تنظيف أي مستمع قديم عند تغيير المستخدم
-    if (conversationsUnsubRef.current) {
-      conversationsUnsubRef.current();
-      conversationsUnsubRef.current = null;
+    if (conversationsChannelRef.current) {
+      supabase.removeChannel(conversationsChannelRef.current);
+      conversationsChannelRef.current = null;
       hasSetupConversationsRef.current = false;
     }
 
     if (user && userData && !hasSetupConversationsRef.current) {
-      // إعداد مستمع المحادثات مرة واحدة فقط لكل مستخدم
       setLoading(true);
-      const conversationsQueryRef = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid)
-      );
-      const unsub = onSnapshot(
-        conversationsQueryRef,
-        (snapshot) => {
-          const conversationsData: Conversation[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            conversationsData.push({
-              id: doc.id,
-              participants: data.participants || [],
-              participantNames: data.participantNames || {},
-              participantTypes: data.participantTypes || {},
-              subject: data.subject || 'محادثة جديدة',
-              lastMessage: data.lastMessage || '',
-              lastMessageTime: data.lastMessageTime,
-              lastSenderId: data.lastSenderId || '',
-              unreadCount: data.unreadCount || {},
-              isActive: data.isActive !== false,
-              createdAt: data.createdAt,
-              updatedAt: data.updatedAt,
-              participantAvatars: data.participantAvatars || {}
-            });
-          });
-          // Sort client-side by updatedAt desc to avoid compound index/watch issues
+
+      // Initial fetch of conversations
+      const fetchConversations = async () => {
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('conversations')
+            .select('*')
+            .filter('participants', 'cs', `["${user.id}"]`);
+
+          if (fetchError) throw fetchError;
+
+          const conversationsData: Conversation[] = (data || []).map((row: any) => ({
+            id: row.id,
+            participants: row.participants || [],
+            participantNames: row.participantNames || {},
+            participantTypes: row.participantTypes || {},
+            subject: row.subject || 'محادثة جديدة',
+            lastMessage: row.lastMessage || '',
+            lastMessageTime: row.lastMessageTime,
+            lastSenderId: row.lastSenderId || '',
+            unreadCount: row.unreadCount || {},
+            isActive: row.isActive !== false,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            participantAvatars: row.participantAvatars || {}
+          }));
+
+          // Sort client-side by updatedAt desc
           conversationsData.sort((a, b) => {
-            const aDate = a.updatedAt?.toDate ? a.updatedAt.toDate() : (a.updatedAt ? new Date(a.updatedAt) : new Date(0));
-            const bDate = b.updatedAt?.toDate ? b.updatedAt.toDate() : (b.updatedAt ? new Date(b.updatedAt) : new Date(0));
+            const aDate = a.updatedAt ? new Date(a.updatedAt) : new Date(0);
+            const bDate = b.updatedAt ? new Date(b.updatedAt) : new Date(0);
             return bDate.getTime() - aDate.getTime();
           });
+
           console.log('✅ تم جلب المحادثات:', conversationsData.length);
           setConversations(conversationsData);
           setLoading(false);
-        },
-        (error) => {
-          console.error('❌ خطأ في جلب المحادثات:', error);
+        } catch (err) {
+          console.error('❌ خطأ في جلب المحادثات:', err);
           setError('حدث خطأ في جلب المحادثات');
           setLoading(false);
         }
-      );
-      conversationsUnsubRef.current = unsub;
+      };
+
+      fetchConversations();
+
+      // Subscribe to realtime changes on conversations
+      const channel = supabase
+        .channel(`working-conversations-${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, async () => {
+          await fetchConversations();
+        })
+        .subscribe();
+
+      conversationsChannelRef.current = channel;
       hasSetupConversationsRef.current = true;
 
       // بدء جلب جهات الاتصال مرة واحدة فقط
       if (!hasFetchedContactsRef.current && !isFetchingContactsRef.current) {
-        // قفل متفائل لمنع الاستدعاء المزدوج في وضع التطوير
         hasFetchedContactsRef.current = true;
         fetchContacts().finally(() => {
           setContactsFetched(true);
@@ -210,16 +207,14 @@ const WorkingMessageCenter: React.FC = () => {
     }
 
     return () => {
-      if (conversationsUnsubRef.current) {
-        conversationsUnsubRef.current();
-        conversationsUnsubRef.current = null;
+      if (conversationsChannelRef.current) {
+        supabase.removeChannel(conversationsChannelRef.current);
+        conversationsChannelRef.current = null;
         hasSetupConversationsRef.current = false;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, !!userData]);
-
-  // إلغاء useEffect الإضافي لجلب جهات الاتصال لتفادي الاستدعاء المزدوج
+  }, [user?.id, !!userData]);
 
   // إغلاق منتقي الإيموجي عند النقر خارجه
   useEffect(() => {
@@ -237,8 +232,6 @@ const WorkingMessageCenter: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showEmojiPicker]);
-
-  // إلغاء إعادة الجلب التلقائي لتفادي الحلقات؛ الاعتماد على المحاولة الأولى وزر إعادة المحاولة فقط
 
   // التمرير التلقائي للرسائل الجديدة
   const scrollToBottom = () => {
@@ -297,15 +290,13 @@ const WorkingMessageCenter: React.FC = () => {
       const actualContactId = contact.id.replace(/^(club_|academy_|agent_|trainer_|player_|admin_)/, '');
 
       // التحقق من وجود محادثة سابقة
-      const existingConversationQuery = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid)
-      );
+      const { data: existingConversations } = await supabase
+        .from('conversations')
+        .select('*')
+        .filter('participants', 'cs', `["${user.id}"]`);
 
-      const existingSnapshot = await getDocs(existingConversationQuery);
-      const existingConversation = existingSnapshot.docs.find(doc => {
-        const data = doc.data();
-        return data.participants.includes(actualContactId);
+      const existingConversation = existingConversations?.find((conv: any) => {
+        return conv.participants?.includes(actualContactId);
       });
 
       if (existingConversation) {
@@ -318,33 +309,36 @@ const WorkingMessageCenter: React.FC = () => {
       // Get proper sender name for conversation
       const getCurrentUserName = () => {
         if (userData.accountType === 'player') {
-          return userData.full_name || userData.name || userData.displayName || user.displayName || 'أنا';
+          return userData.full_name || userData.name || userData.displayName || user.user_metadata?.full_name || 'أنا';
         } else if (userData.accountType === 'club') {
-          return userData.name || userData.club_name || userData.displayName || user.displayName || 'نادي';
+          return userData.name || userData.club_name || userData.displayName || user.user_metadata?.full_name || 'نادي';
         } else if (userData.accountType === 'academy') {
-          return userData.name || userData.academy_name || userData.displayName || user.displayName || 'أكاديمية';
+          return userData.name || userData.academy_name || userData.displayName || user.user_metadata?.full_name || 'أكاديمية';
         } else if (userData.accountType === 'agent') {
-          return userData.name || userData.agent_name || userData.agency_name || userData.displayName || user.displayName || 'وكيل';
+          return userData.name || userData.agent_name || userData.agency_name || userData.displayName || user.user_metadata?.full_name || 'وكيل';
         } else if (userData.accountType === 'trainer') {
-          return userData.name || userData.trainer_name || userData.displayName || user.displayName || 'مدرب';
+          return userData.name || userData.trainer_name || userData.displayName || user.user_metadata?.full_name || 'مدرب';
         } else {
-          return userData.displayName || userData.name || userData.full_name || user.displayName || 'أنا';
+          return userData.displayName || userData.name || userData.full_name || user.user_metadata?.full_name || 'أنا';
         }
       };
 
       // إنشاء محادثة جديدة
+      const now = new Date().toISOString();
+      const conversationId = crypto.randomUUID();
       const newConversationData = {
-        participants: [user.uid, actualContactId],
+        id: conversationId,
+        participants: [user.id, actualContactId],
         participantNames: {
-          [user.uid]: getCurrentUserName(),
+          [user.id]: getCurrentUserName(),
           [actualContactId]: contact.name
         },
         participantTypes: {
-          [user.uid]: userData.accountType || 'player',
+          [user.id]: userData.accountType || 'player',
           [actualContactId]: contact.type
         },
         participantAvatars: {
-          [user.uid]: userData.avatar || null,
+          [user.id]: userData.avatar || null,
           [actualContactId]: contact.avatar || null
         },
         subject: `محادثة مع ${contact.name}`,
@@ -352,17 +346,17 @@ const WorkingMessageCenter: React.FC = () => {
         lastMessageTime: null,
         lastSenderId: '',
         unreadCount: {
-          [user.uid]: 0,
+          [user.id]: 0,
           [actualContactId]: 0
         },
         isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: now,
+        updatedAt: now
       };
 
-      const conversationRef = await addDoc(collection(db, 'conversations'), newConversationData);
+      await supabase.from('conversations').insert(newConversationData);
 
-      console.log('✅ تم إنشاء محادثة جديدة:', conversationRef.id);
+      console.log('✅ تم إنشاء محادثة جديدة:', conversationId);
       toast.success(`تم إنشاء محادثة مع ${contact.name}`);
 
       // Track Clarity events
@@ -405,29 +399,27 @@ const WorkingMessageCenter: React.FC = () => {
       console.log('⚠️ لا يمكن جلب جهات الاتصال - بيانات المستخدم غير متوفرة، سيتم المحاولة بدونها');
     }
 
-    // إزالة أي تأخير قد يسبب تراكب الاستدعاءات
-
     try {
       console.log('🔄 جلب جهات الاتصال...');
-      console.log('👤 المستخدم الحالي:', user.uid);
+      console.log('👤 المستخدم الحالي:', user.id);
       console.log('📋 بيانات المستخدم:', userData);
       const allContacts: Contact[] = [];
 
-      // جلب جميع المستخدمين من مجموعة users أولاً (بالتوازي لتسريع العرض)
+      // جلب جميع المستخدمين من جدول users أولاً
       try {
         console.log('🔄 جلب جميع المستخدمين...');
-        const usersQueryRef = query(
-          collection(db, 'users'),
-          limit(100)
-        );
-        const usersSnapshot = await getDocs(usersQueryRef);
-        console.log('✅ تم جلب المستخدمين:', usersSnapshot.docs.length);
+        const { data: usersRows } = await supabase
+          .from('users')
+          .select('*')
+          .limit(100);
 
-        const processUser = async (userDocSnapshot: any): Promise<Contact | null> => {
-          const data = userDocSnapshot.data();
-          if (userDocSnapshot.id === user.uid) return null;
+        console.log('✅ تم جلب المستخدمين:', usersRows?.length || 0);
+
+        const processUser = async (row: any): Promise<Contact | null> => {
+          const data = row;
+          if (data.id === user.id) return null;
           const accountType = data.accountType;
-          if (!accountType || !['club', 'academy', 'agent', 'trainer', 'player'].includes(accountType)) return null; // استثناء admin
+          if (!accountType || !['club', 'academy', 'agent', 'trainer', 'player'].includes(accountType)) return null;
 
           let contactName: string = 'مستخدم';
           let organizationName: any = null;
@@ -437,11 +429,15 @@ const WorkingMessageCenter: React.FC = () => {
           let profileData: any = null;
 
           try {
-            const profileCollection = accountType === 'admin' ? 'users' : `${accountType}s`;
-            const profileDocRef = doc(db, profileCollection, userDocSnapshot.id);
-            const profileDocSnapshot = await getDoc(profileDocRef);
-            if (profileDocSnapshot.exists()) {
-              profileData = profileDocSnapshot.data() as any;
+            const profileTable = accountType === 'admin' ? 'users' : `${accountType}s`;
+            const { data: profileRow } = await supabase
+              .from(profileTable)
+              .select('*')
+              .eq('id', data.id)
+              .single();
+
+            if (profileRow) {
+              profileData = profileRow;
               if (accountType === 'player') {
                 contactName = profileData.full_name || profileData.name || profileData.displayName || data.displayName || data.name || data.full_name || 'لاعب';
                 if (profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id) {
@@ -467,20 +463,19 @@ const WorkingMessageCenter: React.FC = () => {
                 organizationName = profileData.organizationName || profileData.specialization || null;
               }
             } else {
-              // Fallback to users collection data
+              // Fallback to users table data
               contactName = data.displayName || data.name || data.full_name || 'مستخدم';
               organizationName = data.organizationName || data.clubName || data.academyName || data.agencyName || null;
             }
           } catch (e) {
-            console.log(`⚠️ خطأ ملف شخصي ${userDocSnapshot.id}:`, e);
+            console.log(`⚠️ خطأ ملف شخصي ${data.id}:`, e);
             contactName = data.displayName || data.name || data.full_name || 'مستخدم';
             organizationName = data.organizationName || data.clubName || data.academyName || data.agencyName || null;
           }
 
           let avatarUrl: string | null = null;
           try {
-            // Try Supabase first, then fallback to profile data, then users data
-            avatarUrl = await getUserAvatarFromSupabase(userDocSnapshot.id, accountType);
+            avatarUrl = await getUserAvatarFromSupabase(data.id, accountType);
             if (!avatarUrl && profileData?.avatar) {
               avatarUrl = profileData.avatar;
             }
@@ -488,11 +483,11 @@ const WorkingMessageCenter: React.FC = () => {
               avatarUrl = data.avatar;
             }
             if (!avatarUrl) {
-              const userDataForAvatar = { ...data, uid: userDocSnapshot.id, accountType };
+              const userDataForAvatar = { ...data, uid: data.id, accountType };
               avatarUrl = getPlayerAvatarUrl(userDataForAvatar, user);
             }
           } catch (e) {
-            console.log(`⚠️ خطأ جلب الصورة ${userDocSnapshot.id}:`, e);
+            console.log(`⚠️ خطأ جلب الصورة ${data.id}:`, e);
             avatarUrl = null;
           }
 
@@ -504,7 +499,7 @@ const WorkingMessageCenter: React.FC = () => {
           }
 
           const c: Contact = {
-            id: `${accountType}_${userDocSnapshot.id}`,
+            id: `${accountType}_${data.id}`,
             name: displayName,
             type: accountType as any,
             avatar: avatarUrl,
@@ -518,7 +513,7 @@ const WorkingMessageCenter: React.FC = () => {
           return c;
         };
 
-        const tasks = usersSnapshot.docs.map((d) => processUser(d));
+        const tasks = (usersRows || []).map((d: any) => processUser(d));
         const results = await Promise.allSettled(tasks);
         results.forEach((res) => {
           if (res.status === 'fulfilled' && res.value) {
@@ -541,8 +536,6 @@ const WorkingMessageCenter: React.FC = () => {
         });
       }
 
-      // لا تضف جهات افتراضية؛ اتركها فارغة ليظهر Empty state
-
       console.log('✅ تم جلب جهات الاتصال:', allContacts.length);
       console.log('📋 تفاصيل جهات الاتصال:', allContacts.map(c => `${c.name} (${c.type})`));
       setContacts(allContacts);
@@ -563,45 +556,70 @@ const WorkingMessageCenter: React.FC = () => {
     try {
       console.log('🔄 جلب الرسائل للمحادثة:', conversationId);
 
-      const messagesQuery = query(
-        collection(db, 'messages'),
-        where('conversationId', '==', conversationId),
-        orderBy('timestamp', 'asc')
-      );
+      // Initial fetch
+      const { data: initialMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversationId', conversationId)
+        .order('timestamp', { ascending: true });
 
-      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        const messagesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date()
-        })) as Message[];
+      const messagesData = (initialMessages || []).map((row: any) => ({
+        ...row,
+        timestamp: row.timestamp ? new Date(row.timestamp) : new Date()
+      })) as Message[];
 
-        setMessages(messagesData);
-        console.log('✅ تم جلب الرسائل:', messagesData.length);
+      setMessages(messagesData);
+      console.log('✅ تم جلب الرسائل:', messagesData.length);
 
-        // جلب صور المرسلين بشكل منفصل
-        messagesData.forEach(async (message) => {
-          if (!message.senderAvatar && message.senderId !== user?.uid) {
-            try {
-              const avatarUrl = await getUserAvatarFromSupabase(message.senderId, message.senderType);
-              if (avatarUrl) {
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === message.id ? { ...msg, senderAvatar: avatarUrl } : msg
-                  )
-                );
-              }
-            } catch (error) {
-              console.error(`❌ Error fetching avatar for message sender ${message.senderId}:`, error);
+      // جلب صور المرسلين بشكل منفصل
+      messagesData.forEach(async (message) => {
+        if (!message.senderAvatar && message.senderId !== user?.id) {
+          try {
+            const avatarUrl = await getUserAvatarFromSupabase(message.senderId, message.senderType);
+            if (avatarUrl) {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === message.id ? { ...msg, senderAvatar: avatarUrl } : msg
+                )
+              );
             }
+          } catch (error) {
+            console.error(`❌ Error fetching avatar for message sender ${message.senderId}:`, error);
           }
-        });
-
-        // التمرير إلى أسفل
-        setTimeout(scrollToBottom, 100);
+        }
       });
 
-      return unsubscribe;
+      // التمرير إلى أسفل
+      setTimeout(scrollToBottom, 100);
+
+      // Subscribe to realtime changes
+      const channel = supabase
+        .channel(`messages-${conversationId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversationId=eq.${conversationId}`
+        }, async () => {
+          const { data: updatedMessages } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversationId', conversationId)
+            .order('timestamp', { ascending: true });
+
+          const updated = (updatedMessages || []).map((row: any) => ({
+            ...row,
+            timestamp: row.timestamp ? new Date(row.timestamp) : new Date()
+          })) as Message[];
+
+          setMessages(updated);
+          setTimeout(scrollToBottom, 100);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error) {
       console.error('❌ خطأ في جلب الرسائل:', error);
     }
@@ -619,45 +637,48 @@ const WorkingMessageCenter: React.FC = () => {
       // Get proper sender name from userData
       const getSenderName = () => {
         if (userData.accountType === 'player') {
-          return userData.full_name || userData.name || userData.displayName || user.displayName || 'أنا';
+          return userData.full_name || userData.name || userData.displayName || user.user_metadata?.full_name || 'أنا';
         } else if (userData.accountType === 'club') {
-          return userData.name || userData.club_name || userData.displayName || user.displayName || 'نادي';
+          return userData.name || userData.club_name || userData.displayName || user.user_metadata?.full_name || 'نادي';
         } else if (userData.accountType === 'academy') {
-          return userData.name || userData.academy_name || userData.displayName || user.displayName || 'أكاديمية';
+          return userData.name || userData.academy_name || userData.displayName || user.user_metadata?.full_name || 'أكاديمية';
         } else if (userData.accountType === 'agent') {
-          return userData.name || userData.agent_name || userData.agency_name || userData.displayName || user.displayName || 'وكيل';
+          return userData.name || userData.agent_name || userData.agency_name || userData.displayName || user.user_metadata?.full_name || 'وكيل';
         } else if (userData.accountType === 'trainer') {
-          return userData.name || userData.trainer_name || userData.displayName || user.displayName || 'مدرب';
+          return userData.name || userData.trainer_name || userData.displayName || user.user_metadata?.full_name || 'مدرب';
         } else {
-          return userData.displayName || userData.name || userData.full_name || user.displayName || 'أنا';
+          return userData.displayName || userData.name || userData.full_name || user.user_metadata?.full_name || 'أنا';
         }
       };
 
+      const now = new Date().toISOString();
+      const messageId = crypto.randomUUID();
       const messageData = {
+        id: messageId,
         conversationId: selectedConversation.id,
-        senderId: user.uid,
-        receiverId: selectedConversation.participants.find(id => id !== user.uid) || '',
+        senderId: user.id,
+        receiverId: selectedConversation.participants.find(id => id !== user.id) || '',
         senderName: getSenderName(),
-        receiverName: selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user.uid) || ''] || 'مستخدم',
+        receiverName: selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user.id) || ''] || 'مستخدم',
         senderType: userData.accountType || 'player',
-        receiverType: selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user.uid) || ''] || 'player',
+        receiverType: selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user.id) || ''] || 'player',
         message: newMessage.trim(),
-        timestamp: new Date(),
+        timestamp: now,
         isRead: false,
         messageType: 'text',
         senderAvatar: userData.avatar || null,
         deliveryStatus: 'sent'
       };
 
-      await addDoc(collection(db, 'messages'), messageData);
+      await supabase.from('messages').insert(messageData);
 
       // تحديث المحادثة
-      await updateDoc(doc(db, 'conversations', selectedConversation.id), {
+      await supabase.from('conversations').update({
         lastMessage: newMessage.trim(),
-        lastMessageTime: new Date(),
-        updatedAt: new Date(),
-        lastSenderId: user.uid
-      });
+        lastMessageTime: now,
+        updatedAt: now,
+        lastSenderId: user.id
+      }).eq('id', selectedConversation.id);
 
       setNewMessage('');
       toast.success('تم إرسال الرسالة');
@@ -683,7 +704,7 @@ const WorkingMessageCenter: React.FC = () => {
 
       // Track Clarity events
       trackEvent('conversation_opened');
-      setTag('conversation_participant_type', conversation.participantTypes[conversation.participants.find(id => id !== user?.uid) || ''] || 'unknown');
+      setTag('conversation_participant_type', conversation.participantTypes[conversation.participants.find(id => id !== user?.id) || ''] || 'unknown');
 
       // تحديث حالة المحادثة
       setConversations(prev =>
@@ -719,7 +740,7 @@ const WorkingMessageCenter: React.FC = () => {
     }
 
     for (const participantId of conversation.participants) {
-      if (participantId !== user?.uid && !conversation.participantAvatars[participantId]) {
+      if (participantId !== user?.id && !conversation.participantAvatars[participantId]) {
         try {
           const participantType = conversation.participantTypes[participantId];
           const avatarUrl = await getUserAvatarFromSupabase(participantId, participantType);
@@ -735,26 +756,6 @@ const WorkingMessageCenter: React.FC = () => {
     return conversation;
   };
 
-  const fetchMessageAvatars = async (messages: Message[]) => {
-    const updatedMessages = [...messages];
-
-    for (let i = 0; i < updatedMessages.length; i++) {
-      const message = updatedMessages[i];
-      if (!message.senderAvatar && message.senderId !== user?.uid) {
-        try {
-          const avatarUrl = await getUserAvatarFromSupabase(message.senderId, message.senderType);
-          if (avatarUrl) {
-            updatedMessages[i] = { ...message, senderAvatar: avatarUrl };
-          }
-        } catch (error) {
-          console.error(`❌ Error fetching avatar for message sender ${message.senderId}:`, error);
-        }
-      }
-    }
-
-    return updatedMessages;
-  };
-
   // إذا لم يكن في المتصفح، اعرض حالة تحميل
   if (!isClient) {
     return (
@@ -766,8 +767,6 @@ const WorkingMessageCenter: React.FC = () => {
       </div>
     );
   }
-
-  // لا تعرض مؤشر تحميل جهات الاتصال كحالة إرجاع مبكر؛ تابع عرض الواجهة مع قائمة فارغة مؤقتًا
 
   if (loading) {
     return (
@@ -853,7 +852,7 @@ const WorkingMessageCenter: React.FC = () => {
       {selectedConversation && (
         <div className="lg:hidden w-full bg-white border-b px-4 py-3 flex justify-between items-center gap-3">
           <div className="text-sm font-medium text-gray-700">
-            {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+            {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
           </div>
           <Button
             onClick={closeConversation}
@@ -912,10 +911,10 @@ const WorkingMessageCenter: React.FC = () => {
           {filteredConversations.length > 0 ? (
             <div className="space-y-1 p-2">
               {filteredConversations.map((conversation) => {
-                const otherParticipantId = conversation.participants.find(id => id !== user.uid);
+                const otherParticipantId = conversation.participants.find(id => id !== user.id);
                 const otherParticipantName = conversation.participantNames[otherParticipantId || ''] || 'مستخدم';
                 const otherParticipantType = conversation.participantTypes[otherParticipantId || ''] || 'player';
-                const unreadCount = conversation.unreadCount[user.uid] || 0;
+                const unreadCount = conversation.unreadCount[user.id] || 0;
                 const UserIcon = USER_TYPES[otherParticipantType as keyof typeof USER_TYPES]?.icon || Users;
 
                 return (
@@ -927,13 +926,13 @@ const WorkingMessageCenter: React.FC = () => {
                     <div className="relative">
                       <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
                         <AvatarImage
-                          src={conversation.participantAvatars?.[conversation.participants.find(id => id !== user?.uid) || ''] || ''}
-                          alt={conversation.participantNames[conversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                          src={conversation.participantAvatars?.[conversation.participants.find(id => id !== user?.id) || ''] || ''}
+                          alt={conversation.participantNames[conversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                           className="transition-transform duration-200 hover:scale-105"
                         />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg font-semibold">
                           {(() => {
-                            const participantId = conversation.participants.find(id => id !== user?.uid);
+                            const participantId = conversation.participants.find(id => id !== user?.id);
                             const participantType = conversation.participantTypes[participantId || ''];
                             const UserIcon = USER_TYPES[participantType as keyof typeof USER_TYPES]?.icon || Users;
                             return <UserIcon className="h-7 w-7" />;
@@ -948,14 +947,14 @@ const WorkingMessageCenter: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-bold text-base text-gray-900 truncate">
-                          {conversation.participantNames[conversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                          {conversation.participantNames[conversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                         </h4>
                         <div className="flex items-center gap-2">
                           {conversation.lastMessageTime && (
                             <span className="text-xs text-gray-500 font-medium">
                               {(() => {
                                 const now = new Date();
-                                const messageTime = conversation.lastMessageTime.toDate ? conversation.lastMessageTime.toDate() : new Date(conversation.lastMessageTime);
+                                const messageTime = new Date(conversation.lastMessageTime);
                                 const diffInHours = (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
 
                                 if (diffInHours < 1) {
@@ -970,9 +969,9 @@ const WorkingMessageCenter: React.FC = () => {
                               })()}
                             </span>
                           )}
-                          {conversation.unreadCount[user?.uid || ''] > 0 && (
+                          {conversation.unreadCount[user?.id || ''] > 0 && (
                             <div className="h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                              {conversation.unreadCount[user?.uid || ''] > 9 ? '9+' : conversation.unreadCount[user?.uid || '']}
+                              {conversation.unreadCount[user?.id || ''] > 9 ? '9+' : conversation.unreadCount[user?.id || '']}
                             </div>
                           )}
                         </div>
@@ -981,7 +980,7 @@ const WorkingMessageCenter: React.FC = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <Badge className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 border-0">
                           {(() => {
-                            const participantId = conversation.participants.find(id => id !== user?.uid);
+                            const participantId = conversation.participants.find(id => id !== user?.id);
                             const participantType = conversation.participantTypes[participantId || ''];
                             return USER_TYPES[participantType as keyof typeof USER_TYPES]?.name || 'مستخدم';
                           })()}
@@ -990,7 +989,7 @@ const WorkingMessageCenter: React.FC = () => {
 
                       {conversation.lastMessage && (
                         <p className="text-sm text-gray-600 truncate">
-                          {conversation.lastSenderId === user?.uid && (
+                          {conversation.lastSenderId === user?.id && (
                             <span className="text-blue-600 font-medium ml-1">أنت:</span>
                           )}
                           {conversation.lastMessage}
@@ -1048,8 +1047,8 @@ const WorkingMessageCenter: React.FC = () => {
                   <div className="relative">
                     <Avatar className="h-12 w-12 lg:h-14 lg:w-14 ring-2 ring-white shadow-sm">
                       <AvatarImage
-                        src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.uid) || ''] || ''}
-                        alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                        src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.id) || ''] || ''}
+                        alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                         className="transition-transform duration-200 hover:scale-105"
                       />
                       <AvatarFallback className="bg-white/20 text-white">
@@ -1063,11 +1062,11 @@ const WorkingMessageCenter: React.FC = () => {
 
                   <div className="flex-1">
                     <h3 className="font-bold text-lg lg:text-xl">
-                      {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                      {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge className="text-xs px-2 py-1 rounded-full bg-white/20 text-white border-0">
-                        {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.name || 'مستخدم'}
+                        {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.id) || ''] as keyof typeof USER_TYPES]?.name || 'مستخدم'}
                       </Badge>
                       <span className="text-xs text-blue-100">متصل الآن</span>
                     </div>
@@ -1087,7 +1086,7 @@ const WorkingMessageCenter: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gradient-to-b from-gray-50 to-white">
               <div className="space-y-6">
                 {messages.map((message, index) => {
-                  const isCurrentUser = message.senderId === user?.uid;
+                  const isCurrentUser = message.senderId === user?.id;
                   const UserIcon = USER_TYPES[message.senderType as keyof typeof USER_TYPES]?.icon || Users;
 
                   return (
@@ -1117,7 +1116,7 @@ const WorkingMessageCenter: React.FC = () => {
                             {isCurrentUser ? 'أنت' : (message.senderName || 'مستخدم')}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {message.timestamp.toLocaleTimeString('ar-EG', {
+                            {(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp)).toLocaleTimeString('ar-EG', {
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
@@ -1358,7 +1357,7 @@ const WorkingMessageCenter: React.FC = () => {
                           <div className="relative">
                             <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
                               <AvatarImage
-                                src={contact.avatar}
+                                src={contact.avatar || ''}
                                 alt={contact.name}
                                 className="transition-transform duration-200 hover:scale-105"
                               />
@@ -1430,4 +1429,4 @@ const WorkingMessageCenter: React.FC = () => {
   );
 };
 
-export default WorkingMessageCenter; 
+export default WorkingMessageCenter;

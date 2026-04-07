@@ -1,19 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  where,
-  updateDoc,
-  doc,
-  addDoc,
-  serverTimestamp,
-  getDocs
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { toast } from 'sonner';
 import { openWhatsAppShare } from '@/lib/utils/whatsapp-share';
@@ -55,7 +43,7 @@ const AdminSupportPage: React.FC = () => {
   });
 
   // UI State
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('table'); // Default to 'table' for productivity
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -68,7 +56,9 @@ const AdminSupportPage: React.FC = () => {
     if (user) {
       const unsubscribe = loadConversations();
       loadStats();
-      return () => unsubscribe();
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
   }, [user, filter, searchTerm]);
 
@@ -76,75 +66,103 @@ const AdminSupportPage: React.FC = () => {
   useEffect(() => {
     if (selectedConversation) {
       const unsubscribe = loadMessages();
-      // Mark as read when opening
       if (selectedConversation.unreadCount > 0) {
         markAsRead(selectedConversation.id);
       }
-      return () => unsubscribe?.();
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
-  }, [selectedConversation?.id]); // Only re-run if ID changes
+  }, [selectedConversation?.id]);
 
   const loadConversations = () => {
-    let conversationsQuery = query(
-      collection(db, 'support_conversations'),
-      orderBy('updatedAt', 'desc')
-    );
+    let query = supabase
+      .from('support_conversations')
+      .select('*')
+      .order('updatedAt', { ascending: false });
 
     if (filter !== 'all') {
-      conversationsQuery = query(
-        collection(db, 'support_conversations'),
-        where('status', '==', filter),
-        orderBy('updatedAt', 'desc')
-      );
+      query = supabase
+        .from('support_conversations')
+        .select('*')
+        .eq('status', filter)
+        .order('updatedAt', { ascending: false });
     }
 
-    const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
-      const conversationsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SupportConversation[];
+    const channel = supabase
+      .channel('support_conversations_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_conversations' }, async () => {
+        const { data } = await query;
+        if (data) {
+          const filtered = searchTerm
+            ? data.filter((conv: SupportConversation) =>
+              conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              conv.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            : data;
+          setConversations(filtered as SupportConversation[]);
+          if (selectedConversation) {
+            const updated = filtered.find((c: SupportConversation) => c.id === selectedConversation.id);
+            if (updated) setSelectedConversation(updated as SupportConversation);
+          }
+        }
+      })
+      .subscribe();
 
-      const filtered = searchTerm
-        ? conversationsList.filter(conv =>
-          conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          conv.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        : conversationsList;
-
-      setConversations(filtered);
-
-      // Update selected conversation buffer if it exists in the new list
-      if (selectedConversation) {
-        const updated = filtered.find(c => c.id === selectedConversation.id);
-        if (updated) setSelectedConversation(updated);
+    // Initial load
+    query.then(({ data }) => {
+      if (data) {
+        const filtered = searchTerm
+          ? data.filter((conv: SupportConversation) =>
+            conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            conv.lastMessage?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+          : data;
+        setConversations(filtered as SupportConversation[]);
+        if (selectedConversation) {
+          const updated = filtered.find((c: SupportConversation) => c.id === selectedConversation.id);
+          if (updated) setSelectedConversation(updated as SupportConversation);
+        }
       }
     });
 
-    return unsubscribe;
+    return () => { supabase.removeChannel(channel); };
   };
 
   const loadMessages = () => {
     if (!selectedConversation) return;
 
-    const messagesQuery = query(
-      collection(db, 'support_messages'),
-      where('conversationId', '==', selectedConversation.id),
-      orderBy('timestamp', 'asc')
-    );
+    const channel = supabase
+      .channel('support_messages_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_messages' }, async () => {
+        const { data } = await supabase
+          .from('support_messages')
+          .select('*')
+          .eq('conversationId', selectedConversation.id)
+          .order('timestamp', { ascending: true });
+        if (data) setMessages(data as SupportMessage[]);
+      })
+      .subscribe();
 
-    return onSnapshot(messagesQuery, (snapshot) => {
-      const messagesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SupportMessage[];
+    // Initial load
+    supabase
+      .from('support_messages')
+      .select('*')
+      .eq('conversationId', selectedConversation.id)
+      .order('timestamp', { ascending: true })
+      .then(({ data }) => {
+        if (data) setMessages(data as SupportMessage[]);
+      });
 
-      setMessages(messagesList);
-    });
+    return () => { supabase.removeChannel(channel); };
   };
 
   const loadStats = async () => {
     try {
-      const allConversationsSnapshot = await getDocs(collection(db, 'support_conversations'));
+      const { data: allConversations } = await supabase
+        .from('support_conversations')
+        .select('*');
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -153,14 +171,11 @@ const AdminSupportPage: React.FC = () => {
       let inProgressConversations = 0;
       let resolvedToday = 0;
 
-      allConversationsSnapshot.forEach(doc => {
-        const conv = doc.data() as SupportConversation;
+      (allConversations || []).forEach((conv: any) => {
         totalConversations++;
-
         if (conv.status === 'open') openConversations++;
         if (conv.status === 'in_progress') inProgressConversations++;
-
-        if (conv.status === 'resolved' && conv.updatedAt?.toDate() >= today) {
+        if (conv.status === 'resolved' && conv.updatedAt && new Date(conv.updatedAt) >= today) {
           resolvedToday++;
         }
       });
@@ -179,9 +194,10 @@ const AdminSupportPage: React.FC = () => {
 
   const markAsRead = async (conversationId: string) => {
     try {
-      await updateDoc(doc(db, 'support_conversations', conversationId), {
-        unreadCount: 0
-      });
+      await supabase
+        .from('support_conversations')
+        .update({ unreadCount: 0 })
+        .eq('id', conversationId);
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -190,10 +206,10 @@ const AdminSupportPage: React.FC = () => {
   const updateStatus = async (status: string) => {
     if (!selectedConversation) return;
     try {
-      await updateDoc(doc(db, 'support_conversations', selectedConversation.id), {
-        status,
-        updatedAt: serverTimestamp()
-      });
+      await supabase
+        .from('support_conversations')
+        .update({ status, updatedAt: new Date().toISOString() })
+        .eq('id', selectedConversation.id);
       toast.success(`تم تغيير الحالة إلى ${status}`);
     } catch (error) {
       toast.error('فشل تحديث الحالة');
@@ -206,24 +222,28 @@ const AdminSupportPage: React.FC = () => {
     setLoading(true);
     try {
       const message = {
+        id: crypto.randomUUID(),
         conversationId: selectedConversation.id,
-        senderId: user.uid,
+        senderId: user.id,
         senderName: 'الدعم الفني',
         senderType: 'admin',
         message: newMessage.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(),
         isRead: false
       };
 
-      await addDoc(collection(db, 'support_messages'), message);
+      await supabase.from('support_messages').insert(message);
 
       // Update conversation
-      await updateDoc(doc(db, 'support_conversations', selectedConversation.id), {
-        lastMessage: newMessage.trim(),
-        lastMessageTime: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        status: selectedConversation.status === 'open' ? 'in_progress' : selectedConversation.status
-      });
+      await supabase
+        .from('support_conversations')
+        .update({
+          lastMessage: newMessage.trim(),
+          lastMessageTime: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          status: selectedConversation.status === 'open' ? 'in_progress' : selectedConversation.status
+        })
+        .eq('id', selectedConversation.id);
 
       setNewMessage('');
     } catch (error) {
@@ -236,8 +256,7 @@ const AdminSupportPage: React.FC = () => {
 
   const handleWhatsApp = (phone?: string) => {
     if (!selectedConversation) return;
-
-    setChatAmanPhone(phone || '201017799580'); // fallback
+    setChatAmanPhone(phone || '201017799580');
     setIsChatAmanOpen(true);
   };
 
@@ -280,11 +299,9 @@ const AdminSupportPage: React.FC = () => {
       {/* Main Content Area */}
       <div className="h-[calc(100vh-280px)] min-h-[600px]">
         {viewMode === 'table' ? (
-          // TABLE MODE: Full width table + Slide-over Details
           <div className="h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h3 className="font-semibold text-slate-900">جميع التذاكر ({conversations.length})</h3>
-              {/* Add simple filter buttons here for quick access in table mode */}
               <div className="flex gap-2">
                 <Button variant={filter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('all')} className="h-8">الكل</Button>
                 <Button variant={filter === 'open' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('open')} className="h-8">مفتوحة</Button>
@@ -296,12 +313,11 @@ const AdminSupportPage: React.FC = () => {
                 conversations={conversations}
                 onSelect={(ticket) => setSelectedConversation(ticket)}
                 selectedId={selectedConversation?.id}
-                onSort={() => { }} // TODO: Implement sorting
+                onSort={() => { }}
               />
             </div>
           </div>
         ) : (
-          // LIST MODE: The previous 3-pane layout
           <div className="grid grid-cols-12 gap-4 h-full">
             <div className="col-span-12 lg:col-span-3 xl:col-span-3 h-full">
               <TicketList
@@ -352,7 +368,6 @@ const AdminSupportPage: React.FC = () => {
               </SheetDescription>
             </SheetHeader>
             <div className="h-full flex flex-col bg-white">
-              {/* This reuses the ChatWindow but in a sheet */}
               <div className="flex-1 overflow-hidden relative flex flex-col">
                 <Button
                   variant="ghost"
@@ -381,11 +396,11 @@ const AdminSupportPage: React.FC = () => {
         </Sheet>
       )}
 
-      <ChatAmanModal 
-        open={isChatAmanOpen} 
-        onOpenChange={setIsChatAmanOpen} 
-        targetPhone={chatAmanPhone} 
-        targetName={selectedConversation?.userName || ''} 
+      <ChatAmanModal
+        open={isChatAmanOpen}
+        onOpenChange={setIsChatAmanOpen}
+        targetPhone={chatAmanPhone}
+        targetName={selectedConversation?.userName || ''}
         conversationId={selectedConversation?.id}
       />
     </div>
@@ -393,4 +408,3 @@ const AdminSupportPage: React.FC = () => {
 };
 
 export default AdminSupportPage;
-

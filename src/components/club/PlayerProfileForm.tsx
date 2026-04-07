@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { db } from '@/lib/firebase/config';
-import { collection, addDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { PlayerFormData } from '@/types/player';
 // ... import other needed UI components and types
 
@@ -101,7 +100,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!data.full_name) {
       newErrors.full_name = 'الاسم الكامل مطلوب';
     }
@@ -113,7 +112,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
     if (!data.phone) {
       newErrors.phone = 'رقم الهاتف مطلوب';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -121,12 +120,14 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
-      await addDoc(collection(db, 'clubs', clubId, 'players'), {
+      await supabase.from('club_players').insert({
+        id: crypto.randomUUID(),
+        club_id: clubId,
         ...data,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       });
       setLoading(false);
       if (onSuccess) onSuccess();
@@ -262,16 +263,16 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
       </Tabs>
 
       <div className="flex justify-end gap-2">
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           disabled={loading}
           className="bg-blue-600 text-white hover:bg-blue-700"
         >
           {loading ? 'جاري الحفظ...' : 'حفظ'}
         </Button>
-        <Button 
-          type="button" 
-          variant="outline" 
+        <Button
+          type="button"
+          variant="outline"
           onClick={onSuccess}
           disabled={loading}
         >
@@ -280,4 +281,4 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
       </div>
     </form>
   );
-} 
+}

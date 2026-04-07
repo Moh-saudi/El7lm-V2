@@ -127,7 +127,7 @@ export default function PlayerStorePage() {
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       loadPlayerData();
     }
   }, [user]);
@@ -139,7 +139,7 @@ export default function PlayerStorePage() {
   const loadPlayerData = async () => {
     try {
       setLoading(true);
-      const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
+      const rewards = await referralService.createOrUpdatePlayerRewards(user!.id);
       setPlayerRewards(rewards);
     } catch (error) {
       console.error('خطأ في تحميل بيانات اللاعب:', error);
@@ -187,14 +187,14 @@ export default function PlayerStorePage() {
     try {
       // إنشاء طلب الشراء
       const purchaseOrder: Omit<PurchaseOrder, 'id'> = {
-        playerId: user!.uid,
+        playerId: user!.id,
         productId: selectedProduct.id,
         quantity: purchaseQuantity,
         totalPoints: totalPoints,
         status: 'pending',
         createdAt: new Date(),
         shippingAddress: {
-          name: user?.displayName || 'لاعب',
+          name: user?.user_metadata?.full_name || 'لاعب',
           phone: '',
           address: '',
           city: '',
@@ -207,7 +207,7 @@ export default function PlayerStorePage() {
 
       // خصم النقاط من حساب اللاعب
       await referralService.addPointsToPlayer(
-        user!.uid,
+        user!.id,
         -totalPoints,
         `شراء ${selectedProduct.name}`
       );

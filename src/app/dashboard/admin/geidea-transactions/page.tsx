@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, where, doc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import toast from 'react-hot-toast';
 import { RefreshCw, Download, Search, Filter, CheckCircle, XCircle, Clock, AlertCircle, Upload, Save } from 'lucide-react';
 
@@ -98,41 +97,59 @@ export default function GeideaTransactionsPage() {
 
       // 1. جلب من geidea_payments
       try {
-        const geideaPaymentsRef = collection(db, 'geidea_payments');
-        let geideaSnapshot;
-        try {
-          const geideaQuery = query(geideaPaymentsRef, orderBy('createdAt', 'desc'));
-          geideaSnapshot = await getDocs(geideaQuery);
-        } catch (orderByError) {
-          // إذا فشل orderBy (لا يوجد index)، نجلب بدون ترتيب
-          console.warn('⚠️ orderBy failed for geidea_payments, fetching without order:', orderByError);
-          geideaSnapshot = await getDocs(geideaPaymentsRef);
-        }
+        const { data: geideaRows, error: geideaError } = await supabase
+          .from('geidea_payments')
+          .select('*')
+          .order('createdAt', { ascending: false });
 
-        geideaSnapshot.forEach((doc) => {
-          const data = doc.data();
-          allTransactions.push({
-            id: doc.id,
-            orderId: data.orderId || data.geideaOrderId || doc.id,
-            merchantReferenceId: data.merchantReferenceId || data.ourMerchantReferenceId,
-            status: data.status || 'pending',
-            amount: data.amount || null,
-            currency: data.currency || 'EGP',
-            responseCode: data.responseCode,
-            detailedResponseCode: data.detailedResponseCode,
-            responseMessage: data.responseMessage,
-            detailedResponseMessage: data.detailedResponseMessage,
-            customerEmail: data.customerEmail,
-            customerName: data.customerName,
-            customerPhone: data.customerPhone,
-            paidAt: data.paidAt,
-            fetchedFromGeideaAt: data.fetchedFromGeideaAt,
-            createdAt: data.createdAt,
-            source: 'firestore_geidea_payments',
+        if (geideaError) {
+          console.warn('⚠️ orderBy failed for geidea_payments, fetching without order:', geideaError);
+          const { data: fallbackRows } = await supabase.from('geidea_payments').select('*');
+          (fallbackRows || []).forEach((row) => {
+            allTransactions.push({
+              id: row.id,
+              orderId: row.orderId || row.geideaOrderId || row.id,
+              merchantReferenceId: row.merchantReferenceId || row.ourMerchantReferenceId,
+              status: row.status || 'pending',
+              amount: row.amount || null,
+              currency: row.currency || 'EGP',
+              responseCode: row.responseCode,
+              detailedResponseCode: row.detailedResponseCode,
+              responseMessage: row.responseMessage,
+              detailedResponseMessage: row.detailedResponseMessage,
+              customerEmail: row.customerEmail,
+              customerName: row.customerName,
+              customerPhone: row.customerPhone,
+              paidAt: row.paidAt,
+              fetchedFromGeideaAt: row.fetchedFromGeideaAt,
+              createdAt: row.createdAt,
+              source: 'firestore_geidea_payments',
+            });
           });
-        });
-
-        console.log(`✅ جلب ${geideaSnapshot.size} معاملة من geidea_payments`);
+        } else {
+          (geideaRows || []).forEach((row) => {
+            allTransactions.push({
+              id: row.id,
+              orderId: row.orderId || row.geideaOrderId || row.id,
+              merchantReferenceId: row.merchantReferenceId || row.ourMerchantReferenceId,
+              status: row.status || 'pending',
+              amount: row.amount || null,
+              currency: row.currency || 'EGP',
+              responseCode: row.responseCode,
+              detailedResponseCode: row.detailedResponseCode,
+              responseMessage: row.responseMessage,
+              detailedResponseMessage: row.detailedResponseMessage,
+              customerEmail: row.customerEmail,
+              customerName: row.customerName,
+              customerPhone: row.customerPhone,
+              paidAt: row.paidAt,
+              fetchedFromGeideaAt: row.fetchedFromGeideaAt,
+              createdAt: row.createdAt,
+              source: 'firestore_geidea_payments',
+            });
+          });
+          console.log(`✅ جلب ${(geideaRows || []).length} معاملة من geidea_payments`);
+        }
       } catch (error) {
         console.error('Error fetching from geidea_payments:', error);
         toast.error('حدث خطأ أثناء جلب معاملات جيديا');
@@ -142,13 +159,13 @@ export default function GeideaTransactionsPage() {
       allTransactions.sort((a, b) => {
         const dateA = a.paidAt
           ? new Date(a.paidAt).getTime()
-          : a.createdAt?.toDate
-            ? a.createdAt.toDate().getTime()
+          : a.createdAt
+            ? new Date(a.createdAt).getTime()
             : 0;
         const dateB = b.paidAt
           ? new Date(b.paidAt).getTime()
-          : b.createdAt?.toDate
-            ? b.createdAt.toDate().getTime()
+          : b.createdAt
+            ? new Date(b.createdAt).getTime()
             : 0;
         return dateB - dateA;
       });
@@ -386,16 +403,15 @@ export default function GeideaTransactionsPage() {
       setFoundTransactions([]);
       setSelectedForImport(new Set());
 
-      const bulkPaymentsRef = collection(db, 'bulkPayments');
-      // نبحث عن المعاملات التي طريقة دفعها geidea
-      const q = query(bulkPaymentsRef, where('paymentMethod', '==', 'geidea'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
+      const { data: bulkRows } = await supabase
+        .from('bulkPayments')
+        .select('*')
+        .eq('paymentMethod', 'geidea')
+        .order('createdAt', { ascending: false });
 
       const found: GeideaTransaction[] = [];
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-
+      (bulkRows || []).forEach((data) => {
         // التحقق الإضافي: يجب أن يكون لها merchantReferenceId يبدأ بـ EL7LM أو orderId مميز
         const isValidGeidea =
           (data.merchantReferenceId && typeof data.merchantReferenceId === 'string' && data.merchantReferenceId.startsWith('EL7LM')) ||
@@ -420,8 +436,8 @@ export default function GeideaTransactionsPage() {
             }
 
             found.push({
-              id: doc.id, // نحتفظ بنفس ID المستند
-              orderId: data.orderId || data.transactionId || doc.id,
+              id: data.id, // نحتفظ بنفس ID المستند
+              orderId: data.orderId || data.transactionId || data.id,
               merchantReferenceId: data.merchantReferenceId || data.reference || data.merchantRef,
               status: data.status || 'pending',
               amount: data.amount || data.total || null,
@@ -474,14 +490,15 @@ export default function GeideaTransactionsPage() {
           // إنشاء مستند جديد في geidea_payments
           // نستخدم orderId أو merchantReferenceId كـ ID للمستند إذا أمكن، وإلا نستخدم ID الأصلي
           const docId = transaction.orderId || transaction.merchantReferenceId || transaction.id;
-          const docRef = doc(db, 'geidea_payments', docId);
 
-          await setDoc(docRef, {
+          const { error: upsertError } = await supabase.from('geidea_payments').upsert({
             ...transaction,
+            id: docId,
             importedAt: new Date().toISOString(),
             source: 'imported_from_bulk'
           });
 
+          if (upsertError) throw upsertError;
           successCount++;
         } catch (error) {
           console.error(`Failed to import transaction ${transaction.id}:`, error);
@@ -541,8 +558,8 @@ export default function GeideaTransactionsPage() {
       filtered = filtered.filter(t => {
         const transactionDate = t.paidAt
           ? new Date(t.paidAt)
-          : t.createdAt?.toDate
-            ? t.createdAt.toDate()
+          : t.createdAt
+            ? new Date(t.createdAt)
             : null;
         return transactionDate && transactionDate >= fromDate;
       });
@@ -555,8 +572,8 @@ export default function GeideaTransactionsPage() {
       filtered = filtered.filter(t => {
         const transactionDate = t.paidAt
           ? new Date(t.paidAt)
-          : t.createdAt?.toDate
-            ? t.createdAt.toDate()
+          : t.createdAt
+            ? new Date(t.createdAt)
             : null;
         return transactionDate && transactionDate <= toDate;
       });
@@ -894,8 +911,8 @@ export default function GeideaTransactionsPage() {
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {transaction.paidAt
                         ? new Date(transaction.paidAt).toLocaleString('ar-EG')
-                        : transaction.createdAt?.toDate
-                          ? transaction.createdAt.toDate().toLocaleString('ar-EG')
+                        : transaction.createdAt
+                          ? new Date(transaction.createdAt).toLocaleString('ar-EG')
                           : '-'}
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -1000,8 +1017,8 @@ export default function GeideaTransactionsPage() {
                   <p className="text-gray-900">
                     {selectedTransaction.paidAt
                       ? new Date(selectedTransaction.paidAt).toLocaleString('ar-EG')
-                      : selectedTransaction.createdAt?.toDate
-                        ? selectedTransaction.createdAt.toDate().toLocaleString('ar-EG')
+                      : selectedTransaction.createdAt
+                        ? new Date(selectedTransaction.createdAt).toLocaleString('ar-EG')
                         : '-'}
                   </p>
                 </div>
@@ -1118,8 +1135,8 @@ export default function GeideaTransactionsPage() {
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {transaction.paidAt
                             ? new Date(transaction.paidAt).toLocaleString('ar-EG')
-                            : transaction.createdAt?.toDate
-                              ? transaction.createdAt.toDate().toLocaleString('ar-EG')
+                            : transaction.createdAt
+                              ? new Date(transaction.createdAt).toLocaleString('ar-EG')
                               : '-'}
                         </td>
                         <td className="px-4 py-3">

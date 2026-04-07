@@ -289,7 +289,7 @@ export default function ApplicationsPage() {
     if (!user || !opportunity) return;
     try {
       setProcessingId(app.id);
-      await updateApplicationStatus(app.id, 'accepted', user.uid);
+      await updateApplicationStatus(app.id, 'accepted', user.id);
       await notifyApplicationAccepted(app.playerId, opportunity.title, opportunity.organizerName);
       toast.success('تم قبول الطلب');
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a));
@@ -301,7 +301,7 @@ export default function ApplicationsPage() {
     if (!user || !opportunity) return;
     try {
       setProcessingId(app.id);
-      await updateApplicationStatus(app.id, 'rejected', user.uid, note || undefined);
+      await updateApplicationStatus(app.id, 'rejected', user.id, note || undefined);
       await notifyApplicationRejected(app.playerId, opportunity.title, opportunity.organizerName);
       toast.success('تم رفض الطلب');
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected', reviewNote: note } : a));
@@ -316,7 +316,7 @@ export default function ApplicationsPage() {
     try {
       const targets = applications.filter(a => selectedIds.has(a.id) && a.status === 'pending');
       await Promise.all(targets.map(async app => {
-        await updateApplicationStatus(app.id, 'accepted', user.uid);
+        await updateApplicationStatus(app.id, 'accepted', user.id);
         await notifyApplicationAccepted(app.playerId, opportunity.title, opportunity.organizerName);
       }));
       setApplications(prev => prev.map(a =>
@@ -334,7 +334,7 @@ export default function ApplicationsPage() {
     try {
       const targets = applications.filter(a => selectedIds.has(a.id) && a.status === 'pending');
       await Promise.all(targets.map(async app => {
-        await updateApplicationStatus(app.id, 'rejected', user.uid);
+        await updateApplicationStatus(app.id, 'rejected', user.id);
         await notifyApplicationRejected(app.playerId, opportunity.title, opportunity.organizerName);
       }));
       setApplications(prev => prev.map(a =>

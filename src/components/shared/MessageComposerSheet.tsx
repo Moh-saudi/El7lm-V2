@@ -2,13 +2,12 @@
 
 import PlayerImage from '@/components/ui/player-image';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import { MessageData, UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
 import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface MessageComposerSheetProps {
@@ -43,8 +42,8 @@ export default function MessageComposerSheet({
   }, [isOpen, sent]);
 
   const getSenderInfo = useCallback(async () => {
-    let name = user?.displayName || 'مستخدم';
-    let avatar = user?.photoURL || '';
+    let name = user?.user_metadata?.full_name || 'مستخدم';
+    let avatar = user?.user_metadata?.avatar_url || '';
 
     if (userData) {
       name = userData.full_name || userData.club_name || userData.academy_name
@@ -55,11 +54,10 @@ export default function MessageComposerSheet({
     // fallback: try players collection
     if (!name || name === 'مستخدم') {
       try {
-        const snap = await getDoc(doc(db, 'players', user!.uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          name = d.full_name || d.name || name;
-          avatar = getPlayerAvatarUrl(d) || avatar;
+        const { data } = await supabase.from('players').select('*').eq('id', user!.id).maybeSingle();
+        if (data) {
+          name = data.full_name || data.name || name;
+          avatar = getPlayerAvatarUrl(data) || avatar;
         }
       } catch {}
     }
@@ -75,9 +73,9 @@ export default function MessageComposerSheet({
     try {
       const { name: senderName, avatar: senderAvatar } = await getSenderInfo();
 
-      // 1. Save message to Firestore
+      // 1. Save message to Supabase
       const msgData: MessageData = {
-        senderId: user.uid,
+        senderId: user.id,
         receiverId: playerId,
         content: text.trim(),
         type: 'text',
@@ -96,7 +94,7 @@ export default function MessageComposerSheet({
       await dispatchNotification({
         eventType: 'message_received',
         targetUserId: playerId,
-        actorId: user.uid,
+        actorId: user.id,
         actorName: senderName,
         actorAccountType: senderAccountType,
         metadata: { messagePreview: text.trim().substring(0, 40) },

@@ -83,17 +83,17 @@ export default function PlayerDashboard() {
   useEffect(() => {
     if (user && userData && userData.accountType === 'player') {
       // تحقق إذا اختار المستخدم "لا تظهر مرة أخرى"
-      const neverShow = localStorage.getItem(`never_show_referral_modal_${user.uid}`);
+      const neverShow = localStorage.getItem(`never_show_referral_modal_${user.id}`);
       if (neverShow === 'true') {
         return; // لا تظهر المودال أبداً
       }
 
       // تحقق إذا لم يتم عرض Modal من قبل
-      const hasSeenWelcome = localStorage.getItem(`welcome_modal_${user.uid}`);
+      const hasSeenWelcome = localStorage.getItem(`welcome_modal_${user.id}`);
       if (!hasSeenWelcome) {
         setTimeout(() => {
           setShowWelcomeModal(true);
-          localStorage.setItem(`welcome_modal_${user.uid}`, 'true');
+          localStorage.setItem(`welcome_modal_${user.id}`, 'true');
         }, 1000); // انتظر ثانية بعد التحميل
       }
     }
@@ -183,8 +183,8 @@ export default function PlayerDashboard() {
       {/* Referral Welcome Modal - Only show if Phone Modal is NOT showing */}
       {showWelcomeModal && !showPhoneModal && user && (
         <ReferralWelcomeModal
-          playerId={user.uid}
-          playerName={userData?.full_name || user.displayName || 'اللاعب'}
+          playerId={user.id}
+          playerName={userData?.full_name || user.user_metadata?.full_name || 'اللاعب'}
           onClose={() => setShowWelcomeModal(false)}
         />
       )}
@@ -339,7 +339,7 @@ export default function PlayerDashboard() {
         {/* Player Organization Card - الارتباطات */}
         {user && (
           <div className="mb-6 md:mb-8">
-            <PlayerOrganizationCard playerId={user.uid} />
+            <PlayerOrganizationCard playerId={user.id} />
           </div>
         )}
 

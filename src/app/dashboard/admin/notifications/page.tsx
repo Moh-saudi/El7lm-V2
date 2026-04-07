@@ -2,19 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-  doc,
-  updateDoc,
-  writeBatch,
-  getDoc
-} from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
   Bell,
   CheckCircle,
@@ -63,8 +51,8 @@ interface Notification {
   metadata?: any;
   category: 'system' | 'interaction';
   senderId?: string;
-  groupedCount?: number; // For grouped notifications
-  groupedSenders?: Array<{ name: string; avatar: string }>; // For visual stacking
+  groupedCount?: number;
+  groupedSenders?: Array<{ name: string; avatar: string }>;
 }
 
 // --- Skeleton Component ---
@@ -99,14 +87,17 @@ export function NotificationFeed() {
     if (senderCache.current.has(senderId)) return senderCache.current.get(senderId)!;
 
     try {
-      const collections = ['users', 'players', 'clubs', 'academies'];
-      for (const colName of collections) {
-        const d = await getDoc(doc(db, colName, senderId));
-        if (d.exists()) {
-          const data = d.data();
+      const tables = ['users', 'players', 'clubs', 'academies'];
+      for (const tableName of tables) {
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .eq('id', senderId)
+          .single();
+        if (!error && data) {
           const name = data.displayName || data.name || data.full_name || data.fullName;
           const avatar = data.photoURL || data.avatar || data.image || data.logo || data.profileImage;
-          const type = data.accountType || (colName === 'users' ? undefined : colName.slice(0, -1));
+          const type = data.accountType || (tableName === 'users' ? undefined : tableName.slice(0, -1));
 
           const result = {
             senderId,
@@ -124,21 +115,20 @@ export function NotificationFeed() {
     return null;
   };
 
-  // --- Data Fetching & Real-time Groups ---
+  // --- Data Fetching & Real-time via Supabase ---
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     setLoading(true);
 
-    const enrichNotification = async (docData: any, docId: string, category: 'system' | 'interaction') => {
-      const data = docData;
-      const metadata = normalizeNotificationMetadata(data.metadata);
+    const enrichNotification = async (row: any, category: 'system' | 'interaction') => {
+      const metadata = normalizeNotificationMetadata(row.metadata);
 
       let senderInfo = {
-        senderName: data.senderName || metadata?.senderName || 'مستخدم',
-        senderAvatar: data.senderAvatar || metadata?.senderAvatar || null,
-        senderAccountType: data.senderAccountType || null
+        senderName: row.senderName || metadata?.senderName || 'مستخدم',
+        senderAvatar: row.senderAvatar || metadata?.senderAvatar || null,
+        senderAccountType: row.senderAccountType || null
       };
-      const senderId = data.senderId || metadata?.senderId;
+      const senderId = row.senderId || metadata?.senderId;
 
       if (senderId) {
         const fetched = await fetchSenderInfo(senderId);
@@ -156,42 +146,39 @@ export function NotificationFeed() {
       }
 
       return {
-        id: docId,
-        ...data,
+        id: row.id,
+        ...row,
         category,
-        isRead: data.isRead || false,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
+        isRead: row.isRead || false,
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
         metadata,
         senderId,
-        actionUrl: data.link || data.actionUrl || metadata?.actionUrl || null
+        actionUrl: row.link || row.actionUrl || metadata?.actionUrl || null
       } as Notification;
     };
 
-    const q1 = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
-    const q2 = query(collection(db, 'interaction_notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+    const loadAll = async () => {
+      const [{ data: sysDocs }, { data: intDocs }] = await Promise.all([
+        supabase.from('notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(50),
+        supabase.from('interaction_notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(50)
+      ]);
 
-    let initialLoadComplete = false;
-
-    // Helper to merge and group
-    const processSnapshots = async (sysDocs: any[], intDocs: any[]) => {
-      const p1 = sysDocs.map(d => enrichNotification(d.data(), d.id, 'system'));
-      const p2 = intDocs.map(d => enrichNotification(d.data(), d.id, 'interaction'));
+      const p1 = (sysDocs || []).map(d => enrichNotification(d, 'system'));
+      const p2 = (intDocs || []).map(d => enrichNotification(d, 'interaction'));
       const results = await Promise.all([...p1, ...p2]);
 
       // Sorting
       const sorted = results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       // --- Intelligent Grouping Logic ---
-      // Group consecutive likes/follows on the same object or type
       const grouped: Notification[] = [];
       let currentGroup: Notification | null = null;
 
       for (const notif of sorted) {
-        // Simplified grouping criteria: Same type + Same Category + Created close in time
         if (currentGroup &&
           currentGroup.type === notif.type &&
           currentGroup.category === notif.category &&
-          ['success', 'warning'].includes(notif.type) // Only group social actions
+          ['success', 'warning'].includes(notif.type)
         ) {
           currentGroup.groupedCount = (currentGroup.groupedCount || 1) + 1;
           if (!currentGroup.groupedSenders) currentGroup.groupedSenders = [{ name: currentGroup.senderName!, avatar: currentGroup.senderAvatar! }];
@@ -204,20 +191,29 @@ export function NotificationFeed() {
         }
       }
 
-      if (initialLoadComplete && sorted.length > notifications.length) {
-        setShowNewPill(true);
-      }
       setNotifications(grouped);
       setLoading(false);
-      initialLoadComplete = true;
     };
 
-    const unsubAll = onSnapshot(q1, async (snap1) => {
-      const snap2 = await import('firebase/firestore').then(m => m.getDocs(q2));
-      processSnapshots(snap1.docs, snap2.docs);
-    });
+    loadAll();
 
-    return () => unsubAll();
+    // Realtime subscription for notifications
+    const channel = supabase
+      .channel(`notifications_${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `userId=eq.${user.id}`
+      }, () => {
+        setShowNewPill(true);
+        loadAll();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // --- Filtering ---
@@ -232,8 +228,8 @@ export function NotificationFeed() {
   // --- Actions ---
   const handleMarkRead = async (id: string, category: string) => {
     try {
-      const col = category === 'interaction' ? 'interaction_notifications' : 'notifications';
-      await updateDoc(doc(db, col, id), { isRead: true });
+      const table = category === 'interaction' ? 'interaction_notifications' : 'notifications';
+      await supabase.from(table).update({ isRead: true }).eq('id', id);
       // Optimistic update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     } catch (e) { }
@@ -433,7 +429,7 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
                   : notification.senderName}
               </span>
               <span className="text-slate-600 mx-1.5">
-                {notification.title} {/* Action verbs usually stored in title or derived */}
+                {notification.title}
               </span>
               <span className="text-slate-400 text-sm font-normal">
                 {formatDistanceToNow(notification.createdAt, { locale: ar, addSuffix: true })}
@@ -466,7 +462,6 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
             <div className="mt-3 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden max-w-[80%]">
               <div className="h-32 bg-slate-200 flex items-center justify-center text-slate-400">
                 <ImageIcon className="w-8 h-8" />
-                {/* Image would come from Metadata */}
               </div>
             </div>
           )}
@@ -477,7 +472,7 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
               <Button size="sm" variant="outline" className="h-8 rounded-full text-xs font-semibold px-4 border-slate-200 hover:bg-slate-50 hover:text-slate-900">
                 رد
               </Button>
-              {notification.type === 'warning' && ( // 'Follow' type
+              {notification.type === 'warning' && (
                 <Button size="sm" className="h-8 rounded-full text-xs font-semibold px-4 bg-slate-900 hover:bg-slate-800">
                   متابعة
                 </Button>

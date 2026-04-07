@@ -96,7 +96,7 @@ const PublicResponsiveHeader: React.FC = () => {
   const { isMobile, isTablet, isDesktop, isClient, isMenuOpen, toggleMenu, closeMenu } = usePublicLayout();
 
   const getUserDisplayName = () => {
-    return userData?.displayName || userData?.name || user?.displayName || user?.email?.split('@')[0] || 'مستخدم';
+    return userData?.displayName || userData?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'مستخدم';
   };
 
   const handleLogout = async () => {

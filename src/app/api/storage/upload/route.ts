@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // قراءة بيانات Cloudflare R2 من المتغيرات البيئية
-        const accountId = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
-        const accessKeyId = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-        const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL;
-        const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET;
+        // قراءة بيانات Cloudflare R2 من المتغيرات البيئية (server-only للـ credentials الحساسة)
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com';
+        const mainBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
 
         if (!accountId || !accessKeyId || !secretAccessKey) {
             return NextResponse.json(
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // إنشاء S3 Client
+        // إنشاء S3 Client (forcePathStyle مطلوب لـ Cloudflare R2)
         const s3Client = new S3Client({
             region: 'auto',
             endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -43,28 +43,23 @@ export async function POST(request: NextRequest) {
                 accessKeyId,
                 secretAccessKey,
             },
+            forcePathStyle: true,
         });
 
         // تحويل الملف إلى Buffer
         const arrayBuffer = await file.arrayBuffer();
         const fileBuffer = Buffer.from(arrayBuffer);
 
-        // إستراتيجية البوكت الواحد: استخدام البوكت الرئيسي دائماً والمجلدات
-        // البوكت الرئيسي هو 'el7lmplatform' كما هو محدد في إعدادات Cloudflare
-        const targetBucket = 'el7lmplatform';
-
-        // المسار الكامل: bucket المُرسل يصبح مجلد + المسار الأصلي
-        let targetKey = path;
-        if (bucket && bucket !== targetBucket && !path.startsWith(bucket + '/')) {
-            targetKey = `${bucket}/${path}`;
-        }
+        // كل الملفات تذهب لـ el7lmplatform مع مجلدات للتنظيم
+        const targetBucket = mainBucket; // el7lmplatform
+        // المسار: bucket/path (تجنب التكرار)
+        const targetKey = path.startsWith(bucket + '/') ? path : `${bucket}/${path}`;
 
         console.log('📦 [API Route] Upload details:', {
             requestedBucket: bucket,
             targetBucket,
             targetKey,
             endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-            mainBucket: mainBucket || 'not set'
         });
 
         // رفع الملف
@@ -78,11 +73,8 @@ export async function POST(request: NextRequest) {
 
         await s3Client.send(command);
 
-        // بناء الرابط العام
-        // استخدام الدومين المخصص
-        const baseUrl = 'https://assets.el7lm.com';
-        // الرابط يجب أن يشير إلى المسار الكامل (بما في ذلك المجلدات)
-        const filePublicUrl = `${baseUrl}/${targetKey}`;
+        // بناء الرابط العام - publicUrl هو URL الـ el7lmplatform bucket
+        const filePublicUrl = `${publicUrl}/${targetKey}`;
 
         console.log('✅ [API Route] File uploaded successfully:', filePublicUrl);
 

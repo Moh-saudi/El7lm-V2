@@ -1,53 +1,28 @@
-import { db } from '@/lib/firebase/config';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('📊 [Admin API] Fetching content items...');
-
-    // Skip Firebase calls during build time
-    if (process.env.NODE_ENV === 'production' && (!process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID === 'build_project')) {
-      console.log('🚫 [Admin API] Skipping Firebase calls during build phase');
-      return NextResponse.json({
-        success: true,
-        data: []
-      });
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return NextResponse.json({ success: true, data: { items: [], total: 0, lastUpdated: new Date().toISOString() } });
     }
 
-    const contentRef = collection(db, 'content');
-    const q = query(contentRef, orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
+    const db = getSupabaseAdmin();
+    const { data, error } = await db
+      .from('content')
+      .select('*')
+      .order('createdAt', { ascending: false });
 
-    const contentItems = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt
-    }));
+    if (error) throw error;
 
-    const response = {
+    return NextResponse.json({
       success: true,
-      data: {
-        items: contentItems,
-        total: contentItems.length,
-        lastUpdated: new Date().toISOString()
-      }
-    };
-
-    console.log('✅ [Admin API] Content items fetched successfully:', contentItems.length);
-
-    return NextResponse.json(response);
-
+      data: { items: data ?? [], total: (data ?? []).length, lastUpdated: new Date().toISOString() },
+    });
   } catch (error) {
     console.error('❌ [Admin API] Error fetching content:', error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch content',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Failed to fetch content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -55,55 +30,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📊 [Admin API] Creating content item...');
-
-    const body = await request.json();
-    const { title, content, type, status } = body;
-
+    const { title, content, type, status } = await request.json();
     if (!title || !content || !type) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Title, content, and type are required'
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Title, content, and type are required' }, { status: 400 });
     }
 
-    const contentRef = collection(db, 'content');
-    const newContent = {
-      title,
-      content,
-      type,
-      status: status || 'draft',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    const db = getSupabaseAdmin();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const newContent = { id, title, content, type, status: status || 'draft', createdAt: now, updatedAt: now };
 
-    const docRef = await addDoc(contentRef, newContent);
+    const { error } = await db.from('content').insert(newContent);
+    if (error) throw error;
 
-    const response = {
-      success: true,
-      data: {
-        id: docRef.id,
-        ...newContent
-      },
-      message: 'Content created successfully'
-    };
-
-    console.log('✅ [Admin API] Content item created successfully:', docRef.id);
-
-    return NextResponse.json(response);
-
+    return NextResponse.json({ success: true, data: newContent, message: 'Content created successfully' });
   } catch (error) {
     console.error('❌ [Admin API] Error creating content:', error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to create content',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Failed to create content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -111,54 +55,24 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    console.log('📊 [Admin API] Updating content item...');
+    const { id, title, content, type, status } = await request.json();
+    if (!id) return NextResponse.json({ success: false, error: 'Content ID is required' }, { status: 400 });
 
-    const body = await request.json();
-    const { id, title, content, type, status } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Content ID is required'
-        },
-        { status: 400 }
-      );
-    }
-
-    const contentRef = doc(db, 'content', id);
+    const db = getSupabaseAdmin();
     const updatedContent = {
-      ...(title && { title }),
-      ...(content && { content }),
-      ...(type && { type }),
-      ...(status && { status }),
-      updatedAt: new Date()
+      ...(title && { title }), ...(content && { content }),
+      ...(type && { type }), ...(status && { status }),
+      updatedAt: new Date().toISOString(),
     };
 
-    await updateDoc(contentRef, updatedContent);
+    const { error } = await db.from('content').update(updatedContent).eq('id', id);
+    if (error) throw error;
 
-    const response = {
-      success: true,
-      data: {
-        id,
-        ...updatedContent
-      },
-      message: 'Content updated successfully'
-    };
-
-    console.log('✅ [Admin API] Content item updated successfully:', id);
-
-    return NextResponse.json(response);
-
+    return NextResponse.json({ success: true, data: { id, ...updatedContent }, message: 'Content updated successfully' });
   } catch (error) {
     console.error('❌ [Admin API] Error updating content:', error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to update content',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Failed to update content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -166,42 +80,19 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    console.log('📊 [Admin API] Deleting content item...');
-
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ success: false, error: 'Content ID is required' }, { status: 400 });
 
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Content ID is required'
-        },
-        { status: 400 }
-      );
-    }
+    const db = getSupabaseAdmin();
+    const { error } = await db.from('content').delete().eq('id', id);
+    if (error) throw error;
 
-    const contentRef = doc(db, 'content', id);
-    await deleteDoc(contentRef);
-
-    const response = {
-      success: true,
-      message: 'Content deleted successfully'
-    };
-
-    console.log('✅ [Admin API] Content item deleted successfully:', id);
-
-    return NextResponse.json(response);
-
+    return NextResponse.json({ success: true, message: 'Content deleted successfully' });
   } catch (error) {
     console.error('❌ [Admin API] Error deleting content:', error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete content',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Failed to delete content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

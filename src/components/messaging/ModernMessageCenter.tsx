@@ -2,21 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    getDocs,
-    getDoc,
-    doc as firestoreDoc,
-    addDoc,
-    updateDoc,
-    serverTimestamp,
-    deleteDoc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -181,18 +167,20 @@ const ModernMessageCenter: React.FC = () => {
 
             for (const collectionName of collections) {
                 try {
-                    const docRef = firestoreDoc(db, collectionName, participantId);
-                    const docSnap = await getDoc(docRef);
+                    const { data: docData } = await supabase
+                        .from(collectionName)
+                        .select('*')
+                        .eq('id', participantId)
+                        .single();
 
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
+                    if (docData) {
                         return {
                             id: participantId,
-                            name: data.displayName || data.name || data.full_name || data.club_name || data.academy_name || 'مستخدم',
+                            name: docData.displayName || docData.name || docData.full_name || docData.club_name || docData.academy_name || 'مستخدم',
                             type: type || 'user',
                             avatar: getAvatarUrl(participantId, type),
-                            email: data.email || '',
-                            phone: data.phone || '',
+                            email: docData.email || '',
+                            phone: docData.phone || '',
                             isOnline: false
                         };
                     }
@@ -221,36 +209,31 @@ const ModernMessageCenter: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        const q = query(
-            collection(db, 'conversations'),
-            where('participants', 'array-contains', user.uid)
-        );
+        const loadConversations = async () => {
+            const { data: rows } = await supabase
+                .from('conversations')
+                .select('*')
+                .filter('participants', 'cs', `["${user.id}"]`);
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const convs: Conversation[] = [];
-
-            snapshot.forEach((doc) => {
-                const data = doc.data() as Conversation;
-                if (!data.isArchived?.[user.uid]) {
-                    convs.push({ id: doc.id, ...data });
-                }
-            });
+            const convs: Conversation[] = (rows || [])
+                .filter((data: any) => !data.isArchived?.[user.id])
+                .map((data: any) => ({ ...data } as Conversation));
 
             convs.sort((a, b) => {
-                const aPinned = a.isPinned?.[user.uid] || false;
-                const bPinned = b.isPinned?.[user.uid] || false;
+                const aPinned = a.isPinned?.[user.id] || false;
+                const bPinned = b.isPinned?.[user.id] || false;
                 if (aPinned && !bPinned) return -1;
                 if (!aPinned && bPinned) return 1;
 
-                const aTime = a.lastMessageTime?.toMillis() || 0;
-                const bTime = b.lastMessageTime?.toMillis() || 0;
+                const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+                const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
                 return bTime - aTime;
             });
 
             const participantsMap: Record<string, ParticipantInfo> = {};
             for (const conv of convs) {
                 for (const participantId of conv.participants) {
-                    if (participantId !== user.uid && !participantsMap[participantId]) {
+                    if (participantId !== user.id && !participantsMap[participantId]) {
                         const type = conv.participantTypes?.[participantId] || 'user';
                         participantsMap[participantId] = await loadParticipantData(participantId, type);
                     }
@@ -260,34 +243,40 @@ const ModernMessageCenter: React.FC = () => {
             setParticipantsData(participantsMap);
             setConversations(convs);
             setLoading(false);
-        });
+        };
 
-        return () => unsubscribe();
+        loadConversations();
+
+        const channel = supabase
+            .channel('conversations-channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+                loadConversations();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [user]);
 
     useEffect(() => {
         if (!selectedConversation) return;
 
-        const q = query(
-            collection(db, 'messages'),
-            where('conversationId', '==', selectedConversation.id),
-            orderBy('timestamp', 'asc')
-        );
+        const loadMessages = async () => {
+            const { data: rows } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversationId', selectedConversation.id)
+                .order('timestamp', { ascending: true });
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const msgs: Message[] = [];
-            snapshot.forEach((doc) => {
-                msgs.push({ id: doc.id, ...doc.data() } as Message);
-            });
+            const msgs: Message[] = (rows || []) as Message[];
             setMessages(msgs);
 
             const unreadMessages = msgs.filter(msg =>
-                msg.receiverId === user?.uid && !msg.isRead
+                msg.receiverId === user?.id && !msg.isRead
             );
 
             for (const msg of unreadMessages) {
                 try {
-                    await updateDoc(firestoreDoc(db, 'messages', msg.id), { isRead: true });
+                    await supabase.from('messages').update({ isRead: true }).eq('id', msg.id);
                 } catch (error) {
                     console.error('Error marking message as read:', error);
                 }
@@ -295,9 +284,10 @@ const ModernMessageCenter: React.FC = () => {
 
             if (unreadMessages.length > 0) {
                 try {
-                    await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
-                        [`unreadCount.${user?.uid}`]: 0
-                    });
+                    const currentUnread = selectedConversation.unreadCount || {};
+                    await supabase.from('conversations').update({
+                        unreadCount: { ...currentUnread, [user?.id || '']: 0 }
+                    }).eq('id', selectedConversation.id);
                 } catch (error) {
                     console.error('Error updating unread count:', error);
                 }
@@ -306,36 +296,47 @@ const ModernMessageCenter: React.FC = () => {
             setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, 100);
-        });
+        };
 
-        return () => unsubscribe();
+        loadMessages();
+
+        const channel = supabase
+            .channel(`messages-${selectedConversation.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+                loadMessages();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [selectedConversation, user]);
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedConversation || !user) return;
 
-        const otherParticipantId = selectedConversation.participants.find(id => id !== user.uid);
+        const otherParticipantId = selectedConversation.participants.find(id => id !== user.id);
         if (!otherParticipantId) return;
 
         try {
-            await addDoc(collection(db, 'messages'), {
+            await supabase.from('messages').insert({
+                id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
-                senderId: user.uid,
+                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: newMessage.trim(),
-                timestamp: serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 isRead: false,
                 messageType: 'text',
                 isPinned: false
-            });
+            }).select().single();
 
-            await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
+            const currentUnread = selectedConversation.unreadCount || {};
+            await supabase.from('conversations').update({
                 lastMessage: newMessage.trim(),
-                lastMessageTime: serverTimestamp(),
-                lastSenderId: user.uid,
-                [`unreadCount.${otherParticipantId}`]: (selectedConversation.unreadCount?.[otherParticipantId] || 0) + 1
-            });
+                lastMessageTime: new Date().toISOString(),
+                lastSenderId: user.id,
+                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
+            }).eq('id', selectedConversation.id);
 
             setNewMessage('');
         } catch (error) {
@@ -359,23 +360,24 @@ const ModernMessageCenter: React.FC = () => {
                 return;
             }
 
-            await addDoc(collection(db, 'conversations'), {
-                participants: [user.uid, selectedUser.id],
+            await supabase.from('conversations').insert({
+                id: crypto.randomUUID(),
+                participants: [user.id, selectedUser.id],
                 participantNames: {
-                    [user.uid]: userData?.full_name || user.email || 'مستخدم',
+                    [user.id]: userData?.full_name || user.email || 'مستخدم',
                     [selectedUser.id]: selectedUser.name
                 },
                 participantTypes: {
-                    [user.uid]: userData?.accountType || 'user',
+                    [user.id]: userData?.accountType || 'user',
                     [selectedUser.id]: selectedUser.type
                 },
                 lastMessage: '',
-                lastMessageTime: serverTimestamp(),
+                lastMessageTime: new Date().toISOString(),
                 lastSenderId: '',
-                unreadCount: { [user.uid]: 0, [selectedUser.id]: 0 },
+                unreadCount: { [user.id]: 0, [selectedUser.id]: 0 },
                 isActive: true,
-                createdAt: serverTimestamp()
-            });
+                createdAt: new Date().toISOString()
+            }).select().single();
 
             toast.success('تم إنشاء محادثة جديدة');
             setNewChatModalOpen(false);
@@ -388,10 +390,11 @@ const ModernMessageCenter: React.FC = () => {
     const handleMuteConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            const isMuted = selectedConversation.isMuted?.[user.uid] || false;
-            await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
-                [`isMuted.${user.uid}`]: !isMuted
-            });
+            const isMuted = selectedConversation.isMuted?.[user.id] || false;
+            const currentMuted = selectedConversation.isMuted || {};
+            await supabase.from('conversations').update({
+                isMuted: { ...currentMuted, [user.id]: !isMuted }
+            }).eq('id', selectedConversation.id);
             toast.success(isMuted ? 'تم إلغاء كتم الإشعارات' : 'تم كتم الإشعارات');
         } catch (error) {
             toast.error('فشل تحديث الإشعارات');
@@ -401,9 +404,10 @@ const ModernMessageCenter: React.FC = () => {
     const handleArchiveConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
-                [`isArchived.${user.uid}`]: true
-            });
+            const currentArchived = selectedConversation.isArchived || {};
+            await supabase.from('conversations').update({
+                isArchived: { ...currentArchived, [user.id]: true }
+            }).eq('id', selectedConversation.id);
             setSelectedConversation(null);
             toast.success('تم أرشفة المحادثة');
         } catch (error) {
@@ -415,10 +419,11 @@ const ModernMessageCenter: React.FC = () => {
         if (!user) return;
         try {
             const conv = conversations.find(c => c.id === convId);
-            const isPinned = conv?.isPinned?.[user.uid] || false;
-            await updateDoc(firestoreDoc(db, 'conversations', convId), {
-                [`isPinned.${user.uid}`]: !isPinned
-            });
+            const isPinned = conv?.isPinned?.[user.id] || false;
+            const currentPinned = conv?.isPinned || {};
+            await supabase.from('conversations').update({
+                isPinned: { ...currentPinned, [user.id]: !isPinned }
+            }).eq('id', convId);
             toast.success(isPinned ? 'تم إلغاء التثبيت' : 'تم تثبيت المحادثة');
         } catch (error) {
             toast.error('فشل التثبيت');
@@ -428,17 +433,8 @@ const ModernMessageCenter: React.FC = () => {
     const handleDeleteConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            const messagesQuery = query(
-                collection(db, 'messages'),
-                where('conversationId', '==', selectedConversation.id)
-            );
-            const messagesSnapshot = await getDocs(messagesQuery);
-
-            for (const doc of messagesSnapshot.docs) {
-                await deleteDoc(doc.ref);
-            }
-
-            await deleteDoc(firestoreDoc(db, 'conversations', selectedConversation.id));
+            await supabase.from('messages').delete().eq('conversationId', selectedConversation.id);
+            await supabase.from('conversations').delete().eq('id', selectedConversation.id);
             setSelectedConversation(null);
             toast.success('تم حذف المحادثة');
         } catch (error) {
@@ -570,32 +566,34 @@ const ModernMessageCenter: React.FC = () => {
     const sendImageMessage = async () => {
         if (!selectedImage || !selectedConversation || !user) return;
 
-        const otherParticipantId = selectedConversation.participants.find(id => id !== user.uid);
+        const otherParticipantId = selectedConversation.participants.find(id => id !== user.id);
         if (!otherParticipantId) return;
 
         try {
             setIsUploadingImage(true);
             const imageUrl = await uploadImageToCloudflare(selectedImage);
 
-            await addDoc(collection(db, 'messages'), {
+            await supabase.from('messages').insert({
+                id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
-                senderId: user.uid,
+                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: '📷 صورة',
                 imageUrl: imageUrl,
-                timestamp: serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 isRead: false,
                 messageType: 'image',
                 isPinned: false
             });
 
-            await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
+            const currentUnread = selectedConversation.unreadCount || {};
+            await supabase.from('conversations').update({
                 lastMessage: '📷 صورة',
-                lastMessageTime: serverTimestamp(),
-                lastSenderId: user.uid,
-                [`unreadCount.${otherParticipantId}`]: (selectedConversation.unreadCount?.[otherParticipantId] || 0) + 1
-            });
+                lastMessageTime: new Date().toISOString(),
+                lastSenderId: user.id,
+                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
+            }).eq('id', selectedConversation.id);
 
             setSelectedImage(null);
             setImagePreview(null);
@@ -611,14 +609,14 @@ const ModernMessageCenter: React.FC = () => {
     const sendVoiceMessage = async () => {
         if (!audioBlob || !selectedConversation || !user) return;
 
-        const otherParticipantId = selectedConversation.participants.find(id => id !== user.uid);
+        const otherParticipantId = selectedConversation.participants.find(id => id !== user.id);
         if (!otherParticipantId) return;
 
         try {
             // رفع الملف الصوتي إلى Cloudflare R2
             const formData = new FormData();
             formData.append('audio', audioBlob, 'voice-message.webm');
-            formData.append('userId', user.uid);
+            formData.append('userId', user.id);
 
             toast.info('جاري رفع الرسالة الصوتية...');
 
@@ -633,27 +631,29 @@ const ModernMessageCenter: React.FC = () => {
 
             const { url: voiceUrl } = await uploadResponse.json();
 
-            // حفظ الرسالة في Firestore مع رابط الملف
-            await addDoc(collection(db, 'messages'), {
+            // حفظ الرسالة في Supabase مع رابط الملف
+            await supabase.from('messages').insert({
+                id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
-                senderId: user.uid,
+                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: `🎤 رسالة صوتية (${recordingTime} ثانية)`,
                 voiceUrl: voiceUrl,
-                timestamp: serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 isRead: false,
                 messageType: 'voice',
                 voiceDuration: recordingTime,
                 isPinned: false
             });
 
-            await updateDoc(firestoreDoc(db, 'conversations', selectedConversation.id), {
+            const currentUnreadVoice = selectedConversation.unreadCount || {};
+            await supabase.from('conversations').update({
                 lastMessage: '🎤 رسالة صوتية',
-                lastMessageTime: serverTimestamp(),
-                lastSenderId: user.uid,
-                [`unreadCount.${otherParticipantId}`]: (selectedConversation.unreadCount?.[otherParticipantId] || 0) + 1
-            });
+                lastMessageTime: new Date().toISOString(),
+                lastSenderId: user.id,
+                unreadCount: { ...currentUnreadVoice, [otherParticipantId]: (currentUnreadVoice[otherParticipantId] || 0) + 1 }
+            }).eq('id', selectedConversation.id);
 
             setAudioBlob(null);
             setRecordingTime(0);
@@ -666,7 +666,7 @@ const ModernMessageCenter: React.FC = () => {
 
     const filteredConversations = conversations.filter(conv => {
         if (!searchTerm) return true;
-        const otherParticipantId = conv.participants.find(id => id !== user?.uid);
+        const otherParticipantId = conv.participants.find(id => id !== user?.id);
         const otherParticipant = otherParticipantId ? participantsData[otherParticipantId] : null;
         const otherName = otherParticipant?.name || '';
         return otherName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -679,7 +679,7 @@ const ModernMessageCenter: React.FC = () => {
     });
 
     const getOtherParticipant = (conv: Conversation): ParticipantInfo | null => {
-        const otherParticipantId = conv.participants.find(id => id !== user?.uid);
+        const otherParticipantId = conv.participants.find(id => id !== user?.id);
         if (!otherParticipantId) return null;
         return participantsData[otherParticipantId] || null;
     };
@@ -784,10 +784,10 @@ const ModernMessageCenter: React.FC = () => {
                                         const otherUser = getOtherParticipant(conv);
                                         if (!otherUser) return null;
 
-                                        const unreadCount = conv.unreadCount?.[user?.uid || ''] || 0;
+                                        const unreadCount = conv.unreadCount?.[user?.id || ''] || 0;
                                         const isSelected = selectedConversation?.id === conv.id;
-                                        const isPinned = conv.isPinned?.[user?.uid || ''] || false;
-                                        const isMuted = conv.isMuted?.[user?.uid || ''] || false;
+                                        const isPinned = conv.isPinned?.[user?.id || ''] || false;
+                                        const isMuted = conv.isMuted?.[user?.id || ''] || false;
 
                                         return (
                                             <motion.div
@@ -996,7 +996,7 @@ const ModernMessageCenter: React.FC = () => {
                                             معلومات المحادثة
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleMuteConversation}>
-                                            {selectedConversation.isMuted?.[user?.uid || ''] ? (
+                                            {selectedConversation.isMuted?.[user?.id || ''] ? (
                                                 <><Bell className="h-4 w-4 ml-2" />إلغاء كتم الإشعارات</>
                                             ) : (
                                                 <><BellOff className="h-4 w-4 ml-2" />كتم الإشعارات</>
@@ -1022,7 +1022,7 @@ const ModernMessageCenter: React.FC = () => {
                         <div className="space-y-3">
                             <AnimatePresence>
                                 {filteredMessages.map((msg, index) => {
-                                    const isMine = msg.senderId === user?.uid;
+                                    const isMine = msg.senderId === user?.id;
                                     const showAvatar = index === 0 || messages[index - 1].senderId !== msg.senderId;
                                     const senderInfo = isMine ? null : participantsData[msg.senderId];
                                     const isVoiceMessage = msg.message?.includes('🎤') || (msg as any).messageType === 'voice';
@@ -1391,7 +1391,7 @@ const ModernMessageCenter: React.FC = () => {
 
                             <div className="space-y-2 pt-4">
                                 <Button variant="outline" className="w-full justify-start" onClick={handleMuteConversation}>
-                                    {selectedConversation?.isMuted?.[user?.uid || ''] ? (
+                                    {selectedConversation?.isMuted?.[user?.id || ''] ? (
                                         <><Bell className="h-4 w-4 ml-2" />إلغاء كتم الإشعارات</>
                                     ) : (
                                         <><BellOff className="h-4 w-4 ml-2" />كتم الإشعارات</>

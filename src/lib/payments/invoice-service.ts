@@ -1,6 +1,5 @@
 
-import { db } from '@/lib/firebase/config';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export interface InvoiceRecord {
     id?: string;
@@ -12,57 +11,59 @@ export interface InvoiceRecord {
     packageType: string;
     packageName: string;
     playerCount?: number;
-    players?: string[]; // IDs of players if it's a bulk payment
-    createdAt?: any;
-    updatedAt?: any;
-    receiptUrl?: string; // For manual payments
-    transactionId?: string; // External provider ID
+    players?: string[];
+    createdAt?: string;
+    updatedAt?: string;
+    receiptUrl?: string;
+    transactionId?: string;
     customerEmail?: string;
     customerName?: string;
 }
 
 export const InvoiceService = {
-    /**
-     * Create a pending invoice before redirecting to payment gateway
-     */
     async createPendingInvoice(data: Omit<InvoiceRecord, 'status' | 'createdAt' | 'updatedAt'>): Promise<string> {
         try {
-            const invoiceRef = await addDoc(collection(db, 'invoices'), {
+            const id = crypto.randomUUID();
+            const now = new Date().toISOString();
+            const { error } = await supabase.from('invoices').insert({
                 ...data,
+                id,
                 status: 'pending',
-                created_at: serverTimestamp(),
-                updated_at: serverTimestamp(),
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                invoice_number: `INV-${Date.now().toString().slice(-8)}`
+                created_at: now,
+                updated_at: now,
+                createdAt: now,
+                updatedAt: now,
+                invoice_number: `INV-${Date.now().toString().slice(-8)}`,
             });
-            return invoiceRef.id;
+            if (error) throw error;
+            return id;
         } catch (error) {
             console.error('Error creating invoice:', error);
             throw error;
         }
     },
 
-    /**
-     * Submit a receipt for manual review
-     */
     async submitManualReceipt(invoiceId: string, receiptUrl: string) {
         try {
-            const invoiceRef = doc(db, 'invoices', invoiceId);
-            await updateDoc(invoiceRef, {
+            const now = new Date().toISOString();
+            const { data: invoiceRows, error: fetchError } = await supabase.from('invoices').select('userId').eq('id', invoiceId).limit(1);
+            if (fetchError) throw fetchError;
+
+            const { error } = await supabase.from('invoices').update({
                 receiptUrl,
                 status: 'pending_review',
-                updated_at: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
+                updated_at: now,
+                updatedAt: now,
+            }).eq('id', invoiceId);
+            if (error) throw error;
 
-            // Also record in receipts collection for the legacy admin panel if needed
-            await addDoc(collection(db, 'receipts'), {
+            await supabase.from('receipts').insert({
+                id: crypto.randomUUID(),
                 invoiceId,
                 url: receiptUrl,
-                userId: (await getDoc(invoiceRef)).data()?.userId,
+                userId: invoiceRows?.[0]?.userId || null,
                 status: 'pending',
-                timestamp: serverTimestamp()
+                timestamp: now,
             });
 
             return true;

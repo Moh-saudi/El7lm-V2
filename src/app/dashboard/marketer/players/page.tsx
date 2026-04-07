@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +55,7 @@ export default function MarketerPlayersPage() {
   const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       loadPlayers();
       loadJoinRequests();
     }
@@ -66,23 +65,18 @@ export default function MarketerPlayersPage() {
     try {
       setLoading(true);
 
-      // Using 'users' collection for Marketers, or 'players' if that's where they are.
-      // Assuming 'users' based on previous context, but matching Academy UI.
-      const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef,
-        where('marketerId', '==', user?.uid),
-        where('accountType', '==', 'player')
-      );
+      const { data: playersData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('marketerId', user?.id)
+        .eq('accountType', 'player');
 
-      const snapshot = await getDocs(q);
+      if (error) throw error;
 
-      const playersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((p: any) => !p.isDeleted);
+      const filtered = (playersData || []).filter((p: any) => !p.isDeleted);
 
       // Manual sorting on the client-side
-      playersData.sort((a: any, b: any) => {
+      filtered.sort((a: any, b: any) => {
         const aValue = a[sortBy] as any;
         const bValue = b[sortBy] as any;
         if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
@@ -90,7 +84,7 @@ export default function MarketerPlayersPage() {
         return 0;
       });
 
-      setPlayers(playersData as Player[]);
+      setPlayers(filtered as Player[]);
 
     } catch (error) {
       console.error("Error loading players:", error);
@@ -102,7 +96,7 @@ export default function MarketerPlayersPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.uid, 'pending');
+      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.id, 'pending');
       setJoinRequests(requests);
     } catch (error) {
       console.error('Error loading join requests:', error);
@@ -149,12 +143,12 @@ export default function MarketerPlayersPage() {
         bValue = b.full_name || (b as any).name || '';
         break;
       case 'created_at':
-        aValue = (a as any).createdAt?.seconds || 0;
-        bValue = (b as any).createdAt?.seconds || 0;
+        aValue = (a as any).created_at || (a as any).createdAt || '';
+        bValue = (b as any).created_at || (b as any).createdAt || '';
         break;
       default:
-        aValue = (a as any).createdAt?.seconds || 0;
-        bValue = (b as any).createdAt?.seconds || 0;
+        aValue = (a as any).created_at || (a as any).createdAt || '';
+        bValue = (b as any).created_at || (b as any).createdAt || '';
     }
 
     if (sortOrder === 'asc') return aValue > bValue ? 1 : -1;
@@ -172,7 +166,7 @@ export default function MarketerPlayersPage() {
   const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
     try {
-      const d = date.toDate ? date.toDate() : new Date(date);
+      const d = new Date(date);
       return d.toLocaleDateString('ar-EG');
     } catch (e) { return 'غير محدد'; }
   };
@@ -188,7 +182,7 @@ export default function MarketerPlayersPage() {
   const getTimeAgo = (date: any) => {
     if (!date) return 'غير محدد';
     try {
-      const d = date.toDate ? date.toDate() : new Date(date);
+      const d = new Date(date);
       const now = new Date();
       const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays === 0) return 'اليوم';
@@ -204,7 +198,7 @@ export default function MarketerPlayersPage() {
       p.email,
       p.country,
       p.city,
-      formatDate((p as any).createdAt)
+      formatDate((p as any).created_at || (p as any).createdAt)
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -222,7 +216,11 @@ export default function MarketerPlayersPage() {
   const confirmDelete = async () => {
     if (!playerToDelete) return;
     try {
-      await deleteDoc(doc(db, 'users', playerToDelete.id)); // Using users collection
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', playerToDelete.id);
+      if (error) throw error;
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete!.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
@@ -303,7 +301,7 @@ export default function MarketerPlayersPage() {
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
                           onClick={async () => {
                             try {
-                              await organizationReferralService.approveJoinRequest(request.id, user!.uid, 'المسوق');
+                              await organizationReferralService.approveJoinRequest(request.id, user!.id, 'المسوق');
                               toast.success('تم قبول اللاعب بنجاح');
                               loadJoinRequests();
                               loadPlayers();
@@ -321,7 +319,7 @@ export default function MarketerPlayersPage() {
                           className="w-full border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
                           onClick={async () => {
                             try {
-                              await organizationReferralService.rejectJoinRequest(request.id, user!.uid, 'المسوق', 'تم الرفض');
+                              await organizationReferralService.rejectJoinRequest(request.id, user!.id, 'المسوق', 'تم الرفض');
                               toast.success('تم رفض الطلب');
                               loadJoinRequests();
                             } catch (error) {
@@ -405,7 +403,6 @@ export default function MarketerPlayersPage() {
           </div>
         </Card>
 
-        {/* Helper to render rows */}
         {/* Players Joined via Referral Table */}
         {currentPlayers.filter(p => (p as any).joinedViaReferral).length > 0 && (
           <Card className="overflow-hidden">
@@ -463,7 +460,7 @@ export default function MarketerPlayersPage() {
                         {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">نشط</Badge> : <Badge className="bg-gray-100 text-gray-800">غير نشط</Badge>}
                       </td>
                       <td className="px-6 py-4 text-xs">
-                        <div>إضافة: {formatDate((player as any).createdAt)}</div>
+                        <div>إضافة: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
                       </td>
                       <td className="px-6 py-4 text-xs">
                         <div>الكود: {(player as any).referralCodeUsed || '-'}</div>
@@ -538,7 +535,7 @@ export default function MarketerPlayersPage() {
                       {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">نشط</Badge> : <Badge className="bg-gray-100 text-gray-800">غير نشط</Badge>}
                     </td>
                     <td className="px-6 py-4 text-xs">
-                      <div>إضافة: {formatDate((player as any).createdAt)}</div>
+                      <div>إضافة: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">

@@ -23,8 +23,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useEmployeePermissions, PermissionGuard, PermissionsInfo } from '@/hooks/useEmployeePermissions';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 
 interface Customer {
@@ -221,19 +220,19 @@ export default function CustomerManagementPage() {
     return '+' + cleanPhone;
   };
 
-  // Load customers from Firebase
+  // Load customers from Supabase
   const loadCustomersFromFirebase = async () => {
     try {
       setIsLoading(true);
-      const customersRef = collection(db, 'customers');
-      const snapshot = await getDocs(customersRef);
-      const customersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Customer[];
-      
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      const customersData = (data || []) as Customer[];
       setCustomers(customersData);
-      console.log(`تم جلب ${customersData.length} عميل من Firebase`);
+      console.log(`تم جلب ${customersData.length} عميل من Supabase`);
     } catch (error) {
       console.error('Error loading customers:', error);
     } finally {
@@ -283,7 +282,7 @@ export default function CustomerManagementPage() {
       setUploadMessage(`جاري حفظ ${newCustomers.length} عميل...`);
 
       for (let i = 0; i < newCustomers.length; i++) {
-        await addDoc(collection(db, 'customers'), newCustomers[i]);
+        await supabase.from('customers').insert({ id: crypto.randomUUID(), ...newCustomers[i] });
         const progress = 90 + Math.round((i / newCustomers.length) * 5);
         setUploadProgress(progress);
         setUploadMessage(`جاري حفظ العميل ${i + 1} من ${newCustomers.length}...`);
@@ -445,21 +444,23 @@ export default function CustomerManagementPage() {
 
     try {
       setIsLoading(true);
-      const customersRef = collection(db, 'customers');
-      const snapshot = await getDocs(customersRef);
-      
+      const { data: rows, error } = await supabase
+        .from('customers')
+        .select('*');
+
+      if (error) throw error;
+
       let fixedCount = 0;
-      for (const doc of snapshot.docs) {
-        const customerData = doc.data();
-        const originalPhone = customerData.phone;
-        const fixedPhone = formatPhoneNumber(originalPhone, customerData.country, customerData.countryCode);
-        
+      for (const row of (rows || [])) {
+        const originalPhone = row.phone;
+        const fixedPhone = formatPhoneNumber(originalPhone, row.country, row.countryCode);
+
         if (originalPhone !== fixedPhone) {
-          await updateDoc(doc.ref, { phone: fixedPhone });
+          await supabase.from('customers').update({ phone: fixedPhone }).eq('id', row.id);
           fixedCount++;
         }
       }
-      
+
       await loadCustomersFromFirebase();
       alert(`تم إصلاح ${fixedCount} رقم هاتف بنجاح`);
     } catch (error) {
@@ -477,12 +478,13 @@ export default function CustomerManagementPage() {
 
     try {
       setIsLoading(true);
-      const customersRef = collection(db, 'customers');
-      const snapshot = await getDocs(customersRef);
-      
-      const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-      await Promise.all(deletePromises);
-      
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .neq('id', '');  // delete all rows
+
+      if (error) throw error;
+
       setCustomers([]);
       alert('تم حذف جميع البيانات بنجاح');
     } catch (error) {
@@ -534,13 +536,12 @@ export default function CustomerManagementPage() {
     // Update last action if customer ID is provided
     if (customerId) {
       try {
-        const customerRef = doc(db, 'customers', customerId);
-        await updateDoc(customerRef, {
+        await supabase.from('customers').update({
           lastAction: 'إرسال رسالة واتساب',
           lastActionDate: new Date().toISOString(),
           lastActionBy: userData?.name || 'Unknown',
           updatedAt: new Date().toISOString()
-        });
+        }).eq('id', customerId);
         await loadCustomersFromFirebase();
       } catch (error) {
         console.error('Error updating last action:', error);
@@ -551,17 +552,16 @@ export default function CustomerManagementPage() {
   const makeCall = async (phone: string, country?: string, countryCode?: string, customerId?: string) => {
     const formattedPhone = formatPhoneNumber(phone, country, countryCode);
     window.open(`tel:${formattedPhone}`, '_blank');
-    
+
     // Update last action if customer ID is provided
     if (customerId) {
       try {
-        const customerRef = doc(db, 'customers', customerId);
-        await updateDoc(customerRef, {
+        await supabase.from('customers').update({
           lastAction: 'إجراء مكالمة',
           lastActionDate: new Date().toISOString(),
           lastActionBy: userData?.name || 'Unknown',
           updatedAt: new Date().toISOString()
-        });
+        }).eq('id', customerId);
         await loadCustomersFromFirebase();
       } catch (error) {
         console.error('Error updating last action:', error);
@@ -575,17 +575,16 @@ export default function CustomerManagementPage() {
       const body = 'مرحباً! كيف يمكنني مساعدتك؟';
       const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       window.open(mailtoUrl);
-      
+
       // Update last action if customer ID is provided
       if (customerId) {
         try {
-          const customerRef = doc(db, 'customers', customerId);
-                  await updateDoc(customerRef, {
-          lastAction: 'إرسال بريد إلكتروني',
-          lastActionDate: new Date().toISOString(),
-          lastActionBy: userData?.name || 'Unknown',
-          updatedAt: new Date().toISOString()
-        });
+          await supabase.from('customers').update({
+            lastAction: 'إرسال بريد إلكتروني',
+            lastActionDate: new Date().toISOString(),
+            lastActionBy: userData?.name || 'Unknown',
+            updatedAt: new Date().toISOString()
+          }).eq('id', customerId);
           await loadCustomersFromFirebase();
         } catch (error) {
           console.error('Error updating last action:', error);
@@ -636,25 +635,24 @@ export default function CustomerManagementPage() {
         message: contactType === 'whatsapp' || contactType === 'email' ? contactNotes : undefined
       };
 
-      const customerRef = doc(db, 'customers', selectedCustomer.id);
       const updatedContactHistory = [...(selectedCustomer.contactHistory || []), contactRecord];
-      
-      await updateDoc(customerRef, {
+
+      await supabase.from('customers').update({
         contactHistory: updatedContactHistory,
         lastContactDate: new Date().toISOString(),
         contactCount: (selectedCustomer.contactCount || 0) + 1,
-        contactStatus: contactStatus === 'success' ? 'contacted' : 
+        contactStatus: contactStatus === 'success' ? 'contacted' :
                       contactStatus === 'not_interested' ? 'not_interested' : 'contacted',
-        lastAction: `تواصل ${contactType === 'call' ? 'مكالمة' : 
-                              contactType === 'whatsapp' ? 'واتساب' : 
-                              contactType === 'email' ? 'بريد إلكتروني' : 'زيارة'} - ${contactStatus === 'success' ? 'نجح' : 
-                              contactStatus === 'no_answer' ? 'لم يرد' : 
-                              contactStatus === 'busy' ? 'مشغول' : 
+        lastAction: `تواصل ${contactType === 'call' ? 'مكالمة' :
+                              contactType === 'whatsapp' ? 'واتساب' :
+                              contactType === 'email' ? 'بريد إلكتروني' : 'زيارة'} - ${contactStatus === 'success' ? 'نجح' :
+                              contactStatus === 'no_answer' ? 'لم يرد' :
+                              contactStatus === 'busy' ? 'مشغول' :
                               contactStatus === 'wrong_number' ? 'رقم خاطئ' : 'غير مهتم'}`,
         lastActionDate: new Date().toISOString(),
         lastActionBy: userData?.name || 'Unknown',
         updatedAt: new Date().toISOString()
-      });
+      }).eq('id', selectedCustomer.id);
 
       await loadCustomersFromFirebase();
       setShowContactModal(false);
@@ -801,7 +799,6 @@ export default function CustomerManagementPage() {
 
     setIsSaving(true);
     try {
-      const customerRef = doc(db, 'customers', customerId);
       const updateData = {
         ...editForm,
         updatedAt: new Date().toISOString(),
@@ -810,7 +807,7 @@ export default function CustomerManagementPage() {
         lastActionBy: userData?.name || 'Unknown'
       };
 
-      await updateDoc(customerRef, updateData);
+      await supabase.from('customers').update(updateData).eq('id', customerId);
       
       // Update local state
       setCustomers(prevCustomers => 

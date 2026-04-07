@@ -1,179 +1,138 @@
-// ... imports
-// (Keep existing imports)
 import { NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { detectCountryFromPhone } from '@/lib/constants/countries';
 
-export const maxDuration = 60; // Allow 60 seconds
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs'; // Enforce Node.js runtime
+export const runtime = 'nodejs';
 
-// تهيئة Admin SDK
-function getAdminContext() {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+export async function POST() {
+  try {
+    const db = getSupabaseAdmin();
+    console.log('🔄 Starting Full Sync from Auth Source...');
 
-    if (!projectId || !clientEmail || !privateKey) {
-        throw new Error('Missing Env Vars');
-    }
+    let updatedCount = 0;
+    let createdCount = 0;
+    let page = 1;
+    let totalAuthUsers = 0;
+    const pageSize = 1000;
 
-    if (getApps().length === 0) {
-        initializeApp({
-            credential: cert({ projectId, clientEmail, privateKey }),
-            projectId
-        });
-    }
+    const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
 
-    return { auth: getAuth(), db: getFirestore() };
-}
+    let hasMore = true;
+    while (hasMore) {
+      const { data: authData, error: authError } = await db.auth.admin.listUsers();
+      if (authError) throw authError;
 
-export async function POST(req: Request) {
-    try {
-        const { auth, db } = getAdminContext();
-        console.log('🔄 Starting Full Sync from Auth Source...');
+      const users = authData?.users ?? [];
+      totalAuthUsers += users.length;
 
-        let updatedCount = 0;
-        let createdCount = 0;
-        let pageToken = undefined;
-        const updates: Promise<any>[] = [];
+      if (users.length < pageSize) hasMore = false;
 
-        // 1. Loop through ALL Auth Users (batches of 1000)
-        let totalAuthUsers = 0;
-        do {
-            const listUsersResult = await auth.listUsers(1000, pageToken);
-            totalAuthUsers += listUsersResult.users.length;
+      for (const userRecord of users) {
+        const uid = userRecord.id;
+        const creationTime = userRecord.created_at ? new Date(userRecord.created_at) : null;
+        const phoneNumber = userRecord.phone ?? '';
 
-            for (const userRecord of listUsersResult.users) {
-                updates.push((async () => {
-                    const uid = userRecord.uid;
-                    const creationTime = new Date(userRecord.metadata.creationTime);
-                    const phoneNumber = userRecord.phoneNumber || ''; // Auth phone (e.g. +212...)
+        let found = false;
 
-                    // Check all collections used in the dashboard
-                    const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
+        for (const col of collections) {
+          const { data: rows } = await db.from(col).select('*').eq('id', uid).limit(1);
+          if (rows && rows.length > 0) {
+            found = true;
+            const data = rows[0] as Record<string, unknown>;
+            const docUpdates: Record<string, unknown> = {};
 
-                    let found = false;
-
-                    for (const col of collections) {
-                        const docRef = db.collection(col).doc(uid);
-                        const docSnap = await docRef.get();
-
-                        if (docSnap.exists) {
-                            found = true;
-                            const data = docSnap.data();
-                            const docUpdates: any = {};
-
-                            // A. Sync Date - Force Sync from Auth
-                            // We now overwrite these fields to ensure they match the source of truth (Auth).
-                            // This fixes cases where fields existed but were undefined, null, string-based, or mismatched.
-                            if (creationTime) {
-                                docUpdates.createdAt = creationTime;
-                                docUpdates.created_at = creationTime;
-                                docUpdates.registrationDate = creationTime;
-                            }
-
-                            // B. Sync Country
-                            if (!data?.country) {
-                                const phoneToTest = data?.phone || phoneNumber || '';
-                                const cleanPhone = phoneToTest.replace(/\D/g, '');
-
-                                let countryName = '';
-                                let countryCode = '';
-
-                                // 1. Standard Detect
-                                const std = detectCountryFromPhone(phoneToTest);
-                                if (std) {
-                                    countryName = std.name;
-                                    countryCode = std.code;
-                                }
-                                // 2. Smart Local Detect
-                                else if (cleanPhone) {
-                                    if ((cleanPhone.startsWith('06') || cleanPhone.startsWith('07')) && cleanPhone.length === 10) {
-                                        countryName = 'المغرب'; countryCode = '+212';
-                                    } else if (cleanPhone.startsWith('05') && cleanPhone.length === 10) {
-                                        countryName = 'السعودية'; countryCode = '+966';
-                                    } else if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-                                        countryName = 'مصر'; countryCode = '+20';
-                                    }
-                                }
-
-                                if (countryName) {
-                                    docUpdates.country = countryName;
-                                    docUpdates.countryCode = countryCode;
-                                }
-                            }
-
-                            if (Object.keys(docUpdates).length > 0) {
-                                await docRef.update(docUpdates);
-                                updatedCount++;
-                            }
-                            break; // Found the user in this collection, stop looking in others
-                        }
-                    }
-
-                    // If user was NOT found in any collection, create them in 'users'
-                    if (!found) {
-                        const phoneToTest = phoneNumber || '';
-                        const cleanPhone = phoneToTest.replace(/\D/g, '');
-                        let countryName = '';
-                        let countryCode = '';
-
-                        const std = detectCountryFromPhone(phoneToTest);
-                        if (std) {
-                            countryName = std.name;
-                            countryCode = std.code;
-                        } else if (cleanPhone) {
-                            if ((cleanPhone.startsWith('06') || cleanPhone.startsWith('07')) && cleanPhone.length === 10) {
-                                countryName = 'المغرب'; countryCode = '+212';
-                            } else if (cleanPhone.startsWith('05') && cleanPhone.length === 10) {
-                                countryName = 'السعودية'; countryCode = '+966';
-                            } else if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-                                countryName = 'مصر'; countryCode = '+20';
-                            }
-                        }
-
-                        const newUser = {
-                            uid: uid,
-                            id: uid, // Helper for some UIs
-                            email: userRecord.email || '',
-                            phone: phoneNumber,
-                            name: userRecord.displayName || (userRecord.email ? userRecord.email.split('@')[0] : 'مستخدم جديد'),
-                            photoURL: userRecord.photoURL || '',
-                            createdAt: creationTime,
-                            created_at: creationTime,
-                            role: 'user', // Default role for orphaned users
-                            accountType: 'user',
-                            isActive: true, // Default to active
-                            country: countryName || 'غير محدد',
-                            countryCode: countryCode,
-                            isSynced: true // Flag to know it was auto-created/synced
-                        };
-
-                        await db.collection('users').doc(uid).set(newUser);
-                        createdCount++;
-                    }
-
-                })());
+            if (creationTime) {
+              docUpdates.createdAt = creationTime.toISOString();
+              docUpdates.created_at = creationTime.toISOString();
+              docUpdates.registrationDate = creationTime.toISOString();
             }
 
-            pageToken = listUsersResult.pageToken;
-        } while (pageToken);
+            if (!data.country) {
+              const phoneToTest = String(data.phone ?? phoneNumber ?? '');
+              const cleanPhone = phoneToTest.replace(/\D/g, '');
+              let countryName = '';
+              let countryCode = '';
 
-        await Promise.all(updates);
+              const std = detectCountryFromPhone(phoneToTest);
+              if (std) {
+                countryName = std.name;
+                countryCode = std.code;
+              } else if (cleanPhone) {
+                if ((cleanPhone.startsWith('06') || cleanPhone.startsWith('07')) && cleanPhone.length === 10) {
+                  countryName = 'المغرب'; countryCode = '+212';
+                } else if (cleanPhone.startsWith('05') && cleanPhone.length === 10) {
+                  countryName = 'السعودية'; countryCode = '+966';
+                } else if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+                  countryName = 'مصر'; countryCode = '+20';
+                }
+              }
 
-        return NextResponse.json({
-            success: true,
-            updatedCount,
-            createdCount,
-            totalAuthUsers,
-            message: `تم التحقق من ${totalAuthUsers} حساب في Auth. تم تحديث ${updatedCount} وإنشاء ${createdCount} مستخدم.`
-        });
+              if (countryName) {
+                docUpdates.country = countryName;
+                docUpdates.countryCode = countryCode;
+              }
+            }
 
-    } catch (error: any) {
-        console.error('Sync Error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+            if (Object.keys(docUpdates).length > 0) {
+              await db.from(col).update(docUpdates).eq('id', uid);
+              updatedCount++;
+            }
+            break;
+          }
+        }
+
+        if (!found) {
+          const phoneToTest = phoneNumber;
+          const cleanPhone = phoneToTest.replace(/\D/g, '');
+          let countryName = '';
+          let countryCode = '';
+
+          const std = detectCountryFromPhone(phoneToTest);
+          if (std) {
+            countryName = std.name; countryCode = std.code;
+          } else if (cleanPhone) {
+            if ((cleanPhone.startsWith('06') || cleanPhone.startsWith('07')) && cleanPhone.length === 10) {
+              countryName = 'المغرب'; countryCode = '+212';
+            } else if (cleanPhone.startsWith('05') && cleanPhone.length === 10) {
+              countryName = 'السعودية'; countryCode = '+966';
+            } else if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+              countryName = 'مصر'; countryCode = '+20';
+            }
+          }
+
+          const now = creationTime?.toISOString() ?? new Date().toISOString();
+          await db.from('users').upsert({
+            id: uid, uid,
+            email: userRecord.email ?? '',
+            phone: phoneNumber,
+            name: userRecord.user_metadata?.full_name ?? (userRecord.email ? userRecord.email.split('@')[0] : 'مستخدم جديد'),
+            photoURL: userRecord.user_metadata?.avatar_url ?? '',
+            createdAt: now, created_at: now,
+            role: 'user', accountType: 'user',
+            isActive: true,
+            country: countryName || 'غير محدد',
+            countryCode,
+            isSynced: true,
+          });
+          createdCount++;
+        }
+      }
+
+      // Supabase listUsers doesn't have paginated tokens like Firebase, break after first batch
+      hasMore = false;
     }
+
+    return NextResponse.json({
+      success: true, updatedCount, createdCount, totalAuthUsers,
+      message: `تم التحقق من ${totalAuthUsers} حساب في Auth. تم تحديث ${updatedCount} وإنشاء ${createdCount} مستخدم.`,
+    });
+  } catch (error: unknown) {
+    console.error('Sync Error:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
 }

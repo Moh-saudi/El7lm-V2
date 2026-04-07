@@ -2,54 +2,33 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import {
-    collection,
-    getDocs,
-    query,
-    orderBy,
-    limit,
-} from 'firebase/firestore';
+    ConfigProvider, Table, Tabs, Card, Statistic, Button, Input, Tag, Switch,
+    Modal, Form, Select, InputNumber, DatePicker, Space, Typography, Empty,
+    Tooltip, Badge as AntBadge, Row, Col, Spin, App
+} from 'antd';
 import {
-    Users,
-    Trophy,
-    DollarSign,
-    TrendingUp,
-    Search,
-    CheckCircle2,
-    Clock,
-    Download,
-    Building,
-    GraduationCap,
-    ArrowUpRight,
-    Shield,
-    Briefcase,
-    Target,
-    BarChart3,
-    Calendar,
-    Gift,
-    Activity,
-    History,
-    Star,
-    Plus,
-    X,
-    Copy,
-    RefreshCw,
-    ToggleLeft,
-    ToggleRight,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    UserOutlined, TrophyOutlined, DollarOutlined, RiseOutlined,
+    SearchOutlined, CopyOutlined, PlusOutlined, DownloadOutlined,
+    BankOutlined, BookOutlined, HistoryOutlined, ThunderboltOutlined,
+    CalendarOutlined, GiftOutlined, BarChartOutlined, TeamOutlined,
+    ClockCircleOutlined, LinkOutlined
+} from '@ant-design/icons';
+import arEG from 'antd/locale/ar_EG';
+import dayjs from 'dayjs';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import type { ColumnsType } from 'antd/es/table';
 import { PlayerJoinRequest, OrganizationReferral } from '@/types/organization-referral';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 
-// --- Interfaces ---
+const { Title, Text } = Typography;
+const { Option } = Select;
+
+const ANTD_THEME = {
+    token: { colorPrimary: '#6366f1', borderRadius: 8, fontFamily: 'inherit' },
+};
+
 interface GlobalReferralStats {
     totalReferrals: number;
     totalPointsDistributed: number;
@@ -60,13 +39,16 @@ interface GlobalReferralStats {
 
 interface TopReferrer {
     userId: string;
-    name: string;
-    email: string;
-    accountType: string;
     referralCount: number;
     totalEarnings: number;
-    avatar?: string;
 }
+
+const ORG_TYPE_LABELS: Record<string, string> = {
+    club: 'نادي', academy: 'أكاديمية', trainer: 'مدرب', agent: 'وكيل',
+};
+const ORG_TYPE_COLORS: Record<string, string> = {
+    club: 'green', academy: 'blue', trainer: 'gold', agent: 'purple',
+};
 
 export default function AdminReferralsManagement() {
     const { user } = useAuth();
@@ -76,7 +58,7 @@ export default function AdminReferralsManagement() {
         totalPointsDistributed: 0,
         totalEarningsDistributed: 0,
         activeOrgCodes: 0,
-        pendingJoinRequests: 0
+        pendingJoinRequests: 0,
     });
 
     const [topReferrers, setTopReferrers] = useState<TopReferrer[]>([]);
@@ -85,23 +67,14 @@ export default function AdminReferralsManagement() {
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
     const [activeTab, setActiveTab] = useState('overview');
 
-    // --- Create Code Modal ---
+    // Create Modal
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
-    const [orgSearch, setOrgSearch] = useState('');
     const [orgSearchResults, setOrgSearchResults] = useState<any[]>([]);
     const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
-    const [createForm, setCreateForm] = useState({
-        organizationType: 'club' as 'club' | 'academy' | 'trainer' | 'agent',
-        organizationName: '',
-        organizationId: '',
-        description: '',
-        maxUsage: '',
-        expiresAt: '',
-    });
+    const [form] = Form.useForm();
 
     // --- Toggle Code Status ---
     const handleToggleCode = async (refId: string, currentStatus: boolean) => {
@@ -119,17 +92,15 @@ export default function AdminReferralsManagement() {
     };
 
     // --- Search organizations ---
-    const handleOrgSearch = async (term: string) => {
-        setOrgSearch(term);
+    const handleOrgSearch = async (term: string, orgType: string) => {
         if (term.length < 2) { setOrgSearchResults([]); return; }
         try {
-            const type = createForm.organizationType;
-            const collectionName = type === 'club' ? 'clubs' : type === 'academy' ? 'academies' : type === 'trainer' ? 'trainers' : 'agents';
-            const nameField = type === 'club' ? 'club_name' : type === 'academy' ? 'academy_name' : type === 'trainer' ? 'trainer_name' : 'agent_name';
-            const snap = await getDocs(query(collection(db, collectionName), limit(10)));
-            const results = snap.docs
-                .map(d => ({ id: d.id, name: d.data()[nameField] || d.data().full_name || d.data().name || d.id, ...d.data() }))
-                .filter(r => r.name.toLowerCase().includes(term.toLowerCase()));
+            const tableName = orgType === 'club' ? 'clubs' : orgType === 'academy' ? 'academies' : orgType === 'trainer' ? 'trainers' : 'agents';
+            const nameField = orgType === 'club' ? 'club_name' : orgType === 'academy' ? 'academy_name' : orgType === 'trainer' ? 'trainer_name' : 'agent_name';
+            const { data } = await supabase.from(tableName).select('*').limit(10);
+            const results = (data || [])
+                .map((d: any) => ({ id: d.id, name: d[nameField] || d.full_name || d.name || d.id }))
+                .filter((r: any) => r.name.toLowerCase().includes(term.toLowerCase()));
             setOrgSearchResults(results);
         } catch {
             setOrgSearchResults([]);
@@ -138,32 +109,33 @@ export default function AdminReferralsManagement() {
 
     // --- Create Referral Code ---
     const handleCreateCode = async () => {
-        const name = selectedOrg?.name || createForm.organizationName;
-        const id = selectedOrg?.id || createForm.organizationId;
-        if (!name || !id) {
-            toast.error('يرجى تحديد المنظمة وإدخال بياناتها');
-            return;
-        }
-        setCreating(true);
         try {
+            const values = await form.validateFields();
+            const name = selectedOrg?.name || values.organizationName;
+            const id = selectedOrg?.id || values.organizationId;
+            if (!name || !id) {
+                toast.error('يرجى تحديد المنظمة وإدخال بياناتها');
+                return;
+            }
+            setCreating(true);
             await organizationReferralService.createOrganizationReferral(
                 id,
-                createForm.organizationType,
+                values.organizationType,
                 name,
                 {
-                    description: createForm.description || undefined,
-                    maxUsage: createForm.maxUsage ? parseInt(createForm.maxUsage) : undefined,
-                    expiresAt: createForm.expiresAt ? new Date(createForm.expiresAt) : undefined,
+                    description: values.description || undefined,
+                    maxUsage: values.maxUsage || undefined,
+                    expiresAt: values.expiresAt ? values.expiresAt.toDate() : undefined,
                 }
             );
             toast.success(`تم إنشاء كود إحالة لـ ${name} بنجاح`);
             setShowCreateModal(false);
             setSelectedOrg(null);
-            setOrgSearch('');
             setOrgSearchResults([]);
-            setCreateForm({ organizationType: 'club', organizationName: '', organizationId: '', description: '', maxUsage: '', expiresAt: '' });
+            form.resetFields();
             loadAdminData();
         } catch (e: any) {
+            if (e?.errorFields) return; // validation error, don't show toast
             toast.error(e.message || 'حدث خطأ أثناء إنشاء الكود');
         } finally {
             setCreating(false);
@@ -171,683 +143,575 @@ export default function AdminReferralsManagement() {
     };
 
     useEffect(() => {
-        if (user?.uid) {
-            loadAdminData();
-        }
+        if (user?.id) loadAdminData();
     }, [user]);
 
     const loadAdminData = async () => {
         try {
             setLoading(true);
-
-            // Parallel loading of all data
-            const [
-                referralsSnap,
-                rewardsSnap,
-                requestsSnap,
-                orgRefsSnap,
-                transactionsSnap
-            ] = await Promise.all([
-                getDocs(query(collection(db, 'referrals'), limit(100))),
-                getDocs(query(collection(db, 'player_rewards'), orderBy('referralCount', 'desc'), limit(50))),
-                getDocs(query(collection(db, 'player_join_requests'), orderBy('requestedAt', 'desc'), limit(100))),
-                getDocs(query(collection(db, 'organization_referrals'), orderBy('createdAt', 'desc'))),
-                getDocs(query(collection(db, 'point_transactions'), orderBy('timestamp', 'desc'), limit(50)))
+            const [referralsRes, rewardsRes, requestsRes, orgRefsRes, transactionsRes] = await Promise.all([
+                supabase.from('referrals').select('*').limit(100),
+                supabase.from('player_rewards').select('*').order('referralCount', { ascending: false }).limit(50),
+                supabase.from('player_join_requests').select('*').order('requestedAt', { ascending: false }).limit(100),
+                supabase.from('organization_referrals').select('*').order('createdAt', { ascending: false }),
+                supabase.from('point_transactions').select('*').order('timestamp', { ascending: false }).limit(50),
             ]);
 
-            // Calculate Global Stats
-            let totalPoints = 0;
-            let totalEarnings = 0;
-            rewardsSnap.docs.forEach(d => {
-                const data = d.data();
-                totalPoints += data.totalPoints || 0;
-                totalEarnings += data.totalEarnings || 0;
+            const referralsData = referralsRes.data || [];
+            const rewardsData = rewardsRes.data || [];
+            const requestsData = requestsRes.data || [];
+            const orgRefsData = orgRefsRes.data || [];
+            const transactionsData = transactionsRes.data || [];
+
+            let totalPoints = 0, totalEarnings = 0;
+            rewardsData.forEach((d: any) => {
+                totalPoints += d.totalPoints || 0;
+                totalEarnings += d.totalEarnings || 0;
             });
 
             setStats({
-                totalReferrals: referralsSnap.size,
+                totalReferrals: referralsData.length,
                 totalPointsDistributed: totalPoints,
                 totalEarningsDistributed: totalEarnings,
-                activeOrgCodes: orgRefsSnap.docs.filter(d => d.data().isActive).length,
-                pendingJoinRequests: requestsSnap.docs.filter(d => d.data().status === 'pending').length
+                activeOrgCodes: orgRefsData.filter((d: any) => d.isActive).length,
+                pendingJoinRequests: requestsData.filter((d: any) => d.status === 'pending').length,
             });
 
-            // Prepare Top Referrers with user names
-            const referrersData: TopReferrer[] = [];
-            for (const d of rewardsSnap.docs) {
-                const rewards = d.data();
-                // Here normally we should fetch names in bulk or rely on flattened data
-                referrersData.push({
-                    userId: d.id,
-                    name: 'جاري التحميل...', // We'll update this or use ID as fallback
-                    email: '',
-                    accountType: 'player',
-                    referralCount: rewards.referralCount || 0,
-                    totalEarnings: rewards.totalEarnings || 0
-                });
-            }
-            setTopReferrers(referrersData);
+            setTopReferrers(rewardsData.map((d: any) => ({
+                userId: d.id,
+                referralCount: d.referralCount || 0,
+                totalEarnings: d.totalEarnings || 0,
+            })));
 
-            setAllJoinRequests(requestsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PlayerJoinRequest)));
-            setAllOrgReferrals(orgRefsSnap.docs.map(d => ({ id: d.id, ...d.data() } as OrganizationReferral)));
-            setRecentTransactions(transactionsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
+            setAllJoinRequests(requestsData as PlayerJoinRequest[]);
+            setAllOrgReferrals(orgRefsData as OrganizationReferral[]);
+            setRecentTransactions(transactionsData);
         } catch (err) {
             console.error('Error loading admin referral data:', err);
-            toast.error('حدث خطأ في تحميل البيانات الإدارية');
+            toast.error('حدث خطأ في تحميل البيانات');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Search & Filter ---
     const filteredRequests = useMemo(() => {
         return allJoinRequests.filter(req => {
-            const matchSearch = req.playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                req.organizationName.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchStatus = filterStatus === 'all' || req.status === filterStatus;
-            return matchSearch && matchStatus;
+            const term = searchTerm.toLowerCase();
+            return (req.playerName || '').toLowerCase().includes(term) ||
+                (req.organizationName || '').toLowerCase().includes(term);
         });
-    }, [allJoinRequests, searchTerm, filterStatus]);
+    }, [allJoinRequests, searchTerm]);
 
     const filteredOrgRefs = useMemo(() => {
         return allOrgReferrals.filter(ref =>
-            ref.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ref.referralCode.toLowerCase().includes(searchTerm.toLowerCase())
+            (ref.organizationName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (ref.referralCode || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [allOrgReferrals, searchTerm]);
 
-    // --- Handlers ---
-    const handleExportDataByEmail = () => {
-        toast.success('جاري تصدير البيانات إلى بريدك الإلكتروني...');
-    };
+    // ─── Table Columns ────────────────────────────────────────────
+    const orgRefColumns: ColumnsType<OrganizationReferral> = [
+        {
+            title: 'المنظمة',
+            key: 'org',
+            render: (_, ref) => (
+                <Space>
+                    <div style={{
+                        width: 36, height: 36, borderRadius: 8, background: '#f3f4f6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                    }}>
+                        {ref.organizationType === 'academy' ? '🎓' :
+                            ref.organizationType === 'trainer' ? '🏋️' :
+                                ref.organizationType === 'agent' ? '💼' : '🏟️'}
+                    </div>
+                    <div>
+                        <Text strong style={{ display: 'block' }}>{ref.organizationName}</Text>
+                        <Tag color={ORG_TYPE_COLORS[ref.organizationType] || 'default'} style={{ fontSize: 10, marginTop: 2 }}>
+                            {ORG_TYPE_LABELS[ref.organizationType] || ref.organizationType}
+                        </Tag>
+                    </div>
+                </Space>
+            ),
+        },
+        {
+            title: 'كود الإحالة',
+            key: 'code',
+            render: (_, ref) => (
+                <Space>
+                    <Tag color="blue" style={{ fontFamily: 'monospace', fontSize: 13, padding: '2px 10px' }}>
+                        {ref.referralCode}
+                    </Tag>
+                    <Tooltip title="نسخ الكود">
+                        <Button
+                            type="text" size="small" icon={<CopyOutlined />}
+                            onClick={() => { navigator.clipboard.writeText(ref.referralCode); toast.success('تم نسخ الكود'); }}
+                        />
+                    </Tooltip>
+                </Space>
+            ),
+        },
+        {
+            title: 'الاستخدام',
+            key: 'usage',
+            render: (_, ref) => (
+                <div>
+                    <Text strong>{ref.currentUsage}</Text>
+                    <Text type="secondary"> / {ref.maxUsage ?? '∞'}</Text>
+                    {ref.expiresAt && (
+                        <div style={{ marginTop: 2 }}>
+                            <Text type="warning" style={{ fontSize: 11 }}>
+                                <CalendarOutlined /> ينتهي {new Date(ref.expiresAt as any).toLocaleDateString('ar-EG')}
+                            </Text>
+                        </div>
+                    )}
+                </div>
+            ),
+        },
+        {
+            title: 'الحالة',
+            key: 'status',
+            render: (_, ref) => (
+                <Switch
+                    checked={ref.isActive}
+                    onChange={() => handleToggleCode(ref.id, ref.isActive)}
+                    checkedChildren="نشط"
+                    unCheckedChildren="معطل"
+                    size="small"
+                />
+            ),
+        },
+        {
+            title: 'التاريخ',
+            key: 'date',
+            render: (_, ref) => (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    {ref.createdAt ? new Date(ref.createdAt as any).toLocaleDateString('ar-EG') : '-'}
+                </Text>
+            ),
+        },
+        {
+            title: 'رابط',
+            key: 'link',
+            render: (_, ref) => (
+                <Tooltip title="نسخ رابط الدعوة">
+                    <Button
+                        type="text" icon={<LinkOutlined />}
+                        onClick={() => { navigator.clipboard.writeText(ref.inviteLink || ''); toast.success('تم نسخ رابط الدعوة'); }}
+                    />
+                </Tooltip>
+            ),
+        },
+    ];
+
+    const transactionColumns: ColumnsType<any> = [
+        {
+            title: '',
+            key: 'icon',
+            width: 48,
+            render: () => (
+                <div style={{ width: 32, height: 32, background: '#ecfdf5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ThunderboltOutlined style={{ color: '#059669' }} />
+                </div>
+            ),
+        },
+        { title: 'المستفيد (ID)', dataIndex: 'playerId', key: 'player', render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+        { title: 'النقاط', dataIndex: 'points', key: 'pts', render: v => <Text strong style={{ color: '#059669' }}>+{(v || 0).toLocaleString()}</Text> },
+        { title: 'السبب', dataIndex: 'reason', key: 'reason', render: v => <Text>{v}</Text> },
+        {
+            title: 'التوقيت', dataIndex: 'timestamp', key: 'time',
+            render: v => <Text type="secondary" style={{ fontSize: 11 }}>{v ? new Date(v).toLocaleString('ar-EG') : '-'}</Text>,
+        },
+    ];
+
+    const joinRequestColumns: ColumnsType<PlayerJoinRequest> = [
+        {
+            title: 'اللاعب',
+            key: 'player',
+            render: (_, req) => (
+                <Space>
+                    <div style={{
+                        width: 36, height: 36, borderRadius: 8, background: '#e0e7ff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 900, color: '#4f46e5',
+                    }}>
+                        {(req.playerName || '?').charAt(0)}
+                    </div>
+                    <div>
+                        <Text strong style={{ display: 'block' }}>{req.playerName || '-'}</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>{req.playerEmail || '-'}</Text>
+                    </div>
+                </Space>
+            ),
+        },
+        { title: 'الجهة المطلوبة', dataIndex: 'organizationName', key: 'org', render: v => <Text strong style={{ color: '#4f46e5' }}>{v || '-'}</Text> },
+        {
+            title: 'النوع', dataIndex: 'organizationType', key: 'type',
+            render: v => <Tag color={ORG_TYPE_COLORS[v] || 'default'}>{ORG_TYPE_LABELS[v] || v || '-'}</Tag>,
+        },
+        { title: 'الكود', dataIndex: 'referralCode', key: 'code', render: v => <Tag style={{ fontFamily: 'monospace' }}>{v || '-'}</Tag> },
+        {
+            title: 'الحالة', dataIndex: 'status', key: 'status',
+            render: v => (
+                <Tag color={v === 'pending' ? 'orange' : v === 'approved' ? 'green' : 'red'}>
+                    {v === 'pending' ? 'قيد الانتظار' : v === 'approved' ? 'مقبول' : 'مرفوض'}
+                </Tag>
+            ),
+        },
+        {
+            title: 'التاريخ', dataIndex: 'requestedAt', key: 'date',
+            render: v => <Text type="secondary" style={{ fontSize: 11 }}>{v ? new Date(v).toLocaleDateString('ar-EG') : '-'}</Text>,
+        },
+    ];
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+            <Spin size="large" />
         </div>
     );
 
     return (
-        <div className="p-6 md:p-8 space-y-8 bg-gray-50/30 min-h-screen">
-            {/* --- Header --- */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
-                            <Shield className="w-6 h-6 text-white" />
-                        </div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">إدارة سفراء الحلم</h1>
-                    </div>
-                    <p className="text-gray-500 font-medium">مركز التحكم الشامل لجميع السفراء وأكواد الإحالة وطلبات الانضمام.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" className="rounded-xl border-gray-200 bg-white" onClick={handleExportDataByEmail}>
-                        <Download className="w-4 h-4 ml-2" />
-                        تصدير التقارير
-                    </Button>
-                    <Button
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-100"
-                        onClick={() => setShowCreateModal(true)}
-                    >
-                        <Plus className="w-4 h-4 ml-2" />
-                        إنشاء كود إحالة
-                    </Button>
-                </div>
-            </header>
+        <ConfigProvider direction="rtl" locale={arEG} theme={ANTD_THEME}>
+            <div style={{ padding: '24px 32px', background: '#f9fafb', minHeight: '100vh' }}>
 
-            {/* ─── Create Code Modal ────────────────────────────────── */}
-            <AnimatePresence>
-                {showCreateModal && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            className="fixed inset-0 bg-black/50 z-40"
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setShowCreateModal(false)}
-                        />
-                        {/* Sheet */}
-                        <motion.div
-                            className="fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
-                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+                    <div>
+                        <Space align="center" style={{ marginBottom: 8 }}>
+                            <div style={{ width: 42, height: 42, background: '#6366f1', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <TeamOutlined style={{ color: '#fff', fontSize: 20 }} />
+                            </div>
+                            <Title level={3} style={{ margin: 0, fontWeight: 900 }}>إدارة سفراء الحلم</Title>
+                        </Space>
+                        <Text type="secondary">مركز التحكم الشامل لجميع السفراء وأكواد الإحالة وطلبات الانضمام</Text>
+                    </div>
+                    <Space>
+                        <Button icon={<DownloadOutlined />} onClick={() => toast.success('جاري تصدير البيانات...')}>
+                            تصدير التقارير
+                        </Button>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setShowCreateModal(true)}
+                            style={{ background: '#059669', borderColor: '#059669' }}
                         >
-                            <div className="p-6 md:p-8 space-y-6">
-                                {/* Header */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-100 rounded-xl">
-                                            <Plus className="w-5 h-5 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-black text-gray-900">إنشاء كود إحالة جديد</h2>
-                                            <p className="text-sm text-gray-500">أنشئ كود دعوة لنادٍ أو أكاديمية أو مدرب أو وكيل</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                                    >
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-
-                                {/* Form */}
-                                <div className="space-y-5">
-                                    {/* Organization Type */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-gray-700">نوع المنظمة</label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                            {([
-                                                { value: 'club', label: 'نادي', icon: Building, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-                                                { value: 'academy', label: 'أكاديمية', icon: GraduationCap, color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-                                                { value: 'trainer', label: 'مدرب', icon: Target, color: 'bg-amber-50 border-amber-200 text-amber-700' },
-                                                { value: 'agent', label: 'وكيل', icon: Briefcase, color: 'bg-purple-50 border-purple-200 text-purple-700' },
-                                            ] as const).map(opt => {
-                                                const Icon = opt.icon;
-                                                const isSelected = createForm.organizationType === opt.value;
-                                                return (
-                                                    <button
-                                                        key={opt.value}
-                                                        onClick={() => {
-                                                            setCreateForm(f => ({ ...f, organizationType: opt.value }));
-                                                            setSelectedOrg(null);
-                                                            setOrgSearch('');
-                                                            setOrgSearchResults([]);
-                                                        }}
-                                                        className={cn(
-                                                            'flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all font-bold text-sm',
-                                                            isSelected ? opt.color + ' ring-2 ring-offset-1 ring-current' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-gray-200'
-                                                        )}
-                                                    >
-                                                        <Icon className="w-5 h-5" />
-                                                        {opt.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Organization Search */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-gray-700">
-                                            ابحث عن المنظمة في النظام
-                                        </label>
-                                        <div className="relative">
-                                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <Input
-                                                placeholder={`ابحث باسم ${createForm.organizationType === 'club' ? 'النادي' : createForm.organizationType === 'academy' ? 'الأكاديمية' : createForm.organizationType === 'trainer' ? 'المدرب' : 'الوكيل'}...`}
-                                                className="pr-10 rounded-xl h-11 border-gray-200"
-                                                value={orgSearch}
-                                                onChange={e => handleOrgSearch(e.target.value)}
-                                                style={{ fontSize: '16px' }}
-                                            />
-                                        </div>
-                                        {/* Search Results */}
-                                        {orgSearchResults.length > 0 && (
-                                            <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                                {orgSearchResults.map(org => (
-                                                    <button
-                                                        key={org.id}
-                                                        onClick={() => {
-                                                            setSelectedOrg(org);
-                                                            setOrgSearch(org.name);
-                                                            setOrgSearchResults([]);
-                                                            setCreateForm(f => ({
-                                                                ...f,
-                                                                organizationName: org.name,
-                                                                organizationId: org.id,
-                                                            }));
-                                                        }}
-                                                        className="w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-50 last:border-0"
-                                                    >
-                                                        <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center font-black text-indigo-600 text-sm">
-                                                            {org.name.charAt(0)}
-                                                        </div>
-                                                        <div className="text-sm">
-                                                            <p className="font-bold text-gray-900">{org.name}</p>
-                                                            <p className="text-xs text-gray-400 font-mono">{org.id.slice(0, 12)}...</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {selectedOrg && (
-                                            <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl">
-                                                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-emerald-800 text-sm">{selectedOrg.name}</p>
-                                                    <p className="text-xs text-emerald-600 font-mono">{selectedOrg.id}</p>
-                                                </div>
-                                                <button onClick={() => { setSelectedOrg(null); setOrgSearch(''); }} className="text-emerald-500 hover:text-emerald-700">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Manual Entry (fallback) */}
-                                    {!selectedOrg && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-bold text-gray-700">اسم المنظمة (يدوي)</label>
-                                                <Input
-                                                    placeholder="مثال: نادي الأهلي"
-                                                    className="rounded-xl h-11 border-gray-200"
-                                                    value={createForm.organizationName}
-                                                    onChange={e => setCreateForm(f => ({ ...f, organizationName: e.target.value }))}
-                                                    style={{ fontSize: '16px' }}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-bold text-gray-700">معرّف المنظمة (ID)</label>
-                                                <Input
-                                                    placeholder="مثال: abc123"
-                                                    className="rounded-xl h-11 border-gray-200 font-mono"
-                                                    value={createForm.organizationId}
-                                                    onChange={e => setCreateForm(f => ({ ...f, organizationId: e.target.value }))}
-                                                    style={{ fontSize: '16px' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Optional Settings */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold text-gray-700">وصف الكود (اختياري)</label>
-                                            <Input
-                                                placeholder="مثال: كود الموسم الجديد"
-                                                className="rounded-xl h-11 border-gray-200"
-                                                value={createForm.description}
-                                                onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                                                style={{ fontSize: '16px' }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold text-gray-700">الحد الأقصى للاستخدام</label>
-                                            <Input
-                                                type="number"
-                                                placeholder="∞ غير محدود"
-                                                className="rounded-xl h-11 border-gray-200"
-                                                value={createForm.maxUsage}
-                                                onChange={e => setCreateForm(f => ({ ...f, maxUsage: e.target.value }))}
-                                                style={{ fontSize: '16px' }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold text-gray-700">تاريخ الانتهاء (اختياري)</label>
-                                            <Input
-                                                type="date"
-                                                className="rounded-xl h-11 border-gray-200"
-                                                value={createForm.expiresAt}
-                                                onChange={e => setCreateForm(f => ({ ...f, expiresAt: e.target.value }))}
-                                                style={{ fontSize: '16px' }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3 pt-2 pb-safe">
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1 rounded-2xl h-12 border-gray-200"
-                                        onClick={() => setShowCreateModal(false)}
-                                        disabled={creating}
-                                    >
-                                        إلغاء
-                                    </Button>
-                                    <Button
-                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl h-12 font-bold shadow-lg shadow-emerald-100"
-                                        onClick={handleCreateCode}
-                                        disabled={creating || (!selectedOrg && (!createForm.organizationName || !createForm.organizationId))}
-                                    >
-                                        {creating ? (
-                                            <span className="flex items-center gap-2">
-                                                <RefreshCw className="w-4 h-4 animate-spin" />
-                                                جاري الإنشاء...
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-2">
-                                                <Plus className="w-4 h-4" />
-                                                إنشاء الكود
-                                            </span>
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-
-            {/* --- Stats Cards --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                {[
-                    { label: 'إجمالي الإحالات', value: stats.totalReferrals, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'نقاط موزعة', value: stats.totalPointsDistributed.toLocaleString(), icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'أرباح المحيلين', value: `$${stats.totalEarningsDistributed.toFixed(0)}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'أكواد نشطة', value: stats.activeOrgCodes, icon: Building, color: 'text-purple-600', bg: 'bg-purple-50' },
-                    { label: 'طلبات معلقة', value: stats.pendingJoinRequests, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' }
-                ].map((stat, i) => (
-                    <Card key={i} className="border-none shadow-sm hover:shadow-md transition-shadow">
-                        <CardContent className="p-6 flex flex-col items-center text-center space-y-2">
-                            <div className={cn("p-3 rounded-2xl mb-2", stat.bg)}>
-                                <stat.icon className={cn("w-6 h-6", stat.color)} />
-                            </div>
-                            <p className="text-gray-500 text-xs font-bold uppercase">{stat.label}</p>
-                            <p className="text-2xl font-black text-gray-900">{stat.value}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* --- Main Content Tabs --- */}
-            <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                    <TabsList className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 h-14 w-full md:w-auto">
-                        <TabsTrigger value="overview" className="rounded-xl px-6 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">نظرة عامة</TabsTrigger>
-                        <TabsTrigger value="org_referrals" className="rounded-xl px-6 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">أكواد المنظمات</TabsTrigger>
-                        <TabsTrigger value="join_requests" className="rounded-xl px-6 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">طلبات الانضمام</TabsTrigger>
-                        <TabsTrigger value="transactions" className="rounded-xl px-6 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">سجل العمليات</TabsTrigger>
-                    </TabsList>
-
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                            placeholder="بحث في النظام..."
-                            className="pl-10 rounded-xl h-12 bg-white border-gray-200"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                            إنشاء كود إحالة
+                        </Button>
+                    </Space>
                 </div>
 
-                {/* --- Overview: Analytics & Top Referrers --- */}
-                <TabsContent value="overview" className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Growth Chart Placeholder */}
-                        <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden min-h-[400px]">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-gray-50 pb-6">
-                                <div>
-                                    <CardTitle className="text-xl font-black">نمو الإحالات الأسبوعي</CardTitle>
-                                    <CardDescription>معدل تسجيل اللاعبين الجدد عبر الدعوات</CardDescription>
+                {/* Stats */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
+                    {[
+                        { label: 'إجمالي الإحالات', value: stats.totalReferrals, icon: <UserOutlined />, color: '#3b82f6' },
+                        { label: 'نقاط موزعة', value: stats.totalPointsDistributed, icon: <TrophyOutlined />, color: '#f59e0b' },
+                        { label: 'أرباح المحيلين', value: `$${stats.totalEarningsDistributed.toFixed(0)}`, icon: <DollarOutlined />, color: '#059669', isStr: true },
+                        { label: 'أكواد نشطة', value: stats.activeOrgCodes, icon: <GiftOutlined />, color: '#8b5cf6' },
+                        { label: 'طلبات معلقة', value: stats.pendingJoinRequests, icon: <ClockCircleOutlined />, color: '#f97316' },
+                    ].map((s, i) => (
+                        <Col key={i} xs={12} sm={8} md={6} lg={4} xl={4} flex="1">
+                            <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                        width: 44, height: 44, borderRadius: 12, background: s.color + '15',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        margin: '0 auto 8px', fontSize: 20, color: s.color,
+                                    }}>
+                                        {s.icon}
+                                    </div>
+                                    <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, display: 'block', marginBottom: 4 }}>{s.label}</Text>
+                                    <Text style={{ fontSize: 22, fontWeight: 900 }}>{s.isStr ? s.value : (s.value as number).toLocaleString()}</Text>
                                 </div>
-                                <Badge variant="outline" className="px-3 py-1">آخر 30 يوم</Badge>
-                            </CardHeader>
-                            <CardContent className="h-full flex items-center justify-center bg-indigo-50/20">
-                                <div className="text-center space-y-4">
-                                    <BarChart3 className="w-20 h-20 text-indigo-100 mx-auto" />
-                                    <p className="text-gray-400 font-medium">سيتم ربط المخططات البيانية بـ Recharts قريباً</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
 
-                        {/* Top Referrers Leaderboard */}
-                        <Card className="border-none shadow-sm">
-                            <CardHeader className="pb-4">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">قائمة الأوائل</CardTitle>
-                                    <Trophy className="w-5 h-5 text-amber-500" />
-                                </div>
-                                <CardDescription>أكثر المستخدمين دعوة للاعبين</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {topReferrers.map((ref, i) => (
-                                    <div key={i} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                        <div className="relative">
-                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black">
-                                                {ref.userId.substring(0, 2).toUpperCase()}
+                {/* Search Bar */}
+                <div style={{ marginBottom: 16 }}>
+                    <Input
+                        prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+                        placeholder="بحث في النظام..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ maxWidth: 360, borderRadius: 10 }}
+                        allowClear
+                    />
+                </div>
+
+                {/* Main Tabs */}
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={setActiveTab}
+                    type="card"
+                    items={[
+                        {
+                            key: 'overview',
+                            label: <><BarChartOutlined /> نظرة عامة</>,
+                            children: (
+                                <Row gutter={[24, 24]}>
+                                    {/* Placeholder Chart */}
+                                    <Col xs={24} lg={16}>
+                                        <Card bordered={false} style={{ borderRadius: 16, minHeight: 360 }}
+                                            title={<><RiseOutlined /> نمو الإحالات الأسبوعي</>}
+                                            extra={<Tag>آخر 30 يوم</Tag>}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280, background: '#f0f4ff', borderRadius: 12 }}>
+                                                <div style={{ textAlign: 'center', color: '#a5b4fc' }}>
+                                                    <BarChartOutlined style={{ fontSize: 64 }} />
+                                                    <div style={{ marginTop: 12, color: '#6b7280' }}>سيتم ربط المخططات البيانية بـ Recharts قريباً</div>
+                                                </div>
                                             </div>
-                                            {i < 3 && (
-                                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-black">
-                                                    {i + 1}
+                                        </Card>
+                                    </Col>
+
+                                    {/* Top Referrers */}
+                                    <Col xs={24} lg={8}>
+                                        <Card bordered={false} style={{ borderRadius: 16 }}
+                                            title={<><TrophyOutlined style={{ color: '#f59e0b' }} /> قائمة الأوائل</>}
+                                        >
+                                            {topReferrers.length === 0 ? (
+                                                <Empty description="لا توجد بيانات" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                    {topReferrers.slice(0, 8).map((ref, i) => (
+                                                        <div key={ref.userId} style={{
+                                                            display: 'flex', alignItems: 'center', gap: 12,
+                                                            padding: '10px 12px', borderRadius: 10,
+                                                            background: i < 3 ? '#fefce8' : '#f9fafb',
+                                                            border: `1px solid ${i < 3 ? '#fef08a' : '#f3f4f6'}`,
+                                                        }}>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <div style={{
+                                                                    width: 38, height: 38, borderRadius: 10,
+                                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    color: '#fff', fontWeight: 900, fontSize: 13,
+                                                                }}>
+                                                                    {ref.userId.substring(0, 2).toUpperCase()}
+                                                                </div>
+                                                                {i < 3 && (
+                                                                    <div style={{
+                                                                        position: 'absolute', top: -4, right: -4,
+                                                                        width: 18, height: 18, background: '#f59e0b',
+                                                                        borderRadius: '50%', border: '2px solid #fff',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        fontSize: 9, color: '#fff', fontWeight: 900,
+                                                                    }}>{i + 1}</div>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <Text strong style={{ fontSize: 12, display: 'block' }}>{ref.userId.substring(0, 12)}...</Text>
+                                                                <Text type="secondary" style={{ fontSize: 11 }}>{ref.referralCount} إحالة</Text>
+                                                            </div>
+                                                            <Text strong style={{ fontSize: 13 }}>${ref.totalEarnings.toFixed(0)}</Text>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-gray-900 text-sm truncate">المحيل: {ref.userId.substring(0, 10)}...</p>
-                                            <p className="text-xs text-indigo-600 font-bold">{ref.referralCount} إحالة ناجحة</p>
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="font-black text-gray-900 text-sm">${ref.totalEarnings.toFixed(0)}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-
-                {/* --- Organization Referrals Table --- */}
-                <TabsContent value="org_referrals" className="space-y-4">
-                    {/* Quick create shortcut inside tab */}
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-gray-500">{filteredOrgRefs.length} كود مسجّل</p>
-                        <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs"
-                            onClick={() => setShowCreateModal(true)}
-                        >
-                            <Plus className="w-3.5 h-3.5 ml-1.5" />
-                            إنشاء كود جديد
-                        </Button>
-                    </div>
-
-                    <Card className="border-none shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-right border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50/50 text-gray-500 text-xs font-black uppercase tracking-wider">
-                                        <th className="px-6 py-4">المنظمة / المؤسسة</th>
-                                        <th className="px-6 py-4">كود الإحالة</th>
-                                        <th className="px-6 py-4">الاستخدام</th>
-                                        <th className="px-6 py-4">الحالة</th>
-                                        <th className="px-6 py-4 text-left">التاريخ</th>
-                                        <th className="px-6 py-4 text-left">إجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {filteredOrgRefs.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-6 py-16 text-center">
-                                                <div className="flex flex-col items-center gap-3 text-gray-400">
-                                                    <Gift className="w-10 h-10 text-gray-200" />
-                                                    <p className="font-bold">لا توجد أكواد بعد</p>
-                                                    <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setShowCreateModal(true)}>
-                                                        <Plus className="w-4 h-4 ml-1" /> إنشاء أول كود
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        </Card>
+                                    </Col>
+                                </Row>
+                            ),
+                        },
+                        {
+                            key: 'org_referrals',
+                            label: <><GiftOutlined /> أكواد المنظمات</>,
+                            children: (
+                                <Card bordered={false} style={{ borderRadius: 16 }}
+                                    extra={
+                                        <Space>
+                                            <Text type="secondary">{filteredOrgRefs.length} كود مسجّل</Text>
+                                            <Button
+                                                type="primary" size="small" icon={<PlusOutlined />}
+                                                onClick={() => setShowCreateModal(true)}
+                                                style={{ background: '#059669', borderColor: '#059669' }}
+                                            >
+                                                كود جديد
+                                            </Button>
+                                        </Space>
+                                    }
+                                >
+                                    <Table
+                                        columns={orgRefColumns}
+                                        dataSource={filteredOrgRefs}
+                                        rowKey="id"
+                                        size="middle"
+                                        locale={{ emptyText: <Empty description="لا توجد أكواد بعد" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+                                        pagination={{ pageSize: 15, showTotal: total => `${total} كود` }}
+                                        scroll={{ x: 700 }}
+                                    />
+                                </Card>
+                            ),
+                        },
+                        {
+                            key: 'join_requests',
+                            label: (
+                                <>
+                                    <ClockCircleOutlined /> طلبات الانضمام
+                                    {stats.pendingJoinRequests > 0 && (
+                                        <AntBadge count={stats.pendingJoinRequests} size="small" style={{ marginRight: 6 }} />
                                     )}
-                                    {filteredOrgRefs.map((ref) => (
-                                        <tr key={ref.id} className="hover:bg-gray-50/30 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                                                        {ref.organizationType === 'academy'
-                                                            ? <GraduationCap className="w-5 h-5 text-indigo-500" />
-                                                            : ref.organizationType === 'trainer'
-                                                            ? <Target className="w-5 h-5 text-amber-500" />
-                                                            : ref.organizationType === 'agent'
-                                                            ? <Briefcase className="w-5 h-5 text-purple-500" />
-                                                            : <Building className="w-5 h-5 text-emerald-500" />}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-900">{ref.organizationName}</span>
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase">{ref.organizationType}</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant="outline" className="font-mono text-sm border-indigo-100 text-indigo-700 bg-indigo-50/30">{ref.referralCode}</Badge>
-                                                    <button
-                                                        onClick={() => { navigator.clipboard.writeText(ref.referralCode); toast.success('تم نسخ الكود'); }}
-                                                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                                        title="نسخ الكود"
-                                                    >
-                                                        <Copy className="w-3.5 h-3.5 text-gray-400" />
-                                                    </button>
-                                                </div>
-                                                {ref.description && <span className="text-[10px] font-bold text-gray-400 block mt-1">{ref.description}</span>}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="font-black text-gray-900">{ref.currentUsage}</span>
-                                                    <span className="text-gray-300 text-xs">/ {ref.maxUsage ?? '∞'}</span>
-                                                </div>
-                                                {ref.expiresAt && (
-                                                    <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1 mt-0.5">
-                                                        <Calendar className="w-3 h-3" />
-                                                        ينتهي {new Date((ref.expiresAt as any).toDate ? (ref.expiresAt as any).toDate() : ref.expiresAt).toLocaleDateString('ar-EG')}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => handleToggleCode(ref.id, ref.isActive)}
-                                                    className={cn(
-                                                        'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors',
-                                                        ref.isActive
-                                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                                    )}
-                                                >
-                                                    {ref.isActive
-                                                        ? <><ToggleRight className="w-3.5 h-3.5" /> نشط</>
-                                                        : <><ToggleLeft className="w-3.5 h-3.5" /> معطل</>}
-                                                </button>
-                                            </td>
-                                            <td className="px-6 py-4 text-left text-xs font-medium text-gray-400">
-                                                {ref.createdAt ? new Date((ref.createdAt as any).toDate ? (ref.createdAt as any).toDate() : ref.createdAt).toLocaleDateString('ar-EG') : '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-left">
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => { navigator.clipboard.writeText(ref.inviteLink || ''); toast.success('تم نسخ رابط الدعوة'); }}
-                                                        className="p-1.5 hover:bg-indigo-50 rounded-lg transition-colors text-indigo-400 hover:text-indigo-600"
-                                                        title="نسخ رابط الدعوة"
-                                                    >
-                                                        <ArrowUpRight className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                </>
+                            ),
+                            children: (
+                                <Card bordered={false} style={{ borderRadius: 16 }}>
+                                    <Table
+                                        columns={joinRequestColumns}
+                                        dataSource={filteredRequests}
+                                        rowKey="id"
+                                        size="middle"
+                                        locale={{ emptyText: <Empty description="لا توجد طلبات" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+                                        pagination={{ pageSize: 15, showTotal: total => `${total} طلب` }}
+                                        scroll={{ x: 700 }}
+                                    />
+                                </Card>
+                            ),
+                        },
+                        {
+                            key: 'transactions',
+                            label: <><HistoryOutlined /> سجل العمليات</>,
+                            children: (
+                                <Card
+                                    bordered={false}
+                                    style={{ borderRadius: 16 }}
+                                    title={<><HistoryOutlined /> سجل توزيع المكافآت الأخير</>}
+                                >
+                                    <Table
+                                        columns={transactionColumns}
+                                        dataSource={recentTransactions}
+                                        rowKey="id"
+                                        size="middle"
+                                        locale={{ emptyText: <Empty description="لا توجد عمليات" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+                                        pagination={{ pageSize: 20, showTotal: total => `${total} عملية` }}
+                                        scroll={{ x: 600 }}
+                                    />
+                                </Card>
+                            ),
+                        },
+                    ]}
+                />
+
+                {/* ─── Create Code Modal ─────────────────────────────────── */}
+                <Modal
+                    open={showCreateModal}
+                    onCancel={() => { setShowCreateModal(false); setSelectedOrg(null); setOrgSearchResults([]); form.resetFields(); }}
+                    onOk={handleCreateCode}
+                    okText="إنشاء الكود"
+                    cancelText="إلغاء"
+                    confirmLoading={creating}
+                    okButtonProps={{ style: { background: '#059669', borderColor: '#059669' } }}
+                    title={
+                        <Space>
+                            <PlusOutlined style={{ color: '#059669' }} />
+                            إنشاء كود إحالة جديد
+                        </Space>
+                    }
+                    width={560}
+                    destroyOnClose
+                >
+                    <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+                        {/* Organization Type */}
+                        <Form.Item name="organizationType" label="نوع المنظمة" initialValue="club" rules={[{ required: true }]}>
+                            <Select onChange={() => { setSelectedOrg(null); setOrgSearchResults([]); }}>
+                                <Option value="club">🏟️ نادي</Option>
+                                <Option value="academy">🎓 أكاديمية</Option>
+                                <Option value="trainer">🏋️ مدرب</Option>
+                                <Option value="agent">💼 وكيل</Option>
+                            </Select>
+                        </Form.Item>
+
+                        {/* Organization Search */}
+                        <Form.Item label="ابحث عن المنظمة في النظام">
+                            <Input.Search
+                                placeholder="ابحث باسم المنظمة..."
+                                onSearch={term => handleOrgSearch(term, form.getFieldValue('organizationType') || 'club')}
+                                onChange={e => { if (!e.target.value) { setOrgSearchResults([]); setSelectedOrg(null); } }}
+                                allowClear
+                                enterButton
+                            />
+                            {orgSearchResults.length > 0 && (
+                                <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 8, overflow: 'hidden' }}>
+                                    {orgSearchResults.map(org => (
+                                        <div
+                                            key={org.id}
+                                            onClick={() => {
+                                                setSelectedOrg(org);
+                                                form.setFieldsValue({ organizationName: org.name, organizationId: org.id });
+                                                setOrgSearchResults([]);
+                                            }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                padding: '10px 14px', cursor: 'pointer',
+                                                borderBottom: '1px solid #f3f4f6',
+                                                transition: 'background 0.15s',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+                                        >
+                                            <div style={{
+                                                width: 32, height: 32, background: '#e0e7ff', borderRadius: 6,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontWeight: 900, color: '#4f46e5',
+                                            }}>
+                                                {org.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <Text strong style={{ fontSize: 13 }}>{org.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11, display: 'block', fontFamily: 'monospace' }}>{org.id.slice(0, 16)}...</Text>
+                                            </div>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </Card>
-                </TabsContent>
+                                </div>
+                            )}
+                            {selectedOrg && (
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 10, marginTop: 8,
+                                    padding: '8px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8,
+                                }}>
+                                    <Text strong style={{ color: '#065f46', flex: 1 }}>{selectedOrg.name}</Text>
+                                    <Button size="small" type="text" onClick={() => { setSelectedOrg(null); form.setFieldsValue({ organizationName: '', organizationId: '' }); }}>✕</Button>
+                                </div>
+                            )}
+                        </Form.Item>
 
-                {/* --- Global Join Requests --- */}
-                <TabsContent value="join_requests" className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredRequests.map((req) => (
-                            <Card key={req.id} className="border-none shadow-sm relative overflow-hidden group">
-                                <div className={cn("absolute top-0 right-0 h-full w-1.5",
-                                    req.status === 'pending' ? 'bg-amber-500' : req.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500'
-                                )} />
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Badge variant="secondary" className="rounded-full text-[10px] font-black uppercase">
-                                            {req.organizationType} Invite
-                                        </Badge>
-                                        <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {req.requestedAt ? new Date((req.requestedAt as any).toDate ? (req.requestedAt as any).toDate() : req.requestedAt).toLocaleDateString('ar-EG') : '-'}
-                                        </span>
-                                    </div>
+                        {/* Manual fallback */}
+                        {!selectedOrg && (
+                            <Row gutter={12}>
+                                <Col span={12}>
+                                    <Form.Item name="organizationName" label="اسم المنظمة (يدوي)">
+                                        <Input placeholder="مثال: نادي الأهلي" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="organizationId" label="معرّف المنظمة (ID)">
+                                        <Input placeholder="مثال: abc123" style={{ fontFamily: 'monospace' }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        )}
 
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-2xl bg-gray-100 p-1 border-2 border-white shadow-sm flex items-center justify-center font-black text-gray-400 text-xl">
-                                            {req.playerName.charAt(0)}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <h4 className="font-black text-gray-900 truncate">{req.playerName}</h4>
-                                            <p className="text-xs text-gray-500 truncate">{req.playerEmail}</p>
-                                        </div>
-                                    </div>
+                        {/* Optional settings */}
+                        <Row gutter={12}>
+                            <Col span={24}>
+                                <Form.Item name="description" label="وصف الكود (اختياري)">
+                                    <Input placeholder="مثال: كود الموسم الجديد" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item name="maxUsage" label="الحد الأقصى للاستخدام">
+                                    <InputNumber placeholder="∞ غير محدود" style={{ width: '100%' }} min={1} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item name="expiresAt" label="تاريخ الانتهاء (اختياري)">
+                                    <DatePicker style={{ width: '100%' }} disabledDate={d => d && d < dayjs().startOf('day')} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </Form>
+                </Modal>
 
-                                    <div className="bg-gray-50 p-4 rounded-2xl space-y-2">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="text-gray-400 font-bold">الجهة المطلوبة</span>
-                                            <span className="font-black text-indigo-600">{req.organizationName}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="text-gray-400 font-bold">الكود المستخدم</span>
-                                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-gray-100">{req.referralCode}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs font-bold border-gray-200">
-                                            معاينة الملف
-                                        </Button>
-                                        <Button className={cn("rounded-xl h-10 w-24 text-xs font-bold text-white",
-                                            req.status === 'pending' ? 'bg-amber-500' : req.status === 'approved' ? 'bg-emerald-600' : 'bg-rose-600'
-                                        )}>
-                                            {req.status === 'pending' ? 'قيد الانتظار' : req.status === 'approved' ? 'تم القبول' : 'مرفوض'}
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-
-                {/* --- Global Point Transactions --- */}
-                <TabsContent value="transactions" className="space-y-4">
-                    <Card className="border-none shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-                            <h3 className="font-black text-gray-900 flex items-center gap-2">
-                                <History className="w-5 h-5 text-indigo-500" />
-                                سجل توزيع المكافآت الأخير
-                            </h3>
-                            <span className="text-xs font-bold text-gray-400 underline cursor-pointer">عرض الأرشيف الكامل</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-right border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50/30 text-gray-400 text-[10px] font-black uppercase tracking-widest">
-                                        <th className="px-6 py-4">التحرك</th>
-                                        <th className="px-6 py-4">المستفيد (ID)</th>
-                                        <th className="px-6 py-4">القيمة</th>
-                                        <th className="px-6 py-4">السبب</th>
-                                        <th className="px-6 py-4 text-left">التوقيت</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {recentTransactions.map((tx) => (
-                                        <tr key={tx.id} className="hover:bg-gray-50/20 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg w-fit">
-                                                    <Activity className="w-4 h-4" />
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 font-mono text-xs text-gray-500">
-                                                {tx.playerId}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="font-black text-emerald-600">+{tx.points.toLocaleString()}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm font-bold text-gray-700">
-                                                {tx.reason}
-                                            </td>
-                                            <td className="px-6 py-4 text-left text-xs font-medium text-gray-400">
-                                                {tx.timestamp ? new Date(tx.timestamp.toDate()).toLocaleTimeString('ar-EG') : '-'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
+            </div>
+        </ConfigProvider>
     );
 }

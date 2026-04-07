@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { DreamAcademyCategory, DreamAcademyCategoryId } from '@/types/dream-academy';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,10 +33,9 @@ export default function AdminDreamAcademySettingsPage() {
     const init = async () => {
       setLoading(true);
       // Load categories
-      const snap = await getDocs(collection(db, 'dream_academy_categories'));
-      if (!snap.empty) {
-        const loaded: DreamAcademyCategory[] = snap.docs.map(d => d.data() as DreamAcademyCategory);
-        setCategories(loaded);
+      const { data: snap } = await supabase.from('dream_academy_categories').select('*');
+      if (snap && snap.length > 0) {
+        setCategories(snap as DreamAcademyCategory[]);
       }
       const rates = await getCurrencyRates();
       setCurrencyRates(rates);
@@ -48,7 +46,7 @@ export default function AdminDreamAcademySettingsPage() {
 
   const saveAll = async () => {
     await Promise.all(
-      categories.map(cat => setDoc(doc(db, 'dream_academy_categories', cat.id), { ...cat, updatedAt: new Date() }))
+      categories.map(cat => supabase.from('dream_academy_categories').upsert({ ...cat, updatedAt: new Date().toISOString() }))
     );
   };
 

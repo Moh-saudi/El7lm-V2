@@ -9,8 +9,7 @@ import {
     Download, Users, Search, CheckCircle, Clock, X, DollarSign,
     UserCheck, UserX
 } from 'lucide-react';
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament, formatDate } from '../utils';
 import {
     Table,
@@ -49,36 +48,37 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
             let allRegistrations: any[] = [];
 
             try {
-                const newRegistrationsQuery = query(
-                    collection(db, 'tournamentRegistrations'),
-                    where('tournamentId', '==', tournament.id)
-                );
-                const newSnapshot = await getDocs(newRegistrationsQuery);
-                const newRegistrations = newSnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    const players = data.players || [];
-                    // Process both individual players and the group registration itself
-                    return players.map((player: any, index: number) => ({
-                        id: `${doc.id}_${index}`,
-                        originalId: doc.id,
-                        playerId: player.id,
-                        playerName: player.name || player.full_name || 'غير محدد',
-                        playerEmail: player.email || data.accountEmail || '',
-                        playerPhone: player.phone || data.accountPhone || '',
-                        playerClub: player.club_id || data.clubName || '',
-                        playerAvatar: player.photoURL || player.avatar || data.accountAvatar || null,
-                        playerPosition: player.position || '',
-                        registrationDate: data.registrationDate || data.createdAt || new Date(),
-                        paymentStatus: data.paymentStatus || 'pending',
-                        paymentAmount: data.paymentAmount || 0,
-                        paymentMethod: data.paymentMethod,
-                        notes: data.notes,
-                        status: data.status || 'pending', // Registration status (approved/rejected)
-                        registrationType: data.registrationType,
-                        teamName: data.teamName || data.clubName || 'تسجيل فردي'
-                    }));
-                }).flat();
-                allRegistrations = newRegistrations;
+                const { data: newData, error: newError } = await supabase
+                    .from('tournamentRegistrations')
+                    .select('*')
+                    .eq('tournamentId', tournament.id);
+
+                if (!newError && newData) {
+                    const newRegistrations = newData.map(row => {
+                        const players = row.players || [];
+                        // Process both individual players and the group registration itself
+                        return players.map((player: any, index: number) => ({
+                            id: `${row.id}_${index}`,
+                            originalId: row.id,
+                            playerId: player.id,
+                            playerName: player.name || player.full_name || 'غير محدد',
+                            playerEmail: player.email || row.account_email || '',
+                            playerPhone: player.phone || row.account_phone || '',
+                            playerClub: player.club_id || row.club_name || '',
+                            playerAvatar: player.photoURL || player.avatar || row.account_avatar || null,
+                            playerPosition: player.position || '',
+                            registrationDate: row.registrationDate || row.registeredAt || new Date().toISOString(),
+                            paymentStatus: row.payment_status || 'pending',
+                            paymentAmount: row.payment_amount || 0,
+                            paymentMethod: row.payment_method,
+                            notes: row.notes,
+                            status: row.status || 'pending', // Registration status (approved/rejected)
+                            registrationType: row.registration_type,
+                            teamName: row.team_name || row.club_name || 'تسجيل فردي'
+                        }));
+                    }).flat();
+                    allRegistrations = newRegistrations;
+                }
             } catch (error) {
                 console.error('Error fetching new registrations:', error);
             }
@@ -104,10 +104,11 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
         if (!reg) return;
 
         try {
-            await updateDoc(doc(db, 'tournamentRegistrations', reg.originalId), {
-                status: newStatus,
-                updatedAt: new Date()
-            });
+            await supabase
+                .from('tournamentRegistrations')
+                .update({ status: newStatus, updatedAt: new Date().toISOString() })
+                .eq('id', reg.originalId);
+
             toast.success(`تم تحديث الحالة إلى ${newStatus === 'approved' ? 'مقبول' : 'مرفوض'}`);
 
             // Optimistic update

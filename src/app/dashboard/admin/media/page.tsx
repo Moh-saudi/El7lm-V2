@@ -1,285 +1,273 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Shield, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Modular Components
-import { MediaStats } from './components/MediaStats';
-import { MediaFilterBar } from './components/MediaFilterBar';
-import { MediaGrid } from './components/MediaGrid';
-import { MediaInspector } from './components/MediaInspector';
-import { Media } from './types';
+import { CheckCircle, XCircle, Flag, X } from 'lucide-react';
+import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePermissions } from '../employees-v2/_hooks/usePermissions';
 import AccessDenied from '@/components/admin/AccessDenied';
+import { useMediaData } from './hooks/useMediaData';
+import { MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter } from './types';
 
-export default function MediaReviewPage() {
-  const { user, userData } = useAuth();
+import { MediaHeader }  from './components/MediaHeader';
+import { MediaKPIBar }  from './components/MediaKPIBar';
+import { MediaToolbar } from './components/MediaToolbar';
+import { MediaGrid }    from './components/MediaGrid';
+import { MediaDrawer }  from './components/MediaDrawer';
 
-  // --- State ---
-  const [tab, setTab] = useState<'videos' | 'images'>('videos');
-  const [videos, setVideos] = useState<Media[]>([]);
-  const [images, setImages] = useState<Media[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('pending');
-  const [searchTerm, setSearchTerm] = useState('');
+// ─── ترتيب العناصر ────────────────────────────────────────────
+const STATUS_ORDER: Record<string, number> = {
+    pending: 0, flagged: 1, approved: 2, rejected: 3,
+};
 
-  // Selection & Modal
-  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+function sortItems(items: MediaItem[], key: MediaSortKey): MediaItem[] {
+    const arr = [...items];
+    switch (key) {
+        case 'date_desc': return arr.sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime());
+        case 'date_asc':  return arr.sort((a, b) => a.uploadDate.getTime() - b.uploadDate.getTime());
+        case 'name_asc':  return arr.sort((a, b) => a.userName.localeCompare(b.userName, 'ar'));
+        case 'status':    return arr.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+        case 'size_desc': return arr.sort((a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0));
+        case 'type':      return arr.sort((a, b) => a.type.localeCompare(b.type));
+        default:          return arr;
+    }
+}
 
-  // --- Authorization (New System) ---
-  const { can } = usePermissions();
+export default function MediaPage() {
+    const { user } = useAuth();
+    const { can } = usePermissions();
+    const { items, loading, lastFetched, fetchAll, updateItemStatus, bulkUpdateStatus, updateItemAI, deleteItem } = useMediaData();
 
-  // --- Data Fetching ---
-  const fetchData = useCallback(async (type: 'videos' | 'images') => {
-    const result: Media[] = [];
-    const colls = ['players', 'coaches', 'academies', 'clubs', 'agents'];
+    // ─── Filters ──────────────────────────────────────────────
+    const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
+    const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('pending');
+    const [accountFilter, setAccountFilter] = useState<string>('all');
+    const [searchTerm,    setSearchTerm]    = useState('');
+    const [sortKey,       setSortKey]       = useState<MediaSortKey>('date_desc');
+    const [dateFilter,    setDateFilter]    = useState<DateFilter>({ from: '', to: '' });
 
-    // 1. Fetch from Firestore
-    for (const coll of colls) {
-      try {
-        const snap = await getDocs(collection(db, coll));
-        snap.docs.forEach(d => {
-          const data = d.data();
-          const items = type === 'videos' ? data.videos : data.images;
+    // ─── Bulk selection ───────────────────────────────────────
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
 
-          if (items && Array.isArray(items)) {
-            items.forEach((item: any, i: number) => {
-              // Extract Organization name
-              let organization = '';
-              if (data.academy_name) organization = data.academy_name;
-              else if (data.club_name) organization = data.club_name;
-              else if (data.academy) organization = data.academy;
-              else if (data.club) organization = data.club;
-              else if (coll === 'academies' || coll === 'clubs') organization = data.name || data.fullName || data.full_name;
+    // ─── Drawer ───────────────────────────────────────────────
+    const [selected, setSelected] = useState<MediaItem | null>(null);
 
-              // Map Account Type
-              const accountTypeMap: Record<string, string> = {
-                'players': 'player', 'coaches': 'coach', 'trainers': 'trainer',
-                'academies': 'academy', 'clubs': 'club', 'agents': 'agent'
-              };
+    // ─── Load on mount ────────────────────────────────────────
+    useEffect(() => { fetchAll(); }, [fetchAll]);
 
-              // Determine Source Type (R2 vs Firebase) based on URL
-              const isR2 = item.url && (item.url.includes('r2.dev') || item.url.includes('supabase') || item.url.includes('el7lm.com'));
+    // إعادة تحديد selectedIds عند تغيير الفلاتر
+    useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, statusFilter, accountFilter, searchTerm, dateFilter]);
 
-              result.push({
-                id: `${d.id}_${i}`,
-                title: item.title || item.label || item.desc || item.description || `${type === 'videos' ? 'فيديو' : 'صورة'} ${i + 1}`,
-                description: item.description || item.desc || '',
-                url: item.url || '',
-                thumbnailUrl: item.thumbnail || item.thumbnailUrl || (type === 'videos' ? undefined : item.url),
-                uploadDate: item.uploadedAt || item.createdAt || item.created_at || new Date(),
-                userId: d.id,
-                userName: data.full_name || data.fullName || data.name || data.displayName || 'مستخدم غير معروف',
-                userEmail: data.email || '',
-                accountType: accountTypeMap[coll] || coll,
-                organization,
-                status: item.status || 'pending',
-                views: item.views || 0,
-                likes: item.likes || 0,
-                phone: data.phone || data.phoneNumber || data.telephone,
-                sourceType: isR2 ? 'r2' : 'firebase',
-                category: item.category || 'skills',
-                country: data.country || '',
-                position: data.position || '',
-                age: data.age || undefined
-              });
-            });
-          }
+    // ─── Filtered + sorted list ───────────────────────────────
+    const filtered = useMemo(() => {
+        const q = searchTerm.toLowerCase();
+        const fromTs = dateFilter.from ? new Date(dateFilter.from).getTime() : 0;
+        const toTs   = dateFilter.to   ? new Date(dateFilter.to + 'T23:59:59').getTime() : Infinity;
+
+        const base = items.filter(m => {
+            if (typeFilter    !== 'all' && m.type        !== typeFilter)    return false;
+            if (statusFilter  !== 'all' && m.status      !== statusFilter)  return false;
+            if (accountFilter !== 'all' && m.accountType !== accountFilter) return false;
+            if (fromTs && m.uploadDate.getTime() < fromTs) return false;
+            if (toTs   && m.uploadDate.getTime() > toTs)   return false;
+            if (q && !(
+                m.userName.toLowerCase().includes(q) ||
+                m.title.toLowerCase().includes(q) ||
+                m.userEmail.toLowerCase().includes(q) ||
+                m.organization?.toLowerCase().includes(q) ||
+                m.country?.toLowerCase().includes(q)
+            )) return false;
+            return true;
         });
-      } catch (err) {
-        console.error(`Error fetching from ${coll}:`, err);
-      }
-    }
+        return sortItems(base, sortKey);
+    }, [items, typeFilter, statusFilter, accountFilter, searchTerm, sortKey, dateFilter]);
 
-    // 2. Fetch from R2 (Direct Buckets)
-    try {
-      const { listBucketFiles } = await import('@/app/actions/media');
-      const buckets = type === 'videos' ? ['videos'] : ['profile-images', 'avatars'];
+    // ─── Stats ────────────────────────────────────────────────
+    const stats = useMemo(() => ({
+        total:    items.length,
+        pending:  items.filter(m => m.status === 'pending').length,
+        approved: items.filter(m => m.status === 'approved').length,
+        rejected: items.filter(m => m.status === 'rejected').length,
+        flagged:  items.filter(m => m.status === 'flagged').length,
+        videos:   items.filter(m => m.type === 'video').length,
+        images:   items.filter(m => m.type === 'image').length,
+    }), [items]);
 
-      for (const bucket of buckets) {
-        const { success, files } = await listBucketFiles(bucket, '');
-        if (success && files) {
-          files.forEach(file => {
-            // Only add if not duplicate (optional, but R2 usually distinct from Firestore records if structured correctly)
-            result.push({
-              id: `r2_${file.name}`,
-              title: file.name.split('/').pop() || file.name,
-              description: 'Uploaded directly to CDN',
-              url: file.url || '',
-              uploadDate: file.uploadedAt || new Date(),
-              userId: 'system_r2',
-              userName: 'System Storage',
-              userEmail: '',
-              accountType: 'system',
-              status: 'pending',
-              views: 0,
-              likes: 0,
-              sourceType: 'r2',
-              category: 'CDN Content'
+    // ─── إشعار تلقائي للاعب عند تغيير الحالة ─────────────────
+    const sendAutoNotification = useCallback(async (item: MediaItem, status: 'approved' | 'rejected' | 'flagged') => {
+        const eventMap = {
+            approved: 'media_approved',
+            rejected: 'media_rejected',
+            flagged:  'media_flagged',
+        };
+        try {
+            await fetch('/api/notifications/dispatch', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventType:        eventMap[status],
+                    targetUserId:     item.userId,
+                    actorId:          user?.id || '',
+                    actorName:        'مسؤول المنصة',
+                    actorAccountType: 'admin',
+                    metadata:         { mediaTitle: item.title, mediaType: item.type },
+                }),
             });
-          });
+        } catch { /* الإشعار اختياري — لا يوقف العملية */ }
+    }, [user?.id]);
+
+    // ─── Handlers ─────────────────────────────────────────────
+    const handleUpdateStatus = async (item: MediaItem, status: 'approved' | 'rejected' | 'flagged', notes?: string) => {
+        try {
+            await updateItemStatus(item, status, user?.id || '', notes);
+            const labels = { approved: 'تم اعتماد', rejected: 'تم رفض', flagged: 'تم تنبيه' };
+            toast.success(`${labels[status]} "${item.title}"`);
+            sendAutoNotification(item, status);
+            // انتقال تلقائي للعنصر التالي
+            const idx  = filtered.findIndex(i => i.id === item.id);
+            const next = filtered[idx + 1] || filtered[idx - 1] || null;
+            setSelected(next);
+        } catch (e: any) {
+            toast.error('فشل تحديث الحالة: ' + e.message);
         }
-      }
-    } catch (err) { console.error('R2 fetch error', err); }
-
-    return result;
-  }, []);
-
-  // --- Effects ---
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const data = await fetchData(tab);
-      if (tab === 'videos') setVideos(data);
-      else setImages(data);
-      setLoading(false);
     };
-    load();
-  }, [tab, fetchData]);
 
-  // --- Computation ---
-  const filtered = useMemo(() => {
-    const list = tab === 'videos' ? videos : images;
-    return list.filter(m => {
-      const matchStatus = statusFilter === 'all' || m.status === statusFilter;
-      const term = searchTerm.toLowerCase();
-      const matchSearch = !term ||
-        m.title.toLowerCase().includes(term) ||
-        m.userName.toLowerCase().includes(term) ||
-        m.organization?.toLowerCase().includes(term);
-      return matchStatus && matchSearch;
-    });
-  }, [videos, images, tab, statusFilter, searchTerm]);
+    // ─── Bulk handlers ─────────────────────────────────────────
+    const handleToggleSelect = useCallback((id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    }, []);
 
-  const stats = useMemo(() => {
-    const list = tab === 'videos' ? videos : images;
-    return {
-      total: list.length,
-      pending: list.filter(m => m.status === 'pending').length,
-      approved: list.filter(m => m.status === 'approved').length,
-      rejected: list.filter(m => m.status === 'rejected').length
-    };
-  }, [videos, images, tab]);
+    const handleToggleGroupSelect = useCallback((ids: string[]) => {
+        setSelectedIds(prev => {
+            const allIn = ids.every(id => prev.has(id));
+            const next = new Set(prev);
+            if (allIn) ids.forEach(id => next.delete(id));
+            else       ids.forEach(id => next.add(id));
+            return next;
+        });
+    }, []);
 
-  // --- Handlers ---
-  const handleUpdateStatus = async (media: Media, newStatus: 'approved' | 'rejected' | 'flagged') => {
-    try {
-      // Logic for R2 direct files (mock)
-      if (media.userId === 'system_r2') {
-        toast.info('Status update for raw CDN files is not fully supported yet.');
-        return;
-      }
-
-      const [userId, index] = media.id.split('_');
-      const collName = media.accountType + 's'; // simple pluralization
-      const userRef = doc(db, collName, userId);
-      const snap = await getDoc(userRef);
-
-      if (snap.exists()) {
-        const data = snap.data();
-        const arr = tab === 'videos' ? (data.videos || []) : (data.images || []);
-        const idx = parseInt(index);
-
-        if (arr[idx]) {
-          arr[idx].status = newStatus;
-          arr[idx].reviewedAt = new Date();
-          arr[idx].reviewedBy = user?.uid;
-
-          await updateDoc(userRef, tab === 'videos' ? { videos: arr } : { images: arr });
-
-          // Update Local State
-          const updateList = (list: Media[]) => list.map(m => m.id === media.id ? { ...m, status: newStatus } : m);
-          if (tab === 'videos') setVideos(prev => updateList(prev));
-          else setImages(prev => updateList(prev));
-
-          toast.success(`Media marked as ${newStatus}`);
-          setIsInspectorOpen(false);
+    const handleBulkUpdate = async (status: 'approved' | 'rejected' | 'flagged') => {
+        if (!selectedIds.size || bulkLoading) return;
+        setBulkLoading(true);
+        const targets = filtered.filter(i => selectedIds.has(i.id));
+        try {
+            await bulkUpdateStatus(targets, status, user?.id || '');
+            const labels = { approved: 'اعتماد', rejected: 'رفض', flagged: 'تنبيه' };
+            toast.success(`تم ${labels[status]} ${targets.length} عنصر`);
+            setSelectedIds(new Set());
+        } catch (e: any) {
+            toast.error('فشل الإجراء الجماعي: ' + e.message);
+        } finally {
+            setBulkLoading(false);
         }
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to update status');
-    }
-  };
+    };
 
-  const handlePreview = (media: Media) => {
-    setSelectedMedia(media);
-    setIsInspectorOpen(true);
-  };
+    // ─── Guard ────────────────────────────────────────────────
+    if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
 
-  // --- Access Denied View ---
-  if (!can('read', 'media')) {
-    return <AccessDenied resource="مراجعة الميديا" />;
-  }
+    return (
+        <div className="min-h-screen bg-slate-50 flex flex-col" dir="rtl">
 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20" dir="rtl">
+            <MediaHeader
+                onRefresh={fetchAll}
+                loading={loading}
+                lastFetched={lastFetched}
+            />
 
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between py-4 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-bold">
-                M
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">مركز مراجعة المحتوى</h1>
-                <p className="text-xs text-slate-500 font-medium">Media Review & Moderation</p>
-              </div>
+            <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 md:px-6 py-6 space-y-5">
+
+                <MediaKPIBar
+                    stats={stats}
+                    activeStatus={statusFilter}
+                    onStatusClick={s => setStatusFilter(prev => prev === s ? 'all' : s)}
+                />
+
+                <MediaToolbar
+                    searchTerm={searchTerm}
+                    onSearch={setSearchTerm}
+                    typeFilter={typeFilter}
+                    onTypeFilter={setTypeFilter}
+                    statusFilter={statusFilter}
+                    onStatusFilter={setStatusFilter}
+                    accountFilter={accountFilter}
+                    onAccountFilter={setAccountFilter}
+                    sortKey={sortKey}
+                    onSort={setSortKey}
+                    dateFilter={dateFilter}
+                    onDateFilter={setDateFilter}
+                    total={filtered.length}
+                />
+
+                <MediaGrid
+                    items={filtered}
+                    loading={loading}
+                    onSelect={setSelected}
+                    selectedId={selected?.id}
+                    selectedIds={selectedIds}
+                    onToggleSelect={handleToggleSelect}
+                    onToggleGroupSelect={handleToggleGroupSelect}
+                />
+
             </div>
 
-            <Tabs value={tab} onValueChange={(v: any) => setTab(v)} className="w-full md:w-auto">
-              <TabsList className="bg-slate-100 p-1 rounded-lg w-full md:w-auto h-auto">
-                <TabsTrigger value="videos" className="px-6 py-2 rounded-md font-medium text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  فيديو ({videos.length})
-                </TabsTrigger>
-                <TabsTrigger value="images" className="px-6 py-2 rounded-md font-medium text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  صور ({images.length})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+            <MediaDrawer
+                item={selected}
+                onClose={() => setSelected(null)}
+                onUpdateStatus={handleUpdateStatus}
+                onAIResult={(id, analysis, rating) => updateItemAI(id, analysis, rating)}
+                onDelete={async (item) => { await deleteItem(item); setSelected(null); }}
+                userId={user?.id || ''}
+            />
+
+            {/* ── Floating Bulk Action Bar ───────────────────── */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2
+                    bg-slate-900 text-white rounded-2xl shadow-2xl px-4 py-3 border border-slate-700"
+                    dir="rtl"
+                >
+                    <span className="text-sm font-bold text-slate-200 pl-2 border-l border-slate-700 ml-2">
+                        {selectedIds.size} محدد
+                    </span>
+
+                    <button
+                        onClick={() => handleBulkUpdate('approved')}
+                        disabled={bulkLoading}
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                    >
+                        <CheckCircle className="w-4 h-4" /> اعتماد الكل
+                    </button>
+
+                    <button
+                        onClick={() => handleBulkUpdate('rejected')}
+                        disabled={bulkLoading}
+                        className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                    >
+                        <XCircle className="w-4 h-4" /> رفض الكل
+                    </button>
+
+                    <button
+                        onClick={() => handleBulkUpdate('flagged')}
+                        disabled={bulkLoading}
+                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                    >
+                        <Flag className="w-4 h-4" /> تنبيه الكل
+                    </button>
+
+                    <button
+                        onClick={() => setSelectedIds(new Set())}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"
+                        title="إلغاء التحديد"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
-        {/* Stats Overview */}
-        <MediaStats stats={stats} />
-
-        {/* Filter Bar */}
-        <MediaFilterBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
-
-        {/* Content Grid */}
-        <MediaGrid
-          items={filtered}
-          loading={loading}
-          tab={tab}
-          onPreview={handlePreview}
-        />
-      </div>
-
-      {/* Inspector Sheet/Modal */}
-      <MediaInspector
-        media={selectedMedia}
-        isOpen={isInspectorOpen}
-        onClose={() => setIsInspectorOpen(false)}
-        onUpdateStatus={handleUpdateStatus}
-      />
-
-    </div>
-  );
+    );
 }

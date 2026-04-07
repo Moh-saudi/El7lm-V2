@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -62,7 +61,7 @@ const FIFAStyledCard = ({ rating, playerName, position, stats }: { rating: numbe
           <div className="text-lg font-bold text-slate-800 uppercase mt-1">{position || 'ST'}</div>
         </div>
 
-        {/* Player Image Placeholder (Future: Profile Pic) */}
+        {/* Player Image Placeholder */}
         <div className="w-32 h-32 bg-slate-200/50 rounded-full mt-8 border-4 border-white/30 flex items-center justify-center">
           <Zap className="w-16 h-16 text-yellow-600 opacity-30" />
         </div>
@@ -118,25 +117,28 @@ export default function StatsPage() {
 
   useEffect(() => {
     async function fetchPlayerData() {
-      if (!user?.uid) return;
+      if (!user?.id) return;
       try {
-        const playerDoc = await getDoc(doc(db, 'players', user.uid));
-        if (playerDoc.exists()) {
-          setPlayerData(playerDoc.data());
+        const { data: playerDoc } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (playerDoc) {
+          setPlayerData(playerDoc);
         }
 
-        const statsQuery = query(
-          collection(db, 'player_stats'),
-          where('player_id', '==', user.uid),
-          orderBy('date', 'desc')
-        );
-        const statsSnapshot = await getDocs(statsQuery);
-        const statsData = statsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().date?.toDate ? doc.data().date.toDate() : new Date(doc.data().date)
+        const { data: statsData } = await supabase
+          .from('player_stats')
+          .select('*')
+          .eq('player_id', user.id)
+          .order('date', { ascending: false });
+
+        const stats = (statsData || []).map(row => ({
+          ...row,
+          date: row.date ? new Date(row.date) : new Date()
         }));
-        setPlayerStats(statsData);
+        setPlayerStats(stats);
       } catch (error) {
         console.error('Error fetching player data:', error);
       } finally {
@@ -293,7 +295,7 @@ export default function StatsPage() {
           {/* Sidebar Area */}
           <div className="lg:col-span-4 space-y-8">
 
-            {/* Mobile FIFA Card (Hidden on Large Screen since it is in Header) */}
+            {/* Mobile FIFA Card */}
             <div className="lg:hidden">
               <FIFAStyledCard
                 rating={overallRating}

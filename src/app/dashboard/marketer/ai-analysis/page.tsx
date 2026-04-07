@@ -19,9 +19,8 @@ import {
     Search,
     ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,18 +70,15 @@ export default function MarketerAIAnalysisPage() {
         try {
             setLoading(true);
 
-            const analysesRef = collection(db, 'player_analyses');
             // Query analyses where the marketer is associated
-            const q = query(analysesRef, where('marketerId', '==', user?.uid));
-            const querySnapshot = await getDocs(q);
+            const { data, error } = await supabase
+                .from('player_analyses')
+                .select('*')
+                .eq('marketerId', user?.id);
 
-            const analysesData = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data
-                };
-            }) as PlayerAnalysis[];
+            if (error) throw error;
+
+            const analysesData = (data || []) as PlayerAnalysis[];
 
             setAnalyses(analysesData);
 

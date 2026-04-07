@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,12 +83,8 @@ export default function WhatsAppManagementPage() {
 
   const fetchWhatsAppNumbers = async () => {
     try {
-      const q = query(collection(db, 'whatsappNumbers'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const numbers = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as WhatsAppNumber[];
+      const { data } = await supabase.from('whatsappNumbers').select('*').order('createdAt', { ascending: false });
+      const numbers = (data || []) as WhatsAppNumber[];
       setWhatsappNumbers(numbers);
     } catch (error) {
       console.error('Error fetching WhatsApp numbers:', error);
@@ -101,12 +96,8 @@ export default function WhatsAppManagementPage() {
 
   const fetchWhatsAppMessages = async () => {
     try {
-      const q = query(collection(db, 'whatsappMessages'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const messages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as WhatsAppMessage[];
+      const { data } = await supabase.from('whatsappMessages').select('*').order('createdAt', { ascending: false });
+      const messages = (data || []) as WhatsAppMessage[];
       setWhatsappMessages(messages);
     } catch (error) {
       console.error('Error fetching WhatsApp messages:', error);
@@ -129,10 +120,10 @@ export default function WhatsAppManagementPage() {
       };
 
       if (editingNumber?.id) {
-        await updateDoc(doc(db, 'whatsappNumbers', editingNumber.id), numberData);
+        await supabase.from('whatsappNumbers').update(numberData).eq('id', editingNumber.id);
         toast.success('تم تحديث رقم الواتساب بنجاح');
       } else {
-        await addDoc(collection(db, 'whatsappNumbers'), numberData);
+        await supabase.from('whatsappNumbers').insert({ id: crypto.randomUUID(), ...numberData });
         toast.success('تم إضافة رقم الواتساب بنجاح');
       }
 
@@ -159,10 +150,10 @@ export default function WhatsAppManagementPage() {
       };
 
       if (editingMessage?.id) {
-        await updateDoc(doc(db, 'whatsappMessages', editingMessage.id), messageData);
+        await supabase.from('whatsappMessages').update(messageData).eq('id', editingMessage.id);
         toast.success('تم تحديث قالب الرسالة بنجاح');
       } else {
-        await addDoc(collection(db, 'whatsappMessages'), messageData);
+        await supabase.from('whatsappMessages').insert({ id: crypto.randomUUID(), ...messageData });
         toast.success('تم إضافة قالب الرسالة بنجاح');
       }
 
@@ -179,7 +170,7 @@ export default function WhatsAppManagementPage() {
     if (!confirm('هل أنت متأكد من حذف هذا الرقم؟')) return;
 
     try {
-      await deleteDoc(doc(db, 'whatsappNumbers', id));
+      await supabase.from('whatsappNumbers').delete().eq('id', id);
       toast.success('تم حذف رقم الواتساب بنجاح');
       fetchWhatsAppNumbers();
     } catch (error) {
@@ -192,7 +183,7 @@ export default function WhatsAppManagementPage() {
     if (!confirm('هل أنت متأكد من حذف هذا القالب؟')) return;
 
     try {
-      await deleteDoc(doc(db, 'whatsappMessages', id));
+      await supabase.from('whatsappMessages').delete().eq('id', id);
       toast.success('تم حذف قالب الرسالة بنجاح');
       fetchWhatsAppMessages();
     } catch (error) {

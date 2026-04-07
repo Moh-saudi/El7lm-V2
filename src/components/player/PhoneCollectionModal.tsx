@@ -22,8 +22,7 @@ import {
 } from "@/components/ui/popover"
 import { COUNTRIES_FROM_REGISTER, Country } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -128,7 +127,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                 whatsappCountry: hasDifferentWhatsapp ? whatsappCountry?.name : selectedCountry.name,
                 whatsappCountryCode: hasDifferentWhatsapp ? whatsappCountry?.code : selectedCountry.code,
                 phoneNumber: cleanPhone,
-                updatedAt: new Date(),
+                updatedAt: new Date().toISOString(),
                 phoneVerified: false,
                 profileUpdateRequested: false // Reset the flag
             };
@@ -137,12 +136,11 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
             const collectionName = accountType === 'user' ? 'users' : `${accountType || 'player'}s`;
             const finalCollection = collectionName === 'users' ? 'users' : collectionName;
 
-            const userDocRef = doc(db, finalCollection, user.uid);
-            await setDoc(userDocRef, updateData, { merge: true });
+            await supabase.from(finalCollection).upsert({ id: user.id, ...updateData });
 
             if (finalCollection !== 'users') {
                 try {
-                    await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });
+                    await supabase.from('users').upsert({ id: user.id, ...updateData });
                 } catch (e) {
                     console.warn('Could not sync to users collection', e);
                 }

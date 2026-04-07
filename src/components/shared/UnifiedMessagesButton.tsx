@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
-import { MessageSquare, Settings, Check, CheckCheck, Sparkles, User } from 'lucide-react';
+import { supabase } from '@/lib/supabase/config';
+import { MessageSquare, Settings, CheckCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,48 +33,59 @@ export default function UnifiedMessagesButton() {
     const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (!user?.uid) return;
+    const loadConversations = async () => {
+        if (!user?.id) return;
 
-        const q = query(
-            collection(db, 'conversations'),
-            where('participants', 'array-contains', user.uid),
-            orderBy('updatedAt', 'desc'),
-            limit(10)
-        );
+        const { data } = await supabase
+            .from('conversations')
+            .select('*')
+            .filter('participants', 'cs', `["${user.id}"]`)
+            .order('updatedAt', { ascending: false })
+            .limit(10);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items = snapshot.docs.map(doc => {
-                const data = doc.data();
-                const otherParticipantId = data.participants.find((id: string) => id !== user.uid);
+        if (!data) { setLoading(false); return; }
 
-                return {
-                    id: doc.id,
-                    senderName: data.participantNames?.[otherParticipantId] || 'User',
-                    senderAvatar: data.participantAvatars?.[otherParticipantId],
-                    lastMessage: data.lastMessage || 'No messages',
-                    updatedAt: data.updatedAt?.toDate() || new Date(),
-                    unread: (data.unreadCount?.[user.uid] || 0) > 0,
-                    participantId: otherParticipantId
-                };
-            });
-
-            setConversations(items);
-            const count = items.reduce((acc, curr) => curr.unread ? acc + 1 : acc, 0);
-            setUnreadCount(count);
-            setLoading(false);
+        const items: ConversationItem[] = data.map((row: any) => {
+            const otherParticipantId = (row.participants || []).find((id: string) => id !== user.id);
+            return {
+                id: row.id,
+                senderName: row.participantNames?.[otherParticipantId] || 'User',
+                senderAvatar: row.participantAvatars?.[otherParticipantId],
+                lastMessage: row.lastMessage || 'No messages',
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
+                unread: (row.unreadCount?.[user.id] || 0) > 0,
+                participantId: otherParticipantId
+            };
         });
 
-        return () => unsubscribe();
-    }, [user]);
+        setConversations(items);
+        setUnreadCount(items.filter(c => c.unread).length);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (!user?.id) return;
+
+        loadConversations();
+
+        const channel = supabase
+            .channel(`conversations-${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+                loadConversations();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [user?.id]);
 
     const handleMarkRead = async (convId: string) => {
-        if (!user?.uid) return;
+        if (!user?.id) return;
         try {
-            const ref = doc(db, 'conversations', convId);
-            await updateDoc(ref, {
-                [`unreadCount.${user.uid}`]: 0
-            });
+            const { data: conv } = await supabase.from('conversations').select('unreadCount').eq('id', convId).single();
+            if (conv) {
+                const updatedUnreadCount = { ...(conv.unreadCount || {}), [user.id]: 0 };
+                await supabase.from('conversations').update({ unreadCount: updatedUnreadCount }).eq('id', convId);
+            }
         } catch (e) {
             console.error('Error marking message as read:', e);
         }

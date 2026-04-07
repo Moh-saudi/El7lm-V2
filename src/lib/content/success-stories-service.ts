@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export interface SuccessStory {
     id: number;
@@ -11,17 +10,10 @@ export interface SuccessStory {
     quote?: string;
 }
 
-const DOC_PATH = 'content/success-stories';
-
 export const getSuccessStories = async (): Promise<SuccessStory[]> => {
     try {
-        const docRef = doc(db, 'content', 'success-stories');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().items) {
-            return docSnap.data().items as SuccessStory[];
-        }
-        // Return default/mock data if empty to keep the UI looking good initially
+        const { data } = await supabase.from('content').select('items').eq('id', 'success-stories').limit(1);
+        if (data?.length && data[0].items) return data[0].items as SuccessStory[];
         return [
             { id: 1, name: "Ahmed Hassan", role: "Midfielder", image: "/images/player1.jpg", club: "Al Ahly", flag: "🇪🇬" },
             { id: 2, name: "Omar Al-Soma", role: "Striker", image: "/images/player2.jpg", club: "Al Arabi", flag: "🇸🇾" },
@@ -35,8 +27,7 @@ export const getSuccessStories = async (): Promise<SuccessStory[]> => {
 
 export const saveSuccessStories = async (stories: SuccessStory[]): Promise<void> => {
     try {
-        const docRef = doc(db, 'content', 'success-stories');
-        await setDoc(docRef, { items: stories }, { merge: true });
+        await supabase.from('content').upsert({ id: 'success-stories', items: stories });
     } catch (error) {
         console.error('Error saving success stories:', error);
         throw error;

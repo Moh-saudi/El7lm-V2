@@ -126,7 +126,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                                         {getPriorityIcon(ticket.priority)}
                                     </div>
                                     <span className="text-[10px] text-slate-400 flex-shrink-0 whitespace-nowrap">
-                                        {ticket.lastMessageTime && formatDistanceToNow(ticket.lastMessageTime.toDate(), { locale: ar, addSuffix: false })}
+                                        {ticket.lastMessageTime && formatDistanceToNow(new Date(ticket.lastMessageTime), { locale: ar, addSuffix: false })}
                                     </span>
                                 </div>
 

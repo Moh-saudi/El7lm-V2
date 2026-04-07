@@ -23,11 +23,11 @@ export default function OrgReferralSummaryCard({ accountType }: OrgReferralSumma
 
   useEffect(() => {
     const load = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
       setLoading(true);
       setError('');
       try {
-        const list = await organizationReferralService.getOrganizationReferrals(user.uid);
+        const list = await organizationReferralService.getOrganizationReferrals(user.id);
         setReferrals(list);
       } catch (e) {
         setError('تعذر تحميل أكواد الإحالة');
@@ -36,7 +36,7 @@ export default function OrgReferralSummaryCard({ accountType }: OrgReferralSumma
       }
     };
     load();
-  }, [user?.uid]);
+  }, [user?.id]);
 
   const activeCount = referrals.filter(r => r.isActive).length;
   const primary = referrals[0];

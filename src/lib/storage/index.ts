@@ -49,15 +49,15 @@ class StorageManager {
             },
             cloudflare: {
                 accountId: customConfig?.cloudflare?.accountId ||
-                    process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '',
+                    process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '',
                 accessKeyId: customConfig?.cloudflare?.accessKeyId ||
-                    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+                    process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '',
                 secretAccessKey: customConfig?.cloudflare?.secretAccessKey ||
-                    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+                    process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
                 bucketName: customConfig?.cloudflare?.bucketName ||
-                    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || '',
+                    process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform',
                 publicUrl: customConfig?.cloudflare?.publicUrl ||
-                    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL,
+                    process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL,
             },
         };
     }
@@ -73,25 +73,27 @@ class StorageManager {
                 return new SupabaseStorageProvider();
 
             case 'cloudflare':
-                if (!this.config.cloudflare?.accountId ||
-                    !this.config.cloudflare?.accessKeyId ||
-                    !this.config.cloudflare?.secretAccessKey) {
+                // في المتصفح: الـ credentials غير مرئية (لا NEXT_PUBLIC_) لكن الرفع يمر عبر API route
+                // في السيرفر: نتحقق من الـ credentials الفعلية
+                if (typeof window === 'undefined' &&
+                    (!this.config.cloudflare?.accessKeyId ||
+                    !this.config.cloudflare?.secretAccessKey)) {
                     console.warn('⚠️ [StorageManager] Cloudflare credentials missing, falling back to Supabase');
                     return new SupabaseStorageProvider();
                 }
                 return new CloudflareStorageProvider({
-                    accountId: this.config.cloudflare.accountId,
-                    accessKeyId: this.config.cloudflare.accessKeyId,
-                    secretAccessKey: this.config.cloudflare.secretAccessKey,
-                    publicUrl: this.config.cloudflare.publicUrl,
+                    accountId: this.config.cloudflare?.accountId || '',
+                    accessKeyId: this.config.cloudflare?.accessKeyId || '',
+                    secretAccessKey: this.config.cloudflare?.secretAccessKey || '',
+                    publicUrl: this.config.cloudflare?.publicUrl,
                 });
 
             case 'hybrid':
                 const supabaseProvider = new SupabaseStorageProvider();
 
-                if (!this.config.cloudflare?.accountId ||
-                    !this.config.cloudflare?.accessKeyId ||
-                    !this.config.cloudflare?.secretAccessKey) {
+                if (typeof window === 'undefined' &&
+                    (!this.config.cloudflare?.accessKeyId ||
+                    !this.config.cloudflare?.secretAccessKey)) {
                     console.warn('⚠️ [StorageManager] Cloudflare credentials missing, using Supabase only');
                     return supabaseProvider;
                 }

@@ -3,7 +3,6 @@
 import { PlayerFormData } from '@/types/player';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { User } from 'firebase/auth';
 
 // دالة حساب العمر
 const calculateAge = (birthDate: any) => {
@@ -17,17 +16,17 @@ const calculateAge = (birthDate: any) => {
     } else {
       d = new Date(birthDate);
     }
-    
+
     if (isNaN(d.getTime())) return null;
-    
+
     const today = new Date();
     let age = today.getFullYear() - d.getFullYear();
     const monthDiff = today.getMonth() - d.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
       age--;
     }
-    
+
     return age;
   } catch (error) {
     return null;

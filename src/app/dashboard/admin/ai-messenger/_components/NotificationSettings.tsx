@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
 import { toast } from 'sonner';
 import {
@@ -229,15 +228,15 @@ export const NotificationSettings: React.FC = () => {
   const loadData = async () => {
     setLoadingTemplates(true);
     try {
-      const [fetchedTemplates, configSnap] = await Promise.all([
+      const [fetchedTemplates, { data: configData }] = await Promise.all([
         ChatAmanService.getTemplates(),
-        getDoc(doc(db, 'system_configs', 'notification_templates')),
+        supabase.from('system_configs').select('*').eq('id', 'notification_templates').single(),
       ]);
 
       setTemplates(fetchedTemplates);
 
-      if (configSnap.exists()) {
-        const data = configSnap.data();
+      if (configData) {
+        const data = configData;
         setMapping(prev => {
           const next = { ...prev };
           for (const key of Object.keys(prev) as EventType[]) {
@@ -270,7 +269,7 @@ export const NotificationSettings: React.FC = () => {
           : null;
       }
 
-      await setDoc(doc(db, 'system_configs', 'notification_templates'), firestoreData);
+      await supabase.from('system_configs').upsert({ id: 'notification_templates', ...firestoreData });
 
       setSaved(true);
       toast.success('تم حفظ إعدادات القوالب بنجاح');

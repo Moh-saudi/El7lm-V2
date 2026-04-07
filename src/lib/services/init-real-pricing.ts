@@ -3,8 +3,7 @@
  * بناءً على الأسعار والعروض الحالية للاعبين
  */
 
-import { db } from '@/lib/firebase/config';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export async function initializeRealPricingSystem(userId: string) {
     try {
@@ -97,8 +96,7 @@ export async function initializeRealPricingSystem(userId: string) {
 
         console.log('📦 إنشاء الباقات الأساسية...');
         for (const plan of basePlans) {
-            const planRef = doc(db, 'subscription_plans', plan.id);
-            await setDoc(planRef, plan);
+            await supabase.from('subscription_plans').upsert({ ...plan, createdAt: plan.createdAt.toISOString(), updatedAt: plan.updatedAt.toISOString() });
             console.log(`  ✅ تم إنشاء: ${plan.name}`);
         }
 
@@ -153,8 +151,7 @@ export async function initializeRealPricingSystem(userId: string) {
 
         console.log('🇪🇬 إنشاء تخصيصات الأسعار لمصر...');
         for (const override of egyptOverrides) {
-            const overrideRef = doc(db, 'pricing_overrides', override.id);
-            await setDoc(overrideRef, override);
+            await supabase.from('pricing_overrides').upsert({ ...override, effectiveFrom: override.effectiveFrom.toISOString(), createdAt: override.createdAt.toISOString(), updatedAt: override.updatedAt.toISOString() });
             console.log(`  ✅ تم إنشاء: ${override.id} - ${override.price} ${override.currency}`);
         }
 
@@ -211,8 +208,7 @@ export async function initializeRealPricingSystem(userId: string) {
 
         console.log('🎁 إنشاء العروض الترويجية...');
         for (const offer of promotionalOffers) {
-            const offerRef = doc(db, 'promotional_offers', offer.id);
-            await setDoc(offerRef, offer);
+            await supabase.from('promotional_offers').upsert({ ...offer, startDate: offer.startDate.toISOString(), endDate: offer.endDate.toISOString(), createdAt: offer.createdAt.toISOString(), updatedAt: offer.updatedAt.toISOString() });
             console.log(`  ✅ تم إنشاء: ${offer.name}`);
         }
 

@@ -25,8 +25,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
   getMyOpportunities,
   deleteOpportunity,
@@ -118,7 +117,7 @@ function PublisherView({
   const loadOpportunities = async () => {
     try {
       setLoading(true);
-      const data = await getMyOpportunities(user.uid);
+      const data = await getMyOpportunities(user.id);
       setOpportunities(data);
     } catch (err) {
       toast.error('حدث خطأ أثناء تحميل الفرص');
@@ -129,7 +128,7 @@ function PublisherView({
 
   useEffect(() => {
     loadOpportunities();
-  }, [user.uid]);
+  }, [user.id]);
 
   const activeCount     = opportunities.filter(o => o.status === 'active').length;
   const draftCount      = opportunities.filter(o => o.status === 'draft').length;
@@ -406,11 +405,15 @@ function ExploreView({
     try {
       setApplying(true);
 
-      // Fetch full player profile from Firestore
+      // Fetch full player profile from Supabase
       let playerDoc: any = {};
       try {
-        const snap = await getDoc(doc(db, 'players', user.uid));
-        if (snap.exists()) playerDoc = snap.data();
+        const { data: playerData } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (playerData) playerDoc = playerData;
       } catch { /* use userData fallback */ }
 
       const p = playerDoc;
@@ -422,7 +425,7 @@ function ExploreView({
       const rawAvatar = p.image || p.profile_image_url || p.profile_image || p.photoURL;
       const avatarUrl = rawAvatar ? getSupabaseImageUrl(rawAvatar, 'avatars') : undefined;
 
-      await applyToOpportunity(selectedOpp.id, user.uid, {
+      await applyToOpportunity(selectedOpp.id, user.id, {
         playerName:          p.name || p.full_name || userData?.full_name || userData?.displayName || 'لاعب',
         playerPhone:         p.phone || p.whatsapp || userData?.phone || undefined,
         playerPosition:      applyPosition || p.position || undefined,

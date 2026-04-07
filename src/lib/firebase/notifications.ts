@@ -1,5 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './config';
+import { supabase } from '@/lib/supabase/config';
 
 export interface NotificationData {
   userId: string;
@@ -9,25 +8,25 @@ export interface NotificationData {
   isRead?: boolean;
   link?: string;
   metadata?: Record<string, any>;
-  // نطاق الإشعار: system (للكل)، club/academy/trainer (للمؤسسة)، userId (للمستخدم)
   scope: 'system' | 'club' | 'academy' | 'trainer' | string;
-  // معرف المؤسسة المرتبطة (للإشعارات المؤسسية)
   organizationId?: string;
 }
 
 // إضافة إشعار جديد
 export async function addNotification(data: NotificationData) {
   try {
-    const notificationsRef = collection(db, 'notifications');
+    const now = new Date().toISOString();
     const notification = {
+      id: crypto.randomUUID(),
       ...data,
       isRead: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: now,
+      updatedAt: now
     };
 
-    const docRef = await addDoc(notificationsRef, notification);
-    return docRef.id;
+    const { data: inserted, error } = await supabase.from('notifications').insert(notification).select('id').single();
+    if (error) throw error;
+    return inserted.id;
   } catch (error) {
     console.error('Error adding notification:', error);
     throw error;
@@ -103,7 +102,7 @@ export async function addSmartCelebrationNotification({
   playersCount?: number;
 }) {
   try {
-    const smartRef = collection(db, 'smart_notifications');
+    const now = new Date().toISOString();
     const title = 'تم تفعيل اشتراكك بنجاح!';
     const details = [
       packageName ? `باقة ${packageName}` : null,
@@ -111,7 +110,8 @@ export async function addSmartCelebrationNotification({
       playersCount ? `${playersCount} لاعب` : null
     ].filter(Boolean).join(' • ');
 
-    await addDoc(smartRef, {
+    await supabase.from('smart_notifications').insert({
+      id: crypto.randomUUID(),
       userId,
       viewerId: 'system',
       viewerName: 'نظام الاشتراكات',
@@ -123,7 +123,7 @@ export async function addSmartCelebrationNotification({
       isRead: false,
       priority: 'high',
       actionUrl: '/dashboard/subscription',
-      createdAt: serverTimestamp()
+      createdAt: now
     });
   } catch (error) {
     console.error('Error adding smart celebration notification:', error);

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { User } from 'firebase/auth';
+import { User } from '@supabase/supabase-js';
 
 // تعريف أسماء buckets التخزين في Supabase حسب نوع الحساب (محدثة لتتطابق مع البوكتات الفعلية)
 const STORAGE_BUCKETS = {
@@ -90,7 +90,7 @@ function extractFileKey(url: string, bucketName: string): string | null {
 
 export async function uploadProfileImage(file: File, user: User) {
   const fileExt = file.name.split('.').pop();
-  const filePath = `profile-images/${user.uid}.${fileExt}`;
+  const filePath = `profile-images/${user.id}.${fileExt}`;
 
   // استخدام نظام التخزين الموحد
   const { storageManager } = await import('@/lib/storage');
@@ -113,7 +113,7 @@ export async function deleteProfileImage(imageUrl: string, user: User) {
 
 export async function uploadAdditionalImage(file: File, user: User) {
   const fileExt = file.name.split('.').pop();
-  const filePath = `additional-images/${user.uid}/${Date.now()}.${fileExt}`;
+  const filePath = `additional-images/${user.id}/${Date.now()}.${fileExt}`;
 
   // تحديد bucket حسب نوع الحساب
   const accountType = detectAccountTypeFromPath();

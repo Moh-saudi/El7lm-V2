@@ -11,8 +11,7 @@ import {
   Gift, Clock, Zap, Settings, X
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import AdAnalytics from '@/components/ads/AdAnalytics';
 import { ensureAdsBucketExists, getAdsStorageStats } from '@/lib/supabase/ads-storage';
@@ -85,15 +84,17 @@ export default function AdminAdsPage() {
 
   const fetchAds = async () => {
     try {
-      const q = query(collection(db, 'ads'), orderBy('priority', 'asc'));
-      const snapshot = await getDocs(q);
-      const adsData: Ad[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-        views: doc.data().views || 0,
-        clicks: doc.data().clicks || 0
+      const { data, error } = await supabase
+        .from('ads')
+        .select('*')
+        .order('priority', { ascending: true });
+      if (error) throw error;
+      const adsData: Ad[] = (data || []).map(row => ({
+        ...row,
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+        updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
+        views: row.views || 0,
+        clicks: row.clicks || 0
       })) as Ad[];
       setAds(adsData);
     } catch (error) {
@@ -114,9 +115,9 @@ export default function AdminAdsPage() {
       };
 
       if (editingAd?.id) {
-        await updateDoc(doc(db, 'ads', editingAd.id), adData);
+        await supabase.from('ads').update(adData).eq('id', editingAd.id);
       } else {
-        await addDoc(collection(db, 'ads'), adData);
+        await supabase.from('ads').insert({ id: crypto.randomUUID(), ...adData });
       }
 
       setShowAddDialog(false);
@@ -135,7 +136,7 @@ export default function AdminAdsPage() {
   const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الإعلان؟')) {
       try {
-        await deleteDoc(doc(db, 'ads', id));
+        await supabase.from('ads').delete().eq('id', id);
         await fetchAds();
       } catch (error) {
         console.error('Error deleting ad:', error);
@@ -145,10 +146,7 @@ export default function AdminAdsPage() {
 
   const toggleActive = async (ad: Ad) => {
     try {
-      await updateDoc(doc(db, 'ads', ad.id!), {
-        isActive: !ad.isActive,
-        updatedAt: new Date()
-      });
+      await supabase.from('ads').update({ isActive: !ad.isActive, updatedAt: new Date().toISOString() }).eq('id', ad.id!);
       await fetchAds();
     } catch (error) {
       console.error('Error toggling ad status:', error);

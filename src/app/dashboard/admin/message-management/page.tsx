@@ -29,8 +29,7 @@ import {
     RefreshCw,
     ChevronDown,
 } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, Pie, PieChart } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -68,16 +67,17 @@ export default function MessageManagementPage() {
             setLoading(true);
 
             // Get all messages
-            const messagesRef = collection(db, 'messages');
-            const messagesSnapshot = await getDocs(messagesRef);
-            const allMessages = messagesSnapshot.docs;
+            const { data: allMessagesData } = await supabase
+                .from('messages')
+                .select('*');
+            const allMessages = allMessagesData || [];
 
             // Calculate today's messages
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const todayMessages = allMessages.filter(doc => {
-                const timestamp = doc.data().timestamp?.toDate();
-                return timestamp >= today;
+            const todayMessages = allMessages.filter((msg: any) => {
+                const timestamp = msg.timestamp ? new Date(msg.timestamp) : null;
+                return timestamp && timestamp >= today;
             });
 
             // Count message types
@@ -85,28 +85,30 @@ export default function MessageManagementPage() {
             let voiceCount = 0;
             let imageCount = 0;
 
-            allMessages.forEach(doc => {
-                const type = doc.data().messageType || 'text';
+            allMessages.forEach((msg: any) => {
+                const type = msg.messageType || 'text';
                 if (type === 'voice') voiceCount++;
                 else if (type === 'image') imageCount++;
                 else textCount++;
             });
 
             // Get conversations
-            const conversationsRef = collection(db, 'conversations');
-            const conversationsSnapshot = await getDocs(conversationsRef);
+            const { data: conversationsData } = await supabase
+                .from('conversations')
+                .select('id');
+            const conversationsCount = conversationsData?.length || 0;
 
             // Get unique users
             const uniqueUsers = new Set<string>();
-            allMessages.forEach(doc => {
-                uniqueUsers.add(doc.data().senderId);
-                uniqueUsers.add(doc.data().receiverId);
+            allMessages.forEach((msg: any) => {
+                if (msg.senderId) uniqueUsers.add(msg.senderId);
+                if (msg.receiverId) uniqueUsers.add(msg.receiverId);
             });
 
             setStats({
                 totalMessages: allMessages.length,
                 todayMessages: todayMessages.length,
-                activeConversations: conversationsSnapshot.size,
+                activeConversations: conversationsCount,
                 totalUsers: uniqueUsers.size,
                 textMessages: textCount,
                 voiceMessages: voiceCount,
@@ -124,9 +126,9 @@ export default function MessageManagementPage() {
                 const nextDate = new Date(date);
                 nextDate.setDate(nextDate.getDate() + 1);
 
-                const count = allMessages.filter(doc => {
-                    const timestamp = doc.data().timestamp?.toDate();
-                    return timestamp >= date && timestamp < nextDate;
+                const count = allMessages.filter((msg: any) => {
+                    const timestamp = msg.timestamp ? new Date(msg.timestamp) : null;
+                    return timestamp && timestamp >= date && timestamp < nextDate;
                 }).length;
 
                 const dayName = i === 0 ? 'اليوم' : i === 1 ? 'أمس' : dayNames[date.getDay()];
@@ -174,10 +176,8 @@ export default function MessageManagementPage() {
 
     const exportToExcel = () => {
         try {
-            // إنشاء workbook
             const wb = XLSX.utils.book_new();
 
-            // ورقة الإحصائيات العامة
             const statsData = [
                 ['تقرير إحصائيات الرسائل'],
                 ['تاريخ التقرير:', new Date().toLocaleString('ar')],
@@ -198,7 +198,6 @@ export default function MessageManagementPage() {
             const ws1 = XLSX.utils.aoa_to_sheet(statsData);
             XLSX.utils.book_append_sheet(wb, ws1, 'الإحصائيات');
 
-            // ورقة الرسائل اليومية
             const dailyData = [
                 ['الرسائل اليومية'],
                 ['اليوم', 'عدد الرسائل'],
@@ -207,7 +206,6 @@ export default function MessageManagementPage() {
             const ws2 = XLSX.utils.aoa_to_sheet(dailyData);
             XLSX.utils.book_append_sheet(wb, ws2, 'الرسائل اليومية');
 
-            // تصدير الملف
             const fileName = `تقرير-الرسائل-${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
             toast.success('تم تصدير التقرير بصيغة Excel');
@@ -219,7 +217,6 @@ export default function MessageManagementPage() {
 
     const exportToPDF = () => {
         try {
-            // إنشاء محتوى HTML للطباعة
             const printWindow = window.open('', '_blank');
             if (!printWindow) {
                 toast.error('يرجى السماح بفتح النوافذ المنبثقة');
@@ -278,7 +275,7 @@ export default function MessageManagementPage() {
                 </head>
                 <body>
                     <div class="header">
-                        <h1>📊 تقرير إحصائيات الرسائل</h1>
+                        <h1>تقرير إحصائيات الرسائل</h1>
                         <p>تاريخ التقرير: ${new Date().toLocaleString('ar')}</p>
                     </div>
 
@@ -327,7 +324,6 @@ export default function MessageManagementPage() {
             printWindow.document.write(htmlContent);
             printWindow.document.close();
 
-            // انتظر قليلاً ثم افتح نافذة الطباعة
             setTimeout(() => {
                 printWindow.print();
                 toast.success('جاري تصدير التقرير بصيغة PDF');

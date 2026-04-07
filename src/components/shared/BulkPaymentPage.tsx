@@ -18,8 +18,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { serverTimestamp } from 'firebase/firestore';
-
 import { useAuth } from '@/lib/firebase/auth-provider';
 import GeideaPaymentModal from '@/components/GeideaPaymentModal';
 import { getCurrencyRates, convertCurrency as convertCurrencyLib, getCurrencyInfo, forceUpdateRates } from '@/lib/currency-rates';
@@ -28,8 +26,7 @@ import { COUNTRIES } from '@/constants/countries';
 import { SubscriptionPlan } from '@/types/pricing';
 import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 
-import { db } from '@/lib/firebase/config';
-import { doc, updateDoc, setDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { InvoiceService } from '@/lib/payments/invoice-service';
 import { storageManager } from '@/lib/storage';
 
@@ -39,9 +36,6 @@ declare global {
     convertedAmountForGeidea?: number;
   }
 }
-
-// Add getDoc to imports if not present (handled by multi_replace logic usually, but here manually ensuring)
-import { getDoc } from 'firebase/firestore';
 
 // Types
 interface BulkPaymentPageProps {
@@ -121,6 +115,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'none' | 'expired' | 'active' | 'upgrade'>('all');
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
+  const urlPromoCode = searchParams.get('promo');
 
   // Modals state
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
@@ -175,9 +170,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       try {
         // 1. Check user's individual subscription directly in the source of truth
-        const userSubDoc = await getDoc(doc(db, 'subscriptions', user.uid));
-        if (userSubDoc.exists()) {
-          const data = userSubDoc.data();
+        const { data: userSubData } = await supabase.from('subscriptions').select('*').eq('id', user.id).single();
+        if (userSubData) {
+          const data = userSubData;
           if (data.status === 'active') {
             isCurrentlyActive = true;
             activeSubscriptionData_raw = data;
@@ -196,9 +191,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         if (!isCurrentlyActive && accountType === 'player' && userData) {
           const parentId = userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.agent_id;
           if (parentId) {
-            const parentSubDoc = await getDoc(doc(db, 'subscriptions', parentId));
-            if (parentSubDoc.exists()) {
-              const data = parentSubDoc.data();
+            const { data: parentSubData } = await supabase.from('subscriptions').select('*').eq('id', parentId).single();
+            if (parentSubData) {
+              const data = parentSubData;
               if (data.status === 'active') {
                 isCurrentlyActive = true;
                 activeSubscriptionData_raw = data;
@@ -226,8 +221,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           const hasHigherPlan = availablePlans.some(p => p.isActive && (p.base_price || 0) > currentPrice);
 
           // Calculate remaining days
-          const expiresAt = activeSubscriptionData_raw?.expires_at?.toDate ? activeSubscriptionData_raw.expires_at.toDate() :
-            (activeSubscriptionData_raw?.end_date?.toDate ? activeSubscriptionData_raw.end_date.toDate() : null);
+          const expiresAt = activeSubscriptionData_raw?.expires_at
+            ? new Date(activeSubscriptionData_raw.expires_at)
+            : (activeSubscriptionData_raw?.end_date ? new Date(activeSubscriptionData_raw.end_date) : null);
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
           setActiveSubscriptionData({
@@ -268,9 +264,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
     setIsSubmittingTicket(true);
     try {
-      const conversationRef = await addDoc(collection(db, 'support_conversations'), {
-        userId: user.uid,
-        userName: userData?.name || user.displayName || 'مستخدم',
+      const now = new Date().toISOString();
+      const { data: conversationRef, error: convError } = await supabase.from('support_conversations').insert({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
         userEmail: user.email || '',
         userPhone: userData?.phone || userData?.personal_phone || '',
         userType: accountType,
@@ -278,20 +276,22 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         priority: 'medium',
         category: 'subscription',
         lastMessage: ticketMessage.trim(),
-        lastMessageTime: serverTimestamp(),
+        lastMessageTime: now,
         unreadCount: 1,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
         subject: ticketSubject.trim()
-      });
+      }).select().single();
+      if (convError) throw convError;
 
-      await addDoc(collection(db, 'support_messages'), {
+      await supabase.from('support_messages').insert({
+        id: crypto.randomUUID(),
         conversationId: conversationRef.id,
-        senderId: user.uid,
-        senderName: userData?.name || user.displayName || 'مستخدم',
+        senderId: user.id,
+        senderName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
         senderType: 'user',
         message: ticketMessage.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: now,
         isRead: false
       });
 
@@ -325,10 +325,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   useEffect(() => {
     const loadActiveOffers = async () => {
       try {
-        const offersRef = collection(db, 'promotional_offers');
-        const offersQuery = query(offersRef, where('isActive', '==', true));
-        const snapshot = await getDocs(offersQuery);
-        const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }))
+        const { data: offersData } = await supabase.from('promotional_offers').select('*').eq('isActive', true);
+        const offers = (offersData || [])
           .filter(offer => {
             const startDate = new Date(offer.startDate);
             const endDate = new Date(offer.endDate);
@@ -343,6 +341,29 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     loadActiveOffers();
   }, []);
 
+  // Auto-apply promo code from URL param or localStorage
+  useEffect(() => {
+    const pendingPromo = urlPromoCode || (typeof window !== 'undefined' ? localStorage.getItem('pendingPromoCode') : null);
+    if (!pendingPromo || availableOffers.length === 0) return;
+
+    const codeInput = pendingPromo.trim().toUpperCase();
+    const offer = availableOffers.find(o => o.code && o.code.toUpperCase() === codeInput);
+    if (offer) {
+      setPromoCode(pendingPromo);
+      setAppliedOffer(offer);
+      setPromoCodeSuccess(true);
+      toast.success(`تم تطبيق كود الخصم: ${offer.name || pendingPromo}`);
+      if (typeof window !== 'undefined') localStorage.removeItem('pendingPromoCode');
+    }
+  }, [availableOffers, urlPromoCode]);
+
+  // Save URL promo to localStorage (survives login redirect)
+  useEffect(() => {
+    if (urlPromoCode && typeof window !== 'undefined') {
+      localStorage.setItem('pendingPromoCode', urlPromoCode);
+    }
+  }, [urlPromoCode]);
+
   // Load Payment Settings
   useEffect(() => {
     const fetchPaymentSettings = async () => {
@@ -351,11 +372,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       const baseMethods = DEFAULT_PAYMENT_METHODS[countryCode as keyof typeof DEFAULT_PAYMENT_METHODS] || DEFAULT_PAYMENT_METHODS.global;
 
       try {
-        const docRef = doc(db, 'payment_settings', countryCode);
-        const docSnap = await getDoc(docRef);
+        const { data: settingsData } = await supabase.from('payment_settings').select('*').eq('id', countryCode).single();
 
-        if (docSnap.exists()) {
-          const settings = docSnap.data();
+        if (settingsData) {
+          const settings = settingsData;
           const serverMethods = settings.methods || [];
 
           // Step 2: Sync server settings with base methods
@@ -497,31 +517,30 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
   // Players Fetching
   const fetchPlayers = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
       setLoading(true);
 
       // Build dynamic query based on account type
-      let q;
+      let queryBuilder = supabase.from('players').select('*');
 
       if (accountType === 'club') {
-        q = query(collection(db, 'players'), where('club_id', '==', user.uid));
+        queryBuilder = queryBuilder.eq('club_id', user.id);
       } else if (accountType === 'academy') {
-        q = query(collection(db, 'players'), where('academy_id', '==', user.uid));
+        queryBuilder = queryBuilder.eq('academy_id', user.id);
       } else if (accountType === 'trainer') {
-        q = query(collection(db, 'players'), where('trainer_id', '==', user.uid));
+        queryBuilder = queryBuilder.eq('trainer_id', user.id);
       } else if (accountType === 'agent') {
-        q = query(collection(db, 'players'), where('agent_id', '==', user.uid));
+        queryBuilder = queryBuilder.eq('agent_id', user.id);
       } else {
         // For player account, try to fetch their own data
-        q = query(collection(db, 'players'), where('uid', '==', user.uid));
+        queryBuilder = queryBuilder.eq('uid', user.id);
       }
 
-      const snapshot = await getDocs(q);
-      const playersData: PlayerData[] = snapshot.docs.map(doc => {
-        const d: any = doc.data();
+      const { data: playersRaw } = await queryBuilder;
+      const playersData: PlayerData[] = (playersRaw || []).map((d: any) => {
         return {
-          id: doc.id,
+          id: d.id,
           name: d.full_name || d.name || 'لاعب',
           email: d.email,
           phone: d.phone || d.phoneNumber,
@@ -650,12 +669,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     // 2. Check Partners (Server-side fetch)
     try {
       setLoading(true);
-      const partnersRef = collection(db, 'partners');
-      const q = query(partnersRef, where('partnerCode', '==', codeInput));
-      const querySnapshot = await getDocs(q);
+      const { data: partnersData } = await supabase.from('partners').select('*').eq('partnerCode', codeInput);
 
-      if (!querySnapshot.empty) {
-        const partnerData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Partner;
+      if (partnersData && partnersData.length > 0) {
+        const partnerData = partnersData[0] as Partner;
         if (partnerData.status === 'active' || partnerData.isActive) {
           setAppliedPartner(partnerData);
           setPromoCodeSuccess(true);
@@ -735,7 +752,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const isManualMethod = ['vodafone_cash', 'etisalat_cash', 'instapay', 'fawran', 'bank_transfer', 'stc_pay', 'wallet'].includes(selectedPaymentMethod);
 
   const handleCheckout = async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('يرجى تسجيل الدخول أولاً');
       return;
     }
@@ -757,7 +774,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       // Step 1: Create Invoice in database (Order Pre-creation)
       const invoiceData = {
-        userId: user.uid,
+        userId: user.id,
         amount: finalPrice,
         currency: currentCurrencyCode,
         paymentMethod: selectedPaymentMethod,
@@ -766,9 +783,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         packageDuration: packages[selectedPackage]?.period || 'مدة غير محددة',
         package_duration: packages[selectedPackage]?.period || 'مدة غير محددة',
         playerCount: countForCalculation,
-        players: accountType === 'player' ? [user.uid] : selectedPlayers.map(p => p.id),
+        players: accountType === 'player' ? [user.id] : selectedPlayers.map(p => p.id),
         customerEmail: user.email || '',
-        customerName: user.displayName || '',
+        customerName: user.user_metadata?.full_name || '',
       };
 
       const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
@@ -810,7 +827,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         toast.loading('جاري رفع الإيصال...', { id: 'upload' });
 
         const fileExt = receiptFile.name.split('.').pop();
-        const path = `receipts/${user.uid}/${invoiceId}.${fileExt}`;
+        const path = `receipts/${user.id}/${invoiceId}.${fileExt}`;
 
         const uploadResult = await storageManager.upload('payments', path, receiptFile);
         const receiptUrl = uploadResult.url;
@@ -840,10 +857,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           customerEmail: user?.email || 'customer@example.com',
           // @ts-ignore
           customerPhone: user?.phoneNumber || user?.phone || '33333333',
-          customerName: user?.displayName || 'Customer',
+          customerName: user?.user_metadata?.full_name || 'Customer',
           transactionId: invoiceId, // CRITICAL: Use invoiceId as transactionId
           returnUrl: `${window.location.origin}/payment/success?method=skipcash&amount=${finalPrice}`,
-          custom1: `${user?.uid || 'guest'}:${selectedPackage}`
+          custom1: `${user?.id || 'guest'}:${selectedPackage}`
         })
       });
 

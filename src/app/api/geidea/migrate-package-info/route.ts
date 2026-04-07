@@ -1,12 +1,9 @@
 /**
  * API لتحديث سجلات geidea_payments القديمة وإضافة معلومات الباقة
- * 
- * يفحص جميع السجلات التي لا تحتوي على plan_name أو packageType
- * ويحاول استخراج هذه المعلومات من بيانات المستخدم
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,9 +20,6 @@ interface MigrationResult {
     }>;
 }
 
-/**
- * استخراج معلومات الباقة من بيانات المستخدم
- */
 async function getUserPackageInfo(
     merchantReferenceId: string | null,
     customerEmail: string | null
@@ -35,57 +29,35 @@ async function getUserPackageInfo(
     package_type?: string | null;
     selectedPackage?: string | null;
 } | null> {
-    if (!adminDb) {
-        return null;
-    }
+    const db = getSupabaseAdmin();
 
     try {
         let userId: string | null = null;
 
-        // محاولة استخراج UID من merchantReferenceId
         if (merchantReferenceId) {
             const parts = merchantReferenceId.split('-');
-            if (parts.length >= 2) {
-                userId = parts[1];
-            }
+            if (parts.length >= 2) userId = parts[1];
         }
 
-        // البحث بالبريد الإلكتروني
         if (!userId && customerEmail) {
-            const usersSnapshot = await adminDb
-                .collection('users')
-                .where('email', '==', customerEmail)
-                .limit(1)
-                .get();
-
-            if (!usersSnapshot.empty) {
-                userId = usersSnapshot.docs[0].id;
-            }
+            const { data: users } = await db.from('users').select('id').eq('email', customerEmail).limit(1);
+            if (users?.length) userId = String(users[0].id);
         }
 
-        if (!userId) {
-            return null;
-        }
+        if (!userId) return null;
 
-        // جلب بيانات المستخدم
-        const userDoc = await adminDb.collection('users').doc(userId).get();
-        if (!userDoc.exists) {
-            return null;
-        }
+        const { data: userData } = await db.from('users').select('selectedPackage, packageType, package_type, plan_name').eq('id', userId).limit(1);
+        if (!userData?.length) return null;
 
-        const userData = userDoc.data();
-        if (!userData) {
-            return null;
-        }
-
-        const packageType = userData.selectedPackage || userData.packageType || userData.package_type || null;
-        const plan_name = userData.plan_name || packageType || null;
+        const row = userData[0] as Record<string, unknown>;
+        const packageType = String(row.selectedPackage || row.packageType || row.package_type || '');
+        const plan_name = String(row.plan_name || packageType || '');
 
         return {
-            plan_name,
-            packageType,
-            package_type: packageType,
-            selectedPackage: packageType,
+            plan_name: plan_name || null,
+            packageType: packageType || null,
+            package_type: packageType || null,
+            selectedPackage: packageType || null,
         };
     } catch (error) {
         console.error('Error fetching user package info:', error);
@@ -93,82 +65,49 @@ async function getUserPackageInfo(
     }
 }
 
-/**
- * POST - تشغيل Migration
- */
 export async function POST(request: NextRequest) {
     try {
-        if (!adminDb) {
-            return NextResponse.json(
-                { error: 'Firebase Admin not initialized' },
-                { status: 500 }
-            );
-        }
-
+        const db = getSupabaseAdmin();
         console.log('🔄 [Geidea Migration] Starting package info migration...');
 
-        const result: MigrationResult = {
-            total: 0,
-            updated: 0,
-            failed: 0,
-            skipped: 0,
-            details: [],
-        };
+        const result: MigrationResult = { total: 0, updated: 0, failed: 0, skipped: 0, details: [] };
 
-        // جلب جميع سجلات geidea_payments
-        const snapshot = await adminDb.collection('geidea_payments').get();
-        result.total = snapshot.size;
+        const { data: payments, count } = await db.from('geidea_payments').select('*', { count: 'exact' });
+        result.total = count ?? (payments ?? []).length;
 
         console.log(`📊 [Geidea Migration] Found ${result.total} records`);
 
-        // معالجة كل سجل
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            const orderId = doc.id;
+        for (const row of (payments ?? []) as Record<string, unknown>[]) {
+            const orderId = String(row.id);
 
-            // تخطي السجلات التي تحتوي بالفعل على معلومات الباقة
-            if (data.plan_name || data.packageType) {
+            if (row.plan_name || row.packageType) {
                 result.skipped++;
-                result.details.push({
-                    orderId,
-                    status: 'skipped',
-                    reason: 'Already has package info',
-                });
+                result.details.push({ orderId, status: 'skipped', reason: 'Already has package info' });
                 continue;
             }
 
-            // محاولة الحصول على معلومات الباقة
             const packageInfo = await getUserPackageInfo(
-                data.merchantReferenceId,
-                data.customerEmail
+                row.merchantReferenceId ? String(row.merchantReferenceId) : null,
+                row.customerEmail ? String(row.customerEmail) : null
             );
 
             if (!packageInfo || !packageInfo.packageType) {
                 result.failed++;
-                result.details.push({
-                    orderId,
-                    status: 'failed',
-                    reason: 'Could not find user or package info',
-                });
+                result.details.push({ orderId, status: 'failed', reason: 'Could not find user or package info' });
                 continue;
             }
 
-            // تحديث السجل
             try {
-                await doc.ref.update({
+                await db.from('geidea_payments').update({
                     plan_name: packageInfo.plan_name,
                     packageType: packageInfo.packageType,
                     package_type: packageInfo.package_type,
                     selectedPackage: packageInfo.selectedPackage,
                     migratedAt: new Date().toISOString(),
-                });
+                }).eq('id', orderId);
 
                 result.updated++;
-                result.details.push({
-                    orderId,
-                    status: 'updated',
-                });
-
+                result.details.push({ orderId, status: 'updated' });
                 console.log(`✅ [Geidea Migration] Updated ${orderId} with package: ${packageInfo.packageType}`);
             } catch (updateError) {
                 result.failed++;
@@ -181,53 +120,31 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('✅ [Geidea Migration] Migration completed:', result);
-
-        return NextResponse.json({
-            success: true,
-            message: 'Migration completed',
-            result,
-        });
+        return NextResponse.json({ success: true, message: 'Migration completed', result });
     } catch (error) {
         console.error('❌ [Geidea Migration] Error:', error);
         return NextResponse.json(
-            {
-                success: false,
-                error: 'Migration failed',
-                details: error instanceof Error ? error.message : 'Unknown error',
-            },
+            { success: false, error: 'Migration failed', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }
         );
     }
 }
 
-/**
- * GET - عرض حالة السجلات
- */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
     try {
-        if (!adminDb) {
-            return NextResponse.json(
-                { error: 'Firebase Admin not initialized' },
-                { status: 500 }
-            );
-        }
-
-        const snapshot = await adminDb.collection('geidea_payments').get();
+        const db = getSupabaseAdmin();
+        const { data: payments } = await db.from('geidea_payments').select('plan_name, packageType');
 
         let withPackageInfo = 0;
         let withoutPackageInfo = 0;
 
-        snapshot.docs.forEach((doc) => {
-            const data = doc.data();
-            if (data.plan_name || data.packageType) {
-                withPackageInfo++;
-            } else {
-                withoutPackageInfo++;
-            }
+        (payments ?? []).forEach((row: Record<string, unknown>) => {
+            if (row.plan_name || row.packageType) withPackageInfo++;
+            else withoutPackageInfo++;
         });
 
         return NextResponse.json({
-            total: snapshot.size,
+            total: (payments ?? []).length,
             withPackageInfo,
             withoutPackageInfo,
             needsMigration: withoutPackageInfo > 0,
@@ -235,10 +152,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Error checking migration status:', error);
         return NextResponse.json(
-            {
-                error: 'Failed to check status',
-                details: error instanceof Error ? error.message : 'Unknown error',
-            },
+            { error: 'Failed to check status', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }
         );
     }

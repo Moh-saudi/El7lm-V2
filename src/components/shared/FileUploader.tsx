@@ -11,7 +11,7 @@ export default function FileUploader({ onUploadComplete, type = 'image' }: { onU
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || !user?.uid) return;
+        if (!file || !user?.id) return;
 
         try {
             setIsUploading(true);
@@ -56,7 +56,7 @@ export default function FileUploader({ onUploadComplete, type = 'image' }: { onU
 
 // دالة لرفع الفيديو إلى Supabase
 async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
-    if (!file || !user?.uid) {
+    if (!file || !user?.id) {
         throw new Error('ملف أو معرف المستخدم غير متوفر');
     }
 
@@ -64,7 +64,7 @@ async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
         // إنشاء اسم فريد للملف
         const fileExt = file.name.split('.').pop();
         const timestamp = Date.now();
-        const filePath = `videos/${user.uid}/${timestamp}.${fileExt}`;
+        const filePath = `videos/${user.id}/${timestamp}.${fileExt}`;
 
 
         const { storageManager } = await import('@/lib/storage');
@@ -89,13 +89,13 @@ async function uploadVideoToSupabase(file: File, user: any): Promise<string> {
 }
 
 async function uploadDocumentToStorage(file: File, user: any): Promise<string> {
-    if (!file || !user?.uid) throw new Error('ملف أو معرف المستخدم غير متوفر');
+    if (!file || !user?.id) throw new Error('ملف أو معرف المستخدم غير متوفر');
 
     try {
         const fileExt = file.name.split('.').pop();
         const timestamp = Date.now();
         // Use a generic logic or 'documents' bucket/prefix
-        const filePath = `documents/${user.uid}/${timestamp}.${fileExt}`;
+        const filePath = `documents/${user.id}/${timestamp}.${fileExt}`;
 
         const { storageManager } = await import('@/lib/storage');
 

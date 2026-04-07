@@ -2,24 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/config';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  DocumentSnapshot,
-  setDoc,
-  serverTimestamp
-} from 'firebase/firestore';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -231,7 +215,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
 
 // --- Main Page Component ---
 export default function SearchPage() {
-  const [user, loading] = useAuthState(auth);
+  const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [userData, setUserData] = useState<any>(null);
@@ -273,32 +257,32 @@ export default function SearchPage() {
 
   // جلب طلبات اللاعب مع حالتها
   useEffect(() => {
-    if (!user?.uid) return;
-    getPlayerApplications(user.uid).then(apps => {
+    if (!user?.id) return;
+    getPlayerApplications(user.id).then(apps => {
       setAppliedIds(new Set(apps.map(a => a.opportunityId)));
       const map: Record<string, { status: string; reviewNote?: string }> = {};
       apps.forEach(a => { map[a.opportunityId] = { status: a.status, reviewNote: a.reviewNote }; });
       setMyApplications(map);
     }).catch(() => {});
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // تحميل الفرص المحفوظة من localStorage
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const raw = localStorage.getItem(`opp_saved_${user.uid}`);
+      const raw = localStorage.getItem(`opp_saved_${user.id}`);
       if (raw) setSavedIds(new Set(JSON.parse(raw)));
     } catch { /* ignore */ }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   const toggleSave = (oppId: string) => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     setSavedIds(prev => {
       const next = new Set(prev);
       if (next.has(oppId)) next.delete(oppId);
       else next.add(oppId);
       try {
-        localStorage.setItem(`opp_saved_${user.uid}`, JSON.stringify([...next]));
+        localStorage.setItem(`opp_saved_${user.id}`, JSON.stringify([...next]));
       } catch { /* ignore */ }
       return next;
     });
@@ -320,19 +304,14 @@ export default function SearchPage() {
 
       const fetchPromises = typesToFetch.map(async (type) => {
         try {
-          let q = query(collection(db, 'users'), where('accountType', '==', type));
+          let sbQuery = supabase.from('users').select('*').eq('accountType', type).limit(50);
           if (filters.country) {
-            q = query(q, where('country', '==', filters.country));
+            sbQuery = sbQuery.eq('country', filters.country);
           }
-          // Add limit to prevent fetching entire users collection and improve performance
-          q = query(q, limit(50));
+          const { data: rows } = await sbQuery;
 
-          const snapshot = await getDocs(q);
-
-          return snapshot.docs.map(docSnap => {
-            const data = docSnap.data();
-            return {
-              id: docSnap.id,
+          return (rows || []).map(data => ({
+              id: data.id,
               name: data.fullName || data.full_name || data.display_name || data.name || 'كيان رياضي',
               type: type as any,
               email: data.email || '',
@@ -349,10 +328,9 @@ export default function SearchPage() {
               reviewsCount: data.reviewsCount || 0,
               followersCount: Array.isArray(data.followers) ? data.followers.length : (data.followersCount || 0),
               isPremium: data.isPremium || false,
-              isFollowing: Array.isArray(data.followers) ? data.followers.includes(user.uid) : false,
-              createdAt: data.createdAt?.toDate() || new Date(),
-            };
-          });
+              isFollowing: Array.isArray(data.followers) ? data.followers.includes(user!.id) : false,
+              createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+          }));
         } catch (error) {
           console.warn(`Failed to fetch entities for type ${type}:`, error);
           return [];
@@ -439,8 +417,8 @@ export default function SearchPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) setUserData(userDoc.data());
+        const { data } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
+        if (data) setUserData(data);
       }
     };
     fetchUserData();
@@ -471,13 +449,13 @@ export default function SearchPage() {
     if (!user || !applyModalOpp) return;
     setIsApplying(true);
     try {
-      const userDoc = await getDoc(doc(db, 'players', user.uid));
-      const pd = userDoc.exists() ? userDoc.data() : {};
+      const { data: playerRow } = await supabase.from('players').select('*').eq('id', user!.id).maybeSingle();
+      const pd = playerRow || {};
       const avatarPath = pd.profile_image || pd.profileImage || pd.avatar || '';
       const avatarUrl = avatarPath ? (getSupabaseImageUrl(avatarPath) || avatarPath) : '';
 
-      const playerName = userData?.full_name || userData?.fullName || user.displayName || 'لاعب';
-      await applyToOpportunity(applyModalOpp.id, user.uid, {
+      const playerName = userData?.full_name || userData?.fullName || user!.user_metadata?.full_name || 'لاعب';
+      await applyToOpportunity(applyModalOpp.id, user!.id, {
         opportunityTitle: applyModalOpp.title,
         organizerName: applyModalOpp.organizerName,
         organizerType: applyModalOpp.organizerType,
@@ -514,9 +492,12 @@ export default function SearchPage() {
     setIsActionLoading(`follow-${entity.id}`);
     try {
       const col = entity.type === 'club' ? 'clubs' : entity.type === 'agent' ? 'agents' : entity.type === 'trainer' ? 'trainers' : 'academies';
-      const ref = doc(db, col, entity.id);
-      if (entity.isFollowing) await updateDoc(ref, { followers: arrayRemove(user.uid) });
-      else await updateDoc(ref, { followers: arrayUnion(user.uid) });
+      const { data: current } = await supabase.from(col).select('followers').eq('id', entity.id).maybeSingle();
+      const currentFollowers: string[] = Array.isArray(current?.followers) ? current.followers : [];
+      const updatedFollowers = entity.isFollowing
+        ? currentFollowers.filter(f => f !== user.id)
+        : [...currentFollowers, user.id];
+      await supabase.from(col).update({ followers: updatedFollowers }).eq('id', entity.id);
       setAllData(prev => prev.map(e => e.id === entity.id ? { ...e, isFollowing: !e.isFollowing, followersCount: e.isFollowing ? e.followersCount - 1 : e.followersCount + 1 } : e));
     } catch (e) {
       toast.error('خطأ في العملية');
@@ -1236,7 +1217,7 @@ export default function SearchPage() {
                     entity={entity}
                     onFollow={() => handleFollow(entity)}
                     isLoading={isActionLoading === `follow-${entity.id}`}
-                    currentUserId={user?.uid}
+                    currentUserId={user?.id}
                     userData={userData}
                   />
                 ))}

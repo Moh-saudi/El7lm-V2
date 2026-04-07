@@ -18,7 +18,7 @@ const ClarityUserTracker: React.FC = () => {
   useEffect(() => {
     // Identify user when logged in using correct Clarity API
     if (user && userData && typeof window !== 'undefined' && (window as any).clarity) {
-      const customId = user.uid;
+      const customId = user.id;
       const friendlyName = userData.full_name || userData.name || userData.displayName || user.email || 'مستخدم';
       const customSessionId = `session_${Date.now()}`;
       const customPageId = window.location.pathname;

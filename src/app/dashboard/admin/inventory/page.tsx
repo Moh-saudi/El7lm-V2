@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import toast from 'react-hot-toast';
 import {
@@ -92,7 +91,6 @@ export default function InventoryManagementPage() {
     status: 'in_stock'
   });
 
-  // إحصائيات - فقط 3 كروت
   const stats = {
     totalItems: items.length,
     inStock: items.filter(i => i.status === 'in_stock').length,
@@ -115,18 +113,17 @@ export default function InventoryManagementPage() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'inventory'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const fetchedItems: InventoryItem[] = [];
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        fetchedItems.push({
-          id: doc.id,
-          ...data,
-          status: calculateStatus(data.stock, data.minStock)
-        } as InventoryItem);
-      });
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (error) throw error;
+
+      const fetchedItems: InventoryItem[] = (data || []).map((item: any) => ({
+        ...item,
+        status: calculateStatus(item.stock, item.minStock)
+      }));
 
       setItems(fetchedItems);
     } catch (error) {
@@ -173,13 +170,16 @@ export default function InventoryManagementPage() {
       }
 
       const itemData = {
+        id: crypto.randomUUID(),
         ...formData,
         status: calculateStatus(formData.stock, formData.minStock),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, 'inventory'), itemData);
+      const { error } = await supabase.from('inventory').insert(itemData);
+      if (error) throw error;
+
       toast.success('تم إضافة المنتج بنجاح');
       setShowAddModal(false);
       resetForm();
@@ -197,10 +197,16 @@ export default function InventoryManagementPage() {
       const itemData = {
         ...formData,
         status: calculateStatus(formData.stock, formData.minStock),
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       };
 
-      await updateDoc(doc(db, 'inventory', selectedItem.id), itemData);
+      const { error } = await supabase
+        .from('inventory')
+        .update(itemData)
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
       toast.success('تم تحديث المنتج بنجاح');
       setShowEditModal(false);
       resetForm();
@@ -215,7 +221,9 @@ export default function InventoryManagementPage() {
     if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
 
     try {
-      await deleteDoc(doc(db, 'inventory', id));
+      const { error } = await supabase.from('inventory').delete().eq('id', id);
+      if (error) throw error;
+
       toast.success('تم حذف المنتج بنجاح');
       fetchItems();
     } catch (error) {
@@ -742,4 +750,3 @@ export default function InventoryManagementPage() {
     </div>
   );
 }
-

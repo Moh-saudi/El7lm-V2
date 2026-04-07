@@ -1,4 +1,5 @@
 // src/lib/azure/config.ts
+// @ts-ignore
 import { BlobServiceClient } from '@azure/storage-blob';
 
 /**

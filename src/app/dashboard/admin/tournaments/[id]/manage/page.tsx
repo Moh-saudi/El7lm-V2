@@ -9,8 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament } from '@/app/dashboard/admin/tournaments/utils';
 import { toast } from 'sonner';
 import { TeamsManager } from './components/TeamsManager';
@@ -33,14 +32,28 @@ export default function TournamentManagePage() {
         const fetchTournament = async () => {
             try {
                 if (!tournamentId) return;
-                const docRef = doc(db, 'tournaments', tournamentId);
-                const docSnap = await getDoc(docRef);
+                const { data, error } = await supabase
+                    .from('tournaments')
+                    .select('*')
+                    .eq('id', tournamentId)
+                    .single();
 
-                if (docSnap.exists()) {
-                    setTournament({ id: docSnap.id, ...docSnap.data() } as Tournament);
-                } else {
+                if (error || !data) {
                     toast.error('البطولة غير موجودة');
                     router.push('/dashboard/admin/tournaments');
+                } else {
+                    setTournament({
+                        id: data.id,
+                        ...data,
+                        isActive: data.isActive === true,
+                        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+                        updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+                        registrations: data.registrations || [],
+                        currency: data.currency || 'EGP',
+                        paymentMethods: data.paymentMethods || ['credit_card', 'bank_transfer'],
+                        ageGroups: data.ageGroups || [],
+                        categories: data.categories || [],
+                    } as Tournament);
                 }
             } catch (error) {
                 console.error('Error fetching tournament:', error);

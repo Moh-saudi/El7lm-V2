@@ -11,7 +11,7 @@
  */
 
 import { storeOTPInFirestore, hasActiveOTP } from './firestore-otp-manager';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 // تنسيق رقم الهاتف
 const formatPhoneNumber = (phone: string): string => {
@@ -57,10 +57,10 @@ function generateOTP(): string {
  */
 async function getChatAmanConfig(): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
   try {
-    if (!adminDb) return null;
-    const snap = await (adminDb as any).collection('system_configs').doc('chataman_config').get();
-    if (!snap.exists) return null;
-    return snap.data() as { apiKey: string; baseUrl: string; isActive: boolean };
+    const db = getSupabaseAdmin();
+    const { data } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (!data?.length) return null;
+    return data[0] as { apiKey: string; baseUrl: string; isActive: boolean };
   } catch {
     return null;
   }

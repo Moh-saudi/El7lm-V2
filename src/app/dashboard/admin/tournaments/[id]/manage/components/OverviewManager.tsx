@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Calendar, Activity, Users } from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament, formatDate } from '@/app/dashboard/admin/tournaments/utils';
 
 interface Team {
@@ -49,26 +48,27 @@ export const OverviewManager: React.FC<OverviewManagerProps> = ({ tournament }) 
             if (!tournament.id) return;
             try {
                 // Fetch Teams for Standings
-                const teamsQ = query(collection(db, `tournaments/${tournament.id}/teams`));
-                const teamsSnap = await getDocs(teamsQ);
-                const teamsData = teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+                const { data: teamsData } = await supabase
+                    .from('tournament_teams')
+                    .select('*')
+                    .eq('tournamentId', tournament.id);
+                const teams = (teamsData || []) as Team[];
                 // Sort by points desc, then goal difference (simple client-side sort)
-                teamsData.sort((a, b) => {
+                teams.sort((a, b) => {
                     if (b.points !== a.points) return b.points - a.points;
                     return (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
                 });
-                setTeams(teamsData);
+                setTeams(teams);
 
                 // Fetch Upcoming Matches
-                const matchesQ = query(
-                    collection(db, `tournaments/${tournament.id}/matches`),
-                    where('status', '==', 'scheduled'),
-                    orderBy('date', 'asc'),
-                    limit(3)
-                );
-                const matchesSnap = await getDocs(matchesQ);
-                const matchesData = matchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-                setUpcomingMatches(matchesData);
+                const { data: matchesData } = await supabase
+                    .from('tournament_matches')
+                    .select('*')
+                    .eq('tournamentId', tournament.id)
+                    .eq('status', 'scheduled')
+                    .order('date', { ascending: true })
+                    .limit(3);
+                setUpcomingMatches((matchesData || []) as Match[]);
 
             } catch (error) {
                 console.error('Error fetching overview data:', error);

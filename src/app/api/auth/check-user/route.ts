@@ -1,238 +1,97 @@
-import { adminDb } from '@/lib/firebase/admin';
+/**
+ * Check if user exists by phone or email
+ * تم تحويله من Firebase إلى Supabase
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 
-const COLLECTIONS_TO_SEARCH = [
-  'players',
-  'clubs',
-  'academies',
-  'agents',
-  'trainers',
-  'marketers',
-  'admins',
-  'employees',
-  'users',
-];
+const COLLECTIONS = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'employees', 'users'];
 
-const PHONE_FIELDS = [
-  'phone',
-  'phoneNumber',
-  'phone_number',
-  'mobile',
-  'mobileNumber',
-  'mobile_number'
-];
-
-// دالة لتوليد جميع الصيغ الممكنة لرقم الهاتف
-function generatePhoneVariants(phoneNumber: string): string[] {
-  const variants: string[] = [];
-  const cleaned = cleanPhoneNumber(phoneNumber); // 🛡️ استخدام أداة التنظيف الموحدة
-
-  variants.push(phoneNumber); // الرقم الأصلي
-  variants.push(cleaned); // الرقم المنظف
-  variants.push(`+${cleaned}`); // مع +
-
-  // إذا كان مصري (يبدأ بـ 20 أو 2)
+function generatePhoneVariants(phone: string): string[] {
+  const cleaned = cleanPhoneNumber(phone);
+  const variants = new Set<string>([phone, cleaned, `+${cleaned}`]);
   if (cleaned.startsWith('20')) {
-    variants.push(cleaned.substring(2)); // إزالة 20
-    variants.push(`0${cleaned.substring(2)}`); // إضافة 0 بعد إزالة 20
-
-    // حالة خاصة: إذا كان يبدأ بـ 200 (خطأ شائع)
-    if (cleaned.startsWith('200') && cleaned.length > 11) {
-      variants.push(cleaned.substring(3)); // إزالة 200
-      variants.push(`20${cleaned.substring(3)}`); // تصحيح إلى 20
-      variants.push(`0${cleaned.substring(3)}`); // إضافة 0
-    }
+    variants.add(cleaned.substring(2));
+    variants.add(`0${cleaned.substring(2)}`);
   }
-
-  // إذا كان يبدأ بـ 0 (رقم محلي)
-  if (cleaned.startsWith('0') && !cleaned.startsWith('00')) {
-    // محاولة إضافة كود مصر
-    if (cleaned.length === 11) {
-      variants.push(`20${cleaned.substring(1)}`); // إزالة 0 وإضافة 20
-      variants.push(cleaned.substring(1)); // إزالة 0 فقط
-    }
+  if (cleaned.startsWith('0') && cleaned.length === 11) {
+    variants.add(`20${cleaned.substring(1)}`);
+    variants.add(cleaned.substring(1));
   }
-
-  // إذا كان سعودي (يبدأ بـ 966)
   if (cleaned.startsWith('966')) {
-    variants.push(`0${cleaned.substring(3)}`); // إضافة 0
-    variants.push(cleaned.substring(3)); // إزالة 966
+    variants.add(cleaned.substring(3));
+    variants.add(`0${cleaned.substring(3)}`);
   }
-
-  // إذا كان قطري (يبدأ بـ 974)
-  if (cleaned.startsWith('974') && cleaned.length === 11) {
-    variants.push(cleaned.substring(3)); // إزالة 974
-  }
-
-  // إزالة المكررات
-  return [...new Set(variants)].filter(v => v.length >= 8); // الحد الأدنى 8 أرقام
+  return [...variants].filter(v => v.length >= 8);
 }
 
-// دالة البحث عن المستخدم بواسطة البريد الإلكتروني
-async function findUserByEmail(email: string): Promise<{
-  exists: boolean;
-  userName?: string;
-  accountType?: string;
-  uid?: string;
-}> {
-  if (!email || !adminDb) return { exists: false };
-
-  for (const collectionName of COLLECTIONS_TO_SEARCH) {
-    try {
-      const q = adminDb.collection(collectionName).where('email', '==', email).limit(1);
-      const snapshot = await q.get();
-
-      if (!snapshot.empty) {
-        const userData = snapshot.docs[0].data();
-        return {
-          exists: true,
-          userName: userData.full_name || userData.name || userData.displayName || 'مستخدم',
-          accountType: userData.accountType || collectionName.slice(0, -1),
-          uid: snapshot.docs[0].id
-        };
-      }
-    } catch (e) { }
-  }
-
-  // التحقق من Firebase Auth مباشرة
-  try {
-    const { adminAuth } = await import('@/lib/firebase/admin');
-    if (adminAuth) {
-      const userRecord = await adminAuth.getUserByEmail(email);
-      if (userRecord) {
-        return {
-          exists: true,
-          userName: userRecord.displayName || 'مستخدم مسجل',
-          uid: userRecord.uid
-        };
-      }
+async function findByEmail(email: string) {
+  const db = getSupabaseAdmin();
+  for (const coll of COLLECTIONS) {
+    const { data } = await db
+      .from(coll)
+      .select('id, full_name, name, accountType, email')
+      .eq('email', email)
+      .limit(1)
+      .single();
+    if (data) {
+      return {
+        exists: true,
+        userName: (data as any).full_name || (data as any).name || 'مستخدم',
+        accountType: (data as any).accountType || coll.replace(/s$/, ''),
+        uid: (data as any).id,
+      };
     }
-  } catch (e) { }
-
+  }
+  // البحث في Supabase Auth
+  try {
+    const { data: usersData } = await db.auth.admin.listUsers({ perPage: 1000 });
+    const authUser = ((usersData?.users ?? []) as any[]).find(u => u.email === email);
+    if (authUser) {
+      return { exists: true, userName: authUser.user_metadata?.full_name || 'مستخدم', uid: authUser.id };
+    }
+  } catch { }
   return { exists: false };
 }
 
-// دالة البحث عن المستخدم بواسطة رقم الهاتف
-async function findUserByPhone(phoneNumber: string): Promise<{
-  exists: boolean;
-  userName?: string;
-  accountType?: string;
-  email?: string;
-}> {
-  if (!phoneNumber) {
-    return { exists: false };
-  }
-
-  if (!adminDb) {
-    console.error('❌ [check-user] Admin DB is not available');
-    return { exists: false };
-  }
-
-  // توليد جميع الصيغ الممكنة للرقم
-  const phoneVariants = generatePhoneVariants(phoneNumber);
-  console.log(`🔍 [check-user] Searching for phone variants:`, phoneVariants);
-
-  for (const collectionName of COLLECTIONS_TO_SEARCH) {
-    for (const field of PHONE_FIELDS) {
-      // البحث عن كل صيغة ممكنة
-      for (const variant of phoneVariants) {
-        try {
-          const snapshot = await adminDb
-            .collection(collectionName)
-            .where(field, '==', variant)
-            .limit(1)
-            .get();
-
-          if (!snapshot.empty) {
-            const userDoc = snapshot.docs[0];
-            const userData = userDoc.data();
-
-            const userName = userData.full_name || userData.name || userData.displayName || 'مستخدم';
-            const accountType = userData.accountType || collectionName.slice(0, -1); // Remove 's' from collection name
-            const email = userData.email || userData.userEmail || userData.firebaseEmail;
-
-            console.log(`✅ [check-user] User found in ${collectionName} with variant "${variant}": ${userName}`);
-            return {
-              exists: true,
-              userName,
-              accountType,
-              email
-            };
-          }
-        } catch (error) {
-          console.warn(`⚠️ [check-user] Could not search in ${collectionName} on field ${field}:`, error);
-        }
-      }
+async function findByPhone(phone: string) {
+  const db = getSupabaseAdmin();
+  const variants = generatePhoneVariants(phone);
+  for (const coll of COLLECTIONS) {
+    const { data } = await db
+      .from(coll)
+      .select('id, full_name, name, accountType, email')
+      .in('phone', variants.slice(0, 10))
+      .limit(1)
+      .single();
+    if (data) {
+      return {
+        exists: true,
+        userName: (data as any).full_name || (data as any).name || 'مستخدم',
+        accountType: (data as any).accountType || coll.replace(/s$/, ''),
+        email: (data as any).email || '',
+      };
     }
   }
-
-  console.log(`❌ [check-user] User not found for any phone variant`);
   return { exists: false };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { phoneNumber, email } = body;
-
-    console.log('🔍 [check-user] Checking user existence:', { phoneNumber, email });
-
-    // التحقق من البيانات
+    const { phoneNumber, email } = await request.json();
     if (!phoneNumber && !email) {
-      return NextResponse.json(
-        { success: false, error: 'رقم الهاتف أو البريد الإلكتروني مطلوب', exists: false },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'رقم الهاتف أو البريد الإلكتروني مطلوب', exists: false }, { status: 400 });
     }
-
-    // البحث عن المستخدم
-    let result = { exists: false } as any;
-
-    if (email) {
-      result = await findUserByEmail(email);
-    } else if (phoneNumber) {
-      result = await findUserByPhone(phoneNumber);
-    }
-
-    if (result.exists) {
-      return NextResponse.json({
-        success: true,
-        exists: true,
-        userName: result.userName,
-        accountType: result.accountType,
-        email: result.email,
-        message: 'المستخدم موجود في النظام'
-      });
-    } else {
-      return NextResponse.json({
-        success: true,
-        exists: false,
-        message: 'المستخدم غير موجود في النظام'
-      }, { status: 200 });
-    }
-
+    const result = email ? await findByEmail(email) : await findByPhone(phoneNumber);
+    return NextResponse.json({ success: true, ...result, message: result.exists ? 'المستخدم موجود في النظام' : 'المستخدم غير موجود في النظام' });
   } catch (error: any) {
-    console.error('❌ [check-user] Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        exists: false,
-        error: 'حدث خطأ أثناء التحقق من المستخدم'
-      },
-      { status: 500 }
-    );
+    console.error('❌ [check-user]', error);
+    return NextResponse.json({ success: false, exists: false, error: 'حدث خطأ أثناء التحقق' }, { status: 500 });
   }
 }
 
-// إضافة GET للاختبار
-export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    success: true,
-    message: 'Check user endpoint is working',
-    timestamp: new Date().toISOString()
-  });
+export async function GET() {
+  return NextResponse.json({ success: true, message: 'Check user endpoint is working', timestamp: new Date().toISOString() });
 }
-
-
-

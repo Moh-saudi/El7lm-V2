@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, limit, getDocs, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import {
     Dialog,
     DialogContent,
@@ -61,8 +60,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 const combinedResults: SearchResult[] = [];
                 const distinctIds = new Set<string>();
 
-                // Search in all collections
-                const collectionsToSearch = [
+                // Search in all tables
+                const tablesToSearch = [
                     { name: 'users', type: 'user' as const },
                     { name: 'players', type: 'player' as const },
                     { name: 'clubs', type: 'club' as const },
@@ -71,76 +70,75 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                     { name: 'agents', type: 'agent' as const }
                 ];
 
-                for (const { name: collectionName, type } of collectionsToSearch) {
+                for (const { name: tableName, type } of tablesToSearch) {
                     try {
-                        const colRef = collection(db, collectionName);
-                        const q = query(colRef, limit(50));
-                        const snapshot = await getDocs(q);
+                        const { data: rows } = await supabase
+                            .from(tableName)
+                            .select('*')
+                            .limit(50);
 
-                        for (const doc of snapshot.docs) {
-                            if (doc.id === user?.uid) continue;
-
-                            const data = doc.data();
+                        for (const row of (rows || [])) {
+                            if (row.id === user?.id) continue;
 
                             // Get name from different possible fields
                             const name = (
-                                data.displayName ||
-                                data.name ||
-                                data.full_name ||
-                                data.club_name ||
-                                data.academy_name ||
-                                data.trainer_name ||
-                                data.agent_name ||
+                                row.displayName ||
+                                row.name ||
+                                row.full_name ||
+                                row.club_name ||
+                                row.academy_name ||
+                                row.trainer_name ||
+                                row.agent_name ||
                                 ''
                             ).toLowerCase();
 
-                            const email = (data.email || '').toLowerCase();
-                            const phone = data.phoneNumber || data.phone || '';
+                            const email = (row.email || '').toLowerCase();
+                            const phone = row.phoneNumber || row.phone || '';
 
                             // Search in name, email, or phone
                             if (name.includes(normalized) || email.includes(normalized) || phone.includes(normalized)) {
-                                if (!distinctIds.has(doc.id)) {
-                                    distinctIds.add(doc.id);
+                                if (!distinctIds.has(row.id)) {
+                                    distinctIds.add(row.id);
 
                                     const cloudflarePublicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || process.env.NEXT_PUBLIC_CDN_URL || '';
                                     let avatarUrl = '';
 
                                     // Try to get avatar based on account type
                                     if (type === 'player') {
-                                        avatarUrl = `${cloudflarePublicUrl}/avatars/${doc.id}.jpg`;
+                                        avatarUrl = `${cloudflarePublicUrl}/avatars/${row.id}.jpg`;
                                     } else if (type === 'club') {
-                                        avatarUrl = `${cloudflarePublicUrl}/club-logos/${doc.id}.jpg`;
+                                        avatarUrl = `${cloudflarePublicUrl}/club-logos/${row.id}.jpg`;
                                     } else if (type === 'academy') {
-                                        avatarUrl = `${cloudflarePublicUrl}/academy-logos/${doc.id}.jpg`;
+                                        avatarUrl = `${cloudflarePublicUrl}/academy-logos/${row.id}.jpg`;
                                     } else {
-                                        avatarUrl = `${cloudflarePublicUrl}/avatars/${doc.id}.jpg`;
+                                        avatarUrl = `${cloudflarePublicUrl}/avatars/${row.id}.jpg`;
                                     }
 
-                                    // Fallback to Firestore avatar if exists
-                                    if (!avatarUrl && (data.photoURL || data.avatar || data.logo)) {
-                                        avatarUrl = data.photoURL || data.avatar || data.logo || '';
+                                    // Fallback to stored avatar if exists
+                                    if (!avatarUrl && (row.photoURL || row.avatar || row.logo)) {
+                                        avatarUrl = row.photoURL || row.avatar || row.logo || '';
                                     }
 
                                     combinedResults.push({
-                                        id: doc.id,
-                                        name: data.displayName ||
-                                            data.name ||
-                                            data.full_name ||
-                                            data.club_name ||
-                                            data.academy_name ||
-                                            data.trainer_name ||
-                                            data.agent_name ||
+                                        id: row.id,
+                                        name: row.displayName ||
+                                            row.name ||
+                                            row.full_name ||
+                                            row.club_name ||
+                                            row.academy_name ||
+                                            row.trainer_name ||
+                                            row.agent_name ||
                                             'مستخدم',
                                         avatar: avatarUrl,
                                         type,
-                                        email: data.email || '',
+                                        email: row.email || '',
                                         phone: phone
                                     });
                                 }
                             }
                         }
                     } catch (error) {
-                        console.error(`Error searching in ${collectionName}:`, error);
+                        console.error(`Error searching in ${tableName}:`, error);
                     }
                 }
 

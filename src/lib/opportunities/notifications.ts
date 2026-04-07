@@ -1,6 +1,5 @@
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
-import { db } from '@/lib/firebase/config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export async function notifyNewApplication(
   organizerId: string,
@@ -37,8 +36,7 @@ export async function notifyApplicationAccepted(
 }
 
 /**
- * Writes a single document to `broadcasts` collection.
- * All users see this in their notification bell (checked via localStorage for seen state).
+ * Writes a single document to `broadcasts` table.
  */
 export async function broadcastNewOpportunity(params: {
   opportunityId: string;
@@ -47,13 +45,14 @@ export async function broadcastNewOpportunity(params: {
   organizerName: string;
   organizerType: string;
 }): Promise<void> {
-  await addDoc(collection(db, 'broadcasts'), {
+  await supabase.from('broadcasts').insert({
+    id: crypto.randomUUID(),
     opportunityId: params.opportunityId,
     opportunityTitle: params.opportunityTitle,
     opportunityType: params.opportunityType,
     organizerName: params.organizerName,
     organizerType: params.organizerType,
-    createdAt: serverTimestamp(),
+    createdAt: new Date().toISOString(),
     actionUrl: '/dashboard/opportunities',
   });
 }

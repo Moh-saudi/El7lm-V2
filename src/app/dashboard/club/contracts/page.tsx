@@ -20,8 +20,7 @@ import {
   Trash2,
   ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,16 +66,12 @@ export default function ContractsPage() {
   const fetchContracts = async () => {
     try {
       setLoading(true);
-      const contractsRef = collection(db, 'contracts');
-      const q = query(contractsRef, where('clubId', '==', userData?.clubId));
-      const querySnapshot = await getDocs(q);
-      
-      const contractsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Contract[];
-      
-      setContracts(contractsData);
+      const { data: contractsData } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('clubId', userData?.clubId);
+
+      setContracts((contractsData || []) as Contract[]);
     } catch (error) {
       console.error('Error fetching contracts:', error);
       toast.error('حدث خطأ أثناء جلب بيانات العقود');
@@ -200,25 +195,24 @@ export default function ContractsPage() {
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <DollarSign className="w-5 h-5" />
-                    <span>{contract.salary.toLocaleString()} ريال/شهرياً</span>
+                    <span>{contract.salary?.toLocaleString()} / شهر</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <FileText className="w-5 h-5" />
-                    <span>{contract.type === 'full' ? 'عقد كامل' :
-                           contract.type === 'loan' ? 'إعارة' : 'عقد شباب'}</span>
+                    <span>
+                      {contract.type === 'full' ? 'عقد كامل' :
+                       contract.type === 'loan' ? 'إعارة' : 'ناشئين'}
+                    </span>
                   </div>
-                  <div className="pt-4 flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/club/contracts/${contract.id}`)}>
-                      <Eye className="w-4 h-4 ml-1" />
-                      عرض
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Eye className="w-4 h-4 ml-1" /> عرض
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/club/contracts/${contract.id}/edit`)}>
-                      <Edit className="w-4 h-4 ml-1" />
-                      تعديل
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Edit className="w-4 h-4 ml-1" /> تعديل
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                      <Trash2 className="w-4 h-4 ml-1" />
-                      حذف
+                    <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50">
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -227,6 +221,18 @@ export default function ContractsPage() {
           </motion.div>
         ))}
       </div>
+
+      {filteredContracts.length === 0 && (
+        <div className="bg-white rounded-xl p-12 text-center shadow">
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-700 mb-2">لا توجد عقود</h3>
+          <p className="text-gray-500 mb-4">لم يتم إضافة أي عقود بعد.</p>
+          <Button onClick={() => router.push('/dashboard/club/contracts/new')}>
+            <Plus className="w-4 h-4 ml-2" />
+            إضافة عقد جديد
+          </Button>
+        </div>
+      )}
     </div>
   );
-} 
+}

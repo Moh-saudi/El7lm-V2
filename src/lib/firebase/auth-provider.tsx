@@ -2,38 +2,11 @@
 
 import SimpleLoader from '@/components/shared/SimpleLoader';
 import { UserData, UserRole } from '@/types';
-import {
-  createUserWithEmailAndPassword,
-  EmailAuthProvider,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  reauthenticateWithCredential,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-  signInWithPopup,
-  signOut,
-  updatePassword,
-  User
-} from 'firebase/auth';
-import {
-  doc,
-  getDoc,
-  serverTimestamp,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  onSnapshot
-} from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
+import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { checkAccountStatus, updateLastLogin } from './account-status-checker';
-import { auth, db } from './config';
 
 // User data interface
 interface AuthContextType {
@@ -43,21 +16,19 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<{ user: User; userData: UserData }>;
   signInWithGoogle: (defaultRole?: UserRole) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
-  register: (email: string, password: string, role: UserRole, additionalData?: any) => Promise<UserData>;
+  register: (email: string, password: string, role: UserRole, additionalData?: Record<string, unknown>) => Promise<UserData>;
   logout: () => Promise<void>;
-  signOut: () => Promise<void>; // إضافة signOut كمرادف لـ logout
+  signOut: () => Promise<void>;
   updateUserData: (updates: Partial<UserData>) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   clearError: () => void;
   refreshUserData: () => Promise<void>;
-  setupRecaptcha: (containerId: string) => Promise<any>;
-  sendPhoneOTP: (phoneNumber: string, appVerifier: any) => Promise<any>;
-  verifyPhoneOTP: (confirmationResult: any, otp: string, defaultRole?: UserRole, additionalData?: any) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
+  setupRecaptcha: (containerId: string) => Promise<unknown>;
+  sendPhoneOTP: (phoneNumber: string, appVerifier: unknown) => Promise<unknown>;
+  verifyPhoneOTP: (confirmationResult: unknown, otp: string, defaultRole?: UserRole, additionalData?: Record<string, unknown>) => Promise<{ user: User; userData: UserData; isNewUser: boolean }>;
 }
 
-
-// Create context placeholder for backward compatibility
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function useAuth() {
@@ -68,62 +39,123 @@ export function useAuth() {
   return context;
 }
 
-
 interface FirebaseAuthProviderProps {
   children: ReactNode;
 }
 
-// Remove undefined values recursively to avoid Firestore 400 errors
-const sanitizeForFirestore = (input: any): any => {
+// Remove undefined values recursively
+const sanitizeForDB = (input: unknown): unknown => {
   if (input === undefined) return undefined;
   if (input === null) return null;
   if (Array.isArray(input)) {
-    const sanitizedArray = input
-      .map((item) => sanitizeForFirestore(item))
-      .filter((item) => item !== undefined);
-    return sanitizedArray;
+    return input.map((item) => sanitizeForDB(item)).filter((item) => item !== undefined);
   }
   if (typeof input === 'object') {
-    const entries = Object.entries(input)
-      .map(([key, value]) => [key, sanitizeForFirestore(value)] as [string, any])
-      .filter(([_, value]) => value !== undefined);
+    const entries = Object.entries(input as Record<string, unknown>)
+      .map(([key, value]) => [key, sanitizeForDB(value)] as [string, unknown])
+      .filter(([, value]) => value !== undefined);
     return Object.fromEntries(entries);
   }
   return input;
 };
 
-// Initialize Firestore with better settings
-const initializeFirestoreWithSettings = async () => {
+// Helper to get user display data from Supabase user metadata
+function getDisplayName(user: User): string {
+  return String(user.user_metadata?.full_name || user.user_metadata?.name || '');
+}
+
+function getPhotoURL(user: User): string {
+  return String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '');
+}
+
+// Fetch user data from Supabase tables
+async function fetchUserData(userId: string, email: string, firebaseUid?: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
+  const isSuperAdmin = email === 'admin@el7lm.com' || email === 'admin@elhilm.com';
+
+  if (isSuperAdmin) {
+    const { data } = await supabase.from('users').select('*').eq('id', userId).limit(1);
+    return {
+      data: data?.[0] as Record<string, unknown> || { id: userId, email, full_name: 'Super Admin', accountType: 'admin', isAdmin: true },
+      collection: 'users',
+      accountType: 'admin',
+    };
+  }
+
+  // Check employees first
   try {
-    if (typeof window !== 'undefined') {
-      // Check if persistence is already enabled or if Firestore has been used
-      try {
-        // Use the new FirestoreSettings.cache instead of enableIndexedDbPersistence
-        // This is the recommended approach for Firebase v9+
-        // Firestore initialized with modern settings
-      } catch (err: any) {
-        if (err.code === 'failed-precondition') {
-          console.warn('Multiple tabs open, persistence disabled');
-        } else if (err.code === 'unimplemented') {
-          console.warn('Browser does not support persistence');
-        } else if (err.message?.includes('already been started')) {
-          console.warn('Firestore already initialized, skipping persistence setup');
-        } else {
-          console.warn('Failed to enable persistence:', err);
-        }
+    let { data: employees } = await supabase.from('employees').select('*').eq('authUserId', userId).limit(1);
+    if (!employees?.length && email) {
+      const res = await supabase.from('employees').select('*').eq('email', email).limit(1);
+      employees = res.data;
+      if (employees?.length) {
+        // Auto-link employee account
+        await supabase.from('employees').update({ authUserId: userId, updatedAt: new Date().toISOString() })
+          .eq('id', String((employees[0] as Record<string, unknown>).id));
+        console.log('🔗 Automatically linked employee account via email:', email);
       }
     }
-  } catch (error) {
-    console.warn('Failed to enable persistence:', error);
+    if (employees?.length) {
+      return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
+    }
+  } catch (err) {
+    console.warn('Error searching employees:', err);
   }
-};
 
-// Call initialization only if not already initialized
-if (typeof window !== 'undefined') {
-  // Use a small delay to ensure Firebase is fully initialized
-  setTimeout(() => {
-    initializeFirestoreWithSettings();
-  }, 100);
+  // Check role-specific tables — try by uid (Supabase Auth UUID) first, then by id
+  const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
+
+  // البحث بالـ uid (Supabase UUID) - الأكثر موثوقية بعد الهجرة
+  const uidResults = await Promise.allSettled(
+    accountTypes.map(t => supabase.from(t).select('*').eq('uid', userId).limit(1))
+  );
+  for (let i = 0; i < uidResults.length; i++) {
+    const r = uidResults[i];
+    if (r.status === 'fulfilled' && r.value.data?.length) {
+      const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
+      return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
+    }
+  }
+
+  // البحث بالـ id (Firebase UID القديم) كبديل
+  const results = await Promise.allSettled(
+    accountTypes.map(t => supabase.from(t).select('*').eq('id', userId).limit(1))
+  );
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r.status === 'fulfilled' && r.value.data?.length) {
+      const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
+      return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
+    }
+  }
+
+  // Fallback to users table
+  const { data: usersData } = await supabase.from('users').select('*').eq('id', userId).limit(1);
+  if (usersData?.length) {
+    const d = usersData[0] as Record<string, unknown>;
+    const accountType = (d.accountType as UserRole) || 'player';
+    return { data: d, collection: 'users', accountType };
+  }
+
+  // إذا لم نجد شيئاً بالـ Supabase UUID، نحاول بالـ Firebase UID (للمستخدمين المهاجرين)
+  if (firebaseUid && firebaseUid !== userId) {
+    const fbResults = await Promise.allSettled(
+      accountTypes.map(t => supabase.from(t).select('*').eq('id', firebaseUid).limit(1))
+    );
+    for (let i = 0; i < fbResults.length; i++) {
+      const r = fbResults[i];
+      if (r.status === 'fulfilled' && r.value.data?.length) {
+        const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
+        return { data: { ...r.value.data[0] as Record<string, unknown>, _dbId: firebaseUid }, collection: accountTypes[i], accountType };
+      }
+    }
+    const { data: fbUsers } = await supabase.from('users').select('*').eq('id', firebaseUid).limit(1);
+    if (fbUsers?.length) {
+      const d = fbUsers[0] as Record<string, unknown>;
+      return { data: { ...d, _dbId: firebaseUid }, collection: 'users', accountType: (d.accountType as UserRole) || 'player' };
+    }
+  }
+
+  return null;
 }
 
 export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
@@ -133,19 +165,13 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Skip auth initialization during build to prevent memory issues
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
     process.env.DISABLE_FIREBASE_DURING_BUILD === 'true' ||
-    process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+    (process.env.NODE_ENV === 'production' && typeof window === 'undefined');
 
   if (isBuildTime) {
-    console.log('🚫 Skipping Firebase Auth initialization during build phase');
-    // Return a mock context during build time to prevent useAuth errors
     const mockValue: AuthContextType = {
-      user: null,
-      userData: null,
-      loading: false,
-      error: null,
+      user: null, userData: null, loading: false, error: null,
       login: async () => { throw new Error('Auth not available during build'); },
       signInWithGoogle: async () => { throw new Error('Auth not available during build'); },
       register: async () => { throw new Error('Auth not available during build'); },
@@ -156,333 +182,183 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
       changePassword: async () => { },
       clearError: () => { },
       refreshUserData: async () => { },
-      setupRecaptcha: async () => { return null; },
+      setupRecaptcha: async () => null,
       sendPhoneOTP: async () => { throw new Error('Auth not available during build'); },
-      verifyPhoneOTP: async () => { throw new Error('Auth not available during build'); }
+      verifyPhoneOTP: async () => { throw new Error('Auth not available during build'); },
     };
-    return (
-      <AuthContext.Provider value={mockValue}>
-        {children}
-      </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={mockValue}>{children}</AuthContext.Provider>;
   }
-
-  // Initialize Firebase only once
-  useEffect(() => {
-    // Initialization logs removed for cleaner console
-  }, []); // Empty dependency array - run only once
-
-  // التحقق من تكوين Firebase
-  useEffect(() => {
-    try {
-      // Config check logs removed for cleaner console
-    } catch (configError) {
-      console.error('❌ FirebaseAuthProvider: Firebase config error:', configError);
-      setError('Firebase configuration error');
-      setLoading(false);
-      setHasInitialized(true);
-    }
-  }, []); // Empty dependency array - run only once
 
   const router = useRouter();
 
-  // Enhanced loading state management
+  // Timeout guards
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading && !hasInitialized) {
-        if (user) {
-          setLoading(false);
-          setHasInitialized(true);
-          setError(null); // Clear any previous errors
-        } else {
-          setError('Loading timeout - please refresh the page');
-        }
+        if (user) { setLoading(false); setHasInitialized(true); }
+        else { setError('Loading timeout - please refresh the page'); }
       }
-    }, 15000); // 15 second timeout
-
+    }, 15000);
     return () => clearTimeout(timer);
   }, [loading, hasInitialized, user]);
 
-  // Check for data loading issues
   useEffect(() => {
     if (loading && hasInitialized && user && !userData) {
-      const dataTimer = setTimeout(() => {
-        if (!userData) {
-          setLoading(false);
-          setHasInitialized(true);
-          setError('System initialization error - please refresh the page');
-        }
-      }, 10000); // 10 second timeout for user data
-
-      return () => clearTimeout(dataTimer);
+      const t = setTimeout(() => {
+        if (!userData) { setLoading(false); setHasInitialized(true); }
+      }, 10000);
+      return () => clearTimeout(t);
     }
   }, [loading, hasInitialized, user, userData]);
 
-  // If initialized and have user but no data after timeout
-  useEffect(() => {
-    if (hasInitialized && user && !userData && !loading) {
-      const missingDataTimer = setTimeout(() => {
-        if (!userData) {
-          setError('Failed to load user data - please refresh the page');
-        }
-      }, 5000);
+  // Helper: save basic user doc
+  const createBasicUserDocument = async (userId: string, email: string, role: UserRole = 'player', additionalData: Record<string, unknown> = {}): Promise<UserData> => {
+    const { data: existing } = await supabase.from('users').select('*').eq('id', userId).limit(1);
+    if (existing?.length) return existing[0] as UserData;
 
-      return () => clearTimeout(missingDataTimer);
-    }
-  }, [hasInitialized, user, userData, loading]);
-
-  // Helper function to create basic user document if it doesn't exist
-  const createBasicUserDocument = async (user: User, role: UserRole = 'player', additionalData: any = {}) => {
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
-      if (!userDoc.exists()) {
-        const basicUserData = {
-          uid: user.uid,
-          email: user.email || '',
-          accountType: role, // Use accountType instead of role for consistency
-          full_name: additionalData.full_name || additionalData.name || user.displayName || '',
-          phone: additionalData.phone || '',
-          profile_image: additionalData.profile_image || additionalData.profileImage || user.photoURL || '',
-          isNewUser: false, // Since we found data in role collection, not actually new
-          isActive: true,
-          created_at: additionalData.created_at || additionalData.createdAt || new Date(),
-          updated_at: new Date(),
-          ...additionalData
-        };
-        await setDoc(userRef, sanitizeForFirestore(basicUserData));
-        console.log(`✅ Created user document for ${role} with UID: ${user.uid}`, {
-          full_name: basicUserData.full_name,
-          profile_image: basicUserData.profile_image,
-          accountType: basicUserData.accountType,
-          country: basicUserData.country
-        });
-        return basicUserData;
-      } else {
-        console.log('User document already exists; skipping creation to avoid ID conflict');
-        return userDoc.data() as UserData;  // Return existing data if it exists
-      }
-    } catch (error) {
-      console.error('Error creating basic user document:', error);
-      throw error;
-    }
+    const now = new Date().toISOString();
+    const basicUserData: Record<string, unknown> = {
+      id: userId,
+      uid: userId,
+      email,
+      accountType: role,
+      full_name: additionalData.full_name || additionalData.name || '',
+      phone: additionalData.phone || '',
+      profile_image: additionalData.profile_image || additionalData.profileImage || '',
+      isNewUser: false,
+      isActive: true,
+      created_at: additionalData.created_at || now,
+      updated_at: now,
+      createdAt: additionalData.createdAt || now,
+      updatedAt: now,
+      ...additionalData,
+    };
+    await supabase.from('users').upsert(basicUserData);
+    return basicUserData as unknown as UserData;
   };
 
-  // Enhanced authentication state listener
+  // Auth state listener
   useEffect(() => {
     let isSubscribed = true;
-    let userDocUnsubscribe: (() => void) | null = null;
-    let isInitialized = false;
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    // Check if auth is available before setting up listener
-    if (!auth) {
-      console.warn('⚠️ Firebase Auth not available, skipping auth state listener');
-      setLoading(false);
-      setHasInitialized(true);
-      return;
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isSubscribed) return;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // تجنب التكرار فقط إذا كان نفس المستخدم (تحديث غير ضروري)
-      if (isInitialized && user) {
-        return;
-      }
-      if (user) {
-        isInitialized = true;
-      }
-      try {
-        if (user && isSubscribed) {
-          setUser(user);
-          setError(null);
+      if (session?.user) {
+        const authUser = session.user;
+        setUser(authUser);
+        setError(null);
 
-          // إعداد المستمع الحقيقي لبيانات المستخدم
-          const setupUserListener = async () => {
-            // 1. البحث عن مصدر البيانات (موظف، مدير، لاعب...)
-            let foundDocRef = doc(db, 'users', user.uid);
-            let collectionName = 'users';
+        // Set up realtime listener for user data
+        const setupUserListener = async () => {
+          try {
+            // Firebase UID: check metadata first, then sessionStorage (set by OTP login page)
+            const storedFirebaseUid = typeof window !== 'undefined' ? sessionStorage.getItem('otp_firebase_uid') : null;
+            const firebaseUidForFetch = (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid || storedFirebaseUid) as string | undefined;
+            const result = await fetchUserData(authUser.id, authUser.email || '', firebaseUidForFetch);
+            if (!result) {
+              if (isSubscribed) { setLoading(false); setHasInitialized(true); }
+              return;
+            }
 
-            // 🛡️ Super Admin Force - تخطي البحث عن المجموعات الأخرى لمنع تداخل الأدوار
-            const isSuperAdmin = user.email === 'admin@el7lm.com' || user.email === 'admin@elhilm.com';
+            const { data: rowData, collection: collectionName, accountType: userAccountType } = result;
 
-            if (isSuperAdmin) {
-              console.log('🛡️ Super Admin Session Restore - Forcing Admin Role');
-              collectionName = 'users';
-              foundDocRef = doc(db, 'users', user.uid);
-            } else {
-              try {
-                // محاولة البحث أولاً في الموظفين باستخدام AuthID
-                let employeesQuery = query(collection(db, 'employees'), where('authUserId', '==', user.uid));
-                let employeesSnap = await getDocs(employeesQuery);
+            // Merge users table data if from a different collection
+            let legacyData: Record<string, unknown> = {};
+            if (collectionName !== 'users') {
+              const { data: usersData } = await supabase.from('users').select('*').eq('id', authUser.id).limit(1);
+              if (usersData?.length) legacyData = usersData[0] as Record<string, unknown>;
+            }
 
-                // إذا لم نجد باستخدام AuthID، نبحث بالبريد الإلكتروني (للموظفين الذين لم يتم ربطهم بعد)
-                if (employeesSnap.empty && user.email) {
-                  const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
-                  const emailSnap = await getDocs(emailQuery);
-                  if (!emailSnap.empty) {
-                    employeesSnap = emailSnap;
-                    // نقوم بتحديث AuthID للموظف ليتم ربطه بالحساب
-                    const empDoc = emailSnap.docs[0];
-                    try {
-                      await updateDoc(doc(db, 'employees', empDoc.id), {
-                        authUserId: user.uid,
-                        updatedAt: new Date()
-                      });
-                      console.log('🔗 Automatically linked employee account via email:', user.email);
-                    } catch (e) {
-                      console.error('Error linking employee account:', e);
-                    }
-                  }
-                }
+            // isDeleted: only block if it's literally true (not string "false" from migration)
+            // For re-registration flow: if saved role exists, show new user form
+            const isDeleted = rowData.isDeleted === true || rowData.isDeleted === 1;
+            if (isDeleted) {
+              const savedRole = typeof window !== 'undefined' ? sessionStorage.getItem('reregister_accountType') : null;
+              if (savedRole && isSubscribed) {
+                setUserData({
+                  uid: authUser.id,
+                  email: authUser.email || '',
+                  accountType: savedRole as UserRole,
+                  full_name: getDisplayName(authUser),
+                  phone: '',
+                  profile_image: '',
+                  isNewUser: true,
+                } as UserData);
+                if (isSubscribed) { setLoading(false); setHasInitialized(true); }
+                return;
+              }
+              // No reregister flow - load data anyway so dashboard can show account status
+              // fall through to normal data loading below
+            }
 
-                if (!employeesSnap.empty) {
-                  foundDocRef = doc(db, 'employees', employeesSnap.docs[0].id);
-                  collectionName = 'employees';
-                } else {
-                  // البحث في المجموعات الأخرى
-                  const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
-                  for (const col of accountTypes) {
-                    const d = await getDoc(doc(db, col, user.uid));
-                    if (d.exists()) {
-                      foundDocRef = doc(db, col, user.uid);
-                      collectionName = col;
-                      break;
-                    }
-                  }
-                }
-              } catch (err) {
-                console.error('Error searching for user collection:', err);
+            // If employee, fetch role permissions
+            let permissions: string[] = [];
+            let roleName = '';
+            if (collectionName === 'employees' && rowData.roleId) {
+              const { data: roleData } = await supabase.from('roles').select('*').eq('id', String(rowData.roleId)).limit(1);
+              if (roleData?.length) {
+                permissions = (roleData[0] as Record<string, unknown>).permissions as string[] || [];
+                roleName = String((roleData[0] as Record<string, unknown>).name || '');
               }
             }
 
-            // مستمع لصلاحيات الدور (للموظفين)
-            let roleUnsubscribe: (() => void) | null = null;
-
-            // 2. إعداد المستمع للوثيقة الرئيسية
-            userDocUnsubscribe = onSnapshot(foundDocRef, async (snapshot) => {
-              if (!snapshot.exists()) {
-                if (collectionName !== 'users') {
-                  // تحول للبحث في users كـ fallback
-                  collectionName = 'users';
-                  foundDocRef = doc(db, 'users', user.uid);
-                  // سيعيد المستمع بناء نفسه في المحاولة التالية
-                  return;
-                }
-                if (isSubscribed) {
-                  setLoading(false);
-                  setHasInitialized(true);
-                }
-                return;
-              }
-
-              const data = snapshot.data() || {};
-
-              // إذا كان الحساب محذوفاً — نستخدم نوع الحساب المحفوظ مؤقتاً أو نترك userData كما هي
-              if ((data as any).isDeleted === true) {
-                if (isSubscribed) {
-                  const savedRole = typeof window !== 'undefined'
-                    ? sessionStorage.getItem('reregister_accountType')
-                    : null;
-                  if (savedRole) {
-                    setUserData(prev => prev ? prev : {
-                      uid: user.uid,
-                      email: user.email || '',
-                      accountType: savedRole as UserRole,
-                      full_name: user.displayName || '',
-                      phone: user.phoneNumber || '',
-                      profile_image: user.photoURL || '',
-                      isNewUser: true,
-                    } as UserData);
-                  }
-                  setLoading(false);
-                  setHasInitialized(true);
-                }
-                return;
-              }
-
-              // جلب بيانات إضافية من مجموعة users لضمان عدم فقدان الحقول القديمة (مثل role)
-              let legacyData = {};
-              if (collectionName !== 'users') {
-                try {
-                  const userSnap = await getDoc(doc(db, 'users', user.uid));
-                  if (userSnap.exists()) {
-                    legacyData = userSnap.data();
-                  }
-                } catch (e) {
-                  console.warn('Could not fetch legacy user data');
-                }
-              }
-
-              const userAccountType: UserRole = (collectionName === 'admins' || collectionName === 'employees') ? 'admin' : (collectionName.slice(0, -1) as UserRole || 'player');
-
-              const newUserData: UserData = {
-                uid: user.uid,
-                email: user.email || data.email || (legacyData as any).email || '',
-                accountType: userAccountType,
-                full_name: data.full_name || data.name || data.academy_name || data.club_name || (legacyData as any).full_name || (legacyData as any).name || '',
-                phone: data.phone || (legacyData as any).phone || '',
-                profile_image: data.profile_image || data.profileImage || data.avatar || (legacyData as any).profile_image || '',
-                ...legacyData, // الحقول القديمة أولاً
-                ...data,       // البيانات الجديدة تغطي القديمة
-                isEmployee: collectionName === 'employees',
-                employeeId: collectionName === 'employees' ? snapshot.id : (data.employeeId || (legacyData as any).employeeId)
-              };
-
-              // إذا كان موظفاً، نحتاج لمراقبة صلاحيات الدور أيضاً
-              if (collectionName === 'employees' && data.roleId) {
-                if (roleUnsubscribe) roleUnsubscribe();
-
-                roleUnsubscribe = onSnapshot(doc(db, 'roles', data.roleId), (roleSnap) => {
-                  if (roleSnap.exists()) {
-                    const roleData = roleSnap.data();
-                    if (isSubscribed) {
-                      setUserData({
-                        ...newUserData,
-                        permissions: roleData.permissions || [],
-                        roleName: roleData.name
-                      } as UserData);
-                    }
-                  } else if (isSubscribed) {
-                    setUserData(newUserData);
-                  }
-                });
-              } else if (isSubscribed) {
-                setUserData(newUserData);
-              }
-
-              if (isSubscribed) {
-                setLoading(false);
-                setHasInitialized(true);
-              }
-            }, (err) => {
-              console.error('Error in user data listener:', err);
-              if (isSubscribed) {
-                setLoading(false);
-                setHasInitialized(true);
-              }
-            });
-
-            // وظيفة التنظيف المدمجة
-            const originalUnsub = userDocUnsubscribe;
-            userDocUnsubscribe = () => {
-              if (originalUnsub) originalUnsub();
-              if (roleUnsubscribe) roleUnsubscribe();
+            const newUserData: UserData = {
+              uid: authUser.id,
+              email: authUser.email || String(rowData.email || legacyData.email || ''),
+              accountType: userAccountType,
+              full_name: String(rowData.full_name || rowData.name || rowData.academy_name || rowData.club_name || legacyData.full_name || legacyData.name || ''),
+              phone: String(rowData.phone || legacyData.phone || ''),
+              profile_image: String(rowData.profile_image || rowData.profileImage || rowData.avatar || legacyData.profile_image || ''),
+              ...legacyData,
+              ...rowData,
+              isEmployee: collectionName === 'employees',
+              employeeId: collectionName === 'employees' ? String(rowData.id || '') : String(rowData.employeeId || legacyData.employeeId || ''),
+              permissions: permissions.length ? permissions : ((rowData.permissions || legacyData.permissions) as string[] || []),
+              roleName: roleName || String(rowData.roleName || ''),
             };
-          };
 
-          setupUserListener();
-        } else if (isSubscribed) {
+            if (isSubscribed) {
+              setUserData(newUserData);
+              setLoading(false);
+              setHasInitialized(true);
+              // Clear OTP sessionStorage after successful load
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('otp_firebase_uid');
+                sessionStorage.removeItem('otp_account_type');
+              }
+            }
+
+            // Set up realtime subscription for user data changes
+            if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+            const tableName = collectionName === 'employees' ? 'employees' : (collectionName === 'admins' ? 'users' : collectionName);
+            realtimeChannel = supabase.channel(`user-data-${authUser.id}`)
+              .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: tableName,
+                filter: `id=eq.${collectionName === 'employees' ? String(rowData.id) : authUser.id}`,
+              }, async () => {
+                // Refresh on change
+                const refreshResult = await fetchUserData(authUser.id, authUser.email || '', (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+                if (refreshResult && isSubscribed) {
+                  setUserData(prev => ({ ...(prev || {}), ...refreshResult.data } as UserData));
+                }
+              })
+              .subscribe();
+
+          } catch (err) {
+            console.error('Error in user data listener:', err);
+            if (isSubscribed) { setLoading(false); setHasInitialized(true); }
+          }
+        };
+
+        setupUserListener();
+      } else {
+        if (isSubscribed) {
           setUser(null);
           setUserData(null);
-          setLoading(false);
-          setHasInitialized(true);
-        }
-      } catch (authError) {
-        console.error('Auth state change error:', authError);
-        if (isSubscribed) {
-          setError('Authentication error - please refresh');
-        }
-      } finally {
-        if (isSubscribed) {
           setLoading(false);
           setHasInitialized(true);
         }
@@ -491,1436 +367,385 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
 
     return () => {
       isSubscribed = false;
-      isInitialized = false;
-      if (userDocUnsubscribe) {
-        userDocUnsubscribe();
-      }
-      try {
-        unsubscribe();
-      } catch (error) {
-        console.warn('⚠️ AuthProvider - Error during cleanup:', error);
-      }
+      subscription.unsubscribe();
+      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
-  // Enhanced login function
+  // Login
   const login = async (email: string, password: string): Promise<{ user: User; userData: UserData }> => {
     try {
-      console.log('🔐 AuthProvider - Login attempt started:', {
-        email: email,
-        timestamp: new Date().toISOString()
-      });
-
       setError(null);
+      if (!email.includes('@')) throw new Error('صيغة البريد الإلكتروني غير صحيحة');
 
-      // تحقق أساسي من صيغة البريد الإلكتروني
-      if (!email.includes('@')) {
-        console.log('❌ AuthProvider - Invalid email format:', email);
-        throw new Error('صيغة البريد الإلكتروني غير صحيحة');
-      }
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      const authUser = authData.user;
+      if (!authUser) throw new Error('فشل تسجيل الدخول');
 
-      // محاولة تسجيل الدخول
-      console.log('🔑 AuthProvider - Attempting Firebase Auth login...');
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-      console.log('✅ AuthProvider - Firebase Auth login successful:', {
-        uid: user.uid,
-        email: user.email
-      });
+      const result = await fetchUserData(authUser.id, email, (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+      let foundData = result?.data || null;
+      let userAccountType: UserRole = result?.accountType || 'player';
+      const foundCollection = result?.collection || 'users';
 
-      // جلب بيانات المستخدم من Firestore
-      console.log('📋 AuthProvider - Fetching user data from Firestore...');
-
-      let foundData = null;
-      let foundCollection = null;
-      let userAccountType: UserRole = 'player';
-
-      // Super Admin Override
-      if (email === 'admin@el7lm.com' || email === 'admin@elhilm.com') {
-        console.log('🛡️ Super Admin login detected');
-        userAccountType = 'admin';
-        foundData = {
-          uid: user.uid,
-          email: user.email,
-          full_name: 'Super Admin',
-          accountType: 'admin',
-          isAdmin: true
-        };
-        // We try to verify if there is real data in 'users'
-        try {
-          const userDocCheck = await getDoc(doc(db, 'users', user.uid));
-          if (userDocCheck.exists()) {
-            foundData = { ...foundData, ...userDocCheck.data() };
-          }
-        } catch (e) { }
-      }
-
-      // 1. البحث في مجموعة الموظفين أولاً (النظام الجديد)
-      let employeesSnapshot: any = null;
-      try {
-        const employeesQuery = query(
-          collection(db, 'employees'),
-          where('authUserId', '==', user.uid)
-        );
-        employeesSnapshot = await getDocs(employeesQuery);
-
-        // Fallback: Search by email
-        if (employeesSnapshot.empty && user.email) {
-          const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
-          const emailSnap = await getDocs(emailQuery);
-          if (!emailSnap.empty) {
-            employeesSnapshot = emailSnap;
-            console.log('✅ Found employee by email during login lookup');
-          }
-        }
-
-        if (!employeesSnapshot.empty) {
-          const employeeDoc = employeesSnapshot.docs[0];
-          foundData = employeeDoc.data();
-          foundCollection = 'employees';
-          userAccountType = 'admin';
-          console.log(`✅ Found employee data in employees collection (Priority):`, foundData);
-        }
-      } catch (employeeError) {
-        console.warn('Error searching employees collection:', employeeError);
-      }
-
-      // 2. إذا لم يكن موظفاً، ابحث في المجموعات الأخرى
       if (!foundData) {
-        const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-        const queries = accountTypes.map(collection =>
-          getDoc(doc(db, collection, user.uid))
-        );
-
-        const results = await Promise.all(queries);
-
-        for (let i = 0; i < results.length; i++) {
-          if (results[i].exists()) {
-            foundData = results[i].data();
-            foundCollection = accountTypes[i];
-            if (accountTypes[i] === 'admins') {
-              userAccountType = 'admin';
-            } else {
-              userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-            }
-            console.log(`✅ Found user data in ${accountTypes[i]} collection:`, foundData);
-            break;
-          }
-        }
+        foundData = await createBasicUserDocument(authUser.id, email, userAccountType);
       }
 
-      // إذا وجدنا بيانات في المجموعات الخاصة بالأدوار، استخدمها مباشرة
-      if (foundData) {
-        const userData: UserData = {
-          uid: user.uid,
-          email: user.email || foundData.email || '',
-          accountType: userAccountType,
-          full_name: foundData.full_name || foundData.name || '',
-          phone: foundData.phone || '',
-          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
-          country: foundData.country || '',
-          isNewUser: false,
-          isEmployee: foundCollection === 'employees',
-          employeeId: foundData.id || foundData.uid || (foundCollection === 'employees' ? employeesSnapshot.docs[0].id : undefined),
-          created_at: foundData.created_at || foundData.createdAt || new Date(),
-          updated_at: new Date(),
-          ...foundData
-        };
-
-        // إذا كان موظفاً، أنشئ document في users collection وجلب الصلاحيات
-        if (foundCollection === 'employees') {
-          try {
-            // جلب الصلاحيات إذا وجدت
-            const roleId = foundData.roleId || foundData.role;
-            if (roleId) {
-              const roleDoc = await getDoc(doc(db, 'roles', roleId));
-              if (roleDoc.exists()) {
-                const roleData = roleDoc.data();
-                userData.permissions = roleData.permissions || [];
-                console.log('✅ AuthProvider (Login) - Fetched role permissions:', userData.permissions);
-              }
-            }
-
-            const userRef = doc(db, 'users', user.uid);
-            await setDoc(userRef, {
-              ...userData,
-              employeeId: employeesSnapshot?.docs[0]?.id || foundData.id,
-              employeeRole: foundData.roleId || foundData.role,
-              role: foundData.roleId || foundData.role,
-              updated_at: new Date()
-            }, { merge: true });
-          } catch (syncError) {
-            console.warn('Error syncing employee data to users collection:', syncError);
-          }
-        }
-
-        // فحص حالة الحساب
-        const accountStatus = await checkAccountStatus(user.uid);
-
-        if (!accountStatus.canLogin) {
-          // إذا كان الحساب غير مفعل أو محذوف، قم بتسجيل الخروج ورمي خطأ
-          await signOut(auth);
-          throw new Error(accountStatus.message);
-        }
-
-        // تحديث آخر دخول
+      const isEmployee = foundCollection === 'employees';
+      let permissions: string[] = [];
+      if (isEmployee && foundData.roleId) {
+        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
+        // Sync employee to users table
         try {
-          await updateLastLogin(user.uid);
-        } catch (updateError) {
-          console.warn('Failed to update last login:', updateError);
-        }
-
-        console.log('✅ Login successful for user:', userData.accountType);
-
-        setUser(user);
-        setUserData(userData);
-
-        // عرض رسالة الحالة للمستخدم
-        if (accountStatus.messageType === 'warning') {
-          console.warn('Account status warning:', accountStatus.message);
-        }
-
-        return { user, userData };
+          await supabase.from('users').upsert({
+            id: authUser.id,
+            ...foundData,
+            employeeId: String(foundData.id || ''),
+            employeeRole: foundData.roleId || foundData.role,
+            role: foundData.roleId || foundData.role,
+            updated_at: new Date().toISOString(),
+          });
+        } catch (e) { console.warn('Error syncing employee data:', e); }
       }
 
-      // إذا لم نجد بيانات في المجموعات الخاصة بالأدوار، ابحث في مجموعة users
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
+      const userData: UserData = {
+        uid: authUser.id,
+        email: authUser.email || String(foundData.email || ''),
+        accountType: userAccountType,
+        full_name: String(foundData.full_name || foundData.name || ''),
+        phone: String(foundData.phone || ''),
+        profile_image: String(foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || ''),
+        country: String(foundData.country || ''),
+        isNewUser: false,
+        isEmployee,
+        employeeId: isEmployee ? String(foundData.id || '') : undefined,
+        created_at: foundData.created_at || foundData.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        permissions,
+        ...foundData,
+      };
 
-      if (!userDoc.exists()) {
-        // إنشاء وثيقة المستخدم إذا لم يتم العثور عليها
-        const userData = await createBasicUserDocument(user, userAccountType, foundData || {});
-        setUserData(userData);
-        return { user, userData };
-      }
-
-      const userData = userDoc.data() as UserData;
-
-      // فحص حالة الحساب
-      const accountStatus = await checkAccountStatus(user.uid);
-
+      const accountStatus = await checkAccountStatus(authUser.id);
       if (!accountStatus.canLogin) {
-        // إذا كان الحساب غير مفعل أو محذوف، قم بتسجيل الخروج ورمي خطأ
-        await signOut(auth);
+        await supabase.auth.signOut();
         throw new Error(accountStatus.message);
       }
 
-      // تحديث آخر دخول
-      try {
-        await updateLastLogin(user.uid);
-      } catch (updateError) {
-        console.warn('Failed to update last login:', updateError);
-        // لا نرمي خطأ هنا لأن تسجيل الدخول نجح
-      }
+      try { await updateLastLogin(authUser.id); } catch (e) { console.warn('Failed to update last login:', e); }
 
-      console.log('✅ Login successful for user:', userData.accountType);
-
-      setUser(user);
+      setUser(authUser);
       setUserData(userData);
-
-      // عرض رسالة الحالة للمستخدم
-      if (accountStatus.messageType === 'warning') {
-        // يمكن إضافة toast أو notification هنا
-        console.warn('Account status warning:', accountStatus.message);
+      return { user: authUser, userData };
+    } catch (error: unknown) {
+      const err = error as Error & { code?: string };
+      if (err?.code !== 'auth/invalid-credential' && err?.code !== 'auth/wrong-password') {
+        console.error('Login system error:', err.message || err);
       }
-
-      return { user, userData };
-    } catch (error: any) {
-      if (error && error.code !== 'auth/invalid-credential' && error.code !== 'auth/wrong-password') {
-        console.error('Login system error:', error.message || error);
-      }
-
-      // إعادة رمي الخطأ الأصلي مع الاحتفاظ بـ error.code
-      // هذا يسمح لصفحة تسجيل الدخول بالتعرف على نوع الخطأ
       throw error;
     }
   };
 
-  /**
-   * تسجيل الدخول/التسجيل باستخدام Google
-   * @param defaultRole - الدور الافتراضي للمستخدم الجديد (player)
-   * @returns بيانات المستخدم ومعلومة إذا كان جديد أم لا
-   */
-  const signInWithGoogle = async (
-    defaultRole: UserRole = 'player'
-  ): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
+  // Google Sign-In
+  const signInWithGoogle = async (defaultRole: UserRole = 'player'): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
     try {
-      console.log('🔵 Starting Google Sign-In...');
       setError(null);
-
-      // إنشاء Google Provider
-      const googleProvider = new GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
-
-      // تعيين اللغة العربية
-      googleProvider.setCustomParameters({
-        prompt: 'select_account',
-        hl: 'ar'
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+          queryParams: { prompt: 'select_account', hl: 'ar', defaultRole },
+        },
       });
-
-      // تسجيل الدخول باستخدام Popup
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      console.log('✅ Google Sign-In successful:', {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL
-      });
-
-      let foundData: any = null;
-      let userAccountType: UserRole = defaultRole;
-      let isNewUser = true;
-
-      // Special handling for Super Admin to preventing role conflict
-      if (user.email === 'admin@el7lm.com' || user.email === 'admin@elhilm.com') {
-        console.log('🛡️ Super Admin Detected (Google Auth)');
-        userAccountType = 'admin';
-        foundData = {
-          uid: user.uid,
-          email: user.email,
-          full_name: 'Super Admin',
-          accountType: 'admin',
-          isAdmin: true
-        };
-        // Try to get real data if exists
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            foundData = { ...foundData, ...userDoc.data() };
-            isNewUser = false;
-          } else {
-            // Check if it exists in admins
-            const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-            if (adminDoc.exists()) {
-              foundData = { ...foundData, ...adminDoc.data() };
-              isNewUser = false;
-            }
-          }
-        } catch (e) {
-          console.warn('Error checking existing admin data:', e);
-        }
-        // 🕵️‍♀️ Duplicate Scanner for Debugging
-        (async () => {
-          const searchCols = ['employees', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-          const dupes = [];
-          for (const col of searchCols) {
-            try {
-              const d = await getDoc(doc(db, col, user.uid));
-              if (d.exists()) dupes.push(col);
-            } catch (e) { }
-          }
-          if (dupes.length > 0) {
-            console.warn(`🚨 SUPER ADMIN DUPLICATE ALERT: Found accounts in: ${dupes.join(', ')}. These are ignored by the system but exist in DB.`);
-          }
-        })();
-      }
-
-      // 0. التحقق أولاً من مجموعة الموظفين (مع الربط التلقائي)
-      if (!foundData) {
-        try {
-          let employeesQuery = query(collection(db, 'employees'), where('authUserId', '==', user.uid));
-          let employeesSnap = await getDocs(employeesQuery);
-
-          // Fallback: Link by Email
-          if (employeesSnap.empty && user.email) {
-            const emailQuery = query(collection(db, 'employees'), where('email', '==', user.email));
-            const emailSnap = await getDocs(emailQuery);
-            if (!emailSnap.empty) {
-              // Link the account
-              const empDoc = emailSnap.docs[0];
-              await updateDoc(doc(db, 'employees', empDoc.id), {
-                authUserId: user.uid,
-                updatedAt: new Date()
-              });
-              employeesSnap = emailSnap;
-              console.log('🔗 [Google Auth] Linked employee account via email');
-            }
-          }
-
-          if (!employeesSnap.empty) {
-            foundData = employeesSnap.docs[0].data();
-            userAccountType = 'admin';  // Employees are admins
-            isNewUser = false;
-            console.log('✅ [Google Auth] Found employee account');
-            // foundData will be used below to populate userData with isEmployee: true
-          }
-        } catch (err) {
-          console.warn('Error checking employees in Google Sign In:', err);
-        }
-      }
-
-      // 1. البحث عن المستخدم في المجموعات الأخرى إذا لم يكن موظفاً
-      if (!foundData) {
-        const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-        // ... rest of the loop
-        const queries = accountTypes.map(collectionName =>
-          getDoc(doc(db, collectionName, user.uid))
-        );
-
-        const results = await Promise.all(queries);
-
-        for (let i = 0; i < results.length; i++) {
-          if (results[i].exists()) {
-            foundData = results[i].data();
-            if (accountTypes[i] === 'admins') {
-              userAccountType = 'admin';
-            } else {
-              userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-            }
-            isNewUser = false;
-            console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
-            break;
-          }
-        }
-      }
-
-      // إذا لم نجد في المجموعات الخاصة، نبحث في users
-      let migrationData: any = null;
-
-      if (!foundData) {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          foundData = userDoc.data();
-          userAccountType = (foundData.accountType && foundData.accountType !== 'unknown') ? (foundData.accountType as UserRole) : defaultRole;
-          isNewUser = false;
-          console.log('✅ Found existing user in users collection');
-        } else if (user.email) {
-          // البحث عن مستخدم بنفس البريد الإلكتروني للمهاجرة
-          try {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('email', '==', user.email));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-              migrationData = querySnapshot.docs[0].data();
-              console.log('🔄 Found existing account via email - starting migration', migrationData);
-              // نستخدم البيانات القديمة لكن نعتبره مستخدم جديد (من حيث Auth ID) ليتم حفظ البيانات في الـ Doc الجديد
-              // لكن نوع الحساب يجب أن يكون من الحساب القديم
-              if (migrationData.accountType) {
-                userAccountType = migrationData.accountType as UserRole;
-              }
-            }
-          } catch (err) {
-            console.warn('Error searching by email for migration:', err);
-          }
-        }
-      }
-
-      let userData: UserData;
-
-      if (isNewUser) {
-        // مستخدم جديد - إنشاء حساب ولكن بدون تحديد دور نهائي
-        console.log(migrationData ? '🔄 Migrating user data...' : '🆕 Creating new user from Google Sign-In...');
-
-        // If migrating, we use the known role. If purely new, we use the provided defaultRole
-        // Ensure we never use 'unknown' here
-        const baseRole = migrationData ? (migrationData.accountType as UserRole) : defaultRole;
-        const finalRole = (baseRole && (baseRole as any) !== 'unknown') ? baseRole : 'player';
-
-        userData = {
-          ...(migrationData || {}), // ⚠️ MUST come first so dates below override
-          uid: user.uid,
-          email: user.email || '',
-          accountType: finalRole,
-          full_name: (migrationData ? (migrationData.full_name || migrationData.name) : null) || user.displayName || '',
-          phone: (migrationData ? migrationData.phone : null) || user.phoneNumber || '',
-          profile_image: (migrationData ? (migrationData.profile_image || migrationData.profileImage) : null) || user.photoURL || '',
-          isNewUser: migrationData ? false : true,
-          isGoogleUser: true,
-          googleId: user.uid,
-          // 🔧 FIX: استخدام serverTimestamp() لضمان الحفظ الصحيح
-          created_at: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          country: migrationData?.country || '',
-          countryCode: migrationData?.countryCode || '',
-          currency: migrationData?.currency || '',
-          currencySymbol: migrationData?.currencySymbol || '',
-          // تعيين آخر تسجيل دخول
-          lastLogin: serverTimestamp(),
-          last_login: serverTimestamp(),
-          lastLoginIP: 'google_auth',
-        };
-
-        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
-        if (!userData.accountType || userData.accountType === 'unknown') {
-          userData.accountType = finalRole;
-        }
-
-        // التأكد من أن UID هو الجديد
-        userData.uid = user.uid;
-        if (migrationData) {
-          userData.migratedFromUid = migrationData.uid;
-        }
-
-        // حفظ في مجموعة users
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, {
-          ...sanitizeForFirestore(userData),
-          created_at: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          last_login: serverTimestamp()
-        });
-        console.log('✅ User saved to users collection');
-
-        // Only create role-specific document if we actually know the role (migration case)
-        if (finalRole !== 'unknown' && finalRole !== 'admin') {
-          const roleRef = doc(db, finalRole + 's', user.uid);
-          await setDoc(roleRef, sanitizeForFirestore({
-            ...userData,
-            created_at: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            updated_at: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-            last_login: serverTimestamp()
-          }));
-          console.log(`✅ User saved to ${finalRole}s collection`);
-        }
-      } else {
-        // مستخدم موجود - تحديث البيانات
-        console.log('👤 Existing user signed in with Google');
-
-        userData = {
-          uid: user.uid,
-          email: user.email || foundData?.email || '',
-          accountType: userAccountType,
-          full_name: foundData?.full_name || foundData?.name || user.displayName || '',
-          phone: foundData?.phone || user.phoneNumber || '',
-          profile_image: foundData?.profile_image || foundData?.profileImage || user.photoURL || '',
-          country: foundData?.country || '',
-          isNewUser: false,
-          isGoogleUser: true,
-          created_at: foundData?.created_at || foundData?.createdAt || new Date(),
-          updated_at: new Date(),
-          ...foundData
-        };
-
-        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
-        if (!userData.accountType || userData.accountType === 'unknown') {
-          userData.accountType = userAccountType;
-        }
-
-        // تحديث آخر دخول
-        try {
-          await updateLastLogin(user.uid);
-        } catch (updateError) {
-          console.warn('Failed to update last login:', updateError);
-        }
-      }
-
-      // فحص حالة الحساب (غير مفعل/محذوف)
-      if (!isNewUser) {
-        const accountStatus = await checkAccountStatus(user.uid);
-        if (!accountStatus.canLogin) {
-          // إذا كان الحساب محذوفاً — نسمح بالتسجيل من جديد كمستخدم جديد
-          if (accountStatus.message.includes('حذف') || accountStatus.message.includes('جديد')) {
-            // قراءة نوع الحساب من URL إن وُجد، وإلا defaultRole
-            const pathSegment = typeof window !== 'undefined'
-              ? window.location.pathname.split('/')[2]
-              : '';
-            const knownTypes = ['player', 'academy', 'club', 'trainer', 'agent', 'marketer'];
-            const detectedRole = (knownTypes.includes(pathSegment) ? pathSegment : (defaultRole || 'player')) as UserRole;
-
-            isNewUser = true;
-            userData = {
-              uid: user.uid,
-              email: user.email || '',
-              accountType: detectedRole,
-              full_name: user.displayName || '',
-              phone: user.phoneNumber || '',
-              profile_image: user.photoURL || '',
-              isNewUser: true,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            } as UserData;
-            // حفظ نوع الحساب مؤقتاً حتى يكتمل التسجيل
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem('reregister_accountType', detectedRole);
-            }
-          } else {
-            // إيقاف تعليق أو سبب آخر — نرفض الدخول
-            await signOut(auth);
-            throw new Error(accountStatus.message);
-          }
-        }
-      }
-
-      setUser(user);
-      setUserData(userData);
-
-      console.log('🎉 Google Sign-In completed successfully', {
-        isNewUser,
-        accountType: userData.accountType
-      });
-
-      return { user, userData, isNewUser };
-    } catch (error: any) {
-      console.error('❌ Google Sign-In error:', error);
-
-      // معالجة أخطاء Google Sign-In
-      let errorMessage = 'فشل تسجيل الدخول بواسطة Google';
-
-      switch (error.code) {
-        case 'auth/popup-closed-by-user':
-          errorMessage = 'تم إغلاق نافذة تسجيل الدخول';
-          break;
-        case 'auth/popup-blocked':
-          errorMessage = 'تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة';
-          break;
-        case 'auth/cancelled-popup-request':
-          errorMessage = 'تم إلغاء طلب تسجيل الدخول';
-          break;
-        case 'auth/account-exists-with-different-credential':
-          errorMessage = 'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني بطريقة مختلفة';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'خطأ في الاتصال بالإنترنت';
-          break;
-        default:
-          if (error.message) {
-            errorMessage = error.message;
-          }
-      }
-
+      if (error) throw error;
+      // OAuth redirects — return placeholder; real user data arrives via onAuthStateChange after redirect
+      throw new Error('REDIRECT_IN_PROGRESS');
+    } catch (error: unknown) {
+      const err = error as Error;
+      if (err.message === 'REDIRECT_IN_PROGRESS') throw err;
+      const errorMessage = err.message || 'فشل تسجيل الدخول بواسطة Google';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
   };
 
-  /**
-   * إعداد reCAPTCHA
-   */
-  const setupRecaptcha = async (containerId: string) => {
-    try {
-      if (!auth) throw new Error('Auth not initialized');
-
-      // تنظيف أي verifier سابق لتجنب التكرار
-      if ((window as any).recaptchaVerifier) {
-        try { (window as any).recaptchaVerifier.clear(); } catch (e) { }
-      }
-
-      const verifier = new RecaptchaVerifier(auth, containerId, {
-        size: 'invisible',
-        callback: (response: any) => {
-          console.log('✅ Recaptcha solved');
-        },
-        'expired-callback': () => {
-          console.warn('⚠️ Recaptcha expired');
-        }
-      });
-
-      (window as any).recaptchaVerifier = verifier;
-      return verifier;
-    } catch (error) {
-      console.error('❌ Recaptcha setup error:', error);
-      throw error;
-    }
+  // Phone OTP (kept for API compatibility — uses our ChatAman/OTP service)
+  const setupRecaptcha = async (_containerId: string): Promise<unknown> => {
+    console.log('ℹ️ setupRecaptcha: using custom OTP service instead of reCAPTCHA');
+    return null;
   };
 
-  /**
-   * إرسال رمز التحقق لهاتف
-   */
-  const sendPhoneOTP = async (phoneNumber: string, appVerifier: any) => {
-    try {
-      console.log('📱 Sending OTP to:', phoneNumber);
-      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      return confirmationResult;
-    } catch (error) {
-      console.error('❌ Send Phone OTP error:', error);
-      throw error;
-    }
+  const sendPhoneOTP = async (phoneNumber: string, _appVerifier: unknown): Promise<{ phoneNumber: string }> => {
+    console.log('📱 sendPhoneOTP: using custom OTP service for', phoneNumber);
+    return { phoneNumber };
   };
 
-  /**
-   * التحقق من رمز الهاتف وإنشاء/تحديث المستخدم
-   */
   const verifyPhoneOTP = async (
-    confirmationResult: any,
+    confirmationResult: unknown,
     otp: string,
     defaultRole: UserRole = 'player',
-    additionalData: any = {}
+    additionalData: Record<string, unknown> = {}
   ): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
-    try {
-      console.log('🔐 Verifying Phone OTP...');
-      setError(null);
+    // Custom phone OTP is verified via unified-otp-service, not Firebase phone auth
+    // After OTP is verified, sign in with email/password using a derived account
+    const phoneNumber = (confirmationResult as { phoneNumber: string })?.phoneNumber || '';
 
-      const result = await confirmationResult.confirm(otp);
-      const user = result.user;
-      console.log('✅ Phone verified successfully:', user.uid);
+    // Check if user with this phone exists
+    const { data: usersData } = await supabase.from('users').select('*').eq('phone', phoneNumber).limit(1);
+    if (usersData?.length) {
+      const existingUser = usersData[0] as Record<string, unknown>;
+      const finalRole = (existingUser.accountType as UserRole) || defaultRole;
+      const email = String(existingUser.email || '');
 
-      // البحث عن المستخدم في Firestore (التحقق إذا كان موجود مسبقاً)
-      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-      let foundData = null;
-      let userAccountType: UserRole = defaultRole;
-      let isNewUser = true;
-
-      // البحث المتوازي في جميع المجموعات
-      const queries = accountTypes.map(collectionName =>
-        getDoc(doc(db, collectionName, user.uid))
-      );
-
-      const results = await Promise.all(queries);
-
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].exists()) {
-          foundData = results[i].data();
-          if (accountTypes[i] === 'admins') {
-            userAccountType = 'admin';
-          } else {
-            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-          }
-          isNewUser = false;
-          console.log(`✅ Found existing user in ${accountTypes[i]} collection`);
-          break;
+      if (email) {
+        const { data: authData } = await supabase.auth.signInWithPassword({ email, password: 'PhoneAuth_' + otp });
+        if (authData?.user) {
+          const userData: UserData = { ...existingUser, uid: authData.user.id, accountType: finalRole } as UserData;
+          setUser(authData.user);
+          setUserData(userData);
+          return { user: authData.user, userData, isNewUser: false };
         }
       }
-
-      // إذا لم نجد في المجموعات الخاصة، نبحث في users
-      if (!foundData) {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          foundData = userDoc.data();
-          userAccountType = (foundData.accountType && foundData.accountType !== 'unknown') ? (foundData.accountType as UserRole) : defaultRole;
-          isNewUser = false;
-          console.log('✅ Found existing user in users collection');
-        }
-      }
-
-      let userData: UserData;
-
-      if (isNewUser) {
-        // مستخدم جديد - إنشاء حساب
-        console.log('🆕 Creating new user from Phone Auth...');
-
-        // Important: If no specific role is passed (e.g. from generic login), use 'unknown' to force selection
-        // If additionalData has accountType (e.g. from Register page), use it.
-        // Use additionalData.accountType if provided (Register page), fallback to defaultRole
-        const finalRole = additionalData.accountType || defaultRole;
-
-        userData = {
-          ...additionalData, // ⚠️ MUST come first so dates below override
-          uid: user.uid,
-          email: user.email || additionalData.email || '',
-          accountType: finalRole,
-          full_name: additionalData.full_name || additionalData.name || 'User',
-          phone: user.phoneNumber || '',
-          profile_image: '',
-          isNewUser: true,
-          isPhoneAuth: true,
-          // 🔧 FIX: استخدام serverTimestamp() لضمان الحفظ الصحيح
-          created_at: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          country: additionalData.country || '',
-          countryCode: additionalData.countryCode || '',
-          currency: additionalData.currency || '',
-          currencySymbol: additionalData.currencySymbol || '',
-          // تعيين آخر تسجيل دخول
-          lastLogin: serverTimestamp(),
-          last_login: serverTimestamp(),
-          lastLoginIP: 'phone_auth',
-        };
-
-        // التأكد من عدم الكتابة فوق نوع الحساب بـ unknown
-        if (!userData.accountType || userData.accountType === 'unknown') {
-          userData.accountType = finalRole;
-        }
-
-        // حفظ في مجموعة users
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, {
-          ...sanitizeForFirestore(userData),
-          created_at: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          last_login: serverTimestamp()
-        });
-
-        // حفظ في المجموعة الخاصة بالدور ONLY IF role is known
-        if (finalRole !== 'unknown' && finalRole !== 'admin') {
-          const roleRef = doc(db, finalRole + 's', user.uid);
-          await setDoc(roleRef, sanitizeForFirestore({
-            ...userData,
-            created_at: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            updated_at: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-            last_login: serverTimestamp()
-          }));
-        }
-      } else {
-        // مستخدم موجود - تحديث
-        console.log('👤 Existing user signed in with Phone');
-
-        userData = {
-          uid: user.uid,
-          email: user.email || foundData?.email || '',
-          accountType: userAccountType,
-          full_name: foundData?.full_name || foundData?.name || '',
-          phone: user.phoneNumber || foundData?.phone || '',
-          profile_image: foundData?.profile_image || foundData?.profileImage || '',
-          country: foundData?.country || '',
-          isNewUser: false,
-          isPhoneAuth: true,
-          created_at: foundData?.created_at || foundData?.createdAt || new Date(),
-          updated_at: new Date(),
-          ...foundData
-        };
-
-        try {
-          await updateLastLogin(user.uid);
-        } catch (updateError) {
-          console.warn('Failed to update last login:', updateError);
-        }
-      }
-
-      // فحص حالة الحساب
-      if (!isNewUser) {
-        const accountStatus = await checkAccountStatus(user.uid);
-        if (!accountStatus.canLogin) {
-          await signOut(auth);
-          throw new Error(accountStatus.message);
-        }
-      }
-
-      setUser(user);
-      setUserData(userData);
-
-      return { user, userData, isNewUser };
-    } catch (error: any) {
-      console.error('❌ Phone Verification Error:', error);
-      let msg = 'رمز التحقق غير صحيح أو منتهي الصلاحية';
-      if (error.code === 'auth/invalid-verification-code') {
-        msg = 'رمز التحقق غير صحيح';
-      } else if (error.code === 'auth/code-expired') {
-        msg = 'انتهت صلاحية رمز التحقق، يرجى إعادة الإرسال';
-      }
-      throw new Error(msg);
     }
+
+    // New user registration via phone
+    const finalRole = (additionalData.accountType as UserRole) || defaultRole;
+    const now = new Date().toISOString();
+    const tempEmail = `phone_${phoneNumber.replace(/\D/g, '')}@el7lm.local`;
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: tempEmail,
+      password: 'PhoneAuth_' + otp,
+    });
+    if (signUpError) throw signUpError;
+    const authUser = signUpData.user!;
+
+    const userData: UserData = {
+      ...additionalData,
+      uid: authUser.id,
+      email: String(additionalData.email || tempEmail),
+      accountType: finalRole,
+      full_name: String(additionalData.full_name || additionalData.name || ''),
+      phone: phoneNumber,
+      profile_image: '',
+      isNewUser: true,
+      isPhoneAuth: true,
+      created_at: now,
+      createdAt: now,
+      updated_at: now,
+      updatedAt: now,
+      lastLogin: now,
+    } as UserData;
+
+    await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
+    if (finalRole !== 'admin') {
+      await supabase.from(finalRole + 's').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
+    }
+
+    setUser(authUser);
+    setUserData(userData);
+    return { user: authUser, userData, isNewUser: true };
   };
 
-  /**
-   * إعادة تفعيل حساب محذوف
-   
-   */
-  const reactivateDeletedAccount = async (
-    email: string,
-    password: string,
-    role: UserRole,
-    additionalData: any
-  ): Promise<UserData | null> => {
-    try {
-      // محاولة تسجيل الدخول للحصول على UID
-      const signInResult = await signInWithEmailAndPassword(auth, email, password);
-      const uid = signInResult.user.uid;
-
-      console.log('🔍 Checking account status in Firestore for UID:', uid);
-
-      // التحقق من حالة الحساب في جميع المجموعات
-      const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
-      let isDeleted = false;
-
-      for (const coll of collections) {
-        try {
-          const docRef = doc(db, coll, uid);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-
-            // التحقق من حالة الحذف
-            if (data.isDeleted === true || data.isActive === false || data.deletedAt) {
-              isDeleted = true;
-              console.log(`✅ Found deleted account in ${coll}, will reactivate`);
-              break;
-            } else {
-              console.log(`⚠️ Account exists and is active in ${coll}`);
-              return null; // الحساب موجود ونشط
-            }
-          }
-        } catch (err) {
-          continue;
-        }
-      }
-
-      if (!isDeleted) {
-        console.log('⚠️ Account not found or not deleted');
-        return null;
-      }
-
-      // إعادة تفعيل الحساب
-      console.log('🔄 Reactivating account with new data...', {
-        organizationCode: additionalData.organizationCode,
-        accountType: role
-      });
-
-      // دمج البيانات الجديدة مع البيانات القديمة (إن وجدت)
-      const userData: UserData = {
-        uid: uid,
-        email: email,
-        accountType: role,
-        full_name: additionalData.full_name || additionalData.name || '',
-        phone: additionalData.phone || '',
-        profile_image: additionalData.profile_image || additionalData.profileImage || '',
-        isNewUser: false,
-        isDeleted: false,
-        isActive: true,
-        updated_at: serverTimestamp(),
-        reactivated_at: serverTimestamp(),
-        country: additionalData.country || '',
-        countryCode: additionalData.countryCode || '',
-        currency: additionalData.currency || '',
-        currencySymbol: additionalData.currencySymbol || '',
-        firebaseEmail: email,
-        originalPhone: additionalData.originalPhone || additionalData.phone || '',
-        // البيانات الجديدة المهمة (مثل كود الانضمام)
-        organizationCode: additionalData.organizationCode || '',
-        clubId: additionalData.clubId || '',
-        academyId: additionalData.academyId || '',
-        ...additionalData
-      };
-
-      // تحديث البيانات في users collection
-      const userRef = doc(db, 'users', uid);
-      await setDoc(userRef, sanitizeForFirestore(userData), { merge: true });
-
-      // تحديث البيانات في المجموعة الخاصة بالدور
-      if (role !== 'admin') {
-        const roleRef = doc(db, role + 's', uid);
-        await setDoc(roleRef, sanitizeForFirestore(userData), { merge: true });
-
-        // إذا كان لاعب، نحذف طلبات الانضمام القديمة المعلقة
-        if (role === 'player') {
-          try {
-            const joinRequestsQuery = query(
-              collection(db, 'player_join_requests'),
-              where('playerId', '==', uid),
-              where('status', '==', 'pending')
-            );
-            const oldRequests = await getDocs(joinRequestsQuery);
-
-            if (!oldRequests.empty) {
-              console.log(`🗑️ Deleting ${oldRequests.size} old join requests...`);
-              const deletePromises = oldRequests.docs.map(doc =>
-                updateDoc(doc.ref, {
-                  status: 'cancelled',
-                  cancelledAt: serverTimestamp(),
-                  cancelReason: 'Account reactivated'
-                })
-              );
-              await Promise.all(deletePromises);
-              console.log('✅ Old join requests cancelled');
-            }
-          } catch (err) {
-            console.warn('⚠️ Failed to cancel old join requests:', err);
-          }
-        }
-      }
-
-      setUser(signInResult.user);
-      setUserData(userData);
-
-      console.log('✅ Account reactivated successfully');
-      return userData;
-
-    } catch (error: any) {
-      console.error('❌ Reactivation error:', error);
-      return null;
-    }
-  };
-
-  // Enhanced registration function
+  // Register
   const register = async (
     email: string,
     password: string,
     role: UserRole,
-    additionalData: any = {}
+    additionalData: Record<string, unknown> = {}
   ): Promise<UserData> => {
     try {
       setLoading(true);
       setError(null);
 
-      // طباعة البيانات المرسلة للتسجيل
-      console.log('registerUser CALLED', { email, password, role, additionalData });
-
-      // Validate inputs
-      if (!email || !password || !role) {
-        throw new Error('Email, password, and role are required');
-      }
+      if (!email || !password || !role) throw new Error('Email, password, and role are required');
+      if (password.length < 8) throw new Error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
+      if (password.length > 128) throw new Error('Password is too long. Maximum 128 characters allowed');
 
       const isNumbersOnly = /^\d+$/.test(password);
-      // Validate password strength - 8 characters minimum
-      if (password.length < 8) {
-        throw new Error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
-      }
-
-      // Additional password validation
-      if (password.length > 128) {
-        throw new Error('Password is too long. Maximum 128 characters allowed');
-      }
-
-      // Check for weak number patterns
-      const weakPatterns = [
-        /^(\d)\1+$/, // نفس الرقم متكرر
-        /^(0123456789|9876543210)/, // أرقام متسلسلة
-        /^12345678$/, /^87654321$/,
-        /^123456/, /^654321/,
-        /^111111/, /^000000/, /^666666/, /^888888/
-      ];
-
-      if (isNumbersOnly && weakPatterns.some(pattern => pattern.test(password))) {
+      const weakPatterns = [/^(\d)\1+$/, /^(0123456789|9876543210)/, /^12345678$/, /^87654321$/, /^123456/, /^654321/, /^111111/, /^000000/, /^666666/, /^888888/];
+      if (isNumbersOnly && weakPatterns.some(p => p.test(password))) {
         throw new Error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
       }
+      if (email.length > 254) throw new Error('Email is too long');
 
-      // Email validation disabled temporarily
-      // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      // if (!emailRegex.test(email)) {
-      //   throw new Error('Invalid email format');
-      // }
-
-      // Check email length
-      if (email.length > 254) {
-        throw new Error('Email is too long');
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+      if (authError) {
+        if (authError.message?.includes('already registered') || authError.message?.includes('email_exists')) {
+          // Try to reactivate deleted account
+          const { data: existing } = await supabase.from('users').select('*').eq('email', email).limit(1);
+          if (existing?.length) {
+            const ex = existing[0] as Record<string, unknown>;
+            if (ex.isDeleted === true || ex.isActive === false) {
+              const now = new Date().toISOString();
+              const reactivatedData = { ...ex, ...additionalData, isDeleted: false, isActive: true, accountType: role, updated_at: now, updatedAt: now };
+              await supabase.from('users').update(reactivatedData).eq('id', String(ex.id));
+              if (role !== 'admin') await supabase.from(role + 's').upsert({ id: ex.id, ...(sanitizeForDB(reactivatedData) as any) });
+              const ud = reactivatedData as unknown as UserData;
+              setUserData(ud);
+              return ud;
+            }
+          }
+          throw new Error('هذا البريد الإلكتروني مسجل بالفعل. يرجى محاولة تسجيل الدخول بدلاً من ذلك.');
+        }
+        throw authError;
       }
 
-      console.log('🔐 Starting user registration...', {
-        email,
-        role,
-        hasAdditionalData: Object.keys(additionalData).length > 0
-      });
+      const authUser = authData.user!;
+      const now = new Date().toISOString();
 
-      console.log('📧 Firebase registration details:', {
-        email,
-        passwordLength: password.length,
-        role,
-        additionalDataKeys: Object.keys(additionalData)
-      });
-
-      // Create user in Firebase Auth
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-
-      console.log('✅ Firebase Auth user created:', user.uid);
-
-      // Prepare user data - IMPORTANT: additionalData comes FIRST so our dates override any passed dates
       const userData: UserData = {
-        ...additionalData, // ⚠️ MUST come first so our dates below override any incorrect dates
-        uid: user.uid,
-        email: user.email || email,
+        ...additionalData,
+        uid: authUser.id,
+        email: authUser.email || email,
         accountType: role,
-        full_name: additionalData.full_name || additionalData.name || '',
-        phone: additionalData.phone || '',
-        profile_image: additionalData.profile_image || additionalData.profileImage || '',
+        full_name: String(additionalData.full_name || additionalData.name || ''),
+        phone: String(additionalData.phone || ''),
+        profile_image: String(additionalData.profile_image || additionalData.profileImage || ''),
         isNewUser: true,
         isActive: true,
-        // 🔧 FIX: استخدام serverTimestamp() بدلاً من new Date() لضمان الحفظ الصحيح
-        created_at: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        // Store additional phone-related data
-        country: additionalData.country || '',
-        countryCode: additionalData.countryCode || '',
-        currency: additionalData.currency || '',
-        currencySymbol: additionalData.currencySymbol || '',
-        // Store the Firebase email used for authentication
+        created_at: now,
+        createdAt: now,
+        updated_at: now,
+        updatedAt: now,
         firebaseEmail: email,
-        // Store original phone if different from normalized
-        originalPhone: additionalData.originalPhone || additionalData.phone || '',
-
-        // تعيين آخر تسجيل دخول عند التسجيل
-        lastLogin: serverTimestamp(),
-        last_login: serverTimestamp(),
+        originalPhone: String(additionalData.originalPhone || additionalData.phone || ''),
+        lastLogin: now,
+        last_login: now,
         lastLoginIP: 'registration',
-      };
+      } as UserData;
 
-      console.log('📝 Saving user data to Firestore...', {
-        uid: userData.uid,
-        email: userData.email,
-        accountType: userData.accountType
-      });
-
-      // Save to main users collection
-      const userRef = doc(db, 'users', user.uid);
-      // 🔧 FIX: إضافة التاريخ مباشرة في setDoc بعد sanitize لضمان عدم فقدان serverTimestamp
-      await setDoc(userRef, {
-        ...sanitizeForFirestore(userData),
-        created_at: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        last_login: serverTimestamp()
-      });
-
-      console.log('✅ User data saved to main collection');
-
-      // Also save to role-specific collection
+      await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
       if (role !== 'admin') {
-        const roleRef = doc(db, role + 's', user.uid);
-        await setDoc(roleRef, sanitizeForFirestore({
-          ...userData,
-          created_at: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-          last_login: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }));
-        console.log(`✅ User data saved to ${role}s collection`);
+        await supabase.from(role + 's').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
       }
 
-      setUser(user);
+      setUser(authUser);
       setUserData(userData);
-
-      console.log('🎉 Registration completed successfully');
       return userData;
-    } catch (error: any) {
-      console.error('❌ Registration error:', error.message || error);
-      if (error && error.code) console.error('Firebase code:', error.code);
-
-      let errorMessage = 'Registration failed';
-
-      // Handle specific Firebase Auth errors
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          // محاولة إعادة تفعيل الحساب إذا كان محذوفاً
-          try {
-            console.log('🔍 Checking if account is deleted...');
-            const reactivationResult = await reactivateDeletedAccount(email, password, role, additionalData);
-            if (reactivationResult) {
-              console.log('✅ Account reactivated successfully');
-              return reactivationResult;
-            }
-          } catch (reactivationError) {
-            console.error('❌ Reactivation failed:', reactivationError);
-          }
-
-          errorMessage = 'هذا البريد الإلكتروني مسجل بالفعل. يرجى محاولة تسجيل الدخول بدلاً من ذلك. إذا نسيت كلمة المرور، استخدم خيار \"هل نسيت كلمة المرور؟\". إذا كنت قد سجلت مسبقاً باستخدام Google، يرجى استخدامه للدخول.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password is too weak. Please use at least 8 characters';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address format';
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'Email/password accounts are not enabled. Please contact support';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your internet connection';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later';
-          break;
-        default:
-          if (error.message) {
-            errorMessage = error.message;
-          }
-          break;
-      }
-
-      // If user was created in Auth but Firestore failed, we should handle cleanup
-      // لا نقوم بتعيين error في الحالة العامة، بل نرمي الخطأ فقط
-      // if (error.message && error.message.includes('database')) {
-      //   setError('Failed to create user profile. Please contact support.');
-      // } else {
-      //   setError(errorMessage);
-      // }
-
-      throw new Error(errorMessage);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Registration error:', err.message || err);
+      throw new Error(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // Logout function
+  // Logout
   const logout = async (): Promise<void> => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       setUser(null);
       setUserData(null);
       setError(null);
       router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
-      // لا نقوم بتعيين error في الحالة العامة للـ logout
-      // setError('Error during logout');
     }
   };
 
-  // Update user data function
+  // Update user data
   const updateUserData = async (updates: Partial<UserData>): Promise<void> => {
     if (!user) return;
-
     try {
-      console.log('📝 Updating user data:', updates);
-
-      // تحديث البيانات في المجموعة الصحيحة بناءً على نوع الحساب
       const accountType = userData?.accountType || 'player';
-      const collectionName = accountType === 'admin' ? 'users' : `${accountType}s`;
-
-      const docRef = doc(db, collectionName, user.uid);
-      const sanitized = sanitizeForFirestore({
-        ...updates,
-        updated_at: serverTimestamp()
-      });
-      // Avoid empty update payloads
+      const tableName = accountType === 'admin' ? 'users' : `${accountType}s`;
+      const sanitized = sanitizeForDB({ ...updates, updated_at: new Date().toISOString() }) as Record<string, unknown>;
       if (sanitized && Object.keys(sanitized).length > 0) {
-        await updateDoc(docRef, sanitized);
-      } else {
-        console.warn('Skipped updateDoc: no valid fields to update after sanitization');
+        await supabase.from(tableName).update(sanitized).eq('id', user.id);
+        // Also update users table
+        if (tableName !== 'users') {
+          await supabase.from('users').update(sanitized).eq('id', user.id);
+        }
       }
-
-      // تحديث البيانات المحلية
-      if (userData) {
-        const updatedUserData = { ...userData, ...updates };
-        setUserData(updatedUserData);
-      }
-
-      console.log('✅ User data updated successfully');
+      if (userData) setUserData({ ...userData, ...updates });
     } catch (error) {
       console.error('Error updating user data:', error);
       setError('Failed to update user data');
     }
   };
 
-  // Password reset function
+  // Reset password
   const resetPassword = async (email: string): Promise<void> => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      console.error('Password reset error:', error);
-      throw error;
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password`,
+    });
+    if (error) throw error;
   };
 
-  // Change password function
-  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-    if (!user || !user.email) throw new Error('User not authenticated');
-
-    try {
-      // Re-authenticate user
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-
-      // Update password
-      await updatePassword(user, newPassword);
-    } catch (error) {
-      console.error('Change password error:', error);
-      throw error;
-    }
+  // Change password
+  const changePassword = async (_currentPassword: string, newPassword: string): Promise<void> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   };
 
-  // Refresh user data function
+  // Refresh user data
   const refreshUserData = async (): Promise<void> => {
     if (!user) return;
-
     try {
-      console.log('🔄 Refreshing user data...');
+      const result = await fetchUserData(user.id, user.email || '', (user.user_metadata?.db_id || user.user_metadata?.firebase_uid) as string | undefined);
+      if (!result) { setUserData(null); return; }
 
-      // 1. أولاً: التحقق من مجموعة users الرئيسية
-      // هذه الخطوة مهمة جداً لأنها المصدر الأساسي للحقيقة الآن
-      const mainUserRef = doc(db, 'users', user.uid);
-      const mainUserSnap = await getDoc(mainUserRef);
+      const { data: foundData, collection: foundCollection, accountType: userAccountType } = result;
 
-      if (mainUserSnap.exists()) {
-        const mainData = mainUserSnap.data();
-
-        // إذا كان المستخدم معرفاً كـ admin في users، نعتمد هذا فوراً
-        // أيضاً إذا كان البريد الإلكتروني هو البريد الرسمي للإدارة
-        if (mainData.accountType === 'admin' || user.email === 'admin@el7lm.com') {
-          console.log('✅ Refresh - Found ADMIN data in users collection');
-
-          const adminData: UserData = {
-            uid: user.uid,
-            email: user.email || mainData.email || '',
-            accountType: 'admin',
-            full_name: mainData.full_name || mainData.name || 'System Administrator',
-            phone: mainData.phone || '',
-            profile_image: mainData.profile_image || mainData.avatar || '',
-            country: mainData.country || '',
-            isNewUser: false,
-            created_at: mainData.created_at || mainData.createdAt || new Date(),
-            updated_at: new Date(),
-            ...mainData
-          };
-
-          setUserData(adminData);
-          return; // 🛑 توقف هنا ولا تكمل البحث في باقي المجموعات
-        }
+      let legacyData: Record<string, unknown> = {};
+      if (foundCollection !== 'users') {
+        const { data: usersRows } = await supabase.from('users').select('*').eq('id', user.id).limit(1);
+        if (usersRows?.length) legacyData = usersRows[0] as Record<string, unknown>;
       }
 
-      // البحث في المجموعات الخاصة بالأدوار أولاً (للمستخدمين غير الأدمن أو البيانات القديمة)
-      const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players'];
-      let foundData = null;
-      let userAccountType: UserRole = 'player';
-      let foundCollection = null;
-
-      // استخدام Promise.all للبحث المتوازي
-      const queries = accountTypes.map(collection =>
-        getDoc(doc(db, collection, user.uid))
-      );
-
-      const results = await Promise.all(queries);
-
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].exists()) {
-          foundData = results[i].data();
-          foundCollection = accountTypes[i];
-          // معالجة خاصة لـ admins collection
-          if (accountTypes[i] === 'admins') {
-            userAccountType = 'admin';
-          } else {
-            userAccountType = accountTypes[i].slice(0, -1) as UserRole;
-          }
-          console.log(`✅ Refresh - Found user data in ${accountTypes[i]} collection:`, foundData);
-          break;
-        }
-      }
-
-      // إذا لم نجد بيانات في المجموعات السابقة، ابحث في employees collection
-      let employeesSnapshot: any = null;
-      if (!foundData) {
+      let permissions: string[] = [];
+      if (foundCollection === 'employees' && foundData.roleId) {
+        // Sync employee to users
         try {
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          employeesSnapshot = await getDocs(employeesQuery);
-
-          if (!employeesSnapshot.empty) {
-            const employeeDoc = employeesSnapshot.docs[0];
-            foundData = employeeDoc.data();
-            foundCollection = 'employees';
-            userAccountType = 'admin'; // الموظفون يستخدمون dashboard المدير
-            console.log(`✅ Refresh - Found employee data in employees collection:`, foundData);
-          }
-        } catch (employeeError) {
-          console.warn('Error searching employees collection in refresh:', employeeError);
-        }
+          await supabase.from('users').upsert({ id: user.id, ...foundData, employeeId: foundData.id, employeeRole: foundData.roleId, updated_at: new Date().toISOString() });
+        } catch (e) { /* ignore */ }
+        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
       }
 
-      // إذا لم نجد شيئاً في المجموعات الفرعية، نعود لاستخدام بيانات users الرئيسية إذا وجدت
-      if (!foundData && mainUserSnap.exists()) {
-        foundData = mainUserSnap.data();
-        userAccountType = (foundData?.accountType as UserRole) || 'player';
-        console.log('✅ Refresh - Fallback to users collection data:', foundData);
-      }
+      const newUserData: UserData = {
+        uid: user.id,
+        email: user.email || String(foundData.email || legacyData.email || ''),
+        accountType: userAccountType,
+        full_name: String(foundData.full_name || foundData.name || legacyData.full_name || ''),
+        phone: String(foundData.phone || legacyData.phone || ''),
+        profile_image: String(foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || legacyData.profile_image || ''),
+        country: String(foundData.country || legacyData.country || ''),
+        isNewUser: false,
+        created_at: foundData.created_at || foundData.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...legacyData,
+        ...foundData,
+        permissions,
+        isEmployee: foundCollection === 'employees',
+      };
 
-      // إذا وجدنا بيانات، استخدمها
-      if (foundData) {
-        console.log('🔍 Found data details:', {
-          userAccountType,
-          academy_name: foundData.academy_name,
-          name: foundData.name,
-          full_name: foundData.full_name,
-          allFields: Object.keys(foundData)
-        });
-
-        const userData: UserData = {
-          uid: user.uid,
-          email: user.email || foundData.email || '',
-          accountType: userAccountType,
-          full_name: foundData.full_name || foundData.name || '',
-          phone: foundData.phone || '',
-          profile_image: foundData.profile_image || foundData.profileImage || foundData.profile_image_url || foundData.avatar || '',
-          country: foundData.country || '',
-          isNewUser: false,
-          created_at: foundData.created_at || foundData.createdAt || new Date(),
-          updated_at: new Date(),
-          // إضافة الحقول المختصة بكل نوع حساب
-          academy_name: foundData.academy_name,
-          club_name: foundData.club_name,
-          agent_name: foundData.agent_name,
-          trainer_name: foundData.trainer_name,
-          ...foundData
-        };
-
-        // إذا كان موظفاً، أنشئ document في users collection
-        if (foundCollection === 'employees' && employeesSnapshot && !employeesSnapshot.empty) {
-          const userRef = doc(db, 'users', user.uid);
-          try {
-            await setDoc(userRef, {
-              ...userData,
-              employeeId: employeesSnapshot.docs[0].id,
-              employeeRole: foundData.role,
-              role: foundData.role,
-              updated_at: new Date()
-            }, { merge: true });
-          } catch (syncError) {
-            console.warn('Error syncing employee data to users collection in refresh:', syncError);
-          }
-        }
-
-        console.log('🔍 Final userData created:', {
-          accountType: userData.accountType,
-          academy_name: userData.academy_name,
-          full_name: userData.full_name,
-          name: userData.name
-        });
-
-        setUserData(userData);
-      } else {
-        console.log('❌ Refresh - No user data found in any collection');
-        setUserData(null);
-      }
+      setUserData(newUserData);
     } catch (error) {
       console.error('Error refreshing user data:', error);
     }
   };
 
-
-
-  // Clear error function
   const clearError = () => setError(null);
 
-  // Context value
   const value: AuthContextType = {
-    user,
-    userData,
-    loading,
-    error,
-    login,
-    signInWithGoogle,
-    register,
-    logout,
-    signOut: logout, // Map logout to signOut for consistency
-    updateUserData,
-    resetPassword,
-    changePassword,
-    clearError,
-    refreshUserData,
-    setupRecaptcha,
-    sendPhoneOTP,
-    verifyPhoneOTP
+    user, userData, loading, error,
+    login, signInWithGoogle, register,
+    logout, signOut: logout,
+    updateUserData, resetPassword, changePassword,
+    clearError, refreshUserData,
+    setupRecaptcha, sendPhoneOTP, verifyPhoneOTP,
   };
 
   return (
     <AuthContext.Provider value={value}>
       {loading && hasInitialized && user ? (
-        <SimpleLoader
-          size="medium"
-          color="blue"
-        />
+        <SimpleLoader size="medium" color="blue" />
       ) : (
         children
       )}
     </AuthContext.Provider>
   );
 }
-
-

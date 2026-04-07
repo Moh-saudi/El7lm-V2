@@ -82,6 +82,15 @@ export const MAIN_GROUP: MenuGroup = {
             bgColor: 'bg-green-50',
             permission: { action: 'read', resource: 'dashboard' }
         },
+        {
+            id: 'public-tournaments',
+            label: 'البطولات',
+            icon: Trophy,
+            href: '/tournaments',
+            color: 'text-yellow-600',
+            bgColor: 'bg-yellow-50',
+            permission: { action: 'read', resource: 'dashboard' }
+        },
     ]
 };
 
@@ -244,15 +253,6 @@ export const FINANCE_GROUP: MenuGroup = {
             bgColor: 'bg-blue-50',
             permission: { action: 'read', resource: 'financials' }
         },
-        {
-            id: 'admin-subscriptions',
-            label: 'الاشتراكات',
-            icon: CreditCard,
-            href: '/dashboard/admin/subscriptions',
-            color: 'text-green-600',
-            bgColor: 'bg-green-50',
-            permission: { action: 'read', resource: 'financials' }
-        },
     ]
 };
 
@@ -296,6 +296,15 @@ export const OPERATIONS_GROUP: MenuGroup = {
             href: '/dashboard/admin/careers',
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
+            permission: { action: 'manage', resource: 'content' }
+        },
+        {
+            id: 'admin-opportunities',
+            label: 'إدارة الفرص',
+            icon: Target,
+            href: '/dashboard/admin/opportunities',
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
             permission: { action: 'manage', resource: 'content' }
         },
     ]
@@ -353,13 +362,13 @@ export const CONTENT_GROUP: MenuGroup = {
             permission: { action: 'manage', resource: 'tournaments' }
         },
         {
-            id: 'admin-video-logs',
-            label: 'سجلات الفيديو',
-            icon: Video,
-            href: '/dashboard/admin/video-logs',
-            color: 'text-red-600',
-            bgColor: 'bg-red-50',
-            permission: { action: 'read', resource: 'media' }
+            id: 'admin-tournament-clients',
+            label: 'عملاء البطولات',
+            icon: Award,
+            href: '/dashboard/admin/tournament-clients',
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-50',
+            permission: { action: 'manage', resource: 'tournaments' }
         },
     ]
 };

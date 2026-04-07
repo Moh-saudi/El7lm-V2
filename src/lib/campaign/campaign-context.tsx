@@ -1,7 +1,6 @@
 'use client';
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { db } from '@/lib/firebase/config';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { ChatAmanService } from '@/lib/services/chataman-service';
 
 export interface CampaignUser {
@@ -96,10 +95,12 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (campaign.status === 'running') return;
     cancelRef.current = false;
 
-    // Save initial log to Firestore
+    // Save initial log to Supabase
     let logDocId: string | null = null;
     try {
-      const docRef = await addDoc(collection(db, 'campaign_logs'), {
+      logDocId = crypto.randomUUID();
+      const { error } = await supabase.from('campaign_logs').insert({
+        id: logDocId,
         templateName,
         templateBody,
         segment,
@@ -109,13 +110,14 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         failed: 0,
         failedEntries: [],
         status: 'running',
-        startedAt: serverTimestamp(),
+        startedAt: new Date().toISOString(),
         finishedAt: null,
         varMappings,
       });
-      logDocId = docRef.id;
+      if (error) { console.warn('Failed to create campaign log:', error); logDocId = null; }
     } catch (e) {
       console.warn('Failed to create campaign log:', e);
+      logDocId = null;
     }
 
     setCampaign({
@@ -191,16 +193,16 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       failedEntries: [...failedEntries], finishedAt,
     }));
 
-    // Update Firestore log
+    // Update Supabase log
     if (logDocId) {
       try {
-        await updateDoc(doc(db, 'campaign_logs', logDocId), {
+        await supabase.from('campaign_logs').update({
           success: successCount,
           failed: failCount,
           failedEntries,
           status: 'completed',
-          finishedAt: serverTimestamp(),
-        });
+          finishedAt: new Date().toISOString(),
+        }).eq('id', logDocId);
       } catch (e) {
         console.warn('Failed to update campaign log:', e);
       }

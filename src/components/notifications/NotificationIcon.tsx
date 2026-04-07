@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
 
 export default function NotificationIcon() {
@@ -11,16 +10,14 @@ export default function NotificationIcon() {
 
   const fetchUnreadCount = async () => {
     try {
-      const notificationsRef = collection(db, 'admin_notifications');
-      const q = query(
-        notificationsRef,
-        where('isRead', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-      
-      const snapshot = await getDocs(q);
-      setUnreadCount(snapshot.docs.length);
+      const { data } = await supabase
+        .from('admin_notifications')
+        .select('*')
+        .eq('isRead', false)
+        .order('createdAt', { ascending: false })
+        .limit(50);
+
+      setUnreadCount(data?.length ?? 0);
     } catch (error) {
       console.error('خطأ في جلب عدد الإشعارات:', error);
     } finally {
@@ -30,10 +27,10 @@ export default function NotificationIcon() {
 
   useEffect(() => {
     fetchUnreadCount();
-    
+
     // تحديث العدد كل 30 ثانية
     const interval = setInterval(fetchUnreadCount, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -49,8 +46,8 @@ export default function NotificationIcon() {
 
   return (
     <div className="relative">
-      <Link 
-        href="/dashboard/admin/notifications" 
+      <Link
+        href="/dashboard/admin/notifications"
         className="p-2 text-gray-600 hover:text-gray-900 transition-colors relative block"
         title="الإشعارات"
       >

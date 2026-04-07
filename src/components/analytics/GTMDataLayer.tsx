@@ -22,7 +22,7 @@ const GTMDataLayer: React.FC = () => {
     if (typeof window !== 'undefined' && (window as any).dataLayer && user && userData) {
       (window as any).dataLayer.push({
         event: 'user_login',
-        user_id: user.uid,
+        user_id: user.id,
         user_type: userData.accountType || 'unknown',
         user_name: userData.full_name || userData.name || user.email,
         organization: userData.organizationName || null,

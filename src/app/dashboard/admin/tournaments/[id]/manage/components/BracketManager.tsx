@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy } from 'lucide-react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament } from '@/app/dashboard/admin/tournaments/utils';
 
 interface Match {
@@ -31,13 +30,12 @@ export const BracketManager: React.FC<BracketManagerProps> = ({ tournament }) =>
         const fetchMatches = async () => {
             if (!tournament.id) return;
             try {
-                const q = query(
-                    collection(db, `tournaments/${tournament.id}/matches`),
-                    orderBy('date', 'asc')
-                );
-                const snapshot = await getDocs(q);
-                const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-                setMatches(matchesData);
+                const { data } = await supabase
+                    .from('tournament_matches')
+                    .select('*')
+                    .eq('tournamentId', tournament.id)
+                    .order('date', { ascending: true });
+                setMatches((data || []) as Match[]);
             } catch (error) {
                 console.error('Error fetching matches for bracket:', error);
             } finally {

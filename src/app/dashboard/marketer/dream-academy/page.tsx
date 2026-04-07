@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Trophy, Users, Star, Calendar, MapPin, BookOpen, Target, Award } from 'lucide-react';
 
 interface AcademyProgram {
@@ -36,7 +35,7 @@ export default function MarketerDreamAcademyPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       fetchPrograms();
     }
   }, [user]);
@@ -44,20 +43,16 @@ export default function MarketerDreamAcademyPage() {
   const fetchPrograms = async () => {
     try {
       setLoading(true);
-      
-      // جلب برامج أكاديمية الحلم
-      const programsQuery = query(
-        collection(db, 'dreamAcademyPrograms'),
-        orderBy('startDate', 'desc')
-      );
-      
-      const programsSnapshot = await getDocs(programsQuery);
-      const programsData = programsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AcademyProgram[];
 
-      setPrograms(programsData);
+      // جلب برامج أكاديمية الحلم
+      const { data, error } = await supabase
+        .from('dreamAcademyPrograms')
+        .select('*')
+        .order('startDate', { ascending: false });
+
+      if (error) throw error;
+
+      setPrograms((data || []) as AcademyProgram[]);
     } catch (error) {
       console.error('Error fetching programs:', error);
     } finally {
@@ -73,7 +68,7 @@ export default function MarketerDreamAcademyPage() {
 
   const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
-    const dateObj = date.toDate ? date.toDate() : new Date(date);
+    const dateObj = new Date(date);
     return dateObj.toLocaleDateString('ar-SA', {
       year: 'numeric',
       month: 'long',

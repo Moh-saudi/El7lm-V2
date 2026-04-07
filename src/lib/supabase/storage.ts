@@ -1,5 +1,5 @@
-import { supabase } from './config';
-import { STORAGE_BUCKETS } from './config';
+// Storage wrapper - يستخدم Cloudflare R2 عبر storageManager الموحد
+import { storageManager } from '@/lib/storage';
 
 export async function uploadFile(
   bucket: string,
@@ -7,34 +7,23 @@ export async function uploadFile(
   file: File,
   options?: { cacheControl?: string; upsert?: boolean }
 ) {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(path, file, options);
-
-  if (error) throw error;
-  return data;
+  const result = await storageManager.upload(bucket, path, file, {
+    upsert: options?.upsert,
+    cacheControl: options?.cacheControl,
+    contentType: file.type,
+  });
+  return { path: result.path };
 }
 
 export async function getPublicUrl(bucket: string, path: string) {
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(path);
-  return data;
+  const publicUrl = await storageManager.getPublicUrl(bucket, path);
+  return { publicUrl };
 }
 
 export async function deleteFile(bucket: string, path: string) {
-  const { error } = await supabase.storage
-    .from(bucket)
-    .remove([path]);
-
-  if (error) throw error;
+  await storageManager.delete(bucket, path);
 }
 
 export async function listFiles(bucket: string, path: string) {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .list(path);
-
-  if (error) throw error;
-  return data;
-} 
+  return storageManager.list(bucket, path);
+}

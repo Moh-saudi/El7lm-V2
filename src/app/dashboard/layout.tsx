@@ -92,7 +92,7 @@ export default function DashboardLayout({
       <PushNotificationSetup />
       <ProfessionalAdPopup location={accountType as any} />
       {user && accountType !== 'admin' && (
-        <ProfileCompletionReminder uid={user.uid} accountType={accountType} />
+        <ProfileCompletionReminder uid={user.id} accountType={accountType} />
       )}
       <CampaignProgressFloat />
     </CampaignProvider>

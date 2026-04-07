@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { Phone, Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COUNTRIES_FROM_REGISTER, Country } from '@/data/countries-from-register';
@@ -83,25 +81,19 @@ export default function PhoneBasedPasswordReset({
                 return;
             }
 
-            // البحث في جميع المجموعات الممكنة
-            const collections = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
+            // البحث في جميع الجداول الممكنة
+            const tables = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
             let foundEmail = '';
             let found = false;
 
-            for (const collectionName of collections) {
-                const q = query(
-                    collection(db, collectionName),
-                    where('phone', '==', cleanPhone)
-                );
+            for (const tableName of tables) {
+                const { data } = await supabase.from(tableName).select('*').eq('phone', cleanPhone);
 
-                const querySnapshot = await getDocs(q);
+                if (data && data.length > 0) {
+                    const userData = data[0];
 
-                if (!querySnapshot.empty) {
-                    const userDoc = querySnapshot.docs[0];
-                    const userData = userDoc.data();
-
-                    setUserId(userDoc.id);
-                    setUserCollection(collectionName);
+                    setUserId(userData.id);
+                    setUserCollection(tableName);
                     foundEmail = userData.email || '';
                     setUserEmail(foundEmail);
 
@@ -196,18 +188,15 @@ export default function PhoneBasedPasswordReset({
             console.error('Password reset error:', err);
 
             let errorMessage = '';
-            switch (err.code) {
-                case 'auth/user-not-found':
-                    errorMessage = 'البريد الإلكتروني غير مسجل في نظام المصادقة';
-                    break;
-                case 'auth/invalid-email':
-                    errorMessage = 'البريد الإلكتروني غير صحيح';
-                    break;
-                case 'auth/too-many-requests':
-                    errorMessage = 'تم إرسال طلبات كثيرة، يرجى المحاولة لاحقاً';
-                    break;
-                default:
-                    errorMessage = err.message || 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
+            const msg: string = err.message || '';
+            if (msg.includes('User not found') || msg.includes('user_not_found')) {
+                errorMessage = 'البريد الإلكتروني غير مسجل في نظام المصادقة';
+            } else if (msg.includes('invalid') || msg.includes('Invalid')) {
+                errorMessage = 'البريد الإلكتروني غير صحيح';
+            } else if (msg.includes('too many') || msg.includes('rate limit')) {
+                errorMessage = 'تم إرسال طلبات كثيرة، يرجى المحاولة لاحقاً';
+            } else {
+                errorMessage = msg || 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
             }
 
             setError(errorMessage);

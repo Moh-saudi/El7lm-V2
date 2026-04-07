@@ -42,7 +42,7 @@ export default function MarketerReferralsPage() {
     const [showQR, setShowQR] = useState(false);
 
     useEffect(() => {
-        if (user?.uid) {
+        if (user?.id) {
             loadData();
         }
     }, [user]);
@@ -52,7 +52,7 @@ export default function MarketerReferralsPage() {
             setLoading(true);
 
             // Using the same referral service as it maps to userId
-            const stats = await referralService.createOrUpdatePlayerRewards(user!.uid);
+            const stats = await referralService.createOrUpdatePlayerRewards(user!.id);
             setRewards(stats);
 
             if (!referralCode) {
@@ -65,7 +65,7 @@ export default function MarketerReferralsPage() {
                 setReferralCode(code);
                 // Note: In a real app we should fetch the existing code first. 
                 // For now adhering to the pattern in PlayerReferralsPage 
-                await referralService.createReferral(user!.uid, code);
+                await referralService.createReferral(user!.id, code);
             }
 
         } catch (error) {
@@ -88,17 +88,17 @@ export default function MarketerReferralsPage() {
     };
 
     const shareViaWhatsApp = () => {
-        const messages = referralService.createShareMessages(referralCode, user?.displayName || 'مسوق');
+        const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'مسوق');
         window.open(messages.whatsapp, '_blank');
     };
 
     const shareViaSMS = () => {
-        const messages = referralService.createShareMessages(referralCode, user?.displayName || 'مسوق');
+        const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'مسوق');
         window.open(messages.sms, '_blank');
     };
 
     const shareViaEmail = () => {
-        const messages = referralService.createShareMessages(referralCode, user?.displayName || 'مسوق');
+        const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'مسوق');
         window.open(messages.email, '_blank');
     };
 

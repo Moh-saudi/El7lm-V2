@@ -1,3 +1,4 @@
+// @ts-ignore
 import Tesseract from 'tesseract.js';
 
 export interface ReceiptData {

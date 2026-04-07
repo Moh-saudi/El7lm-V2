@@ -2,22 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot,
-  orderBy,
-  limit,
-  doc,
-  updateDoc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Bell, 
+import {
+  Bell,
   Eye,
   Search,
   Users,
@@ -113,43 +103,60 @@ const SmartNotifications: React.FC = () => {
   useEffect(() => {
     if (!user || !userData) return;
 
-    // استخدام استعلام بسيط لتجنب مشكلة الـ Index
-    const notificationsQuery = query(
-      collection(db, 'smart_notifications'),
-      where('userId', '==', user.uid),
-      limit(20)
-    );
+    // جلب أولي
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('smart_notifications')
+        .select('*')
+        .eq('userId', user.id)
+        .limit(20);
 
-    const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
-      const notificationsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SmartNotification[];
-      
+      if (error) {
+        console.error('خطأ في جلب الإشعارات:', error);
+        setLoading(false);
+        return;
+      }
+
+      const notificationsData = (data ?? []) as SmartNotification[];
+
       // ترتيب البيانات محلياً بدلاً من ترتيبها في الاستعلام
       const sortedNotifications = notificationsData.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-      
+
       setNotifications(sortedNotifications);
       setUnreadCount(sortedNotifications.filter(n => !n.isRead).length);
       setLoading(false);
-    }, (error) => {
-      console.error('خطأ في جلب الإشعارات:', error);
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchNotifications();
+
+    // Supabase realtime subscription
+    const channel = supabase.channel('smart_notifications_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'smart_notifications',
+        filter: `userId=eq.${user.id}`
+      }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, userData]);
 
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      await updateDoc(doc(db, 'smart_notifications', notificationId), {
-        isRead: true
-      });
+      await supabase
+        .from('smart_notifications')
+        .update({ isRead: true })
+        .eq('id', notificationId);
       toast.success('تم تحديد الإشعار كمقروء');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
@@ -162,11 +169,12 @@ const SmartNotifications: React.FC = () => {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
       const updatePromises = unreadNotifications.map(notification =>
-        updateDoc(doc(db, 'smart_notifications', notification.id), {
-          isRead: true
-        })
+        supabase
+          .from('smart_notifications')
+          .update({ isRead: true })
+          .eq('id', notification.id)
       );
-      
+
       await Promise.all(updatePromises);
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (error) {
@@ -177,7 +185,7 @@ const SmartNotifications: React.FC = () => {
 
   const formatNotificationTime = (timestamp: any) => {
     try {
-      const date = timestamp?.toDate?.() || new Date(timestamp);
+      const date = new Date(timestamp);
       return formatDistanceToNow(date, { addSuffix: true, locale: ar });
     } catch {
       return 'الآن';
@@ -210,7 +218,7 @@ const SmartNotifications: React.FC = () => {
             )}
           </Button>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
           <DropdownMenuLabel className="flex items-center justify-between bg-gradient-to-r from-green-50 to-blue-50">
             <span className="font-semibold text-gray-900">الإشعارات الذكية</span>
@@ -225,9 +233,9 @@ const SmartNotifications: React.FC = () => {
               </Button>
             )}
           </DropdownMenuLabel>
-          
+
           <DropdownMenuSeparator />
-          
+
           {loading ? (
             <div className="text-center py-8 text-gray-500">
               <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -255,7 +263,7 @@ const SmartNotifications: React.FC = () => {
                           <span className="text-lg">{getNotificationEmoji(notification.emoji)}</span>
                         </div>
                       </div>
-                      
+
                       {/* محتوى الإشعار */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -264,8 +272,8 @@ const SmartNotifications: React.FC = () => {
                           </h4>
                           <div className="flex items-center gap-1">
                             <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
-                              {notification.priority === 'urgent' ? 'مهم' : 
-                               notification.priority === 'high' ? 'عالي' : 
+                              {notification.priority === 'urgent' ? 'مهم' :
+                               notification.priority === 'high' ? 'عالي' :
                                notification.priority === 'medium' ? 'متوسط' : 'منخفض'}
                             </Badge>
                             {!notification.isRead && (
@@ -273,11 +281,11 @@ const SmartNotifications: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        
+
                         <p className={`text-xs ${!notification.isRead ? 'text-blue-700' : 'text-gray-600'} mb-2`}>
                           {notification.message}
                         </p>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-xs text-gray-500">
                             <span>{notification.viewerName}</span>
@@ -288,12 +296,12 @@ const SmartNotifications: React.FC = () => {
                               </>
                             )}
                           </div>
-                          
+
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-400">
                               {formatNotificationTime(notification.createdAt)}
                             </span>
-                            
+
                             {!notification.isRead && (
                               <Button
                                 variant="ghost"
@@ -316,7 +324,7 @@ const SmartNotifications: React.FC = () => {
               </DropdownMenuItem>
             ))
           )}
-          
+
           {notifications.length > 0 && (
             <>
               <DropdownMenuSeparator />
@@ -336,4 +344,4 @@ const SmartNotifications: React.FC = () => {
   );
 };
 
-export default SmartNotifications; 
+export default SmartNotifications;

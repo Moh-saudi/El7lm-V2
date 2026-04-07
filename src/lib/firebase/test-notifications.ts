@@ -1,25 +1,24 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from './config';
+import { supabase } from '@/lib/supabase/config';
 
 // إنشاء إشعار تجريبي
 export async function createTestNotification(userId: string) {
   try {
-    const notificationsRef = collection(db, 'notifications');
-    
-    const testNotification = {
-      userId: userId,
+    const now = new Date().toISOString();
+    const { data, error } = await supabase.from('notifications').insert({
+      id: crypto.randomUUID(),
+      userId,
       title: 'إشعار تجريبي',
       message: 'هذا إشعار تجريبي لاختبار نظام الإشعارات',
       type: 'info',
       isRead: false,
       scope: 'system',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    
-    const docRef = await addDoc(notificationsRef, testNotification);
-    console.log('تم إنشاء إشعار تجريبي:', docRef.id);
-    return docRef.id;
+      createdAt: now,
+      updatedAt: now
+    }).select('id').single();
+
+    if (error) throw error;
+    console.log('تم إنشاء إشعار تجريبي:', data.id);
+    return data.id;
   } catch (error) {
     console.error('خطأ في إنشاء الإشعار التجريبي:', error);
     throw error;
@@ -29,10 +28,9 @@ export async function createTestNotification(userId: string) {
 // إنشاء إشعار تفاعلي تجريبي
 export async function createTestInteractionNotification(userId: string) {
   try {
-    const interactionNotificationsRef = collection(db, 'interaction_notifications');
-    
-    const testNotification = {
-      userId: userId,
+    const { data, error } = await supabase.from('interaction_notifications').insert({
+      id: crypto.randomUUID(),
+      userId,
       viewerId: 'test-viewer',
       viewerName: 'مستخدم تجريبي',
       viewerType: 'player',
@@ -43,12 +41,12 @@ export async function createTestInteractionNotification(userId: string) {
       emoji: '👀',
       isRead: false,
       priority: 'medium',
-      createdAt: serverTimestamp()
-    };
-    
-    const docRef = await addDoc(interactionNotificationsRef, testNotification);
-    console.log('تم إنشاء إشعار تفاعلي تجريبي:', docRef.id);
-    return docRef.id;
+      createdAt: new Date().toISOString()
+    }).select('id').single();
+
+    if (error) throw error;
+    console.log('تم إنشاء إشعار تفاعلي تجريبي:', data.id);
+    return data.id;
   } catch (error) {
     console.error('خطأ في إنشاء الإشعار التفاعلي التجريبي:', error);
     throw error;
@@ -58,10 +56,10 @@ export async function createTestInteractionNotification(userId: string) {
 // إنشاء إشعار دفع تجريبي
 export async function createTestPaymentNotification(userId: string) {
   try {
-    const notificationsRef = collection(db, 'notifications');
-    
-    const testNotification = {
-      userId: userId,
+    const now = new Date().toISOString();
+    const { data, error } = await supabase.from('notifications').insert({
+      id: crypto.randomUUID(),
+      userId,
       title: 'تم استلام دفعة جديدة',
       message: 'تم استلام دفعة بقيمة 500 جنيه مصري',
       type: 'success',
@@ -74,13 +72,13 @@ export async function createTestPaymentNotification(userId: string) {
         paymentMethod: 'بطاقة ائتمان'
       },
       scope: 'system',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    
-    const docRef = await addDoc(notificationsRef, testNotification);
-    console.log('تم إنشاء إشعار دفع تجريبي:', docRef.id);
-    return docRef.id;
+      createdAt: now,
+      updatedAt: now
+    }).select('id').single();
+
+    if (error) throw error;
+    console.log('تم إنشاء إشعار دفع تجريبي:', data.id);
+    return data.id;
   } catch (error) {
     console.error('خطأ في إنشاء إشعار الدفع التجريبي:', error);
     throw error;
@@ -90,10 +88,10 @@ export async function createTestPaymentNotification(userId: string) {
 // إنشاء إشعار تحذير تجريبي
 export async function createTestWarningNotification(userId: string) {
   try {
-    const notificationsRef = collection(db, 'notifications');
-    
-    const testNotification = {
-      userId: userId,
+    const now = new Date().toISOString();
+    const { data, error } = await supabase.from('notifications').insert({
+      id: crypto.randomUUID(),
+      userId,
       title: 'اشتراكك على وشك الانتهاء',
       message: 'سينتهي اشتراكك خلال 3 أيام. يرجى تجديد الاشتراك',
       type: 'warning',
@@ -103,16 +101,15 @@ export async function createTestWarningNotification(userId: string) {
         daysRemaining: 3
       },
       scope: 'system',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    
-    const docRef = await addDoc(notificationsRef, testNotification);
-    console.log('تم إنشاء إشعار تحذير تجريبي:', docRef.id);
-    return docRef.id;
+      createdAt: now,
+      updatedAt: now
+    }).select('id').single();
+
+    if (error) throw error;
+    console.log('تم إنشاء إشعار تحذير تجريبي:', data.id);
+    return data.id;
   } catch (error) {
     console.error('خطأ في إنشاء إشعار التحذير التجريبي:', error);
     throw error;
   }
 }
-

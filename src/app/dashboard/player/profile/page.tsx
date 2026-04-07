@@ -44,7 +44,7 @@ export default function PlayerProfilePage() {
   const [activeTab, setActiveTab] = useState("personal");
   const [showCompletionBanner, setShowCompletionBanner] = useState(false);
 
-  const BANNER_SNOOZE_KEY = `player_profile_banner_snoozed_${user?.uid}`;
+  const BANNER_SNOOZE_KEY = `player_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
   const formValues = form.watch();
 

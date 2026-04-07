@@ -10,8 +10,7 @@ import { Search, Phone, AlertCircle, CheckCircle2, XCircle, Shield, Trash2, Rota
 import { Badge } from '@/components/ui/badge';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 
 export default function CheckPhonePage() {
@@ -35,11 +34,11 @@ export default function CheckPhonePage() {
     setLoading(true);
     setResult(null);
     setError(null);
-    
+
     try {
       // تنظيف الرقم من الأحرف غير الرقمية
       const cleanPhone = phone.replace(/\D/g, '');
-      
+
       const response = await fetch('/api/debug/check-account', {
         method: 'POST',
         headers: {
@@ -47,11 +46,11 @@ export default function CheckPhonePage() {
         },
         body: JSON.stringify({ phone: cleanPhone }),
       });
-      
+
       if (!response.ok) {
         throw new Error('فشل في الاتصال بالخادم');
       }
-      
+
       const data = await response.json();
       setResult(data);
     } catch (error: any) {
@@ -84,23 +83,22 @@ export default function CheckPhonePage() {
     setActionLoading(selectedAccount.id);
     try {
       const collectionName = selectedAccount.collection;
-      const accountRef = doc(db, collectionName, selectedAccount.id);
 
       const deletePayload = {
         isDeleted: true,
         isActive: false,
-        deletedAt: new Date(),
-        deletedBy: user.uid
+        deletedAt: new Date().toISOString(),
+        deletedBy: user.id
       };
 
       // Update in source collection
-      await updateDoc(accountRef, deletePayload);
+      await supabase.from(collectionName).update(deletePayload).eq('id', selectedAccount.id);
 
       // Also sync to users collection if exists
       try {
-        const userDoc = await getDoc(doc(db, 'users', selectedAccount.id));
-        if (userDoc.exists()) {
-          await updateDoc(doc(db, 'users', selectedAccount.id), deletePayload);
+        const { data: userRow } = await supabase.from('users').select('id').eq('id', selectedAccount.id).maybeSingle();
+        if (userRow) {
+          await supabase.from('users').update(deletePayload).eq('id', selectedAccount.id);
         }
       } catch (e) {
         // Non-critical if users collection doesn't exist
@@ -134,23 +132,22 @@ export default function CheckPhonePage() {
     setActionLoading(selectedAccount.id);
     try {
       const collectionName = selectedAccount.collection;
-      const accountRef = doc(db, collectionName, selectedAccount.id);
 
       const restorePayload = {
         isDeleted: false,
         isActive: true,
-        restoredAt: new Date(),
-        restoredBy: user.uid
+        restoredAt: new Date().toISOString(),
+        restoredBy: user.id
       };
 
       // Update in source collection
-      await updateDoc(accountRef, restorePayload);
+      await supabase.from(collectionName).update(restorePayload).eq('id', selectedAccount.id);
 
       // Also sync to users collection if exists
       try {
-        const userDoc = await getDoc(doc(db, 'users', selectedAccount.id));
-        if (userDoc.exists()) {
-          await updateDoc(doc(db, 'users', selectedAccount.id), restorePayload);
+        const { data: userRow } = await supabase.from('users').select('id').eq('id', selectedAccount.id).maybeSingle();
+        if (userRow) {
+          await supabase.from('users').update(restorePayload).eq('id', selectedAccount.id);
         }
       } catch (e) {
         // Non-critical if users collection doesn't exist
@@ -344,7 +341,7 @@ export default function CheckPhonePage() {
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                           <div>
                             <span className="text-muted-foreground">البريد الإلكتروني:</span>
@@ -359,7 +356,7 @@ export default function CheckPhonePage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t">
                           <div>
                             <span className="text-muted-foreground block text-xs mb-1">isDeleted</span>
-                            <Badge 
+                            <Badge
                               variant={acc.isDeleted === true ? 'destructive' : acc.isDeleted === undefined ? 'outline' : 'secondary'}
                             >
                               {String(acc.isDeleted)} ({acc.isDeletedType})
@@ -367,7 +364,7 @@ export default function CheckPhonePage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground block text-xs mb-1">isActive</span>
-                            <Badge 
+                            <Badge
                               variant={acc.isActive === false ? 'destructive' : acc.isActive === undefined ? 'outline' : 'default'}
                             >
                               {String(acc.isActive)} ({acc.isActiveType})
@@ -375,7 +372,7 @@ export default function CheckPhonePage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground block text-xs mb-1">حالة الحساب</span>
-                            {(acc.isDeleted === true || acc.isActive === false || 
+                            {(acc.isDeleted === true || acc.isActive === false ||
                               (acc.isDeleted === undefined && acc.isActive === undefined)) ? (
                               <Badge variant="destructive">محذوف/غير نشط</Badge>
                             ) : (
@@ -384,7 +381,7 @@ export default function CheckPhonePage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground block text-xs mb-1">يمكن التسجيل؟</span>
-                            {(acc.isDeleted === true || acc.isActive === false || 
+                            {(acc.isDeleted === true || acc.isActive === false ||
                               (acc.isDeleted === undefined && acc.isActive === undefined)) ? (
                               <Badge variant="default" className="bg-green-600">نعم</Badge>
                             ) : (
@@ -484,4 +481,3 @@ export default function CheckPhonePage() {
     </AccountTypeProtection>
   );
 }
-

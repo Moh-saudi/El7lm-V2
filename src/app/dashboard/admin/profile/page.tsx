@@ -2,17 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Mail, Phone, Camera, Save, X, Edit } from 'lucide-react';
-import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { toast } from 'sonner';
-import { auth } from '@/lib/firebase/config';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { notifyProfileUpdate } from '@/lib/notifications/admin-notifications';
 
 
@@ -42,50 +39,53 @@ export default function AdminProfile() {
     }
   }, [userData, user, isEditing]);
 
-  // جلب البيانات من Firestore
+  // جلب البيانات من Supabase
   useEffect(() => {
     const loadProfileData = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
 
       try {
         setLoading(true);
 
-        // البحث في users collection أولاً
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
+        // البحث في users table أولاً
+        const { data: userDoc } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-        if (userDoc.exists()) {
-          const data = userDoc.data();
+        if (userDoc) {
           setProfileData({
-            name: data.name || data.full_name || data.displayName || '',
-            phone: data.phone || data.phoneNumber || '',
-            email: user.email || data.email || '',
-            avatar: data.avatar || data.profile_image || data.photoURL || ''
+            name: userDoc.name || userDoc.full_name || userDoc.displayName || '',
+            phone: userDoc.phone || userDoc.phoneNumber || '',
+            email: user.email || userDoc.email || '',
+            avatar: userDoc.avatar || userDoc.profile_image || userDoc.photoURL || ''
           });
         } else {
-          // البحث في employees collection
-          // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
-          const employeeDocRef = doc(db, 'employees', user.uid);
-          const employeeDocSnap = await getDoc(employeeDocRef);
+          // البحث في employees table
+          // أولاً: البحث مباشرة بـ UID كـ id
+          const { data: employeeDoc } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-          if (employeeDocSnap.exists()) {
-            const employeeData = employeeDocSnap.data();
+          if (employeeDoc) {
             setProfileData({
-              name: employeeData.name || '',
-              phone: employeeData.phone || '',
-              email: user.email || employeeData.email || '',
-              avatar: employeeData.avatar || ''
+              name: employeeDoc.name || '',
+              phone: employeeDoc.phone || '',
+              email: user.email || employeeDoc.email || '',
+              avatar: employeeDoc.avatar || ''
             });
           } else {
-            // ثانياً: البحث بـ authUserId (الطريقة القديمة)
-            const employeesQuery = query(
-              collection(db, 'employees'),
-              where('authUserId', '==', user.uid)
-            );
-            const employeesSnapshot = await getDocs(employeesQuery);
+            // ثانياً: البحث بـ authUserId
+            const { data: employeeRows } = await supabase
+              .from('employees')
+              .select('*')
+              .eq('authUserId', user.id);
 
-            if (!employeesSnapshot.empty) {
-              const employeeData = employeesSnapshot.docs[0].data();
+            if (employeeRows && employeeRows.length > 0) {
+              const employeeData = employeeRows[0];
               setProfileData({
                 name: employeeData.name || '',
                 phone: employeeData.phone || '',
@@ -93,7 +93,6 @@ export default function AdminProfile() {
                 avatar: employeeData.avatar || ''
               });
             } else {
-              // إذا لم تكن البيانات موجودة في أي مكان، استخدم بيانات المستخدم الأساسية
               setProfileData({
                 name: '',
                 phone: '',
@@ -117,15 +116,13 @@ export default function AdminProfile() {
   // رفع الصورة
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.uid) return;
+    if (!file || !user?.id) return;
 
-    // التحقق من نوع الملف
     if (!file.type.startsWith('image/')) {
       toast.error('يرجى اختيار ملف صورة صالح');
       return;
     }
 
-    // التحقق من حجم الملف (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('حجم الصورة كبير جداً. الحد الأقصى: 5 ميجابايت');
       return;
@@ -137,10 +134,9 @@ export default function AdminProfile() {
 
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop();
-      const bucketName = 'assets'; // Cloudflare R2 bucket name
-      const filePath = `avatars/admin-avatars/${user.uid}/${timestamp}.${fileExt}`;
+      const bucketName = 'assets';
+      const filePath = `avatars/admin-avatars/${user.id}/${timestamp}.${fileExt}`;
 
-      // استخدام نظام التخزين الموحد (يدعم Cloudflare R2 و Supabase)
       const { storageManager } = await import('@/lib/storage');
 
       const result = await storageManager.upload(
@@ -158,7 +154,6 @@ export default function AdminProfile() {
         throw new Error('فشل في الحصول على رابط الصورة');
       }
 
-      // تحديث البيانات المحلية
       setProfileData(prev => ({ ...prev, avatar: result.publicUrl }));
       toast.success('تم رفع الصورة بنجاح');
     } catch (error: any) {
@@ -171,21 +166,20 @@ export default function AdminProfile() {
 
   // حفظ البيانات
   const handleSave = async (e?: React.FormEvent) => {
-    e?.preventDefault(); // منع إعادة تحميل الصفحة إذا كان الزر داخل form
+    e?.preventDefault();
 
     console.log('💾 بدء حفظ البيانات...', {
-      uid: user?.uid,
+      uid: user?.id,
       name: profileData.name,
       phone: profileData.phone,
       avatar: profileData.avatar ? 'موجود' : 'غير موجود'
     });
 
-    if (!user?.uid) {
+    if (!user?.id) {
       toast.error('يجب تسجيل الدخول أولاً');
       return;
     }
 
-    // التحقق من البيانات
     if (!profileData.name.trim()) {
       toast.error('الاسم مطلوب');
       return;
@@ -203,81 +197,75 @@ export default function AdminProfile() {
 
     try {
       setSaving(true);
-      console.log('📤 جاري حفظ البيانات في Firestore...');
-
-      // التحقق من وجود المستخدم في users collection
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
+      console.log('📤 جاري حفظ البيانات في Supabase...');
 
       const updateData = {
         name: profileData.name.trim(),
         phone: profileData.phone.trim() || null,
         avatar: profileData.avatar || null,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       };
 
-      if (userDoc.exists()) {
-        // إذا كان موجوداً في users، احفظ هناك
-        const data = userDoc.data();
+      // التحقق من وجود المستخدم في users table
+      const { data: userDoc } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (userDoc) {
         const finalUpdateData = {
           ...updateData,
-          accountType: data.accountType || 'admin' // الحفاظ على accountType الموجود
+          accountType: userDoc.accountType || 'admin'
         };
 
         console.log('📋 البيانات المراد حفظها في users:', finalUpdateData);
-        await updateDoc(userRef, finalUpdateData);
-        console.log('✅ تم حفظ البيانات بنجاح في users collection');
+        await supabase.from('users').update(finalUpdateData).eq('id', user.id);
+        console.log('✅ تم حفظ البيانات بنجاح في users table');
 
-        // أيضاً تحديث employees collection إذا كان موظفاً
-        if (data.employeeId) {
-          const employeeRef = doc(db, 'employees', data.employeeId);
-          await updateDoc(employeeRef, updateData);
+        if (userDoc.employeeId) {
+          await supabase.from('employees').update(updateData).eq('id', userDoc.employeeId);
           console.log('✅ تم تحديث بيانات الموظف أيضاً');
         }
       } else {
-        // البحث في employees collection
-        // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
-        const employeeDocRef = doc(db, 'employees', user.uid);
-        const employeeDocSnap = await getDoc(employeeDocRef);
+        // البحث في employees table
+        const { data: employeeDoc } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-        if (employeeDocSnap.exists()) {
-          // حفظ في employees collection
+        if (employeeDoc) {
           console.log('📋 البيانات المراد حفظها في employees:', updateData);
-          await updateDoc(employeeDocRef, updateData);
-          console.log('✅ تم حفظ البيانات بنجاح في employees collection');
+          await supabase.from('employees').update(updateData).eq('id', user.id);
+          console.log('✅ تم حفظ البيانات بنجاح في employees table');
         } else {
-          // ثانياً: البحث بـ authUserId (الطريقة القديمة)
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          const employeesSnapshot = await getDocs(employeesQuery);
+          const { data: employeeRows } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('authUserId', user.id);
 
-          if (!employeesSnapshot.empty) {
-            // حفظ في employees collection
-            const employeeRef = doc(db, 'employees', employeesSnapshot.docs[0].id);
+          if (employeeRows && employeeRows.length > 0) {
+            const employeeRef = employeeRows[0];
             console.log('📋 البيانات المراد حفظها في employees:', updateData);
-            await updateDoc(employeeRef, updateData);
-            console.log('✅ تم حفظ البيانات بنجاح في employees collection');
+            await supabase.from('employees').update(updateData).eq('id', employeeRef.id);
+            console.log('✅ تم حفظ البيانات بنجاح في employees table');
           } else {
-            // إنشاء document جديد في users إذا لم يكن موجوداً في أي مكان
             const newUserData = {
-              uid: user.uid,
+              id: user.id,
               email: user.email || '',
               accountType: 'admin',
               ...updateData,
-              createdAt: new Date()
+              createdAt: new Date().toISOString()
             };
-            console.log('📋 إنشاء document جديد في users:', newUserData);
-            await updateDoc(userRef, newUserData);
-            console.log('✅ تم إنشاء وحفظ البيانات في users collection');
+            console.log('📋 إنشاء record جديد في users:', newUserData);
+            await supabase.from('users').upsert(newUserData);
+            console.log('✅ تم إنشاء وحفظ البيانات في users table');
           }
         }
       }
 
       // إرسال إشعار للإدارة
-      // نرسل الإشعار إذا كان المستخدم موظفاً (لديه employeeId) أو له دور معين (roleId)
-      // أو حتى إذا كان مشرفاً عادياً (admin) لتوثيق التغييرات
       console.log('🔍 Checking notification conditions:', {
         hasEmployeeId: !!userData?.employeeId,
         hasRoleId: !!userData?.roleId,
@@ -287,15 +275,12 @@ export default function AdminProfile() {
       if (userData?.employeeId || userData?.roleId || userData?.accountType === 'admin') {
         const changes: string[] = [];
 
-        // مقارنة البيانات الجديدة مع القديمة
         if (updateData.name !== (userData?.name || userData?.displayName)) {
           changes.push(`الاسم (من "${userData?.name || userData?.displayName}" إلى "${updateData.name}")`);
         }
         if ((updateData.phone || '') !== (userData?.phone || '')) {
           changes.push('رقم الهاتف');
         }
-        // التحقق من تغيير الصورة (إذا كان الرابط الجديد مختلفاً عن القديم)
-        // ومختلفاً عن الصورة الافتراضية
         if (updateData.avatar && updateData.avatar !== userData?.avatar) {
           changes.push('الصورة الشخصية');
         }
@@ -306,7 +291,7 @@ export default function AdminProfile() {
           try {
             await notifyProfileUpdate(
               {
-                id: userData?.employeeId || user.uid,
+                id: userData?.employeeId || user.id,
                 name: updateData.name,
                 email: user.email || undefined
               },
@@ -321,7 +306,6 @@ export default function AdminProfile() {
         }
       }
 
-      // تحديث profileData مباشرة بالبيانات المحفوظة
       setProfileData(prev => ({
         ...prev,
         name: updateData.name,
@@ -336,11 +320,6 @@ export default function AdminProfile() {
       toast.success('تم حفظ البيانات بنجاح');
     } catch (error: any) {
       console.error('❌ خطأ في حفظ البيانات:', error);
-      console.error('❌ تفاصيل الخطأ:', {
-        code: error?.code,
-        message: error?.message,
-        stack: error?.stack
-      });
       toast.error(error?.message || 'حدث خطأ أثناء حفظ البيانات');
     } finally {
       setSaving(false);
@@ -355,7 +334,8 @@ export default function AdminProfile() {
     }
 
     try {
-      await sendPasswordResetEmail(auth, user.email);
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+      if (error) throw error;
       toast.success('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني');
     } catch (error: any) {
       console.error('خطأ في إرسال رابط تغيير كلمة المرور:', error);
@@ -366,30 +346,29 @@ export default function AdminProfile() {
   // إلغاء التعديل
   const handleCancel = async () => {
     setIsEditing(false);
-    // إعادة تحميل البيانات
-    if (user?.uid) {
+    if (user?.id) {
       try {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
+        const { data: userDoc } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-        if (userDoc.exists()) {
-          const data = userDoc.data();
+        if (userDoc) {
           setProfileData({
-            name: data.name || data.full_name || data.displayName || '',
-            phone: data.phone || data.phoneNumber || '',
-            email: user.email || data.email || '',
-            avatar: data.avatar || data.profile_image || data.photoURL || ''
+            name: userDoc.name || userDoc.full_name || userDoc.displayName || '',
+            phone: userDoc.phone || userDoc.phoneNumber || '',
+            email: user.email || userDoc.email || '',
+            avatar: userDoc.avatar || userDoc.profile_image || userDoc.photoURL || ''
           });
         } else {
-          // البحث في employees collection
-          const employeesQuery = query(
-            collection(db, 'employees'),
-            where('authUserId', '==', user.uid)
-          );
-          const employeesSnapshot = await getDocs(employeesQuery);
+          const { data: employeeRows } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('authUserId', user.id);
 
-          if (!employeesSnapshot.empty) {
-            const employeeData = employeesSnapshot.docs[0].data();
+          if (employeeRows && employeeRows.length > 0) {
+            const employeeData = employeeRows[0];
             setProfileData({
               name: employeeData.name || '',
               phone: employeeData.phone || '',

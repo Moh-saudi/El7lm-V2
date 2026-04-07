@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { auth } from '@/lib/firebase/config';
-import { signOut as firebaseSignOut } from 'firebase/auth';
+import { supabase } from '@/lib/supabase/config';
 import { CheckCircle, Info, KeyRound, Loader2, Phone, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -72,9 +71,10 @@ export default function WhatsAppPasswordReset() {
     useEffect(() => {
         const clearAuthData = async () => {
             try {
-                // تسجيل الخروج من Firebase
-                if (auth.currentUser) {
-                    await firebaseSignOut(auth);
+                // تسجيل الخروج من Supabase
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    await supabase.auth.signOut();
                 }
 
                 // مسح البيانات المحفوظة في localStorage
@@ -222,7 +222,7 @@ export default function WhatsAppPasswordReset() {
             console.log('🔐 [OTP Verification] بدء التحقق من رمز OTP...');
             console.log('📱 الرمز المدخل:', otp);
 
-            // استخدام Firestore للتحقق من OTP (الطريقة الجديدة)
+            // استخدام قاعدة البيانات للتحقق من OTP (الطريقة الجديدة)
             const formattedPhone = sessionStorage.getItem('reset_formatted_phone') || fullPhoneNumber;
 
             if (!formattedPhone) {
@@ -262,7 +262,7 @@ export default function WhatsAppPasswordReset() {
                 throw new Error(verifyData.error || 'رمز التحقق غير صحيح');
             }
 
-            console.log('✅ [OTP Verification] تم التحقق من الرمز بنجاح عبر Firestore');
+            console.log('✅ [OTP Verification] تم التحقق من الرمز بنجاح');
 
             // تنظيف sessionStorage
             sessionStorage.removeItem('reset_otp');
@@ -343,7 +343,7 @@ export default function WhatsAppPasswordReset() {
                 throw new Error(data.error || 'فشل تحديث كلمة المرور');
             }
 
-            console.log('✅ [Step 3/5] تم تحديث كلمة المرور بنجاح في Firebase و Firestore');
+            console.log('✅ [Step 3/5] تم تحديث كلمة المرور بنجاح');
             toast.success('✅ تم تحديث كلمة المرور بنجاح! جاري تسجيل الدخول...');
 
             // مسح البيانات المؤقتة
@@ -365,17 +365,21 @@ export default function WhatsAppPasswordReset() {
             if (exactEmail) {
                 console.log('✅ [Step 4/5] تم العثور على البريد الإلكتروني من API');
 
-                // تسجيل الدخول التلقائي باستخدام نفس البريد والرقم السري
+                // تسجيل الدخول التلقائي باستخدام Supabase
                 console.log('🔐 [Step 5/5] تسجيل الدخول التلقائي...');
                 console.log('📧 [Step 5/5] البريد:', exactEmail);
                 console.log('🔐 [Step 5/5] كلمة المرور (أول رقمين):', newPassword.substring(0, 2) + '******');
 
-                const { signInWithEmailAndPassword } = await import('firebase/auth');
-
                 try {
-                    const userCredential = await signInWithEmailAndPassword(auth, exactEmail, newPassword);
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email: exactEmail,
+                        password: newPassword,
+                    });
+
+                    if (signInError) throw signInError;
+
                     console.log('✅✅✅ [Step 5/5] تم تسجيل الدخول بنجاح!');
-                    console.log('👤 [Step 5/5] User UID:', userCredential.user.uid);
+                    console.log('👤 [Step 5/5] User ID:', signInData.user?.id);
 
                     toast.success('🎉 تم تسجيل الدخول بنجاح! جاري التوجيه للوحة التحكم...');
 
@@ -387,7 +391,6 @@ export default function WhatsAppPasswordReset() {
 
                 } catch (loginError: any) {
                     console.error('❌❌❌ [Step 5/5] فشل تسجيل الدخول التلقائي!');
-                    console.error('❌ [Step 5/5] Error code:', loginError.code);
                     console.error('❌ [Step 5/5] Error message:', loginError.message);
                     console.error('❌ [Step 5/5] البريد المستخدم:', exactEmail);
 

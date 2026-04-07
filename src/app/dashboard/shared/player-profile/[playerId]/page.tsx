@@ -1,13 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { auth } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { retryOperation } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 // import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
@@ -155,22 +150,11 @@ const calculateAge = (birthDate: any) => {
       d = new Date(currentYear - 20, 4, 1); // أول مايو من السنة المناسبة
       console.log('🔧 calculateAge: تاريخ افتراضي تم إنشاؤه:', d);
     }
-    // التعامل مع Firebase Timestamp
-    else if (typeof birthDate === 'object' && birthDate !== null && (birthDate as any).toDate && typeof (birthDate as any).toDate === 'function') {
-      try {
-        d = (birthDate as any).toDate();
-        console.log('✅ calculateAge: تم تحويل Firebase Timestamp إلى Date:', d);
-      } catch (timestampError) {
-        console.error('❌ calculateAge: خطأ في تحويل Firestore Timestamp:', timestampError);
-        const currentYear = new Date().getFullYear();
-        d = new Date(currentYear - 20, 4, 1);
-      }
-    }
-    // التعامل مع Firebase Timestamp مع seconds
+    // التعامل مع كائنات التاريخ ذات الحقل seconds (بيانات قديمة مخزنة)
     else if (typeof birthDate === 'object' && birthDate !== null && ((birthDate as any).seconds || (birthDate as any)._seconds)) {
       const seconds = (birthDate as any).seconds || (birthDate as any)._seconds;
       d = new Date(seconds * 1000);
-      console.log('✅ calculateAge: تم تحويل Firebase Timestamp (seconds) إلى Date:', d);
+      console.log('✅ calculateAge: تم تحويل Timestamp (seconds) إلى Date:', d);
     }
     // التعامل مع Date object صحيح
     else if (birthDate instanceof Date && !isNaN(birthDate.getTime())) {
@@ -288,7 +272,8 @@ function PlayerReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const [user, loading, authError] = useAuthState(auth);
+  const { user, loading } = useAuth();
+  const authError = null;
   const [player, setPlayer] = useState<Player | null>(null);
 
   // الحصول على معرف اللاعب من الرابط
@@ -303,7 +288,7 @@ function PlayerReportPage() {
       fullParams: searchParams?.toString()
     });
     console.log('معلومات المستخدم:', {
-      userId: user?.uid,
+      userId: user?.id,
       userEmail: user?.email,
       isLoading: loading,
       authError: authError
@@ -318,7 +303,7 @@ function PlayerReportPage() {
   console.log('🔍 تشخيص صفحة التقارير:');
   console.log('  - معرف اللاعب من الرابط:', playerIdFromUrl);
   console.log('  - معرف اللاعب المستهدف:', targetPlayerId);
-  console.log('  - المستخدم الحالي:', user?.uid);
+  console.log('  - المستخدم الحالي:', user?.id);
   console.log('  - معاملات البحث الكاملة:', searchParams?.toString());
 
   // معالجة حالة التحميل
@@ -450,7 +435,7 @@ function PlayerReportPage() {
   const fetchCurrentUserInfo = async () => {
     console.log('👤 [fetchCurrentUserInfo] بدء جلب معلومات المستخدم الحالي');
 
-    if (!user?.uid) {
+    if (!user?.id) {
       console.warn('⚠️ [fetchCurrentUserInfo] لا يوجد مستخدم مسجل');
       return;
     }
@@ -460,11 +445,14 @@ function PlayerReportPage() {
         console.log(`🔍 [fetchCurrentUserInfo] البحث في ${orgType.collection}`);
 
         try {
-          const userDocRef = doc(db, orgType.collection, user.uid);
-          const userDoc = await getDoc(userDocRef);
+          const { data: userDocData } = await supabase
+            .from(orgType.collection)
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
+          if (!!userDocData) {
+            const userData = userDocData;
             console.log(`✅ [fetchCurrentUserInfo] تم العثور على الحساب:`, {
               type: orgType.type,
               name: userData.name || userData.full_name,
@@ -473,7 +461,7 @@ function PlayerReportPage() {
 
             const userInfo = {
               ...userData,
-              id: userDoc.id,
+              id: userData.id,
               type: orgType.type,
               icon: orgType.icon,
               color: orgType.color
@@ -629,7 +617,7 @@ function PlayerReportPage() {
   // دالة التحقق من صلاحية عرض رقم الهاتف
   const canViewPhoneNumber = () => {
     // إذا كان المستخدم هو نفسه اللاعب
-    if (user?.uid === targetPlayerId) {
+    if (user?.id === targetPlayerId) {
       return true;
     }
 
@@ -1623,8 +1611,7 @@ function PlayerReportPage() {
           const validImageUrl = getValidImageUrl(imageUrl);
 
           // تحقق إضافي من الروابط المعطلة
-          const isBrokenSupabaseUrl = imageUrl.includes('ekyerljzfokqimbabzxm.supabase.co') &&
-            imageUrl.includes('/avatars/yf0b8T8xuuMfP8QAfvS9TLOJjVt2');
+          const isBrokenSupabaseUrl = imageUrl.includes('supabase.co/storage') || imageUrl.includes('ekyerljzfokqimbabzxm.supabase.co');
 
           if (validImageUrl !== '/images/default-avatar.png' && !isBrokenSupabaseUrl && !seenUrls.has(validImageUrl)) {
             allImages.push({ url: validImageUrl, label: `صورة إضافية ${index + 1}`, type: 'additional' });
@@ -2220,7 +2207,7 @@ function PlayerReportPage() {
       console.log('📋 [fetchPlayerData] المعاملات:', {
         targetPlayerId,
         playerIdFromUrl,
-        userId: user?.uid,
+        userId: user?.id,
         hasUser: !!user
       });
 
@@ -2245,34 +2232,35 @@ function PlayerReportPage() {
 
         console.log('🔍 [fetchPlayerData] محاولة جلب بيانات اللاعب:', playerId);
 
-        // دالة مساعدة لجلب document من collection مع retry
+        // دالة مساعدة لجلب record من table مع Supabase
         const fetchPlayerDoc = async (collectionName: string, docId: string) => {
           console.log(`🔍 [fetchPlayerDoc] البحث في ${collectionName} عن ${docId}`);
           try {
-            const docRef = doc(db, collectionName, docId);
-            const docSnap = await getDoc(docRef);
-            console.log(`✅ [fetchPlayerDoc] تم جلب document من ${collectionName}:`, docSnap.exists());
-            return { docSnap, collectionName };
+            const { data: rowData } = await supabase
+              .from(collectionName)
+              .select('*')
+              .eq('id', docId)
+              .single();
+            console.log(`✅ [fetchPlayerDoc] تم جلب record من ${collectionName}:`, !!rowData);
+            return { rowData, collectionName };
           } catch (error) {
             console.error(`❌ [fetchPlayerDoc] خطأ في جلب من ${collectionName}:`, error);
             throw error;
           }
         };
 
-        // البحث في المجموعات بالترتيب مع إضافة retry logic
+        // البحث في المجموعات بالترتيب
         const collections = ['players', 'users', 'player'];
-        let playerDoc = null;
+        let playerData: any = null;
         let dataSource = '';
 
         for (const collectionName of collections) {
           try {
             console.log(`🔍 [fetchPlayerData] محاولة جلب من ${collectionName}...`);
-            const result = await retryOperation(async () => {
-              return await fetchPlayerDoc(collectionName, playerId);
-            }, 3, 1000);
+            const result = await fetchPlayerDoc(collectionName, playerId);
 
-            if (result.docSnap.exists()) {
-              playerDoc = result.docSnap;
+            if (!!result.rowData) {
+              playerData = result.rowData;
               dataSource = result.collectionName;
               console.log(`✅ [fetchPlayerData] تم العثور على اللاعب في ${dataSource}`);
               break;
@@ -2285,14 +2273,14 @@ function PlayerReportPage() {
           }
         }
 
-        if (!playerDoc || !playerDoc.exists()) {
+        if (!playerData) {
           console.warn('⚠️ [fetchPlayerData] لم يتم العثور على اللاعب في أي collection:', playerId);
           setError(`لم يتم العثور على بيانات اللاعب`);
           setIsLoading(false);
           return;
         }
 
-        const data = playerDoc.data();
+        const data = playerData;
         console.log(`✅ [fetchPlayerData] تم العثور على اللاعب في ${dataSource}:`, {
           playerName: data.full_name || data.name,
           accountType: data.accountType,
@@ -2780,7 +2768,7 @@ function PlayerReportPage() {
               <div className="p-3 mb-4 text-xs text-left bg-gray-50 rounded-lg">
                 <div className="font-mono">
                   <div>🔍 Player ID: {targetPlayerId || 'غير محدد'}</div>
-                  <div>👤 User ID: {user?.uid || 'غير مسجل'}</div>
+                  <div>👤 User ID: {user?.id || 'غير مسجل'}</div>
                   <div>🔗 View Mode: {playerIdFromUrl ? 'عرض لاعب آخر' : 'عرض الملف الشخصي'}</div>
                 </div>
               </div>
@@ -3049,7 +3037,7 @@ function PlayerReportPage() {
                           {/* إظهار علاقة الإضافة */}
                           {(() => {
                             const addedBy = (player as any)?.addedBy || (player as any)?.created_by || (player as any)?.added_by;
-                            if (addedBy === user?.uid) {
+                            if (addedBy === user?.id) {
                               return (
                                 <div className="flex gap-1 items-center px-2 py-1 mt-1 text-xs text-blue-600 bg-blue-50 rounded">
                                   <Plus className="w-3 h-3" />

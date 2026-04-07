@@ -310,7 +310,7 @@ export default function CreateOpportunityPage() {
     try {
       setSubmitting(true);
       const payload = {
-        organizerId: user.uid,
+        organizerId: user.id,
         organizerType: userData.accountType as any,
         organizerName: userData.full_name || userData.displayName || '',
         opportunityType: form.opportunityType as OpportunityType,

@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { collection, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import PaymentManagementModal from '@/components/payments/PaymentManagementModal';
 import { Tournament } from './utils';
@@ -47,23 +46,25 @@ const AdminTournamentsPage: React.FC = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const tournamentsData: Tournament[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          isActive: data.isActive === true,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
-          updatedAt: data.updatedAt?.toDate?.() || new Date(),
-          registrations: data.registrations || [],
-          currency: data.currency || 'EGP',
-          paymentMethods: data.paymentMethods || ['credit_card', 'bank_transfer'],
-          ageGroups: data.ageGroups || [],
-          categories: data.categories || []
-        };
-      }) as Tournament[];
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (error) throw error;
+
+      const tournamentsData: Tournament[] = (data || []).map(row => ({
+        id: row.id,
+        ...row,
+        isActive: row.isActive === true,
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+        updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
+        registrations: row.registrations || [],
+        currency: row.currency || 'EGP',
+        paymentMethods: row.paymentMethods || ['credit_card', 'bank_transfer'],
+        ageGroups: row.ageGroups || [],
+        categories: row.categories || []
+      })) as Tournament[];
 
       setTournaments(tournamentsData);
     } catch (error) {
@@ -81,7 +82,7 @@ const AdminTournamentsPage: React.FC = () => {
   const handleDelete = async (tournamentId: string) => {
     if (confirm('هل أنت متأكد من حذف هذه البطولة؟')) {
       try {
-        await deleteDoc(doc(db, 'tournaments', tournamentId));
+        await supabase.from('tournaments').delete().eq('id', tournamentId);
         toast.success('تم حذف البطولة بنجاح');
         fetchTournaments();
       } catch (error) {
@@ -93,10 +94,10 @@ const AdminTournamentsPage: React.FC = () => {
 
   const handleStatusChange = async (tournament: Tournament, isActive: boolean) => {
     try {
-      await updateDoc(doc(db, 'tournaments', tournament.id!), {
+      await supabase.from('tournaments').update({
         isActive: isActive,
-        updatedAt: new Date()
-      });
+        updatedAt: new Date().toISOString()
+      }).eq('id', tournament.id!);
       toast.success(isActive ? 'تم تفعيل البطولة' : 'تم إلغاء تفعيل البطولة');
       // Optimistic update
       setTournaments(prev => prev.map(t => t.id === tournament.id ? { ...t, isActive } : t));

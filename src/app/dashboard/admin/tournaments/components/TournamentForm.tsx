@@ -16,8 +16,7 @@ import {
     Info, CreditCard, FileText, Image as ImageIcon, Upload, Navigation, Copy,
     CheckCircle2, ChevronRight, ChevronLeft, Flag, HelpCircle, Loader2
 } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament, getCurrencySymbol } from '../utils';
 import { storageManager } from '@/lib/storage';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
@@ -83,7 +82,6 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                     paymentDeadline: initialData.paymentDeadline ? initialData.paymentDeadline.split('T')[0] : '',
                     isActive: initialData.isActive === true,
                     paymentMethods: initialData.paymentMethods || ['credit_card', 'bank_transfer'],
-                    // Ensure arrays are initialized
                     ageGroups: initialData.ageGroups || [],
                     categories: initialData.categories || [],
                     registrations: initialData.registrations || [],
@@ -154,20 +152,35 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                 }
             }
 
-            const tournamentData: Partial<Tournament> = {
+            const now = new Date().toISOString();
+            const tournamentData = {
                 ...formData,
                 logo: logoUrl || '',
-                createdAt: initialData ? initialData.createdAt : new Date(),
-                updatedAt: new Date(),
+                createdAt: initialData ? undefined : now,
+                updatedAt: now,
                 currentParticipants: initialData?.currentParticipants || 0,
-                isActive: formData.isActive === true,
             };
 
+            // Remove undefined fields
+            Object.keys(tournamentData).forEach(key => {
+                if ((tournamentData as any)[key] === undefined) {
+                    delete (tournamentData as any)[key];
+                }
+            });
+
             if (initialData) {
-                await updateDoc(doc(db, 'tournaments', initialData.id!), tournamentData);
+                const { error } = await supabase
+                    .from('tournaments')
+                    .update(tournamentData)
+                    .eq('id', initialData.id!);
+                if (error) throw error;
                 toast.success('تم تحديث البطولة بنجاح');
             } else {
-                await addDoc(collection(db, 'tournaments'), tournamentData);
+                const id = crypto.randomUUID();
+                const { error } = await supabase
+                    .from('tournaments')
+                    .insert({ id, ...tournamentData });
+                if (error) throw error;
                 toast.success('تم إنشاء البطولة بنجاح');
             }
             onSuccess();
@@ -190,7 +203,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
         { code: 'BH', name: 'البحرين', currency: 'BHD', flag: '🇧🇭' },
         { code: 'OM', name: 'عمان', currency: 'OMR', flag: '🇴🇲' },
         { code: 'JO', name: 'الأردن', currency: 'JOD', flag: '🇯🇴' },
-        { code: 'LB', name: 'لبنان', currency: 'USD', flag: '🇱🇧' }, // Often USD used de facto
+        { code: 'LB', name: 'لبنان', currency: 'USD', flag: '🇱🇧' },
         { code: 'IQ', name: 'العراق', currency: 'IQD', flag: '🇮🇶' },
         { code: 'YE', name: 'اليمن', currency: 'YER', flag: '🇾🇪' },
         { code: 'PS', name: 'فلسطين', currency: 'ILS', flag: '🇵🇸' },
@@ -205,16 +218,13 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
         { code: 'EU', name: 'أوروبا (يورو)', currency: 'EUR', flag: '🇪🇺' },
         { code: 'CA', name: 'كندا', currency: 'CAD', flag: '🇨🇦' },
         { code: 'AU', name: 'أستراليا', currency: 'AUD', flag: '🇦🇺' },
-        // Add more as needed or use a library
     ];
 
-    // --- Helper for Smart Defaults ---
     const handleCountryChange = (countryCode: string) => {
         const country = COUNTRIES.find(c => c.code === countryCode);
         let currency = country?.currency || 'USD';
         let defaultPaymentMethods = ['credit_card'];
 
-        // Custom logic for payment methods based on region
         if (countryCode === 'EG') {
             defaultPaymentMethods = ['credit_card', 'mobile_wallet', 'bank_transfer'];
         } else if (['SA', 'AE', 'KW', 'QA', 'BH'].includes(countryCode)) {
@@ -230,7 +240,6 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
     };
 
     const nextStep = () => {
-        // Basic validation before moving next
         if (currentStep === 1 && !formData.name) {
             toast.error('يرجى إدخال اسم البطولة');
             return;
@@ -246,8 +255,6 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
     const prevStep = () => {
         if (currentStep > 1) setCurrentStep(c => c - 1);
     };
-
-    // --- Render Steps ---
 
     const renderStep1_Basic = () => (
         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -429,8 +436,6 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                             </button>
                         </div>
                     </div>
-
-
 
                     <div className="md:col-span-2 space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                         <Label className="font-semibold text-gray-900">بيانات التحويل (المحفظة/الحساب)</Label>

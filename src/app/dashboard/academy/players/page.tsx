@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,8 +60,8 @@ export default function AcademyPlayersPage() {
   const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 حالة المصادقة:', { user: user?.uid, loading: !user });
-    if (user?.uid) {
+    console.log('🔍 حالة المصادقة:', { user: user?.id, loading: !user });
+    if (user?.id) {
       console.log('✅ الأكاديمية مصادقة - جاري تحميل اللاعبين...');
       loadPlayers();
       loadJoinRequests();
@@ -75,14 +74,12 @@ export default function AcademyPlayersPage() {
     try {
       setLoading(true);
 
-      const baseQuery = query(
-        collection(db, "players"),
-        where("academy_id", "==", user?.uid)
-      );
-      const snapshot = await getDocs(baseQuery);
+      const { data: snapshot } = await supabase
+        .from('players')
+        .select('*')
+        .eq('academy_id', user?.id);
 
-      const playersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const playersData = (snapshot || [])
         .filter((p: any) => !p.isDeleted) as Player[];
 
       // Manual sorting on the client-side
@@ -106,7 +103,7 @@ export default function AcademyPlayersPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.uid, 'pending');
+      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.id, 'pending');
       setJoinRequests(requests);
     } catch (error) {
       console.error('خطأ في تحميل طلبات الانضمام:', error);
@@ -393,7 +390,7 @@ export default function AcademyPlayersPage() {
     if (!playerToDelete) return;
 
     try {
-      await deleteDoc(doc(db, 'players', playerToDelete.id));
+      await supabase.from('players').delete().eq('id', playerToDelete.id);
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
@@ -494,7 +491,7 @@ export default function AcademyPlayersPage() {
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
                           onClick={async () => {
                             try {
-                              await organizationReferralService.approveJoinRequest(request.id, user!.uid, 'الأكاديمية');
+                              await organizationReferralService.approveJoinRequest(request.id, user!.id, 'الأكاديمية');
                               toast.success('تم قبول اللاعب بنجاح');
                               loadJoinRequests();
                               loadPlayers();
@@ -513,7 +510,7 @@ export default function AcademyPlayersPage() {
                           onClick={async () => {
                             if (!confirm('هل أنت متأكد من رفض هذا الطلب؟')) return;
                             try {
-                              await organizationReferralService.rejectJoinRequest(request.id, user!.uid, 'الأكاديمية', 'تم الرفض من قبل الإدارة');
+                              await organizationReferralService.rejectJoinRequest(request.id, user!.id, 'الأكاديمية', 'تم الرفض من قبل الإدارة');
                               toast.success('تم رفض الطلب');
                               loadJoinRequests();
                             } catch (error) {
@@ -866,7 +863,7 @@ export default function AcademyPlayersPage() {
                                 name: player.name || player.full_name,
                                 email: player.email,
                                 phone: player.phone,
-                                academy_id: player.academy_id || user?.uid,
+                                academy_id: player.academy_id || user?.id,
                                 ...player
                               }}
                               source="players"
@@ -883,7 +880,7 @@ export default function AcademyPlayersPage() {
                                 email: player.email,
                                 phone: player.phone,
                                 whatsapp: player.whatsapp,
-                                academy_id: player.academy_id || user?.uid,
+                                academy_id: player.academy_id || user?.id,
                                 ...player
                               }}
                               source="players"
@@ -1019,8 +1016,8 @@ export default function AcademyPlayersPage() {
                         <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                           <div className="flex gap-2">
                             <Link href={`/dashboard/academy/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link>
-                            <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
-                            <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, academy_id: (player as any).academy_id || user?.uid, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
+                            <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, academy_id: (player as any).academy_id || user?.id, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
+                            <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, academy_id: (player as any).academy_id || user?.id, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
                             <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </td>

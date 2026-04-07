@@ -1,10 +1,9 @@
 
-import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { SubscriptionPlan, PriceResult } from '@/types/pricing';
 import { convertCurrency } from '@/lib/currency-rates';
 
-const COLLECTION_NAME = 'subscription_plans';
+const TABLE_NAME = 'subscription_plans';
 
 const DEFAULT_PLANS: SubscriptionPlan[] = [
     {
@@ -26,14 +25,7 @@ const DEFAULT_PLANS: SubscriptionPlan[] = [
         popular: false,
         icon: '📅',
         color: 'blue',
-        overrides: {
-            'EG': {
-                currency: 'EGP',
-                original_price: 150,
-                price: 100,
-                active: true
-            }
-        },
+        overrides: { 'EG': { currency: 'EGP', original_price: 150, price: 100, active: true } },
         isActive: true,
         order: 1
     },
@@ -61,14 +53,7 @@ const DEFAULT_PLANS: SubscriptionPlan[] = [
         popular: true,
         icon: '👑',
         color: 'purple',
-        overrides: {
-            'EG': {
-                currency: 'EGP',
-                original_price: 250,
-                price: 180,
-                active: true
-            }
-        },
+        overrides: { 'EG': { currency: 'EGP', original_price: 250, price: 180, active: true } },
         isActive: true,
         order: 2
     },
@@ -102,14 +87,7 @@ const DEFAULT_PLANS: SubscriptionPlan[] = [
         popular: false,
         icon: '⭐',
         color: 'emerald',
-        overrides: {
-            'EG': {
-                currency: 'EGP',
-                original_price: 400,
-                price: 250,
-                active: true
-            }
-        },
+        overrides: { 'EG': { currency: 'EGP', original_price: 400, price: 250, active: true } },
         isActive: true,
         order: 3
     }
@@ -118,18 +96,13 @@ const DEFAULT_PLANS: SubscriptionPlan[] = [
 export const PricingService = {
     async getAllPlans(): Promise<SubscriptionPlan[]> {
         try {
-            const plansRef = collection(db, COLLECTION_NAME);
-            const snapshot = await getDocs(plansRef);
-
-            if (snapshot.empty) {
+            const { data } = await supabase.from(TABLE_NAME).select('*').order('order');
+            if (!data?.length) {
                 console.log('No plans found, initializing defaults...');
                 await this.initializeDefaults();
                 return DEFAULT_PLANS;
             }
-
-            return snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as SubscriptionPlan))
-                .sort((a, b) => a.order - b.order);
+            return data as SubscriptionPlan[];
         } catch (error) {
             console.error('Error fetching plans:', error);
             return [];
@@ -138,12 +111,8 @@ export const PricingService = {
 
     async getPlan(id: string): Promise<SubscriptionPlan | null> {
         try {
-            const docRef = doc(db, COLLECTION_NAME, id);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                return { id: docSnap.id, ...docSnap.data() } as SubscriptionPlan;
-            }
-            return null;
+            const { data } = await supabase.from(TABLE_NAME).select('*').eq('id', id).limit(1);
+            return data?.length ? data[0] as SubscriptionPlan : null;
         } catch (error) {
             console.error('Error fetching plan:', error);
             return null;
@@ -152,12 +121,7 @@ export const PricingService = {
 
     async updatePlan(plan: SubscriptionPlan) {
         try {
-            const docRef = doc(db, COLLECTION_NAME, plan.id);
-            const { id, ...data } = plan; // Remove ID from data
-            await setDoc(docRef, {
-                ...data,
-                updatedAt: new Date()
-            }, { merge: true });
+            await supabase.from(TABLE_NAME).upsert({ ...plan, updatedAt: new Date().toISOString() });
             return true;
         } catch (error) {
             console.error('Error updating plan:', error);
@@ -167,8 +131,7 @@ export const PricingService = {
 
     async deletePlan(planId: string) {
         try {
-            const docRef = doc(db, COLLECTION_NAME, planId);
-            await deleteDoc(docRef);
+            await supabase.from(TABLE_NAME).delete().eq('id', planId);
             return true;
         } catch (error) {
             console.error('Error deleting plan:', error);
@@ -176,14 +139,9 @@ export const PricingService = {
         }
     },
 
-    /**
-     * Finds the best matching plan based on amount, type or description.
-     * Centralizes logic for mapping payments to valid subscriptions.
-     */
     getBestMatchedPlan(amount: number, packageType?: string, currentPlans?: SubscriptionPlan[]): { plan: SubscriptionPlan | null; months: number; title: string, period: string } {
         const plans = currentPlans && currentPlans.length > 0 ? currentPlans : DEFAULT_PLANS;
 
-        // 1. Direct ID Match
         if (packageType) {
             const matched = plans.find(p => p.id === packageType);
             if (matched) {
@@ -193,111 +151,59 @@ export const PricingService = {
             }
         }
 
-        // 2. Amount-based Matching (Egypt/Global primary thresholds)
         const numAmount = Number(amount || 0);
         if (numAmount >= 110 && numAmount < 180) {
             const semiPlan = plans.find(p => p.id === 'subscription_6months' || p.period.includes('6'));
-            return {
-                plan: semiPlan || null,
-                months: 6,
-                title: semiPlan?.title || 'اشتراك 6 شهور',
-                period: semiPlan?.period || '6 شهور'
-            };
+            return { plan: semiPlan || null, months: 6, title: semiPlan?.title || 'اشتراك 6 شهور', period: semiPlan?.period || '6 شهور' };
         } else if (numAmount >= 180) {
             const annualPlan = plans.find(p => p.id === 'subscription_annual' || p.period.includes('12') || p.period.includes('سنة'));
-            return {
-                plan: annualPlan || null,
-                months: 12,
-                title: annualPlan?.title || 'اشتراك سنوي',
-                period: annualPlan?.period || '12 شهر'
-            };
+            return { plan: annualPlan || null, months: 12, title: annualPlan?.title || 'اشتراك سنوي', period: annualPlan?.period || '12 شهر' };
         }
 
-        // 3. Fallback (Basic 3 Months)
         const basicPlan = plans.find(p => p.id === 'subscription_3months' || p.period.includes('3'));
-        return {
-            plan: basicPlan || null,
-            months: 3,
-            title: basicPlan?.title || 'اشتراك 3 شهور',
-            period: basicPlan?.period || '3 شهور'
-        };
+        return { plan: basicPlan || null, months: 3, title: basicPlan?.title || 'اشتراك 3 شهور', period: basicPlan?.period || '3 شهور' };
     },
 
     async initializeDefaults() {
-        const promises = DEFAULT_PLANS.map(plan => {
-            const { id, ...data } = plan;
-            return setDoc(doc(db, COLLECTION_NAME, id), data);
-        });
-        await Promise.all(promises);
+        await Promise.all(DEFAULT_PLANS.map(plan => supabase.from(TABLE_NAME).upsert(plan)));
     },
-
 
     resolvePrice(
         plan: SubscriptionPlan,
         userCountryCode: string,
         targetCurrency: string,
-        rates: any,
+        rates: Record<string, number>,
         accountType?: 'club' | 'academy' | 'trainer' | 'agent' | 'player'
     ): PriceResult {
         let baseOriginalPrice = plan.base_original_price;
         let basePrice = plan.base_price;
         let accountTypeDiscount = 0;
 
-        // 1. Check for Account Type Override (أعلى أولوية)
         if (accountType && plan.accountTypeOverrides?.[accountType]?.active) {
             const accountOverride = plan.accountTypeOverrides[accountType];
-
             if (accountOverride.price !== undefined) {
-                // سعر مخصص محدد
                 basePrice = accountOverride.price;
                 baseOriginalPrice = accountOverride.original_price || baseOriginalPrice;
             } else if (accountOverride.discount_percentage) {
-                // خصم بالنسبة المئوية
                 accountTypeDiscount = accountOverride.discount_percentage;
                 basePrice = basePrice * (1 - accountTypeDiscount / 100);
             }
         }
 
-        // 2. Check for Country Override
         if (plan.overrides && plan.overrides[userCountryCode] && plan.overrides[userCountryCode].active) {
             const override = plan.overrides[userCountryCode];
-
-            // تطبيق خصم نوع الحساب على السعر المخصص للدولة
             let finalPrice = override.price;
-            if (accountTypeDiscount > 0) {
-                finalPrice = finalPrice * (1 - accountTypeDiscount / 100);
-            }
-
-            return {
-                currency: override.currency,
-                originalPrice: override.original_price,
-                price: Math.ceil(finalPrice),
-                isOverride: true,
-                accountTypeDiscount
-            };
+            if (accountTypeDiscount > 0) finalPrice = finalPrice * (1 - accountTypeDiscount / 100);
+            return { currency: override.currency, originalPrice: override.original_price, price: Math.ceil(finalPrice), isOverride: true, accountTypeDiscount };
         }
 
-        // 3. Fallback to Base Price (Convert if needed)
         if (targetCurrency === plan.base_currency) {
-            return {
-                currency: plan.base_currency,
-                originalPrice: Math.ceil(baseOriginalPrice),
-                price: Math.ceil(basePrice),
-                isOverride: false,
-                accountTypeDiscount
-            };
+            return { currency: plan.base_currency, originalPrice: Math.ceil(baseOriginalPrice), price: Math.ceil(basePrice), isOverride: false, accountTypeDiscount };
         }
 
-        // 4. Auto Convert
-        const convertedPrice = convertCurrency(basePrice, plan.base_currency, targetCurrency, rates);
-        const convertedOriginal = convertCurrency(baseOriginalPrice, plan.base_currency, targetCurrency, rates);
+        const convertedPrice = convertCurrency(basePrice, plan.base_currency, targetCurrency, rates as any);
+        const convertedOriginal = convertCurrency(baseOriginalPrice, plan.base_currency, targetCurrency, rates as any);
 
-        return {
-            currency: targetCurrency,
-            originalPrice: Math.ceil(convertedOriginal),
-            price: Math.ceil(convertedPrice),
-            isOverride: false,
-            accountTypeDiscount
-        };
+        return { currency: targetCurrency, originalPrice: Math.ceil(convertedOriginal), price: Math.ceil(convertedPrice), isOverride: false, accountTypeDiscount };
     }
 };

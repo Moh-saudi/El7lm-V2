@@ -4,16 +4,15 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { profileSchema, ProfileFormValues } from '../schemas/profile';
-import { db, auth } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from '@/lib/supabase/config';
+import { useAuth } from '@/lib/firebase/auth-provider';
 import { toast } from 'sonner';
 
 export const usePlayerProfile = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema) as any,
@@ -90,59 +89,73 @@ export const usePlayerProfile = () => {
     });
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-                try {
-                    // 1. Fetch User Data (Role, Basic)
-                    const userDocRef = doc(db, 'users', currentUser.uid);
-                    const userSnap = await getDoc(userDocRef);
-
-                    // 2. Fetch Player Data (Specifics)
-                    const playerDocRef = doc(db, 'players', currentUser.uid);
-                    const playerSnap = await getDoc(playerDocRef);
-
-                    if (playerSnap.exists() || userSnap.exists()) {
-                        const userData = userSnap.data() || {};
-                        const playerData = playerSnap.data() || {};
-
-                        // Merge Data
-                        const mergedData = {
-                            ...userData,
-                            ...playerData,
-                            // Map specific fields if names differ
-                            name: playerData.full_name || userData.displayName || '',
-                            email: userData.email || currentUser.email || '',
-                            phone: playerData.phone || userData.phoneNumber || '',
-                            // Ensure arrays are arrays
-                            club_history: playerData.club_history || [],
-                            achievements: playerData.achievements || [],
-                            videos: playerData.videos || [],
-                            images: playerData.images || [],
-                        };
-
-                        // Reset Form
-                        console.log("Fetched Profile Data:", mergedData);
-                        form.reset(mergedData);
-                    }
-                } catch (error) {
-                    console.error("Error fetching profile:", error);
-                    toast.error("فشل تحميل بيانات الملف الشخصي");
-                }
-            }
+        if (!user) {
             setLoading(false);
-        });
+            return;
+        }
 
-        return () => unsubscribe();
-    }, [form]);
+        const fetchProfile = async () => {
+            try {
+                // 1. Fetch User Data (Role, Basic)
+                let { data: userData } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                if (!userData) {
+                    const res = await supabase.from('users').select('*').eq('uid', user.id).maybeSingle();
+                    userData = res.data;
+                }
+
+                // 2. Fetch Player Data (Specifics)
+                let { data: playerData } = await supabase
+                    .from('players')
+                    .select('*')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                if (!playerData) {
+                    const res = await supabase.from('players').select('*').eq('uid', user.id).maybeSingle();
+                    playerData = res.data;
+                }
+
+                if (playerData || userData) {
+                    const uData = userData || {};
+                    const pData = playerData || {};
+
+                    // Merge Data
+                    const mergedData = {
+                        ...uData,
+                        ...pData,
+                        // Map specific fields if names differ
+                        name: pData.full_name || uData.displayName || '',
+                        email: uData.email || user.email || '',
+                        phone: pData.phone || uData.phoneNumber || '',
+                        // Ensure arrays are arrays
+                        club_history: pData.club_history || [],
+                        achievements: pData.achievements || [],
+                        videos: pData.videos || [],
+                        images: pData.images || [],
+                    };
+
+                    // Reset Form
+                    console.log("Fetched Profile Data:", mergedData);
+                    form.reset(mergedData);
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+                toast.error("فشل تحميل بيانات الملف الشخصي");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, [user, form]);
 
     const saveProfile = async (values: ProfileFormValues) => {
         if (!user) return;
         setSaving(true);
         try {
-            const playerDocRef = doc(db, 'players', user.uid);
-            const userDocRef = doc(db, 'users', user.uid);
-
             // Prepare Valid Data (remove undefined)
             const dataToSave = JSON.parse(JSON.stringify(values));
 
@@ -155,19 +168,21 @@ export const usePlayerProfile = () => {
             }
 
             // Update Player Doc
-            await setDoc(playerDocRef, {
+            await supabase.from('players').upsert({
+                id: user.id,
                 ...dataToSave,
                 updatedAt: new Date().toISOString(),
                 full_name: values.name, // Maintain legacy field name if needed
-            }, { merge: true });
+            });
 
             // Update User Doc (Basic Info)
-            await setDoc(userDocRef, {
+            await supabase.from('users').upsert({
+                id: user.id,
                 displayName: values.name,
                 phoneNumber: values.phone,
                 updatedAt: new Date().toISOString(),
                 isProfileComplete: true
-            }, { merge: true });
+            });
 
             toast.success("تم حفظ التغييرات بنجاح");
             setIsEditing(false);

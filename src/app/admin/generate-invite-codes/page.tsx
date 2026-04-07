@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,18 +60,16 @@ export default function GenerateInviteCodesPage() {
       const allPlayers: DependentPlayer[] = [];
 
       // جلب من مجموعة players
-      const playersSnapshot = await getDocs(collection(db, 'players'));
-      playersSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const player = processPlayerData(doc.id, data, 'players');
+      const { data: playersData } = await supabase.from('players').select('*');
+      (playersData || []).forEach(row => {
+        const player = processPlayerData(row.id, row, 'players');
         if (player) allPlayers.push(player);
       });
 
       // جلب من مجموعة player
-      const playerSnapshot = await getDocs(collection(db, 'player'));
-      playerSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const player = processPlayerData(doc.id, data, 'player');
+      const { data: playerData } = await supabase.from('player').select('*');
+      (playerData || []).forEach(row => {
+        const player = processPlayerData(row.id, row, 'player');
         if (player) allPlayers.push(player);
       });
 
@@ -150,25 +147,28 @@ export default function GenerateInviteCodesPage() {
         const inviteUrl = `${window.location.origin}/invite/${code}`;
         
         const inviteData = {
+          id: crypto.randomUUID(),
           code,
           playerId: player.id,
           playerName: player.full_name || '',
           organizationType: player.organizationInfo,
           organizationName: 'المنظمة', // يمكن تحسينه لاحقاً
-          createdAt: new Date(),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 يوم
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 يوم
           isUsed: false,
           inviteUrl,
-          createdBy: user?.uid,
+          createdBy: user?.id,
           createdByEmail: user?.email
         };
 
-        // حفظ كود الدعوة في Firebase
-        const docRef = await addDoc(collection(db, 'invite_codes'), inviteData);
-        
+        // حفظ كود الدعوة في Supabase
+        const { data: insertedCode } = await supabase.from('invite_codes').insert(inviteData).select().single();
+
         newCodes.push({
-          id: docRef.id,
-          ...inviteData
+          id: insertedCode?.id ?? inviteData.id,
+          ...inviteData,
+          createdAt: new Date(inviteData.createdAt),
+          expiresAt: new Date(inviteData.expiresAt)
         });
       }
 

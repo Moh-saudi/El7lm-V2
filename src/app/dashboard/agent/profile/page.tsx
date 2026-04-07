@@ -9,9 +9,8 @@ import {
   Trash2, Save, X, Camera, ArrowLeft, Target, Zap, Shield,
   Linkedin, Flag, Clock, Building2, Languages, Award
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 interface AgentData {
   full_name: string;
@@ -129,12 +128,10 @@ export default function AgentProfilePage() {
   const [showCompletionBanner, setShowCompletionBanner] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const ref = doc(db, 'agents', user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() as Partial<AgentData>;
+      const { data } = await supabase.from('agents').select('*').eq('id', user.id).maybeSingle();
+      if (!!data) {
         setAgentData(prev => ({
           ...initialAgentData,
           ...data,
@@ -146,18 +143,18 @@ export default function AgentProfilePage() {
           past_players: data.past_players || [],
           gallery: data.gallery || [],
           spoken_languages: data.spoken_languages || [],
-          full_name: data.full_name || userData?.full_name || userData?.displayName || userData?.name || '',
+          full_name: data.full_name || userData?.full_name || userData?.user_metadata?.full_name || userData?.name || '',
           email: data.email || userData?.email || '',
           phone: data.phone || userData?.phone || userData?.phoneNumber || '',
         }));
       } else {
         const basicData: AgentData = {
           ...initialAgentData,
-          full_name: userData?.full_name || userData?.displayName || userData?.name || '',
+          full_name: userData?.full_name || userData?.user_metadata?.full_name || userData?.name || '',
           email: userData?.email || '',
           phone: userData?.phone || userData?.phoneNumber || '',
         };
-        await setDoc(ref, { ...basicData, createdAt: new Date(), accountType: 'agent' });
+        await supabase.from('agents').upsert({ id: user.id, ...basicData, createdAt: new Date().toISOString(), accountType: 'agent' });
         setAgentData(basicData);
       }
     } catch (err) {
@@ -172,7 +169,7 @@ export default function AgentProfilePage() {
     if (user && userData) fetchData();
   }, [user, userData, fetchData]);
 
-  const BANNER_SNOOZE_KEY = `agent_profile_banner_snoozed_${user?.uid}`;
+  const BANNER_SNOOZE_KEY = `agent_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
 
   const missingFields = REQUIRED_FIELDS_AGENT.filter(({ key }) => {
@@ -223,7 +220,7 @@ export default function AgentProfilePage() {
   };
 
   const handleImageUpload = async (file: File, type: 'photo' | 'cover' | 'gallery') => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!file.type.startsWith('image/')) {
       toast.error('يرجى اختيار ملف صورة صالح');
       return;
@@ -240,7 +237,7 @@ export default function AgentProfilePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('bucket', 'agents');
-      formData.append('path', `${user.uid}/${fileName}`);
+      formData.append('path', `${user.id}/${fileName}`);
       formData.append('contentType', file.type);
 
       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
@@ -265,23 +262,21 @@ export default function AgentProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!validateForm()) return;
     setUploading(true);
     try {
-      const ref = doc(db, 'agents', user.uid);
-      const snap = await getDoc(ref);
-      const dataToSave = { ...agentData, name: agentData.full_name, updatedAt: new Date() };
-      if (snap.exists()) {
-        await updateDoc(ref, dataToSave);
+      const dataToSave = { ...agentData, name: agentData.full_name, updatedAt: new Date().toISOString() };
+      const { data: existing } = await supabase.from('agents').select('id').eq('id', user.id).maybeSingle();
+      if (!!existing) {
+        await supabase.from('agents').update(dataToSave).eq('id', user.id);
       } else {
-        await setDoc(ref, { ...dataToSave, createdAt: new Date(), accountType: 'agent' });
+        await supabase.from('agents').upsert({ id: user.id, ...dataToSave, createdAt: new Date().toISOString(), accountType: 'agent' });
       }
       try {
-        const usersRef = doc(db, 'users', user.uid);
-        const usersSnap = await getDoc(usersRef);
-        if (usersSnap.exists()) {
-          await updateDoc(usersRef, { name: agentData.full_name, full_name: agentData.full_name });
+        const { data: usersRow } = await supabase.from('users').select('id').eq('id', user.id).maybeSingle();
+        if (!!usersRow) {
+          await supabase.from('users').update({ name: agentData.full_name, full_name: agentData.full_name }).eq('id', user.id);
         }
       } catch (_) { /* ignore */ }
       toast.success('تم حفظ الملف الشخصي بنجاح');

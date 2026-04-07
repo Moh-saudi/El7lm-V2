@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { createPlayerLoginAccount } from '@/lib/utils/player-login-account';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,21 +57,18 @@ export default function InviteCodePage({ params }: { params: { code: string } })
       setLoading(true);
       setError(null);
 
-      // البحث عن كود الدعوة في مجموعة invite_codes
-      const inviteQuery = query(
-        collection(db, 'invite_codes'),
-        where('code', '==', params.code)
-      );
-      
-      const inviteSnapshot = await getDocs(inviteQuery);
-      
-      if (inviteSnapshot.empty) {
+      // البحث عن كود الدعوة في جدول invite_codes
+      const { data: inviteDocs } = await supabase
+        .from('invite_codes')
+        .select('*')
+        .eq('code', params.code);
+
+      if (!inviteDocs || inviteDocs.length === 0) {
         setError('كود الدعوة غير صحيح أو منتهي الصلاحية');
         return;
       }
 
-      const inviteDoc = inviteSnapshot.docs[0];
-      const invite = inviteDoc.data() as InviteCodeData;
+      const invite = inviteDocs[0] as InviteCodeData;
 
       if (invite.isUsed) {
         setError('تم استخدام كود الدعوة من قبل');
@@ -100,28 +96,32 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
   const findPlayerById = async (playerId: string): Promise<PlayerData | null> => {
     try {
-      // البحث في مجموعة players
-      const playersQuery = query(collection(db, 'players'), where('__name__', '==', playerId));
-      const playersSnapshot = await getDocs(playersQuery);
-      
-      if (!playersSnapshot.empty) {
-        const doc = playersSnapshot.docs[0];
+      // البحث في جدول players
+      const { data: playerRow } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', playerId)
+        .single();
+
+      if (playerRow) {
         return {
-          id: doc.id,
-          ...doc.data(),
+          ...playerRow,
+          id: playerRow.id,
           source: 'players' as const
         } as PlayerData;
       }
 
-      // البحث في مجموعة player
-      const playerQuery = query(collection(db, 'player'), where('__name__', '==', playerId));
-      const playerSnapshot = await getDocs(playerQuery);
-      
-      if (!playerSnapshot.empty) {
-        const doc = playerSnapshot.docs[0];
+      // البحث في جدول player
+      const { data: playerRow2 } = await supabase
+        .from('player')
+        .select('*')
+        .eq('id', playerId)
+        .single();
+
+      if (playerRow2) {
         return {
-          id: doc.id,
-          ...doc.data(),
+          ...playerRow2,
+          id: playerRow2.id,
           source: 'player' as const
         } as PlayerData;
       }
@@ -162,12 +162,13 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
       if (result.success) {
         setCreatedPassword(result.tempPassword || 'Player123!@#');
-        
+
         // تحديث كود الدعوة كمستخدم
-        await addDoc(collection(db, 'invite_codes'), {
+        await supabase.from('invite_codes').insert({
+          id: crypto.randomUUID(),
           ...inviteData,
           isUsed: true,
-          usedAt: new Date(),
+          usedAt: new Date().toISOString(),
           usedEmail: email
         });
 
@@ -216,8 +217,8 @@ export default function InviteCodePage({ params }: { params: { code: string } })
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.push('/')}
               className="w-full"
             >
@@ -232,7 +233,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4" dir="rtl">
       <div className="max-w-2xl mx-auto">
-        
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
@@ -258,20 +259,20 @@ export default function InviteCodePage({ params }: { params: { code: string } })
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {/* معلومات اللاعب */}
               <div className="bg-blue-50 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
                   <User className="w-4 h-4" />
                   معلوماتك الشخصية
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <Label className="text-gray-600">الاسم</Label>
                     <div className="font-medium">{playerData?.full_name || playerData?.name}</div>
                   </div>
-                  
+
                   <div>
                     <Label className="text-gray-600">الانتماء</Label>
                     <div className="flex items-center gap-1">
@@ -279,7 +280,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
                       <span className="font-medium">{getOrganizationInfo()}</span>
                     </div>
                   </div>
-                  
+
                   {playerData?.phone && (
                     <div>
                       <Label className="text-gray-600">رقم الهاتف</Label>
@@ -359,11 +360,11 @@ export default function InviteCodePage({ params }: { params: { code: string } })
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {/* بيانات تسجيل الدخول */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-semibold text-green-800 mb-3">بيانات تسجيل الدخول:</h3>
-                
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">الإيميل:</span>
@@ -379,7 +380,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">كلمة المرور:</span>
                     <div className="flex items-center gap-2">
@@ -420,14 +421,14 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
               {/* أزرار الإجراء */}
               <div className="flex gap-3">
-                <Button 
+                <Button
                   onClick={() => router.push('/auth/login')}
                   className="flex-1"
                 >
                   تسجيل الدخول الآن
                 </Button>
-                
-                <Button 
+
+                <Button
                   variant="outline"
                   onClick={() => router.push('/')}
                 >
@@ -440,4 +441,4 @@ export default function InviteCodePage({ params }: { params: { code: string } })
       </div>
     </div>
   );
-} 
+}

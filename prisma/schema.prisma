@@ -1,23 +1,2112 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ==========================================
+// Prisma Schema - El7lm Platform
+// Supabase PostgreSQL - mjuaefipdzxfqazzbyke
+// ==========================================
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// Basic schema for El7lm project
+// ==========================================
+// USERS & PROFILES
+// ==========================================
+
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  phone     String?  @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String    @id
+  uid                    String?
+  email                  String?
+  phone                  String?
+  originalPhone          String?
+  originalEmail          String?
+  firebaseEmail          String?
+  full_name              String?
+  name                   String?
+  displayName            String?
+  accountType            String?
+  country                String?
+  countryCode            String?
+  city                   String?
+  currency               String?
+  currencySymbol         String?
+  isNewUser              Boolean?
+  isActive               Boolean?
+  isDeleted              Boolean?
+  deletedAt              DateTime?
+  deletedBy              String?
+  isVerified             Boolean?
+  isVerifiedLocal        Boolean?
+  isPremium              Boolean?
+  verificationStatus     String?
+  verifiedAt             DateTime?
+  verifiedBy             String?
+  organizationCode       String?
+  organizationId         String?
+  organizationType       String?
+  organizationName       String?
+  organizationJoinedAt   DateTime?
+  joinRequestId          String?
+  joinRequestStatus      String?
+  joinedViaReferral      Boolean?
+  referralCodeUsed       String?
+  organizationApprovedBy Json?
+  subscriptionStatus     String?
+  subscriptionEndDate    Json?
+  subscriptionExpiresAt  Json?
+  selectedPackage        String?
+  packageType            String?
+  lastPaymentId          String?
+  emailUpdated           Boolean?
+  emailUpdatedAt         DateTime?
+  previousPhone          String?
+  phoneFixed             Boolean?
+  phoneFixedAt           DateTime?
+  phoneFixDescription    String?
+  phoneNormalized        String?
+  isGoogleUser           Boolean?
+  googleId               String?
+  statusChangedAt        DateTime?
+  statusChangedBy        String?
+  lastLogin              DateTime?
+  last_login             DateTime?
+  lastLoginIP            String?
+  createdAt              DateTime?
+  updatedAt              DateTime?
+  created_at             DateTime?
+  updated_at             DateTime?
+  registrationDate       DateTime?
 
   @@map("users")
+}
+
+model Player {
+  id                      String    @id
+  uid                     String?
+  firebaseUid             String?
+  email                   String?
+  phone                   String?
+  originalPhone           String?
+  originalEmail           String?
+  firebaseEmail           String?
+  full_name               String?
+  name                    String?
+  accountType             String?
+  country                 String?
+  countryCode             String?
+  city                    String?
+  nationality             String?
+  currency                String?
+  currencySymbol          String?
+  birth_date              String?
+  gender                  String?
+  height                  String?
+  weight                  String?
+  blood_type              String?
+  allergies               String?
+  chronic_conditions      Boolean?
+  chronic_details         String?
+  has_chronic_conditions  Boolean?
+  medical_notes           String?
+  primary_position        String?
+  secondary_position      String?
+  position                String?
+  preferred_foot          String?
+  foot                    String?
+  experience_years        String?
+  has_passport            String?
+  current_club            String?
+  club_id                 String?
+  clubId                  String?
+  agent_id                String?
+  agentId                 String?
+  agent_name              String?
+  agent_phone             String?
+  trainer_id              String?
+  trainerId               String?
+  academy_id              String?
+  academyId               String?
+  organizationCode        String?
+  organizationId          String?
+  organizationType        String?
+  organizationName        String?
+  organizationJoinedAt    DateTime?
+  joinRequestId           String?
+  joinRequestStatus       String?
+  joinedViaReferral       Boolean?
+  referralCodeUsed        String?
+  organizationApprovedBy  Json?
+  brief                   String?
+  address                 String?
+  whatsapp                String?
+  whatsappCountryCode     String?
+  whatsappCountry         String?
+  social_links            Json?
+  ref_source              String?
+  education_level         String?
+  degree                  String?
+  graduation_year         String?
+  arabic_level            String?
+  english_level           String?
+  spanish_level           String?
+  languages               Json?
+  has_private_coach       Boolean?
+  has_joined_academy      Boolean?
+  guardian_name           String?
+  guardian_phone          String?
+  player_number           String?
+  jersey_number           String?
+  favorite_jersey_number  String?
+  market_value            BigInt?
+  school_name             String?
+  willing_to_relocate     Boolean?
+  available_for_transfer  Boolean?
+  currently_contracted    String?
+  contract_status         String?
+  contract_end_date       String?
+  subscription_status     String?
+  subscription_type       String?
+  subscription_end        DateTime?
+  subscriptionStatus      String?
+  selectedPackage         String?
+  packageType             String?
+  subscriptionExpiresAt   Json?
+  subscriptionEndDate     Json?
+  lastPaymentId           String?
+  isNewUser               Boolean?
+  isActive                Boolean?
+  isDeleted               Boolean?
+  deletedAt               DateTime?
+  deletedBy               String?
+  isVerified              Boolean?
+  isVerifiedLocal         Boolean?
+  isPremium               Boolean?
+  verificationStatus      String?
+  verifiedAt              DateTime?
+  verifiedBy              String?
+  isGoogleUser            Boolean?
+  googleId                String?
+  phoneVerified           Boolean?
+  profileUpdateRequested  Boolean?
+  loginAccountCreated     Boolean?
+  hasLoginAccount         Boolean?
+  convertedToAccount      Boolean?
+  convertedAt             DateTime?
+  migratedFromUid         String?
+  emailMigrationStatus    String?
+  emailMigratedAt         Json?
+  oldEmail                String?
+  emailUpdated            Boolean?
+  emailUpdatedAt          DateTime?
+  previousPhone           String?
+  phoneFixed              Boolean?
+  phoneFixedAt            DateTime?
+  phoneFixDescription     String?
+  phoneNormalized         String?
+  phoneNumber             String?
+  statusChangedAt         DateTime?
+  statusChangedBy         String?
+  accountTypeChangedAt    DateTime?
+  accountTypeChangedBy    String?
+  previousAccountType     String?
+  lastLogin               DateTime?
+  last_login              DateTime?
+  lastLoginIP             String?
+  registrationDate        DateTime?
+  created_at              Json?
+  updated_at              Json?
+  createdAt               Json?
+  updatedAt               DateTime?
+  created_by              String?
+  created_by_type         String?
+  updated_by              String?
+  updated_by_type         String?
+  user_id                 String?
+  addedBy                 Json?
+  profile_image           Json?
+  profile_image_url       String?
+  image                   String?
+  additional_images       Json?
+  additional_image_urls   Json?
+  images                  Json?
+  media                   Json?
+  videos                  Json?
+  video_urls              Json?
+  uploaded_videos         Json?
+  documents               Json?
+  achievements            Json?
+  injuries                Json?
+  surgeries               Json?
+  surgeries_list          Json?
+  medical_history         Json?
+  club_history            Json?
+  agent_history           Json?
+  training_courses        Json?
+  courses                 Json?
+  contract_history        Json?
+  previous_clubs          Json?
+  technical_skills        Json?
+  physical_skills         Json?
+  social_skills           Json?
+  objectives              Json?
+  official_contact        Json?
+  allergies_list          Json?
+  chronic_conditions_details String?
+  medications             Json?
+  private_coaches         Json?
+  academies               Json?
+  sports_notes            String?
+  likedVideos             Json?
+  savedVideos             Json?
+  following               Json?
+  stats_pace              Int?
+  stats_shooting          Int?
+  stats_passing           Int?
+  stats_defending         Int?
+  stats_dribbling         Int?
+  stats_physical          Int?
+  mentality_vision        Int?
+  mentality_composure     Int?
+  mentality_aggression    Int?
+  mentality_teamwork      Int?
+  mentality_leadership    Int?
+  speed                   Float?
+  strength                Int?
+  stamina                 Int?
+  defending               Float?
+  shooting                Int?
+  concentration           Float?
+  decision_making         Float?
+  vision                  Int?
+  flexibility             Int?
+  ball_control            Int?
+  leadership              Int?
+  passing                 Float?
+  skill_moves             Int?
+  weak_foot               Int?
+  work_rate_attack        String?
+  work_rate_defense       String?
+  years_experience        String?
+  reactivated_at          Json?
+  tempPassword            String?
+
+  @@map("players")
+}
+
+model Club {
+  id                  String    @id
+  uid                 String?
+  email               String?
+  phone               String?
+  originalPhone       String?
+  originalEmail       String?
+  firebaseEmail       String?
+  full_name           String?
+  name                String?
+  accountType         String?
+  country             String?
+  countryCode         String?
+  city                String?
+  currency            String?
+  currencySymbol      String?
+  address             String?
+  website             String?
+  manager             String?
+  description         String?
+  type                String?
+  founded             String?
+  logo                String?
+  coverImage          String?
+  cover               String?
+  profile_image       String?
+  isNewUser           Boolean?
+  isActive            Boolean?
+  isDeleted           Boolean?
+  deletedAt           DateTime?
+  isVerified          Boolean?
+  isVerifiedLocal     Boolean?
+  isPremium           Boolean?
+  organizationCode    String?
+  emailUpdated        Boolean?
+  emailUpdatedAt      DateTime?
+  previousPhone       String?
+  phoneFixed          Boolean?
+  phoneFixedAt        DateTime?
+  phoneFixDescription String?
+  phoneNormalized     String?
+  isGoogleUser        Boolean?
+  googleId            String?
+  statusChangedAt     DateTime?
+  statusChangedBy     String?
+  lastLogin           Json?
+  last_login          Json?
+  lastLoginIP         String?
+  followersCount      BigInt?
+  followers           Json?
+  following           Json?
+  likedVideos         Json?
+  savedVideos         Json?
+  favorites           Json?
+  facebook            String?
+  twitter             String?
+  instagram           String?
+  stats               Json?
+  trophies            Json?
+  gallery             Json?
+  board               Json?
+  schools             Json?
+  academies           Json?
+  registrationDate    DateTime?
+  createdAt           DateTime?
+  updatedAt           DateTime?
+  created_at          DateTime?
+  updated_at          DateTime?
+
+  @@map("clubs")
+}
+
+model Academy {
+  id                    String    @id
+  uid                   String?
+  email                 String?
+  phone                 String?
+  originalPhone         String?
+  originalEmail         String?
+  firebaseEmail         String?
+  full_name             String?
+  name                  String?
+  academy_name          String?
+  accountType           String?
+  country               String?
+  countryCode           String?
+  city                  String?
+  address               String?
+  currency              String?
+  currencySymbol        String?
+  description           String?
+  academy_type          String?
+  founding_year         String?
+  established           String?
+  license_number        String?
+  license               String?
+  registration_date     String?
+  is_federation_approved Boolean?
+  website               String?
+  logo                  String?
+  coverImage            String?
+  profile_image         String?
+  isNewUser             Boolean?
+  isActive              Boolean?
+  isDeleted             Boolean?
+  deletedAt             DateTime?
+  deletedBy             String?
+  isVerified            Boolean?
+  isVerifiedLocal       Boolean?
+  isPremium             Boolean?
+  verificationStatus    String?
+  verifiedAt            DateTime?
+  verifiedBy            String?
+  organizationCode      String?
+  emailUpdated          Boolean?
+  emailUpdatedAt        DateTime?
+  previousPhone         String?
+  phoneFixed            Boolean?
+  phoneFixedAt          DateTime?
+  phoneFixDescription   String?
+  phoneNormalized       String?
+  isGoogleUser          Boolean?
+  googleId              String?
+  statusChangedAt       DateTime?
+  statusChangedBy       String?
+  lastLogin             DateTime?
+  last_login            DateTime?
+  lastLoginIP           String?
+  followersCount        BigInt?
+  followers             Json?
+  following             Json?
+  likedVideos           Json?
+  savedVideos           Json?
+  facebook              String?
+  twitter               String?
+  instagram             String?
+  social_media          Json?
+  age_groups            Json?
+  sports_facilities     Json?
+  facilities            Json?
+  number_of_coaches     BigInt?
+  training_programs     String?
+  achievements          String?
+  license_file          String?
+  facility_photos       Json?
+  director              Json?
+  technical_director    Json?
+  main_branch           Json?
+  branches              Json?
+  academy_goals         String?
+  success_stories       Json?
+  partnerships          Json?
+  programs              Json?
+  programs_offered      Json?
+  staff                 Json?
+  stats                 Json?
+  gallery               Json?
+  createdAt             DateTime?
+  updatedAt             DateTime?
+  created_at            Json?
+  updated_at            DateTime?
+
+  @@map("academies")
+}
+
+model Agent {
+  id                  String    @id
+  uid                 String?
+  email               String?
+  phone               String?
+  originalPhone       String?
+  originalEmail       String?
+  firebaseEmail       String?
+  full_name           String?
+  accountType         String?
+  country             String?
+  countryCode         String?
+  currency            String?
+  currencySymbol      String?
+  nationality         String?
+  current_location    String?
+  date_of_birth       String?
+  is_fifa_licensed    Boolean?
+  license_number      String?
+  license_expiry      String?
+  years_of_experience BigInt?
+  specialization      String?
+  spoken_languages    Json?
+  office_address      String?
+  website             String?
+  social_media        Json?
+  current_players     Json?
+  past_players        Json?
+  notable_deals       String?
+  id_copy             String?
+  license_copy        String?
+  player_contracts_sample String?
+  profile_image       String?
+  profile_photo       String?
+  coverImage          String?
+  stats               Json?
+  isNewUser           Boolean?
+  isActive            Boolean?
+  isDeleted           Boolean?
+  deletedAt           DateTime?
+  isVerified          Boolean?
+  isVerifiedLocal     Boolean?
+  isPremium           Boolean?
+  organizationCode    String?
+  emailUpdated        Boolean?
+  emailUpdatedAt      DateTime?
+  previousPhone       String?
+  phoneFixed          Boolean?
+  phoneFixedAt        DateTime?
+  phoneFixDescription String?
+  phoneNormalized     String?
+  isGoogleUser        Boolean?
+  googleId            String?
+  statusChangedAt     DateTime?
+  statusChangedBy     String?
+  followersCount      BigInt?
+  followers           Json?
+  lastLogin           Json?
+  last_login          Json?
+  lastLoginIP         String?
+  created_at          Json?
+  createdAt           Json?
+  updated_at          Json?
+  updatedAt           Json?
+
+  @@map("agents")
+}
+
+model Trainer {
+  id                  String    @id
+  uid                 String?
+  email               String?
+  phone               String?
+  originalPhone       String?
+  originalEmail       String?
+  firebaseEmail       String?
+  full_name           String?
+  accountType         String?
+  country             String?
+  countryCode         String?
+  city                String?
+  currency            String?
+  currencySymbol      String?
+  nationality         String?
+  current_location    String?
+  date_of_birth       String?
+  specialization      String?
+  coaching_level      String?
+  years_of_experience BigInt?
+  license_number      String?
+  license_expiry      String?
+  is_certified        Boolean?
+  spoken_languages    Json?
+  social_media        Json?
+  previous_clubs      Json?
+  description         String?
+  achievements        String?
+  references          String?
+  cv                  String?
+  id_copy             String?
+  license_copy        String?
+  profile_image       String?
+  profile_photo       String?
+  coverImage          String?
+  stats               Json?
+  isNewUser           Boolean?
+  isActive            Boolean?
+  isDeleted           Boolean?
+  deletedAt           DateTime?
+  deletedBy           String?
+  isVerified          Boolean?
+  isVerifiedLocal     Boolean?
+  isPremium           Boolean?
+  verificationStatus  String?
+  rejectedAt          DateTime?
+  rejectedBy          String?
+  organizationCode    String?
+  accountTypeChangedAt DateTime?
+  accountTypeChangedBy String?
+  previousAccountType String?
+  emailUpdated        Boolean?
+  emailUpdatedAt      DateTime?
+  previousPhone       String?
+  phoneFixed          Boolean?
+  phoneFixedAt        DateTime?
+  phoneFixDescription String?
+  phoneNormalized     String?
+  isGoogleUser        Boolean?
+  googleId            String?
+  followersCount      BigInt?
+  followers           Json?
+  lastLogin           Json?
+  last_login          Json?
+  lastLoginIP         String?
+  createdAt           Json?
+  created_at          Json?
+  updatedAt           DateTime?
+  updated_at          Json?
+
+  @@map("trainers")
+}
+
+model Marketer {
+  id                  String    @id
+  uid                 String?
+  email               String?
+  phone               String?
+  originalPhone       String?
+  originalEmail       String?
+  firebaseEmail       String?
+  full_name           String?
+  accountType         String?
+  country             String?
+  countryCode         String?
+  currency            String?
+  currencySymbol      String?
+  isNewUser           Boolean?
+  isActive            Boolean?
+  isDeleted           Boolean?
+  deletedAt           DateTime?
+  isVerifiedLocal     Boolean?
+  organizationCode    String?
+  emailUpdated        Boolean?
+  previousPhone       String?
+  phoneFixed          Boolean?
+  phoneFixedAt        DateTime?
+  phoneFixDescription String?
+  phoneNormalized     String?
+  isGoogleUser        Boolean?
+  googleId            String?
+  updatedAt           Json?
+  lastLogin           Json?
+  last_login          Json?
+  lastLoginIP         String?
+  created_at          DateTime?
+  updated_at          DateTime?
+  createdAt           DateTime?
+
+  @@map("marketers")
+}
+
+model Admin {
+  id                  String    @id
+  name                String?
+  email               String?
+  phone               String?
+  role                String?
+  permissions         Json?
+  isActive            Boolean?
+  loginCount          BigInt?
+  emergencyAccess     Boolean?
+  lastEmergencyLogin  DateTime?
+  createdAt           DateTime?
+  updatedAt           DateTime?
+
+  @@map("admins")
+}
+
+model Employee {
+  id              String    @id
+  uid             String?
+  name            String?
+  email           String?
+  phone           String?
+  phonePrefix     String?
+  role            String?
+  roleId          String?
+  roleName        String?
+  department      String?
+  regions         Json?
+  permissions     Json?
+  locations       Json?
+  allowedCountries Json?
+  loginMethods    Json?
+  avatar          String?
+  workStartTime   String?
+  workEndTime     String?
+  authUserId      String?
+  isActive        Boolean?
+  createdAt       DateTime?
+  updatedAt       DateTime?
+
+  @@map("employees")
+}
+
+// ==========================================
+// CONVERSATIONS & MESSAGES
+// ==========================================
+
+model Conversation {
+  id                String    @id
+  participants      Json?
+  participantNames  Json?
+  participantTypes  Json?
+  participantAvatars Json?
+  lastMessage       String?
+  lastSenderId      String?
+  lastMessageTime   DateTime?
+  subject           String?
+  isActive          Boolean?
+  unreadCount       Json?
+  createdAt         DateTime?
+  updatedAt         DateTime?
+
+  @@map("conversations")
+}
+
+model Message {
+  id              String    @id
+  conversationId  String?
+  senderId        String?
+  receiverId      String?
+  senderName      String?
+  receiverName    String?
+  senderType      String?
+  receiverType    String?
+  message         String?
+  content         String?
+  type            String?
+  messageType     String?
+  channel         String?
+  status          String?
+  deliveryStatus  String?
+  isRead          Boolean?
+  read            Boolean?
+  readAt          DateTime?
+  timestamp       DateTime?
+  createdAt       DateTime?
+  updatedAt       DateTime?
+  subject         String?
+  paymentId       String?
+  recipientPhone  String?
+  recipientEmail  String?
+  imageUrl        String?
+  voiceUrl        String?
+  voiceDuration   BigInt?
+  isPinned        Boolean?
+
+  @@map("messages")
+}
+
+model SupportConversation {
+  id              String    @id
+  userId          String?
+  userType        String?
+  userName        String?
+  userEmail       String?
+  userPhone       String?
+  subject         String?
+  category        String?
+  priority        String?
+  status          String?
+  lastMessage     String?
+  lastMessageTime DateTime?
+  unreadCount     BigInt?
+  createdAt       DateTime?
+  updatedAt       DateTime?
+
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             String    @id
+  conversationId String?
+  senderId       String?
+  senderName     String?
+  senderType     String?
+  message        String?
+  isRead         Boolean?
+  timestamp      DateTime?
+
+  @@map("support_messages")
+}
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+
+model Notification {
+  id                  String    @id
+  userId              String?
+  userEmail           String?
+  userPhone           String?
+  senderId            String?
+  senderName          String?
+  senderAccountType   String?
+  senderType          String?
+  senderAvatar        String?
+  title               String?
+  message             String?
+  body                String?
+  type                String?
+  category            String?
+  priority            String?
+  scope               String?
+  link                String?
+  isRead              Boolean?
+  read                Boolean?
+  status              String?
+  sentAt              DateTime?
+  sentVia             String?
+  conversationId      String?
+  messageId           String?
+  paymentId           String?
+  metadata            Json?
+  createdAt           DateTime?
+  updatedAt           DateTime?
+
+  @@map("notifications")
+}
+
+model AdminNotification {
+  id            String    @id
+  title         String?
+  message       String?
+  type          String?
+  priority      String?
+  isRead        Boolean?
+  actionType    String?
+  targetType    String?
+  targetId      String?
+  paymentId     String?
+  paymentData   Json?
+  employeeId    String?
+  employeeName  String?
+  employeeEmail String?
+  metadata      Json?
+  createdAt     DateTime?
+
+  @@map("admin_notifications")
+}
+
+model SmartNotification {
+  id          String    @id
+  userId      String?
+  viewerId    String?
+  viewerName  String?
+  viewerType  String?
+  title       String?
+  message     String?
+  type        String?
+  priority    String?
+  emoji       String?
+  actionUrl   String?
+  isRead      Boolean?
+  expiresAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime?
+
+  @@map("smart_notifications")
+}
+
+model InteractionNotification {
+  id                String    @id
+  userId            String?
+  profileOwnerId    String?
+  viewerId          String?
+  viewerName        String?
+  viewerType        String?
+  viewerAccountType String?
+  title             String?
+  message           String?
+  type              String?
+  priority          String?
+  emoji             String?
+  actionUrl         String?
+  videoId           String?
+  isRead            Boolean?
+  expiresAt         DateTime?
+  metadata          Json?
+  createdAt         DateTime?
+  updatedAt         DateTime?
+
+  @@map("interaction_notifications")
+}
+
+model PlayerNotification {
+  id               String    @id
+  playerId         String?
+  organizationId   String?
+  organizationName String?
+  type             String?
+  message          String?
+  isRead           Boolean?
+  createdAt        DateTime?
+
+  @@map("player_notifications")
+}
+
+model JoinRequestNotification {
+  id               String    @id
+  playerId         String?
+  playerName       String?
+  organizationId   String?
+  organizationName String?
+  organizationType String?
+  requestId        String?
+  type             String?
+  message          String?
+  isRead           Boolean?
+  createdAt        DateTime?
+
+  @@map("join_request_notifications")
+}
+
+model SupportNotification {
+  id        String    @id
+  title     String?
+  message   String?
+  status    String?
+  createdAt DateTime?
+
+  @@map("support_notifications")
+}
+
+// ==========================================
+// PAYMENTS & SUBSCRIPTIONS
+// ==========================================
+
+model Payment {
+  id          String    @id
+  userId      String?
+  userName    String?
+  userEmail   String?
+  accountType String?
+  method      String?
+  packageName String?
+  packageType String?
+  amount      BigInt?
+  currency    String?
+  status      String?
+  transactionId String?
+  receiptUrl  String?
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime?
+  updatedAt   DateTime?
+
+  @@map("payments")
+}
+
+model BulkPayment {
+  id                   String    @id
+  userId               String?
+  userName             String?
+  userEmail            String?
+  accountType          String?
+  paymentMethod        String?
+  packageType          String?
+  amount               BigInt?
+  currency             String?
+  playerCount          BigInt?
+  transactionId        String?
+  senderName           String?
+  senderAccount        String?
+  receiptUrl           String?
+  description          String?
+  status               String?
+  subscription_status  String?
+  subscription_expires_at DateTime?
+  players              Json?
+  metadata             Json?
+  updatedBy            String?
+  createdAt            DateTime?
+  updatedAt            DateTime?
+  updated_at           DateTime?
+
+  @@map("bulkPayments")
+}
+
+model GeideaPayment {
+  id                      String    @id
+  orderId                 String?
+  geideaOrderId           String?
+  merchantReferenceId     String?
+  ourMerchantReferenceId  String?
+  transactionId           String?
+  amount                  BigInt?
+  currency                String?
+  status                  String?
+  paymentMethod           String?
+  customerName            String?
+  customerEmail           String?
+  customerPhone           String?
+  source                  String?
+  rawPayload              Json?
+  paidAt                  DateTime?
+  callbackReceivedAt      DateTime?
+  fetchedFromGeideaAt     DateTime?
+  createdAt               DateTime?
+  updatedAt               DateTime?
+
+  @@map("geidea_payments")
+}
+
+model Invoice {
+  id               String    @id
+  invoice_number   String?
+  paymentId        String?
+  payment_id       String?
+  transactionId    String?
+  userId           String?
+  user_id          String?
+  userName         String?   @map("user_name")
+  userEmail        String?   @map("user_email")
+  customerName     String?
+  customerEmail    String?
+  country          String?
+  amount           String?
+  currency         String?
+  status           String?
+  provider         String?
+  originalStatus   String?
+  method           String?
+  paymentMethod    String?
+  packageName      String?
+  package_name     String?
+  plan_name        String?
+  packageType      String?
+  packageDuration  String?
+  package_duration String?
+  playerCount      BigInt?
+  players          Json?
+  notes            String?
+  receiptUrl       String?
+  metadata         String?
+  paidAt           DateTime?
+  rejectionDate    DateTime?
+  createdAt        DateTime?
+  created_at       DateTime?
+  updatedAt        DateTime?
+  updated_at       DateTime?
+
+  @@map("invoices")
+}
+
+model Subscription {
+  id               String    @id
+  userId           String?
+  user_id          String?
+  plan_name        String?
+  package_name     String?
+  packageName      String?
+  package_duration String?
+  packageDuration  String?
+  package_price    BigInt?
+  packagePrice     BigInt?
+  payment_id       String?
+  paymentId        String?
+  invoice_number   String?
+  receipt_url      String?
+  status           String?
+  features         Json?
+  amount           BigInt?
+  paidAmount       BigInt?
+  currency         String?
+  paymentMethod    String?
+  payment_method   String?
+  transaction_id   String?
+  customer_name    String?
+  customer_email   String?
+  customer_phone   String?
+  billing_address  String?
+  tax_number       String?
+  packageType      String?
+  is_auto_renew    Boolean?
+  autoRenew        Boolean?
+  auto_renew       Boolean?
+  receiptInfo      Json?
+  activated_at     DateTime?
+  activatedAt      DateTime?
+  expires_at       DateTime?
+  expiresAt        DateTime?
+  end_date         DateTime?
+  endDate          DateTime?
+  start_date       DateTime?
+  startDate        DateTime?
+  payment_date     String?
+  created_at       DateTime?
+  createdAt        DateTime?
+  updated_at       DateTime?
+  updatedAt        DateTime?
+
+  @@map("subscriptions")
+}
+
+model SubscriptionPlan {
+  id                   String   @id
+  title                String?
+  subtitle             String?
+  period               String?
+  base_currency        String?
+  base_original_price  BigInt?
+  base_price           BigInt?
+  features             Json?
+  bonusFeatures        Json?
+  popular              Boolean?
+  icon                 String?
+  color                String?
+  overrides            Json?
+  accountTypeOverrides Json?
+  badges               Json?
+  highlights           Json?
+  recommendedFor       String?
+  description          String?
+  isActive             Boolean?
+  order                BigInt?
+  updatedAt            String?
+
+  @@map("subscription_plans")
+}
+
+model PromotionalOffer {
+  id                 String   @id @default(cuid())
+  name               String
+  description        String?
+  code               String?  @unique
+  discountType       String?
+  discountValue      Decimal?
+  startDate          String?
+  endDate            String?
+  isActive           Boolean? @default(true)
+  scope              String?  @default("all")
+  targetAccountTypes Json?
+  targetCountries    Json?
+  applicablePlans    Json?
+  usageLimitType     String?  @default("unlimited")
+  totalUsageLimit    Int?
+  currentUses        Int?     @default(0)
+  minPlayers         Int?
+  minAmount          Decimal?
+  createdAt          String?
+  updatedAt          String?
+
+  @@map("promotional_offers")
+}
+
+model PaymentActionLog {
+  id         String    @id
+  paymentId  String?
+  userId     String?
+  userName   String?
+  action     String?
+  details    String?
+  status     String?
+  adminId    String?
+  metadata   Json?
+  updatedBy  String?
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("payment_action_logs")
+}
+
+model PaymentResult {
+  id                  String    @id
+  orderId             String?
+  merchantReferenceId String?
+  amount              BigInt?
+  currency            String?
+  status              String?
+  paymentMethod       String?
+  cardBrand           String?
+  createdDate         DateTime?
+  updatedDate         DateTime?
+  processedAt         DateTime?
+  webhookReceived     Boolean?
+  isTest              Boolean?
+  transactions        Json?
+  fullWebhookData     Json?
+
+  @@map("payment_results")
+}
+
+model PaymentSetting {
+  id          String  @id
+  countryCode String?
+  countryName String?
+  currency    String?
+  methods     Json?
+
+  @@map("payment_settings")
+}
+
+// ==========================================
+// TOURNAMENTS (Legacy - kept for backwards compatibility)
+// ==========================================
+
+model Tournament {
+  id                   String    @id
+  name                 String?
+  description          String?
+  location             String?
+  locationUrl          String?
+  country              String?
+  logo                 String?
+  startDate            String?
+  endDate              String?
+  registrationDeadline String?
+  paymentDeadline      String?
+  maxParticipants      BigInt?
+  currentParticipants  BigInt?
+  maxPlayersPerClub    BigInt?
+  isPaid               Boolean?
+  isActive             Boolean?
+  entryFee             BigInt?
+  feeType              String?
+  currency             String?
+  paymentMethods       Json?
+  walletName           String?
+  walletNumber         String?
+  allowInstallments    Boolean?
+  installmentsCount    BigInt?
+  installmentsDetails  String?
+  ageGroups            Json?
+  categories           Json?
+  registrations        Json?
+  contactInfo          String?
+  prizes               String?
+  refundPolicy         String?
+  rules                String?
+  createdAt            DateTime?
+  updatedAt            DateTime?
+
+  @@map("tournaments")
+}
+
+model TournamentRegistration {
+  id                    String    @id
+  tournamentId          String?
+  playerId              String?
+  playerName            String?
+  playerEmail           String?
+  playerPhone           String?
+  playerAge             BigInt?
+  playerBirthDate       String?
+  playerClub            String?
+  playerPosition        String?
+  userId                String?
+  accountName           String?
+  accountType           String?
+  accountEmail          String?
+  accountPhone          String?
+  organizationType      String?
+  organizationName      String?
+  clubName              String?
+  clubPlayers           Json?
+  players               Json?
+  selectedPlayers       Json?
+  registrationType      String?
+  registrationDate      DateTime?
+  paymentStatus         String?
+  paymentType           String?
+  paymentMethod         String?
+  mobileWalletProvider  String?
+  mobileWalletNumber    String?
+  walletProvider        String?
+  paymentAmount         BigInt?
+  totalAmount           BigInt?
+  currency              String?
+  receiptUrl            String?
+  receiptNumber         String?
+  clubContact           String?
+  paymentDate           DateTime?
+  notes                 String?
+  status                String?
+  createdBy             String?
+  createdAt             DateTime?
+  updatedAt             DateTime?
+
+  @@map("tournament_registrations")
+}
+
+// ==========================================
+// TOURNAMENT PORTAL (New System)
+// ==========================================
+
+/// العملاء الخارجيون — كل عميل يدير بطولاته الخاصة
+model TournamentClient {
+  id               String    @id @default(uuid())
+  supabaseAuthId   String?   @unique @map("supabase_auth_id")
+  name             String
+  organizationName String?   @map("organization_name")
+  email            String    @unique
+  phone            String?
+  logoUrl          String?   @map("logo_url")
+  country          String?
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tournaments      TournamentNew[]
+
+  @@map("tournament_clients")
+}
+
+/// البطولات — النظام الجديد
+model TournamentNew {
+  id                   String    @id @default(uuid())
+  clientId             String?   @map("client_id")
+  slug                 String    @unique
+  name                 String
+  description          String?
+  logoUrl              String?   @map("logo_url")
+  bannerUrl            String?   @map("banner_url")
+  country              String?
+  city                 String?
+  location             String?
+  locationUrl          String?   @map("location_url")
+  startDate            String?   @map("start_date")
+  endDate              String?   @map("end_date")
+  registrationDeadline String?   @map("registration_deadline")
+  /// draft | open | closed | ongoing | completed | cancelled
+  status               String    @default("draft")
+  /// knockout | league | groups_knockout
+  type                 String    @default("knockout")
+  maxTeams             Int?      @map("max_teams")
+  minTeams             Int?      @map("min_teams")
+  playersPerTeam       Int?      @map("players_per_team")
+  isPublic             Boolean   @default(true) @map("is_public")
+  isPaid               Boolean   @default(false) @map("is_paid")
+  entryFee             Decimal?  @map("entry_fee") @db.Decimal(12, 2)
+  currency             String    @default("SAR")
+  paymentMethods       Json?     @map("payment_methods")
+  paymentDeadline      String?   @map("payment_deadline")
+  allowInstallments    Boolean   @default(false) @map("allow_installments")
+  installmentsCount    Int?      @map("installments_count")
+  /// team | individual
+  feeType              String    @default("team") @map("fee_type")
+  walletName           String?   @map("wallet_name")
+  walletNumber         String?   @map("wallet_number")
+  refundPolicy         String?   @map("refund_policy")
+  rules                String?
+  prizes               String?
+  contactInfo          String?   @map("contact_info")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  client               TournamentClient?    @relation(fields: [clientId], references: [id])
+  categories           TournamentCategory[]
+  teams                TournamentTeam[]
+  groups               TournamentGroup[]
+  matches              TournamentMatch[]
+  teamRegistrations    TournamentTeamReg[]
+  notifications        TournamentNotif[]
+
+  @@map("tournament_new")
+}
+
+/// فئات البطولة (U14, U17, كبار...)
+model TournamentCategory {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  name          String
+  ageMin        Int?      @map("age_min")
+  ageMax        Int?      @map("age_max")
+  maxTeams      Int?      @map("max_teams")
+  /// knockout | league | groups_knockout
+  type          String    @default("knockout")
+  groupCount    Int?      @map("group_count")
+  teamsPerGroup Int?      @map("teams_per_group")
+  advanceCount  Int?      @map("advance_count")
+  sortOrder     Int       @default(0) @map("sort_order")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tournament    TournamentNew       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teams         TournamentTeam[]
+  groups        TournamentGroup[]
+  matches       TournamentMatch[]
+  standings     TournamentStanding[]
+  topScorers    TournamentTopScorer[]
+  teamRegs      TournamentTeamReg[]
+
+  @@map("tournament_categories")
+}
+
+/// الفرق المسجلة
+model TournamentTeam {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  categoryId    String?   @map("category_id")
+  name          String
+  logoUrl       String?   @map("logo_url")
+  clubName      String?   @map("club_name")
+  city          String?
+  country       String?
+  contactName   String?   @map("contact_name")
+  contactPhone  String?   @map("contact_phone")
+  contactEmail  String?   @map("contact_email")
+  /// pending | approved | rejected | withdrawn
+  status        String    @default("pending")
+  seed          Int?
+  groupId       String?   @map("group_id")
+  notes         String?
+  registeredAt  DateTime  @default(now()) @map("registered_at")
+  approvedAt    DateTime? @map("approved_at")
+
+  tournament    TournamentNew       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category      TournamentCategory? @relation(fields: [categoryId], references: [id])
+  group         TournamentGroup?    @relation(fields: [groupId], references: [id])
+  players       TournamentPlayer[]
+  homeMatches   TournamentMatch[]   @relation("MatchHomeTeam")
+  awayMatches   TournamentMatch[]   @relation("MatchAwayTeam")
+  matchEvents   TournamentMatchEvent[]
+  standing      TournamentStanding?
+  registration  TournamentTeamReg?
+
+  @@map("tournament_teams")
+}
+
+/// لاعبو كل فريق
+model TournamentPlayer {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  teamId        String    @map("team_id")
+  name          String
+  dateOfBirth   String?   @map("date_of_birth")
+  position      String?
+  jerseyNumber  Int?      @map("jersey_number")
+  photoUrl      String?   @map("photo_url")
+  isCaptain     Boolean   @default(false) @map("is_captain")
+  /// active | suspended | injured
+  status        String    @default("active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  team          TournamentTeam       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  matchEvents   TournamentMatchEvent[]
+  topScorer     TournamentTopScorer?
+
+  @@map("tournament_players")
+}
+
+/// تسجيل الفرق + الدفع
+model TournamentTeamReg {
+  id              String    @id @default(uuid())
+  tournamentId    String    @map("tournament_id")
+  categoryId      String?   @map("category_id")
+  teamId          String?   @unique @map("team_id")
+  /// pending | paid | partial | free | refunded
+  paymentStatus   String    @default("pending") @map("payment_status")
+  paymentAmount   Decimal?  @map("payment_amount") @db.Decimal(12, 2)
+  paymentMethod   String?   @map("payment_method")
+  receiptUrl      String?   @map("receipt_url")
+  receiptNumber   String?   @map("receipt_number")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tournament      TournamentNew       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category        TournamentCategory? @relation(fields: [categoryId], references: [id])
+  team            TournamentTeam?     @relation(fields: [teamId], references: [id])
+
+  @@map("tournament_team_regs")
+}
+
+/// المجموعات (A, B, C...)
+model TournamentGroup {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  categoryId    String    @map("category_id")
+  name          String
+  sortOrder     Int       @default(0) @map("sort_order")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tournament    TournamentNew       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category      TournamentCategory  @relation(fields: [categoryId], references: [id])
+  teams         TournamentTeam[]
+  matches       TournamentMatch[]
+  standings     TournamentStanding[]
+
+  @@map("tournament_groups")
+}
+
+/// جدول المباريات
+model TournamentMatch {
+  id                 String    @id @default(uuid())
+  tournamentId       String    @map("tournament_id")
+  categoryId         String?   @map("category_id")
+  groupId            String?   @map("group_id")
+  /// group_stage | round_of_32 | round_of_16 | quarter_final | semi_final | third_place | final
+  round              String    @default("group_stage")
+  matchNumber        Int?      @map("match_number")
+  homeTeamId         String?   @map("home_team_id")
+  awayTeamId         String?   @map("away_team_id")
+  homeScore          Int?      @map("home_score")
+  awayScore          Int?      @map("away_score")
+  homePenalties      Int?      @map("home_penalties")
+  awayPenalties      Int?      @map("away_penalties")
+  venue              String?
+  scheduledAt        DateTime? @map("scheduled_at")
+  playedAt           DateTime? @map("played_at")
+  /// scheduled | live | completed | postponed | cancelled
+  status             String    @default("scheduled")
+  winnerId           String?   @map("winner_id")
+  nextMatchId        String?   @map("next_match_id")
+  /// home | away
+  nextMatchPosition  String?   @map("next_match_position")
+  refereeName        String?   @map("referee_name")
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  tournament         TournamentNew       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category           TournamentCategory? @relation(fields: [categoryId], references: [id])
+  group              TournamentGroup?    @relation(fields: [groupId], references: [id])
+  homeTeam           TournamentTeam?     @relation("MatchHomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam           TournamentTeam?     @relation("MatchAwayTeam", fields: [awayTeamId], references: [id])
+  events             TournamentMatchEvent[]
+
+  @@map("tournament_matches")
+}
+
+/// أحداث المباراة (أهداف، بطاقات، تبديلات)
+model TournamentMatchEvent {
+  id              String    @id @default(uuid())
+  matchId         String    @map("match_id")
+  teamId          String?   @map("team_id")
+  playerId        String?   @map("player_id")
+  /// goal | own_goal | yellow_card | red_card | second_yellow | sub_in | sub_out | penalty_scored | penalty_missed
+  eventType       String    @map("event_type")
+  minute          Int?
+  extraMinute     Int?      @map("extra_minute")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  match           TournamentMatch      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team            TournamentTeam?      @relation(fields: [teamId], references: [id])
+  player          TournamentPlayer?    @relation(fields: [playerId], references: [id])
+
+  @@map("tournament_match_events")
+}
+
+/// ترتيب الفرق (يُحدَّث تلقائياً عند إدخال النتائج)
+model TournamentStanding {
+  id             String    @id @default(uuid())
+  tournamentId   String    @map("tournament_id")
+  categoryId     String    @map("category_id")
+  teamId         String    @unique @map("team_id")
+  groupId        String?   @map("group_id")
+  position       Int?
+  played         Int       @default(0)
+  won            Int       @default(0)
+  drawn          Int       @default(0)
+  lost           Int       @default(0)
+  goalsFor       Int       @default(0) @map("goals_for")
+  goalsAgainst   Int       @default(0) @map("goals_against")
+  goalDifference Int       @default(0) @map("goal_difference")
+  points         Int       @default(0)
+  form           String?
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  team           TournamentTeam      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  category       TournamentCategory  @relation(fields: [categoryId], references: [id])
+  group          TournamentGroup?    @relation(fields: [groupId], references: [id])
+
+  @@map("tournament_standings")
+}
+
+/// قائمة الهدافين (تُحدَّث تلقائياً)
+model TournamentTopScorer {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  categoryId    String    @map("category_id")
+  playerId      String    @unique @map("player_id")
+  teamId        String    @map("team_id")
+  goals         Int       @default(0)
+  assists       Int       @default(0)
+  yellowCards   Int       @default(0) @map("yellow_cards")
+  redCards      Int       @default(0) @map("red_cards")
+  minutesPlayed Int       @default(0) @map("minutes_played")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  player        TournamentPlayer    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  category      TournamentCategory  @relation(fields: [categoryId], references: [id])
+
+  @@map("tournament_top_scorers")
+}
+
+/// إشعارات البطولة
+model TournamentNotif {
+  id            String    @id @default(uuid())
+  tournamentId  String    @map("tournament_id")
+  /// match_reminder | result | standings | general
+  type          String
+  title         String
+  body          String
+  /// all | team
+  target        String    @default("all")
+  targetId      String?   @map("target_id")
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tournament    TournamentNew @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@map("tournament_notifications")
+}
+
+// ==========================================
+// OPPORTUNITIES & CONTRACTS
+// ==========================================
+
+model PlayerJoinRequest {
+  id               String    @id
+  playerId         String?
+  playerName       String?
+  playerEmail      String?
+  playerPhone      String?
+  organizationId   String?
+  organizationType String?
+  organizationName String?
+  referralCode     String?
+  playerData       Json?
+  notes            String?
+  status           String?
+  requestedAt      DateTime?
+  processedAt      DateTime?
+  processedBy      String?
+
+  @@map("player_join_requests")
+}
+
+model OrganizationReferral {
+  id               String    @id
+  organizationId   String?
+  organizationType String?
+  organizationName String?
+  referralCode     String?
+  inviteLink       String?
+  description      String?
+  isActive         Boolean?
+  currentUsage     BigInt?
+  maxUsage         BigInt?
+  createdAt        DateTime?
+  updatedAt        DateTime?
+
+  @@map("organization_referrals")
+}
+
+model PlayerReward {
+  id              String    @id
+  playerId        String?
+  totalPoints     BigInt?
+  availablePoints BigInt?
+  totalEarnings   BigInt?
+  referralCount   BigInt?
+  badges          Json?
+  lastUpdated     DateTime?
+  createdAt       DateTime?
+
+  @@map("player_rewards")
+}
+
+model PlayerStat {
+  id           String    @id
+  profileViews BigInt?
+  videoViews   BigInt?
+  matches      BigInt?
+  goals        BigInt?
+  assists      BigInt?
+  createdAt    DateTime?
+
+  @@map("player_stats")
+}
+
+model PlayerActionLog {
+  id           String    @id
+  playerId     String?
+  action       String?
+  actionBy     String?
+  actionByType String?
+  details      Json?
+  metadata     Json?
+  timestamp    DateTime?
+
+  @@map("player_action_logs")
+}
+
+// ==========================================
+// DREAM ACADEMY
+// ==========================================
+
+model DreamAcademyCategory {
+  id                     String    @id
+  title                  String?
+  titleAr                String?
+  titleEn                String?
+  basePriceUSD           BigInt?
+  currency               String?
+  allowedPaymentMethods  Json?
+  isActive               Boolean?
+  group                  String?
+  color                  String?
+  updatedAt              DateTime?
+  createdAt              DateTime?
+
+  @@map("dream_academy_categories")
+}
+
+model DreamAcademySource {
+  id                  String    @id
+  categoryId          String?
+  provider            String?
+  sourceType          String?
+  url                 String?
+  title               String?
+  resolvedTitle       String?
+  resolvedDescription String?
+  videoId             String?
+  playlistId          String?
+  channelTitle        String?
+  thumbnailUrl        String?
+  durationSec         BigInt?
+  order               BigInt?
+  isActive            Boolean?
+  createdBy           String?
+  createdAt           DateTime?
+
+  @@map("dream_academy_sources")
+}
+
+model DreamAcademyStat {
+  id        String    @id
+  likes     BigInt?
+  views     BigInt?
+  updatedAt DateTime?
+
+  @@map("dream_academy_stats")
+}
+
+model PrivateSessionRequest {
+  id            String    @id
+  name          String?
+  whatsapp      String?
+  durationMinutes BigInt?
+  notes         String?
+  currency      String?
+  amount        BigInt?
+  paymentMethod String?
+  categoryId    String?
+  paymentStatus String?
+  createdAt     DateTime?
+
+  @@map("private_sessions_requests")
+}
+
+// ==========================================
+// ADS
+// ==========================================
+
+model Ad {
+  id               String    @id
+  title            String?
+  description      String?
+  type             String?
+  popupType        String?
+  mediaUrl         String?
+  ctaText          String?
+  ctaUrl           String?
+  customUrl        String?
+  targetAudience   String?
+  displayLocation  String?
+  urgency          String?
+  discount         String?
+  countdown        String?
+  priority         BigInt?
+  maxDisplays      BigInt?
+  displayFrequency String?
+  displayDelay     BigInt?
+  autoClose        BigInt?
+  showCloseButton  Boolean?
+  showProgressBar  Boolean?
+  clicks           BigInt?
+  views            BigInt?
+  isActive         Boolean?
+  startDate        String?
+  endDate          String?
+  createdAt        DateTime?
+  updatedAt        DateTime?
+
+  @@map("ads")
+}
+
+// ==========================================
+// ANALYTICS & LOGS
+// ==========================================
+
+model Analytics {
+  id        String    @id
+  event     String?
+  route     String?
+  page      String?
+  device    String?
+  country   String?
+  city      String?
+  ip        String?
+  userAgent String?
+  sessionId String?
+  processed Boolean?
+  timestamp DateTime?
+
+  @@map("analytics")
+}
+
+model AnalyticsVisit {
+  id        String    @id
+  route     String?
+  event     String?
+  ip        String?
+  userAgent String?
+  sessionId String?
+  geo       Json?
+  createdAt DateTime?
+
+  @@map("analytics_visits")
+}
+
+model AdminLog {
+  id          String    @id
+  adminId     String?
+  action      String?
+  description String?
+  metadata    Json?
+  timestamp   DateTime?
+
+  @@map("adminLogs")
+}
+
+model EmployeeActivity {
+  id          String    @id
+  employeeId  String?
+  action      String?
+  details     Json?
+  timestamp   DateTime?
+  performedBy String?
+
+  @@map("employee_activities")
+}
+
+model SecurityLog {
+  id          String    @id
+  event       String?
+  details     Json?
+  environment String?
+  ipAddress   String?
+  userAgent   String?
+  location    String?
+  timestamp   DateTime?
+
+  @@map("security_logs")
+}
+
+model EmailLog {
+  id       String    @id
+  to       String?
+  subject  String?
+  type     String?
+  status   String?
+  resendId String?
+  userId   String?
+  userName String?
+  metadata Json?
+  error    String?
+  sentAt   BigInt?
+
+  @@map("email_logs")
+}
+
+// ==========================================
+// OTP & AUTH
+// ==========================================
+
+model OtpCode {
+  id          String    @id
+  phoneNumber String?
+  otp         String?
+  expiresAt   DateTime?
+  verified    Boolean?
+  createdAt   DateTime?
+  verifiedAt  DateTime?
+
+  @@map("otp_codes")
+}
+
+model OtpVerification {
+  id          String    @id
+  phoneNumber String?
+  otpHash     String?
+  attempts    BigInt?
+  purpose     String?
+  expiresAt   DateTime?
+  verified    Boolean?
+  createdAt   DateTime?
+
+  @@map("otp_verifications")
+}
+
+model BackupOtp {
+  id          String    @id
+  phoneNumber String?
+  otp         String?
+  expiresAt   DateTime?
+  verified    Boolean?
+  createdAt   DateTime?
+
+  @@map("backup_otps")
+}
+
+model PasswordResetToken {
+  id         String   @id
+  email      String?
+  userId     String?
+  collection String?
+  used       Boolean?
+  createdAt  BigInt?
+  expiresAt  BigInt?
+  usedAt     BigInt?
+
+  @@map("passwordResetTokens")
+}
+
+// ==========================================
+// SETTINGS & CONFIG
+// ==========================================
+
+model Setting {
+  id                        String    @id
+  referralRewardPercentage  BigInt?
+  newUserDiscountPercentage BigInt?
+  maxReferralReward         BigInt?
+  minSubscriptionForReward  BigInt?
+  isActive                  Boolean?
+  updatedAt                 DateTime?
+
+  @@map("settings")
+}
+
+model GeideaSetting {
+  id        String    @id
+  mode      String?
+  updatedAt DateTime?
+
+  @@map("geidea_settings")
+}
+
+model SystemConfig {
+  id                 String   @id
+  baseUrl            String?
+  senderName         String?
+  apiKey             String?
+  defaultCountryCode String?
+  isActive           Boolean?
+
+  @@map("system_configs")
+}
+
+model Content {
+  id            String   @id
+  siteName      String?
+  logoUrl       String?
+  darkLogoUrl   String?
+  footerLogoUrl String?
+  slogan        String?
+  items         Json?
+
+  @@map("content")
+}
+
+model Role {
+  id          String    @id
+  name        String?
+  permissions Json?
+  isSystem    Boolean?
+  createdAt   DateTime?
+
+  @@map("roles")
+}
+
+model Partner {
+  id                   String    @id
+  partnerName          String?
+  partnerCode          String?
+  partnerType          String?
+  status               String?
+  isPublic             Boolean?
+  customPricing        Json?
+  activeSubscriptions  BigInt?
+  totalRevenue         BigInt?
+  createdAt            DateTime?
+  updatedAt            DateTime?
+
+  @@map("partners")
+}
+
+model Country {
+  id        String    @id
+  name      String?
+  code      String?
+  currency  String?
+  phoneCode String?
+  flag      String?
+  isActive  Boolean?
+  createdAt DateTime?
+
+  @@map("countries")
+}
+
+model City {
+  id          String    @id
+  name        String?
+  countryCode String?
+  isCapital   Boolean?
+  isActive    Boolean?
+  userCount   BigInt?
+  createdAt   DateTime?
+
+  @@map("cities")
+}
+
+model Customer {
+  id              String    @id
+  name            String?
+  phone           String?
+  email           String?
+  type            String?
+  group           String?
+  country         String?
+  countryCode     String?
+  displayName     String?
+  savedName       String?
+  groupName       String?
+  status          String?
+  contactStatus   String?
+  isMyContact     Boolean?
+  contactCount    BigInt?
+  contactHistory  Json?
+  lastContactDate DateTime?
+  lastAction      String?
+  lastActionDate  DateTime?
+  lastActionBy    String?
+  date            DateTime?
+  createdAt       DateTime?
+  updatedAt       DateTime?
+
+  @@map("customers")
+}
+
+model Referral {
+  id           String    @id
+  referrerId   String?
+  referredId   String?
+  referralCode String?
+  status       String?
+  rewards      Json?
+  createdAt    DateTime?
+
+  @@map("referrals")
+}
+
+model Receipt {
+  id        String    @id
+  invoiceId String?
+  url       String?
+  userId    String?
+  status    String?
+  timestamp DateTime?
+
+  @@map("receipts")
+}
+
+model CareerApplication {
+  id          String    @id
+  fullName    String?
+  email       String?
+  phone       String?
+  country     String?
+  governorate String?
+  experience  String?
+  linkedin    String?
+  facebook    String?
+  notes       String?
+  roles       Json?
+  role        String?
+  status      String?
+  createdAt   DateTime?
+
+  @@map("careerApplications")
+}
+
+model RealtimeStat {
+  id           String    @id
+  last_package String?
+  update_count BigInt?
+  last_update  DateTime?
+
+  @@map("real-time-stats")
+}
+
+model RealtimeUpdate {
+  id        String    @id
+  package   Json?
+  admin_id  String?
+  action    String?
+  currency  String?
+  type      String?
+  timestamp DateTime?
+
+  @@map("real-time-updates")
 }

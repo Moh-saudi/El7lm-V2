@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,22 +159,25 @@ export default function UserDetailsModal({ userId, isOpen, onClose, onUserUpdate
     
     try {
       // Try to get user from main users collection first
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userData) {
         setUser({
-          id: userDoc.id,
+          id: userData.id,
           name: userData.name || userData.full_name || 'غير محدد',
           email: userData.email || '',
           phone: userData.phone || userData.phoneNumber || '',
           accountType: userData.accountType || 'player',
           isActive: userData.isActive !== false,
-          createdAt: userData.createdAt?.toDate() || new Date(),
-          lastLogin: userData.lastLogin?.toDate() || undefined,
+          createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
+          lastLogin: userData.lastLogin ? new Date(userData.lastLogin) : undefined,
           location: userData.location || undefined,
           position: userData.position || undefined,
-          dateOfBirth: userData.dateOfBirth?.toDate() || undefined,
+          dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : undefined,
           nationality: userData.nationality || undefined,
           height: userData.height || undefined,
           weight: userData.weight || undefined,
@@ -192,15 +194,15 @@ export default function UserDetailsModal({ userId, isOpen, onClose, onUserUpdate
           parentAccountType: userData.parentAccountType || undefined,
           rating: userData.rating || undefined
         });
-        
+
         // Load subscription info
         if (userData.subscription) {
           setSubscriptionInfo(userData.subscription);
         }
-        
+
         // Load last payment info
         await loadLastPaymentInfo(userId);
-        
+
       } else {
         setError('لم يتم العثور على المستخدم');
       }
@@ -215,48 +217,40 @@ export default function UserDetailsModal({ userId, isOpen, onClose, onUserUpdate
   const loadLastPaymentInfo = async (userId: string) => {
     try {
       // Try to get last payment from payments collection
-      const paymentsQuery = query(
-        collection(db, 'payments'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      
-      const paymentsSnapshot = await getDocs(paymentsQuery);
-      
-      if (!paymentsSnapshot.empty) {
-        const paymentDoc = paymentsSnapshot.docs[0];
-        const paymentData = paymentDoc.data();
-        
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('userId', userId)
+        .order('createdAt', { ascending: false })
+        .limit(1);
+
+      if ((paymentsData || []).length > 0) {
+        const paymentDoc = paymentsData![0];
         setLastPayment({
           id: paymentDoc.id,
-          amount: paymentData.amount,
-          currency: paymentData.currency,
-          paymentMethod: paymentData.paymentMethod,
-          createdAt: paymentData.createdAt,
+          amount: paymentDoc.amount,
+          currency: paymentDoc.currency,
+          paymentMethod: paymentDoc.paymentMethod,
+          createdAt: paymentDoc.createdAt,
           source: 'payments'
         });
       } else {
         // Try bulk payments collection
-        const bulkPaymentsQuery = query(
-          collection(db, 'bulkPayments'),
-          where('userId', '==', userId),
-          orderBy('createdAt', 'desc'),
-          limit(1)
-        );
-        
-        const bulkPaymentsSnapshot = await getDocs(bulkPaymentsQuery);
-        
-        if (!bulkPaymentsSnapshot.empty) {
-          const bulkPaymentDoc = bulkPaymentsSnapshot.docs[0];
-          const bulkPaymentData = bulkPaymentDoc.data();
-          
+        const { data: bulkPaymentsData } = await supabase
+          .from('bulkPayments')
+          .select('*')
+          .eq('userId', userId)
+          .order('createdAt', { ascending: false })
+          .limit(1);
+
+        if ((bulkPaymentsData || []).length > 0) {
+          const bulkPaymentDoc = bulkPaymentsData![0];
           setLastPayment({
             id: bulkPaymentDoc.id,
-            amount: bulkPaymentData.amount,
-            currency: bulkPaymentData.currency,
-            paymentMethod: bulkPaymentData.paymentMethod,
-            createdAt: bulkPaymentData.createdAt,
+            amount: bulkPaymentDoc.amount,
+            currency: bulkPaymentDoc.currency,
+            paymentMethod: bulkPaymentDoc.paymentMethod,
+            createdAt: bulkPaymentDoc.createdAt,
             source: 'bulkPayments'
           });
         }
@@ -328,7 +322,7 @@ export default function UserDetailsModal({ userId, isOpen, onClose, onUserUpdate
 
   const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
-    const dateObj = date?.toDate?.() || new Date(date);
+    const dateObj = date instanceof Date ? date : new Date(date);
     return new Intl.DateTimeFormat('ar-EG', {
       year: 'numeric', month: 'long', day: 'numeric'
     }).format(dateObj);

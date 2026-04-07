@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '@/lib/firebase/config';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, doc, setDoc, updateDoc, query, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,22 +54,16 @@ export default function ConvertDependentPlayersPage() {
       const allPlayers: DependentPlayer[] = [];
 
       // جلب من مجموعة players
-      const playersQuery = collection(db, 'players');
-      const playersSnapshot = await getDocs(playersQuery);
-      
-      playersSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const player = processPlayerData(doc.id, data, 'players');
+      const { data: playersData } = await supabase.from('players').select('*');
+      (playersData || []).forEach(row => {
+        const player = processPlayerData(row.id, row, 'players');
         if (player) allPlayers.push(player);
       });
 
       // جلب من مجموعة player
-      const playerQuery = collection(db, 'player');
-      const playerSnapshot = await getDocs(playerQuery);
-      
-      playerSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const player = processPlayerData(doc.id, data, 'player');
+      const { data: playerData } = await supabase.from('player').select('*');
+      (playerData || []).forEach(row => {
+        const player = processPlayerData(row.id, row, 'player');
         if (player) allPlayers.push(player);
       });
 
@@ -151,44 +143,47 @@ export default function ConvertDependentPlayersPage() {
       console.log('🔄 تحويل اللاعب:', player.full_name);
 
       // 1. التحقق من عدم وجود الحساب مسبقاً
-      const existingUserQuery = query(
-        collection(db, 'users'),
-        where('email', '==', player.email)
-      );
-      const existingUsers = await getDocs(existingUserQuery);
-      
-      if (!existingUsers.empty) {
+      const { data: existingUsers } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', player.email);
+
+      if (existingUsers && existingUsers.length > 0) {
         throw new Error('حساب بهذا الإيميل موجود مسبقاً');
       }
 
       // 2. إنشاء كلمة مرور مؤقتة
       const tempPassword = generateTempPassword();
 
-      // 3. إنشاء حساب Firebase Auth
-      console.log('📧 إنشاء حساب Firebase Auth...');
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        player.email!, 
-        tempPassword
-      );
-      const firebaseUser = userCredential.user;
+      // 3. إنشاء حساب Supabase Auth
+      console.log('📧 إنشاء حساب Supabase Auth...');
+      const signUpResult = await supabase.auth.signUp({
+        email: player.email!,
+        password: tempPassword,
+        options: { emailRedirectTo: undefined }
+      });
+      const newUserId = signUpResult.data.user?.id;
 
-      // 4. إنشاء بيانات المستخدم في مجموعة users
+      if (!newUserId) {
+        throw new Error(signUpResult.error?.message || 'فشل إنشاء الحساب');
+      }
+
+      // 4. إنشاء بيانات المستخدم في جدول users
+      const now = new Date().toISOString();
       const userData = {
-        uid: firebaseUser.uid,
+        id: newUserId,
         email: player.email,
-        firebaseEmail: player.email, // لربط البحث بالهاتف
         accountType: 'player',
         full_name: player.full_name,
         name: player.full_name,
         phone: player.phone || '',
-        
+
         // الاحتفاظ بالانتماء للمنظمة
         club_id: player.club_id || null,
         academy_id: player.academy_id || null,
         trainer_id: player.trainer_id || null,
         agent_id: player.agent_id || null,
-        
+
         // معلومات إضافية
         profile_image: player.profile_image || '',
         nationality: player.nationality || '',
@@ -196,47 +191,44 @@ export default function ConvertDependentPlayersPage() {
         birth_date: player.birth_date || player.birthDate || null,
         country: player.country || '',
         city: player.city || '',
-        
+
         // حالة الحساب
         isActive: true,
-        verified: false, // سيحتاج للتحقق من الإيميل
+        verified: false,
         profileCompleted: true,
         isNewUser: false,
-        
+
         // إعدادات خاصة
-        tempPassword: tempPassword, // الرقم السري الموحد
-        needsPasswordChange: true, // يحتاج لتغيير كلمة المرور
-        convertedFromDependent: true, // للتتبع
+        tempPassword: tempPassword,
+        needsPasswordChange: true,
+        convertedFromDependent: true,
         originalSource: player.source,
-        unifiedPassword: true, // يستخدم الرقم السري الموحد
-        
+        unifiedPassword: true,
+
         // تواريخ
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        convertedAt: new Date()
+        createdAt: now,
+        updatedAt: now,
+        convertedAt: now
       };
 
-      console.log('💾 حفظ في مجموعة users...');
-      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+      console.log('💾 حفظ في جدول users...');
+      await supabase.from('users').upsert({ ...userData });
 
       // 5. تحديث البيانات الأصلية للإشارة للتحويل
       console.log('🔄 تحديث البيانات الأصلية...');
-      await updateDoc(doc(db, player.source, player.id), {
+      await supabase.from(player.source).update({
         convertedToAccount: true,
-        firebaseUid: firebaseUser.uid,
-        convertedAt: new Date(),
-        tempPassword: tempPassword, // الرقم السري الموحد للمرجع
+        supabaseUid: newUserId,
+        convertedAt: now,
+        tempPassword: tempPassword,
         unifiedPassword: true
-      });
+      }).eq('id', player.id);
 
       console.log('✅ تم تحويل اللاعب بنجاح');
       setConverted(prev => [...prev, player.id]);
       toast.success(
         `تم إنشاء حساب لـ ${player.full_name}. الرقم السري الموحد: ${tempPassword}`
       );
-
-      // 6. تسجيل خروج لتجنب البقاء مسجل بالحساب الجديد
-      await auth.signOut();
 
     } catch (error: any) {
       console.error('❌ خطأ في تحويل اللاعب:', error);

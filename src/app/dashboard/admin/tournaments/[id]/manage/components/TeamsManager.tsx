@@ -11,8 +11,7 @@ import {
     Check, UserPlus, Image as ImageIcon, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament } from '@/app/dashboard/admin/tournaments/utils';
 
 interface Team {
@@ -21,8 +20,8 @@ interface Team {
     logo?: string;
     captainName?: string;
     contactPhone?: string;
-    group?: string; // A, B, C...
-    points?: number; // For group stage
+    group?: string;
+    points?: number;
     matchesPlayed?: number;
     wins?: number;
     draws?: number;
@@ -34,7 +33,7 @@ interface Team {
 }
 
 interface Player {
-    id: string; // Could be auth ID or generated
+    id: string;
     name: string;
     number?: number;
     position?: string;
@@ -52,9 +51,7 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
     const [showAddTeamDialog, setShowAddTeamDialog] = useState(false);
     const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
-    // Registration Import State
     const [showImportDialog, setShowImportDialog] = useState(false);
-    const [importSource, setImportSource] = useState<'individual' | 'club'>('individual');
     const [pendingRegistrations, setPendingRegistrations] = useState<any[]>([]);
 
     const [formData, setFormData] = useState<Partial<Team>>({
@@ -77,10 +74,14 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
     const fetchTeams = async () => {
         try {
             if (!tournament.id) return;
-            const q = query(collection(db, `tournaments/${tournament.id}/teams`));
-            const snapshot = await getDocs(q);
-            const teamsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-            setTeams(teamsData);
+            const { data, error } = await supabase
+                .from('tournament_teams')
+                .select('*')
+                .eq('tournamentId', tournament.id)
+                .order('createdAt', { ascending: true });
+
+            if (error) throw error;
+            setTeams((data || []) as Team[]);
         } catch (error) {
             console.error('Error fetching teams:', error);
             toast.error('فشل في تحميل الفرق');
@@ -135,26 +136,35 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
             const teamData = {
                 ...formData,
                 logo: logoUrl,
-                updatedAt: new Date()
+                tournamentId: tournament.id,
+                updatedAt: new Date().toISOString()
             };
 
             if (editingTeam) {
-                await updateDoc(doc(db, `tournaments/${tournament.id}/teams`, editingTeam.id!), teamData);
+                const { error } = await supabase
+                    .from('tournament_teams')
+                    .update(teamData)
+                    .eq('id', editingTeam.id!);
+                if (error) throw error;
                 toast.success('تم تحديث الفريق بنجاح');
             } else {
-                await addDoc(collection(db, `tournaments/${tournament.id}/teams`), {
-                    ...teamData,
-                    players: [], // Initialize empty roster
-                    createdAt: new Date(),
-                    // Initialize stats
-                    points: 0,
-                    matchesPlayed: 0,
-                    wins: 0,
-                    draws: 0,
-                    losses: 0,
-                    goalsFor: 0,
-                    goalsAgainst: 0
-                });
+                const id = crypto.randomUUID();
+                const { error } = await supabase
+                    .from('tournament_teams')
+                    .insert({
+                        id,
+                        ...teamData,
+                        players: [],
+                        createdAt: new Date().toISOString(),
+                        points: 0,
+                        matchesPlayed: 0,
+                        wins: 0,
+                        draws: 0,
+                        losses: 0,
+                        goalsFor: 0,
+                        goalsAgainst: 0
+                    });
+                if (error) throw error;
                 toast.success('تم إضافة الفريق بنجاح');
             }
 
@@ -170,7 +180,11 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
     const handleDelete = async (teamId: string) => {
         if (confirm('هل أنت متأكد من حذف هذا الفريق؟ سيتم حذف جميع بياناته.')) {
             try {
-                await deleteDoc(doc(db, `tournaments/${tournament.id}/teams`, teamId));
+                const { error } = await supabase
+                    .from('tournament_teams')
+                    .delete()
+                    .eq('id', teamId);
+                if (error) throw error;
                 toast.success('تم حذف الفريق');
                 fetchTeams();
             } catch (error) {
@@ -192,36 +206,25 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
         setEditingTeam(null);
     };
 
-    // --- Import Logic ---
     const fetchPendingRegistrations = async () => {
         try {
-            // Fetch registrations for this tournament
-            // We look in 'tournamentRegistrations' (new system)
-            // We might also need to look in 'tournament_registrations' (old system) if needed, but let's stick to new for now.
+            const { data, error } = await supabase
+                .from('tournamentRegistrations')
+                .select('*')
+                .eq('tournamentId', tournament.id);
 
-            const q = query(
-                collection(db, 'tournamentRegistrations'),
-                where('tournamentId', '==', tournament.id)
-            );
+            if (error) throw error;
 
-            const snapshot = await getDocs(q);
-            const registrations = snapshot.docs.map(doc => {
-                const data = doc.data();
-                // Try to determine a team name.
-                // If it's a club/academy registration, use accountName or clubName
-                // If individual, use playerName
-                let teamName = data.teamName || data.clubName || data.academyName || data.accountName || data.playerName || 'فريق غير مسمى';
-
+            const registrations = (data || []).map(row => {
+                let teamName = row.team_name || row.club_name || row.academy_name || row.account_name || row.player_name || 'فريق غير مسمى';
                 return {
-                    id: doc.id,
-                    ...data,
+                    id: row.id,
+                    ...row,
                     displayTeamName: teamName,
-                    playerCount: data.players?.length || (data.playerId ? 1 : 0)
+                    playerCount: row.players?.length || (row.player_id ? 1 : 0)
                 };
             });
 
-            // Filter out registrations that are likely already converted to teams (optional check by name?)
-            // For now, just show all. 
             setPendingRegistrations(registrations);
             setShowImportDialog(true);
         } catch (error) {
@@ -232,8 +235,6 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
 
     const handleImport = async (registration: any) => {
         try {
-            // Convert registration to Team
-            // 1. Extract Players
             let players: Player[] = [];
             if (registration.players && Array.isArray(registration.players)) {
                 players = registration.players.map((p: any) => ({
@@ -243,47 +244,42 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
                     number: p.number,
                     avatar: p.avatar || p.image
                 }));
-            } else if (registration.playerId) {
-                // Individual registration
+            } else if (registration.player_id) {
                 players = [{
-                    id: registration.playerId,
-                    name: registration.playerName || 'لاعب',
-                    position: registration.playerPosition,
-                    avatar: registration.playerImage
+                    id: registration.player_id,
+                    name: registration.player_name || 'لاعب',
+                    position: registration.player_position,
+                    avatar: registration.player_image
                 }];
             }
 
-            // 2. Create Team Object
-            const newTeam: any = {
-                name: registration.displayTeamName,
-                logo: registration.logo || registration.clubLogo || '', // Try to find a logo
-                captainName: registration.contactName || registration.accountName || '',
-                contactPhone: registration.contactPhone || registration.accountPhone || registration.playerPhone || '',
-                group: '',
-                players: players,
-                createdAt: new Date(),
-                // Stats
-                points: 0,
-                matchesPlayed: 0,
-                wins: 0,
-                draws: 0,
-                losses: 0,
-                goalsFor: 0,
-                goalsAgainst: 0,
-                originalRegistrationId: registration.id // Link back to registration
-            };
+            const id = crypto.randomUUID();
+            const { error } = await supabase
+                .from('tournament_teams')
+                .insert({
+                    id,
+                    name: registration.displayTeamName,
+                    logo: registration.logo || registration.club_logo || '',
+                    captainName: registration.contact_name || registration.account_name || '',
+                    contactPhone: registration.contact_phone || registration.account_phone || registration.player_phone || '',
+                    group: '',
+                    players: players,
+                    tournamentId: tournament.id,
+                    createdAt: new Date().toISOString(),
+                    points: 0,
+                    matchesPlayed: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goalsFor: 0,
+                    goalsAgainst: 0
+                });
 
-            // 3. Save to Firestore
-            await addDoc(collection(db, `tournaments/${tournament.id}/teams`), newTeam);
+            if (error) throw error;
 
-            toast.success(`تم استيراد فريق "${newTeam.name}" بنجاح`);
-
-            // Remove from pending list (client-side only for now)
+            toast.success(`تم استيراد فريق "${registration.displayTeamName}" بنجاح`);
             setPendingRegistrations(prev => prev.filter(r => r.id !== registration.id));
-
-            // Refresh teams list
             fetchTeams();
-
         } catch (error) {
             console.error("Error importing team:", error);
             toast.error("فشل في استيراد الفريق");
@@ -374,7 +370,7 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
                                         <span className="font-medium">{team.captainName || 'غير محدد'}</span>
                                     </div>
                                     <div className="mt-4 pt-3 border-t flex justify-between items-center">
-                                        <div className="text-xs text-gray-400">تم الإضافة: {new Date(team.createdAt?.toDate?.() || new Date()).toLocaleDateString('ar-EG')}</div>
+                                        <div className="text-xs text-gray-400">تم الإضافة: {new Date(team.createdAt || new Date()).toLocaleDateString('ar-EG')}</div>
                                         <Button variant="secondary" size="sm" className="text-xs h-8">
                                             إدارة القائمة
                                         </Button>
@@ -503,7 +499,7 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
                                         <div>
                                             <h4 className="font-bold text-sm">{reg.displayTeamName}</h4>
                                             <p className="text-xs text-gray-500">
-                                                {reg.playerCount} لاعب • {new Date(reg.registrationDate?.toDate?.() || new Date()).toLocaleDateString('ar-EG')}
+                                                {reg.playerCount} لاعب • {new Date(reg.registration_date || new Date()).toLocaleDateString('ar-EG')}
                                             </p>
                                         </div>
                                     </div>

@@ -1,37 +1,12 @@
 /**
- * POST /api/notifications/broadcast-whatsapp
- *
- * Strategy:
- *  - In-app (broadcasts collection) → writes ONE doc → all logged-in users see it FREE
- *  - WhatsApp → sends ONLY to players matching opportunity criteria (smart targeting)
- *
- * Body:
- * {
- *   eventType: 'new_opportunity' | 'new_club' | 'custom',
- *   templateName?: string,          // default: 'opp_pick_up_3'
- *   params: string[],               // {{1}}, {{2}}, {{3}} ...
- *   targeting?: {                   // smart filter — omit a field = no filter applied
- *     positions?: string[];         // match player.position or player.primary_position
- *     ageMin?: number;
- *     ageMax?: number;
- *     country?: string;
- *     gender?: 'male' | 'female' | 'both';
- *   },
- *   broadcastData?: {               // writes to broadcasts collection (in-app, free)
- *     title: string;
- *     message: string;
- *     organizerName: string;
- *     actionUrl?: string;
- *     [key: string]: any;
- *   }
- * }
+ * POST /api/notifications/broadcast-whatsapp - Supabase Edition
+ * تم تحويله من Firebase Firestore إلى Supabase
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase/admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const BATCH_SIZE = 10; // concurrent WhatsApp sends per batch
+const BATCH_SIZE = 10;
 
 interface Targeting {
   positions?: string[];
@@ -40,8 +15,6 @@ interface Targeting {
   country?: string;
   gender?: 'male' | 'female' | 'both';
 }
-
-// ─── phone formatter ──────────────────────────────────────────────────────────
 
 function formatPhone(phone: string): string | null {
   try {
@@ -52,191 +25,112 @@ function formatPhone(phone: string): string | null {
     else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
     if (cleaned.length < 8) return null;
     return `+${cleaned}`;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ─── age helper ───────────────────────────────────────────────────────────────
-
-function calcAge(birthDate: any): number | null {
+function calcAge(birthDate: unknown): number | null {
   try {
-    const dob = birthDate?.toDate ? birthDate.toDate() : new Date(birthDate);
+    const dob = new Date(String(birthDate));
     if (isNaN(dob.getTime())) return null;
     const now = new Date();
     let age = now.getFullYear() - dob.getFullYear();
     const m = now.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
     return age;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ─── smart targeting: fetch matched player phones ─────────────────────────────
+async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof getSupabaseAdmin>): Promise<{ phones: string[]; total: number; matched: number }> {
+  const { data } = await db.from('players').select('phone, phoneNumber, position, primary_position, age, birth_date, birthDate, country, nationality, gender');
+  const players = data ?? [];
+  const total = players.length;
+  const phoneSet = new Set<string>();
 
-async function getTargetedPhones(
-  db: FirebaseFirestore.Firestore,
-  targeting: Targeting,
-): Promise<{ phones: string[]; total: number; matched: number }> {
-  const snap = await db.collection('players')
-    .select('phone', 'phoneNumber', 'position', 'primary_position', 'age', 'birth_date',
-            'birthDate', 'country', 'nationality', 'gender')
-    .get();
-
-  const total = snap.size;
-  const phones = new Set<string>();
-
-  snap.docs.forEach((d) => {
-    const p = d.data();
-
-    // ── position filter ──
+  for (const p of players as Record<string, unknown>[]) {
     if (targeting.positions && targeting.positions.length > 0) {
-      const playerPos = (p.position || p.primary_position || '').toLowerCase();
-      const match = targeting.positions.some(pos =>
-        pos.toLowerCase() === playerPos ||
-        playerPos.includes(pos.toLowerCase())
-      );
-      if (!match) return;
+      const pos = String(p.position ?? p.primary_position ?? '').toLowerCase();
+      if (!targeting.positions.some(tp => tp.toLowerCase() === pos || pos.includes(tp.toLowerCase()))) continue;
     }
 
-    // ── age filter ──
-    const playerAge = typeof p.age === 'number' ? p.age
-      : calcAge(p.birth_date || p.birthDate);
-    if (targeting.ageMin !== undefined && playerAge !== null && playerAge < targeting.ageMin) return;
-    if (targeting.ageMax !== undefined && playerAge !== null && playerAge > targeting.ageMax) return;
+    const playerAge = typeof p.age === 'number' ? p.age : calcAge(p.birth_date ?? p.birthDate);
+    if (targeting.ageMin !== undefined && playerAge !== null && playerAge < targeting.ageMin) continue;
+    if (targeting.ageMax !== undefined && playerAge !== null && playerAge > targeting.ageMax) continue;
 
-    // ── country filter (loose match — only if explicitly set) ──
     if (targeting.country) {
-      const playerCountry = (p.country || p.nationality || '').toLowerCase();
-      if (playerCountry && !playerCountry.includes(targeting.country.toLowerCase())) return;
+      const playerCountry = String(p.country ?? p.nationality ?? '').toLowerCase();
+      if (playerCountry && !playerCountry.includes(targeting.country.toLowerCase())) continue;
     }
 
-    // ── gender filter ──
     if (targeting.gender && targeting.gender !== 'both') {
-      const playerGender = (p.gender || '').toLowerCase();
-      if (playerGender && playerGender !== targeting.gender.toLowerCase()) return;
+      const playerGender = String(p.gender ?? '').toLowerCase();
+      if (playerGender && playerGender !== targeting.gender.toLowerCase()) continue;
     }
 
-    // ── extract phone ──
-    const raw = p.phone || p.phoneNumber;
+    const raw = p.phone ?? p.phoneNumber;
     if (raw) {
       const formatted = formatPhone(String(raw));
-      if (formatted) phones.add(formatted);
+      if (formatted) phoneSet.add(formatted);
     }
-  });
+  }
 
-  return { phones: Array.from(phones), total, matched: phones.size };
+  return { phones: Array.from(phoneSet), total, matched: phoneSet.size };
 }
 
-// ─── send one WhatsApp ────────────────────────────────────────────────────────
-
-async function sendOne(
-  phone: string,
-  templateName: string,
-  params: string[],
-  config: { apiKey: string; baseUrl: string },
-  origin: string,
-): Promise<boolean> {
+async function sendOne(phone: string, templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<boolean> {
   try {
     const payload = {
       phone,
       template: {
-        name: templateName,
-        language: { code: 'ar' },
-        components: params.length > 0 ? [{
-          type: 'body',
-          parameters: params.map(p => ({ type: 'text', text: p })),
-        }] : [],
+        name: templateName, language: { code: 'ar' },
+        components: params.length > 0 ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }] : [],
       },
     };
-
     const res = await fetch(`${origin}/api/chataman/send-template`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        payload,
-        apiKey: config.apiKey.trim(),
-        baseUrl: config.baseUrl.trim(),
-      }),
+      body: JSON.stringify({ payload, apiKey: config.apiKey.trim(), baseUrl: config.baseUrl.trim() }),
     });
-
-    const text = await res.text().catch(() => '');
-    let data: any = {};
-    try { data = JSON.parse(text); } catch {}
+    const data = await res.json().catch(() => ({}));
     return data.success === true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
-// ─── batch sender ─────────────────────────────────────────────────────────────
-
-async function sendInBatches(
-  phones: string[],
-  templateName: string,
-  params: string[],
-  config: { apiKey: string; baseUrl: string },
-  origin: string,
-): Promise<{ sent: number; failed: number }> {
-  let sent = 0;
-  let failed = 0;
-
+async function sendInBatches(phones: string[], templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<{ sent: number; failed: number }> {
+  let sent = 0; let failed = 0;
   for (let i = 0; i < phones.length; i += BATCH_SIZE) {
-    const batch = phones.slice(i, i + BATCH_SIZE);
-    const results = await Promise.all(
-      batch.map(phone => sendOne(phone, templateName, params, config, origin))
-    );
+    const results = await Promise.all(phones.slice(i, i + BATCH_SIZE).map(p => sendOne(p, templateName, params, config, origin)));
     results.forEach(ok => ok ? sent++ : failed++);
   }
-
   return { sent, failed };
 }
-
-// ─── Main handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      eventType = 'new_opportunity',
-      templateName = 'opp_pick_up_3',
-      params = [],
-      targeting,
-      broadcastData,
-    } = body;
+    const { eventType = 'new_opportunity', templateName = 'opp_pick_up_3', params = [], targeting, broadcastData } = body;
 
-    if (!Array.isArray(params)) {
-      return NextResponse.json({ success: false, error: 'params must be an array' }, { status: 400 });
-    }
+    if (!Array.isArray(params)) return NextResponse.json({ success: false, error: 'params must be an array' }, { status: 400 });
 
-    const db = getAdminDb();
+    const db = getSupabaseAdmin();
 
-    // ── 1. ChatAman config ──
-    const cfgSnap = await db.collection('system_configs').doc('chataman_config').get();
-    if (!cfgSnap.exists) {
-      return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
-    }
-    const cfg = cfgSnap.data() as any;
-    if (!cfg.isActive || !cfg.apiKey) {
-      return NextResponse.json({ success: false, error: 'ChatAman inactive or missing apiKey' }, { status: 400 });
-    }
+    // ChatAman config
+    const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (!cfgRows?.length) return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
+    const cfg = cfgRows[0] as Record<string, unknown>;
+    if (!cfg.isActive || !cfg.apiKey) return NextResponse.json({ success: false, error: 'ChatAman inactive or missing apiKey' }, { status: 400 });
 
-    // ── 2. Write broadcast doc → in-app notification for ALL users (free) ──
+    // Write broadcast doc
     if (broadcastData) {
-      await db.collection('broadcasts').add({
-        ...broadcastData,
-        eventType,
-        createdAt: FieldValue.serverTimestamp(),
+      await db.from('broadcasts').insert({
+        id: crypto.randomUUID(), ...broadcastData, eventType,
+        createdAt: new Date().toISOString(),
         actionUrl: broadcastData.actionUrl || '/dashboard/opportunities',
       });
-      console.log(`[broadcast-whatsapp] ✓ broadcast doc written for "${broadcastData.title}"`);
     }
 
-    // ── 3. Smart targeting: only players matching criteria ──
     const origin = new URL(req.url).origin;
     const hasTargeting = targeting && Object.keys(targeting).some(k => {
-      const v = (targeting as any)[k];
+      const v = targeting[k];
       return v !== undefined && v !== null && v !== 'both' && (!Array.isArray(v) || v.length > 0);
     });
 
@@ -245,51 +139,28 @@ export async function POST(req: NextRequest) {
     let matched: number;
 
     if (hasTargeting) {
-      const result = await getTargetedPhones(db, targeting);
-      phones = result.phones;
-      total = result.total;
-      matched = result.matched;
-      console.log(`[broadcast-whatsapp] Smart targeting: ${matched} matched / ${total} total players`);
+      const result = await getTargetedPhones(targeting, db);
+      phones = result.phones; total = result.total; matched = result.matched;
     } else {
-      // No targeting criteria → send to all players only (not all users)
-      const snap = await db.collection('players').select('phone', 'phoneNumber').get();
-      total = snap.size;
+      const { data: players } = await db.from('players').select('phone, phoneNumber');
+      total = (players ?? []).length;
       const phoneSet = new Set<string>();
-      snap.docs.forEach(d => {
-        const raw = d.data().phone || d.data().phoneNumber;
-        if (raw) {
-          const f = formatPhone(String(raw));
-          if (f) phoneSet.add(f);
-        }
+      (players ?? []).forEach((p: Record<string, unknown>) => {
+        const raw = p.phone ?? p.phoneNumber;
+        if (raw) { const f = formatPhone(String(raw)); if (f) phoneSet.add(f); }
       });
       phones = Array.from(phoneSet);
       matched = phones.length;
     }
 
     if (phones.length === 0) {
-      return NextResponse.json({
-        success: true, eventType, templateName,
-        total, matched: 0, sent: 0, failed: 0,
-        message: 'No matching players with phone numbers found',
-      });
+      return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
     }
 
-    // ── 4. Send WhatsApp to matched players ──
-    console.log(`[broadcast-whatsapp] Sending "${templateName}" to ${phones.length} phones, params: [${params.join(', ')}]`);
-    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg, origin);
-    console.log(`[broadcast-whatsapp] Done — sent: ${sent}, failed: ${failed}, total: ${phones.length}`);
-
-    return NextResponse.json({
-      success: true,
-      eventType,
-      templateName,
-      totalPlayers: total,
-      matched,
-      sent,
-      failed,
-    });
-  } catch (err: any) {
+    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string }, origin);
+    return NextResponse.json({ success: true, eventType, templateName, totalPlayers: total, matched, sent, failed });
+  } catch (err: unknown) {
     console.error('[broadcast-whatsapp] error:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Unknown' }, { status: 500 });
   }
 }

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Employee, Role, DEFAULT_ROLES } from '../_types';
 import { message } from 'antd';
 
@@ -13,29 +12,29 @@ export function useEmployees() {
     // --- جلب البيانات ---
     const fetchEmployees = useCallback(async () => {
         try {
-            const q = query(collection(db, 'employees'), orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
+            const { data, error: fetchError } = await supabase
+                .from('employees')
+                .select('*')
+                .order('createdAt', { ascending: false });
 
-            const emps: Employee[] = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                emps.push({
-                    id: doc.id,
-                    uid: data.uid || doc.id,
-                    name: data.name,
-                    email: data.email,
-                    phone: data.phone,
-                    roleId: data.roleId || data.role,
-                    roleName: data.roleName,
-                    department: data.department,
-                    isActive: data.isActive ?? true,
-                    avatar: data.avatar || data.photoURL,
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-                    lastLogin: data.lastLogin?.toDate ? data.lastLogin.toDate() : undefined,
-                    jobTitle: data.jobTitle,
-                    notes: data.notes
-                });
-            });
+            if (fetchError) throw fetchError;
+
+            const emps: Employee[] = (data || []).map((row: any) => ({
+                id: row.id,
+                uid: row.uid || row.id,
+                name: row.name,
+                email: row.email,
+                phone: row.phone,
+                roleId: row.roleId || row.role,
+                roleName: row.roleName,
+                department: row.department,
+                isActive: row.isActive ?? true,
+                avatar: row.avatar || row.photoURL,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                lastLogin: row.lastLogin ? new Date(row.lastLogin) : undefined,
+                jobTitle: row.jobTitle,
+                notes: row.notes
+            }));
             setEmployees(emps);
         } catch (err: any) {
             console.error('Error fetching employees:', err);
@@ -45,32 +44,24 @@ export function useEmployees() {
 
     const fetchRoles = useCallback(async () => {
         try {
-            const q = query(collection(db, 'roles'));
-            const snapshot = await getDocs(q);
+            const { data, error: fetchError } = await supabase
+                .from('roles')
+                .select('*');
 
-            if (!snapshot.empty) {
-                const fetchedRoles: Role[] = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    fetchedRoles.push({
-                        id: doc.id,
-                        name: data.name,
-                        description: data.description,
-                        permissions: data.permissions || [],
-                        isSystem: data.isSystem
-                    });
-                });
-                // نضيف أدوار النظام الافتراضية إذا لم تكن موجودة في الداتابيس
-                // أو يمكننا دمجها. هنا نعتمد على الداتابيس كمصدر الحقيقة وإذا فرغت نستخدم الافتراضي
+            if (fetchError) throw fetchError;
+
+            if (data && data.length > 0) {
+                const fetchedRoles: Role[] = data.map((row: any) => ({
+                    id: row.id,
+                    name: row.name,
+                    description: row.description,
+                    permissions: row.permissions || [],
+                    isSystem: row.isSystem
+                }));
                 setRoles(fetchedRoles);
             } else {
-                // استخدام الأدوار الافتراضية إذا كانت الداتابيس فارغة
+                // استخدام الأدوار الافتراضية إذا كانت قاعدة البيانات فارغة
                 setRoles(DEFAULT_ROLES);
-
-                // (اختياري) حفظ الأدوار الافتراضية في الداتابيس لتكوينها لأول مرة
-                // DEFAULT_ROLES.forEach(async role => {
-                //    await setDoc(doc(db, 'roles', role.id), role);
-                // });
             }
         } catch (err) {
             console.error('Error fetching roles:', err);
@@ -93,9 +84,9 @@ export function useEmployees() {
         setLoading(true);
         try {
             // 1. الحصول على التوكن للمصادقة
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error('You must be logged in');
-            const token = await currentUser.getIdToken();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('You must be logged in');
+            const token = session.access_token;
 
             // 2. استدعاء API الإنشاء
             const response = await fetch('/api/admin/employees/create', {
@@ -116,7 +107,7 @@ export function useEmployees() {
                 throw new Error(result.error || 'فشل إنشاء الموظف');
             }
 
-            // 3. تحديث القائمة (بما أن الـ API قام بالحفظ في Firestore، نحتاج فقط لإعادة الجلب)
+            // 3. تحديث القائمة (بما أن الـ API قام بالحفظ في قاعدة البيانات، نحتاج فقط لإعادة الجلب)
             message.success('تم إنشاء حساب الموظف وتسجيله بنجاح');
             fetchEmployees();
             return true;
@@ -132,10 +123,10 @@ export function useEmployees() {
     const updateEmployee = async (id: string, data: Partial<Employee>) => {
         setLoading(true);
         try {
-            await updateDoc(doc(db, 'employees', id), {
+            await supabase.from('employees').update({
                 ...data,
-                updatedAt: serverTimestamp()
-            });
+                updatedAt: new Date().toISOString()
+            }).eq('id', id);
 
             setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...data } : emp));
             message.success('تم تحديث البيانات بنجاح');
@@ -152,9 +143,9 @@ export function useEmployees() {
     const deleteEmployee = async (id: string) => {
         setLoading(true);
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error('You must be logged in');
-            const token = await currentUser.getIdToken();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('You must be logged in');
+            const token = session.access_token;
 
             const response = await fetch('/api/admin/employees/delete', {
                 method: 'POST',
@@ -186,9 +177,9 @@ export function useEmployees() {
     const resetEmployeePassword = async (uid: string, newPassword: string) => {
         setLoading(true);
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error('You must be logged in');
-            const token = await currentUser.getIdToken();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('You must be logged in');
+            const token = session.access_token;
 
             const response = await fetch('/api/admin/employees/reset-password', {
                 method: 'POST',
@@ -220,15 +211,17 @@ export function useEmployees() {
     const addRole = async (roleData: Omit<Role, 'id'>) => {
         setLoading(true);
         try {
-            // نستخدم الاسم كـ ID بسيط بعد تنظيفه (اختياري)
-            // أو نترك Firestore ينشئ ID
-            const res = await addDoc(collection(db, 'roles'), {
+            const newId = crypto.randomUUID();
+            const { data, error: insertError } = await supabase.from('roles').insert({
+                id: newId,
                 ...roleData,
                 isSystem: false,
-                createdAt: serverTimestamp()
-            });
+                createdAt: new Date().toISOString()
+            }).select().single();
 
-            const newRole = { id: res.id, ...roleData, isSystem: false } as Role;
+            if (insertError) throw insertError;
+
+            const newRole = { id: newId, ...roleData, isSystem: false } as Role;
             setRoles(prev => [...prev, newRole]);
             message.success('تم إنشاء الدور الجديد بنجاح');
             return true;
@@ -244,10 +237,10 @@ export function useEmployees() {
     const updateRole = async (id: string, roleData: Partial<Role>) => {
         setLoading(true);
         try {
-            await updateDoc(doc(db, 'roles', id), {
+            await supabase.from('roles').update({
                 ...roleData,
-                updatedAt: serverTimestamp()
-            });
+                updatedAt: new Date().toISOString()
+            }).eq('id', id);
 
             setRoles(prev => prev.map(r => r.id === id ? { ...r, ...roleData } : r));
             message.success('تم تحديث صلاحيات الدور');
@@ -264,7 +257,7 @@ export function useEmployees() {
     const deleteRole = async (id: string) => {
         setLoading(true);
         try {
-            await deleteDoc(doc(db, 'roles', id));
+            await supabase.from('roles').delete().eq('id', id);
             setRoles(prev => prev.filter(r => r.id !== id));
             message.success('تم حذف الدور');
             return true;

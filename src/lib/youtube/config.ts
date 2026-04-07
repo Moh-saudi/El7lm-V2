@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 let cachedKey: string | null | undefined;
 
@@ -14,10 +13,9 @@ export async function getYouTubeApiKey(): Promise<string | null> {
   }
 
   try {
-    // Fallback to Firestore settings: app_settings/youtube { apiKey: string }
-    const ref = doc(db, 'app_settings', 'youtube');
-    const snap = await getDoc(ref);
-    const apiKey = (snap.exists() && (snap.data() as any)?.apiKey) || null;
+    // Fallback to Supabase app_settings table: row with id='youtube', column apiKey
+    const { data } = await supabase.from('app_settings').select('apiKey').eq('id', 'youtube').limit(1);
+    const apiKey = data?.length ? (String((data[0] as Record<string, unknown>).apiKey || '') || null) : null;
     cachedKey = apiKey;
     return cachedKey;
   } catch {

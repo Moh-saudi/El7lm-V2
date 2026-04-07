@@ -1,24 +1,11 @@
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  increment,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Opportunity, OpportunityApplication, ApplicationStatus } from '@/types/opportunities';
 
 export async function getMyOpportunities(organizerId: string, status?: string): Promise<Opportunity[]> {
-  const constraints: any[] = [where('organizerId', '==', organizerId)];
-  if (status) constraints.push(where('status', '==', status));
-  const q = query(collection(db, 'opportunities'), ...constraints);
-  const snap = await getDocs(q);
-  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Opportunity));
+  let query = supabase.from('opportunities').select('*').eq('organizerId', organizerId);
+  if (status) query = query.eq('status', status);
+  const { data } = await query;
+  const results = (data || []) as Opportunity[];
   return results.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
 }
 
@@ -26,49 +13,47 @@ export async function createOpportunity(
   data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'currentApplicants' | 'viewCount'>
 ): Promise<string> {
   const now = new Date().toISOString();
-  const docRef = await addDoc(collection(db, 'opportunities'), {
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from('opportunities').insert({
+    id,
     ...data,
     currentApplicants: 0,
     viewCount: 0,
     createdAt: now,
     updatedAt: now,
   });
-  return docRef.id;
+  if (error) throw new Error(error.message);
+  return id;
 }
 
+
 export async function updateOpportunity(id: string, data: Partial<Opportunity>): Promise<void> {
-  await updateDoc(doc(db, 'opportunities', id), { ...data, updatedAt: new Date().toISOString() });
+  await supabase.from('opportunities').update({ ...data, updatedAt: new Date().toISOString() }).eq('id', id);
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'opportunities', id));
+  await supabase.from('opportunities').delete().eq('id', id);
 }
 
 export async function getOpportunityById(id: string): Promise<Opportunity | null> {
-  const snap = await getDoc(doc(db, 'opportunities', id));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Opportunity;
+  const { data } = await supabase.from('opportunities').select('*').eq('id', id).limit(1);
+  return data?.length ? (data[0] as Opportunity) : null;
 }
 
 export async function getOpportunityApplications(
   opportunityId: string,
   status?: string
 ): Promise<OpportunityApplication[]> {
-  const constraints: any[] = [where('opportunityId', '==', opportunityId)];
-  if (status) constraints.push(where('status', '==', status));
-  const q = query(collection(db, 'opportunity_applications'), ...constraints);
-  const snap = await getDocs(q);
-  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as OpportunityApplication));
+  let query = supabase.from('opportunity_applications').select('*').eq('opportunityId', opportunityId);
+  if (status) query = query.eq('status', status);
+  const { data } = await query;
+  const results = (data || []) as OpportunityApplication[];
   return results.sort((a, b) => (b.appliedAt > a.appliedAt ? 1 : -1));
 }
 
 export async function getPlayerApplications(playerId: string): Promise<OpportunityApplication[]> {
-  const q = query(
-    collection(db, 'opportunity_applications'),
-    where('playerId', '==', playerId)
-  );
-  const snap = await getDocs(q);
-  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as OpportunityApplication));
+  const { data } = await supabase.from('opportunity_applications').select('*').eq('playerId', playerId);
+  const results = (data || []) as OpportunityApplication[];
   return results.sort((a, b) => (b.appliedAt > a.appliedAt ? 1 : -1));
 }
 
@@ -101,18 +86,19 @@ export async function applyToOpportunity(
   }
 ): Promise<string> {
   // Check duplicate application
-  const dupQ = query(
-    collection(db, 'opportunity_applications'),
-    where('opportunityId', '==', opportunityId),
-    where('playerId', '==', playerId)
-  );
-  const dupSnap = await getDocs(dupQ);
-  if (!dupSnap.empty) {
-    throw new Error('لقد تقدمت لهذه الفرصة مسبقاً');
-  }
+  const { data: dupData } = await supabase
+    .from('opportunity_applications')
+    .select('id')
+    .eq('opportunityId', opportunityId)
+    .eq('playerId', playerId)
+    .limit(1);
+
+  if (dupData?.length) throw new Error('لقد تقدمت لهذه الفرصة مسبقاً');
 
   const now = new Date().toISOString();
-  const docRef = await addDoc(collection(db, 'opportunity_applications'), {
+  const id = crypto.randomUUID();
+  await supabase.from('opportunity_applications').insert({
+    id,
     opportunityId,
     playerId,
     ...data,
@@ -120,10 +106,13 @@ export async function applyToOpportunity(
     appliedAt: now,
     updatedAt: now,
   });
-  await updateDoc(doc(db, 'opportunities', opportunityId), {
-    currentApplicants: increment(1),
-  });
-  return docRef.id;
+
+  // increment currentApplicants
+  const { data: oppData } = await supabase.from('opportunities').select('currentApplicants').eq('id', opportunityId).limit(1);
+  const current = Number((oppData?.[0] as Record<string, unknown>)?.currentApplicants || 0);
+  await supabase.from('opportunities').update({ currentApplicants: current + 1 }).eq('id', opportunityId);
+
+  return id;
 }
 
 export async function updateApplicationStatus(
@@ -132,38 +121,29 @@ export async function updateApplicationStatus(
   reviewedBy: string,
   note?: string
 ): Promise<void> {
-  const payload: any = {
-    status,
-    reviewedBy,
-    updatedAt: new Date().toISOString(),
-  };
+  const payload: Record<string, unknown> = { status, reviewedBy, updatedAt: new Date().toISOString() };
   if (note) payload.reviewNote = note;
-  await updateDoc(doc(db, 'opportunity_applications', applicationId), payload);
+  await supabase.from('opportunity_applications').update(payload).eq('id', applicationId);
 }
 
 export async function rateApplication(applicationId: string, rating: number, comment?: string): Promise<void> {
-  await updateDoc(doc(db, 'opportunity_applications', applicationId), {
+  await supabase.from('opportunity_applications').update({
     rating,
     ratingComment: comment || '',
     ratedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  });
+  }).eq('id', applicationId);
 }
 
 export async function getExploreOpportunities(filters?: {
   type?: string;
   country?: string;
 }): Promise<Opportunity[]> {
-  const constraints: any[] = [
-    where('status', '==', 'active'),
-    where('isActive', '==', true),
-  ];
-  if (filters?.type) constraints.push(where('opportunityType', '==', filters.type));
-  if (filters?.country) constraints.push(where('country', '==', filters.country));
-  const q = query(collection(db, 'opportunities'), ...constraints);
-  const snap = await getDocs(q);
-  const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Opportunity));
-  // Sort: featured first, then newest
+  let query = supabase.from('opportunities').select('*').eq('status', 'active').eq('isActive', true);
+  if (filters?.type) query = query.eq('opportunityType', filters.type);
+  if (filters?.country) query = query.eq('country', filters.country);
+  const { data } = await query;
+  const results = (data || []) as Opportunity[];
   return results.sort((a, b) => {
     if (b.isFeatured !== a.isFeatured) return b.isFeatured ? 1 : -1;
     return b.createdAt > a.createdAt ? 1 : -1;
@@ -171,5 +151,7 @@ export async function getExploreOpportunities(filters?: {
 }
 
 export async function incrementViewCount(id: string): Promise<void> {
-  await updateDoc(doc(db, 'opportunities', id), { viewCount: increment(1) });
+  const { data } = await supabase.from('opportunities').select('viewCount').eq('id', id).limit(1);
+  const current = Number((data?.[0] as Record<string, unknown>)?.viewCount || 0);
+  await supabase.from('opportunities').update({ viewCount: current + 1 }).eq('id', id);
 }

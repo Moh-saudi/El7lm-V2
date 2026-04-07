@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { auth } from '@/lib/firebase/config';
-import { confirmPasswordReset } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,8 +91,8 @@ export default function ResetPasswordPage() {
 
             // Auto-login
             try {
-                const { signInWithEmailAndPassword } = await import('firebase/auth');
-                await signInWithEmailAndPassword(auth, email, newPassword);
+                const { supabase } = await import('@/lib/supabase/config');
+                await supabase.auth.signInWithPassword({ email, password: newPassword });
                 toast.success('🎉 تم تسجيل الدخول بنجاح!');
                 setTimeout(() => {
                     window.location.href = '/dashboard/player';

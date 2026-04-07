@@ -22,8 +22,14 @@ export const getSupabaseImageUrl = (path: string, bucket: string = 'avatars') =>
 
     // إذا كان لا يزال من Supabase بعد محاولة الإصلاح (ولم ينجح التبديل)، 
     // وكان السوبا بيس معطلاً (DNS Error)، نفضل إرجاع مسار نسبي ليعالج ككلاود فلير
-    if (path.includes('supabase.co')) {
+    if (path.includes('supabase.co/storage/v1/object/public/')) {
       console.warn('⚠️ image-utils: Supabase URL detected but fix failed. Trying path extraction.', path);
+      const parts = path.split('supabase.co/storage/v1/object/public/');
+      if (parts.length === 2 && parts[1]) {
+        return `${CLOUDFLARE_BASE_URL}/${parts[1]}`;
+      }
+    } else if (path.includes('supabase.co')) {
+      console.warn('⚠️ image-utils: Supabase URL string detected, doing generic fallback.', path);
       const parts = path.split('/');
       const fileName = parts[parts.length - 1];
       if (fileName && fileName.includes('.')) {

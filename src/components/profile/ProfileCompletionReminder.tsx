@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { X, AlertCircle, ArrowLeft } from 'lucide-react';
 
 // الحقول الأساسية لكل نوع حساب
@@ -87,27 +86,34 @@ export default function ProfileCompletionReminder({ uid, accountType }: Props) {
   const storageKey = `profile_reminder_${uid}`;
 
   useEffect(() => {
+    if (!uid) return;
     const requiredFields = REQUIRED_FIELDS[accountType];
-    const collection = COLLECTION_MAP[accountType];
-    if (!requiredFields || !collection) return;
+    const tableName = COLLECTION_MAP[accountType];
+    if (!requiredFields || !tableName) return;
 
     // تحقق من التوقيت — لا تُظهر إذا لم تمر 3 ساعات منذ آخر إغلاق
     const lastShown = localStorage.getItem(storageKey);
     if (lastShown && Date.now() - Number(lastShown) < REMINDER_INTERVAL_MS) return;
 
-    // اجلب البيانات من Firestore وتحقق من الحقول الناقصة
-    getDoc(doc(db, collection, uid)).then(snap => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      const missing = requiredFields
-        .filter(({ key }) => !data[key] || (typeof data[key] === 'string' && !data[key].trim()))
-        .map(({ label }) => label);
+    // اجلب البيانات من Supabase — ابحث بالـ uid أولاً (Supabase UUID) ثم بالـ id (Firebase UID)
+    supabase
+      .from(tableName)
+      .select('*')
+      .or(`uid.eq.${uid},id.eq.${uid}`)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        const missing = requiredFields
+          .filter(({ key }) => !data[key] || (typeof data[key] === 'string' && !data[key].trim()))
+          .map(({ label }) => label);
 
-      if (missing.length > 0) {
-        setMissingFields(missing);
-        setVisible(true);
-      }
-    }).catch(() => {/* تجاهل أخطاء الشبكة */});
+        if (missing.length > 0) {
+          setMissingFields(missing);
+          setVisible(true);
+        }
+      })
+      .then(undefined, () => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, accountType]);
 

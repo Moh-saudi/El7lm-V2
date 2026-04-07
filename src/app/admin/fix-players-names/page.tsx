@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { collection, getDocs, doc, getDoc, updateDoc, where, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, UserCheck } from 'lucide-react';
@@ -27,39 +26,30 @@ export default function FixPlayersNamesPage() {
     const newResults: FixResult[] = [];
     try {
       // جلب جميع اللاعبين المستقلين من users
-      const usersSnapshot = await getDocs(query(collection(db, 'users'), where('accountType', '==', 'player')));
-      for (const userDoc of usersSnapshot.docs) {
-        const userId = userDoc.id;
-        const userData = userDoc.data();
+      const { data: usersData } = await supabase.from('users').select('*').eq('accountType', 'player');
+      for (const userData of (usersData || [])) {
+        const userId = userData.id;
         const oldName = userData.full_name || userData.name || '';
         // جلب الاسم الصحيح من players أو player أو users
-        let playerDoc = await getDoc(doc(db, 'players', userId));
         let playerData = null;
-        
-        if (playerDoc.exists()) {
-          playerData = playerDoc.data();
+        const { data: pData } = await supabase.from('players').select('full_name,name').eq('id', userId).single();
+        if (pData) {
+          playerData = pData;
         } else {
-          // جرب player collection
-          playerDoc = await getDoc(doc(db, 'player', userId));
-          if (playerDoc.exists()) {
-            playerData = playerDoc.data();
+          const { data: p2Data } = await supabase.from('player').select('full_name,name').eq('id', userId).single();
+          if (p2Data) {
+            playerData = p2Data;
           } else {
-            // جرب users collection
-            playerDoc = await getDoc(doc(db, 'users', userId));
-            if (playerDoc.exists()) {
-              playerData = playerDoc.data();
-            }
+            const { data: uData } = await supabase.from('users').select('full_name,name').eq('id', userId).single();
+            if (uData) playerData = uData;
           }
         }
-        
+
         if (playerData) {
           const playerName = playerData.full_name || playerData.name || '';
           if (playerName && oldName !== playerName) {
             try {
-              await updateDoc(doc(db, 'users', userId), {
-                name: playerName,
-                full_name: playerName
-              });
+              await supabase.from('users').update({ name: playerName, full_name: playerName }).eq('id', userId);
               newResults.push({
                 userId,
                 oldName,

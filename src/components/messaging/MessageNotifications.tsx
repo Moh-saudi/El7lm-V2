@@ -2,15 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  limit
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -84,45 +76,70 @@ const MessageNotifications: React.FC = () => {
   useEffect(() => {
     if (!user || !userData) return;
 
-    const conversationsQuery = query(
-      collection(db, 'conversations'),
-      where('participants', 'array-contains', user.uid)
-    );
+    // Subscribe to conversations for unread count
+    const conversationsChannel = supabase
+      .channel('message-notifications-conversations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, async () => {
+        // Re-fetch conversations to recalculate unread count
+        const { data: conversationsData } = await supabase
+          .from('conversations')
+          .select('*')
+          .filter('participants', 'cs', `["${user.id}"]`);
 
-    const conversationsUnsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
-      const conversationsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Conversation[];
+        const totalUnreadCount = (conversationsData || []).reduce((total: number, conv: any) => {
+          return total + (conv.unreadCount?.[user.id] || 0);
+        }, 0);
+        setTotalUnread(totalUnreadCount);
+      })
+      .subscribe();
 
-      const totalUnreadCount = conversationsData.reduce((total, conv) => {
-        return total + (conv.unreadCount[user.uid] || 0);
+    // Initial fetch for conversations
+    (async () => {
+      const { data: conversationsData } = await supabase
+        .from('conversations')
+        .select('*')
+        .filter('participants', 'cs', `["${user.id}"]`);
+
+      const totalUnreadCount = (conversationsData || []).reduce((total: number, conv: any) => {
+        return total + (conv.unreadCount?.[user.id] || 0);
       }, 0);
-
       setTotalUnread(totalUnreadCount);
-    });
+    })();
 
-    const messagesQuery = query(
-      collection(db, 'messages'),
-      where('receiverId', '==', user.uid),
-      where('isRead', '==', false),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
+    // Subscribe to unread messages for notifications list
+    const messagesChannel = supabase
+      .channel('message-notifications-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `receiverId=eq.${user.id}` }, async () => {
+        const { data: messagesData } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('receiverId', user.id)
+          .eq('isRead', false)
+          .order('timestamp', { ascending: false })
+          .limit(10);
 
-    const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const messagesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as MessageNotification[];
+        setNotifications((messagesData || []) as MessageNotification[]);
+        setLoading(false);
+      })
+      .subscribe();
 
-      setNotifications(messagesData);
+    // Initial fetch for messages
+    (async () => {
+      const { data: messagesData } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('receiverId', user.id)
+        .eq('isRead', false)
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      setNotifications((messagesData || []) as MessageNotification[]);
       setLoading(false);
-    });
+    })();
 
     return () => {
-      conversationsUnsubscribe();
-      messagesUnsubscribe();
+      supabase.removeChannel(conversationsChannel);
+      supabase.removeChannel(messagesChannel);
     };
   }, [user, userData]);
 
@@ -222,7 +239,7 @@ const MessageNotifications: React.FC = () => {
                           {getUserDisplayName(notif, notif.senderType)}
                         </h4>
                         <span className="text-[10px] font-bold text-slate-400">
-                          {formatDistanceToNow(notif.timestamp?.toDate?.() || new Date(), { addSuffix: false, locale: ar })}
+                          {formatDistanceToNow(notif.timestamp ? new Date(notif.timestamp) : new Date(), { addSuffix: false, locale: ar })}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed">

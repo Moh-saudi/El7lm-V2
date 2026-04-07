@@ -6,8 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { db } from '@/lib/firebase/config';
-import { collection, onSnapshot, query, addDoc, serverTimestamp, doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
 import { ChatAmanTemplateSelector } from '@/components/messaging/ChatAmanTemplateSelector';
 import { toast } from 'sonner';
@@ -86,43 +85,60 @@ export const LiveChatView: React.FC = () => {
         return;
      }
 
-     const { getDocs, query, collection, where, limit, onSnapshot, orderBy, addDoc, serverTimestamp } = require('firebase/firestore');
-     let unsubMessages: (() => void) | null = null;
+     let channel: ReturnType<typeof supabase.channel> | null = null;
 
      const init = async () => {
         try {
-           const q = query(
-             collection(db, 'conversations'),
-             where('participants', 'array-contains', activeChat.id),
-             limit(1)
-           );
-           const snap = await getDocs(q);
-           let currentConvoId = null;
+           // Find existing conversation
+           const { data: convos } = await supabase
+             .from('conversations')
+             .select('*')
+             .filter('participants', 'cs', `["${activeChat.id}"]`)
+             .limit(1);
 
-           if (!snap.empty) {
-              currentConvoId = snap.docs[0].id;
+           let currentConvoId: string | null = null;
+
+           if (convos && convos.length > 0) {
+              currentConvoId = convos[0].id;
               setConvoId(currentConvoId);
            } else {
-              const newConvo = await addDoc(collection(db, 'conversations'), {
+              const newId = crypto.randomUUID();
+              await supabase.from('conversations').insert({
+                 id: newId,
                  participants: [activeChat.id, 'admin'],
                  lastMessage: '',
-                 lastMessageTime: serverTimestamp(),
+                 lastMessageTime: new Date().toISOString(),
                  lastSenderId: 'admin'
               });
-              currentConvoId = newConvo.id;
+              currentConvoId = newId;
               setConvoId(currentConvoId);
            }
 
-           const msgQ = query(
-             collection(db, 'messages'),
-             where('conversationId', '==', currentConvoId),
-             orderBy('timestamp', 'asc')
-           );
+           // Initial fetch of messages
+           const { data: initialMsgs } = await supabase
+             .from('messages')
+             .select('*')
+             .eq('conversationId', currentConvoId)
+             .order('timestamp', { ascending: true });
+           setMessages(initialMsgs || []);
 
-           unsubMessages = onSnapshot(msgQ, (snapshot: any) => {
-              const msgs = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-              setMessages(msgs);
-           });
+           // Realtime subscription
+           channel = supabase
+             .channel(`messages:convo:${currentConvoId}`)
+             .on('postgres_changes', {
+               event: '*',
+               schema: 'public',
+               table: 'messages',
+               filter: `conversationId=eq.${currentConvoId}`
+             }, async () => {
+               const { data: updatedMsgs } = await supabase
+                 .from('messages')
+                 .select('*')
+                 .eq('conversationId', currentConvoId)
+                 .order('timestamp', { ascending: true });
+               setMessages(updatedMsgs || []);
+             })
+             .subscribe();
         } catch (e) {
            console.error('Messages Listener Error:', e);
         }
@@ -131,13 +147,13 @@ export const LiveChatView: React.FC = () => {
      init();
 
      return () => {
-        if (unsubMessages) unsubMessages();
+        if (channel) supabase.removeChannel(channel);
      };
   }, [activeChat]);
 
-  // 📋 1. Load Real Users on mount (Multi-collection aggregations + Debounce for Speed)
+  // 📋 1. Load Real Users on mount (Multi-table aggregations + Debounce for Speed)
   useEffect(() => {
-    const collectionsGroup = [
+    const tablesGroup = [
       'users',
       'players',
       'academies', 'academy',
@@ -145,10 +161,10 @@ export const LiveChatView: React.FC = () => {
       'trainers', 'trainer',
       'agents', 'agent',
       'marketers', 'marketer',
-      'parents', 'parent',
+      'parent',
     ];
 
-    const collectionToType: Record<string, string> = {
+    const tableToType: Record<string, string> = {
       users: '',
       players: 'player',
       academies: 'academy', academy: 'academy',
@@ -156,7 +172,6 @@ export const LiveChatView: React.FC = () => {
       trainers: 'trainer', trainer: 'trainer',
       agents: 'agent', agent: 'agent',
       marketers: 'marketer', marketer: 'marketer',
-      parents: 'parent', parent: 'parent',
     };
 
     const combinedMap = new Map<string, any>();
@@ -169,18 +184,17 @@ export const LiveChatView: React.FC = () => {
           setUsers(arr);
           setFilteredUsers(arr);
           throttleTimeout = null;
-       }, 50); // Throttle update batch every 50ms
+       }, 50);
     };
 
-    const upsertDocs = (docs: any[], colName: string) => {
-      for (const d of docs) {
-        const data = d.data();
-        const id = d.id;
-        const accountType = collectionToType[colName] || data.accountType || colName;
+    const upsertRows = (rows: any[], tableName: string) => {
+      for (const data of rows) {
+        const id = data.id;
+        const accountType = tableToType[tableName] || data.accountType || tableName;
         const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || 'مستخدم مجهول';
         const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
         const country = data.country || data.countryName || '';
-        
+
         // 🖼️ Robust Avatar Extractor (Handles strings and objects like profile_image.url)
         let avatar = '';
         if (data.profile_image_url) {
@@ -193,8 +207,6 @@ export const LiveChatView: React.FC = () => {
           avatar = data.avatar || data.photoURL || data.profileImage || data.personalPhoto || data.personal_photo || data.logo || '';
         }
 
-        const isActive = data.isActive !== false;
-
         if (phone) { // Only load users with phones for messaging
            const userEntry = {
              id,
@@ -206,8 +218,8 @@ export const LiveChatView: React.FC = () => {
              country,
              raw: data
            };
-           
-           if (!combinedMap.has(id) || colName === 'users') {
+
+           if (!combinedMap.has(id) || tableName === 'users') {
               combinedMap.set(id, userEntry);
            }
         }
@@ -215,23 +227,36 @@ export const LiveChatView: React.FC = () => {
       updateState();
     };
 
-    const unsubs: Array<() => void> = [];
-    try {
-      for (const col of collectionsGroup) {
-         const q = query(collection(db, col));
-         const unsub = onSnapshot(q, (snapshot) => upsertDocs(snapshot.docs, col));
-         unsubs.push(unsub);
+    const channels: ReturnType<typeof supabase.channel>[] = [];
+
+    const loadAndSubscribe = async () => {
+      try {
+        for (const tbl of tablesGroup) {
+          // Initial fetch
+          const { data } = await supabase.from(tbl).select('*');
+          upsertRows(data || [], tbl);
+
+          // Realtime subscription
+          const ch = supabase
+            .channel(`live-chat-users:${tbl}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: tbl }, async () => {
+              const { data: fresh } = await supabase.from(tbl).select('*');
+              upsertRows(fresh || [], tbl);
+            })
+            .subscribe();
+          channels.push(ch);
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+
+    loadAndSubscribe();
 
     return () => {
-      if (typeof throttleTimeout !== 'undefined' && throttleTimeout) {
-         clearTimeout(throttleTimeout);
-      }
-      for (const u of unsubs) {
-        try { u(); } catch {}
+      if (throttleTimeout) clearTimeout(throttleTimeout);
+      for (const ch of channels) {
+        try { supabase.removeChannel(ch); } catch {}
       }
     };
   }, []);
@@ -291,10 +316,14 @@ export const LiveChatView: React.FC = () => {
      setTemplateVariables(initialVars);
      setFreezeVariables(false);
 
-     // ❄️ Check Presets/Freeze mappings inside Firestore
+     // ❄️ Check Presets/Freeze mappings inside Supabase
      try {
-       const docSnap = await getDoc(doc(db, 'system_configs', 'chataman_templates_presets'));
-       const presets = docSnap.exists() ? docSnap.data() : {};
+       const { data: presetRow } = await supabase
+         .from('system_configs')
+         .select('*')
+         .eq('id', 'chataman_templates_presets')
+         .single();
+       const presets = presetRow ? presetRow : {};
        if (presets[templateName]) {
           const loadedVars = [...initialVars];
           presets[templateName].forEach((v: string, i: number) => {
@@ -342,19 +371,18 @@ export const LiveChatView: React.FC = () => {
                setCustomMessage('');
 
                try {
-                  const { addDoc, collection, serverTimestamp, updateDoc, doc } = require('firebase/firestore');
-                  
-                  const messageBody = selectedTemplate 
+                  const messageBody = selectedTemplate
                      ? (selectedTemplate.body || `قالب: ${selectedTemplate.name}`)
                      : customMessage;
 
-                  await addDoc(collection(db, 'messages'), {
+                  await supabase.from('messages').insert({
+                     id: crypto.randomUUID(),
                      conversationId: convoId,
                      senderId: 'admin',
                      receiverId: activeChat.id,
                      senderName: 'الإدارة',
                      message: messageBody,
-                     timestamp: serverTimestamp(),
+                     timestamp: new Date().toISOString(),
                      isRead: true,
                      messageType: selectedTemplate ? 'template' : 'text',
                      metadata: {
@@ -362,22 +390,23 @@ export const LiveChatView: React.FC = () => {
                         templateName: selectedTemplate?.name
                      }
                   });
-                  
+
                   if (convoId) {
-                     await updateDoc(doc(db, 'conversations', convoId), {
+                     await supabase.from('conversations').update({
                         lastMessage: messageBody,
-                        lastMessageTime: serverTimestamp(),
+                        lastMessageTime: new Date().toISOString(),
                         lastSenderId: 'admin'
-                     });
+                     }).eq('id', convoId);
                   }
                } catch (e) {
                   console.error('Error saving sent message:', e);
                }
-               
+
                if (selectedTemplate && freezeVariables) {
-                 await setDoc(doc(db, 'system_configs', 'chataman_templates_presets'), {
+                 await supabase.from('system_configs').upsert({
+                    id: 'chataman_templates_presets',
                     [selectedTemplate.name]: templateVariables
-                 }, { merge: true });
+                 });
                  toast.success('❄️ تم تثبيت المتغيرات لهذا القالب');
               }
            } else {
@@ -385,14 +414,15 @@ export const LiveChatView: React.FC = () => {
            }
 
         } else {
-           await addDoc(collection(db, 'notifications'), {
+           await supabase.from('notifications').insert({
+              id: crypto.randomUUID(),
               title: selectedTemplate ? 'إشعار من الإدارة' : 'رسالة جديدة',
               message: selectedTemplate ? selectedTemplate.body : customMessage,
               userId: activeChat.id,
               isRead: false,
               type: 'info',
               priority: 'medium',
-              createdAt: serverTimestamp()
+              createdAt: new Date().toISOString()
            });
            toast.success('✅ تم إرسال إشعار التطبيق بنجاح');
            setCustomMessage('');
@@ -548,7 +578,7 @@ export const LiveChatView: React.FC = () => {
                            }`}>
                               <p className="text-xs whitespace-pre-wrap">{m.message}</p>
                               <span className={`text-[8px] mt-1 block ${m.senderId === 'admin' ? 'text-emerald-100 text-left' : 'text-slate-400 text-right'}`}>
-                                 {m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
+                                 {m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
                               </span>
                            </div>
                         </div>

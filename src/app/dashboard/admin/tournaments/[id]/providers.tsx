@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament } from '@/app/dashboard/admin/tournaments/utils';
 import { useParams } from 'next/navigation';
 
@@ -35,22 +34,68 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             return;
         }
 
-        const docRef = doc(db, 'tournaments', id);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setTournament({ id: docSnap.id, ...docSnap.data() } as Tournament);
-            } else {
+        // Initial fetch
+        const fetchTournament = async () => {
+            const { data, error: fetchError } = await supabase
+                .from('tournaments')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError || !data) {
                 setError('البطولة غير موجودة');
                 setTournament(null);
+            } else {
+                setTournament({
+                    id: data.id,
+                    ...data,
+                    isActive: data.isActive === true,
+                    createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+                    updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+                    registrations: data.registrations || [],
+                    currency: data.currency || 'EGP',
+                    paymentMethods: data.paymentMethods || ['credit_card', 'bank_transfer'],
+                    ageGroups: data.ageGroups || [],
+                    categories: data.categories || [],
+                } as Tournament);
             }
             setLoading(false);
-        }, (err) => {
-            console.error('Error fetching tournament:', err);
-            setError(err.message);
-            setLoading(false);
-        });
+        };
 
-        return () => unsubscribe();
+        fetchTournament();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel(`tournament-${id}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` },
+                (payload) => {
+                    if (payload.eventType === 'DELETE') {
+                        setError('البطولة غير موجودة');
+                        setTournament(null);
+                    } else {
+                        const data = payload.new as any;
+                        setTournament({
+                            id: data.id,
+                            ...data,
+                            isActive: data.is_active === true,
+                            createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+                            updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
+                            registrations: data.registrations || [],
+                            currency: data.currency || 'EGP',
+                            paymentMethods: data.payment_methods || ['credit_card', 'bank_transfer'],
+                            ageGroups: data.age_groups || [],
+                            categories: data.categories || [],
+                        } as Tournament);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [id]);
 
     return (

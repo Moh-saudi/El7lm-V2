@@ -1,20 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-  limit as fslimit,
-  Timestamp
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { DreamAcademySource, DreamAcademyCategoryId } from '@/types/dream-academy';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -131,14 +118,16 @@ export default function AdminDreamAcademyVideosPage() {
     else setRefreshing(true);
 
     try {
-      const q = query(collection(db, 'dream_academy_sources'), orderBy('order', 'asc'));
-      const snap = await getDocs(q);
-      const rows: DreamAcademySource[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-      setSources(rows);
+      const { data: rows } = await supabase
+        .from('dream_academy_sources')
+        .select('*')
+        .order('order', { ascending: true });
+      const rowsList: DreamAcademySource[] = rows || [];
+      setSources(rowsList);
 
       // Fetch platform stats (best-effort)
       const newStats: Record<string, { views: number; likes: number }> = {};
-      const statsPromises = rows.map(async (s) => {
+      const statsPromises = rowsList.map(async (s) => {
         if (!s.id) return;
         try {
           const res = await fetch(`/api/dream-academy/stats?sourceId=${s.id}`);
@@ -176,8 +165,8 @@ export default function AdminDreamAcademyVideosPage() {
     // تحميل الفئات الديناميكية
     (async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'dream_academy_categories')));
-        const cats = snap.docs.map(d => d.data() as any).filter(c => c.isActive !== false);
+        const { data: catData } = await supabase.from('dream_academy_categories').select('*');
+        const cats = (catData || []).filter((c: any) => c.isActive !== false);
         const mapped = cats.map((c: any) => ({ id: c.id as DreamAcademyCategoryId, title: c.title as string }));
         if (mapped.length > 0) {
           const unique = Array.from(new Map(mapped.map((c: any) => [c.id, c])).values());
@@ -238,7 +227,7 @@ export default function AdminDreamAcademyVideosPage() {
     const ids = selectedIds.slice();
     const promise = async () => {
       for (const id of ids) {
-        try { await updateDoc(doc(db, 'dream_academy_sources', id), { isActive: active }); } catch { }
+        try { await supabase.from('dream_academy_sources').update({ isActive: active }).eq('id', id); } catch { }
       }
       setSelectedIds([]);
       await fetchSources(true);
@@ -254,7 +243,7 @@ export default function AdminDreamAcademyVideosPage() {
     const ids = selectedIds.slice();
     const promise = async () => {
       for (const id of ids) {
-        try { await updateDoc(doc(db, 'dream_academy_sources', id), { categoryId }); } catch { }
+        try { await supabase.from('dream_academy_sources').update({ categoryId }).eq('id', id); } catch { }
       }
       setSelectedIds([]);
       await fetchSources(true);
@@ -271,7 +260,7 @@ export default function AdminDreamAcademyVideosPage() {
     const ids = selectedIds.slice();
     const promise = async () => {
       for (const id of ids) {
-        try { await deleteDoc(doc(db, 'dream_academy_sources', id)); } catch { }
+        try { await supabase.from('dream_academy_sources').delete().eq('id', id); } catch { }
       }
       setSelectedIds([]);
       await fetchSources(true);
@@ -336,9 +325,12 @@ export default function AdminDreamAcademyVideosPage() {
     // Prevent duplicates
     const checkExists = async (field: 'videoId' | 'playlistId' | 'url', value?: string | null) => {
       if (!value) return false;
-      const qx = query(collection(db, 'dream_academy_sources'), where(field, '==', value), fslimit(1));
-      const snapx = await getDocs(qx);
-      return !snapx.empty;
+      const { data: existing } = await supabase
+        .from('dream_academy_sources')
+        .select('id')
+        .eq(field, value)
+        .limit(1);
+      return !!(existing && existing.length > 0);
     };
 
     if (ids.videoId && await checkExists('videoId', ids.videoId)) {
@@ -366,8 +358,8 @@ export default function AdminDreamAcademyVideosPage() {
       thumbnailUrl: (draft as any).thumbnailUrl,
       videoId: ids.videoId,
       playlistId: ids.playlistId,
-      createdBy: user?.uid || 'system',
-      createdAt: new Date(),
+      createdBy: user?.id || 'system',
+      createdAt: new Date().toISOString(),
     };
 
     const stripUndefined = (obj: any) => Object.fromEntries(
@@ -375,7 +367,7 @@ export default function AdminDreamAcademyVideosPage() {
     );
 
     try {
-      await addDoc(collection(db, 'dream_academy_sources'), stripUndefined(payload) as any);
+      await supabase.from('dream_academy_sources').insert({ id: crypto.randomUUID(), ...stripUndefined(payload) });
       setDraft({ provider: 'youtube', sourceType: 'video', url: '', categoryId: 'english', isActive: true });
       setShowAddModal(false);
       await fetchSources(true);
@@ -414,9 +406,12 @@ export default function AdminDreamAcademyVideosPage() {
           if (!it?.videoId) { skippedCount++; continue; }
 
           // Check exists efficiently
-          const qx = query(collection(db, 'dream_academy_sources'), where('videoId', '==', it.videoId), fslimit(1));
-          const snapx = await getDocs(qx);
-          if (!snapx.empty) { skippedCount++; continue; }
+          const { data: existCheck } = await supabase
+            .from('dream_academy_sources')
+            .select('id')
+            .eq('videoId', it.videoId)
+            .limit(1);
+          if (existCheck && existCheck.length > 0) { skippedCount++; continue; }
 
           const payload: DreamAcademySource = {
             provider: 'youtube',
@@ -433,12 +428,12 @@ export default function AdminDreamAcademyVideosPage() {
             thumbnailUrl: it.thumbnailUrl,
             videoId: it.videoId,
             playlistId: data.playlistId,
-            createdBy: user?.uid || 'system',
-            createdAt: new Date(),
+            createdBy: user?.id || 'system',
+            createdAt: new Date().toISOString(),
           };
 
           const cleanPayload = Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined));
-          await addDoc(collection(db, 'dream_academy_sources'), cleanPayload as any);
+          await supabase.from('dream_academy_sources').insert({ id: crypto.randomUUID(), ...cleanPayload });
           addedCount++;
         }
 
@@ -509,9 +504,12 @@ export default function AdminDreamAcademyVideosPage() {
             const it = items[i];
 
             // Fast check
-            const qx = query(collection(db, 'dream_academy_sources'), where('videoId', '==', it.videoId), fslimit(1));
-            const snapx = await getDocs(qx);
-            if (!snapx.empty) { skippedVideosCount++; continue; }
+            const { data: existCheck2 } = await supabase
+              .from('dream_academy_sources')
+              .select('id')
+              .eq('videoId', it.videoId)
+              .limit(1);
+            if (existCheck2 && existCheck2.length > 0) { skippedVideosCount++; continue; }
 
             const payload: DreamAcademySource = {
               provider: 'youtube',
@@ -528,10 +526,10 @@ export default function AdminDreamAcademyVideosPage() {
               thumbnailUrl: it.thumbnailUrl,
               videoId: it.videoId,
               playlistId: data.playlistId,
-              createdBy: user?.uid || 'system',
-              createdAt: new Date(),
+              createdBy: user?.id || 'system',
+              createdAt: new Date().toISOString(),
             };
-            await addDoc(collection(db, 'dream_academy_sources'), payload as any);
+            await supabase.from('dream_academy_sources').insert({ id: crypto.randomUUID(), ...payload });
             importedVideosCount++;
           }
 
@@ -554,7 +552,7 @@ export default function AdminDreamAcademyVideosPage() {
   const handleDelete = async (id?: string) => {
     if (!id || !window.confirm('هل أنت متأكد من الحذف؟')) return;
     try {
-      await deleteDoc(doc(db, 'dream_academy_sources', id));
+      await supabase.from('dream_academy_sources').delete().eq('id', id);
       await fetchSources(true);
       toast.success('تم الحذف بنجاح');
     } catch {
@@ -565,7 +563,7 @@ export default function AdminDreamAcademyVideosPage() {
   const toggleActive = async (s: DreamAcademySource) => {
     if (!s.id) return;
     try {
-      await updateDoc(doc(db, 'dream_academy_sources', s.id), { isActive: !s.isActive });
+      await supabase.from('dream_academy_sources').update({ isActive: !s.isActive }).eq('id', s.id);
       await fetchSources(true);
       toast.success(s.isActive ? 'تم التعطيل' : 'تم التفعيل');
     } catch {
@@ -577,7 +575,7 @@ export default function AdminDreamAcademyVideosPage() {
     if (!s.id) return;
     try {
       const newOrder = (s.order || 0) + delta;
-      await updateDoc(doc(db, 'dream_academy_sources', s.id), { order: newOrder });
+      await supabase.from('dream_academy_sources').update({ order: newOrder }).eq('id', s.id);
       await fetchSources(true);
     } catch { }
   };

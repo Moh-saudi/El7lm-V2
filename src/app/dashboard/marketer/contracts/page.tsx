@@ -20,8 +20,7 @@ import {
     Trash2,
     ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,17 +65,14 @@ export default function MarketerContractsPage() {
     const fetchContracts = async () => {
         try {
             setLoading(true);
-            const contractsRef = collection(db, 'contracts');
-            // Query contracts where the marketer is involved
-            const q = query(contractsRef, where('marketerId', '==', user?.uid));
-            const querySnapshot = await getDocs(q);
+            const { data: contractsData, error } = await supabase
+                .from('contracts')
+                .select('*')
+                .eq('marketerId', user?.id);
 
-            const contractsData = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Contract[];
+            if (error) throw error;
 
-            setContracts(contractsData);
+            setContracts((contractsData || []) as Contract[]);
         } catch (error) {
             console.error('Error fetching contracts:', error);
             toast.error('حدث خطأ أثناء جلب بيانات العقود');

@@ -101,12 +101,12 @@ export default function MyApplicationsPage() {
   const [activeTab, setActiveTab] = useState<'all' | ApplicationStatus>('all');
 
   useEffect(() => {
-    if (!user?.uid) return;
-    getPlayerApplications(user.uid)
+    if (!user?.id) return;
+    getPlayerApplications(user.id)
       .then(setApplications)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user?.uid]);
+  }, [user?.id]);
 
   const tabs: { key: 'all' | ApplicationStatus; label: string }[] = [
     { key: 'all',       label: 'الكل'           },

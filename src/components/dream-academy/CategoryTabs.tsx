@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Languages, Home, Briefcase, Heart } from 'lucide-react';
 
 interface Props {
@@ -26,9 +25,9 @@ export default function CategoryTabs({ selected, onSelect }: Props) {
     // يمكننا هنا قراءة dream_academy_categories وتجميع المجموعات المستخدمة
     (async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'dream_academy_categories')));
-        const cats = snap.docs.map(d => d.data() as any).filter(c => c.isActive !== false);
-        const used = new Set<string>(cats.map(c => c.group || 'other'));
+        const { data } = await supabase.from('dream_academy_categories').select('*');
+        const cats = (data || []).filter((c: any) => c.isActive !== false);
+        const used = new Set<string>(cats.map((c: any) => c.group || 'other'));
         const ordered = STATIC_GROUPS.filter(g => used.has(g.id));
         setGroups(ordered.length > 0 ? ordered : STATIC_GROUPS);
       } catch {
@@ -36,6 +35,7 @@ export default function CategoryTabs({ selected, onSelect }: Props) {
       }
     })();
   }, []);
+
   return (
     <div className="relative">
       <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-snap-x px-1 -mx-1">
@@ -56,5 +56,3 @@ export default function CategoryTabs({ selected, onSelect }: Props) {
     </div>
   );
 }
-
-

@@ -22,17 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { detectCountryFromPhone } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import {
-  addDoc,
-  collection,
-  collectionGroup,
-  getDocs,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where
-} from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
 import {
   AlertCircle,
@@ -177,91 +167,48 @@ export default function SendNotificationsPage() {
     return true;
   };
 
-  // جلب المستخدمين (Realtime) من جميع المجموعات ذات الصلة + players collectionGroup
+  // جلب المستخدمين من Supabase (users table)
   useEffect(() => {
-    const collections = [
-      'users',
-      'players',
-      'academies', 'academy',
-      'clubs', 'club',
-      'trainers', 'trainer',
-      'agents', 'agent',
-      'marketers', 'marketer',
-      'parents', 'parent',
-    ];
-
-    const collectionToType: Record<string, string> = {
-      users: '',
-      players: 'player',
-      academies: 'academy', academy: 'academy',
-      clubs: 'club', club: 'club',
-      trainers: 'trainer', trainer: 'trainer',
-      agents: 'agent', agent: 'agent',
-      marketers: 'marketer', marketer: 'marketer',
-      parents: 'parent', parent: 'parent',
-    };
-
-    const combinedMap = new Map<string, NotificationUser>();
-    let isInitial = true;
-
-    const upsertDocs = (docs: any[], collectionName: string) => {
-      for (const d of docs) {
-        const data: any = d.data();
-        const id = d.id;
-        const accountType = (collectionToType[collectionName] || data.accountType || '').trim();
-        const displayName = data.displayName || data.full_name || data.name || '';
-        const email = data.email || data.official_contact?.email || '';
-        const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
-        const isActive = data.isActive !== false;
-        const createdAt: Date | null = resolveCreatedAt(data);
-
-        const userEntry: NotificationUser = {
-          id,
-          displayName,
-          email,
-          phone,
-          accountType: (accountType || collectionName) as string,
-          isActive,
-          avatar: data.avatar || data.photoURL || '',
-          createdAt,
-        };
-
-        // users collection يأخذ أولوية الدمج
-        if (!combinedMap.has(id) || collectionName === 'users') {
-          combinedMap.set(id, userEntry);
-        }
-      }
-      const arr = Array.from(combinedMap.values()).filter(u => u.isActive);
-      setUsers(arr);
-      if (isInitial) setFilteredUsers(arr);
-    };
-
-    const unsubs: Array<() => void> = [];
-    try {
-      for (const col of collections) {
-        const q = query(collection(db, col));
-        const unsub = onSnapshot(q, (snapshot) => upsertDocs(snapshot.docs, col));
-        unsubs.push(unsub);
-      }
-      // players collectionGroup (لاعبون تابعون لجهات)
+    const fetchAllUsers = async () => {
       try {
-        const cg = collectionGroup(db, 'players');
-        const unsubCg = onSnapshot(cg, (snapshot) => upsertDocs(snapshot.docs, 'players'));
-        unsubs.push(unsubCg);
-      } catch (e) {
-        console.warn('collectionGroup(players) snapshot not available:', e);
-      }
-    } catch (e) {
-      console.error('Realtime listeners error:', e);
-      toast.error('فشل في الاستماع للبيانات بشكل لحظي');
-    }
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+          .eq('is_active', true);
 
-    isInitial = false;
-    return () => {
-      for (const u of unsubs) {
-        try { u(); } catch { }
+        if (error) {
+          console.error('Supabase fetch users error:', error);
+          toast.error('فشل في الاستماع للبيانات بشكل لحظي');
+          return;
+        }
+
+        const arr: NotificationUser[] = (data || []).map(row => {
+          const displayName = row.display_name || row.full_name || row.name || '';
+          const email = row.email || '';
+          const phone = row.phone || row.phone_number || row.whatsapp || '';
+          const accountType = (row.account_type || '').trim();
+          const createdAt: Date | null = row.created_at ? new Date(row.created_at) : null;
+          return {
+            id: row.id,
+            displayName,
+            email,
+            phone,
+            accountType: accountType as string,
+            isActive: row.is_active !== false,
+            avatar: row.avatar || row.photo_url || '',
+            createdAt,
+          };
+        });
+
+        setUsers(arr);
+        setFilteredUsers(arr);
+      } catch (e) {
+        console.error('Realtime listeners error:', e);
+        toast.error('فشل في الاستماع للبيانات بشكل لحظي');
       }
     };
+
+    fetchAllUsers();
   }, []);
 
   // فلترة المستخدمين حسب البحث ونوع الحساب والتاريخ
@@ -271,7 +218,7 @@ export default function SendNotificationsPage() {
     // فلترة حسب البحث
     if (searchTerm) {
       filtered = filtered.filter(user =>
-        user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user as any).user_metadata?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.phone?.includes(searchTerm)
       );
@@ -290,12 +237,24 @@ export default function SendNotificationsPage() {
     setFilteredUsers(filtered);
   }, [users, searchTerm, selectedAccountType, dateFilterType, dateStart, dateEnd]);
 
-  // الإبقاء على الدالة القديمة إن لزم استدعاء يدوي مستقبلاً (غير مستخدمة حالياً)
+  // الإبقاء على الدالة للاستدعاء اليدوي إن لزم
   const fetchUsers = async () => {
     try {
-      const usersQuery = query(collection(db, 'users'), where('isActive', '==', true));
-      const snapshot = await getDocs(usersQuery);
-      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })) as NotificationUser[];
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+        .eq('is_active', true);
+      if (error) throw error;
+      const usersData = (data || []).map(row => ({
+        id: row.id,
+        displayName: row.display_name || row.full_name || row.name || '',
+        email: row.email || '',
+        phone: row.phone || row.phone_number || row.whatsapp || '',
+        accountType: (row.account_type || '') as string,
+        isActive: row.is_active !== false,
+        avatar: row.avatar || row.photo_url || '',
+        createdAt: row.created_at ? new Date(row.created_at) : null,
+      })) as NotificationUser[];
       setUsers(usersData);
       setFilteredUsers(usersData);
     } catch (error) {
@@ -455,21 +414,22 @@ export default function SendNotificationsPage() {
       console.log('✅ بدء عملية الإرسال...');
       const senderInfo = buildSenderInfo({
         user,
-        fallbackName: user?.displayName || 'الإدارة',
+        fallbackName: user?.user_metadata?.full_name || 'الإدارة',
         fallbackAccountType: 'admin'
       });
 
+      const now = new Date().toISOString();
       const notificationData = {
         title: form.title,
         message: form.message,
         type: form.type,
         priority: form.priority,
-        isRead: false,
+        is_read: false,
         scope: 'system',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        created_at: now,
+        updated_at: now,
         metadata: {
-          senderId: senderInfo.senderId || user?.uid,
+          senderId: senderInfo.senderId || user?.id,
           senderName: senderInfo.senderName || 'الإدارة',
           senderAccountType: senderInfo.senderAccountType || 'admin',
           senderAvatar: senderInfo.senderAvatar,
@@ -483,9 +443,8 @@ export default function SendNotificationsPage() {
         }
       };
 
-      // حفظ الإشعارات في Firebase مع استبدال المتغيرات لكل مستخدم
-      const notificationPromises = targetUsers.map(async (targetUser) => {
-        // استبدال المتغيرات في الرسالة (ranking, total, etc.)
+      // حفظ الإشعارات في Supabase مع استبدال المتغيرات لكل مستخدم
+      const notificationRows = targetUsers.map((targetUser) => {
         const personalizedMessage = replaceMessageVariables(form.message, targetUser);
         const personalizedTitle = replaceMessageVariables(form.title, targetUser);
 
@@ -497,16 +456,25 @@ export default function SendNotificationsPage() {
           userEmail: targetUser.email,
           userPhone: targetUser.phone
         }, senderInfo);
-        return addDoc(collection(db, 'notifications'), notification);
+        return {
+          ...notification,
+          user_id: targetUser.id,
+          user_email: targetUser.email,
+          user_phone: targetUser.phone,
+        };
       });
 
-      await Promise.all(notificationPromises);
-      console.log(`✅ تم حفظ ${notificationPromises.length} إشعار في Firebase`);
+      const { error: insertError } = await supabase
+        .from('notifications')
+        .insert(notificationRows);
+
+      if (insertError) throw insertError;
+      console.log(`✅ تم حفظ ${notificationRows.length} إشعار في Supabase`);
 
       // WhatsApp/SMS bulk send via BabaService removed — use AI Messenger with ChatAman templates
 
       // عرض رسالة النجاح
-      const successMessage = `✅ تم إرسال الإشعار بنجاح إلى ${targetUsers.length} مستخدم`;
+      const successMessage = `✅ تم إرسال الإشعار بنجاح إلى ${notificationRows.length} مستخدم`;
       console.log(successMessage);
       toast.success(successMessage);
 

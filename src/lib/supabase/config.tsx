@@ -1,71 +1,64 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import type { Database } from '@/types/supabase';
 
-// تعريف أسماء buckets التخزين في Supabase (محدثة لتتطابق مع البوكتات الفعلية)
+// Storage bucket names
 export const STORAGE_BUCKETS = {
   PROFILE_IMAGES: 'profile-images',
-  ADDITIONAL_IMAGES: 'avatars', // بوكت avatars للاعبين المستقلين
   PLAYER_AVATAR: 'avatars',
+  ADDITIONAL_IMAGES: 'avatars',
   PLAYER_ADDITIONAL_IMAGES: 'avatars',
   VIDEOS: 'videos',
   DOCUMENTS: 'documents',
   PLAYER_VIDEOS: 'videos',
   CLUB_VIDEOS: 'videos',
   ACADEMY_VIDEOS: 'videos',
-  ADS: process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'ads', // Bucket للإعلانات
-  // بوكتات خاصة باللاعبين حسب نوع الحساب
+  ADS: process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'ads',
   PLAYER_TRAINER: 'playertrainer',
   PLAYER_CLUB: 'playerclub',
   PLAYER_AGENT: 'playeragent',
   PLAYER_ACADEMY: 'playeracademy',
-  // بوكتات إضافية موجودة في Supabase
   WALLET: 'wallet',
   CLUB_AVATAR: 'clubavatar',
   AGENT: 'agent',
   ACADEMY: 'academy',
-  TRAINER: 'trainer'
+  TRAINER: 'trainer',
 };
 
-// تصدير عنوان وAPI key الخاص بـ Supabase - Updated with working credentials
-export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ekyerljzfokqimbabzxm.supabase.co';
-export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVreWVybGp6Zm9rcWltYmFienhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NTcyODMsImV4cCI6MjA2MjIzMzI4M30.Xd6Cg8QUISHyCG-qbgo9HtWUZz6tvqAqG6KKXzuetBY';
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// إنشاء عميل Supabase (مرة واحدة لكل سياق متصفح)
-let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null;
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
 
+// Singleton browser client
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabaseInstance: ReturnType<typeof createBrowserClient<any>> | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase = (() => {
   if (typeof window === 'undefined') {
-    // Server-side: create new instance
-    return createBrowserClient(supabaseUrl, supabaseAnonKey);
+    return createBrowserClient<any>(supabaseUrl, supabaseAnonKey);
   }
-
-  // Client-side: use singleton pattern
   if (!supabaseInstance) {
-    supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    supabaseInstance = createBrowserClient<any>(supabaseUrl, supabaseAnonKey);
   }
-
   return supabaseInstance;
 })();
 
-// دالة للحصول على عميل Supabase مع المصادقة
 export const getSupabaseClient = () => supabase;
 
-// دالة للتحقق من اتصال Supabase - Disabled as instance is defunct
 export const checkSupabaseConnection = async (): Promise<boolean> => {
-  /*
   try {
-    const { error } = await supabase.from('test').select('*').limit(1);
-    return !error || error.code === 'PGRST116'; // PGRST116 = table doesn't exist (which is fine)
-  } catch (error) {
-    console.warn('Supabase connection test failed:', error);
+    const { error } = await supabase.from('users').select('id').limit(1);
+    return !error || error.code === 'PGRST116';
+  } catch {
     return false;
   }
-  */
-  return false;
 };
 
-// Types for better TypeScript support
 export interface SupabaseUploadResponse {
   url?: string;
   error?: string;
@@ -78,9 +71,4 @@ export interface StorageBucket {
   public: boolean;
 }
 
-export default {
-  supabase,
-  getSupabaseClient,
-  checkSupabaseConnection,
-  STORAGE_BUCKETS
-};
+export default { supabase, getSupabaseClient, checkSupabaseConnection, STORAGE_BUCKETS };

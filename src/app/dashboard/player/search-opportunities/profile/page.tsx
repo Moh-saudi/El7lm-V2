@@ -6,10 +6,8 @@ import { useState, useEffect } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 import { Card } from "@/components/ui/card";
 
@@ -246,15 +244,17 @@ export default function EntityProfilePage() {
 
 
 
-        const docRef = doc(db, collectionName, entityId);
+        const { data: docData } = await supabase
+          .from(collectionName)
+          .select('*')
+          .eq('id', entityId)
+          .single();
 
-        const docSnap = await getDoc(docRef);
 
 
+        if (!!docData) {
 
-        if (docSnap.exists()) {
-
-          const data = docSnap.data();
+          const data = docData;
 
 
 
@@ -262,7 +262,7 @@ export default function EntityProfilePage() {
 
           const profile: EntityProfile = {
 
-            id: docSnap.id,
+            id: data.id,
 
             name: data.name || data.full_name || data.display_name || data.fullName || 'غير محدد',
 
@@ -331,7 +331,7 @@ export default function EntityProfilePage() {
 
             established: data.founded || data.established ||
 
-              (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
+              (data.createdAt ? new Date(data.createdAt).getFullYear().toString() : ''),
 
             languages: data.spoken_languages || ['العربية'],
 
@@ -708,7 +708,7 @@ export default function EntityProfilePage() {
                         (userData as any)?.full_name ||
                         (userData as any)?.displayName ||
                         (userData as any)?.name ||
-                        user?.displayName ||
+                        user?.user_metadata?.full_name ||
                         user?.email ||
                         'مستخدم'
                       }

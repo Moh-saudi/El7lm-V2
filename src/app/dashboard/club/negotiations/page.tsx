@@ -24,8 +24,7 @@ import {
   MapPin,
   ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,15 +117,14 @@ export default function NegotiationsPage() {
       }
 
       setLoading(true);
-      const negotiationsRef = collection(db, 'negotiations');
-      const q = query(negotiationsRef, where('clubId', '==', userData.clubId));
-      const querySnapshot = await getDocs(q);
-      
-      const negotiationsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Negotiation[];
-      
+      const { data, error } = await supabase
+        .from('negotiations')
+        .select('*')
+        .eq('clubId', userData.clubId);
+
+      if (error) throw error;
+
+      const negotiationsData = (data || []) as Negotiation[];
       setNegotiations(negotiationsData);
     } catch (error) {
       console.error('Error fetching negotiations:', error);
@@ -343,4 +341,4 @@ export default function NegotiationsPage() {
       </div>
     </div>
   );
-} 
+}

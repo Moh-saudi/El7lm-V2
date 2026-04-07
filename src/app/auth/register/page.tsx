@@ -2,10 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { signOut } from 'firebase/auth';
+import { supabase } from '@/lib/supabase/config';
 import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
 import { countries } from '@/lib/constants/countries';
 import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
@@ -299,7 +297,12 @@ export default function RegisterPage() {
           };
           toast.error(`هذا الرقم مسجل بالفعل كـ "${typeLabels[data.accountType] || data.accountType}" — سيتم توجيهك للوحتك`);
         }
-        await signInWithCustomToken(auth, data.customToken);
+        if (data.uid) sessionStorage.setItem('otp_firebase_uid', data.uid);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: data.authEmail,
+          password: data.authPassword,
+        });
+        if (signInError) throw new Error(signInError.message);
         showWelcomePopup(data.userName || '', getDashboardRoute(data.accountType));
       } else {
         const createRes = await fetch('/api/auth/create-user-with-phone', {
@@ -310,7 +313,12 @@ export default function RegisterPage() {
         const createData = await createRes.json();
         if (!createRes.ok || !createData.success) throw new Error(createData.error || 'فشل إنشاء الحساب');
 
-        await signInWithCustomToken(auth, createData.customToken);
+        if (createData.uid) sessionStorage.setItem('otp_firebase_uid', createData.uid);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: createData.authEmail,
+          password: createData.authPassword,
+        });
+        if (signInError) throw new Error(signInError.message);
         showWelcomePopup(createData.userName || name.trim(), getDashboardRoute(createData.accountType || accountType));
       }
     } catch (err: any) {
@@ -386,7 +394,7 @@ export default function RegisterPage() {
             الذهاب إلى لوحة التحكم
           </button>
           <button
-            onClick={async () => { await signOut(auth); setForceRegister(true); }}
+            onClick={async () => { await supabase.auth.signOut(); setForceRegister(true); }}
             className="w-full h-11 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
           >
             تسجيل خروج وإنشاء حساب جديد

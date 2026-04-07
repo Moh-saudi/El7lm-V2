@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /**
  * POST /api/chataman/test-video-notification
  * Quick test: send video_notfiation template directly to a phone
  * Body: { phone, playerName, viewerName, apiKey?, baseUrl? }
- * If apiKey is omitted, reads from Firestore system_configs/chataman_config
+ * If apiKey is omitted, reads from Supabase system_configs/chataman_config
  */
 export async function POST(req: NextRequest) {
   try {
@@ -15,21 +15,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'phone is required' }, { status: 400 });
     }
 
-    // Use provided apiKey or read from Firestore
+    // Use provided apiKey or read from Supabase
     let apiKey = bodyApiKey;
     let baseUrl = bodyBaseUrl || 'https://chataman.com';
 
     if (!apiKey) {
-      const db = getAdminDb();
-      const snap = await db.collection('system_configs').doc('chataman_config').get();
-      if (!snap.exists) {
-        return NextResponse.json({ success: false, error: 'ChatAman config not found in Firestore' }, { status: 400 });
+      const db = getSupabaseAdmin();
+      const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+      if (!cfgRows?.length) {
+        return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
       }
-      const cfg = snap.data() as any;
+      const cfg = cfgRows[0] as Record<string, unknown>;
       apiKey = cfg.apiKey;
-      baseUrl = cfg.baseUrl || baseUrl;
+      baseUrl = String(cfg.baseUrl || baseUrl);
       if (!apiKey) {
-        return NextResponse.json({ success: false, error: 'apiKey missing in Firestore config' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'apiKey missing in config' }, { status: 400 });
       }
     }
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const cleanBaseUrl = baseUrl.trim().replace(/\/+$/, '');
+    const cleanBaseUrl = String(baseUrl).trim().replace(/\/+$/, '');
     const targetUrl = `${cleanBaseUrl}/api/send/template`;
 
     console.log(`[test-video-notification] → ${targetUrl}`);
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey.trim()}`,
+        'Authorization': `Bearer ${String(apiKey).trim()}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     });
 
     const text = await response.text();
-    let data: any = {};
+    let data: Record<string, unknown> = {};
     try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
     console.log(`[test-video-notification] HTTP ${response.status}:`, text);
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, phone: formattedPhone, data });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[test-video-notification] error:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Unknown' }, { status: 500 });
   }
 }

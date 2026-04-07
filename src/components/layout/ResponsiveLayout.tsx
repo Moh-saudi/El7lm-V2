@@ -5,19 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
-import {
-  collection,
-  doc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-  where
-} from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DEFAULT_ROLES } from "@/lib/permissions/types";
 import {
@@ -801,58 +791,75 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   const sidebarWidth = useMemo(() => getSidebarWidth(), [isMobile, isTablet, isSidebarCollapsed]);
 
   useEffect(() => {
-    if (accountType !== 'club' || !user?.uid) {
+    if (accountType !== 'club' || !user?.id) {
       return;
     }
 
-    const clubRef = doc(db, 'clubs', user.uid);
+    // Initial fetch
+    const fetchClubLogo = async () => {
+      const { data } = await supabase
+        .from('clubs')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      try {
+        if (data) {
+          if (data.logo) {
+            if (data.logo.startsWith('http')) {
+              setClubLogo(data.logo);
+            } else {
+              const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
+              setClubLogo(logoUrl && logoUrl !== '' ? logoUrl : null);
+            }
+          } else {
+            setClubLogo(null);
+          }
+        } else {
+          setClubLogo(null);
+        }
+      } catch (error) {
+        console.error('❌ ResponsiveSidebar: Error processing club logo:', error);
+        setClubLogo(null);
+      }
+    };
+    fetchClubLogo();
 
-    // استخدام onSnapshot للاستماع للتحديثات الفورية
-    const unsubscribe = onSnapshot(
-      clubRef,
-      (clubDoc) => {
-        try {
-          if (clubDoc.exists()) {
-            const data = clubDoc.data();
+    const channel = supabase
+      .channel(`club-logo-sidebar-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clubs', filter: `id=eq.${user.id}` },
+        (payload) => {
+          try {
+            const data = payload.new as any;
             if (data.logo) {
               if (data.logo.startsWith('http')) {
                 setClubLogo(data.logo);
               } else {
                 const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
-                if (logoUrl && logoUrl !== '') {
-                  setClubLogo(logoUrl);
-                } else {
-                  setClubLogo(null);
-                }
+                setClubLogo(logoUrl && logoUrl !== '' ? logoUrl : null);
               }
             } else {
               setClubLogo(null);
             }
-          } else {
+          } catch (error) {
+            console.error('❌ ResponsiveSidebar: Error processing club logo:', error);
             setClubLogo(null);
           }
-        } catch (error) {
-          console.error('❌ ResponsiveSidebar: Error processing club logo:', error);
-          setClubLogo(null);
         }
-      },
-      (error) => {
-        console.error('❌ ResponsiveSidebar: Error listening to club logo updates:', error);
-        setClubLogo(null);
-      }
-    );
+      )
+      .subscribe();
 
-    // Cleanup listener on unmount
     return () => {
       console.log('🔄 ResponsiveSidebar: Unsubscribing from club logo updates');
-      unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, [accountType, user?.uid]);
+  }, [accountType, user?.id]);
 
   const getUserAvatar = () => {
-    // If club type and logo exists in Firestore, use it
+    // If club type and logo exists, use it
     if (accountType === 'club' && clubLogo) {
-      console.log('✅ ResponsiveSidebar: Using club logo from Firestore:', clubLogo);
+      console.log('✅ ResponsiveSidebar: Using club logo from Supabase:', clubLogo);
       return clubLogo;
     }
 
@@ -870,17 +877,17 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
     // Search all potential fields for name based on account type
     switch (userData.accountType) {
       case 'player':
-        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
+        return userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'لاعب';
       case 'club':
-        return userData.club_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'نادي رياضي';
+        return userData.club_name || userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'نادي رياضي';
       case 'academy':
-        return userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'أكاديمية رياضية';
+        return userData.academy_name || userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'أكاديمية رياضية';
       case 'agent':
-        return userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'وكيل رياضي';
+        return userData.agent_name || userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'وكيل رياضي';
       case 'trainer':
-        return userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.displayName || 'مدرب';
+        return userData.trainer_name || userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'مدرب';
       default:
-        return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+        return userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'مستخدم';
     }
   };
 
@@ -1226,7 +1233,7 @@ const ResponsiveHeader: React.FC = () => {
       case 'player': return userData.full_name || userData.name || 'لاعب';
       case 'club': return userData.club_name || userData.name || 'نادي';
       case 'academy': return userData.academy_name || userData.name || 'أكاديمية';
-      default: return userData.full_name || userData.name || user?.displayName || 'مستخدم';
+      default: return userData.full_name || userData.name || user?.user_metadata?.full_name || 'مستخدم';
     }
   };
 
@@ -1262,53 +1269,70 @@ const ResponsiveHeader: React.FC = () => {
   };
 
   useEffect(() => {
-    if (accountType !== 'club' || !user?.uid) {
+    if (accountType !== 'club' || !user?.id) {
       return;
     }
 
-    const clubRef = doc(db, 'clubs', user.uid);
+    // Initial fetch
+    const fetchClubLogo = async () => {
+      const { data } = await supabase
+        .from('clubs')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      try {
+        if (data) {
+          if (data.logo) {
+            if (data.logo.startsWith('http')) {
+              setClubLogo(data.logo);
+            } else {
+              const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
+              setClubLogo(logoUrl && logoUrl !== '' ? logoUrl : null);
+            }
+          } else {
+            setClubLogo(null);
+          }
+        } else {
+          setClubLogo(null);
+        }
+      } catch (error) {
+        console.error('❌ ResponsiveHeader: Error processing club logo:', error);
+        setClubLogo(null);
+      }
+    };
+    fetchClubLogo();
 
-    // استخدام onSnapshot للاستماع للتحديثات الفورية
-    const unsubscribe = onSnapshot(
-      clubRef,
-      (clubDoc) => {
-        try {
-          if (clubDoc.exists()) {
-            const data = clubDoc.data();
+    const channel = supabase
+      .channel(`club-logo-header-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clubs', filter: `id=eq.${user.id}` },
+        (payload) => {
+          try {
+            const data = payload.new as any;
             if (data.logo) {
               if (data.logo.startsWith('http')) {
                 setClubLogo(data.logo);
               } else {
                 const logoUrl = getSupabaseImageUrl(data.logo, 'clubavatar');
-                if (logoUrl && logoUrl !== '') {
-                  setClubLogo(logoUrl);
-                } else {
-                  setClubLogo(null);
-                }
+                setClubLogo(logoUrl && logoUrl !== '' ? logoUrl : null);
               }
             } else {
               setClubLogo(null);
             }
-          } else {
+          } catch (error) {
+            console.error('❌ ResponsiveHeader: Error processing club logo:', error);
             setClubLogo(null);
           }
-        } catch (error) {
-          console.error('❌ ResponsiveHeader: Error processing club logo:', error);
-          setClubLogo(null);
         }
-      },
-      (error) => {
-        console.error('❌ ResponsiveHeader: Error listening to club logo updates:', error);
-        setClubLogo(null);
-      }
-    );
+      )
+      .subscribe();
 
-    // Cleanup listener on unmount
     return () => {
       console.log('🔄 ResponsiveHeader: Unsubscribing from club logo updates');
-      unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, [accountType, user?.uid]);
+  }, [accountType, user?.id]);
 
   // Fetch notification data or other header requirements
   useEffect(() => {

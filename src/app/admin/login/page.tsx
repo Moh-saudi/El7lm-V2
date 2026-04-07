@@ -8,9 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { auth, db } from '@/lib/firebase/config';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, updateDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
   Activity,
   AlertCircle,
@@ -104,6 +102,7 @@ export default function AdminLoginPage() {
     try {
       // Create a more structured event document
       const eventData = {
+        id: crypto.randomUUID(),
         event,
         details: {
           ...details,
@@ -115,12 +114,7 @@ export default function AdminLoginPage() {
         environment: process.env.NODE_ENV || 'development'
       };
 
-      // Generate a more reliable document ID
-      const docId = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-
-      // Use collection reference instead of direct doc creation
-      const securityLogsRef = collection(db, 'security_logs');
-      await addDoc(securityLogsRef, eventData);
+      await supabase.from('security_logs').insert(eventData);
     } catch (error) {
       // Log error but don't block the login process
       console.error('Error logging security event:', error);
@@ -136,52 +130,48 @@ export default function AdminLoginPage() {
 
     try {
       // Log login attempt
-      await logSecurityEvent('login_attempt', { email, timestamp: new Date() });
+      await logSecurityEvent('login_attempt', { email, timestamp: new Date().toISOString() });
 
-      // Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // Authenticate with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      const user = authData.user;
 
       // Check user document
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
 
-      let userData: any = null;
+      let userDataFinal: any = userData;
       let isEmployee = false;
 
-      if (userDoc.exists()) {
-        userData = userDoc.data();
-      } else {
+      if (!userDataFinal) {
         // إذا لم توجد في users، ابحث في employees collection
         try {
           // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
-          const employeeDocRef = doc(db, 'employees', user.uid);
-          const employeeDocSnap = await getDoc(employeeDocRef);
+          const { data: employeeByUid } = await supabase.from('employees').select('*').eq('id', user.id).single();
 
-          let employeeDoc: any = null;
           let employeeData: any = null;
+          let employeeId: string | null = null;
 
-          if (employeeDocSnap.exists()) {
-            employeeDoc = employeeDocSnap;
-            employeeData = employeeDocSnap.data();
+          if (employeeByUid) {
+            employeeData = employeeByUid;
+            employeeId = employeeByUid.id;
           } else {
             // ثانياً: البحث بـ authUserId (الطريقة القديمة)
-            const employeesQuery = query(
-              collection(db, 'employees'),
-              where('authUserId', '==', user.uid)
-            );
-            const employeesSnapshot = await getDocs(employeesQuery);
+            const { data: employeesByAuthId } = await supabase
+              .from('employees')
+              .select('*')
+              .eq('authUserId', user.id);
 
-            if (!employeesSnapshot.empty) {
-              employeeDoc = employeesSnapshot.docs[0];
-              employeeData = employeeDoc.data();
+            if (employeesByAuthId && employeesByAuthId.length > 0) {
+              employeeData = employeesByAuthId[0];
+              employeeId = employeesByAuthId[0].id;
             }
           }
 
-          if (employeeDoc && employeeData) {
+          if (employeeData && employeeId) {
             isEmployee = true;
 
-            // جلب صلاحيات الدور من Firestore
+            // جلب صلاحيات الدور من Supabase
             let rolePermissions: string[] = [];
             console.log('🔍 Employee data:', {
               roleId: employeeData.roleId,
@@ -191,15 +181,13 @@ export default function AdminLoginPage() {
 
             if (employeeData.roleId) {
               try {
-                console.log('📡 Fetching role from Firestore:', employeeData.roleId);
-                const roleDocRef = doc(db, 'roles', employeeData.roleId);
-                const roleDoc = await getDoc(roleDocRef);
-                if (roleDoc.exists()) {
-                  const roleData = roleDoc.data();
+                console.log('📡 Fetching role from Supabase:', employeeData.roleId);
+                const { data: roleData } = await supabase.from('roles').select('*').eq('id', employeeData.roleId).single();
+                if (roleData) {
                   rolePermissions = roleData.permissions || [];
                   console.log('✅ Fetched role permissions:', rolePermissions);
                 } else {
-                  console.warn('⚠️ Role document not found in Firestore:', employeeData.roleId);
+                  console.warn('⚠️ Role document not found in Supabase:', employeeData.roleId);
                 }
               } catch (roleError) {
                 console.warn('Error fetching role permissions:', roleError);
@@ -209,13 +197,13 @@ export default function AdminLoginPage() {
             }
 
             // إنشاء userData من بيانات الموظف
-            userData = {
+            userDataFinal = {
               accountType: 'admin', // الموظفون يستخدمون dashboard المدير
               name: employeeData.name,
               email: employeeData.email || user.email,
               phone: employeeData.phone,
               isActive: employeeData.isActive !== false,
-              employeeId: employeeDoc.id,
+              employeeId: employeeId,
               employeeRole: employeeData.roleId || employeeData.role,
               role: employeeData.roleId || employeeData.role,
               roleId: employeeData.roleId,
@@ -225,10 +213,11 @@ export default function AdminLoginPage() {
 
             // إنشاء document في users collection للموظف
             try {
-              await setDoc(userDocRef, {
-                ...userData,
-                updated_at: new Date()
-              }, { merge: true });
+              await supabase.from('users').upsert({
+                id: user.id,
+                ...userDataFinal,
+                updated_at: new Date().toISOString()
+              });
             } catch (syncError) {
               console.warn('Error syncing employee data to users collection:', syncError);
             }
@@ -239,14 +228,12 @@ export default function AdminLoginPage() {
       }
 
       // إذا لم نجد بيانات في users أو employees، ابحث في admins collection
-      if (!userData) {
+      if (!userDataFinal) {
         try {
-          const adminDocRef = doc(db, 'admins', user.uid);
-          const adminDoc = await getDoc(adminDocRef);
+          const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
 
-          if (adminDoc.exists()) {
-            const adminData = adminDoc.data();
-            userData = {
+          if (adminData) {
+            userDataFinal = {
               accountType: 'admin',
               name: adminData.name || adminData.full_name || 'مدير النظام',
               email: adminData.email || user.email,
@@ -257,10 +244,11 @@ export default function AdminLoginPage() {
 
             // مزامنة البيانات مع users collection
             try {
-              await setDoc(userDocRef, {
-                ...userData,
-                updated_at: new Date()
-              }, { merge: true });
+              await supabase.from('users').upsert({
+                id: user.id,
+                ...userDataFinal,
+                updated_at: new Date().toISOString()
+              });
             } catch (syncError) {
               console.warn('Error syncing admin data to users collection:', syncError);
             }
@@ -270,53 +258,51 @@ export default function AdminLoginPage() {
         }
       }
 
-      if (!userData) {
+      if (!userDataFinal) {
         throw new Error('User data not found in database');
       }
 
       // Check admin permissions
-      if (userData.accountType !== 'admin' && !isEmployee) {
+      if (userDataFinal.accountType !== 'admin' && !isEmployee) {
         // Check admins collection as fallback
-        const adminDocRef = doc(db, 'admins', user.uid);
-        const adminDoc = await getDoc(adminDocRef);
+        const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
 
-        if (!adminDoc.exists()) {
+        if (!adminData) {
           await logSecurityEvent('unauthorized_access_attempt', {
             email,
-            userRole: userData.accountType,
-            timestamp: new Date()
+            userRole: userDataFinal.accountType,
+            timestamp: new Date().toISOString()
           });
           throw new Error('You do not have admin permissions to access this panel');
         }
 
-        const adminData = adminDoc.data();
         if (!adminData.isActive) {
-          await logSecurityEvent('inactive_admin_login_attempt', { email, timestamp: new Date() });
+          await logSecurityEvent('inactive_admin_login_attempt', { email, timestamp: new Date().toISOString() });
           throw new Error('Your admin account is deactivated. Please contact administration');
         }
       }
 
       // التحقق من حالة الموظف إذا كان موظفاً
-      if (isEmployee && userData.isActive === false) {
-        await logSecurityEvent('inactive_employee_login_attempt', { email, timestamp: new Date() });
+      if (isEmployee && userDataFinal.isActive === false) {
+        await logSecurityEvent('inactive_employee_login_attempt', { email, timestamp: new Date().toISOString() });
         throw new Error('Your employee account is deactivated. Please contact administration');
       }
 
       // Update last login info
       const loginData = {
-        lastLogin: new Date(),
+        lastLogin: new Date().toISOString(),
         lastLoginIP: securityInfo?.ipAddress || 'Unknown',
         lastLoginDevice: securityInfo?.userAgent || 'Unknown',
         lastLoginLocation: securityInfo?.timezone || 'Unknown',
-        loginCount: (userData.loginCount || 0) + 1
+        loginCount: (userDataFinal.loginCount || 0) + 1
       };
 
-      await updateDoc(userDocRef, loginData);
+      await supabase.from('users').update(loginData).eq('id', user.id);
 
       // Log successful login
       await logSecurityEvent('admin_login_success', {
         email,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         sessionInfo: loginData
       });
 
@@ -361,18 +347,16 @@ export default function AdminLoginPage() {
       await logSecurityEvent('admin_login_failed', {
         email,
         error: error.message,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       let errorMessage = 'An error occurred during login';
 
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'Email address not registered';
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format';
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Email address not confirmed';
+      } else if (error.message?.includes('Too many requests')) {
         errorMessage = 'Too many failed attempts. Please try again later';
       } else if (error.message) {
         errorMessage = error.message;

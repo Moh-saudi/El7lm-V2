@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 export default function FixAdminPage() {
     const { user } = useAuth();
@@ -13,32 +12,31 @@ export default function FixAdminPage() {
         if (!user) return;
 
         const upgradeUser = async () => {
-            setStatus(`Processing user: ${user.uid} (${user.email})...`);
+            setStatus(`Processing user: ${user.id} (${user.email})...`);
 
             try {
                 // 1. Update/Create entry in 'admins' collection (Primary source of truth for admin role)
-                const adminRef = doc(db, 'admins', user.uid);
-                await setDoc(adminRef, {
-                    uid: user.uid,
+                await supabase.from('admins').upsert({
+                    id: user.id,
+                    uid: user.id,
                     email: user.email,
                     role: 'admin',
                     isActive: true, // Critical
-                    name: user.displayName || 'Emergency Admin',
-                    createdAt: new Date(),
+                    name: user.user_metadata?.displayName || 'Emergency Admin',
+                    createdAt: new Date().toISOString(),
                     permissions: {
                         all: true // Master key
                     }
-                }, { merge: true });
+                });
 
                 setStatus('Added to admins collection ✅');
 
                 // 2. Update entry in 'users' collection (Used for session data)
-                const userRef = doc(db, 'users', user.uid);
-                await updateDoc(userRef, {
+                await supabase.from('users').update({
                     accountType: 'admin',
                     role: 'admin',
                     isAdmin: true
-                });
+                }).eq('id', user.id);
 
                 setStatus('Updated users collection ✅. You are now an ADMIN! Redirecting...');
 

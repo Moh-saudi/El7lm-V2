@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { uploadPlayerVideo } from '@/lib/firebase/upload-media';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { videoService } from '@/lib/video/video-service';
 import { referralService } from '@/lib/referral/referral-service';
-import { PlayerVideo, POINTS_CONVERSION } from '@/types/referral';
+import { POINTS_CONVERSION } from '@/types/referral';
+import type { PlayerVideo, VideoCategory } from '@/lib/video/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,65 +24,60 @@ import {
   XCircle,
   AlertCircle,
   FileVideo,
-  Camera,
-  Mic,
-  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+
+const CATEGORY_OPTIONS: { value: VideoCategory; label: string }[] = [
+  { value: 'skills', label: 'مهارات' },
+  { value: 'match', label: 'مباراة' },
+  { value: 'training', label: 'تدريب' },
+  { value: 'attack', label: 'هجوم' },
+  { value: 'midfield', label: 'وسط' },
+  { value: 'defense', label: 'دفاع' },
+  { value: 'goalkeeper', label: 'حراسة مرمى' },
+  { value: 'other', label: 'أخرى' },
+];
+
 interface PlayerRewards {
-  playerId: string;
   totalPoints: number;
   availablePoints: number;
-  totalEarnings: number;
-  referralCount: number;
-  badges: any[];
-  lastUpdated: any;
-}
-
-interface UploadedVideo {
-  id: string;
-  title: string;
-  description: string;
-  videoUrl: string;
-  thumbnail: string;
-  duration: number;
-  status: 'pending' | 'approved' | 'rejected';
-  uploadedAt: Date;
-  approvedAt?: Date;
-  pointsEarned?: number;
-  adminNotes?: string;
 }
 
 export default function VideoUploadPage() {
   const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [playerRewards, setPlayerRewards] = useState<PlayerRewards | null>(null);
-  const [uploadedVideos, setUploadedVideos] = useState<UploadedVideo[]>([]);
+  const [uploadedVideos, setUploadedVideos] = useState<PlayerVideo[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
+  const [videoCategory, setVideoCategory] = useState<VideoCategory>('other');
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
-    if (user?.uid) {
-      loadPlayerData();
+    if (user?.id) {
+      loadData();
     }
   }, [user]);
 
-  const loadPlayerData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
-      setPlayerRewards(rewards);
-
-      // هنا يمكن جلب فيديوهات اللاعب من قاعدة البيانات
-      // setUploadedVideos(playerVideosData);
+      const [rewards, videos] = await Promise.all([
+        referralService.createOrUpdatePlayerRewards(user!.id).catch(() => null),
+        videoService.getByPlayer(user!.id).catch(() => []),
+      ]);
+      if (rewards) setPlayerRewards(rewards);
+      setUploadedVideos(videos);
     } catch (error) {
-      console.error('خطأ في تحميل بيانات اللاعب:', error);
-      toast.error('حدث خطأ في تحميل البيانات');
+      console.error('خطأ في تحميل البيانات:', error);
     } finally {
       setLoading(false);
     }
@@ -91,163 +85,87 @@ export default function VideoUploadPage() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // التحقق من نوع الملف
-      if (!file.type.startsWith('video/')) {
-        toast.error('يرجى اختيار ملف فيديو صحيح');
-        return;
-      }
+    if (!file) return;
 
-      // التحقق من حجم الملف (50MB كحد أقصى)
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error('حجم الملف يجب أن يكون أقل من 50MB');
-        return;
-      }
-
-      setSelectedFile(file);
-      setVideoTitle(file.name.replace(/\.[^/.]+$/, '')); // إزالة امتداد الملف
+    if (!file.type.startsWith('video/')) {
+      toast.error('يرجى اختيار ملف فيديو صحيح');
+      return;
     }
-  };
-
-
-
-  // ... (other imports remain)
-
-  // Fetch videos
-  const fetchVideos = async () => {
-    if (!user?.uid) return;
-    try {
-      const q = query(
-        collection(db, 'player_videos'),
-        where('playerId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const videos = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        uploadedAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as UploadedVideo[];
-      setUploadedVideos(videos);
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.uid) {
-      loadPlayerData();
-      fetchVideos();
-    }
-  }, [user]);
-
-  const handleUpload = async () => {
-    if (!selectedFile || !videoTitle.trim()) {
-      toast.error('يرجى اختيار ملف فيديو وإدخال عنوان');
+    if (file.size > MAX_FILE_SIZE) {
+      const mb = (file.size / (1024 * 1024)).toFixed(0);
+      toast.error(`حجم الملف (${mb} MB) يتجاوز الحد الأقصى 500 MB`);
       return;
     }
 
-    if (!user?.uid) return;
+    setSelectedFile(file);
+    setVideoTitle(file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '));
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !videoTitle.trim() || !user?.id) return;
 
     setUploading(true);
+    setUploadProgress(0);
+
+    // Simulate progress (real progress needs XHR, not fetch)
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => Math.min(prev + 3, 90));
+    }, 300);
 
     try {
-      // 1. Upload to Cloudflare R2 (via uploadPlayerVideo)
-      // For independent player: ownerId = uid, playerId = uid
-      const { url, name } = await uploadPlayerVideo(
-        selectedFile,
-        user.uid,
-        user.uid,
-        'independent'
-      );
-
-      // 2. Save Metadata to Firestore
-      const videoData = {
-        playerId: user.uid,
+      const { video } = await videoService.upload({
+        file: selectedFile,
+        playerId: user.id,
         title: videoTitle,
         description: videoDescription,
-        videoUrl: url,
-        fileName: name,
-        thumbnail: '/images/video-placeholder.png', // Could generate thumbnail later
-        duration: 0, // Pending processing
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        pointsEarned: 0,
-        views: 0,
-        likes: 0
-      };
+        category: videoCategory,
+        accountType: 'independent',
+        autoQueueAnalysis: false,
+      });
 
-      const docRef = await addDoc(collection(db, 'player_videos'), videoData);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
-      // 3. Update UI
-      const newVideo: UploadedVideo = {
-        id: docRef.id,
-        title: videoTitle,
-        description: videoDescription,
-        videoUrl: url,
-        thumbnail: '/images/video-placeholder.png',
-        duration: 0,
-        status: 'pending',
-        uploadedAt: new Date()
-      };
-
-      setUploadedVideos(prev => [newVideo, ...prev]);
+      setUploadedVideos(prev => [video, ...prev]);
 
       toast.success('تم رفع الفيديو بنجاح! سيتم مراجعته قريباً');
       setShowUploadModal(false);
       setSelectedFile(null);
       setVideoTitle('');
       setVideoDescription('');
-
-      // Notify Admin (Optional - implementation depends on backend logic)
-      // await notifyAdminOfNewVideo(docRef.id);
+      setVideoCategory('other');
 
     } catch (error) {
+      clearInterval(progressInterval);
       console.error('خطأ في رفع الفيديو:', error);
-      toast.error('حدث خطأ أثناء رفع الفيديو: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error(error instanceof Error ? error.message : 'حدث خطأ أثناء رفع الفيديو');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-500';
-      case 'rejected':
-        return 'bg-red-500';
-      case 'pending':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
-    }
+    if (status === 'approved') return 'bg-green-500';
+    if (status === 'rejected') return 'bg-red-500';
+    return 'bg-yellow-500';
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'تمت الموافقة';
-      case 'rejected':
-        return 'مرفوض';
-      case 'pending':
-        return 'قيد المراجعة';
-      default:
-        return 'غير محدد';
-    }
+    if (status === 'approved') return 'تمت الموافقة';
+    if (status === 'rejected') return 'مرفوض';
+    return 'قيد المراجعة';
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4" />;
-      case 'pending':
-        return <Clock className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
-    }
+    if (status === 'approved') return <CheckCircle className="w-4 h-4" />;
+    if (status === 'rejected') return <XCircle className="w-4 h-4" />;
+    return <Clock className="w-4 h-4" />;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   if (loading) {
@@ -269,19 +187,17 @@ export default function VideoUploadPage() {
       </div>
 
       {/* بطاقة النقاط */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100">النقاط المتوفرة</p>
-                <p className="text-3xl font-bold">{playerRewards?.availablePoints.toLocaleString()}</p>
+                <p className="text-3xl font-bold">
+                  {playerRewards?.availablePoints.toLocaleString() ?? '—'}
+                </p>
                 <p className="text-sm text-blue-100">
-                  ≈ ${(playerRewards?.availablePoints || 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR}
-                  ({((playerRewards?.availablePoints || 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR * POINTS_CONVERSION.DOLLAR_TO_EGP).toFixed(2)} ج.م)
+                  ≈ ${((playerRewards?.availablePoints ?? 0) / POINTS_CONVERSION.POINTS_PER_DOLLAR).toFixed(2)}
                 </p>
               </div>
               <DollarSign className="w-12 h-12" />
@@ -290,12 +206,8 @@ export default function VideoUploadPage() {
         </Card>
       </motion.div>
 
-      {/* معلومات رفع الفيديوهات */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      {/* كيف تكسب النقاط */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -305,76 +217,48 @@ export default function VideoUploadPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Upload className="w-8 h-8 text-blue-600" />
+              {[
+                { icon: <Upload className="w-8 h-8 text-blue-600" />, step: '1', title: 'ارفع فيديو', desc: 'ارفع فيديو يظهر مهاراتك في كرة القدم (حتى 500 MB)', bg: 'bg-blue-100' },
+                { icon: <CheckCircle className="w-8 h-8 text-yellow-600" />, step: '2', title: 'انتظر المراجعة', desc: 'سيقوم فريقنا بمراجعة الفيديو خلال 24 ساعة', bg: 'bg-yellow-100' },
+                { icon: <DollarSign className="w-8 h-8 text-green-600" />, step: '3', title: 'احصل على النقاط', desc: '1,000 نقطة لكل فيديو تمت الموافقة عليه', bg: 'bg-green-100' },
+              ].map(({ icon, step, title, desc, bg }) => (
+                <div key={step} className="text-center">
+                  <div className={`w-16 h-16 ${bg} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                    {icon}
+                  </div>
+                  <h3 className="font-semibold mb-2">{step}. {title}</h3>
+                  <p className="text-sm text-gray-600">{desc}</p>
                 </div>
-                <h3 className="font-semibold mb-2">1. ارفع فيديو</h3>
-                <p className="text-sm text-gray-600">
-                  ارفع فيديو يظهر مهاراتك في كرة القدم
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-yellow-600" />
-                </div>
-                <h3 className="font-semibold mb-2">2. انتظر المراجعة</h3>
-                <p className="text-sm text-gray-600">
-                  سيقوم فريقنا بمراجعة الفيديو خلال 24 ساعة
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="font-semibold mb-2">3. احصل على النقاط</h3>
-                <p className="text-sm text-gray-600">
-                  1,000 نقطة لكل فيديو تمت الموافقة عليه
-                </p>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* زر رفع فيديو جديد */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
+      {/* زر الرفع */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                رفع فيديو جديد
-              </Button>
-              <p className="text-sm text-gray-500 mt-2">
-                احصل على 1,000 نقطة لكل فيديو تمت الموافقة عليه
-              </p>
-            </div>
+          <CardContent className="p-6 text-center">
+            <Button
+              onClick={() => setShowUploadModal(true)}
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              رفع فيديو جديد
+            </Button>
+            <p className="text-sm text-gray-500 mt-2">احصل على 1,000 نقطة لكل فيديو تمت الموافقة عليه</p>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* قائمة الفيديوهات المرفوعة */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      {/* قائمة الفيديوهات */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Video className="w-5 h-5" />
-              الفيديوهات المرفوعة
+              الفيديوهات المرفوعة ({uploadedVideos.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -382,11 +266,7 @@ export default function VideoUploadPage() {
               <div className="text-center py-8">
                 <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">لم تقم برفع أي فيديوهات بعد</p>
-                <Button
-                  onClick={() => setShowUploadModal(true)}
-                  variant="outline"
-                  className="mt-4"
-                >
+                <Button onClick={() => setShowUploadModal(true)} variant="outline" className="mt-4">
                   رفع أول فيديو
                 </Button>
               </div>
@@ -394,37 +274,55 @@ export default function VideoUploadPage() {
               <div className="space-y-4">
                 {uploadedVideos.map((video) => (
                   <div key={video.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Play className="w-8 h-8 text-gray-400" />
                     </div>
 
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{video.title}</h3>
-                      <p className="text-sm text-gray-600 line-clamp-2">{video.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        <span>{video.uploadedAt.toLocaleDateString('ar-SA')}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{video.title}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-1">{video.description}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span>{new Date(video.createdAt).toLocaleDateString('ar-SA')}</span>
+                        {video.fileSize && <span>{formatFileSize(video.fileSize)}</span>}
                         {video.duration > 0 && (
                           <span>{Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}</span>
+                        )}
+                        {video.category && video.category !== 'other' && (
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            {CATEGORY_OPTIONS.find(c => c.value === video.category)?.label}
+                          </span>
+                        )}
+                        {/* Analysis badge */}
+                        {video.analysisStatus === 'completed' && (
+                          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Eye className="w-3 h-3" /> تم التحليل
+                            {video.analysisResult?.overallScore != null && (
+                              <span className="font-bold">{video.analysisResult.overallScore}/100</span>
+                            )}
+                          </span>
+                        )}
+                        {video.analysisStatus === 'queued' && (
+                          <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                            في طابور التحليل
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <Badge className={`${getStatusColor(video.status)} text-white`}>
                         <div className="flex items-center gap-1">
                           {getStatusIcon(video.status)}
                           {getStatusText(video.status)}
                         </div>
                       </Badge>
-
-                      {video.status === 'approved' && video.pointsEarned && (
-                        <div className="text-sm text-green-600 mt-1">
+                      {video.status === 'approved' && video.pointsEarned > 0 && (
+                        <div className="text-sm text-green-600 mt-1 font-semibold">
                           +{video.pointsEarned.toLocaleString()} نقطة
                         </div>
                       )}
-
                       {video.status === 'rejected' && video.adminNotes && (
-                        <div className="text-sm text-red-600 mt-1">
+                        <div className="text-xs text-red-600 mt-1 max-w-32 text-right">
                           {video.adminNotes}
                         </div>
                       )}
@@ -437,77 +335,110 @@ export default function VideoUploadPage() {
         </Card>
       </motion.div>
 
-      {/* مودال رفع الفيديو */}
+      {/* مودال الرفع */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            className="bg-white rounded-lg p-6 max-w-md w-full"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">رفع فيديو جديد</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowUploadModal(false)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowUploadModal(false)}>
                 <XCircle className="w-4 h-4" />
               </Button>
             </div>
 
             <div className="space-y-4">
+              {/* اختيار الملف */}
               <div>
                 <label className="block text-sm font-medium mb-2">اختر ملف الفيديو</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/mp4,video/webm,video/ogg,video/avi,video/mov,video/quicktime"
                     onChange={handleFileSelect}
                     className="hidden"
                     id="video-upload"
                   />
                   <label htmlFor="video-upload" className="cursor-pointer">
                     <FileVideo className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">
-                      {selectedFile ? selectedFile.name : 'انقر لاختيار ملف فيديو'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      الحد الأقصى: 50MB
-                    </p>
+                    {selectedFile ? (
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-600">انقر لاختيار ملف فيديو</p>
+                        <p className="text-xs text-gray-400 mt-1">MP4, WebM, MOV — حتى 500 MB</p>
+                      </>
+                    )}
                   </label>
                 </div>
               </div>
 
+              {/* العنوان */}
               <div>
-                <label className="block text-sm font-medium mb-2">عنوان الفيديو</label>
+                <label className="block text-sm font-medium mb-1">عنوان الفيديو *</label>
                 <Input
                   value={videoTitle}
                   onChange={(e) => setVideoTitle(e.target.value)}
                   placeholder="أدخل عنوان الفيديو"
+                  maxLength={100}
                 />
               </div>
 
+              {/* التصنيف */}
               <div>
-                <label className="block text-sm font-medium mb-2">وصف الفيديو</label>
+                <label className="block text-sm font-medium mb-1">تصنيف الفيديو</label>
+                <select
+                  value={videoCategory}
+                  onChange={(e) => setVideoCategory(e.target.value as VideoCategory)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {CATEGORY_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* الوصف */}
+              <div>
+                <label className="block text-sm font-medium mb-1">وصف الفيديو</label>
                 <Textarea
                   value={videoDescription}
                   onChange={(e) => setVideoDescription(e.target.value)}
                   placeholder="وصف مختصر للفيديو..."
                   rows={3}
+                  maxLength={500}
                 />
               </div>
 
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>نصائح للحصول على الموافقة:</strong>
-                </p>
-                <ul className="text-xs text-blue-700 mt-2 space-y-1">
-                  <li>• تأكد من جودة الفيديو والصوت</li>
-                  <li>• اظهر مهاراتك بوضوح</li>
-                  <li>• تجنب المحتوى المسيء</li>
-                  <li>• استخدم عنوان ووصف واضحين</li>
-                </ul>
+              {/* شريط التقدم */}
+              {uploading && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>جاري الرفع...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* نصائح */}
+              <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 space-y-1">
+                <p className="font-semibold">نصائح للحصول على الموافقة:</p>
+                <p>• تأكد من جودة الفيديو والإضاءة الجيدة</p>
+                <p>• اظهر مهاراتك بوضوح في الفيديو</p>
+                <p>• اختر التصنيف المناسب ليُسهّل التحليل الذكي</p>
+                <p>• تجنب المحتوى المسيء</p>
               </div>
 
               <div className="flex gap-2">
@@ -516,11 +447,12 @@ export default function VideoUploadPage() {
                   disabled={!selectedFile || !videoTitle.trim() || uploading}
                   className="flex-1"
                 >
-                  {uploading ? 'جاري الرفع...' : 'رفع الفيديو'}
+                  {uploading ? `جاري الرفع... ${uploadProgress}%` : 'رفع الفيديو'}
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={() => { setShowUploadModal(false); setSelectedFile(null); }}
+                  disabled={uploading}
                   className="flex-1"
                 >
                   إلغاء
@@ -532,4 +464,4 @@ export default function VideoUploadPage() {
       )}
     </div>
   );
-} 
+}

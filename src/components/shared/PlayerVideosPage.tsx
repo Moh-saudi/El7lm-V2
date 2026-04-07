@@ -4,13 +4,12 @@ import Comments from '@/components/video/Comments';
 import MessageComposerSheet from '@/components/shared/MessageComposerSheet';
 import PlayerImage from '@/components/ui/player-image';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { safeNavigate } from '@/lib/utils/url-validator';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ar';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import {
   ArrowRight,
@@ -201,7 +200,7 @@ const VideoSlide = memo(({
       stuckRef.current = setTimeout(() => {
         if (isLoading) { setHasError(true); setErrorType('timeout'); setIsLoading(false); }
       }, timeout);
-      videoRef.current?.play().catch(() => {});
+      videoRef.current?.play(); // catch removed;
     } else {
       if (stuckRef.current) clearTimeout(stuckRef.current);
       videoRef.current?.pause();
@@ -605,20 +604,18 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const snap = await getDocs(collection(db, 'players'));
+      const { data: playersData } = await supabase.from('players').select('*').eq('isDeleted', false);
       const all: Video[] = [];
-      for (const playerDoc of snap.docs) {
-        const d = playerDoc.data();
-        if (d.isDeleted) continue;
+      for (const d of (playersData || [])) {
         (d.videos || []).forEach((v: any, idx: number) => {
           if (!v.url) return;
           const videoUrl = resolveVideoUrl(v.url);
           if (!videoUrl) return;
           let createdAt = v.createdAt || v.updated_at || null;
-          if (createdAt?.toDate) createdAt = createdAt.toDate();
+          if (createdAt && typeof createdAt === 'object' && createdAt.toDate) createdAt = createdAt.toDate();
           const age = d.age || calcAge(d.birth_date);
           all.push({
-            id: `${playerDoc.id}_${idx}`,
+            id: `${d.id}_${idx}`,
             url: videoUrl,
             playerName: d.full_name || d.name || 'لاعب',
             playerImage: getPlayerAvatarUrl(d) || '/default-player-avatar.png',
@@ -629,7 +626,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
             shares: v.shares || 0,
             views: v.views || 0,
             music: v.music || 'Original Sound',
-            playerId: playerDoc.id,
+            playerId: d.id,
             createdAt,
             country: d.country || d.nationality || '',
             nationality: d.nationality || d.country || '',
@@ -654,10 +651,11 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const loadUserPreferences = async () => {
     if (!user) return;
     try {
-      const snap = await getDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid));
-      if (snap.exists()) {
-        setLikedVideos(snap.data().likedVideos || []);
-        setFollowing(snap.data().following || []);
+      const table = COLLECTION_MAP[accountType] || 'players';
+      const { data: prefData } = await supabase.from(table).select('likedVideos,following').eq('id', user.id).maybeSingle();
+      if (prefData) {
+        setLikedVideos(prefData.likedVideos || []);
+        setFollowing(prefData.following || []);
       }
     } catch {}
   };
@@ -669,19 +667,18 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
 
   useEffect(() => {
-    getDocs(collection(db, 'players')).then(snap => {
+    supabase.from('players').select('country,nationality,primary_position,position').then(({ data }) => {
       const countries = new Set<string>();
       const positions = new Set<string>();
-      snap.docs.forEach(d => {
-        const data = d.data();
-        const c = data.country || data.nationality;
+      (data || []).forEach(d => {
+        const c = d.country || d.nationality;
         if (c && typeof c === 'string' && c.trim()) countries.add(c.trim());
-        const p = data.primary_position || data.position;
+        const p = d.primary_position || d.position;
         if (p && typeof p === 'string' && p.trim()) positions.add(p.trim());
       });
       setUniqueCountries(Array.from(countries).sort());
       setUniquePositions(Array.from(positions).sort());
-    }).catch(() => {});
+    }); // catch removed;
   }, []);
 
   const filteredVideos = useMemo(() => {
@@ -718,24 +715,24 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     setVideos(prev => prev.map(v => v.id === id ? { ...v, likes: Math.max(0, v.likes + (liked ? -1 : 1)) } : v));
     try {
       const [pid, idxStr] = id.split('_');
-      const pRef = doc(db, 'players', pid);
-      const pSnap = await getDoc(pRef);
-      if (pSnap.exists()) {
-        const vids = [...(pSnap.data().videos || [])];
+      const { data: pData } = await supabase.from('players').select('videos').eq('id', pid).maybeSingle();
+      if (pData) {
+        const vids = [...(pData.videos || [])];
         const i = parseInt(idxStr);
         if (vids[i]) {
           vids[i] = { ...vids[i], likes: Math.max(0, (vids[i].likes || 0) + (liked ? -1 : 1)) };
-          await updateDoc(pRef, { videos: vids });
+          await supabase.from('players').update({ videos: vids }).eq('id', pid);
         }
       }
-      await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { likedVideos: next });
+      const table = COLLECTION_MAP[accountType] || 'players';
+      await supabase.from(table).update({ likedVideos: next }).eq('id', user.id);
       // Dispatch video_like notification only when adding a like
-      if (!liked && user.uid !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      if (!liked && user.id !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
         dispatchNotification({
           eventType: 'video_like',
           targetUserId: pid,
-          actorId: user.uid,
+          actorId: user.id,
           actorName: viewerName,
           actorAccountType: accountType,
           metadata: { videoId: id },
@@ -750,14 +747,15 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     const next = isF ? following.filter(x => x !== pid) : [...following, pid];
     setFollowing(next);
     try {
-      await updateDoc(doc(db, COLLECTION_MAP[accountType] || 'players', user.uid), { following: next });
+      const table = COLLECTION_MAP[accountType] || 'players';
+      await supabase.from(table).update({ following: next }).eq('id', user.id);
       // Dispatch follow notification only when following (not unfollowing)
-      if (!isF && user.uid !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      if (!isF && user.id !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
         dispatchNotification({
           eventType: 'follow',
           targetUserId: pid,
-          actorId: user.uid,
+          actorId: user.id,
           actorName: viewerName,
           actorAccountType: accountType,
         });
@@ -773,21 +771,21 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     // Persist share count + dispatch notification
     try {
       const [pid, idxStr] = v.id.split('_');
-      getDoc(doc(db, 'players', pid)).then(snap => {
-        if (!snap.exists()) return;
-        const vids = [...(snap.data().videos || [])];
+      supabase.from('players').select('videos').eq('id', pid).maybeSingle().then(({ data: pData }) => {
+        if (!pData) return;
+        const vids = [...(pData.videos || [])];
         const i = parseInt(idxStr);
         if (vids[i]) {
           vids[i] = { ...vids[i], shares: (vids[i].shares || 0) + 1 };
-          updateDoc(doc(db, 'players', pid), { videos: vids });
+          supabase.from('players').update({ videos: vids }).eq('id', pid);
         }
       });
-      if (user && user.uid !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      if (user && user.id !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
         dispatchNotification({
           eventType: 'video_share',
           targetUserId: pid,
-          actorId: user.uid,
+          actorId: user.id,
           actorName: viewerName,
           actorAccountType: accountType,
           metadata: { videoId: v.id },
@@ -802,23 +800,22 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     setVideos(prev => prev.map(v => v.id === id ? { ...v, views: v.views + 1 } : v));
     try {
       const [pid, idxStr] = id.split('_');
-      const pRef = doc(db, 'players', pid);
-      const pSnap = await getDoc(pRef);
-      if (pSnap.exists()) {
-        const vids = [...(pSnap.data().videos || [])];
+      const { data: pData } = await supabase.from('players').select('videos').eq('id', pid).maybeSingle();
+      if (pData) {
+        const vids = [...(pData.videos || [])];
         const i = parseInt(idxStr);
         if (vids[i]) {
           vids[i] = { ...vids[i], views: (vids[i].views || 0) + 1 };
-          await updateDoc(pRef, { videos: vids });
+          await supabase.from('players').update({ videos: vids }).eq('id', pid);
         }
       }
       // Send video view notification (only if viewer ≠ owner)
-      if (user && user.uid !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      if (user && user.id !== pid) {
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
         dispatchNotification({
           eventType: 'video_view',
           targetUserId: pid,
-          actorId: user.uid,
+          actorId: user.id,
           actorName: viewerName,
           actorAccountType: accountType,
           metadata: { videoId: id },
@@ -828,13 +825,13 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   }, [user, userData, accountType]);
 
   const handleProfileClick = useCallback((playerId: string) => {
-    if (user && user.uid !== playerId && !profileViewedRef.current.has(playerId)) {
+    if (user && user.id !== playerId && !profileViewedRef.current.has(playerId)) {
       profileViewedRef.current.add(playerId);
-      const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+      const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
       dispatchNotification({
         eventType: 'profile_view',
         targetUserId: playerId,
-        actorId: user.uid,
+        actorId: user.id,
         actorName: viewerName,
         actorAccountType: accountType,
       });

@@ -25,8 +25,7 @@ import {
   Medal,
   ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,40 +108,36 @@ export default function PlayerEvaluationPage() {
   const fetchEvaluations = async () => {
     try {
       setLoading(true);
-      
+
       // Check if userData and clubId are valid
       if (!userData || !userData.clubId) {
         console.warn('No userData or clubId available for fetching evaluations');
         setEvaluations([]);
         return;
       }
-      
+
       console.log('🔍 Fetching evaluations for clubId:', userData.clubId);
-      
-      const evaluationsRef = collection(db, 'player_evaluations');
-      const q = query(evaluationsRef, where('clubId', '==', userData.clubId));
-      const querySnapshot = await getDocs(q);
-      
-      console.log('📊 Query results:', querySnapshot.size, 'documents found');
-      
-      const evaluationsData = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('📋 Evaluation document:', doc.id, data);
-        return {
-          id: doc.id,
-          ...data
-        };
-      }) as PlayerEvaluation[];
-      
+
+      const { data, error } = await supabase
+        .from('player_evaluations')
+        .select('*')
+        .eq('clubId', userData.clubId);
+
+      if (error) throw error;
+
+      console.log('📊 Query results:', data?.length, 'documents found');
+
+      const evaluationsData = (data || []) as PlayerEvaluation[];
+
       console.log('✅ Final evaluations data:', evaluationsData);
       setEvaluations(evaluationsData);
-      
+
       // If no data found, show a helpful message
       if (evaluationsData.length === 0) {
         console.log('ℹ️ No evaluations found for this club');
         toast.info('لا توجد تقييمات متاحة حالياً. سيتم إضافة التقييمات قريباً.');
       }
-      
+
     } catch (error) {
       console.error('Error fetching evaluations:', error);
       toast.error('حدث خطأ أثناء جلب بيانات التقييمات');
@@ -380,4 +375,4 @@ export default function PlayerEvaluationPage() {
       </div>
     </div>
   );
-} 
+}

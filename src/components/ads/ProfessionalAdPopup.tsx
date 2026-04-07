@@ -21,8 +21,7 @@ import {
   Sparkles,
   Eye
 } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, limit, updateDoc, doc, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -150,82 +149,37 @@ export default function ProfessionalAdPopup({
 
   const fetchAds = async () => {
     try {
-      // Try the optimized query with index first
-      const q = query(
-        collection(db, 'ads'),
-        where('isActive', '==', true),
-        orderBy('priority', 'desc'),
-        limit(maxAds * 3)
-      );
-      const snapshot = await getDocs(q);
-      const adsData: Ad[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          ctaText: data.ctaText || '',
-          ctaUrl: data.ctaUrl || '',
-          views: data.views || 0,
-          clicks: data.clicks || 0,
-          popupType: data.popupType || 'modal',
-          displayDelay: data.displayDelay || 3,
-          maxDisplays: data.maxDisplays || 1,
-          displayFrequency: data.displayFrequency || 'once',
-          showCloseButton: data.showCloseButton !== false,
-          autoClose: data.autoClose,
-          showProgressBar: data.showProgressBar || false,
-          urgency: data.urgency || 'medium',
-          discount: data.discount,
-          countdown: data.countdown
-        } as Ad;
-      });
-      
-      // Sort by priority in memory if query succeeded
-      adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      const { data: rows, error } = await supabase
+        .from('ads')
+        .select('*')
+        .eq('isActive', true)
+        .order('priority', { ascending: false })
+        .limit(maxAds * 3);
+
+      if (error) throw error;
+
+      const adsData: Ad[] = (rows || []).map((row: any) => ({
+        ...row,
+        ctaText: row.ctaText || '',
+        ctaUrl: row.ctaUrl || '',
+        views: row.views || 0,
+        clicks: row.clicks || 0,
+        popupType: row.popupType || 'modal',
+        displayDelay: row.displayDelay || 3,
+        maxDisplays: row.maxDisplays || 1,
+        displayFrequency: row.displayFrequency || 'once',
+        showCloseButton: row.showCloseButton !== false,
+        autoClose: row.autoClose,
+        showProgressBar: row.showProgressBar || false,
+        urgency: row.urgency || 'medium',
+        discount: row.discount,
+        countdown: row.countdown
+      }));
+
       setAds(adsData);
-    } catch (error: any) {
-      // If index is missing, fallback to simpler query
-      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
-        try {
-          const fallbackQ = query(
-            collection(db, 'ads'),
-            where('isActive', '==', true),
-            limit(maxAds * 3)
-          );
-          const fallbackSnapshot = await getDocs(fallbackQ);
-          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              ctaText: data.ctaText || '',
-              ctaUrl: data.ctaUrl || '',
-              views: data.views || 0,
-              clicks: data.clicks || 0,
-              popupType: data.popupType || 'modal',
-              displayDelay: data.displayDelay || 3,
-              maxDisplays: data.maxDisplays || 1,
-              displayFrequency: data.displayFrequency || 'once',
-              showCloseButton: data.showCloseButton !== false,
-              autoClose: data.autoClose,
-              showProgressBar: data.showProgressBar || false,
-              urgency: data.urgency || 'medium',
-              discount: data.discount,
-              countdown: data.countdown
-            } as Ad;
-          });
-          
-          // Sort by priority in memory
-          adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setAds(adsData);
-        } catch (fallbackError) {
-          console.error('Error fetching ads (fallback also failed):', fallbackError);
-          setAds([]);
-        }
-      } else {
-        console.error('Error fetching ads:', error);
-        setAds([]);
-      }
+    } catch (error) {
+      console.error('Error fetching ads:', error);
+      setAds([]);
     } finally {
       setLoading(false);
     }
@@ -295,9 +249,8 @@ export default function ProfessionalAdPopup({
   const handleAdView = async (adId: string) => {
     if (!enableAnalytics) return;
     try {
-      await updateDoc(doc(db, 'ads', adId), {
-        views: increment(1)
-      });
+      const { data } = await supabase.from('ads').select('views').eq('id', adId).single();
+      await supabase.from('ads').update({ views: (data?.views || 0) + 1 }).eq('id', adId);
     } catch (error) {
       console.error('Error updating ad view:', error);
     }
@@ -306,9 +259,8 @@ export default function ProfessionalAdPopup({
   const handleAdClick = async (adId: string, url?: string) => {
     if (!enableAnalytics) return;
     try {
-      await updateDoc(doc(db, 'ads', adId), {
-        clicks: increment(1)
-      });
+      const { data } = await supabase.from('ads').select('clicks').eq('id', adId).single();
+      await supabase.from('ads').update({ clicks: (data?.clicks || 0) + 1 }).eq('id', adId);
       
       if (url) {
         // Handle both local and external URLs

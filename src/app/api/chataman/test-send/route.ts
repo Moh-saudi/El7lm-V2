@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(req: NextRequest) {
   try {
-    if (!adminDb) return NextResponse.json({ success: false, error: 'Admin DB not available' }, { status: 503 });
-    const db = adminDb as any;
-    const docSnap = await db.collection('system_configs').doc('chataman_config').get() as any;
+    const db = getSupabaseAdmin();
+    const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
 
-    if (!docSnap.exists) {
+    if (!cfgRows?.length) {
       return NextResponse.json({ success: false, error: 'Config not found' });
     }
 
-    const config = docSnap.data();
+    const config = cfgRows[0] as Record<string, unknown>;
     if (!config || !config.apiKey) {
       return NextResponse.json({ success: false, error: 'API Key is missing' });
     }
 
-    const apiKey = config.apiKey.trim();
-    const cleanBaseUrl = (config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
+    const apiKey = String(config.apiKey).trim();
+    const cleanBaseUrl = String(config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
 
     const payloadTemplate = {
-      phone: "+201026567954", // A valid dummy or just real number if not sent
+      phone: "+201026567954",
       template: {
         name: "our_website",
         language: { code: "ar" },
@@ -41,7 +40,7 @@ export async function GET(req: NextRequest) {
       '/api/v1/send-template'
     ];
 
-    const results: any[] = [];
+    const results: Record<string, unknown>[] = [];
 
     for (const endpoint of endpoints) {
       const targetUrl = `${cleanBaseUrl}${endpoint}`;
@@ -62,18 +61,18 @@ export async function GET(req: NextRequest) {
           statusCode: response.status,
           responseText: text
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         results.push({
           endpoint: targetUrl,
           statusCode: 'error',
-          responseText: e.message
+          responseText: e instanceof Error ? e.message : 'Unknown'
         });
       }
     }
 
     return NextResponse.json({ success: true, results });
 
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }
 }

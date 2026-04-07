@@ -18,8 +18,7 @@ import {
     Check
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Tournament, formatDate } from '@/app/dashboard/admin/tournaments/utils';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,7 +49,7 @@ interface Match {
     awayTeamId: string;
     awayTeamName: string;
     awayTeamLogo?: string;
-    date: any; // Firestore Timestamp
+    date: any; // ISO string
     time: string;
     location: string;
     round: string;
@@ -123,19 +122,19 @@ export const MatchesManager: React.FC<MatchesManagerProps> = ({ tournament }) =>
             if (!tournament.id) return;
 
             // Fetch Teams
-            const teamsQuery = query(collection(db, `tournaments/${tournament.id}/teams`));
-            const teamsSnap = await getDocs(teamsQuery);
-            const teamsData = teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-            setTeams(teamsData);
+            const { data: teamsData } = await supabase
+                .from('tournament_teams')
+                .select('*')
+                .eq('tournamentId', tournament.id);
+            setTeams((teamsData || []) as Team[]);
 
             // Fetch Matches
-            const matchesQuery = query(
-                collection(db, `tournaments/${tournament.id}/matches`),
-                orderBy('date', 'asc') // Sort by date
-            );
-            const matchesSnap = await getDocs(matchesQuery);
-            const matchesData = matchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), events: doc.data().events || [] } as Match));
-            setMatches(matchesData);
+            const { data: matchesData } = await supabase
+                .from('tournament_matches')
+                .select('*')
+                .eq('tournamentId', tournament.id)
+                .order('date', { ascending: true });
+            setMatches((matchesData || []).map(row => ({ ...row, events: row.events || [] })) as Match[]);
 
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -167,22 +166,25 @@ export const MatchesManager: React.FC<MatchesManagerProps> = ({ tournament }) =>
 
             const matchData = {
                 ...formData,
+                tournament_id: tournament.id,
                 homeTeamName: homeTeam?.name || 'Unknown',
                 homeTeamLogo: homeTeam?.logo || '',
                 awayTeamName: awayTeam?.name || 'Unknown',
                 awayTeamLogo: awayTeam?.logo || '',
-                date: Timestamp.fromDate(selectedDate),
-                updatedAt: new Date()
+                date: selectedDate.toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
             if (editingMatch) {
-                await updateDoc(doc(db, `tournaments/${tournament.id}/matches`, editingMatch.id!), matchData);
+                await supabase
+                    .from('tournament_matches')
+                    .update(matchData)
+                    .eq('id', editingMatch.id!);
                 toast.success('تم تحديث بيانات المباراة والإحصائيات');
             } else {
-                await addDoc(collection(db, `tournaments/${tournament.id}/matches`), {
-                    ...matchData,
-                    createdAt: new Date()
-                });
+                await supabase
+                    .from('tournament_matches')
+                    .insert({ id: crypto.randomUUID(), ...matchData, createdAt: new Date().toISOString() });
                 toast.success('تم جدولة المباراة');
             }
 
@@ -198,7 +200,7 @@ export const MatchesManager: React.FC<MatchesManagerProps> = ({ tournament }) =>
     const handleDelete = async (matchId: string) => {
         if (confirm('هل أنت متأكد من حذف هذه المباراة؟')) {
             try {
-                await deleteDoc(doc(db, `tournaments/${tournament.id}/matches`, matchId));
+                await supabase.from('tournament_matches').delete().eq('id', matchId);
                 toast.success('تم حذف المباراة');
                 fetchData();
             } catch (error) {
@@ -227,10 +229,10 @@ export const MatchesManager: React.FC<MatchesManagerProps> = ({ tournament }) =>
 
     const handleEdit = (match: Match) => {
         setEditingMatch(match);
-        // Convert Timestamp to JS Date
+        // Convert ISO string to JS Date
         let dateObj = undefined;
-        if (match.date?.toDate) {
-            dateObj = match.date.toDate();
+        if (match.date) {
+            dateObj = new Date(match.date);
         }
 
         setSelectedDate(dateObj);
@@ -328,7 +330,9 @@ export const MatchesManager: React.FC<MatchesManagerProps> = ({ tournament }) =>
                 return;
             }
 
-            await Promise.all(newMatches.map(m => addDoc(collection(db, `tournaments/${tournament.id}/matches`), m)));
+            await supabase
+                .from('tournament_matches')
+                .insert(newMatches.map(m => ({ id: crypto.randomUUID(), tournament_id: tournament.id, ...m, date: new Date(m.date).toISOString(), createdAt: new Date().toISOString() })));
             toast.success(`تم توليد ${newMatches.length} مباراة بنجاح!`);
             fetchData();
         } catch (error) {

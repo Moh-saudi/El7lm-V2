@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { MessageCircle, Settings, Edit, Search, Check, MoreHorizontal, Trash2, CheckCheck, Send, Sparkles, ChevronLeft, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,41 +41,54 @@ export default function EnhancedMessageButton() {
 
   // --- Data Fetching ---
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
-    const q = query(collection(db, 'messages'),
-      where('receiverId', '==', user.uid),
-      orderBy('timestamp', 'desc'),
-      limit(50)
-    );
+    // Initial fetch
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('receiverId', user.id)
+        .order('timestamp', { ascending: false })
+        .limit(50);
 
-    const unsub = onSnapshot(q, (snap) => {
-      const uniqueSenders = new Map<string, MessageItem>();
-
-      snap.forEach((d) => {
-        const data = d.data();
-        const senderId = data.senderId;
-        if (!uniqueSenders.has(senderId)) {
-          uniqueSenders.set(senderId, {
-            id: d.id,
-            senderId,
-            senderName: data.senderName || 'مستخدم',
-            senderAvatar: data.senderAvatar,
-            lastMessage: data.content || 'رسالة',
-            isRead: data.read || false,
-            createdAt: data.timestamp?.toDate() || new Date(),
-            isOnline: Math.random() > 0.7
-          });
-        }
-      });
-
-      const items = Array.from(uniqueSenders.values());
-      setMessages(items);
-      setUnreadCount(items.filter(m => !m.isRead).length);
+      if (data) {
+        const uniqueSenders = new Map<string, MessageItem>();
+        data.forEach((d: any) => {
+          const senderId = d.senderId;
+          if (!uniqueSenders.has(senderId)) {
+            uniqueSenders.set(senderId, {
+              id: d.id,
+              senderId,
+              senderName: d.senderName || 'مستخدم',
+              senderAvatar: d.senderAvatar,
+              lastMessage: d.content || 'رسالة',
+              isRead: d.read || false,
+              createdAt: d.timestamp ? new Date(d.timestamp) : new Date(),
+              isOnline: Math.random() > 0.7
+            });
+          }
+        });
+        const items = Array.from(uniqueSenders.values());
+        setMessages(items);
+        setUnreadCount(items.filter(m => !m.isRead).length);
+      }
       setLoading(false);
-    });
+    };
 
-    return () => unsub();
+    fetchMessages();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel(`messages_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `receiverId=eq.${user.id}` },
+        () => { fetchMessages(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const dashboardPath = userData?.accountType === 'admin' ? '/dashboard/admin' :

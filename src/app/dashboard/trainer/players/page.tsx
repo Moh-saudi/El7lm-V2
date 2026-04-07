@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,8 +61,8 @@ export default function TrainerPlayersPage() {
   const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 حالة المصادقة:', { user: user?.uid, loading: !user });
-    if (user?.uid) {
+    console.log('🔍 حالة المصادقة:', { user: user?.id, loading: !user });
+    if (user?.id) {
       console.log('✅ المدرب مصادق - جاري تحميل اللاعبين...');
       loadPlayers();
       loadJoinRequests();
@@ -76,15 +75,12 @@ export default function TrainerPlayersPage() {
     try {
       setLoading(true);
 
-      const baseQuery = query(
-        collection(db, "players"),
-        where("trainer_id", "==", user?.uid)
-      );
-      
-      const snapshot = await getDocs(baseQuery);
-      
-      const playersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const { data: snapshot } = await supabase
+        .from('players')
+        .select('*')
+        .eq('trainer_id', user?.id);
+
+      const playersData = (snapshot || [])
         .filter((p: any) => !p.isDeleted) as Player[];
 
       // Manual sorting on the client-side
@@ -107,7 +103,7 @@ export default function TrainerPlayersPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.uid, 'pending');
+      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.id, 'pending');
       setJoinRequests(requests);
     } catch (error) {
       console.error('خطأ في تحميل طلبات الانضمام:', error);
@@ -365,7 +361,7 @@ export default function TrainerPlayersPage() {
     if (!playerToDelete) return;
     
     try {
-      await deleteDoc(doc(db, 'players', playerToDelete.id));
+      await supabase.from('players').delete().eq('id', playerToDelete.id);
       setPlayers(players.filter(p => p.id !== playerToDelete.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
@@ -661,7 +657,7 @@ export default function TrainerPlayersPage() {
                               name: player.name || player.full_name,
                               email: player.email,
                               phone: player.phone,
-                              trainer_id: player.trainer_id || user?.uid,
+                              trainer_id: player.trainer_id || user?.id,
                               ...player
                             }}
                             source="players"
@@ -678,7 +674,7 @@ export default function TrainerPlayersPage() {
                               email: player.email,
                               phone: player.phone,
                               whatsapp: player.whatsapp,
-                              trainer_id: player.trainer_id || user?.uid,
+                              trainer_id: player.trainer_id || user?.id,
                               ...player
                             }}
                             source="players"

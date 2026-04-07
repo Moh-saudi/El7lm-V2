@@ -1,8 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { sendEmailVerification, signInWithCustomToken } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import {
   Eye,
   EyeOff,
@@ -12,7 +11,7 @@ import {
   Phone,
   Star,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
@@ -80,6 +79,7 @@ const testimonials = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, logout, signInWithGoogle, user, userData, loading: authLoading } = useAuth();
 
   const [branding, setBranding] = useState<BrandingData | null>(null);
@@ -88,6 +88,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     getBrandingData().then(setBranding).catch(console.error);
+    // Save promo from URL to localStorage so it survives login redirect
+    const promoFromUrl = searchParams.get('promo');
+    if (promoFromUrl && typeof window !== 'undefined') {
+      localStorage.setItem('pendingPromoCode', promoFromUrl);
+    }
   }, []);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -147,8 +152,23 @@ export default function LoginPage() {
         throw new Error(data.error || 'فشل التحقق');
       }
 
-      // تسجيل الدخول باستخدام Firebase Custom Token
-      await signInWithCustomToken(auth, data.customToken);
+      // حفظ Firebase UID في sessionStorage كـ fallback للـ fetchUserData
+      if (data.uid) {
+        sessionStorage.setItem('otp_firebase_uid', data.uid);
+        sessionStorage.setItem('otp_account_type', data.accountType || 'player');
+      }
+
+      // تسجيل الدخول باستخدام كلمة المرور المؤقتة
+      if (data.authEmail && data.authPassword) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: data.authEmail,
+          password: data.authPassword,
+        });
+        if (signInError) {
+          console.error('signInWithPassword error:', signInError);
+          throw new Error('فشل تسجيل الدخول: ' + signInError.message);
+        }
+      }
 
       toast.dismiss('otp-login');
       showWelcomeToast(data.userName || '', false);
@@ -301,7 +321,15 @@ export default function LoginPage() {
       marketer: '/dashboard/marketer',
       parent: '/dashboard/player',
     };
-    return routes[accountType] || '/auth/login';
+    const base = routes[accountType] || '/auth/login';
+
+    // If there's a pending promo code, redirect to bulk-payment with it
+    const pendingPromo = typeof window !== 'undefined' ? localStorage.getItem('pendingPromoCode') : null;
+    if (pendingPromo && ['player', 'club', 'agent', 'academy', 'trainer', 'marketer', 'parent'].includes(accountType)) {
+      return `${base}/bulk-payment?promo=${encodeURIComponent(pendingPromo)}`;
+    }
+
+    return base;
   };
 
   // تسجيل الدخول بواسطة Google

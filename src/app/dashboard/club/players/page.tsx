@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,8 +61,8 @@ export default function ClubPlayersPage() {
   const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 حالة المصادقة:', { user: user?.uid, loading: !user });
-    if (user?.uid) {
+    console.log('🔍 حالة المصادقة:', { user: user?.id, loading: !user });
+    if (user?.id) {
       console.log('✅ النادي مصادق - جاري تحميل اللاعبين...');
       loadPlayers();
       loadJoinRequests();
@@ -75,18 +74,15 @@ export default function ClubPlayersPage() {
   const loadPlayers = async () => {
     try {
       setLoading(true);
-      console.log('🔍 محاولة جلب اللاعبين للنادي:', user?.uid);
+      console.log('🔍 محاولة جلب اللاعبين للنادي:', user?.id);
       console.log('🔍 إيميل النادي:', user?.email);
       
-      const baseQuery = query(
-        collection(db, 'players'),
-        where('club_id', '==', user?.uid)
-      );
+      const { data: snapshot } = await supabase
+        .from('players')
+        .select('*')
+        .eq('club_id', user?.id);
 
-      const snapshot = await getDocs(baseQuery);
-      
-      const playersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const playersData = (snapshot || [])
         .filter((p: any) => !p.isDeleted) as Player[];
       
       // Manual sorting on the client-side
@@ -109,7 +105,7 @@ export default function ClubPlayersPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.uid, 'pending');
+      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.id, 'pending');
       setJoinRequests(requests);
     } catch (error: any) {
       // تحسين معالجة الأخطاء
@@ -405,7 +401,7 @@ export default function ClubPlayersPage() {
     if (!playerToDelete) return;
 
     try {
-      await deleteDoc(doc(db, 'players', playerToDelete.id));
+      await supabase.from('players').delete().eq('id', playerToDelete.id);
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
@@ -786,7 +782,7 @@ export default function ClubPlayersPage() {
                               name: player.name || player.full_name,
                               email: player.email,
                               phone: player.phone,
-                              club_id: player.club_id || user?.uid,
+                              club_id: player.club_id || user?.id,
                               ...player
                             }}
                             source="players"
@@ -803,7 +799,7 @@ export default function ClubPlayersPage() {
                               email: player.email,
                               phone: player.phone,
                               whatsapp: player.whatsapp,
-                              club_id: player.club_id || user?.uid,
+                              club_id: player.club_id || user?.id,
                               ...player
                             }}
                             source="players"
@@ -912,7 +908,7 @@ export default function ClubPlayersPage() {
                     <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm">{getSubscriptionBadge(player.subscription_status, player.subscription_end)}<div className="mt-1 text-xs text-gray-500">{player.subscription_type && (<div>نوع: {player.subscription_type}</div>)}<div className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(player.subscription_end)}</div></div></div></td>
                     <td className="px-6 py-4 whitespace-nowrap"><div className="flex gap-2"><Badge variant="outline" className="text-xs"><Video className="mr-1 w-3 h-3" />{player.videos?.length || 0}</Badge><Badge variant="outline" className="text-xs"><ImageIcon className="mr-1 w-3 h-3" />{player.additional_images?.length || 0}</Badge></div></td>
                     <td className="px-6 py-4 whitespace-nowrap"><div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">إضافة:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">تحديث:</span></div><div>{formatDate(player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updated_at)}</div></div></div></td>
-                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap"><div className="flex gap-2"><Link href={`/dashboard/club/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link><CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, club_id: (player as any).club_id || user?.uid, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} /><IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, club_id: (player as any).club_id || user?.uid, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" /><Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 h-4" /></Button></div></td>
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap"><div className="flex gap-2"><Link href={`/dashboard/club/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link><CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, club_id: (player as any).club_id || user?.id, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} /><IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, club_id: (player as any).club_id || user?.id, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" /><Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 h-4" /></Button></div></td>
                   </tr>
                 ))}
               </tbody>

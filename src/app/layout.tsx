@@ -84,7 +84,7 @@ export default function RootLayout({
           <ReactErrorBoundary>
             <HydrationFix>
               <ErrorBoundary>
-                <ClarityProvider projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || ''}>
+                <ClarityProvider projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 't69agqt6n4'}>
                   <ClarityUserTracker />
                   <GTMDataLayer />
                   <main id="main-content" className="flex-grow min-h-screen">

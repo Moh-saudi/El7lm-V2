@@ -4,9 +4,8 @@ import React, {
   useState, useEffect, useCallback, useMemo, useRef,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/config';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { uploadPlayerVideo } from '@/lib/firebase/upload-media';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -1098,7 +1097,7 @@ function DeleteConfirm({ isOpen, onConfirm, onCancel, title }: {
 
 export default function VideosPage() {
   const router = useRouter();
-  const [user, authLoading] = useAuthState(auth);
+  const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<FirestoreVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1120,8 +1119,8 @@ export default function VideosPage() {
     const fetchVideos = async () => {
       try {
         setIsLoading(true);
-        const snap = await getDoc(doc(db, 'players', user.uid));
-        if (snap.exists()) setVideos(snap.data().videos || []);
+        const { data } = await supabase.from('players').select('*').eq('id', user!.id).maybeSingle();
+        if (data) setVideos(data.videos || []);
       } catch { toast.error('خطأ في تحميل الفيديوهات'); }
       finally { setIsLoading(false); }
     };
@@ -1142,7 +1141,7 @@ export default function VideosPage() {
     if (!user || isSaving) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'players', user.uid), { videos, updated_at: new Date() });
+      await supabase.from('players').update({ videos, updated_at: new Date().toISOString() }).eq('id', user!.id);
       setHasUnsavedChanges(false);
       toast.success('تم الحفظ بنجاح', {
         style: { borderRadius: '16px', background: '#1e293b', color: '#fff', fontFamily: "'Cairo', sans-serif" },
@@ -1384,7 +1383,7 @@ export default function VideosPage() {
         onSave={handleFormSave}
         initial={editIndex !== null ? videos[editIndex] : undefined}
         isEdit={editIndex !== null}
-        userId={user?.uid || ''}
+        userId={user?.id || ''}
         preloadFile={pendingCameraFile || undefined}
       />
 

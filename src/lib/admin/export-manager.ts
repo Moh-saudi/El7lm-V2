@@ -1,6 +1,9 @@
-// نظام التصدير المتقدم للأدمن
-import { collection, getDocs, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+/**
+ * نظام التصدير المتقدم للأدمن - Supabase Edition
+ * تم تحويله من Firebase Firestore إلى Supabase
+ */
+
+import { supabase } from '@/lib/supabase/config';
 
 export interface ExportConfig {
   format: 'pdf' | 'excel' | 'csv' | 'json';
@@ -25,28 +28,23 @@ export interface ScheduledReport {
   config: ExportConfig;
   schedule: {
     frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
-    time: string; // HH:MM format
-    dayOfWeek?: number; // 0-6 for weekly
-    dayOfMonth?: number; // 1-31 for monthly
+    time: string;
+    dayOfWeek?: number;
+    dayOfMonth?: number;
     enabled: boolean;
   };
-  recipients: string[]; // email addresses
+  recipients: string[];
   createdBy: string;
-  lastRun?: Timestamp;
-  nextRun?: Timestamp;
+  lastRun?: string;
+  nextRun?: string;
   isActive: boolean;
 }
 
 export interface ExportData {
-  users?: any[];
-  payments?: any[];
-  statistics?: any;
-  metadata: {
-    exportedAt: Date;
-    exportedBy: string;
-    totalRecords: number;
-    filters: any;
-  };
+  users?: Record<string, unknown>[];
+  payments?: Record<string, unknown>[];
+  statistics?: Record<string, unknown>;
+  metadata: { exportedAt: Date; exportedBy: string; totalRecords: number; filters: Record<string, unknown> };
 }
 
 class AdminExportManager {
@@ -59,491 +57,265 @@ class AdminExportManager {
     return AdminExportManager.instance;
   }
 
-  // تصدير البيانات الشامل
   async exportData(config: ExportConfig, adminId: string): Promise<Blob> {
-    try {
-      console.log(`🔄 [Export] بدء تصدير البيانات بتنسيق ${config.format}`);
-      
-      const data = await this.collectData(config);
-      
-      switch (config.format) {
-        case 'pdf':
-          return await this.generatePDF(data, config);
-        case 'excel':
-          return await this.generateExcel(data, config);
-        case 'csv':
-          return await this.generateCSV(data, config);
-        case 'json':
-          return await this.generateJSON(data, config);
-        default:
-          throw new Error(`نوع التصدير غير مدعوم: ${config.format}`);
-      }
-    } catch (error) {
-      console.error('خطأ في تصدير البيانات:', error);
-      throw error;
+    console.log(`🔄 [Export] بدء تصدير البيانات بتنسيق ${config.format}`);
+    const data = await this.collectData(config);
+    switch (config.format) {
+      case 'pdf': return this.generatePDF(data, config);
+      case 'excel': return this.generateExcel(data, config);
+      case 'csv': return this.generateCSV(data, config);
+      case 'json': return this.generateJSON(data, config);
+      default: throw new Error(`نوع التصدير غير مدعوم: ${config.format}`);
     }
   }
 
-  // جمع البيانات حسب النوع
   private async collectData(config: ExportConfig): Promise<ExportData> {
     const data: ExportData = {
-      metadata: {
-        exportedAt: new Date(),
-        exportedBy: 'admin',
-        totalRecords: 0,
-        filters: config.filters || {}
-      }
+      metadata: { exportedAt: new Date(), exportedBy: 'admin', totalRecords: 0, filters: config.filters || {} },
     };
 
-    try {
-      switch (config.dataType) {
-        case 'users':
-          data.users = await this.getUsersData(config.filters);
-          data.metadata.totalRecords = data.users.length;
-          break;
-          
-        case 'payments':
-          data.payments = await this.getPaymentsData(config.filters);
-          data.metadata.totalRecords = data.payments.length;
-          break;
-          
-        case 'financial':
-          data.payments = await this.getPaymentsData(config.filters);
-          data.statistics = await this.getFinancialStats(config.filters);
-          data.metadata.totalRecords = data.payments.length;
-          break;
-          
-        case 'comprehensive':
-          data.users = await this.getUsersData(config.filters);
-          data.payments = await this.getPaymentsData(config.filters);
-          data.statistics = await this.getSystemStats();
-          data.metadata.totalRecords = (data.users?.length || 0) + (data.payments?.length || 0);
-          break;
-          
-        case 'system':
-          data.statistics = await this.getSystemStats();
-          data.metadata.totalRecords = 1;
-          break;
-      }
-      
-      console.log(`✅ [Export] تم جمع ${data.metadata.totalRecords} سجل`);
-      return data;
-    } catch (error) {
-      console.error('خطأ في جمع البيانات:', error);
-      throw error;
+    switch (config.dataType) {
+      case 'users':
+        data.users = await this.getUsersData(config.filters);
+        data.metadata.totalRecords = data.users.length;
+        break;
+      case 'payments':
+        data.payments = await this.getPaymentsData(config.filters);
+        data.metadata.totalRecords = data.payments.length;
+        break;
+      case 'financial':
+        data.payments = await this.getPaymentsData(config.filters);
+        data.statistics = await this.getFinancialStats(config.filters);
+        data.metadata.totalRecords = data.payments.length;
+        break;
+      case 'comprehensive':
+        data.users = await this.getUsersData(config.filters);
+        data.payments = await this.getPaymentsData(config.filters);
+        data.statistics = await this.getSystemStats();
+        data.metadata.totalRecords = (data.users?.length || 0) + (data.payments?.length || 0);
+        break;
+      case 'system':
+        data.statistics = await this.getSystemStats();
+        data.metadata.totalRecords = 1;
+        break;
     }
+
+    console.log(`✅ [Export] تم جمع ${data.metadata.totalRecords} سجل`);
+    return data;
   }
 
-  // جلب بيانات المستخدمين
-  private async getUsersData(filters?: any): Promise<any[]> {
-    try {
-      const users: any[] = [];
-      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
-      
-      for (const collectionName of collections) {
-        let q = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
-        
-        // تطبيق فلاتر التاريخ
-        if (filters?.dateFrom) {
-          q = query(q, where('createdAt', '>=', Timestamp.fromDate(filters.dateFrom)));
-        }
-        if (filters?.dateTo) {
-          q = query(q, where('createdAt', '<=', Timestamp.fromDate(filters.dateTo)));
-        }
-        
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-          const userData = doc.data();
+  private async getUsersData(filters?: ExportConfig['filters']): Promise<Record<string, unknown>[]> {
+    const tables = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
+    const users: Record<string, unknown>[] = [];
+
+    for (const table of tables) {
+      try {
+        let query = supabase.from(table).select('*').order('createdAt', { ascending: false });
+        if (filters?.dateFrom) query = query.gte('createdAt', filters.dateFrom.toISOString());
+        if (filters?.dateTo) query = query.lte('createdAt', filters.dateTo.toISOString());
+
+        const { data } = await query;
+        (data ?? []).forEach((row: Record<string, unknown>) => {
           users.push({
-            id: doc.id,
-            type: collectionName,
-            name: userData.name || userData.full_name,
-            email: userData.email,
-            phone: userData.phone,
-            country: userData.country,
-            city: userData.city,
-            accountType: userData.accountType || userData.role,
-            isVerified: userData.isVerified || false,
-            createdAt: userData.createdAt?.toDate?.() || new Date(),
-            ...userData
+            id: row.id, type: table,
+            name: row.name ?? row.full_name,
+            email: row.email, phone: row.phone,
+            country: row.country, city: row.city,
+            accountType: row.accountType ?? row.role,
+            isVerified: row.isVerified ?? false,
+            createdAt: row.createdAt ?? new Date().toISOString(),
+            ...row,
           });
         });
+      } catch (e) {
+        console.warn(`فشل في جلب ${table}:`, e);
       }
-      
-      return users;
-    } catch (error) {
-      console.error('خطأ في جلب بيانات المستخدمين:', error);
-      return [];
     }
+
+    return users;
   }
 
-  // جلب بيانات المدفوعات
-  private async getPaymentsData(filters?: any): Promise<any[]> {
+  private async getPaymentsData(filters?: ExportConfig['filters']): Promise<Record<string, unknown>[]> {
     try {
-      let q = query(collection(db, 'payments'), orderBy('createdAt', 'desc'));
-      
-      // تطبيق الفلاتر
-      if (filters?.dateFrom) {
-        q = query(q, where('createdAt', '>=', Timestamp.fromDate(filters.dateFrom)));
-      }
-      if (filters?.dateTo) {
-        q = query(q, where('createdAt', '<=', Timestamp.fromDate(filters.dateTo)));
-      }
-      if (filters?.status) {
-        q = query(q, where('status', '==', filters.status));
-      }
-      
-      const snapshot = await getDocs(q);
-      const payments = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.() || new Date()
-      }));
-      
-      // إضافة بيانات من localStorage إذا متوفرة
+      let query = supabase.from('payments').select('*').order('createdAt', { ascending: false });
+      if (filters?.dateFrom) query = query.gte('createdAt', filters.dateFrom.toISOString());
+      if (filters?.dateTo) query = query.lte('createdAt', filters.dateTo.toISOString());
+      if (filters?.status) query = query.eq('status', filters.status);
+
+      const { data } = await query;
+      const dbPayments = (data ?? []) as Record<string, unknown>[];
       const localPayments = this.getLocalStoragePayments();
-      return [...payments, ...localPayments];
+      return [...dbPayments, ...localPayments];
     } catch (error) {
       console.error('خطأ في جلب بيانات المدفوعات:', error);
       return [];
     }
   }
 
-  // جلب الإحصائيات المالية
-  private async getFinancialStats(filters?: any): Promise<any> {
-    try {
-      const payments = await this.getPaymentsData(filters);
-      
-      const stats = {
-        totalTransactions: payments.length,
-        completedTransactions: payments.filter(p => p.status === 'completed').length,
-        failedTransactions: payments.filter(p => p.status === 'failed').length,
-        totalRevenue: payments
-          .filter(p => p.status === 'completed')
-          .reduce((sum, p) => sum + (p.amount || 0), 0),
-        
-        // تجميع حسب العملة
-        byCurrency: this.groupByCurrency(payments),
-        
-        // تجميع حسب طريقة الدفع
-        byPaymentMethod: this.groupByPaymentMethod(payments),
-        
-        // إحصائيات يومية
-        dailyStats: this.getDailyStats(payments),
-        
-        // أعلى المستخدمين دفعاً
-        topPayers: this.getTopPayers(payments)
-      };
-      
-      return stats;
-    } catch (error) {
-      console.error('خطأ في حساب الإحصائيات المالية:', error);
-      return {};
-    }
+  private async getFinancialStats(filters?: ExportConfig['filters']): Promise<Record<string, unknown>> {
+    const payments = await this.getPaymentsData(filters);
+    return {
+      totalTransactions: payments.length,
+      completedTransactions: payments.filter(p => p.status === 'completed').length,
+      failedTransactions: payments.filter(p => p.status === 'failed').length,
+      totalRevenue: payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + Number(p.amount || 0), 0),
+      byCurrency: this.groupByCurrency(payments),
+      byPaymentMethod: this.groupByPaymentMethod(payments),
+      dailyStats: this.getDailyStats(payments),
+      topPayers: this.getTopPayers(payments),
+    };
   }
 
-  // جلب إحصائيات النظام
-  private async getSystemStats(): Promise<any> {
-    try {
-      const collections = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'payments'];
-      const stats: any = {
-        collectionCounts: {},
-        totalUsers: 0,
-        systemHealth: 'healthy',
-        lastUpdate: new Date()
-      };
+  private async getSystemStats(): Promise<Record<string, unknown>> {
+    const tables = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'payments'];
+    const stats: Record<string, unknown> = { collectionCounts: {}, totalUsers: 0, systemHealth: 'healthy', lastUpdate: new Date() };
+    const counts = stats.collectionCounts as Record<string, number>;
+    let totalUsers = 0;
 
-      for (const collectionName of collections) {
-        try {
-          const snapshot = await getDocs(collection(db, collectionName));
-          stats.collectionCounts[collectionName] = snapshot.size;
-          if (collectionName !== 'payments') {
-            stats.totalUsers += snapshot.size;
-          }
-        } catch (error) {
-          console.warn(`فشل في جلب ${collectionName}:`, error);
-          stats.collectionCounts[collectionName] = 0;
-        }
+    for (const table of tables) {
+      try {
+        const { count } = await supabase.from(table).select('id', { count: 'exact', head: true });
+        counts[table] = count ?? 0;
+        if (table !== 'payments') totalUsers += count ?? 0;
+      } catch {
+        counts[table] = 0;
       }
-
-      return stats;
-    } catch (error) {
-      console.error('خطأ في جلب إحصائيات النظام:', error);
-      return {};
     }
+    stats.totalUsers = totalUsers;
+    return stats;
   }
 
-  // إنشاء ملف CSV (مبسط للتوافق)
-  private async generateCSV(data: ExportData, config: ExportConfig): Promise<Blob> {
-    try {
-      let csvContent = '';
-      
-      // تحديد البيانات المراد تصديرها
-      let exportData: any[] = [];
-      
-      if (data.users && data.users.length > 0) {
-        exportData = data.users;
-      } else if (data.payments && data.payments.length > 0) {
-        exportData = data.payments;
-      }
-      
-      if (exportData.length > 0) {
-        // عناوين الأعمدة
-        const headers = Object.keys(exportData[0]);
-        csvContent += headers.join(',') + '\n';
-        
-        // البيانات
-        exportData.forEach(row => {
-          const values = headers.map(header => {
-            const value = row[header];
-            if (value === null || value === undefined) return '';
-            if (typeof value === 'object') return JSON.stringify(value);
-            return String(value).replace(/,/g, ';'); // استبدال الفواصل
-          });
-          csvContent += values.join(',') + '\n';
+  private generateCSV(data: ExportData, _config: ExportConfig): Blob {
+    let csvContent = '';
+    const exportData = data.users?.length ? data.users : (data.payments ?? []);
+    if (exportData.length > 0) {
+      const headers = Object.keys(exportData[0]);
+      csvContent += headers.join(',') + '\n';
+      exportData.forEach(row => {
+        const values = headers.map(h => {
+          const v = row[h];
+          if (v === null || v === undefined) return '';
+          if (typeof v === 'object') return JSON.stringify(v);
+          return String(v).replace(/,/g, ';');
         });
-      }
-      
-      // إضافة BOM للدعم العربي
-      const csvWithBOM = '\ufeff' + csvContent;
-      return new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
-    } catch (error) {
-      console.error('خطأ في إنشاء CSV:', error);
-      throw error;
+        csvContent += values.join(',') + '\n';
+      });
     }
+    return new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
   }
 
-  // إنشاء ملف PDF (مبسط)
-  private async generatePDF(data: ExportData, config: ExportConfig): Promise<Blob> {
-    try {
-      // PDF بسيط نصي
-      let pdfContent = `تقرير ${this.getReportTitle(config.dataType, config.language || 'ar')}\n\n`;
-      pdfContent += `تاريخ التصدير: ${data.metadata.exportedAt.toLocaleString('ar-EG')}\n`;
-      pdfContent += `عدد السجلات: ${data.metadata.totalRecords}\n\n`;
-      
-      if (data.users) {
-        pdfContent += `المستخدمين: ${data.users.length}\n`;
-      }
-      if (data.payments) {
-        pdfContent += `المدفوعات: ${data.payments.length}\n`;
-      }
-      if (data.statistics) {
-        pdfContent += `الإحصائيات: متوفرة\n`;
-      }
-      
-      return new Blob([pdfContent], { type: 'text/plain;charset=utf-8;' });
-    } catch (error) {
-      console.error('خطأ في إنشاء PDF:', error);
-      throw error;
-    }
+  private generatePDF(data: ExportData, config: ExportConfig): Blob {
+    let content = `تقرير ${this.getReportTitle(config.dataType, config.language || 'ar')}\n\n`;
+    content += `تاريخ التصدير: ${data.metadata.exportedAt.toLocaleString('ar-EG')}\n`;
+    content += `عدد السجلات: ${data.metadata.totalRecords}\n\n`;
+    if (data.users) content += `المستخدمين: ${data.users.length}\n`;
+    if (data.payments) content += `المدفوعات: ${data.payments.length}\n`;
+    if (data.statistics) content += `الإحصائيات: متوفرة\n`;
+    return new Blob([content], { type: 'text/plain;charset=utf-8;' });
   }
 
-  // إنشاء ملف Excel (مبسط)
-  private async generateExcel(data: ExportData, config: ExportConfig): Promise<Blob> {
-    try {
-      // تحويل البيانات إلى تنسيق بسيط يشبه Excel
-      let excelContent = `${this.getReportTitle(config.dataType, config.language || 'ar')}\n`;
-      excelContent += `تاريخ التصدير: ${data.metadata.exportedAt.toLocaleString('ar-EG')}\n\n`;
-      
-      if (data.users && data.users.length > 0) {
-        excelContent += 'المستخدمين:\n';
-        excelContent += 'النوع\tالاسم\tالبريد\tالدولة\n';
-        data.users.slice(0, 100).forEach(user => {
-          excelContent += `${user.type || ''}\t${user.name || ''}\t${user.email || ''}\t${user.country || ''}\n`;
-        });
-        excelContent += '\n';
-      }
-      
-      if (data.payments && data.payments.length > 0) {
-        excelContent += 'المدفوعات:\n';
-        excelContent += 'المبلغ\tالعملة\tالحالة\tالتاريخ\n';
-        data.payments.slice(0, 100).forEach(payment => {
-          excelContent += `${payment.amount || ''}\t${payment.currency || ''}\t${payment.status || ''}\t${payment.createdAt || ''}\n`;
-        });
-      }
-      
-      return new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    } catch (error) {
-      console.error('خطأ في إنشاء Excel:', error);
-      throw error;
+  private generateExcel(data: ExportData, config: ExportConfig): Blob {
+    let content = `${this.getReportTitle(config.dataType, config.language || 'ar')}\n`;
+    content += `تاريخ التصدير: ${data.metadata.exportedAt.toLocaleString('ar-EG')}\n\n`;
+    if (data.users?.length) {
+      content += 'المستخدمين:\nالنوع\tالاسم\tالبريد\tالدولة\n';
+      data.users.slice(0, 100).forEach(u => {
+        content += `${u.type || ''}\t${u.name || ''}\t${u.email || ''}\t${u.country || ''}\n`;
+      });
+      content += '\n';
     }
+    if (data.payments?.length) {
+      content += 'المدفوعات:\nالمبلغ\tالعملة\tالحالة\tالتاريخ\n';
+      data.payments.slice(0, 100).forEach(p => {
+        content += `${p.amount || ''}\t${p.currency || ''}\t${p.status || ''}\t${p.createdAt || ''}\n`;
+      });
+    }
+    return new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   }
 
-  // إنشاء ملف JSON
-  private async generateJSON(data: ExportData, config: ExportConfig): Promise<Blob> {
-    try {
-      const jsonData = {
-        ...data,
-        exportConfig: config,
-        version: '1.0'
-      };
-      
-      const jsonString = JSON.stringify(jsonData, null, 2);
-      return new Blob([jsonString], { type: 'application/json' });
-    } catch (error) {
-      console.error('خطأ في إنشاء JSON:', error);
-      throw error;
-    }
+  private generateJSON(data: ExportData, config: ExportConfig): Blob {
+    return new Blob([JSON.stringify({ ...data, exportConfig: config, version: '1.0' }, null, 2)], { type: 'application/json' });
   }
 
-  // دوال مساعدة
-  private getLocalStoragePayments(): any[] {
+  private getLocalStoragePayments(): Record<string, unknown>[] {
     try {
       const localData = localStorage.getItem('bulkPaymentHistory');
       return localData ? JSON.parse(localData) : [];
-    } catch (error) {
-      console.error('خطأ في قراءة بيانات localStorage:', error);
-      return [];
-    }
+    } catch { return []; }
   }
 
-  private groupByCurrency(payments: any[]): any {
-    const grouped: { [key: string]: { count: number; total: number } } = {};
-    
-    payments.forEach(payment => {
-      const currency = payment.currency || 'EGP';
-      if (!grouped[currency]) {
-        grouped[currency] = { count: 0, total: 0 };
-      }
-      grouped[currency].count++;
-      grouped[currency].total += payment.amount || 0;
+  private groupByCurrency(payments: Record<string, unknown>[]) {
+    const g: Record<string, { count: number; total: number }> = {};
+    payments.forEach(p => {
+      const c = String(p.currency || 'EGP');
+      g[c] = g[c] || { count: 0, total: 0 };
+      g[c].count++; g[c].total += Number(p.amount || 0);
     });
-    
-    return grouped;
+    return g;
   }
 
-  private groupByPaymentMethod(payments: any[]): any {
-    const grouped: { [key: string]: number } = {};
-    
-    payments.forEach(payment => {
-      const method = payment.paymentMethod || 'unknown';
-      grouped[method] = (grouped[method] || 0) + 1;
+  private groupByPaymentMethod(payments: Record<string, unknown>[]) {
+    const g: Record<string, number> = {};
+    payments.forEach(p => { const m = String(p.paymentMethod || 'unknown'); g[m] = (g[m] || 0) + 1; });
+    return g;
+  }
+
+  private getDailyStats(payments: Record<string, unknown>[]) {
+    const d: Record<string, { count: number; revenue: number }> = {};
+    payments.forEach(p => {
+      const date = p.createdAt ? String(p.createdAt).split('T')[0] : new Date().toISOString().split('T')[0];
+      d[date] = d[date] || { count: 0, revenue: 0 };
+      d[date].count++;
+      if (p.status === 'completed') d[date].revenue += Number(p.amount || 0);
     });
-    
-    return grouped;
+    return Object.entries(d).map(([date, s]) => ({ date, ...s }));
   }
 
-  private getDailyStats(payments: any[]): any[] {
-    const dailyStats: { [key: string]: { count: number; revenue: number } } = {};
-    
-    payments.forEach(payment => {
-      const date = payment.createdAt ? payment.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-      if (!dailyStats[date]) {
-        dailyStats[date] = { count: 0, revenue: 0 };
-      }
-      dailyStats[date].count++;
-      if (payment.status === 'completed') {
-        dailyStats[date].revenue += payment.amount || 0;
-      }
+  private getTopPayers(payments: Record<string, unknown>[]) {
+    const s: Record<string, { name: string; total: number; count: number }> = {};
+    payments.filter(p => p.status === 'completed' && p.payerId).forEach(p => {
+      const id = String(p.payerId);
+      s[id] = s[id] || { name: String(p.payerName || 'غير محدد'), total: 0, count: 0 };
+      s[id].total += Number(p.amount || 0); s[id].count++;
     });
-    
-    return Object.entries(dailyStats).map(([date, stats]) => ({
-      date,
-      ...stats
-    }));
-  }
-
-  private getTopPayers(payments: any[]): any[] {
-    const payerStats: { [key: string]: { name: string; total: number; count: number } } = {};
-    
-    payments
-      .filter(p => p.status === 'completed' && p.payerId)
-      .forEach(payment => {
-        const payerId = payment.payerId;
-        if (!payerStats[payerId]) {
-          payerStats[payerId] = { 
-            name: payment.payerName || 'غير محدد', 
-            total: 0, 
-            count: 0 
-          };
-        }
-        payerStats[payerId].total += payment.amount || 0;
-        payerStats[payerId].count++;
-      });
-    
-    return Object.entries(payerStats)
-      .map(([id, stats]) => ({ id, ...stats }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
+    return Object.entries(s).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.total - a.total).slice(0, 10);
   }
 
   private getReportTitle(dataType: string, language: string): string {
-    const titles = {
-      ar: {
-        users: 'تقرير المستخدمين',
-        payments: 'تقرير المدفوعات',
-        financial: 'التقرير المالي',
-        system: 'تقرير النظام',
-        comprehensive: 'التقرير الشامل'
-      },
-      en: {
-        users: 'Users Report',
-        payments: 'Payments Report',
-        financial: 'Financial Report',
-        system: 'System Report',
-        comprehensive: 'Comprehensive Report'
-      }
+    const titles: Record<string, Record<string, string>> = {
+      ar: { users: 'تقرير المستخدمين', payments: 'تقرير المدفوعات', financial: 'التقرير المالي', system: 'تقرير النظام', comprehensive: 'التقرير الشامل' },
+      en: { users: 'Users Report', payments: 'Payments Report', financial: 'Financial Report', system: 'System Report', comprehensive: 'Comprehensive Report' },
     };
-    
     return titles[language]?.[dataType] || 'تقرير عام';
   }
 
-  // تنزيل الملف
   async downloadFile(blob: Blob, filename: string): Promise<void> {
-    try {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      console.log(`✅ [Export] تم تنزيل الملف: ${filename}`);
-    } catch (error) {
-      console.error('خطأ في تنزيل الملف:', error);
-      throw error;
-    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = filename;
+    document.body.appendChild(link); link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    console.log(`✅ [Export] تم تنزيل الملف: ${filename}`);
   }
 }
 
 export const adminExportManager = AdminExportManager.getInstance();
 
-// دوال مساعدة للاستخدام السريع
-export const exportUsers = async (format: 'pdf' | 'excel' | 'csv' = 'excel', filters?: any) => {
-  const config: ExportConfig = {
-    format,
-    dataType: 'users',
-    fileName: `users_${format}_${new Date().toISOString().split('T')[0]}`,
-    filters
-  };
-  
+export const exportUsers = async (format: 'pdf' | 'excel' | 'csv' = 'excel', filters?: ExportConfig['filters']) => {
+  const config: ExportConfig = { format, dataType: 'users', fileName: `users_${format}_${new Date().toISOString().split('T')[0]}`, filters };
   const blob = await adminExportManager.exportData(config, 'admin');
   await adminExportManager.downloadFile(blob, `${config.fileName}.${format === 'excel' ? 'xls' : format}`);
 };
 
-export const exportPayments = async (format: 'pdf' | 'excel' | 'csv' = 'excel', filters?: any) => {
-  const config: ExportConfig = {
-    format,
-    dataType: 'payments',
-    fileName: `payments_${format}_${new Date().toISOString().split('T')[0]}`,
-    filters
-  };
-  
+export const exportPayments = async (format: 'pdf' | 'excel' | 'csv' = 'excel', filters?: ExportConfig['filters']) => {
+  const config: ExportConfig = { format, dataType: 'payments', fileName: `payments_${format}_${new Date().toISOString().split('T')[0]}`, filters };
   const blob = await adminExportManager.exportData(config, 'admin');
   await adminExportManager.downloadFile(blob, `${config.fileName}.${format === 'excel' ? 'xls' : format}`);
 };
 
-export const exportFinancialReport = async (format: 'pdf' | 'excel' = 'pdf', filters?: any) => {
-  const config: ExportConfig = {
-    format,
-    dataType: 'financial',
-    fileName: `financial_report_${new Date().toISOString().split('T')[0]}`,
-    filters,
-    includeCharts: true
-  };
-  
+export const exportFinancialReport = async (format: 'pdf' | 'excel' = 'pdf', filters?: ExportConfig['filters']) => {
+  const config: ExportConfig = { format, dataType: 'financial', fileName: `financial_report_${new Date().toISOString().split('T')[0]}`, filters, includeCharts: true };
   const blob = await adminExportManager.exportData(config, 'admin');
   await adminExportManager.downloadFile(blob, `${config.fileName}.${format === 'excel' ? 'xls' : format}`);
 };

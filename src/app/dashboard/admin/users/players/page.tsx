@@ -1,22 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  collection,
-  getDocs,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  where,
-  limit,
-  startAfter,
-  DocumentSnapshot
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { supabase } from '@/lib/supabase/config';
 import {
   User,
@@ -147,7 +131,7 @@ export default function PlayersManagement() {
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAge, setSelectedAge] = useState('all');
-  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+  const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -178,36 +162,35 @@ export default function PlayersManagement() {
 
   const fetchPlayers = async (reset = false) => {
     try {
+      const pageSize = 20;
+      const currentOffset = reset ? 0 : offset;
+
       if (reset) {
         setLoading(true);
         setPlayers([]);
-        setLastDoc(null);
+        setOffset(0);
         setHasMore(true);
       } else {
         setLoadingMore(true);
       }
 
-      let q = query(
-        collection(db, 'players'),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
+      let query = supabase
+        .from('players')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .range(currentOffset, currentOffset + pageSize - 1);
 
-      if (!reset && lastDoc) {
-        q = query(q, startAfter(lastDoc));
-      }
+      const { data: rows, error } = await query;
 
-      const snapshot = await getDocs(q);
+      if (error) throw error;
 
-      if (!snapshot.empty) {
+      if (rows && rows.length > 0) {
         const playersData = await Promise.all(
-          snapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-
+          rows.map(async (data: any) => {
             // حساب العمر
             let age = 0;
             if (data.dateOfBirth) {
-              const birthDate = data.dateOfBirth.toDate();
+              const birthDate = new Date(data.dateOfBirth);
               const today = new Date();
               age = today.getFullYear() - birthDate.getFullYear();
               const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -217,13 +200,13 @@ export default function PlayersManagement() {
             }
 
             // جلب إحصائيات الميديا
-            const mediaCount = await getPlayerMediaCount(docSnap.id);
+            const mediaCount = await getPlayerMediaCount(data.id);
 
             // جلب الإحصائيات
-            const stats = await getPlayerStats(docSnap.id);
+            const stats = await getPlayerStats(data.id);
 
             return {
-              id: docSnap.id,
+              id: data.id,
               firstName: data.firstName || '',
               lastName: data.lastName || '',
               email: data.email,
@@ -311,11 +294,8 @@ export default function PlayersManagement() {
           setPlayers(prev => [...prev, ...filteredPlayers]);
         }
 
-        setHasMore(snapshot.docs.length === 20);
-
-        if (snapshot.docs.length > 0) {
-          setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        }
+        setHasMore(rows.length === pageSize);
+        setOffset(currentOffset + pageSize);
 
         // حساب الإحصائيات
         const stats = {
@@ -391,9 +371,13 @@ export default function PlayersManagement() {
     };
 
     try {
-      const statsDoc = await getDoc(doc(db, 'player_stats', playerId));
-      if (statsDoc.exists()) {
-        const data = statsDoc.data();
+      const { data, error } = await supabase
+        .from('player_stats')
+        .select('*')
+        .eq('id', playerId)
+        .maybeSingle();
+
+      if (!error && data) {
         return {
           profileViews: data.profileViews || 0,
           videoViews: data.videoViews || 0,
@@ -404,26 +388,18 @@ export default function PlayersManagement() {
       }
     } catch (error: any) {
       // معالجة صامتة للأخطاء - الإحصائيات ليست حرجة
-      if (error.code === 'permission-denied') {
-        // عدم طباعة أخطاء الصلاحيات لتجنب التكرار
-        return defaultStats;
-      } else if (error.code !== 'not-found') {
-        // طباعة الأخطاء الأخرى فقط (غير not-found)
-        console.warn(`📊 [STATS] Non-critical error loading stats for ${playerId}:`, error.code);
-      }
     }
 
-    // إرجاع إحصائيات حقيقية (أصفار) في جميع الحالات
     return defaultStats;
   };
 
   const togglePlayerVerification = async (playerId: string, isVerified: boolean) => {
     try {
-      await updateDoc(doc(db, 'players', playerId), {
+      await supabase.from('players').update({
         isVerified: !isVerified,
-        verifiedAt: !isVerified ? new Date() : null,
-        updatedAt: new Date()
-      });
+        verifiedAt: !isVerified ? new Date().toISOString() : null,
+        updatedAt: new Date().toISOString()
+      }).eq('id', playerId);
 
       setPlayers(prev => prev.map(player =>
         player.id === playerId
@@ -437,10 +413,10 @@ export default function PlayersManagement() {
 
   const togglePlayerStatus = async (playerId: string, isActive: boolean) => {
     try {
-      await updateDoc(doc(db, 'players', playerId), {
+      await supabase.from('players').update({
         isActive: !isActive,
-        updatedAt: new Date()
-      });
+        updatedAt: new Date().toISOString()
+      }).eq('id', playerId);
 
       setPlayers(prev => prev.map(player =>
         player.id === playerId
@@ -456,7 +432,7 @@ export default function PlayersManagement() {
     if (!playerToDelete) return;
 
     try {
-      await deleteDoc(doc(db, 'players', playerToDelete.id));
+      await supabase.from('players').delete().eq('id', playerToDelete.id);
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
       setDeleteDialogOpen(false);
       setPlayerToDelete(null);
@@ -489,7 +465,7 @@ export default function PlayersManagement() {
       'عدد المباريات': player.stats?.matches || 0,
       'عدد الأهداف': player.stats?.goals || 0,
       'عدد التمريرات الحاسمة': player.stats?.assists || 0,
-      'تاريخ التسجيل': player.registrationDate?.toDate()?.toLocaleDateString('ar-SA') || ''
+      'تاريخ التسجيل': player.registrationDate ? new Date(player.registrationDate).toLocaleDateString('ar-SA') : ''
     }));
 
     const csv = [
@@ -818,7 +794,7 @@ export default function PlayersManagement() {
                             </Badge>
                             {player.contractEndDate && (
                               <div className="text-xs text-gray-500 mt-1">
-                                العقد حتى: {player.contractEndDate.toDate().toLocaleDateString('ar-SA')}
+                                العقد حتى: {new Date(player.contractEndDate).toLocaleDateString('ar-SA')}
                               </div>
                             )}
                           </div>
@@ -1015,4 +991,4 @@ export default function PlayersManagement() {
       </AlertDialog>
     </div>
   );
-} 
+}

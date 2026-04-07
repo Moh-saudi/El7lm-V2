@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import {
   Calendar,
@@ -354,38 +353,41 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
   // Simplified load players function
   const loadPlayers = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     setIsLoading(true);
     try {
       console.log('🔄 Loading players...');
 
-      // Load players from 'players' collection
-      const playersSnapshot = await getDocs(collection(db, 'players'));
+      // Load players from 'players' table
+      const { data: playersData, error: playersError } = await supabase
+        .from('players')
+        .select('*');
+
+      if (playersError) throw playersError;
+
       const playersMap = new Map<string, Player>();
 
-      playersSnapshot.forEach((doc) => {
-        const playerData = { id: doc.id, ...doc.data() } as Player;
+      (playersData || []).forEach((playerData: Player) => {
         if (!playerData.isDeleted) {
           // استخدام Map لإزالة التكرارات بناءً على id
-          playersMap.set(doc.id, playerData);
+          playersMap.set(playerData.id, playerData);
         }
       });
 
-      // Load independent players from 'users' collection
-      const usersQuery = query(
-        collection(db, 'users'),
-        where('accountType', '==', 'player')
-      );
-      const usersSnapshot = await getDocs(usersQuery);
+      // Load independent players from 'users' table
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('accountType', 'player');
 
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data();
+      if (usersError) throw usersError;
+
+      (usersData || []).forEach((userData: any) => {
         if (!userData.isDeleted) {
-          // إضافة فقط إذا لم يكن موجوداً في players collection
-          if (!playersMap.has(doc.id)) {
-            playersMap.set(doc.id, {
-              id: doc.id,
+          // إضافة فقط إذا لم يكن موجوداً في players table
+          if (!playersMap.has(userData.id)) {
+            playersMap.set(userData.id, {
               ...userData,
               accountType: 'independent'
             } as Player);
@@ -394,23 +396,23 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       });
 
       // تحويل Map إلى Array
-      const playersData = Array.from(playersMap.values());
-      setPlayers(playersData);
-      console.log(`✅ Loaded ${playersData.length} unique players successfully`);
+      const allPlayers = Array.from(playersMap.values());
+      setPlayers(allPlayers);
+      console.log(`✅ Loaded ${allPlayers.length} unique players successfully`);
 
     } catch (error) {
       console.error('❌ Error loading players:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Load data on mount
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       loadPlayers();
     }
-  }, [user?.uid, loadPlayers]);
+  }, [user?.id, loadPlayers]);
 
   // Helper function to calculate player age
   const calculatePlayerAge = useCallback((player: Player): number | null => {
@@ -1286,13 +1288,13 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         className="flex-1 bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100"
                         onClick={async () => {
                           // Dispatch in-app + ChatAman notification for profile view
-                          if (user && user.uid !== player.id) {
-                            const viewerName = userData?.full_name || userData?.name || user.displayName || 'مستخدم';
+                          if (user && user.id !== player.id) {
+                            const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
                             const viewerType = userData?.accountType || userData?.type || 'user';
                             dispatchNotification({
                               eventType: 'profile_view',
                               targetUserId: player.id,
-                              actorId: user.uid,
+                              actorId: user.id,
                               actorName: viewerName,
                               actorAccountType: viewerType,
                             });
@@ -1318,7 +1320,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                       <SendMessageButton
                         user={user}
                         userData={user}
-                        getUserDisplayName={() => user?.displayName || user?.email || 'مستخدم'}
+                        getUserDisplayName={() => user?.user_metadata?.full_name || user?.email || 'مستخدم'}
                         targetUserId={player.id}
                         targetUserName={player.full_name || player.name || 'لاعب'}
                         targetUserType="player"

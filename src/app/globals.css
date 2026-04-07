@@ -2,6 +2,36 @@
    HAGZZ GO - Main Styles (Optimized & Clean)
    ============================================== */
 
+/* Partners Slider — Responsive */
+.partner-card {
+  padding: 1rem 2.5rem;
+  min-width: 200px;
+  height: 130px;
+}
+.partner-logo {
+  height: 80px;
+  max-width: 160px;
+}
+.partner-name {
+  font-size: 1.3rem;
+}
+
+@media (max-width: 640px) {
+  .partner-card {
+    padding: 0.6rem 1rem;
+    min-width: 110px;
+    height: 80px;
+    border-radius: 14px !important;
+  }
+  .partner-logo {
+    height: 44px;
+    max-width: 90px;
+  }
+  .partner-name {
+    font-size: 0.9rem;
+  }
+}
+
 /* Responsive Design Improvements */
 @media (max-width: 768px) {
 
@@ -728,8 +758,8 @@ body,
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 262 83% 58%;
-    /* Violet 600 */
+    --primary: 154 61% 41%;
+    /* Emerald 600 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 151 55% 41%;
@@ -739,21 +769,21 @@ body,
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 262 83% 96%;
-    /* Violet 50 */
-    --accent-foreground: 262 83% 58%;
+    --accent: 151 55% 96%;
+    /* Emerald 50 */
+    --accent-foreground: 151 55% 41%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 262 83% 58%;
+    --ring: 154 61% 41%;
 
     --radius: 0.5rem;
 
     /* Chart colors remain same for now */
-    --chart-1: 262 83% 58%;
+    --chart-1: 154 61% 41%;
     --chart-2: 151 55% 41%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
@@ -773,8 +803,8 @@ body,
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 263 70% 50%;
-    /* Violet 500 */
+    --primary: 158 64% 52%;
+    /* Emerald 500 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 151 55% 41%;
@@ -791,7 +821,7 @@ body,
 
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 263 70% 50%;
+    --ring: 158 64% 52%;
 
     --chart-1: 263 70% 50%;
     --chart-2: 151 55% 41%;
@@ -1274,11 +1304,11 @@ body,
 
 @layer utilities {
   .btn-primary {
-    @apply px-6 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all duration-500 ease-out transform hover:scale-[1.02];
+    @apply px-6 py-3 text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all duration-500 ease-out transform hover:scale-[1.02];
   }
 
   .btn-secondary {
-    @apply px-6 py-3 text-blue-600 bg-white border-2 border-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-500 ease-out;
+    @apply px-6 py-3 text-emerald-600 bg-white border-2 border-emerald-600 rounded-xl hover:bg-emerald-50 transition-all duration-500 ease-out;
   }
 
   .card {
@@ -1286,11 +1316,11 @@ body,
   }
 
   .input {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
   }
 
   .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800;
   }
 
   .glass-effect {
@@ -1407,7 +1437,7 @@ body,
 }
 
 .loading-spinner {
-  @apply w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin;
+  @apply w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin;
 }
 
 /* ==============================================

@@ -1,8 +1,7 @@
 // utils/player-organization.ts - دوال مساعدة لتحديد انتماء اللاعبين
 import { AccountType } from '../types/common';
 import { Player } from '../types/player';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase/config';
+import { supabase } from '../lib/supabase/config';
 
 export interface PlayerOrganizationInfo {
   type: 'club' | 'academy' | 'trainer' | 'agent' | 'independent';
@@ -36,12 +35,12 @@ export interface PlayerWithOrganization extends Partial<Player> {
 }
 
 /**
- * جلب بيانات الجهة مع الاسم والصورة من Firebase
+ * جلب بيانات الجهة مع الاسم والصورة من Supabase
  */
 export async function getOrganizationDetails(organizationId: string, organizationType: string) {
   try {
     console.log('🔍 جلب بيانات الجهة:', { organizationId, organizationType });
-    
+
     // تحديد المجموعات المحتملة حسب نوع الجهة
     let possibleCollections: string[] = [];
     switch (organizationType) {
@@ -64,52 +63,49 @@ export async function getOrganizationDetails(organizationId: string, organizatio
         console.log('⚠️ نوع جهة غير معروف:', organizationType);
         return null;
     }
-    
+
     // إذا كان النوع academy، أضف مجموعة academies في البداية
     if (organizationType === 'academy') {
       possibleCollections = ['academies', 'academy', 'users'];
     }
-    
-    // البحث في جميع المجموعات المحتملة
+
+    // البحث في جميع الجداول المحتملة
     let organizationData = null;
     let foundCollection = null;
-    
-    for (const collectionName of possibleCollections) {
+
+    for (const tableName of possibleCollections) {
       try {
-        console.log(`🔍 البحث في مجموعة: ${collectionName}`);
-        const docRef = doc(db, collectionName, organizationId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          
-          // إذا كانت المجموعة هي users، تأكد من أن accountType يتطابق
-          if (collectionName === 'users') {
+        console.log(`🔍 البحث في جدول: ${tableName}`);
+        const { data } = await supabase.from(tableName).select('*').eq('id', organizationId).single();
+
+        if (data) {
+          // إذا كان الجدول هو users، تأكد من أن accountType يتطابق
+          if (tableName === 'users') {
             const accountType = data.accountType;
             console.log(`🔍 فحص accountType في users: ${accountType} vs ${organizationType}`);
-            
+
             if (accountType && accountType !== organizationType) {
               console.log(`⚠️ accountType لا يتطابق: ${accountType} != ${organizationType}`);
               continue;
             }
           }
-          
+
           organizationData = data;
-          foundCollection = collectionName;
-          console.log(`✅ تم العثور على الجهة في مجموعة: ${collectionName}`);
+          foundCollection = tableName;
+          console.log(`✅ تم العثور على الجهة في جدول: ${tableName}`);
           break;
         }
       } catch (error) {
-        console.log(`⚠️ خطأ في البحث في مجموعة ${collectionName}:`, error);
+        console.log(`⚠️ خطأ في البحث في جدول ${tableName}:`, error);
         continue;
       }
     }
-    
+
     if (!organizationData) {
-      console.log('⚠️ لم يتم العثور على الجهة في أي مجموعة');
+      console.log('⚠️ لم يتم العثور على الجهة في أي جدول');
       return null;
     }
-    
+
     console.log('✅ تم جلب بيانات الجهة:', organizationData);
     console.log('🔍 تفاصيل الجهة:', {
       id: organizationId,
@@ -119,7 +115,7 @@ export async function getOrganizationDetails(organizationId: string, organizatio
       name: getOrganizationName(organizationData),
       isDeleted: organizationData.isDeleted
     });
-    
+
     // فحص إذا كان الحساب محذوف
     if (organizationData.isDeleted) {
       console.log('⚠️ الحساب محذوف:', organizationId);
@@ -133,7 +129,7 @@ export async function getOrganizationDetails(organizationId: string, organizatio
         collection: foundCollection
       };
     }
-    
+
     return {
       id: organizationId,
       name: getOrganizationName(organizationData) || 'اسم غير محدد',
@@ -158,7 +154,7 @@ function getOrganizationName(organizationData: any): string | null {
     'organization_name', 'business_name', 'company_name', 'title', 'display_name', 'brand_name',
     'academyName', 'clubName', 'trainerName', 'agentName', 'marketerName'
   ];
-  
+
   for (const field of possibleNameFields) {
     if (organizationData[field] && typeof organizationData[field] === 'string' && organizationData[field].trim()) {
       const name = organizationData[field].trim();
@@ -166,7 +162,7 @@ function getOrganizationName(organizationData: any): string | null {
       return name;
     }
   }
-  
+
   // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
   if (organizationData.first_name || organizationData.last_name) {
     const firstName = organizationData.first_name || '';
@@ -177,7 +173,7 @@ function getOrganizationName(organizationData: any): string | null {
       return fullName;
     }
   }
-  
+
   return null;
 }
 
@@ -190,53 +186,52 @@ function getOrganizationImage(organizationData: any): any {
     'profile_picture', 'profile_photo', 'business_logo', 'brand_logo',
     'academy_logo', 'club_logo', 'trainer_photo', 'agent_photo'
   ];
-  
+
   for (const field of possibleImageFields) {
     if (organizationData[field]) {
       console.log(`✅ تم العثور على صورة الجهة في الحقل: ${field}`);
       return organizationData[field];
     }
   }
-  
+
   return null;
 }
 
 /**
- * جلب بيانات اللاعب مع الاسم والصورة من Firebase
+ * جلب بيانات اللاعب مع الاسم والصورة من Supabase
  */
 export async function getPlayerDetails(playerId: string) {
   try {
     console.log('🔍 جلب بيانات اللاعب:', { playerId });
-    
-    // البحث في جميع المجموعات المحتملة
-    const collections = ['players', 'users', 'player'];
+
+    // البحث في جميع الجداول المحتملة
+    const tables = ['players', 'users', 'player'];
     let playerData = null;
     let foundCollection = null;
-    
-    for (const collectionName of collections) {
+
+    for (const tableName of tables) {
       try {
-        const docRef = doc(db, collectionName, playerId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          playerData = docSnap.data();
-          foundCollection = collectionName;
-          console.log(`✅ تم العثور على اللاعب في مجموعة: ${collectionName}`);
+        const { data } = await supabase.from(tableName).select('*').eq('id', playerId).single();
+
+        if (data) {
+          playerData = data;
+          foundCollection = tableName;
+          console.log(`✅ تم العثور على اللاعب في جدول: ${tableName}`);
           break;
         }
       } catch (error) {
-        console.log(`⚠️ خطأ في البحث في مجموعة ${collectionName}:`, error);
+        console.log(`⚠️ خطأ في البحث في جدول ${tableName}:`, error);
         continue;
       }
     }
-    
+
     if (!playerData) {
-      console.log('⚠️ لم يتم العثور على اللاعب في أي مجموعة');
+      console.log('⚠️ لم يتم العثور على اللاعب في أي جدول');
       return null;
     }
-    
+
     console.log('✅ تم جلب بيانات اللاعب:', playerData);
-    
+
     // فحص إذا كان الحساب محذوف
     if (playerData.isDeleted) {
       console.log('⚠️ حساب اللاعب محذوف:', playerId);
@@ -248,7 +243,7 @@ export async function getPlayerDetails(playerId: string) {
         collection: foundCollection
       };
     }
-    
+
     return {
       id: playerId,
       name: getPlayerName(playerData) || 'اسم غير محدد',
@@ -272,7 +267,7 @@ function getPlayerName(playerData: any): string | null {
     'full_name', 'name', 'player_name', 'display_name', 'first_name', 'last_name',
     'arabic_name', 'english_name', 'nickname', 'title'
   ];
-  
+
   for (const field of possibleNameFields) {
     if (playerData[field] && typeof playerData[field] === 'string' && playerData[field].trim()) {
       const name = playerData[field].trim();
@@ -280,7 +275,7 @@ function getPlayerName(playerData: any): string | null {
       return name;
     }
   }
-  
+
   // إذا لم يوجد اسم، جرب دمج الاسم الأول والأخير
   if (playerData.first_name || playerData.last_name) {
     const firstName = playerData.first_name || '';
@@ -291,7 +286,7 @@ function getPlayerName(playerData: any): string | null {
       return fullName;
     }
   }
-  
+
   return null;
 }
 
@@ -303,14 +298,14 @@ function getPlayerImage(playerData: any): any {
     'profile_image', 'image', 'avatar', 'photo', 'picture',
     'profile_picture', 'profile_photo', 'player_image', 'player_photo'
   ];
-  
+
   for (const field of possibleImageFields) {
     if (playerData[field]) {
       console.log(`✅ تم العثور على صورة اللاعب في الحقل: ${field}`);
       return playerData[field];
     }
   }
-  
+
   return null;
 }
 
@@ -405,7 +400,7 @@ export function getPlayerOrganization(playerData: PlayerWithOrganization): Playe
  */
 export function getAccountTypeFromPlayer(playerData: PlayerWithOrganization): AccountType {
   const org = getPlayerOrganization(playerData);
-  
+
   switch (org.type) {
     case 'club':
       return 'club';
@@ -428,10 +423,10 @@ export function getAccountTypeFromPlayer(playerData: PlayerWithOrganization): Ac
 export function debugPlayerOrganization(playerData: PlayerWithOrganization): PlayerOrganizationInfo {
   console.group('🔍 تشخيص شامل لانتماء اللاعب');
   console.log('📋 بيانات اللاعب الكاملة:', playerData);
-  
+
   const organization = getPlayerOrganization(playerData);
   console.log('🎯 النتيجة النهائية:', organization);
-  
+
   console.log('📊 فحص مفصل للحقول:');
   const fields: Array<{ name: string; value?: string }> = [
     { name: 'club_id', value: playerData?.club_id },
@@ -488,4 +483,4 @@ export function normalizePlayerData(playerData: PlayerWithOrganization): PlayerW
   });
 
   return normalized;
-} 
+}

@@ -130,24 +130,16 @@ export function quickHealthCheck() {
   console.log(`🏥 Health: Firebase ${firebase ? '✅' : '❌'} | Browser ${browser ? '✅' : '❌'}`);
 }
 
-// فحص اتصال Firebase/Firestore
+// فحص اتصال Supabase
 export async function checkFirestoreConnection() {
   if (typeof window === 'undefined') return false;
-  
   try {
-    const { db } = await import('./firebase/config');
-    const { auth } = await import('./firebase/config');
-    
-    // فحص بسيط للتأكد من أن Firestore متاح
-    if (db && auth) {
-      console.log('🔥 Firestore connection: ✅ Connected');
-      return true;
-    } else {
-      console.warn('🔥 Firestore connection: ⚠️ Not initialized');
-      return false;
-    }
+    const { supabase } = await import('./supabase/config');
+    const { data } = await supabase.from('users').select('id').limit(1);
+    console.log('🗄️ Supabase connection: ✅ Connected');
+    return !!data;
   } catch (error) {
-    console.error('🔥 Firestore connection: ❌ Failed', error);
+    console.error('🗄️ Supabase connection: ❌ Failed', error);
     return false;
   }
 }
@@ -155,21 +147,15 @@ export async function checkFirestoreConnection() {
 // فحص محدد لبيانات المستخدم
 export async function checkUserDataAccess(userId: string) {
   if (!userId || typeof window === 'undefined') return false;
-  
   try {
-    const { db } = await import('./firebase/config');
-    const { doc, getDoc } = await import('firebase/firestore');
-    
-    const userDoc = doc(db, 'users', userId);
-    const snapshot = await getDoc(userDoc);
-    
-    if (snapshot.exists()) {
-      console.log('👤 User data: ✅ Found', { hasData: true, id: userId });
+    const { supabase } = await import('./supabase/config');
+    const { data } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
+    if (data) {
+      console.log('👤 User data: ✅ Found', { id: userId });
       return true;
-    } else {
-      console.warn('👤 User data: ⚠️ Not found', { hasData: false, id: userId });
-      return false;
     }
+    console.warn('👤 User data: ⚠️ Not found', { id: userId });
+    return false;
   } catch (error) {
     console.error('👤 User data access: ❌ Error', error);
     return false;

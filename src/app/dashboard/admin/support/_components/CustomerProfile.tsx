@@ -118,7 +118,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({ conversation, 
                                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                                         <p className="text-[10px] text-slate-400 mb-1">تاريخ الإنشاء</p>
                                         <p className="text-xs font-medium text-slate-800">
-                                            {conversation.createdAt ? format(conversation.createdAt.toDate(), 'dd MMM yyyy', { locale: ar }) : '-'}
+                                            {conversation.createdAt ? format(new Date(conversation.createdAt), 'dd MMM yyyy', { locale: ar }) : '-'}
                                         </p>
                                     </div>
                                     <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">

@@ -1,10 +1,9 @@
 
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export interface BrandingData {
     logoUrl: string;
-    darkLogoUrl?: string; // For dark mode
+    darkLogoUrl?: string;
     footerLogoUrl?: string;
     siteName: string;
     slogan: string;
@@ -15,17 +14,13 @@ const DEFAULT_BRANDING: BrandingData = {
     darkLogoUrl: '',
     footerLogoUrl: '',
     siteName: 'El7lm',
-    slogan: 'منصة الحلم لاكتشاف المواهب'
+    slogan: 'منصة الحلم لاكتشاف المواهب',
 };
 
 export const getBrandingData = async (): Promise<BrandingData> => {
     try {
-        const docRef = doc(db, 'content', 'branding');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            return { ...DEFAULT_BRANDING, ...docSnap.data() } as BrandingData;
-        }
+        const { data } = await supabase.from('content').select('*').eq('id', 'branding').limit(1);
+        if (data?.length) return { ...DEFAULT_BRANDING, ...data[0] } as BrandingData;
         return DEFAULT_BRANDING;
     } catch (error) {
         console.error('Error fetching branding:', error);
@@ -35,8 +30,7 @@ export const getBrandingData = async (): Promise<BrandingData> => {
 
 export const saveBrandingData = async (data: BrandingData) => {
     try {
-        const docRef = doc(db, 'content', 'branding');
-        await setDoc(docRef, data, { merge: true });
+        await supabase.from('content').upsert({ id: 'branding', ...data });
         return true;
     } catch (error) {
         console.error('Error saving branding:', error);
@@ -45,12 +39,13 @@ export const saveBrandingData = async (data: BrandingData) => {
 };
 
 export const subscribeToBranding = (callback: (data: BrandingData) => void) => {
-    const docRef = doc(db, 'content', 'branding');
-    return onSnapshot(docRef, (doc) => {
-        if (doc.exists()) {
-            callback({ ...DEFAULT_BRANDING, ...doc.data() } as BrandingData);
-        } else {
-            callback(DEFAULT_BRANDING);
-        }
-    });
+    const channel = supabase
+        .channel('branding-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'content', filter: 'id=eq.branding' }, payload => {
+            if (payload.new) callback({ ...DEFAULT_BRANDING, ...payload.new } as BrandingData);
+            else callback(DEFAULT_BRANDING);
+        })
+        .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
 };

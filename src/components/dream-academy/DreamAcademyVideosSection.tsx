@@ -2,8 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactPlayer from 'react-player';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { DreamAcademyCategory, DreamAcademyCategoryId, DreamAcademySource } from '@/types/dream-academy';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,14 +44,19 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
     const load = async () => {
       setVideoError(null);
       setIsVideoLoading(false);
-      const qs = query(collection(db, 'dream_academy_sources'), where('categoryId', '==', categoryId), where('isActive', '==', true));
-      const snap = await getDocs(qs);
-      const rows: DreamAcademySource[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+
+      const { data: sourcesData } = await supabase
+        .from('dream_academy_sources')
+        .select('*')
+        .eq('categoryId', categoryId)
+        .eq('isActive', true);
+
+      const rows: DreamAcademySource[] = (sourcesData || []).map((d: any) => ({ id: d.id, ...d }));
       rows.sort((a, b) => (a.order || 0) - (b.order || 0));
       setSources(rows);
 
-      const catSnap = await getDocs(collection(db, 'dream_academy_categories'));
-      const cats = catSnap.docs.map(d => d.data() as DreamAcademyCategory).filter(c => (c as any).isActive !== false);
+      const { data: catsData } = await supabase.from('dream_academy_categories').select('*');
+      const cats = (catsData || []).map((d: any) => d as DreamAcademyCategory).filter((c: any) => (c as any).isActive !== false);
       setAllCategories(cats);
       const matched = cats.find(c => c.id === categoryId) || null;
       setCategory(matched);
@@ -162,38 +166,38 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
             controls
               playing={false}
               light={false}
-              config={{ 
-                youtube: { 
-                  embedOptions: { 
-                     host: 'https://www.youtube.com' 
-                  }, 
-                  playerVars: { 
-                    rel: 0,                    // منع ظهور الفيديوهات المقترحة
-                    modestbranding: 1,         // إخفاء شعار YouTube
-                    showinfo: 0,               // إخفاء معلومات الفيديو
+              config={{
+                youtube: {
+                  embedOptions: {
+                     host: 'https://www.youtube.com'
+                  },
+                  playerVars: {
+                    rel: 0,
+                    modestbranding: 1,
+                    showinfo: 0,
                     origin: typeof window !== 'undefined' ? window.location.origin : '',
                     enablejsapi: 1,
-                    iv_load_policy: 3,         // منع ظهور التعليقات
-                    cc_load_policy: 0,         // منع الترجمة التلقائية
-                    fs: 1,                     // السماح بالملء الشاشة
-                    disablekb: 0,              // السماح بمفاتيح لوحة المفاتيح
-                    autoplay: 0,               // منع التشغيل التلقائي
-                    mute: 0,                   // عدم كتم الصوت
-                    loop: 0,                   // عدم التكرار
-                    playlist: '',              // منع قائمة التشغيل
-                    controls: 1,               // إظهار عناصر التحكم
-                    playsinline: 1,            // التشغيل داخل الصفحة
-                    color: 'white',            // لون شريط التقدم
-                    hl: 'ar',                  // اللغة العربية
-                      cc_lang_pref: 'ar',        // تفضيل الترجمة العربية
-                      end: 0,                    // منع إظهار نهاية الفيديو
-                      start: 0,                  // بداية الفيديو من البداية
-                      vq: 'hd720',               // جودة الفيديو
-                      wmode: 'transparent',      // شفافية الخلفية
-                      allowfullscreen: true,     // السماح بالملء الشاشة
-                      allowscriptaccess: 'always' // السماح بالوصول للـ JavaScript
-                  } 
-                } 
+                    iv_load_policy: 3,
+                    cc_load_policy: 0,
+                    fs: 1,
+                    disablekb: 0,
+                    autoplay: 0,
+                    mute: 0,
+                    loop: 0,
+                    playlist: '',
+                    controls: 1,
+                    playsinline: 1,
+                    color: 'white',
+                    hl: 'ar',
+                      cc_lang_pref: 'ar',
+                      end: 0,
+                      start: 0,
+                      vq: 'hd720',
+                      wmode: 'transparent',
+                      allowfullscreen: true,
+                      allowscriptaccess: 'always'
+                  }
+                }
               }}
               onError={(error) => {
                   // Suppress YouTube player deprecation warnings
@@ -201,26 +205,22 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                     console.log('YouTube player compatibility warning (ignored):', error);
                     return;
                   }
-                  
+
                 console.warn('Video player error:', error);
                 let errorMessage = 'حدث خطأ في تحميل الفيديو. يرجى المحاولة مرة أخرى أو التحقق من اتصال الإنترنت.';
-                
-                // تحسين رسائل الخطأ بناءً على نوع الخطأ
+
                 if (error && typeof error === 'object') {
                   const errorStr = error.toString().toLowerCase();
-                    const errorCode = error?.data || error?.code || error?.message || '';
-                    
-                                         // معالجة خطأ 150 (عادة مشكلة في إعدادات YouTube)
+                    const errorCode = (error as any)?.data || (error as any)?.code || (error as any)?.message || '';
+
                      if (errorCode === 150 || errorStr.includes('150')) {
                        errorMessage = 'هذا الفيديو غير متاح للتشغيل المباشر. يرجى النقر على "مشاهدة على YouTube" للوصول إليه.';
-                       // إظهار رسالة الخطأ فوراً لخطأ 150
                        setVideoError(errorMessage);
                        setIsVideoLoading(false);
                        console.log('YouTube error 150 (video not available for embedding):', error);
-                       return; // لا نحاول إعادة المحاولة لخطأ 150
-                                         } else if (errorStr.includes('postmessage') || errorStr.includes('origin') || errorStr.includes('target origin')) {
+                       return;
+                     } else if (errorStr.includes('postmessage') || errorStr.includes('origin') || errorStr.includes('target origin')) {
                        errorMessage = 'مشكلة في الاتصال مع YouTube. يرجى المحاولة مرة أخرى أو استخدام الرابط المباشر.';
-                       // تجاهل أخطاء postMessage لأنها لا تؤثر على التشغيل
                        console.log('YouTube postMessage error (ignored):', error);
                        return;
                      } else if (errorStr.includes('connection_reset') || errorStr.includes('net::err_connection_reset')) {
@@ -235,7 +235,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                       errorMessage = 'هذا الفيديو غير متاح أو خاص. يرجى النقر على "مشاهدة على YouTube" للتحقق من إمكانية الوصول.';
                   }
                 }
-                
+
                 setVideoError(errorMessage);
                 setIsVideoLoading(false);
               }}
@@ -329,7 +329,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                 onClick={() => {
                   setVideoError(null);
                   setIsVideoLoading(true);
-                  setRetryCount(0); // إعادة تعيين عداد المحاولات
+                  setRetryCount(0);
                   if (s.sourceType === 'playlist' && s.playlistId) {
                     setActivePlaylistId(s.playlistId);
                     setActiveVideoId(null);
@@ -337,7 +337,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                     setActiveVideoId(s.videoId);
                     setActivePlaylistId(null);
                   }
-                  
+
                   // Set a timeout to show error if video doesn't load within 10 seconds
                   setTimeout(() => {
                     if (isVideoLoading) {
@@ -358,7 +358,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                       setActiveVideoId(s.videoId);
                       setActivePlaylistId(null);
                     }
-                    
+
                     // Set a timeout to show error if video doesn't load within 10 seconds
                     setTimeout(() => {
                       if (isVideoLoading) {
@@ -525,5 +525,3 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
     </div>
   );
 }
-
-

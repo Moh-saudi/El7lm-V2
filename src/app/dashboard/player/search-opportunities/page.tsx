@@ -2,24 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/config';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  DocumentSnapshot,
-  setDoc,
-  serverTimestamp
-} from 'firebase/firestore';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -220,7 +204,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
 
 // --- Main Page Component ---
 export default function SearchPage() {
-  const [user, loading] = useAuthState(auth);
+  const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [userData, setUserData] = useState<any>(null);
@@ -258,22 +242,20 @@ export default function SearchPage() {
         ];
 
       const fetchPromises = collectionsToFetch.map(async (colName) => {
-        let q = query(collection(db, colName));
-        if (filters.country) {
-          q = query(q, where('country', '==', filters.country));
-        }
-        const snapshot = await getDocs(q);
-
         const typeMap: any = {
           'clubs': 'club', 'agents': 'agent', 'trainers': 'trainer',
           'academies': 'academy', 'scouts': 'scout', 'sponsors': 'sponsor'
         };
         const type = typeMap[colName] || 'club';
 
-        return snapshot.docs.map(docSnap => {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
+        let sbQuery = supabase.from(colName).select('*');
+        if (filters.country) {
+          sbQuery = sbQuery.eq('country', filters.country);
+        }
+        const { data: rows } = await sbQuery;
+
+        return (rows || []).map(data => ({
+            id: data.id,
             name: data.name || data.fullName || data.full_name || data.display_name || 'كيان رياضي',
             type: type as any,
             email: data.email || '',
@@ -290,10 +272,9 @@ export default function SearchPage() {
             reviewsCount: data.reviewsCount || 0,
             followersCount: Array.isArray(data.followers) ? data.followers.length : (data.followersCount || 0),
             isPremium: data.isPremium || false,
-            isFollowing: Array.isArray(data.followers) ? data.followers.includes(user.uid) : false,
-            createdAt: data.createdAt?.toDate() || new Date(),
-          };
-        });
+            isFollowing: Array.isArray(data.followers) ? data.followers.includes(user!.id) : false,
+            createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        }));
       });
 
       const results = await Promise.all(fetchPromises);
@@ -376,8 +357,8 @@ export default function SearchPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) setUserData(userDoc.data());
+        const { data } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
+        if (data) setUserData(data);
       }
     };
     fetchUserData();
@@ -392,9 +373,12 @@ export default function SearchPage() {
     setIsActionLoading(`follow-${entity.id}`);
     try {
       const col = entity.type === 'club' ? 'clubs' : entity.type === 'agent' ? 'agents' : entity.type === 'trainer' ? 'trainers' : 'academies';
-      const ref = doc(db, col, entity.id);
-      if (entity.isFollowing) await updateDoc(ref, { followers: arrayRemove(user.uid) });
-      else await updateDoc(ref, { followers: arrayUnion(user.uid) });
+      const { data: current } = await supabase.from(col).select('followers').eq('id', entity.id).maybeSingle();
+      const currentFollowers: string[] = Array.isArray(current?.followers) ? current.followers : [];
+      const updatedFollowers = entity.isFollowing
+        ? currentFollowers.filter(f => f !== user.id)
+        : [...currentFollowers, user.id];
+      await supabase.from(col).update({ followers: updatedFollowers }).eq('id', entity.id);
       setAllData(prev => prev.map(e => e.id === entity.id ? { ...e, isFollowing: !e.isFollowing, followersCount: e.isFollowing ? e.followersCount - 1 : e.followersCount + 1 } : e));
     } catch (e) {
       toast.error('خطأ في العملية');
@@ -584,7 +568,7 @@ export default function SearchPage() {
                     entity={entity}
                     onFollow={() => handleFollow(entity)}
                     isLoading={isActionLoading === `follow-${entity.id}`}
-                    currentUserId={user?.uid}
+                    currentUserId={user?.id}
                     userData={userData}
                   />
                 ))}

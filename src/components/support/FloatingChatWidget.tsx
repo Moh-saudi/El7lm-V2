@@ -3,31 +3,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePathname } from 'next/navigation';
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp,
-  doc,
-  updateDoc,
-  getDocs
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MessageCircle, 
-  X, 
-  Send, 
+import {
+  MessageCircle,
+  X,
+  Send,
   Minimize2,
   Maximize2,
   Headphones,
   User,
-  Clock,
   CheckCircle,
   HelpCircle
 } from 'lucide-react';
@@ -67,21 +54,21 @@ interface SupportConversation {
 const FloatingChatWidget: React.FC = () => {
   const { user, userData } = useAuth();
   const pathname = usePathname();
-  
-  // تجنب console.log المتكرر
+
   const [hasLogged, setHasLogged] = useState(false);
-  
+
   useEffect(() => {
     if (!hasLogged) {
-      console.log('🔧 FloatingChatWidget - Component loaded', { 
-        pathname, 
-        user: !!user, 
+      console.log('🔧 FloatingChatWidget - Component loaded', {
+        pathname,
+        user: !!user,
         userData: !!userData,
-        accountType: userData?.accountType 
+        accountType: userData?.accountType
       });
       setHasLogged(true);
     }
   }, [pathname, user, userData, hasLogged]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
@@ -93,39 +80,27 @@ const FloatingChatWidget: React.FC = () => {
   const [priority, setPriority] = useState<string>('medium');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // تحديد الصفحات التي يجب إخفاء الأيقونة منها
   const hiddenPages = [
     '/auth/login',
-    '/auth/register', 
+    '/auth/register',
     '/admin/login',
     '/admin/login-advanced',
     '/admin/login-new',
-    '/', // الصفحة الرئيسية (landing page)
+    '/',
     '/about',
     '/contact',
     '/privacy'
   ];
 
-  // فحص إذا كان المسار الحالي يجب إخفاء الأيقونة منه
   const shouldHideWidget = () => {
-    // إخفاء الأيقونة من الصفحات المحددة
     if (hiddenPages.includes(pathname)) return true;
-    
-    // إخفاء الأيقونة من جميع صفحات الأدمن (لأن لديهم صفحة دعم فني خاصة)
     if (pathname.startsWith('/dashboard/admin')) return true;
-    
-    // إخفاء الأيقونة إذا لم يكن المستخدم مُسجل
     if (!user) return true;
-    
-    // إخفاء الأيقونة إذا كان المستخدم من نوع admin
     if (userData?.accountType === 'admin') return true;
-    
-    // إخفاء الأيقونة إذا لم تكتمل بيانات المستخدم بعد
     if (!userData?.accountType) return true;
     return false;
   };
 
-  // تحديد لون الحالة
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'bg-blue-500';
@@ -143,234 +118,115 @@ const FloatingChatWidget: React.FC = () => {
   }, [user, userData?.accountType]);
 
   useEffect(() => {
-    if (conversation) {
-      try {
-        // Try the indexed query first
-        const messagesQuery = query(
-          collection(db, 'support_messages'),
-          where('conversationId', '==', conversation.id),
-          orderBy('timestamp', 'asc')
-        );
+    if (!conversation || !user) return;
 
-        const unsubscribe = onSnapshot(
-          messagesQuery, 
-          (snapshot) => {
-            const newMessages = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as SupportMessage[];
-            
-            setMessages(newMessages);
-            
-            // Count unread messages from support
-            const unread = newMessages.filter(
-              msg => !msg.isRead && msg.senderId !== user?.uid
-            ).length;
-            setUnreadCount(unread);
-            
-            // Update read status
-            markMessagesAsRead(newMessages);
-          },
-          async (error) => {
-            console.warn('Index error, using fallback query:', error);
-            // If index error, use simple query and sort manually
-            const simpleQuery = query(
-              collection(db, 'support_messages'),
-              where('conversationId', '==', conversation.id)
-            );
+    // Initial fetch
+    loadMessagesManually();
 
-            const unsubscribeSimple = onSnapshot(
-              simpleQuery,
-              (snapshot) => {
-                const newMessages = snapshot.docs.map(doc => ({
-                  id: doc.id,
-                  ...doc.data()
-                })) as SupportMessage[];
-
-                // Sort messages by timestamp manually
-                const sortedMessages = newMessages.sort((a, b) => {
-                  const timeA = a.timestamp?.toDate?.() || new Date(0);
-                  const timeB = b.timestamp?.toDate?.() || new Date(0);
-                  return timeA.getTime() - timeB.getTime();
-                });
-                
-                setMessages(sortedMessages);
-                
-                // Count unread messages
-                const unread = sortedMessages.filter(
-                  msg => !msg.isRead && msg.senderId !== user?.uid
-                ).length;
-                setUnreadCount(unread);
-                
-                // Update read status
-                markMessagesAsRead(sortedMessages);
-              },
-              (fallbackError) => {
-                console.error('Fallback query failed:', fallbackError);
-                // Load messages manually as last resort
-                loadMessagesManually();
-              }
-            );
-
-            return () => unsubscribeSimple();
-          }
-        );
-
-        return () => unsubscribe();
-      } catch (error) {
-        console.error('Error setting up message listener:', error);
-        // Load messages manually as last resort
+    // Realtime subscription
+    const channel = supabase
+      .channel(`support-messages-${conversation.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'support_messages',
+        filter: `conversationId=eq.${conversation.id}`
+      }, () => {
         loadMessagesManually();
-      }
-    }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [conversation, user]);
 
-  // دالة بديلة لتحميل الرسائل يدوياً
   const loadMessagesManually = async () => {
     if (!conversation) return;
-    
+
     try {
-      const messagesRef = collection(db, 'support_messages');
-      const q = query(
-        messagesRef,
-        where('conversationId', '==', conversation.id)
-      );
-      
-      const snapshot = await getDocs(q);
-      const allMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SupportMessage[];
-      
-      // ترتيب الرسائل حسب الوقت محلياً
-      const sortedMessages = allMessages.sort((a, b) => {
-        if (!a.timestamp || !b.timestamp) return 0;
-        return a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime();
-      });
-      
-      setMessages(sortedMessages);
-      
-      // حساب الرسائل غير المقروءة
-      const unread = sortedMessages.filter(
-        msg => !msg.isRead && msg.senderId !== user?.uid
+      const { data: allMessages } = await supabase
+        .from('support_messages')
+        .select('*')
+        .eq('conversationId', conversation.id)
+        .order('timestamp', { ascending: true });
+
+      if (!allMessages) return;
+
+      setMessages(allMessages as SupportMessage[]);
+
+      const unread = allMessages.filter(
+        (msg: SupportMessage) => !msg.isRead && msg.senderId !== user?.id
       ).length;
       setUnreadCount(unread);
-      
-      // تحديث حالة القراءة
-      markMessagesAsRead(sortedMessages);
+
+      markMessagesAsRead(allMessages as SupportMessage[]);
     } catch (error) {
-      console.error('خطأ في تحميل الرسائل يدوياً:', error);
+      console.error('خطأ في تحميل الرسائل:', error);
     }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const loadExistingConversation = async () => {
-    if (!user) {
-      console.log('❌ لا يمكن تحميل المحادثة: المستخدم غير متوفر');
-      return;
-    }
-
-    console.log('🔄 بدء تحميل المحادثات الموجودة...');
-    console.log('👤 User ID:', user.uid);
+    if (!user) return;
 
     try {
-      // استعلام بسيط جداً بدون أي فلاتر معقدة
-      const conversationsRef = collection(db, 'support_conversations');
-      const q = query(
-        conversationsRef,
-        where('userId', '==', user.uid)
-        // إزالة orderBy لتجنب خطأ الفهرس
+      const { data: allConversations } = await supabase
+        .from('support_conversations')
+        .select('*')
+        .eq('userId', user.id);
+
+      if (!allConversations || allConversations.length === 0) return;
+
+      const sortedConversations = [...allConversations].sort((a, b) => {
+        if (!a.updatedAt || !b.updatedAt) return 0;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
+      const activeConversation = sortedConversations.find(conv =>
+        conv.status === 'open' || conv.status === 'in_progress'
       );
 
-      console.log('📋 جاري استعلام المحادثات...');
-      const snapshot = await getDocs(q);
-      
-      console.log('📊 عدد المحادثات الموجودة:', snapshot.size);
-      
-      if (!snapshot.empty) {
-        // البحث عن محادثة نشطة وترتيب النتائج محلياً
-        const allConversations = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as SupportConversation[];
-        
-        console.log('📝 المحادثات المحملة:', allConversations);
-        
-        // ترتيب محلي حسب updatedAt
-        const sortedConversations = allConversations.sort((a, b) => {
-          if (!a.updatedAt || !b.updatedAt) return 0;
-          return b.updatedAt.toDate().getTime() - a.updatedAt.toDate().getTime();
-        });
-        
-        // البحث عن محادثة نشطة
-        const activeConversation = sortedConversations.find(conv => 
-          conv.status === 'open' || conv.status === 'in_progress'
-        );
-        
-        if (activeConversation) {
-          console.log('✅ تم العثور على محادثة نشطة:', activeConversation.id);
-          setConversation(activeConversation);
-        } else {
-          console.log('ℹ️ لا توجد محادثات نشطة');
-        }
-      } else {
-        console.log('ℹ️ لا توجد محادثات للمستخدم');
+      if (activeConversation) {
+        setConversation(activeConversation as SupportConversation);
       }
     } catch (error) {
       console.error('❌ خطأ في تحميل المحادثة:', error);
-      // في حالة فشل الاستعلام، لا نعرض خطأ للمستخدم
-      // سيتمكن من إنشاء محادثة جديدة
     }
   };
 
   const createNewConversation = async () => {
     if (!user || !userData) {
-      console.error('❌ لا يمكن إنشاء محادثة: المستخدم أو بيانات المستخدم غير متوفرة');
       toast.error('يرجى تسجيل الدخول أولاً');
       return;
     }
 
-    console.log('🚀 بدء إنشاء محادثة جديدة...');
-    console.log('👤 User:', user.uid);
-    console.log('📊 UserData:', userData);
-
     setLoading(true);
     try {
+      const now = new Date().toISOString();
+      const newId = crypto.randomUUID();
       const newConversation = {
-        userId: user.uid,
+        id: newId,
+        userId: user.id,
         userName: userData.name || userData.displayName || userData.full_name || 'مستخدم',
         userType: userData.accountType || 'player',
         status: 'open',
-        priority: priority,
-        category: category,
+        priority,
+        category,
         lastMessage: '',
-        lastMessageTime: serverTimestamp(),
+        lastMessageTime: now,
         unreadCount: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: now,
+        updatedAt: now
       };
 
-      console.log('📝 إنشاء محادثة جديدة:', newConversation);
+      await supabase.from('support_conversations').insert(newConversation);
 
-      const conversationRef = await addDoc(collection(db, 'support_conversations'), newConversation);
-      
-      console.log('✅ تم إنشاء المحادثة بنجاح:', conversationRef.id);
-
-      setConversation({
-        id: conversationRef.id,
-        ...newConversation
-      } as SupportConversation);
-
-      // إرسال رسالة ترحيبية
-      await sendWelcomeMessage(conversationRef.id);
-      
+      setConversation(newConversation as SupportConversation);
+      await sendWelcomeMessage(newId);
       toast.success('تم إنشاء محادثة دعم فني جديدة');
     } catch (error) {
       console.error('❌ خطأ في إنشاء المحادثة:', error);
@@ -382,67 +238,53 @@ const FloatingChatWidget: React.FC = () => {
 
   const sendWelcomeMessage = async (conversationId: string) => {
     try {
-      const welcomeMessage = {
+      await supabase.from('support_messages').insert({
+        id: crypto.randomUUID(),
         conversationId,
         senderId: 'system',
         senderName: 'نظام الدعم الفني',
         senderType: 'system',
         message: 'مرحباً بك في الدعم الفني لـ الحلم el7lm! 👋\n\nكيف يمكننا مساعدتك اليوم؟ فريق الدعم سيرد عليك في أقرب وقت ممكن.',
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(),
         isRead: true
-      };
-
-      await addDoc(collection(db, 'support_messages'), welcomeMessage);
-      console.log('✅ تم إرسال رسالة الترحيب');
+      });
     } catch (error) {
       console.error('❌ خطأ في إرسال رسالة الترحيب:', error);
     }
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !user || !userData) {
-      console.error('❌ لا يمكن إرسال الرسالة: البيانات غير مكتملة');
-      return;
-    }
+    if (!message.trim() || !user || !userData) return;
+    if (loading) return;
 
-    // منع الإرسال المتكرر
-    if (loading) {
-      console.log('🛑 Chat message sending blocked - already loading');
-      return;
-    }
-
-    // إنشاء محادثة جديدة إذا لم تكن موجودة
     if (!conversation) {
-      console.log('🔄 لا توجد محادثة، إنشاء محادثة جديدة...');
       await createNewConversation();
       return;
     }
 
     setLoading(true);
     try {
+      const now = new Date().toISOString();
       const newMessage = {
+        id: crypto.randomUUID(),
         conversationId: conversation.id,
-        senderId: user.uid,
+        senderId: user.id,
         senderName: userData.name || userData.displayName || userData.full_name || 'مستخدم',
         senderType: userData.accountType || 'player',
         message: message.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: now,
         isRead: false
       };
 
-      console.log('📤 إرسال رسالة جديدة:', newMessage);
+      await supabase.from('support_messages').insert(newMessage);
 
-      await addDoc(collection(db, 'support_messages'), newMessage);
-
-      // تحديث المحادثة
-      await updateDoc(doc(db, 'support_conversations', conversation.id), {
+      await supabase.from('support_conversations').update({
         lastMessage: message.trim(),
-        lastMessageTime: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        lastMessageTime: now,
+        updatedAt: now,
         status: conversation.status === 'resolved' ? 'open' : conversation.status
-      });
+      }).eq('id', conversation.id);
 
-      // إرسال إشعار للأدمن
       await sendAdminNotification(newMessage);
 
       setMessage('');
@@ -455,7 +297,6 @@ const FloatingChatWidget: React.FC = () => {
     }
   };
 
-  // دالة إرسال إشعار للأدمن
   const sendAdminNotification = async (messageData: any) => {
     try {
       const senderInfo = buildSenderInfo({
@@ -466,7 +307,7 @@ const FloatingChatWidget: React.FC = () => {
       });
 
       const notificationData = {
-        userId: 'system', // إشعار للنظام
+        userId: 'system',
         title: 'رسالة دعم فني جديدة',
         body: `${messageData.senderName}: ${messageData.message.substring(0, 50)}${messageData.message.length > 50 ? '...' : ''}`,
         type: 'support',
@@ -476,8 +317,8 @@ const FloatingChatWidget: React.FC = () => {
         conversationId: messageData.conversationId,
         link: `/dashboard/admin/support?conversation=${messageData.conversationId}`,
         isRead: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         priority: conversation?.priority || 'medium',
         category: conversation?.category || 'general',
         metadata: {
@@ -490,22 +331,17 @@ const FloatingChatWidget: React.FC = () => {
       };
 
       const normalizedNotification = normalizeNotificationPayload(notificationData, senderInfo);
-
-      await addDoc(collection(db, 'notifications'), normalizedNotification);
-      console.log('✅ تم إرسال إشعار للأدمن');
+      await supabase.from('notifications').insert({ id: crypto.randomUUID(), ...normalizedNotification });
     } catch (error) {
       console.error('❌ خطأ في إرسال إشعار الأدمن:', error);
     }
   };
 
   const markMessagesAsRead = async (msgs: SupportMessage[]) => {
-    const unreadMessages = msgs.filter(msg => !msg.isRead && msg.senderId !== user?.uid);
-    
+    const unreadMessages = msgs.filter(msg => !msg.isRead && msg.senderId !== user?.id);
     for (const msg of unreadMessages) {
       try {
-        await updateDoc(doc(db, 'support_messages', msg.id), {
-          isRead: true
-        });
+        await supabase.from('support_messages').update({ isRead: true }).eq('id', msg.id);
       } catch (error) {
         console.error('خطأ في تحديث حالة القراءة:', error);
       }
@@ -521,13 +357,11 @@ const FloatingChatWidget: React.FC = () => {
 
   return (
     <>
-      {/* أيقونة الدعم الفني - ثابتة في أسفل يسار الشاشة */}
       {!shouldHideWidget() && (
         <div className="fixed bottom-6 left-6 z-[9999] md:bottom-6 bottom-[76px]">
           <div className="relative">
-            {/* تأثير النبض */}
             <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20"></div>
-            
+
             <Button
               onClick={() => setIsOpen(!isOpen)}
               className="relative w-16 h-16 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-full shadow-2xl transition-all duration-500 ease-out hover:from-green-600 hover:to-emerald-700 hover:shadow-3xl hover:scale-[1.02] border-2 border-white"
@@ -535,16 +369,15 @@ const FloatingChatWidget: React.FC = () => {
             >
               <MessageCircle className="w-7 h-7" />
               {unreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="flex absolute -top-2 -right-2 justify-center items-center p-0 w-6 h-6 text-xs rounded-full animate-bounce"
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </Badge>
               )}
             </Button>
-            
-            {/* تلميح عند التمرير */}
+
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-500 whitespace-nowrap">
               الدعم الفني
             </div>
@@ -552,10 +385,8 @@ const FloatingChatWidget: React.FC = () => {
         </div>
       )}
 
-      {/* نافذة الدعم الفني */}
       {isOpen && !shouldHideWidget() && (
         <div className="fixed bottom-6 left-6 z-[9999] w-96 max-h-[600px] bg-white rounded-lg shadow-2xl border border-gray-200">
-          {/* رأس النافذة */}
           <div className="p-4 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-lg">
             <div className="flex justify-between items-center">
             <div className="flex gap-2 items-center">
@@ -592,10 +423,8 @@ const FloatingChatWidget: React.FC = () => {
             </div>
           </div>
 
-          {/* محتوى النافذة */}
           {!isMinimized && (
             <div className="flex flex-col h-96">
-              {/* منطقة الرسائل */}
               <div className="overflow-y-auto flex-1 p-4 bg-gray-50">
                 {loading ? (
                   <div className="flex justify-center items-center h-full">
@@ -613,7 +442,7 @@ const FloatingChatWidget: React.FC = () => {
                       <div
                         key={`${msg.id}-${index}`}
                         className={`flex items-start gap-2 ${
-                          msg.senderId === user?.uid ? 'flex-row-reverse' : 'flex-row'
+                          msg.senderId === user?.id ? 'flex-row-reverse' : 'flex-row'
                         }`}
                       >
                         <div className="flex-shrink-0">
@@ -623,7 +452,7 @@ const FloatingChatWidget: React.FC = () => {
                         </div>
                         <div
                           className={`max-w-[80%] rounded-lg p-3 ${
-                            msg.senderId === user?.uid
+                            msg.senderId === user?.id
                               ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
                               : 'bg-white text-gray-900 border border-gray-200'
                           }`}
@@ -631,15 +460,15 @@ const FloatingChatWidget: React.FC = () => {
                           <p className="text-sm">{msg.message}</p>
                           <div className="flex gap-1 items-center mt-1">
                             <span className="text-xs opacity-70">
-                              {msg.timestamp?.toDate ? 
-                                formatDistanceToNow(msg.timestamp.toDate(), { 
-                                  addSuffix: true, 
-                                  locale: ar 
-                                }) : 
+                              {msg.timestamp ?
+                                formatDistanceToNow(new Date(msg.timestamp), {
+                                  addSuffix: true,
+                                  locale: ar
+                                }) :
                                 'الآن'
                               }
                               </span>
-                            {msg.senderId === user?.uid && (
+                            {msg.senderId === user?.id && (
                               <CheckCircle className="w-3 h-3 opacity-70" />
                             )}
                           </div>
@@ -651,7 +480,6 @@ const FloatingChatWidget: React.FC = () => {
                 )}
               </div>
 
-              {/* منطقة إدخال الرسالة */}
               <div className="p-4 bg-white border-t">
                 <div className="flex gap-2 items-center">
                     <Input

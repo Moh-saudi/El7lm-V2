@@ -17,8 +17,7 @@ import DreamAcademyVideosSection from '@/components/dream-academy/DreamAcademyVi
 import type { DreamAcademyCategoryId } from '@/types/dream-academy';
 import AcademyHero from '@/components/dream-academy/AcademyHero';
 import CategoryTabs from '@/components/dream-academy/CategoryTabs';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import type { DreamAcademyCategory } from '@/types/dream-academy';
 
 export default function DreamAcademyPage() {
@@ -40,8 +39,10 @@ export default function DreamAcademyPage() {
   useEffect(() => {
     (async () => {
       try {
-        const snap = await getDocs(collection(db, 'dream_academy_categories'));
-        const cats = snap.docs.map(d => d.data() as DreamAcademyCategory).filter(c => (c as any).isActive !== false);
+        const { data } = await supabase
+          .from('dream_academy_categories')
+          .select('*');
+        const cats = (data || []).map(d => d as DreamAcademyCategory).filter(c => (c as any).isActive !== false);
         const deduped = uniqueById(cats);
         setAllCategories(deduped);
         // Initialize default selected category for current group

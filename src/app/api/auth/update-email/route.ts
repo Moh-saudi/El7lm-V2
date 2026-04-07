@@ -1,62 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
-    try {
-        const { userId, userCollection, email } = await request.json();
+  try {
+    const { userId, userCollection, email } = await request.json();
 
-        if (!userId || !userCollection || !email) {
-            return NextResponse.json(
-                { success: false, error: 'Missing required fields' },
-                { status: 400 }
-            );
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return NextResponse.json(
-                { success: false, error: 'Invalid email format' },
-                { status: 400 }
-            );
-        }
-
-        // Update user's email in their collection
-        await adminDb.collection(userCollection).doc(userId).set(
-            { email },
-            { merge: true }
-        );
-
-        // Also update in 'users' collection if not already there
-        if (userCollection !== 'users') {
-            await adminDb.collection('users').doc(userId).set(
-                { email },
-                { merge: true }
-            );
-        }
-
-        // IMPORTANT: Also update in Firebase Auth
-        // This is necessary so that 'generate-reset-link' can find the user by email
-        try {
-            const { adminAuth } = await import('@/lib/firebase/admin');
-            await adminAuth.updateUser(userId, {
-                email: email,
-                emailVerified: false // They'll verify it by clicking the reset link essentially
-            });
-            console.log(`✅ [update-email] Updated Firebase Auth for user ${userId} with email ${email}`);
-        } catch (authError: any) {
-            console.warn(`⚠️ [update-email] Could not update Firebase Auth:`, authError.message);
-            // We don't fail here because Firestore is updated, but we log the warning
-            // If it's 'auth/email-already-exists', it means another account has this email
-        }
-
-        return NextResponse.json({ success: true });
-
-    } catch (error: any) {
-        console.error('Update email error:', error);
-        return NextResponse.json(
-            { success: false, error: error.message || 'Failed to update email' },
-            { status: 500 }
-        );
+    if (!userId || !userCollection || !email) {
+      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
+    }
+
+    const db = getSupabaseAdmin();
+
+    // تحديث الإيميل في الجدول المخصص
+    await db.from(userCollection).update({ email }).eq('id', userId);
+
+    // تحديث في جدول users أيضاً
+    if (userCollection !== 'users') {
+      await db.from('users').update({ email }).eq('id', userId);
+    }
+
+    // تحديث في Supabase Auth
+    try {
+      const { data: authUser } = await db.auth.admin.getUserById(userId);
+      if (authUser?.user) {
+        await db.auth.admin.updateUserById(userId, { email });
+        console.log(`✅ [update-email] Updated Supabase Auth for user ${userId} with email ${email}`);
+      }
+    } catch (authError: any) {
+      console.warn(`⚠️ [update-email] Could not update Supabase Auth:`, authError.message);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Update email error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Failed to update email' }, { status: 500 });
+  }
 }

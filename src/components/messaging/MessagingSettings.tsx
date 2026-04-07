@@ -2,19 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  MessageSquare, 
-  Bell, 
-  Shield, 
-  Users, 
-  Eye, 
+import {
+  MessageSquare,
+  Bell,
+  Shield,
+  Users,
+  Eye,
   EyeOff,
   Settings,
   Save,
@@ -73,12 +72,16 @@ const MessagingSettingsComponent: React.FC = () => {
     if (!user) return;
 
     try {
-      const settingsDoc = await getDoc(doc(db, 'messaging_settings', user.uid));
-      
-      if (settingsDoc.exists()) {
-        const savedSettings = settingsDoc.data() as MessagingSettings;
+      const { data: settingsData } = await supabase
+        .from('messaging_settings')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (settingsData) {
+        const savedSettings = settingsData as MessagingSettings;
         setSettings({ ...defaultSettings, ...savedSettings });
-        
+
         // جلب تفاصيل المستخدمين المحظورين
         if (savedSettings.blockedUsers && savedSettings.blockedUsers.length > 0) {
           await loadBlockedUsersDetails(savedSettings.blockedUsers);
@@ -96,30 +99,30 @@ const MessagingSettingsComponent: React.FC = () => {
 
   const loadBlockedUsersDetails = async (blockedUserIds: string[]) => {
     try {
-      const userPromises = [];
-      
-      // البحث في جميع المجموعات
-      const collections = ['clubs', 'players', 'agents', 'academies', 'trainers'];
-      
-      for (const collectionName of collections) {
+      // البحث في جميع الجداول
+      const tables = ['clubs', 'players', 'agents', 'academies', 'trainers'];
+      const userPromises: PromiseLike<any>[] = [];
+
+      for (const tableName of tables) {
         for (const userId of blockedUserIds) {
           userPromises.push(
-            getDoc(doc(db, collectionName, userId)).then(doc => {
-              if (doc.exists()) {
-                return {
-                  id: doc.id,
-                  type: collectionName,
-                  ...doc.data()
-                };
-              }
-              return null;
-            }).catch(() => null)
+            supabase
+              .from(tableName)
+              .select('*')
+              .eq('id', userId)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  return { ...data, type: tableName };
+                }
+                return null;
+              })
           );
         }
       }
-      
+
       const results = await Promise.all(userPromises);
-      const validUsers = results.filter(user => user !== null);
+      const validUsers = results.filter(u => u !== null);
       setBlockedUsersDetails(validUsers);
     } catch (error) {
       console.error('خطأ في جلب تفاصيل المستخدمين المحظورين:', error);
@@ -131,7 +134,9 @@ const MessagingSettingsComponent: React.FC = () => {
 
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'messaging_settings', user.uid), settings as any);
+      await supabase
+        .from('messaging_settings')
+        .upsert({ id: user.id, ...(settings as any) });
       toast.success('تم حفظ الإعدادات بنجاح');
     } catch (error) {
       console.error('خطأ في حفظ الإعدادات:', error);
@@ -149,10 +154,10 @@ const MessagingSettingsComponent: React.FC = () => {
   const unblockUser = async (userId: string) => {
     const updatedBlockedUsers = settings.blockedUsers.filter(id => id !== userId);
     setSettings(prev => ({ ...prev, blockedUsers: updatedBlockedUsers }));
-    
+
     // تحديث قائمة المستخدمين المحظورين المعروضة
-    setBlockedUsersDetails(prev => prev.filter(user => user.id !== userId));
-    
+    setBlockedUsersDetails(prev => prev.filter(u => u.id !== userId));
+
     toast.success('تم إلغاء حظر المستخدم');
   };
 
@@ -213,7 +218,7 @@ const MessagingSettingsComponent: React.FC = () => {
             </Label>
             <Switch
               checked={settings.allowMessagesFromAll}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, allowMessagesFromAll: checked }))
               }
             />
@@ -225,7 +230,7 @@ const MessagingSettingsComponent: React.FC = () => {
                 <Label>السماح بالرسائل من الأندية</Label>
                 <Switch
                   checked={settings.allowMessagesFromClubs}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setSettings(prev => ({ ...prev, allowMessagesFromClubs: checked }))
                   }
                 />
@@ -235,7 +240,7 @@ const MessagingSettingsComponent: React.FC = () => {
                 <Label>السماح بالرسائل من اللاعبين</Label>
                 <Switch
                   checked={settings.allowMessagesFromPlayers}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setSettings(prev => ({ ...prev, allowMessagesFromPlayers: checked }))
                   }
                 />
@@ -245,7 +250,7 @@ const MessagingSettingsComponent: React.FC = () => {
                 <Label>السماح بالرسائل من الوكلاء</Label>
                 <Switch
                   checked={settings.allowMessagesFromAgents}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setSettings(prev => ({ ...prev, allowMessagesFromAgents: checked }))
                   }
                 />
@@ -255,7 +260,7 @@ const MessagingSettingsComponent: React.FC = () => {
                 <Label>السماح بالرسائل من الأكاديميات</Label>
                 <Switch
                   checked={settings.allowMessagesFromAcademies}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setSettings(prev => ({ ...prev, allowMessagesFromAcademies: checked }))
                   }
                 />
@@ -265,7 +270,7 @@ const MessagingSettingsComponent: React.FC = () => {
                 <Label>السماح بالرسائل من المدربين</Label>
                 <Switch
                   checked={settings.allowMessagesFromTrainers}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setSettings(prev => ({ ...prev, allowMessagesFromTrainers: checked }))
                   }
                 />
@@ -280,7 +285,7 @@ const MessagingSettingsComponent: React.FC = () => {
             </Label>
             <Switch
               checked={settings.showReadReceipts}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, showReadReceipts: checked }))
               }
             />
@@ -293,7 +298,7 @@ const MessagingSettingsComponent: React.FC = () => {
             </Label>
             <Switch
               checked={settings.showOnlineStatus}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, showOnlineStatus: checked }))
               }
             />
@@ -314,7 +319,7 @@ const MessagingSettingsComponent: React.FC = () => {
             <Label>إشعارات البريد الإلكتروني</Label>
             <Switch
               checked={settings.emailNotifications}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, emailNotifications: checked }))
               }
             />
@@ -324,7 +329,7 @@ const MessagingSettingsComponent: React.FC = () => {
             <Label>الإشعارات الفورية</Label>
             <Switch
               checked={settings.pushNotifications}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, pushNotifications: checked }))
               }
             />
@@ -334,7 +339,7 @@ const MessagingSettingsComponent: React.FC = () => {
             <Label>أصوات الإشعارات</Label>
             <Switch
               checked={settings.soundNotifications}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, soundNotifications: checked }))
               }
             />
@@ -355,7 +360,7 @@ const MessagingSettingsComponent: React.FC = () => {
             <Label>تفعيل الرد التلقائي</Label>
             <Switch
               checked={settings.autoReply}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setSettings(prev => ({ ...prev, autoReply: checked }))
               }
             />
@@ -366,7 +371,7 @@ const MessagingSettingsComponent: React.FC = () => {
               <Label>رسالة الرد التلقائي</Label>
               <Textarea
                 value={settings.autoReplyMessage}
-                onChange={(e) => 
+                onChange={(e) =>
                   setSettings(prev => ({ ...prev, autoReplyMessage: e.target.value }))
                 }
                 placeholder="اكتب رسالة الرد التلقائي..."
@@ -440,4 +445,4 @@ const MessagingSettingsComponent: React.FC = () => {
   );
 };
 
-export default MessagingSettingsComponent; 
+export default MessagingSettingsComponent;

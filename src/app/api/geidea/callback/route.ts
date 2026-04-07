@@ -78,12 +78,13 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET - التحقق من حالة دفعة معينة من Firestore
+ * GET - التحقق من حالة دفعة معينة من Supabase
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminDb } = await import('@/lib/firebase/admin');
-    
+    const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
+    const db = getSupabaseAdmin();
+
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
     const merchantReferenceId = searchParams.get('merchantReferenceId');
@@ -95,24 +96,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!adminDb) {
-      return NextResponse.json(
-        { error: 'Database is not available' },
-        { status: 503, headers: CORS_HEADERS }
-      );
-    }
-
     // البحث باستخدام orderId أولاً
     if (orderId) {
-      const docSnap = await adminDb.collection('geidea_payments').doc(orderId).get();
-      if (docSnap.exists) {
+      const { data } = await db.from('geidea_payments').select('*').eq('id', orderId).limit(1);
+      if (data?.length) {
+        const row = data[0] as Record<string, unknown>;
         return NextResponse.json(
-          {
-            success: true,
-            orderId,
-            status: docSnap.get('status') || 'pending',
-            data: docSnap.data(),
-          },
+          { success: true, orderId, status: row.status || 'pending', data: row },
           { headers: CORS_HEADERS }
         );
       }
@@ -120,67 +110,33 @@ export async function GET(request: NextRequest) {
 
     // البحث باستخدام merchantReferenceId
     if (merchantReferenceId) {
-      // البحث في حقل merchantReferenceId
-      const querySnapshot = await adminDb
-        .collection('geidea_payments')
-        .where('merchantReferenceId', '==', merchantReferenceId)
-        .limit(1)
-        .get();
-
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
+      const { data } = await db.from('geidea_payments').select('*').eq('merchantReferenceId', merchantReferenceId).limit(1);
+      if (data?.length) {
+        const row = data[0] as Record<string, unknown>;
         return NextResponse.json(
-          {
-            success: true,
-            orderId: doc.id,
-            merchantReferenceId,
-            status: doc.get('status') || 'pending',
-            data: doc.data(),
-          },
+          { success: true, orderId: row.id, merchantReferenceId, status: row.status || 'pending', data: row },
           { headers: CORS_HEADERS }
         );
       }
 
-      // البحث أيضاً في حقل ourMerchantReferenceId
-      const querySnapshot2 = await adminDb
-        .collection('geidea_payments')
-        .where('ourMerchantReferenceId', '==', merchantReferenceId)
-        .limit(1)
-        .get();
-
-      if (!querySnapshot2.empty) {
-        const doc = querySnapshot2.docs[0];
+      const { data: data2 } = await db.from('geidea_payments').select('*').eq('ourMerchantReferenceId', merchantReferenceId).limit(1);
+      if (data2?.length) {
+        const row = data2[0] as Record<string, unknown>;
         return NextResponse.json(
-          {
-            success: true,
-            orderId: doc.id,
-            merchantReferenceId,
-            status: doc.get('status') || 'pending',
-            data: doc.data(),
-          },
+          { success: true, orderId: row.id, merchantReferenceId, status: row.status || 'pending', data: row },
           { headers: CORS_HEADERS }
         );
       }
     }
 
-    // إذا لم نجد في أي مكان
     return NextResponse.json(
-      {
-        success: false,
-        orderId: orderId || null,
-        merchantReferenceId: merchantReferenceId || null,
-        status: 'not_found',
-        message: 'Payment not found in database. Callback may not have been received yet.',
-      },
+      { success: false, orderId: orderId || null, merchantReferenceId: merchantReferenceId || null, status: 'not_found', message: 'Payment not found in database.' },
       { status: 404, headers: CORS_HEADERS }
     );
   } catch (error) {
     console.error('❌ [Geidea Callback] Error checking payment status:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to check payment status',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to check payment status', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500, headers: CORS_HEADERS }
     );
   }

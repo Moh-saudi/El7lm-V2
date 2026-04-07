@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EmailType, EmailLog } from '@/types/email';
 
 // Initialize Resend with API Key
@@ -100,8 +100,9 @@ async function logEmail(data: Omit<EmailLog, 'id' | 'sentAt'>) {
             sentAt: Date.now(),
         };
 
-        await adminDb.collection('email_logs').add(logEntry);
-        console.log('📝 [EmailService] Logged to Firestore');
+        const db = getSupabaseAdmin();
+        await db.from('email_logs').insert({ id: crypto.randomUUID(), ...logEntry });
+        console.log('📝 [EmailService] Logged to Supabase');
     } catch (logErr) {
         // Don't throw if logging fails, just warn
         console.warn('⚠️ [EmailService] Failed to log email to Firestore:', logErr);

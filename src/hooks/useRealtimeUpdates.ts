@@ -1,5 +1,12 @@
-import { DocumentData, onSnapshot, Query, Unsubscribe } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { useCallback, useEffect, useRef } from 'react';
+
+export interface RealtimeQueryConfig {
+  table: string;
+  schema?: string;
+  filter?: string; // e.g. "userId=eq.123"
+  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+}
 
 interface UseRealtimeUpdatesOptions {
   enabled?: boolean;
@@ -17,7 +24,7 @@ interface UseRealtimeUpdatesReturn {
 }
 
 export const useRealtimeUpdates = (
-  query: Query<DocumentData>,
+  queryConfig: RealtimeQueryConfig,
   options: UseRealtimeUpdatesOptions = {}
 ): UseRealtimeUpdatesReturn => {
   const {
@@ -27,7 +34,7 @@ export const useRealtimeUpdates = (
     debounceMs = 1000
   } = options;
 
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isConnectedRef = useRef(false);
   const lastUpdateRef = useRef<Date | null>(null);
   const errorRef = useRef<Error | null>(null);
@@ -44,42 +51,10 @@ export const useRealtimeUpdates = (
     }, debounceMs);
   }, [onUpdate, debounceMs]);
 
-  const handleError = useCallback((error: Error) => {
-    errorRef.current = error;
-    isConnectedRef.current = false;
-    onError?.(error);
-  }, [onError]);
-
-  const connect = useCallback(() => {
-    if (!enabled || unsubscribeRef.current) return;
-
-    try {
-      unsubscribeRef.current = onSnapshot(
-        query,
-        (snapshot) => {
-          isConnectedRef.current = true;
-          errorRef.current = null;
-
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-
-          handleUpdate(data);
-        },
-        (error) => {
-          handleError(error);
-        }
-      );
-    } catch (error) {
-      handleError(error as Error);
-    }
-  }, [query, enabled, handleUpdate, handleError]);
-
   const disconnect = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
     isConnectedRef.current = false;
 
@@ -88,6 +63,41 @@ export const useRealtimeUpdates = (
       debounceTimerRef.current = null;
     }
   }, []);
+
+  const connect = useCallback(() => {
+    if (!enabled || channelRef.current) return;
+
+    const channelName = `realtime-${queryConfig.table}-${Date.now()}`;
+    const channel = supabase.channel(channelName);
+
+    const pgConfig: Record<string, unknown> = {
+      event: queryConfig.event || '*',
+      schema: queryConfig.schema || 'public',
+      table: queryConfig.table
+    };
+    if (queryConfig.filter) {
+      pgConfig.filter = queryConfig.filter;
+    }
+
+    channel.on('postgres_changes' as any, pgConfig, (payload: any) => {
+      isConnectedRef.current = true;
+      errorRef.current = null;
+      handleUpdate([payload.new || payload.old]);
+    });
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        isConnectedRef.current = true;
+      } else if (status === 'CHANNEL_ERROR') {
+        const err = new Error('Realtime channel error');
+        errorRef.current = err;
+        isConnectedRef.current = false;
+        onError?.(err);
+      }
+    });
+
+    channelRef.current = channel;
+  }, [queryConfig, enabled, handleUpdate, onError]);
 
   const reconnect = useCallback(() => {
     disconnect();

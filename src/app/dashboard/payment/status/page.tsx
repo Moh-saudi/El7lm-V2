@@ -1,12 +1,11 @@
 'use client';
 
 import DashboardLayout from "@/components/layout/DashboardLayout.jsx";
-import { auth, db } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
+import { useAuth } from '@/lib/firebase/auth-provider';
 import { AlertCircle, Clock, Download, Printer } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
 
 interface SubscriptionStatus {
   plan_name: string;
@@ -33,7 +32,7 @@ interface SubscriptionStatus {
 function SubscriptionStatusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [user] = useAuthState(auth);
+  const { user } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +46,14 @@ function SubscriptionStatusContent() {
           return;
         }
 
-        const subscriptionRef = doc(db, 'subscriptions', user.uid);
-        const subscriptionDoc = await getDoc(subscriptionRef);
+        const { data, error: fetchError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-        if (subscriptionDoc.exists()) {
-          const data = subscriptionDoc.data() as SubscriptionStatus;
-          setSubscription(data);
+        if (data) {
+          setSubscription(data as SubscriptionStatus);
         } else {
           setError('لم يتم العثور على بيانات الاشتراك');
         }

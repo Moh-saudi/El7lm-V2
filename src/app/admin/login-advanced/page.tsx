@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, AlertCircle, Loader2, Shield, Eye, EyeOff, CheckCircle, XCircle, Info } from 'lucide-react';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,36 +31,33 @@ export default function AdminLoginAdvancedPage() {
 
   useEffect(() => {
     addDebugInfo('تم تحميل صفحة تسجيل الدخول المتقدمة');
-    addDebugInfo(`Firebase Auth: ${auth ? '✅ متاح' : '❌ غير متاح'}`);
-    addDebugInfo(`Firestore DB: ${db ? '✅ متاح' : '❌ غير متاح'}`);
+    addDebugInfo(`Supabase: ${supabase ? '✅ متاح' : '❌ غير متاح'}`);
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        addDebugInfo(`✅ مستخدم مسجل: ${user.email} (${user.uid})`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        addDebugInfo(`✅ مستخدم مسجل: ${session.user.email} (${session.user.id})`);
       } else {
         addDebugInfo('ℹ️ لا يوجد مستخدم مسجل');
       }
     });
-
-    return () => unsubscribe();
   }, []);
 
-  const testFirebaseConnection = async () => {
+  const testSupabaseConnection = async () => {
     setStep('testing-firebase');
-    addDebugInfo('🔄 اختبار اتصال Firebase...');
+    addDebugInfo('🔄 اختبار اتصال Supabase...');
 
     try {
-      const testDoc = await getDoc(doc(db, 'test', 'connection'));
-      addDebugInfo('✅ اتصال Firestore يعمل');
+      const { data, error } = await supabase.from('test').select('*').eq('id', 'connection').single();
+      addDebugInfo('✅ اتصال Supabase يعمل');
 
-      const currentUser = auth.currentUser;
-      addDebugInfo(`Auth Current User: ${currentUser ? currentUser.email : 'null'}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      addDebugInfo(`Auth Current User: ${user ? user.email : 'null'}`);
 
-      setSuccess('Firebase متصل بنجاح');
+      setSuccess('Supabase متصل بنجاح');
       setStep('ready');
     } catch (error: any) {
-      addDebugInfo(`❌ خطأ Firebase: ${error.message}`);
-      setError(`خطأ Firebase: ${error.message}`);
+      addDebugInfo(`❌ خطأ Supabase: ${error.message}`);
+      setError(`خطأ Supabase: ${error.message}`);
       setStep('ready');
     }
   };
@@ -86,23 +81,22 @@ export default function AdminLoginAdvancedPage() {
     addDebugInfo(`📧 البريد: ${email}`);
 
     try {
-      addDebugInfo('📝 الخطوة 1: Firebase Auth');
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      addDebugInfo('📝 الخطوة 1: Supabase Auth');
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      const user = authData.user;
 
-      addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.uid}`);
+      addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.id}`);
       setStep('checking-user-data');
 
       addDebugInfo('📝 الخطوة 2: فحص بيانات المستخدم');
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
 
-      if (!userDoc.exists()) {
+      if (!userData) {
         addDebugInfo('❌ مستند المستخدم غير موجود');
         throw new Error('بيانات المستخدم غير موجودة');
       }
 
-      const userData = userDoc.data();
       addDebugInfo(`✅ بيانات المستخدم: ${userData.name} (${userData.accountType})`);
 
       setStep('checking-admin-permissions');
@@ -117,11 +111,9 @@ export default function AdminLoginAdvancedPage() {
       } else {
         addDebugInfo('ℹ️ فحص admins collection...');
 
-        const adminDocRef = doc(db, 'admins', user.uid);
-        const adminDoc = await getDoc(adminDocRef);
+        const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
 
-        if (adminDoc.exists()) {
-          const adminData = adminDoc.data();
+        if (adminData) {
           addDebugInfo(`✅ موجود في admins: ${adminData.role} (نشط: ${adminData.isActive})`);
 
           if (adminData.isActive) {
@@ -150,10 +142,8 @@ export default function AdminLoginAdvancedPage() {
 
       let errorMessage = 'حدث خطأ في تسجيل الدخول';
 
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'البريد الإلكتروني غير مسجل';
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = 'كلمة المرور غير صحيحة';
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -277,9 +267,9 @@ export default function AdminLoginAdvancedPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={testFirebaseConnection}
+                  onClick={testSupabaseConnection}
                 >
-                  اختبار Firebase
+                  اختبار Supabase
                 </Button>
               </div>
             </form>
@@ -324,7 +314,7 @@ export default function AdminLoginAdvancedPage() {
             <div className="mt-4 p-3 bg-gray-800 rounded-lg">
               <h4 className="text-yellow-400 mb-2">معلومات النظام</h4>
               <div className="space-y-1 text-xs text-gray-300">
-                <div>🔗 الحالة: {auth && db ? '✅ متصل' : '❌ غير متصل'}</div>
+                <div>🔗 الحالة: {supabase ? '✅ متصل' : '❌ غير متصل'}</div>
               </div>
             </div>
           </CardContent>
@@ -332,4 +322,4 @@ export default function AdminLoginAdvancedPage() {
       </div>
     </div>
   );
-} 
+}

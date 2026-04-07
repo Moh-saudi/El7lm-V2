@@ -22,8 +22,7 @@ import {
 import Link from 'next/link';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { motion } from 'framer-motion';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 export default function AdminDreamAcademyPage() {
   const [counts, setCounts] = useState({ videos: 0, categories: 0, views: 0 });
@@ -32,20 +31,14 @@ export default function AdminDreamAcademyPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [videoSnap, catSnap] = await Promise.all([
-          getDocs(collection(db, 'dream_academy_sources')),
-          getDocs(collection(db, 'dream_academy_categories'))
+        const [{ count: videoCount }, { count: catCount }] = await Promise.all([
+          supabase.from('dream_academy_sources').select('*', { count: 'exact', head: true }),
+          supabase.from('dream_academy_categories').select('*', { count: 'exact', head: true })
         ]);
 
-        let totalViews = 0;
-        videoSnap.docs.forEach(doc => {
-          // views might be in a nested field or separate collection, 
-          // but for simplicity we'll just count docs for now
-        });
-
         setCounts({
-          videos: videoSnap.size,
-          categories: catSnap.size,
+          videos: videoCount || 0,
+          categories: catCount || 0,
           views: 0 // Placeholder for now
         });
       } catch (error) {

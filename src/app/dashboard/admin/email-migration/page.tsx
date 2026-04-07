@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -89,14 +88,14 @@ export default function EmailMigration() {
       for (const collectionName of collections) {
         try {
           console.log(`📂 Email Migration - Loading from ${collectionName}...`);
-          const snapshot = await getDocs(collection(db, collectionName));
-          console.log(`📊 Email Migration - Found ${snapshot.docs.length} documents in ${collectionName}`);
+          const { data: snapshot, error: snapError } = await supabase.from(collectionName).select('*');
+          const snapDocs = snapshot || [];
+          console.log(`📊 Email Migration - Found ${snapDocs.length} documents in ${collectionName}`);
 
           // تحميل دالة إنشاء البريد الإلكتروني مرة واحدة
           const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
 
-          snapshot.docs.forEach(doc => {
-            const data = doc.data();
+          snapDocs.forEach(data => {
             const email = data.email || '';
 
             // التحقق من الإيميلات التي تحتاج تحديث
@@ -123,7 +122,7 @@ export default function EmailMigration() {
             }
 
             allUsers.push({
-              id: doc.id,
+              id: data.id,
               name: data.name || 'غير محدد',
               currentEmail: email,
               newEmail: newEmail,
@@ -194,12 +193,12 @@ export default function EmailMigration() {
 
       if (roleCollection) {
         try {
-          await updateDoc(doc(db, roleCollection, userId), {
+          await supabase.from(roleCollection).update({
             email: newEmail,
             firebaseEmail: newEmail,
             emailUpdated: true,
-            emailUpdatedAt: new Date()
-          });
+            emailUpdatedAt: new Date().toISOString()
+          }).eq('id', userId);
         } catch (roleError) {
           console.warn(`Failed to update ${roleCollection}:`, roleError);
         }

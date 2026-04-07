@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, AlertCircle, Loader2, Shield, Eye, EyeOff, CheckCircle, XCircle, Info } from 'lucide-react';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,39 +31,36 @@ export default function AdminLoginNewPage() {
 
   useEffect(() => {
     addDebugInfo('تم تحميل صفحة تسجيل الدخول');
-    addDebugInfo(`Firebase Auth: ${auth ? '✅ متاح' : '❌ غير متاح'}`);
-    addDebugInfo(`Firestore DB: ${db ? '✅ متاح' : '❌ غير متاح'}`);
+    addDebugInfo(`Supabase: ${supabase ? '✅ متاح' : '❌ غير متاح'}`);
 
     // مراقبة حالة المصادقة
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        addDebugInfo(`✅ مستخدم مسجل بالفعل: ${user.email} (UID: ${user.uid})`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        addDebugInfo(`✅ مستخدم مسجل بالفعل: ${session.user.email} (UID: ${session.user.id})`);
       } else {
         addDebugInfo('ℹ️ لا يوجد مستخدم مسجل حالياً');
       }
     });
-
-    return () => unsubscribe();
   }, []);
 
-  const testFirebaseConnection = async () => {
+  const testSupabaseConnection = async () => {
     setStep('testing-firebase');
-    addDebugInfo('🔄 اختبار اتصال Firebase...');
+    addDebugInfo('🔄 اختبار اتصال Supabase...');
 
     try {
-      // اختبار قراءة من Firestore
-      const testDoc = await getDoc(doc(db, 'test', 'connection'));
-      addDebugInfo('✅ اتصال Firestore يعمل بشكل صحيح');
+      // اختبار قراءة من Supabase
+      const { data } = await supabase.from('test').select('*').eq('id', 'connection').single();
+      addDebugInfo('✅ اتصال Supabase يعمل بشكل صحيح');
 
-      // اختبار Firebase Auth
-      const currentUser = auth.currentUser;
-      addDebugInfo(`Auth Current User: ${currentUser ? currentUser.email : 'null'}`);
+      // اختبار Supabase Auth
+      const { data: { user } } = await supabase.auth.getUser();
+      addDebugInfo(`Auth Current User: ${user ? user.email : 'null'}`);
 
-      setSuccess('Firebase متصل بنجاح');
+      setSuccess('Supabase متصل بنجاح');
       setStep('ready');
     } catch (error: any) {
-      addDebugInfo(`❌ خطأ في اتصال Firebase: ${error.message}`);
-      setError(`خطأ في Firebase: ${error.message}`);
+      addDebugInfo(`❌ خطأ في اتصال Supabase: ${error.message}`);
+      setError(`خطأ في Supabase: ${error.message}`);
       setStep('ready');
     }
   };
@@ -91,27 +86,26 @@ export default function AdminLoginNewPage() {
 
     try {
       // الخطوة 1: تسجيل الدخول
-      addDebugInfo('📝 الخطوة 1: تسجيل الدخول إلى Firebase Auth');
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      addDebugInfo('📝 الخطوة 1: تسجيل الدخول إلى Supabase Auth');
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      const user = authData.user;
 
-      addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.uid}`);
+      addDebugInfo(`✅ تسجيل دخول ناجح! UID: ${user.id}`);
       addDebugInfo(`📧 البريد: ${user.email}`);
-      addDebugInfo(`✉️ البريد مؤكد: ${user.emailVerified}`);
+      addDebugInfo(`✉️ البريد مؤكد: ${user.email_confirmed_at ? 'نعم' : 'لا'}`);
 
       setStep('checking-user-data');
 
       // الخطوة 2: فحص بيانات المستخدم
-      addDebugInfo('📝 الخطوة 2: فحص بيانات المستخدم في Firestore');
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      addDebugInfo('📝 الخطوة 2: فحص بيانات المستخدم في Supabase');
+      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
 
-      if (!userDoc.exists()) {
+      if (!userData) {
         addDebugInfo('❌ مستند المستخدم غير موجود في users collection');
         throw new Error('لم يتم العثور على بيانات المستخدم');
       }
 
-      const userData = userDoc.data();
       addDebugInfo(`✅ بيانات المستخدم موجودة`);
       addDebugInfo(`   - الاسم: ${userData.name}`);
       addDebugInfo(`   - نوع الحساب: ${userData.accountType}`);
@@ -130,11 +124,9 @@ export default function AdminLoginNewPage() {
       } else {
         addDebugInfo('ℹ️ المستخدم ليس admin في users، فحص admins collection...');
 
-        const adminDocRef = doc(db, 'admins', user.uid);
-        const adminDoc = await getDoc(adminDocRef);
+        const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
 
-        if (adminDoc.exists()) {
-          const adminData = adminDoc.data();
+        if (adminData) {
           addDebugInfo(`✅ المستخدم موجود في admins collection`);
           addDebugInfo(`   - الدور: ${adminData.role}`);
           addDebugInfo(`   - نشط: ${adminData.isActive}`);
@@ -172,15 +164,12 @@ export default function AdminLoginNewPage() {
 
       let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
 
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'البريد الإلكتروني غير مسجل';
-        addDebugInfo('💡 المستخدم غير موجود في Firebase Auth');
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'كلمة المرور غير صحيحة أو بيانات الدخول غير صالحة';
         addDebugInfo('💡 كلمة المرور خاطئة أو بيانات الدخول غير صحيحة');
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'البريد الإلكتروني غير صالح';
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'البريد الإلكتروني غير مؤكد';
+      } else if (error.message?.includes('Too many requests')) {
         errorMessage = 'تم تجاوز عدد المحاولات المسموحة. يرجى المحاولة لاحقاً';
       } else if (error.message) {
         errorMessage = error.message;
@@ -213,7 +202,7 @@ export default function AdminLoginNewPage() {
   const getStepText = () => {
     switch (step) {
       case 'ready': return 'جاهز لتسجيل الدخول';
-      case 'testing-firebase': return 'اختبار اتصال Firebase...';
+      case 'testing-firebase': return 'اختبار اتصال Supabase...';
       case 'logging-in': return 'جاري تسجيل الدخول...';
       case 'checking-user-data': return 'فحص بيانات المستخدم...';
       case 'checking-admin-permissions': return 'التحقق من صلاحيات الأدمن...';
@@ -327,10 +316,10 @@ export default function AdminLoginNewPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={testFirebaseConnection}
+                  onClick={testSupabaseConnection}
                   disabled={loading}
                 >
-                  اختبار Firebase
+                  اختبار Supabase
                 </Button>
               </div>
             </form>
@@ -386,7 +375,7 @@ export default function AdminLoginNewPage() {
             <div className="mt-4 p-3 bg-gray-800 rounded-lg">
               <h4 className="text-sm font-semibold text-yellow-400 mb-2">ℹ️ معلومات النظام</h4>
               <div className="space-y-1 text-xs text-gray-300">
-                <div>🔗 الحالة: {auth && db ? '✅ متصل' : '❌ غير متصل'}</div>
+                <div>🔗 الحالة: {supabase ? '✅ متصل' : '❌ غير متصل'}</div>
                 <div>📅 الوقت: {new Date().toLocaleString('ar-SA')}</div>
               </div>
             </div>
@@ -395,4 +384,4 @@ export default function AdminLoginNewPage() {
       </div>
     </div>
   );
-} 
+}

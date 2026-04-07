@@ -1,36 +1,41 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Check, CreditCard, Banknote, Smartphone, Globe, Plus, Sparkles, Loader2, Zap } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { Modal, Input, List, Avatar, Tag, Space, Typography, Select, Divider, ConfigProvider } from 'antd';
+import { CreditCardOutlined, SearchOutlined, CheckOutlined } from '@ant-design/icons';
+import arEG from 'antd/locale/ar_EG';
+
+const { Text } = Typography;
 
 interface PaymentProvider {
     id: string;
     name: string;
     type: 'card' | 'wallet' | 'bank_transfer' | 'other';
     icon: string;
-    description: string;
+    desc: string;
 }
 
-const COMMON_PROVIDERS: PaymentProvider[] = [
-    { id: 'stripe', name: 'Stripe', type: 'card', icon: '💳', description: 'Global Infrastructure' },
-    { id: 'paypal', name: 'PayPal', type: 'wallet', icon: '💙', description: 'Global Digital Wallet' },
-    { id: 'vodafone_cash', name: 'Vodafone Cash', type: 'wallet', icon: '📱', description: 'MENA Mobile Liquidity' },
-    { id: 'instapay', name: 'InstaPay', type: 'wallet', icon: '⚡', description: 'Instant Node Transfer' },
-    { id: 'stc_pay', name: 'STC Pay', type: 'wallet', icon: '📱', description: 'KSA Digital Banking' },
-    { id: 'skipcash', name: 'SkipCash', type: 'card', icon: '💳', description: 'Qatar Digital Gateway' },
-    { id: 'zain_cash', name: 'Zain Cash', type: 'wallet', icon: '📱', description: 'Levant Mobile Wallet' },
-    { id: 'bank_transfer', name: 'Bank Transfer', type: 'bank_transfer', icon: '🏦', description: 'Direct Institutional Sync' },
+const PROVIDERS: PaymentProvider[] = [
+    { id: 'stripe', name: 'Stripe', type: 'card', icon: '💳', desc: 'بطاقات دولية' },
+    { id: 'paypal', name: 'PayPal', type: 'wallet', icon: '💙', desc: 'محفظة عالمية' },
+    { id: 'vodafone_cash', name: 'Vodafone Cash', type: 'wallet', icon: '📱', desc: 'مصر - فودافون' },
+    { id: 'instapay', name: 'InstaPay', type: 'wallet', icon: '⚡', desc: 'مصر - تحويل فوري' },
+    { id: 'stc_pay', name: 'STC Pay', type: 'wallet', icon: '📱', desc: 'السعودية' },
+    { id: 'skipcash', name: 'SkipCash', type: 'card', icon: '💳', desc: 'قطر' },
+    { id: 'zain_cash', name: 'Zain Cash', type: 'wallet', icon: '📱', desc: 'الأردن / العراق' },
+    { id: 'bank_transfer', name: 'تحويل بنكي', type: 'bank_transfer', icon: '🏦', desc: 'تحويل مباشر' },
 ];
+
+const typeColor: Record<string, string> = {
+    card: 'blue', wallet: 'green', bank_transfer: 'orange', other: 'default'
+};
+const typeLabel: Record<string, string> = {
+    card: 'بطاقة', wallet: 'محفظة رقمية', bank_transfer: 'تحويل بنكي', other: 'أخرى'
+};
+
+const ANTD_THEME = {
+    token: { colorPrimary: '#2563eb', borderRadius: 8, fontFamily: 'inherit' },
+};
 
 interface AddPaymentMethodModalProps {
     isOpen: boolean;
@@ -40,30 +45,29 @@ interface AddPaymentMethodModalProps {
 
 export default function AddPaymentMethodModal({ isOpen, onClose, onAdd }: AddPaymentMethodModalProps) {
     const [search, setSearch] = useState('');
-    const [selectedProvider, setSelectedProvider] = useState<PaymentProvider | null>(null);
+    const [selected, setSelected] = useState<PaymentProvider | null>(null);
     const [customName, setCustomName] = useState('');
     const [customType, setCustomType] = useState('wallet');
 
-    const filteredProviders = COMMON_PROVIDERS.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase())
+    const filtered = PROVIDERS.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) || p.desc.includes(search)
     );
 
     const handleConfirm = () => {
-        if (selectedProvider) {
+        if (selected) {
             onAdd({
-                id: selectedProvider.id === 'bank_transfer' ? `bank_${Date.now()}` : selectedProvider.id,
-                name: selectedProvider.name,
-                type: selectedProvider.type,
+                id: selected.id === 'bank_transfer' ? `bank_${Date.now()}` : selected.id,
+                name: selected.name,
+                type: selected.type,
                 enabled: true,
                 isDefault: false,
                 accountNumber: '',
-                icon: selectedProvider.icon
+                icon: selected.icon
             });
-        } else if (customName) {
+        } else if (customName.trim()) {
             onAdd({
                 id: `custom_${Date.now()}`,
-                name: customName,
+                name: customName.trim(),
                 type: customType,
                 enabled: true,
                 isDefault: false,
@@ -71,154 +75,106 @@ export default function AddPaymentMethodModal({ isOpen, onClose, onAdd }: AddPay
                 icon: customType === 'wallet' ? '📱' : customType === 'bank_transfer' ? '🏦' : '💳'
             });
         }
+        setSearch(''); setSelected(null); setCustomName('');
         onClose();
-        setSearch('');
-        setSelectedProvider(null);
-        setCustomName('');
     };
 
+    const canConfirm = !!selected || !!customName.trim();
+
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl bg-white/95 backdrop-blur-2xl border-white rounded-[3rem] p-0 overflow-hidden shadow-2xl">
-                <div className="relative p-10 bg-slate-900 text-white overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
-                    <DialogHeader className="relative z-10">
-                        <div className="flex justify-between items-start mb-6">
-                            <Badge className="bg-indigo-600 text-white border-none py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase shadow-lg shadow-indigo-500/20">
-                                Network Expansion
-                            </Badge>
-                            <CreditCard className="w-10 h-10 text-indigo-400 opacity-50" />
-                        </div>
-                        <DialogTitle className="text-4xl font-black italic tracking-tighter">
-                            New Payment Protocol
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-400 font-bold text-xs mt-2 p-0 max-w-md">
-                            Integrate sophisticated transaction nodes into regional operational grids.
-                        </DialogDescription>
-                    </DialogHeader>
-                </div>
+        <ConfigProvider direction="rtl" locale={arEG} theme={ANTD_THEME}>
+            <Modal
+                open={isOpen}
+                onCancel={() => { setSearch(''); setSelected(null); setCustomName(''); onClose(); }}
+                onOk={handleConfirm}
+                okText="إضافة"
+                cancelText="إلغاء"
+                okButtonProps={{ disabled: !canConfirm }}
+                title={
+                    <Space>
+                        <CreditCardOutlined style={{ color: '#2563eb' }} />
+                        إضافة طريقة دفع
+                    </Space>
+                }
+                width={480}
+                destroyOnClose
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                    <Input
+                        prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="بحث..."
+                        allowClear
+                    />
 
-                <div className="p-10 flex flex-col min-h-0 h-[500px]">
-                    <div className="relative mb-8">
-                        <input
-                            type="text"
-                            placeholder="Identify provider (Stripe, Vodafone, Instapay...)"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full h-16 pl-14 pr-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-900 transition-all text-lg"
-                        />
-                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 w-6 h-6" />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 gap-4 pb-10 custom-scrollbar">
-                        <AnimatePresence mode="popLayout">
-                            {filteredProviders.map((provider, idx) => (
-                                <motion.div
-                                    key={provider.id}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: idx * 0.02 }}
-                                    onClick={() => {
-                                        setSelectedProvider(provider);
-                                        setCustomName('');
+                    <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                        <List
+                            size="small"
+                            dataSource={filtered}
+                            renderItem={p => (
+                                <List.Item
+                                    onClick={() => { setSelected(p); setCustomName(''); }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        background: selected?.id === p.id ? '#eff6ff' : undefined,
+                                        borderRadius: 8,
+                                        padding: '8px 12px',
+                                        border: selected?.id === p.id ? '1px solid #bfdbfe' : '1px solid transparent',
+                                        marginBottom: 4,
                                     }}
-                                    className={`
-                                        relative group p-6 rounded-[2rem] border cursor-pointer transition-all duration-300 flex items-center gap-5
-                                        ${selectedProvider?.id === provider.id
-                                            ? 'border-indigo-500 bg-indigo-600 text-white shadow-2xl shadow-indigo-500/30'
-                                            : 'bg-white border-slate-100 hover:border-indigo-500/30 hover:bg-slate-50'
+                                    actions={selected?.id === p.id ? [<CheckOutlined key="check" style={{ color: '#2563eb' }} />] : []}
+                                >
+                                    <List.Item.Meta
+                                        avatar={<Avatar style={{ background: '#f1f5f9', fontSize: 18 }}>{p.icon}</Avatar>}
+                                        title={
+                                            <Space size={6}>
+                                                <Text strong style={{ fontSize: 13, color: selected?.id === p.id ? '#1d4ed8' : undefined }}>
+                                                    {p.name}
+                                                </Text>
+                                                <Tag color={typeColor[p.type]} style={{ fontSize: 10 }}>{typeLabel[p.type]}</Tag>
+                                            </Space>
                                         }
-                                    `}
-                                >
-                                    <div className={`w-14 h-14 rounded-2xl shadow-inner flex items-center justify-center text-3xl transition-transform duration-500 group-hover:scale-110 
-                                        ${selectedProvider?.id === provider.id ? 'bg-white/20' : 'bg-slate-50'}
-                                    `}>
-                                        {provider.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className={`font-black tracking-tight text-lg ${selectedProvider?.id === provider.id ? 'text-white' : 'text-slate-900'}`}>
-                                            {provider.name}
-                                        </h4>
-                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${selectedProvider?.id === provider.id ? 'text-indigo-200' : 'text-slate-400'}`}>
-                                            {provider.description}
-                                        </p>
-                                    </div>
-                                    {selectedProvider?.id === provider.id && (
-                                        <Check className="w-5 h-5 text-white" />
-                                    )}
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                                        description={<Text type="secondary" style={{ fontSize: 11 }}>{p.desc}</Text>}
+                                    />
+                                </List.Item>
+                            )}
+                        />
+                    </div>
 
-                        {/* Custom Provisioning */}
-                        <div
-                            onClick={() => setSelectedProvider(null)}
-                            className={`
-                                p-6 rounded-[2rem] border-2 border-dashed flex flex-col gap-4 transition-all duration-300
-                                ${!selectedProvider && customName ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}
-                            `}
-                        >
-                            <div className="flex items-center gap-3">
-                                <Sparkles className="w-5 h-5 text-indigo-500" />
-                                <span className="font-black text-xs uppercase tracking-widest text-slate-600">Custom Provisioning</span>
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Identifier name..."
-                                value={customName}
-                                onChange={(e) => {
-                                    setCustomName(e.target.value);
-                                    setSelectedProvider(null);
-                                }}
-                                className="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                            />
-                            <div className="flex gap-2">
-                                <select
-                                    value={customType}
-                                    onChange={(e) => setCustomType(e.target.value)}
-                                    className="flex-1 h-10 px-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500"
-                                >
-                                    <option value="wallet">Mobile Node</option>
-                                    <option value="bank_transfer">Direct Sync</option>
-                                    <option value="other">Misc Protocol</option>
-                                </select>
-                            </div>
+                    <Divider style={{ margin: '4px 0' }}>أو أضف طريقة مخصصة</Divider>
+
+                    <Space>
+                        <Input
+                            value={customName}
+                            onChange={e => { setCustomName(e.target.value); setSelected(null); }}
+                            placeholder="اسم طريقة الدفع..."
+                            style={{ flex: 1 }}
+                        />
+                        <Select
+                            value={customType}
+                            onChange={setCustomType}
+                            style={{ width: 140 }}
+                            options={[
+                                { value: 'wallet', label: 'محفظة' },
+                                { value: 'bank_transfer', label: 'تحويل بنكي' },
+                                { value: 'card', label: 'بطاقة' },
+                                { value: 'other', label: 'أخرى' },
+                            ]}
+                        />
+                    </Space>
+
+                    {canConfirm && (
+                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 18 }}>{selected?.icon || '💳'}</span>
+                            <Text strong style={{ color: '#1d4ed8', fontSize: 13 }}>{selected?.name || customName}</Text>
+                            <Tag color={typeColor[selected?.type || customType]} style={{ marginRight: 'auto', fontSize: 10 }}>
+                                {typeLabel[selected?.type || customType]}
+                            </Tag>
                         </div>
-                    </div>
+                    )}
                 </div>
-
-                <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        {selectedProvider ? (
-                            <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-left">
-                                <div className="text-2xl">{selectedProvider.icon}</div>
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Staging</p>
-                                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">{selectedProvider.name}</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identify protocol to proceed</p>
-                        )}
-                    </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                        <Button
-                            variant="ghost"
-                            onClick={onClose}
-                            className="flex-1 md:flex-none h-14 px-8 rounded-2xl text-slate-600 font-bold hover:bg-slate-100"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleConfirm}
-                            disabled={!selectedProvider && !customName}
-                            className="flex-[2] md:flex-none h-14 px-12 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center gap-3"
-                        >
-                            Execute Integration <Zap className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
+            </Modal>
+        </ConfigProvider>
     );
 }

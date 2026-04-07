@@ -10,9 +10,8 @@ import {
   Linkedin, Flag, Clock, Building2, Languages, Shield,
   GraduationCap, Video, CheckSquare, UserCheck, MapPin, Award
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
 
 const TrainerResume = dynamic(() => import('@/components/trainer/TrainerResume'), { ssr: false });
@@ -169,12 +168,10 @@ export default function TrainerProfilePage() {
   const [newCert, setNewCert] = useState<CertificationRecord>({ name: '', issuer: '', year: '' });
 
   const fetchData = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const ref = doc(db, 'trainers', user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() as Partial<TrainerData>;
+      const { data } = await supabase.from('trainers').select('*').eq('id', user.id).maybeSingle();
+      if (!!data) {
         setTrainerData({
           ...initialTrainerData,
           ...data,
@@ -190,18 +187,18 @@ export default function TrainerProfilePage() {
           service_type: data.service_type || [],
           certifications: data.certifications || [],
           video_links: data.video_links || [],
-          full_name: data.full_name || userData?.full_name || userData?.displayName || userData?.name || '',
+          full_name: data.full_name || userData?.full_name || userData?.user_metadata?.full_name || userData?.name || '',
           email: data.email || userData?.email || '',
           phone: data.phone || userData?.phone || userData?.phoneNumber || '',
         });
       } else {
         const basicData: TrainerData = {
           ...initialTrainerData,
-          full_name: userData?.full_name || userData?.displayName || userData?.name || '',
+          full_name: userData?.full_name || userData?.user_metadata?.full_name || userData?.name || '',
           email: userData?.email || '',
           phone: userData?.phone || userData?.phoneNumber || '',
         };
-        await setDoc(ref, { ...basicData, createdAt: new Date(), accountType: 'trainer' });
+        await supabase.from('trainers').upsert({ id: user.id, ...basicData, createdAt: new Date().toISOString(), accountType: 'trainer' });
         setTrainerData(basicData);
       }
     } catch (err) {
@@ -216,7 +213,7 @@ export default function TrainerProfilePage() {
     if (user && userData) fetchData();
   }, [user, userData, fetchData]);
 
-  const BANNER_SNOOZE_KEY = `trainer_profile_banner_snoozed_${user?.uid}`;
+  const BANNER_SNOOZE_KEY = `trainer_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
 
   const missingFields = REQUIRED_FIELDS_TRAINER.filter(({ key }) => {
@@ -277,7 +274,7 @@ export default function TrainerProfilePage() {
   };
 
   const handleImageUpload = async (file: File, type: 'photo' | 'cover' | 'gallery') => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!file.type.startsWith('image/')) {
       toast.error('يرجى اختيار ملف صورة صالح');
       return;
@@ -293,7 +290,7 @@ export default function TrainerProfilePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('bucket', 'trainers');
-      formData.append('path', `${user.uid}/${fileName}`);
+      formData.append('path', `${user.id}/${fileName}`);
       formData.append('contentType', file.type);
 
       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
@@ -318,23 +315,21 @@ export default function TrainerProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!validateForm()) return;
     setUploading(true);
     try {
-      const ref = doc(db, 'trainers', user.uid);
-      const snap = await getDoc(ref);
-      const dataToSave = { ...trainerData, name: trainerData.full_name, updatedAt: new Date() };
-      if (snap.exists()) {
-        await updateDoc(ref, dataToSave);
+      const dataToSave = { ...trainerData, name: trainerData.full_name, updatedAt: new Date().toISOString() };
+      const { data: existing } = await supabase.from('trainers').select('id').eq('id', user.id).maybeSingle();
+      if (!!existing) {
+        await supabase.from('trainers').update(dataToSave).eq('id', user.id);
       } else {
-        await setDoc(ref, { ...dataToSave, createdAt: new Date(), accountType: 'trainer' });
+        await supabase.from('trainers').upsert({ id: user.id, ...dataToSave, createdAt: new Date().toISOString(), accountType: 'trainer' });
       }
       try {
-        const usersRef = doc(db, 'users', user.uid);
-        const usersSnap = await getDoc(usersRef);
-        if (usersSnap.exists()) {
-          await updateDoc(usersRef, { name: trainerData.full_name, full_name: trainerData.full_name });
+        const { data: usersRow } = await supabase.from('users').select('id').eq('id', user.id).maybeSingle();
+        if (!!usersRow) {
+          await supabase.from('users').update({ name: trainerData.full_name, full_name: trainerData.full_name }).eq('id', user.id);
         }
       } catch (_) { /* ignore */ }
       toast.success('تم حفظ الملف الشخصي بنجاح');

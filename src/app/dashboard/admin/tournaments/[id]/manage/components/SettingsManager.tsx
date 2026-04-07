@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tournament } from '@/app/dashboard/admin/tournaments/utils';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { Settings, Save, AlertCircle } from 'lucide-react';
 
@@ -33,11 +32,13 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ tournament }) 
 
             setWalletsLoading(true);
             try {
-                const docRef = doc(db, 'payment_settings', formData.country);
-                const docSnap = await (await import('firebase/firestore')).getDoc(docRef);
+                const { data } = await supabase
+                    .from('payment_settings')
+                    .select('*')
+                    .eq('id', formData.country)
+                    .single();
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
+                if (!!data) {
                     setWallets(data.methods || []);
                 } else {
                     setWallets([]);
@@ -60,12 +61,14 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ tournament }) 
 
         setLoading(true);
         try {
-            const docRef = doc(db, 'tournaments', tournament.id!);
-            await updateDoc(docRef, {
-                name: formData.name,
-                isActive: formData.isActive,
-                country: formData.country,
-            });
+            await supabase
+                .from('tournaments')
+                .update({
+                    name: formData.name,
+                    isActive: formData.isActive,
+                    country: formData.country,
+                })
+                .eq('id', tournament.id!);
             toast.success('تم حفظ إعدادات البطولة بنجاح');
         } catch (error) {
             console.error('Error updating tournament settings:', error);
@@ -92,12 +95,14 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ tournament }) 
     const handleSaveWallets = async () => {
         setWalletsLoading(true);
         try {
-            const docRef = doc(db, 'payment_settings', formData.country);
-            await (await import('firebase/firestore')).setDoc(docRef, {
-                country: formData.country,
-                methods: wallets.filter(w => w.id && w.name),
-                updatedAt: new Date().toISOString(),
-            }, { merge: true });
+            await supabase
+                .from('payment_settings')
+                .upsert({
+                    id: formData.country,
+                    country: formData.country,
+                    methods: wallets.filter(w => w.id && w.name),
+                    updatedAt: new Date().toISOString(),
+                }, { onConflict: 'id' });
             toast.success('تم حفظ إعدادات المحافظ بنجاح');
         } catch (error) {
             console.error('Error saving wallets:', error);

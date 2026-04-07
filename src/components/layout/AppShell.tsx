@@ -15,13 +15,12 @@
 
 import LogoutScreen from '@/components/auth/LogoutScreen';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
 import { DEFAULT_ROLES } from '@/lib/permissions/types';
 import { getAccountMenuGroups } from '@/config/account-menu-config';
 import { cn } from '@/lib/utils';
-import { doc, onSnapshot } from 'firebase/firestore';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { AppShellProvider, useAppShell } from './AppShellContext';
 import AppFooter from './AppFooter';
@@ -76,19 +75,19 @@ function resolveDisplayName(userData: any, user: any, accountType: string): stri
   if (!userData) return 'مستخدم';
   switch (accountType) {
     case 'player':
-      return userData.full_name || userData.name || userData.displayName || user?.displayName || 'لاعب';
+      return userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'لاعب';
     case 'club':
-      return userData.club_name || userData.full_name || userData.name || user?.displayName || 'نادي رياضي';
+      return userData.club_name || userData.full_name || userData.name || user?.user_metadata?.full_name || 'نادي رياضي';
     case 'academy':
-      return userData.academy_name || userData.full_name || userData.name || user?.displayName || 'أكاديمية';
+      return userData.academy_name || userData.full_name || userData.name || user?.user_metadata?.full_name || 'أكاديمية';
     case 'agent':
-      return userData.agent_name || userData.full_name || userData.name || user?.displayName || 'وكيل';
+      return userData.agent_name || userData.full_name || userData.name || user?.user_metadata?.full_name || 'وكيل';
     case 'trainer':
-      return userData.trainer_name || userData.full_name || userData.name || user?.displayName || 'مدرب';
+      return userData.trainer_name || userData.full_name || userData.name || user?.user_metadata?.full_name || 'مدرب';
     case 'marketer':
-      return userData.full_name || userData.name || user?.displayName || 'مسوق كروي';
+      return userData.full_name || userData.name || user?.user_metadata?.full_name || 'مسوق كروي';
     default:
-      return userData.full_name || userData.name || userData.displayName || user?.displayName || 'مستخدم';
+      return userData.full_name || userData.name || userData.displayName || user?.user_metadata?.full_name || 'مستخدم';
   }
 }
 
@@ -121,25 +120,47 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
   const [clubLogo, setClubLogo] = useState<string | null>(null);
   const [showLogoutScreen, setShowLogoutScreen] = useState(false);
 
-  // ── Club logo Firestore listener (single, consolidated) ──
+  // ── Club logo Supabase realtime listener (single, consolidated) ──
   useEffect(() => {
-    if (accountType !== 'club' || !user?.uid) return;
+    if (accountType !== 'club' || !user?.id) return;
 
-    const clubRef = doc(db, 'clubs', user.uid);
-    const unsub = onSnapshot(clubRef, (snap) => {
-      if (!snap.exists()) { setClubLogo(null); return; }
-      const data = snap.data();
-      if (!data.logo) { setClubLogo(null); return; }
+    // Initial fetch
+    const fetchClubLogo = async () => {
+      const { data } = await supabase
+        .from('clubs')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (!data || !data.logo) { setClubLogo(null); return; }
       if (data.logo.startsWith('http')) {
         setClubLogo(data.logo);
       } else {
         const url = getSupabaseImageUrl(data.logo, 'clubavatar');
         setClubLogo(url || null);
       }
-    }, () => setClubLogo(null));
+    };
+    fetchClubLogo();
 
-    return unsub;
-  }, [accountType, user?.uid]);
+    const channel = supabase
+      .channel(`club-logo-appshell-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clubs', filter: `id=eq.${user.id}` },
+        (payload) => {
+          const data = payload.new as any;
+          if (!data.logo) { setClubLogo(null); return; }
+          if (data.logo.startsWith('http')) {
+            setClubLogo(data.logo);
+          } else {
+            const url = getSupabaseImageUrl(data.logo, 'clubavatar');
+            setClubLogo(url || null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [accountType, user?.id]);
 
   // ── Resolved values ──
   const displayName = useMemo(

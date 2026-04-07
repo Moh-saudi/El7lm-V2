@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { collection, query, orderBy, getDocs, limit, doc, updateDoc, increment, where, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { Heart, MessageCircle, Share2, Music } from 'lucide-react';
 import Comments from '@/components/video/Comments';
 
@@ -37,25 +36,24 @@ export default function VideosPage() {
     try {
       setLoading(true);
       console.log('🎬 بدء جلب الفيديوهات...');
-      
+
       // جلب جميع اللاعبين
-      const playersRef = collection(db, 'players');
-      const playersSnapshot = await getDocs(playersRef);
-      
+      const { data: playersData } = await supabase.from('players').select('*');
+
       const allVideos: Video[] = [];
-      
+
       // لكل لاعب، جلب فيديوهاته
-      for (const playerDoc of playersSnapshot.docs) {
-        const playerData = playerDoc.data();
+      for (const playerDoc of (playersData || [])) {
+        const playerData = playerDoc;
         const playerVideos = playerData.videos || [];
-        
+
         // تحويل فيديوهات اللاعب إلى الشكل المطلوب
         const formattedVideos = playerVideos
           .filter((v: any) => v && v.url)
           .map((video: any, index: number) => {
-            const createdAt = video.createdAt?.toDate
-              ? video.createdAt.toDate()
-              : (video.createdAt ? new Date(video.createdAt) : new Date());
+            const createdAt = video.createdAt
+              ? new Date(video.createdAt)
+              : new Date();
             const videoData = {
               id: `${playerDoc.id}_${index}`,
               url: video.url,
@@ -72,17 +70,17 @@ export default function VideosPage() {
             console.log('📹 فيديو:', videoData.playerName, 'معرف اللاعب:', videoData.playerId);
             return videoData;
           });
-        
+
         allVideos.push(...formattedVideos);
       }
-      
+
       // ترتيب الفيديوهات حسب تاريخ النشر
       const sortedVideos = allVideos.sort((a, b) => {
         const aDate = a.createdAt?.getTime ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
         const bDate = b.createdAt?.getTime ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
         return bDate - aDate;
       });
-      
+
       setVideos(sortedVideos);
       setLoading(false);
     } catch (error) {
@@ -96,7 +94,7 @@ export default function VideosPage() {
     const scrollPosition = container.scrollTop;
     const videoHeight = container.clientHeight;
     const newIndex = Math.round(scrollPosition / videoHeight);
-    
+
     if (newIndex !== currentVideoIndex) {
       setCurrentVideoIndex(newIndex);
       if (videoRef.current) {
@@ -111,24 +109,22 @@ export default function VideosPage() {
     try {
       // استخراج معرف اللاعب من معرف الفيديو
       const [playerId, videoIndex] = videoId.split('_');
-      
+
       // تحديث عدد الإعجابات في قاعدة البيانات
-      const playerRef = doc(db, 'players', playerId);
-      const playerDoc = await getDoc(playerRef);
-      
-      if (playerDoc.exists()) {
-        const playerData = playerDoc.data();
+      const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).single();
+
+      if (playerData) {
         const videos = playerData.videos || [];
         const videoIndexNum = parseInt(videoIndex);
-        
+
         if (videos[videoIndexNum]) {
           videos[videoIndexNum].likes = (videos[videoIndexNum].likes || 0) + 1;
-          await updateDoc(playerRef, { videos });
-          
+          await supabase.from('players').update({ videos }).eq('id', playerId);
+
           // تحديث حالة الفيديوهات محلياً
-          setVideos(prevVideos => 
-            prevVideos.map(video => 
-              video.id === videoId 
+          setVideos(prevVideos =>
+            prevVideos.map(video =>
+              video.id === videoId
                 ? { ...video, likes: video.likes + 1 }
                 : video
             )
@@ -148,27 +144,25 @@ export default function VideosPage() {
     try {
       const videoUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/videos/${videoId}`;
       await navigator.clipboard.writeText(videoUrl);
-      
+
       // استخراج معرف اللاعب من معرف الفيديو
       const [playerId, videoIndex] = videoId.split('_');
-      
+
       // تحديث عدد المشاركات في قاعدة البيانات
-      const playerRef = doc(db, 'players', playerId);
-      const playerDoc = await getDoc(playerRef);
-      
-      if (playerDoc.exists()) {
-        const playerData = playerDoc.data();
+      const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).single();
+
+      if (playerData) {
         const videos = playerData.videos || [];
         const videoIndexNum = parseInt(videoIndex);
-        
+
         if (videos[videoIndexNum]) {
           videos[videoIndexNum].shares = (videos[videoIndexNum].shares || 0) + 1;
-          await updateDoc(playerRef, { videos });
-          
+          await supabase.from('players').update({ videos }).eq('id', playerId);
+
           // تحديث حالة الفيديوهات محلياً
-          setVideos(prevVideos => 
-            prevVideos.map(video => 
-              video.id === videoId 
+          setVideos(prevVideos =>
+            prevVideos.map(video =>
+              video.id === videoId
                 ? { ...video, shares: video.shares + 1 }
                 : video
             )
@@ -207,7 +201,7 @@ export default function VideosPage() {
               autoPlay={index === currentVideoIndex}
               muted={index !== currentVideoIndex}
             />
-            
+
             {/* Video Info Overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-4 text-white bg-gradient-to-t from-black/80 to-transparent">
               <div className="flex items-center space-x-3 mb-2">
@@ -244,7 +238,7 @@ export default function VideosPage() {
                 <Heart className="w-8 h-8" />
                 <span className="text-sm">{video.likes}</span>
               </button>
-              
+
               <button
                 onClick={() => handleComment(video.id)}
                 className="flex flex-col items-center text-white"
@@ -252,7 +246,7 @@ export default function VideosPage() {
                 <MessageCircle className="w-8 h-8" />
                 <span className="text-sm">{video.comments}</span>
               </button>
-              
+
               <button
                 onClick={() => handleShare(video.id)}
                 className="flex flex-col items-center text-white"
@@ -273,4 +267,4 @@ export default function VideosPage() {
       />
     </>
   );
-} 
+}

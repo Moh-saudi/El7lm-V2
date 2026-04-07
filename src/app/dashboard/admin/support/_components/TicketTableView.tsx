@@ -152,7 +152,7 @@ export const TicketTableView: React.FC<TicketTableViewProps> = ({
                                 <TableCell className="py-3 text-xs text-slate-500">
                                     <div className="flex items-center gap-1">
                                         <Clock className="h-3 w-3 text-slate-400" />
-                                        {ticket.updatedAt ? formatDistanceToNow(ticket.updatedAt.toDate(), { addSuffix: true, locale: ar }) : '-'}
+                                        {ticket.updatedAt ? formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true, locale: ar }) : '-'}
                                     </div>
                                 </TableCell>
                                 <TableCell className="py-3">

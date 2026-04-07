@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,8 +60,8 @@ export default function AgentPlayersPage() {
   const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 حالة المصادقة:', { user: user?.uid, loading: !user });
-    if (user?.uid) {
+    console.log('🔍 حالة المصادقة:', { user: user?.id, loading: !user });
+    if (user?.id) {
       console.log('✅ الوكيل مصادق - جاري تحميل اللاعبين...');
       loadPlayers();
       loadJoinRequests();
@@ -75,16 +74,12 @@ export default function AgentPlayersPage() {
     try {
       setLoading(true);
       
-      const baseQuery = query(
-        collection(db, "players"),
-        where("agent_id", "==", user?.uid)
-      );
+      const { data: snapshot } = await supabase
+        .from('players')
+        .select('*')
+        .eq('agent_id', user?.id);
 
-      const snapshot = await getDocs(baseQuery);
-      
-      const playersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((p: any) => !p.isDeleted) as Player[];
+      const playersData = ((snapshot || []) as any[]).filter((p: any) => !p.isDeleted) as Player[];
       
       // Manual sorting on the client-side
       playersData.sort((a, b) => {
@@ -106,7 +101,7 @@ export default function AgentPlayersPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.uid, 'pending');
+      const requests = await organizationReferralService.getOrganizationJoinRequests(user!.id, 'pending');
       setJoinRequests(requests);
     } catch (error) {
       console.error('خطأ في تحميل طلبات الانضمام:', error);
@@ -393,7 +388,7 @@ export default function AgentPlayersPage() {
     if (!playerToDelete) return;
 
     try {
-      await deleteDoc(doc(db, 'players', playerToDelete.id));
+      await supabase.from('players').delete().eq('id', playerToDelete.id);
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
@@ -450,7 +445,7 @@ export default function AgentPlayersPage() {
                     <div className="flex gap-2">
                       <Button size="sm" onClick={async () => {
                         try {
-                          await organizationReferralService.approveJoinRequest(request.id, user!.uid, 'الوكيل');
+                          await organizationReferralService.approveJoinRequest(request.id, user!.id, 'الوكيل');
                           toast.success('تم قبول اللاعب بنجاح');
                           loadJoinRequests();
                           loadPlayers();
@@ -460,7 +455,7 @@ export default function AgentPlayersPage() {
                       }}>✅ قبول</Button>
                       <Button size="sm" variant="outline" onClick={async () => {
                         try {
-                          await organizationReferralService.rejectJoinRequest(request.id, user!.uid, 'الوكيل', 'تم الرفض');
+                          await organizationReferralService.rejectJoinRequest(request.id, user!.id, 'الوكيل', 'تم الرفض');
                           toast.success('تم رفض الطلب');
                           loadJoinRequests();
                         } catch (error) {
@@ -806,7 +801,7 @@ export default function AgentPlayersPage() {
                               name: player.name || player.full_name,
                               email: player.email,
                               phone: player.phone,
-                              agent_id: player.agent_id || user?.uid,
+                              agent_id: player.agent_id || user?.id,
                               ...player
                             }}
                             source="players"
@@ -823,7 +818,7 @@ export default function AgentPlayersPage() {
                               email: player.email,
                               phone: player.phone,
                               whatsapp: player.whatsapp,
-                              agent_id: player.agent_id || user?.uid,
+                              agent_id: player.agent_id || user?.id,
                               ...player
                             }}
                             source="players"
@@ -957,8 +952,8 @@ export default function AgentPlayersPage() {
                       <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                         <div className="flex gap-2">
                           <Link href={`/dashboard/agent/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link>
-                          <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, agent_id: (player as any).agent_id || user?.uid, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
-                          <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, agent_id: (player as any).agent_id || user?.uid, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
+                          <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, agent_id: (player as any).agent_id || user?.id, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
+                          <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, agent_id: (player as any).agent_id || user?.id, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
                           <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 ه-4" /></Button>
                         </div>
                       </td>

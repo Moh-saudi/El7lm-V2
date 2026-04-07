@@ -1,10 +1,7 @@
-import { auth, db } from '@/lib/firebase/config';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { PlayerWithOrganization } from '../../utils/player-organization';
 import { DateOrTimestamp } from '../../types/common';
 
-// الرقم السري الموحد للاعبين المحولين
 const UNIFIED_PLAYER_PASSWORD = 'Player123!@#';
 
 export interface CreateLoginAccountResult {
@@ -61,9 +58,9 @@ export interface UserAccountData {
   convertedFromDependent: boolean;
   originalSource: string;
   unifiedPassword: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  convertedAt: Date;
+  createdAt: string;
+  updatedAt: string;
+  convertedAt: string;
 }
 
 export interface PlayerLoginAccountInfo {
@@ -84,113 +81,74 @@ export async function createPlayerLoginAccount(
   source: 'players' | 'player' = 'players',
   customPassword?: string
 ): Promise<CreateLoginAccountResult> {
-
   try {
-    // التحقق من البيانات المطلوبة
     if (!playerData.email || !playerData.full_name && !playerData.name) {
-      return {
-        success: false,
-        message: 'الإيميل والاسم الكامل مطلوبان لإنشاء حساب الدخول'
-      };
+      return { success: false, message: 'الإيميل والاسم الكامل مطلوبان لإنشاء حساب الدخول' };
     }
 
     const email = playerData.email;
     const fullName = playerData.full_name || playerData.name || '';
 
     // التحقق من عدم وجود الحساب مسبقاً
-    const existingUserQuery = query(
-      collection(db, 'users'),
-      where('email', '==', email)
-    );
-    const existingUsers = await getDocs(existingUserQuery);
+    const { data: existing } = await supabase.from('users').select('id').eq('email', email).limit(1);
+    if (existing?.length) return { success: false, message: 'حساب بهذا الإيميل موجود مسبقاً' };
 
-    if (!existingUsers.empty) {
-      return {
-        success: false,
-        message: 'حساب بهذا الإيميل موجود مسبقاً'
-      };
-    }
-
-    // تحديد كلمة المرور (مخصصة أو الافتراضية)
     const password = customPassword || UNIFIED_PLAYER_PASSWORD;
 
-    // إنشاء حساب Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const firebaseUser = userCredential.user;
+    // إنشاء حساب Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+    if (authError) throw authError;
 
-    // إنشاء بيانات المستخدم في مجموعة users
+    const authUser = authData.user;
+    if (!authUser) throw new Error('فشل إنشاء الحساب');
+
+    const now = new Date().toISOString();
     const userData: UserAccountData = {
-      uid: firebaseUser.uid,
-      email: email,
+      uid: authUser.id,
+      email,
       firebaseEmail: email,
       accountType: 'player',
       full_name: fullName,
       name: fullName,
-      phone: playerData.phone || '',
-
-      // الاحتفاظ بالانتماء للمنظمة
-      club_id: playerData.club_id || null,
-      academy_id: playerData.academy_id || null,
-      trainer_id: playerData.trainer_id || null,
-      agent_id: playerData.agent_id || null,
-
-      // معلومات إضافية
-      profile_image: playerData.profile_image || '',
-      nationality: playerData.nationality || '',
-      primary_position: playerData.primary_position || playerData.position || '',
+      phone: String(playerData.phone || ''),
+      club_id: String(playerData.club_id || '') || null,
+      academy_id: String(playerData.academy_id || '') || null,
+      trainer_id: String(playerData.trainer_id || '') || null,
+      agent_id: String(playerData.agent_id || '') || null,
+      profile_image: String(playerData.profile_image || ''),
+      nationality: String(playerData.nationality || ''),
+      primary_position: String(playerData.primary_position || playerData.position || ''),
       birth_date: playerData.birth_date || playerData.birthDate || null,
-      country: playerData.country || '',
-      city: playerData.city || '',
-
-      // حالة الحساب
+      country: String(playerData.country || ''),
+      city: String(playerData.city || ''),
       isActive: true,
       verified: false,
       profileCompleted: true,
       isNewUser: false,
-
-      // إعدادات خاصة
       tempPassword: password,
       needsPasswordChange: true,
       convertedFromDependent: true,
       originalSource: source,
       unifiedPassword: true,
-
-      // تواريخ
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      convertedAt: new Date()
+      createdAt: now,
+      updatedAt: now,
+      convertedAt: now,
     };
 
-    // حفظ في مجموعة users
-    await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+    await supabase.from('users').upsert({ id: authUser.id, ...userData });
 
-    // تحديث البيانات الأصلية للإشارة للتحويل
-    await updateDoc(doc(db, source, playerId), {
+    await supabase.from(source).update({
       convertedToAccount: true,
-      firebaseUid: firebaseUser.uid,
+      firebaseUid: authUser.id,
       loginAccountCreated: true,
-      convertedAt: new Date(),
-      hasLoginAccount: true
-    });
+      convertedAt: now,
+      hasLoginAccount: true,
+    }).eq('id', playerId);
 
-    return {
-      success: true,
-      message: 'تم إنشاء حساب تسجيل الدخول بنجاح',
-      tempPassword: password,
-      firebaseUid: firebaseUser.uid
-    };
-
+    return { success: true, message: 'تم إنشاء حساب تسجيل الدخول بنجاح', tempPassword: password, firebaseUid: authUser.id };
   } catch (error: unknown) {
     console.error('خطأ في إنشاء حساب تسجيل الدخول:', error);
-    const errorMessage = error instanceof Error ? error.message : 'حدث خطأ في إنشاء حساب تسجيل الدخول';
-    return {
-      success: false,
-      message: errorMessage
-    };
+    return { success: false, message: error instanceof Error ? error.message : 'حدث خطأ في إنشاء حساب تسجيل الدخول' };
   }
 }
 
@@ -199,12 +157,8 @@ export async function createPlayerLoginAccount(
  */
 export async function checkPlayerHasLoginAccount(playerEmail: string): Promise<boolean> {
   try {
-    const userQuery = query(
-      collection(db, 'users'),
-      where('email', '==', playerEmail)
-    );
-    const users = await getDocs(userQuery);
-    return !users.empty;
+    const { data } = await supabase.from('users').select('id').eq('email', playerEmail).limit(1);
+    return (data?.length ?? 0) > 0;
   } catch (error) {
     console.error('خطأ في التحقق من حساب الدخول:', error);
     return false;
@@ -216,24 +170,17 @@ export async function checkPlayerHasLoginAccount(playerEmail: string): Promise<b
  */
 export async function getPlayerLoginAccountInfo(playerEmail: string): Promise<PlayerLoginAccountInfo | null> {
   try {
-    const userQuery = query(
-      collection(db, 'users'),
-      where('email', '==', playerEmail)
-    );
-    const users = await getDocs(userQuery);
+    const { data } = await supabase.from('users').select('*').eq('email', playerEmail).limit(1);
+    if (!data?.length) return null;
 
-    if (users.empty) {
-      return null;
-    }
-
-    const userData = users.docs[0].data();
+    const userData = data[0] as Record<string, unknown>;
     return {
-      uid: userData.uid,
-      email: userData.email,
-      full_name: userData.full_name,
+      uid: String(userData.uid || userData.id),
+      email: String(userData.email),
+      full_name: String(userData.full_name),
       hasLoginAccount: true,
-      convertedFromDependent: userData.convertedFromDependent || false,
-      unifiedPassword: userData.unifiedPassword || false
+      convertedFromDependent: Boolean(userData.convertedFromDependent),
+      unifiedPassword: Boolean(userData.unifiedPassword),
     };
   } catch (error) {
     console.error('خطأ في الحصول على معلومات حساب الدخول:', error);

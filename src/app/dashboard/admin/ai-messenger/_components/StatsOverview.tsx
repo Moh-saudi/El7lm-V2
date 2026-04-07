@@ -13,8 +13,7 @@ import {
   UserCheck,
   Loader2,
 } from 'lucide-react';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 interface DayStat { label: string; count: number; }
 interface TypeStat { type: string; label: string; count: number; icon: React.ElementType; color: string; }
@@ -41,12 +40,12 @@ export const StatsOverview: React.FC = () => {
       setLoading(true);
       try {
         // ── 1. Notifications (last 30 days) ──────────────────────────────
-        const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const notifsSnap = await getDocs(
-          query(collection(db, 'interaction_notifications'),
-            where('createdAt', '>=', Timestamp.fromDate(since30)))
-        );
-        const notifs = notifsSnap.docs.map(d => d.data());
+        const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: notifsData } = await supabase
+          .from('interaction_notifications')
+          .select('*')
+          .gte('createdAt', since30);
+        const notifs = notifsData || [];
         setTotalNotifs(notifs.length);
 
         // ── 2. By type ────────────────────────────────────────────────────
@@ -75,7 +74,7 @@ export const StatsOverview: React.FC = () => {
         notifs.forEach(n => {
           const ts = n.createdAt;
           if (!ts) return;
-          const date = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+          const date = new Date(ts);
           if (date >= since7) {
             const key = date.toDateString();
             if (key in days7) days7[key]++;
@@ -89,9 +88,9 @@ export const StatsOverview: React.FC = () => {
         );
 
         // ── 4. Total users with phone ──────────────────────────────────────
-        const userCols = ['users', 'players', 'academies', 'clubs', 'trainers', 'agents', 'parents'];
+        const userCols = ['users', 'players', 'academies', 'clubs', 'trainers', 'agents'];
         const counts = await Promise.all(
-          userCols.map(col => getDocs(query(collection(db, col))).then(s => s.size).catch(() => 0))
+          userCols.map(col => supabase.from(col).select('id', { count: 'exact', head: true }).then(r => r.count || 0).then(undefined, () => 0))
         );
         setTotalUsers(counts.reduce((a, b) => a + b, 0));
 

@@ -91,7 +91,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         <div className="flex items-center gap-2 text-xs text-slate-500">
                             <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {conversation.createdAt ? formatDistanceToNow(conversation.createdAt.toDate(), { addSuffix: true, locale: ar }) : 'غير محدد'}
+                                {conversation.createdAt ? formatDistanceToNow(new Date(conversation.createdAt), { addSuffix: true, locale: ar }) : 'غير محدد'}
                             </span>
                             <span>•</span>
                             <span className="text-blue-600 font-medium">#{conversation.id.slice(0, 6)}</span>
@@ -154,7 +154,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                         isMe ? "text-blue-100 justify-end" : "text-slate-400"
                                     )}>
                                         <span>
-                                            {msg.timestamp && formatDistanceToNow(msg.timestamp.toDate(), { locale: ar })}
+                                            {msg.timestamp && formatDistanceToNow(new Date(msg.timestamp), { locale: ar })}
                                         </span>
                                         {isMe && (
                                             <Check className={cn("h-3 w-3", msg.isRead ? "text-blue-200" : "opacity-50")} />

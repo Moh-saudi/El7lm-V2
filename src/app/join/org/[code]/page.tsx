@@ -64,7 +64,7 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
 
     try {
       await organizationReferralService.createJoinRequest(
-        user.uid,
+        user.id,
         userData,
         code
       );

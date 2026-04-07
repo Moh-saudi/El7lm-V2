@@ -40,8 +40,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface PaymentManagementModalProps {
@@ -109,17 +108,16 @@ export default function PaymentManagementModal({
 
       // 1. Fetch from 'tournament_registrations' (Individual/Old)
       try {
-        const oldQuery = query(
-          collection(db, 'tournament_registrations'),
-          where('tournamentId', '==', tournament.id),
-          orderBy('registrationDate', 'desc')
-        );
-        const oldSnapshot = await getDocs(oldQuery);
-        const oldPayments = oldSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            registrationId: data.registrationId || doc.id,
+        const { data: oldData } = await supabase
+          .from('tournament_registrations')
+          .select('*')
+          .eq('tournamentId', tournament.id)
+          .order('registrationDate', { ascending: false });
+
+        if (oldData) {
+          const oldPayments = oldData.map((data: any) => ({
+            id: data.id,
+            registrationId: data.registrationId || data.id,
             playerName: data.accountName || data.playerName || 'غير محدد',
             playerEmail: data.accountEmail || data.playerEmail || '',
             playerPhone: data.accountPhone || data.playerPhone || '',
@@ -128,8 +126,8 @@ export default function PaymentManagementModal({
             paymentStatus: data.paymentStatus || 'pending',
             paymentMethod: data.paymentMethod,
             paymentType: data.paymentType,
-            registrationDate: data.registrationDate?.toDate?.() || new Date(),
-            paymentDate: data.paymentDate?.toDate?.() || null,
+            registrationDate: data.registrationDate ? new Date(data.registrationDate) : new Date(),
+            paymentDate: data.paymentDate ? new Date(data.paymentDate) : null,
             notes: data.notes || '',
             receiptUrl: data.receiptUrl || '',
             receiptNumber: data.receiptNumber || '',
@@ -139,25 +137,24 @@ export default function PaymentManagementModal({
             geideaTransactionId: data.geideaTransactionId || '',
             geideaPaymentData: data.geideaPaymentData || '',
             players: data.players || []
-          } as PaymentRecord;
-        });
-        allPayments.push(...oldPayments);
+          } as PaymentRecord));
+          allPayments.push(...oldPayments);
+        }
       } catch (e) {
         console.error("Error fetching old payments", e);
       }
 
       // 2. Fetch from 'tournamentRegistrations' (Group/New)
       try {
-        const newQuery = query(
-          collection(db, 'tournamentRegistrations'),
-          where('tournamentId', '==', tournament.id)
-        );
-        const newSnapshot = await getDocs(newQuery);
-        const newPayments = newSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            registrationId: doc.id,
+        const { data: newData } = await supabase
+          .from('tournamentRegistrations')
+          .select('*')
+          .eq('tournamentId', tournament.id);
+
+        if (newData) {
+          const newPayments = newData.map((data: any) => ({
+            id: data.id,
+            registrationId: data.id,
             playerName: data.teamName || data.clubName || data.accountName || 'فريق',
             playerEmail: data.accountEmail || '',
             playerPhone: data.accountPhone || '',
@@ -166,8 +163,8 @@ export default function PaymentManagementModal({
             paymentStatus: data.paymentStatus || 'pending',
             paymentMethod: data.paymentMethod,
             paymentType: 'immediate',
-            registrationDate: data.registrationDate?.toDate?.() || data.createdAt?.toDate?.() || new Date(),
-            paymentDate: data.paymentDate?.toDate?.() || null,
+            registrationDate: data.registrationDate ? new Date(data.registrationDate) : (data.createdAt ? new Date(data.createdAt) : new Date()),
+            paymentDate: data.paymentDate ? new Date(data.paymentDate) : null,
             notes: data.notes || '',
             receiptUrl: data.receiptUrl || '',
             receiptNumber: data.receiptNumber || '',
@@ -177,9 +174,9 @@ export default function PaymentManagementModal({
             geideaTransactionId: data.geideaTransactionId || '',
             geideaPaymentData: '',
             players: data.players || []
-          } as PaymentRecord;
-        });
-        allPayments.push(...newPayments);
+          } as PaymentRecord));
+          allPayments.push(...newPayments);
+        }
       } catch (e) {
         console.error("Error fetching new payments", e);
       }
@@ -216,11 +213,14 @@ export default function PaymentManagementModal({
 
   const updatePaymentStatus = async (paymentId: string, newStatus: PaymentRecord['paymentStatus']) => {
     try {
-      await updateDoc(doc(db, 'tournament_registrations', paymentId), {
-        paymentStatus: newStatus,
-        paymentDate: newStatus === 'paid' ? new Date() : null,
-        updatedAt: new Date()
-      });
+      await supabase
+        .from('tournament_registrations')
+        .update({
+          paymentStatus: newStatus,
+          paymentDate: newStatus === 'paid' ? new Date().toISOString() : null,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', paymentId);
 
       toast.success('تم تحديث حالة الدفع بنجاح');
       fetchPayments();
@@ -279,11 +279,14 @@ export default function PaymentManagementModal({
 
   const handleApprovePayment = async (paymentId: string) => {
     try {
-      await updateDoc(doc(db, 'tournament_registrations', paymentId), {
-        paymentStatus: 'paid',
-        paymentDate: new Date(),
-        updatedAt: new Date()
-      });
+      await supabase
+        .from('tournament_registrations')
+        .update({
+          paymentStatus: 'paid',
+          paymentDate: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', paymentId);
 
       toast.success('تم الموافقة على الدفع بنجاح');
       fetchPayments();
@@ -297,10 +300,13 @@ export default function PaymentManagementModal({
 
   const handleRejectPayment = async (paymentId: string) => {
     try {
-      await updateDoc(doc(db, 'tournament_registrations', paymentId), {
-        paymentStatus: 'failed',
-        updatedAt: new Date()
-      });
+      await supabase
+        .from('tournament_registrations')
+        .update({
+          paymentStatus: 'failed',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', paymentId);
 
       toast.success('تم رفض الدفع');
       fetchPayments();
@@ -545,7 +551,7 @@ export default function PaymentManagementModal({
         </div>
       </DialogContent>
 
-      {/* Receipt Modal - Kept largely the same but cleaned up */}
+      {/* Receipt Modal */}
       <Dialog open={showReceiptModal} onOpenChange={setShowReceiptModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

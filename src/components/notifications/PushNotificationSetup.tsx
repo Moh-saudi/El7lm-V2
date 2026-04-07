@@ -63,7 +63,7 @@ export default function PushNotificationSetup() {
     setIsLoading(true);
     try {
       // الحصول على FCM Token
-      const token = await getFCMToken(user.uid);
+      const token = await getFCMToken(user.id);
 
       if (token) {
         setFcmToken(token);

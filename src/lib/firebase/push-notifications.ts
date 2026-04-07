@@ -1,41 +1,5 @@
-import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { getMessaging, getToken, Messaging, onMessage } from 'firebase/messaging';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
-import { db } from './config';
-
-// VAPID Key من Firebase Console
-// للحصول عليه: Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
-const VAPID_KEY = 'BKxGVYqPvL8sP9xZCvRQJMzKCYHvLfYGzWJmZ9kK_2QY3xMnBpQzLvZqYHJxKmGvNnPqWzXcVbN2mKlJ3hG4sYU';
-
-let messaging: Messaging | null = null;
-
-/**
- * تهيئة Firebase Cloud Messaging
- */
-export function initializeMessaging(): Messaging | null {
-  try {
-    // التحقق من دعم المتصفح
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-      console.warn('⚠️ Service Worker not supported in this browser');
-      return null;
-    }
-
-    if (!('Notification' in window)) {
-      console.warn('⚠️ Notifications not supported in this browser');
-      return null;
-    }
-
-    // تهيئة messaging
-    const { app } = require('./config');
-    messaging = getMessaging(app);
-
-    console.log('✅ Firebase Messaging initialized');
-    return messaging;
-  } catch (error) {
-    console.error('❌ Error initializing Firebase Messaging:', error);
-    return null;
-  }
-}
 
 /**
  * التحقق من دعم المتصفح للإشعارات
@@ -62,10 +26,8 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
       console.warn('⚠️ Notifications not supported');
       return 'denied';
     }
-
     const permission = await Notification.requestPermission();
     console.log('📱 Notification permission:', permission);
-
     return permission;
   } catch (error) {
     console.error('❌ Error requesting notification permission:', error);
@@ -83,24 +45,15 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       return null;
     }
 
-    // التحقق من وجود Service Worker مسجل بالفعل
-    const existingRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    const existingRegistration = await navigator.serviceWorker.getRegistration('/sw.js');
     if (existingRegistration) {
       console.log('✅ Service Worker already registered');
       return existingRegistration;
     }
 
-    // تسجيل Service Worker الجديد
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-      scope: '/'
-    });
-
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     console.log('✅ Service Worker registered:', registration);
-
-    // الانتظار حتى يصبح Service Worker نشطاً
     await navigator.serviceWorker.ready;
-    console.log('✅ Service Worker ready');
-
     return registration;
   } catch (error) {
     console.error('❌ Error registering Service Worker:', error);
@@ -109,153 +62,116 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 /**
- * الحصول على FCM Token
+ * حفظ Push Token في Supabase
+ */
+export async function saveFCMToken(userId: string, token: string): Promise<void> {
+  try {
+    await supabase.from('users').update({
+      fcmToken: token,
+      fcmTokenUpdatedAt: new Date().toISOString(),
+      notificationsEnabled: true
+    }).eq('id', userId);
+
+    console.log('✅ Push token saved to Supabase');
+  } catch (error) {
+    console.error('❌ Error saving push token:', error);
+  }
+}
+
+/**
+ * الحصول على Push Token عبر VAPID
  */
 export async function getFCMToken(userId?: string): Promise<string | null> {
   try {
-    // التحقق من دعم المتصفح
     if (!isNotificationSupported()) {
       console.warn('⚠️ Notifications not supported');
       return null;
     }
 
-    // التحقق من الإذن
     const permission = await requestNotificationPermission();
     if (permission !== 'granted') {
       console.warn('⚠️ Notification permission denied');
       return null;
     }
 
-    // تسجيل Service Worker
     const registration = await registerServiceWorker();
     if (!registration) {
       console.error('❌ Failed to register Service Worker');
       return null;
     }
 
-    // تهيئة messaging
-    if (!messaging) {
-      messaging = initializeMessaging();
-    }
-
-    if (!messaging) {
-      console.error('❌ Failed to initialize messaging');
+    // Web Push subscription via VAPID
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      console.warn('⚠️ VAPID public key not configured');
       return null;
     }
 
-    // الحصول على الـ Token
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidPublicKey
     });
 
-    if (token) {
-      console.log('✅ FCM Token:', token);
+    const token = JSON.stringify(subscription);
 
-      // حفظ الـ Token في Firestore إذا كان المستخدم مسجل دخول
-      if (userId) {
-        await saveFCMToken(userId, token);
-      }
+    if (userId) {
+      await saveFCMToken(userId, token);
+    }
 
-      return token;
-    } else {
-      console.warn('⚠️ No FCM token available');
-      return null;
-    }
-  } catch (error: unknown) {
-    console.error('❌ Error getting FCM token:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-    }
+    return token;
+  } catch (error) {
+    console.error('❌ Error getting push token:', error);
     return null;
   }
 }
 
 /**
- * حفظ FCM Token في Firestore
- */
-export async function saveFCMToken(userId: string, token: string): Promise<void> {
-  try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      fcmToken: token,
-      fcmTokenUpdatedAt: serverTimestamp(),
-      notificationsEnabled: true
-    });
-
-    console.log('✅ FCM Token saved to Firestore');
-  } catch (error) {
-    console.error('❌ Error saving FCM token:', error);
-  }
-}
-
-/**
- * إعداد معالج الإشعارات في الواجهة (عندما التطبيق مفتوح)
+ * إعداد معالج الإشعارات في الواجهة
  */
 export function setupForegroundNotifications(
   onNotificationReceived?: (payload: any) => void
 ): (() => void) | null {
-  try {
-    if (!messaging) {
-      messaging = initializeMessaging();
-    }
+  if (!isNotificationSupported()) return null;
 
-    if (!messaging) {
-      console.error('❌ Failed to initialize messaging');
-      return null;
-    }
+  const handleMessage = (event: MessageEvent) => {
+    if (event.data?.type === 'PUSH_NOTIFICATION') {
+      const payload = event.data.payload;
+      const title = payload?.title || 'إشعار جديد';
+      const body = payload?.body || '';
 
-    // معالجة الإشعارات عندما التطبيق مفتوح
-    const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('📨 Foreground notification received:', payload);
-
-      const notificationTitle = payload.notification?.title || 'إشعار جديد';
-      const notificationBody = payload.notification?.body || '';
-
-      // عرض Toast notification
-      toast.info(notificationTitle, {
-        description: notificationBody,
+      toast.info(title, {
+        description: body,
         duration: 5000,
-        action: payload.data?.click_action ? {
+        action: payload?.click_action ? {
           label: 'عرض',
-          onClick: () => {
-            window.location.href = payload.data.click_action;
-          }
+          onClick: () => { window.location.href = payload.click_action; }
         } : undefined
       });
 
-      // استدعاء callback إذا كان موجوداً
-      if (onNotificationReceived) {
-        onNotificationReceived(payload);
-      }
-    });
+      onNotificationReceived?.(payload);
+    }
+  };
 
-    console.log('✅ Foreground notifications setup complete');
-    return unsubscribe;
-  } catch (error) {
-    console.error('❌ Error setting up foreground notifications:', error);
-    return null;
-  }
+  navigator.serviceWorker.addEventListener('message', handleMessage);
+  console.log('✅ Foreground notifications setup complete');
+
+  return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
 }
 
 /**
- * حذف FCM Token (عند تسجيل الخروج)
+ * حذف Push Token (عند تسجيل الخروج)
  */
 export async function deleteFCMToken(userId: string): Promise<void> {
   try {
-    if (!messaging) return;
-
-    // حذف Token من Firestore
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    await supabase.from('users').update({
       fcmToken: null,
-      fcmTokenUpdatedAt: serverTimestamp(),
+      fcmTokenUpdatedAt: new Date().toISOString(),
       notificationsEnabled: false
-    });
+    }).eq('id', userId);
 
-    console.log('✅ FCM Token deleted');
+    console.log('✅ Push token deleted');
   } catch (error) {
-    console.error('❌ Error deleting FCM token:', error);
+    console.error('❌ Error deleting push token:', error);
   }
 }
 
@@ -275,15 +191,13 @@ export async function testLocalNotification(): Promise<void> {
       return;
     }
 
-    // إرسال إشعار تجريبي
     new Notification('🎉 تم تفعيل الإشعارات!', {
       body: 'سيتم إرسال إشعارات فورية عند وصول رسائل أو تحديثات جديدة',
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
-      vibrate: [200, 100, 200],
       dir: 'rtl',
       lang: 'ar'
-    } as NotificationOptions & { vibrate?: number[] });
+    } as NotificationOptions);
 
     toast.success('تم إرسال إشعار تجريبي!');
   } catch (error) {
@@ -294,7 +208,6 @@ export async function testLocalNotification(): Promise<void> {
 
 // تصدير الدوال
 export default {
-  initializeMessaging,
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
@@ -305,4 +218,3 @@ export default {
   deleteFCMToken,
   testLocalNotification
 };
-

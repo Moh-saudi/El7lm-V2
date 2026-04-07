@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, onSnapshot, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { SubscriptionPlan } from '@/types/pricing';
@@ -42,7 +41,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { serverTimestamp, addDoc } from 'firebase/firestore';
 
 const mapPaymentStatus = (status: string, source: string, data: any) => {
   const s = (status || '').toLowerCase();
@@ -116,7 +114,6 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     minutes: number;
     seconds: number;
   } | null>(null);
-  const [parentSubscriptionUnsubscribe, setParentSubscriptionUnsubscribe] = useState<(() => void) | null>(null);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [ticketSubject, setTicketSubject] = useState('');
@@ -132,9 +129,10 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     setIsSubmittingTicket(true);
     try {
       // 1. Create Conversation
-      const conversationRef = await addDoc(collection(db, 'support_conversations'), {
-        userId: user.uid,
-        userName: userData?.name || user.displayName || 'مستخدم',
+      const { data: convData } = await supabase.from('support_conversations').insert({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
         userEmail: user.email || '',
         userPhone: userData?.phone || userData?.personal_phone || '',
         userType: accountType,
@@ -142,21 +140,22 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         priority: 'medium',
         category: 'subscription',
         lastMessage: ticketMessage.trim(),
-        lastMessageTime: serverTimestamp(),
+        lastMessageTime: new Date().toISOString(),
         unreadCount: 1,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         subject: ticketSubject.trim()
-      });
+      }).select().single();
 
       // 2. Create Message
-      await addDoc(collection(db, 'support_messages'), {
-        conversationId: conversationRef.id,
-        senderId: user.uid,
-        senderName: userData?.name || user.displayName || 'مستخدم',
+      await supabase.from('support_messages').insert({
+        id: crypto.randomUUID(),
+        conversationId: convData?.id,
+        senderId: user.id,
+        senderName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
         senderType: 'user',
         message: ticketMessage.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(),
         isRead: false
       });
 
@@ -173,7 +172,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
   };
 
   useEffect(() => {
-    if (!user?.uid) {
+    if (!user?.id) {
       setError('يجب تسجيل الدخول للوصول إلى بيانات الاشتراك');
       setLoading(false);
       return;
@@ -191,14 +190,17 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         const parentAccountId = (accountType === 'player' && userData) ?
           (userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.trainerId || userData.agent_id || userData.agentId) : null;
 
-        const [subscriptionDoc, parentDoc] = await Promise.all([
-          getDoc(doc(db, 'subscriptions', user.uid)),
-          parentAccountId ? getDoc(doc(db, 'subscriptions', parentAccountId)) : Promise.resolve(null)
+        const [subResult, parentResult] = await Promise.all([
+          supabase.from('subscriptions').select('*').eq('id', user.id).single(),
+          parentAccountId ? supabase.from('subscriptions').select('*').eq('id', parentAccountId).single() : Promise.resolve({ data: null })
         ]);
 
-        if (subscriptionDoc.exists()) {
-          const subData = subscriptionDoc.data();
-          const expiresAt = subData.expires_at?.toDate ? subData.expires_at.toDate() : (subData.end_date?.toDate ? subData.end_date.toDate() : null);
+        const subscriptionData = subResult.data;
+        const parentData = parentResult.data;
+
+        if (!!subscriptionData) {
+          const subData = subscriptionData;
+          const expiresAt = subData.expires_at ? new Date(subData.expires_at) : (subData.end_date ? new Date(subData.end_date) : null);
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
           // Smart Dynamic Labeling
@@ -228,9 +230,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             daysLeft: daysLeft,
             isFromParent: false
           });
-        } else if (parentDoc?.exists()) {
-          const pSubData = parentDoc.data();
-          const expiresAt = pSubData.expires_at?.toDate ? pSubData.expires_at.toDate() : (pSubData.end_date?.toDate ? pSubData.end_date.toDate() : null);
+        } else if (!!parentData) {
+          const pSubData = parentData;
+          const expiresAt = pSubData.expires_at ? new Date(pSubData.expires_at) : (pSubData.end_date ? new Date(pSubData.end_date) : null);
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
           setSubscription({
@@ -241,7 +243,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             expires_at: expiresAt,
             daysLeft: daysLeft,
             isFromParent: true,
-            parentAccountName: parentDoc.data()?.name || parentDoc.data()?.club_name || parentDoc.data()?.academy_name || 'الحساب الأب'
+            parentAccountName: parentData?.name || parentData?.club_name || parentData?.academy_name || 'الحساب الأب'
           });
         }
 
@@ -260,46 +262,46 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         ];
 
         const historyPromises = essentialColls.flatMap(coll => [
-          getDocs(query(collection(db, coll.name), where('userId', '==', user.uid), limit(10))),
-          getDocs(query(collection(db, coll.name), where('user_id', '==', user.uid), limit(10))),
+          supabase.from(coll.name).select('*').eq('userId', user.id).limit(10),
+          supabase.from(coll.name).select('*').eq('user_id', user.id).limit(10),
           // Query for player-specific fields in case of academies/clubs
-          getDocs(query(collection(db, coll.name), where('playerId', '==', user.uid), limit(10)))
+          supabase.from(coll.name).select('*').eq('playerId', user.id).limit(10)
         ]);
 
         const results = await Promise.all(historyPromises);
         const historyData: PaymentRecord[] = [];
 
-        results.forEach((snap, idx) => {
+        results.forEach((result, idx) => {
           const coll = essentialColls[Math.floor(idx / 3)];
-          snap.forEach(d => {
-            const data = d.data();
+          const data = result.data || [];
+          data.forEach(d => {
             if (!historyData.find(ex => ex.id === d.id)) {
               historyData.push({
                 id: d.id,
-                amount: data.amount || 0,
-                currency: data.currency || coll.currency,
-                status: mapPaymentStatus(data.status, coll.name, data),
-                payment_date: data.createdAt || data.created_at || data.paidAt || data.uploadedAt,
-                createdAt: data.createdAt || data.created_at || data.paidAt || data.uploadedAt,
-                package_name: (data.packageName || data.package_name || data.plan_name) ? (
-                  ((Number(data.amount) >= 110 && Number(data.amount) < 180) && (data.packageName || data.package_name || '').includes('3'))
+                amount: d.amount || 0,
+                currency: d.currency || coll.currency,
+                status: mapPaymentStatus(d.status, coll.name, d),
+                payment_date: d.createdAt || d.created_at || d.paidAt || d.uploadedAt,
+                createdAt: d.createdAt || d.created_at || d.paidAt || d.uploadedAt,
+                package_name: (d.packageName || d.package_name || d.plan_name) ? (
+                  ((Number(d.amount) >= 110 && Number(d.amount) < 180) && (d.packageName || d.package_name || '').includes('3'))
                     ? 'اشتراك 6 شهور'
-                    : (data.packageName || data.package_name || data.plan_name)
+                    : (d.packageName || d.package_name || d.plan_name)
                 ) : (
-                  coll.name === 'invoices' ? (Number(data.amount) >= 180 ? 'اشتراك سنوي' : Number(data.amount) >= 110 ? 'اشتراك 6 شهور' : 'اشتراك 3 شهور') :
+                  coll.name === 'invoices' ? (Number(d.amount) >= 180 ? 'اشتراك سنوي' : Number(d.amount) >= 110 ? 'اشتراك 6 شهور' : 'اشتراك 3 شهور') :
                     coll.name === 'receipts' ? 'إيصال دفع مرفوع' :
                       coll.name === 'vodafone_cash' ? 'فودافون كاش' : 'اشتراك'
                 ),
                 source: coll.name,
-                notes: data.notes || data.adminNotes || data.rejectionReason || null
+                notes: d.notes || d.adminNotes || d.rejectionReason || null
               });
             }
           });
         });
 
         setPayments(historyData.sort((a, b) => {
-          const tA = (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0) || (a.payment_date?.toDate ? a.payment_date.toDate().getTime() : (a.payment_date instanceof Date ? a.payment_date.getTime() : 0));
-          const tB = (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0) || (b.payment_date?.toDate ? b.payment_date.toDate().getTime() : (b.payment_date instanceof Date ? b.payment_date.getTime() : 0));
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : (a.payment_date ? new Date(a.payment_date).getTime() : 0);
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : (b.payment_date ? new Date(b.payment_date).getTime() : 0);
           return tB - tA;
         }));
 
@@ -315,10 +317,11 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     fetchSubscriptionData();
 
     // 3. Setup real-time listeners (Only for primary status)
-    const unsubSub = onSnapshot(doc(db, 'subscriptions', user.uid), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        const exp = d.expires_at?.toDate ? d.expires_at.toDate() : null;
+    const channel = supabase
+      .channel(`subscriptions-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions', filter: `id=eq.${user.id}` }, (payload) => {
+        const d = payload.new as any;
+        const exp = d.expires_at ? new Date(d.expires_at) : null;
         const dl = exp ? Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
         setSubscription(prev => ({
           ...prev!,
@@ -328,14 +331,13 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         }));
         setIsUpdating(true);
         setTimeout(() => setIsUpdating(false), 2000);
-      }
-    });
+      })
+      .subscribe();
 
     return () => {
-      unsubSub();
-      if (parentSubscriptionUnsubscribe) parentSubscriptionUnsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, [user?.uid, userData, accountType]);
+  }, [user?.id, userData, accountType]);
 
   // عداد انتهاء ديناميكي يحدث كل ثانية
   useEffect(() => {
@@ -345,11 +347,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     }
 
     const updateCountdown = () => {
-      const expiresAt = subscription.expires_at?.toDate
-        ? subscription.expires_at.toDate()
-        : subscription.expires_at instanceof Date
-          ? subscription.expires_at
-          : new Date(subscription.expires_at);
+      const expiresAt = subscription.expires_at instanceof Date
+        ? subscription.expires_at
+        : new Date(subscription.expires_at);
 
       const now = new Date();
       const diff = expiresAt.getTime() - now.getTime();
@@ -397,7 +397,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'غير محدد';
     try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
       return date.toLocaleDateString('ar-EG', {
         year: 'numeric',
         month: 'long',
@@ -497,7 +497,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
             <div className="text-right">
               <p className="text-slate-400 text-sm mb-1 uppercase tracking-widest font-bold">رقم العميل</p>
               <code className="text-xl font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100/50">
-                #{user?.uid.slice(-8).toUpperCase()}
+                #{user?.id.slice(-8).toUpperCase()}
               </code>
             </div>
           </div>
@@ -628,7 +628,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                   { label: 'نوع الحساب', val: accountType === 'player' ? 'لاعب محترف' : accountType, icon: Zap },
                   { label: 'مدة الاشتراك', val: subscription?.package_duration || 'غير محددة', icon: Calendar },
                   { label: 'بريد التواصل', val: user?.email, icon: AlertCircle },
-                  { label: 'المعرف الرقمي', val: user?.uid.slice(0, 10), icon: CreditCard },
+                  { label: 'المعرف الرقمي', val: user?.id.slice(0, 10), icon: CreditCard },
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-200">
                     <div className="flex items-center gap-3">
@@ -773,4 +773,3 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
 };
 
 export default SubscriptionStatusPage;
-

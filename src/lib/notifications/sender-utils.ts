@@ -1,4 +1,4 @@
-import type { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 
 export type SenderContext = {
@@ -142,22 +142,21 @@ export const buildSenderInfo = ({
   fallbackAccountType?: string;
   overrideBucket?: string | null;
 } = {}): SenderContext => {
-  const senderId = user?.uid || userData?.uid || userData?.id || null;
+  const senderId = user?.id || userData?.id || null;
   const senderAccountType = userData?.accountType || fallbackAccountType || 'admin';
   const senderName =
     userData?.displayName ||
     userData?.fullName ||
     userData?.name ||
-    user?.displayName ||
+    user?.user_metadata?.full_name ||
     user?.email?.split('@')[0] ||
     fallbackName;
 
   const rawAvatar =
     userData?.logo ||
     userData?.avatar ||
-    userData?.photoURL ||
     userData?.profileImage ||
-    user?.photoURL ||
+    user?.user_metadata?.avatar_url ||
     null;
 
   const bucket = overrideBucket || deduceBucket(senderAccountType);

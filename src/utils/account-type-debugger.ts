@@ -1,15 +1,14 @@
 // أداة تشخيص نوع الحساب
-import { doc, getDoc, DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { AccountType } from '../types/common';
 
 export interface AccountDebugInfo {
   uid: string;
   email: string;
   foundInUsers: boolean;
-  usersData?: DocumentData;
+  usersData?: Record<string, unknown>;
   foundInCollections: string[];
-  collectionsData: Record<string, DocumentData>;
+  collectionsData: Record<string, Record<string, unknown>>;
   detectedAccountType?: AccountType;
   recommendedAction: string;
 }
@@ -25,47 +24,43 @@ export async function debugAccountType(uid: string, email: string): Promise<Acco
   };
 
   try {
-    // فحص users collection
-    console.log('🔍 Checking users collection...');
-    const userRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userRef);
-    
-    if (userDoc.exists()) {
+    // فحص users table
+    console.log('🔍 Checking users table...');
+    const { data: userData } = await supabase.from('users').select('*').eq('id', uid).limit(1);
+
+    if (userData?.length) {
       debugInfo.foundInUsers = true;
-      debugInfo.usersData = userDoc.data();
-      debugInfo.detectedAccountType = debugInfo.usersData.accountType as AccountType;
-      console.log('✅ Found in users collection:', debugInfo.usersData);
+      debugInfo.usersData = userData[0] as Record<string, unknown>;
+      debugInfo.detectedAccountType = (userData[0] as Record<string, unknown>).accountType as AccountType;
+      console.log('✅ Found in users table:', userData[0]);
     } else {
-      console.log('❌ Not found in users collection');
+      console.log('❌ Not found in users table');
     }
 
-    // فحص role-specific collections
-    const collections: Array<{ name: string; accountType: AccountType }> = [
+    // فحص role-specific tables
+    const tables: Array<{ name: string; accountType: AccountType }> = [
       { name: 'clubs', accountType: 'club' },
       { name: 'academies', accountType: 'academy' },
       { name: 'trainers', accountType: 'trainer' },
       { name: 'agents', accountType: 'agent' },
       { name: 'players', accountType: 'player' }
     ];
-    
-    for (const collection of collections) {
-      console.log(`🔍 Checking ${collection.name} collection...`);
-      const roleRef = doc(db, collection.name, uid);
-      const roleDoc = await getDoc(roleRef);
-      
-      if (roleDoc.exists()) {
-        const data = roleDoc.data();
-        debugInfo.foundInCollections.push(collection.name);
-        debugInfo.collectionsData[collection.name] = data;
-        
-        // تحديد نوع الحساب من اسم المجموعة
+
+    for (const table of tables) {
+      console.log(`🔍 Checking ${table.name} table...`);
+      const { data } = await supabase.from(table.name).select('*').eq('id', uid).limit(1);
+
+      if (data?.length) {
+        debugInfo.foundInCollections.push(table.name);
+        debugInfo.collectionsData[table.name] = data[0] as Record<string, unknown>;
+
         if (!debugInfo.detectedAccountType) {
-          debugInfo.detectedAccountType = collection.accountType;
+          debugInfo.detectedAccountType = table.accountType;
         }
-        
-        console.log(`✅ Found in ${collection.name}:`, data);
+
+        console.log(`✅ Found in ${table.name}:`, data[0]);
       } else {
-        console.log(`❌ Not found in ${collection.name}`);
+        console.log(`❌ Not found in ${table.name}`);
       }
     }
 
@@ -73,9 +68,9 @@ export async function debugAccountType(uid: string, email: string): Promise<Acco
     if (debugInfo.foundInUsers && debugInfo.foundInCollections.length > 0) {
       debugInfo.recommendedAction = 'Account properly configured';
     } else if (!debugInfo.foundInUsers && debugInfo.foundInCollections.length > 0) {
-      debugInfo.recommendedAction = `Create users document with accountType: ${debugInfo.detectedAccountType}`;
+      debugInfo.recommendedAction = `Create users row with accountType: ${debugInfo.detectedAccountType}`;
     } else if (debugInfo.foundInUsers && debugInfo.foundInCollections.length === 0) {
-      debugInfo.recommendedAction = `Create role document in ${debugInfo.detectedAccountType}s collection`;
+      debugInfo.recommendedAction = `Create role row in ${debugInfo.detectedAccountType}s table`;
     } else {
       debugInfo.recommendedAction = 'Account needs complete setup';
     }
@@ -92,38 +87,33 @@ export async function debugAccountType(uid: string, email: string): Promise<Acco
 // دالة للتحقق من المستخدم الحالي
 export async function debugCurrentUser(): Promise<void> {
   if (typeof window === 'undefined') return;
-  
-  // استيراد auth بشكل ديناميكي لتجنب مشاكل SSR
-  const { auth } = await import('@/lib/firebase/config');
-  const { onAuthStateChanged } = await import('firebase/auth');
-  
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      console.log('🔍 === Account Type Debug Info ===');
-      const debugInfo = await debugAccountType(user.uid, user.email || '');
-      console.table(debugInfo);
-      console.log('📋 Recommended Action:', debugInfo.recommendedAction);
-      console.log('=================================');
-      
-      // إضافة للـ window للوصول من console
-      (window as Window & { accountDebugInfo?: AccountDebugInfo }).accountDebugInfo = debugInfo;
-      console.log('💡 Access debug info via: window.accountDebugInfo');
-    }
-  });
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    console.log('🔍 === Account Type Debug Info ===');
+    const debugInfo = await debugAccountType(user.id, user.email || '');
+    console.table(debugInfo);
+    console.log('📋 Recommended Action:', debugInfo.recommendedAction);
+    console.log('=================================');
+
+    (window as Window & { accountDebugInfo?: AccountDebugInfo }).accountDebugInfo = debugInfo;
+    console.log('💡 Access debug info via: window.accountDebugInfo');
+  }
 }
 
 // تفعيل التشخيص في بيئة التطوير
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as Window & { 
+  (window as Window & {
     debugAccountType?: typeof debugAccountType;
     debugCurrentUser?: typeof debugCurrentUser;
   }).debugAccountType = debugAccountType;
-  (window as Window & { 
+  (window as Window & {
     debugAccountType?: typeof debugAccountType;
     debugCurrentUser?: typeof debugCurrentUser;
   }).debugCurrentUser = debugCurrentUser;
-  
+
   console.log('🛠️ Account debugging tools available:');
   console.log('   window.debugAccountType(uid, email)');
   console.log('   window.debugCurrentUser()');
-} 
+}

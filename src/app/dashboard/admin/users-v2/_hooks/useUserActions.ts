@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import { doc, updateDoc, deleteDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { User, AccountType } from '../_types';
 import { message } from 'antd';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -9,8 +8,8 @@ import { notifyUserUpdate } from '@/lib/notifications/admin-notifications';
 export function useUserActions() {
     const [loading, setLoading] = useState(false);
 
-    // الحصول على اسم المجموعة
-    const getCollectionName = (accountType: AccountType): string => {
+    // الحصول على اسم الجدول
+    const getTableName = (accountType: AccountType): string => {
         if (accountType === 'admin') return 'users';
         return accountType + 's';
     };
@@ -42,21 +41,21 @@ export function useUserActions() {
     const suspendUser = useCallback(async (user: User, reason: string) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
-            await updateDoc(doc(db, collectionName, user.id), {
+            await supabase.from(tableName).update({
                 isActive: false,
-                suspendedAt: new Date(),
+                suspendedAt: new Date().toISOString(),
                 suspendReason: reason,
-            });
+            }).eq('id', user.id);
 
             // تحديث في users أيضاً إذا كان مختلف
-            if (collectionName !== 'users') {
-                await updateDoc(doc(db, 'users', user.id), {
+            if (tableName !== 'users') {
+                await supabase.from('users').update({
                     isActive: false,
-                    suspendedAt: new Date(),
+                    suspendedAt: new Date().toISOString(),
                     suspendReason: reason,
-                });
+                }).eq('id', user.id);
             }
 
             // إرسال إشعار
@@ -77,20 +76,20 @@ export function useUserActions() {
     const activateUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
-            await updateDoc(doc(db, collectionName, user.id), {
+            await supabase.from(tableName).update({
                 isActive: true,
                 suspendedAt: null,
                 suspendReason: null,
-            });
+            }).eq('id', user.id);
 
-            if (collectionName !== 'users') {
-                await updateDoc(doc(db, 'users', user.id), {
+            if (tableName !== 'users') {
+                await supabase.from('users').update({
                     isActive: true,
                     suspendedAt: null,
                     suspendReason: null,
-                });
+                }).eq('id', user.id);
             }
 
             // إرسال إشعار
@@ -111,24 +110,24 @@ export function useUserActions() {
     const deleteUser = useCallback(async (user: User, permanent = false) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
             if (permanent) {
-                await deleteDoc(doc(db, collectionName, user.id));
-                if (collectionName !== 'users') {
-                    await deleteDoc(doc(db, 'users', user.id));
+                await supabase.from(tableName).delete().eq('id', user.id);
+                if (tableName !== 'users') {
+                    await supabase.from('users').delete().eq('id', user.id);
                 }
                 message.success('تم حذف الحساب نهائياً');
             } else {
-                await updateDoc(doc(db, collectionName, user.id), {
+                await supabase.from(tableName).update({
                     isDeleted: true,
-                    deletedAt: new Date(),
-                });
-                if (collectionName !== 'users') {
-                    await updateDoc(doc(db, 'users', user.id), {
+                    deletedAt: new Date().toISOString(),
+                }).eq('id', user.id);
+                if (tableName !== 'users') {
+                    await supabase.from('users').update({
                         isDeleted: true,
-                        deletedAt: new Date(),
-                    });
+                        deletedAt: new Date().toISOString(),
+                    }).eq('id', user.id);
                 }
                 message.success('تم حذف الحساب');
             }
@@ -150,18 +149,18 @@ export function useUserActions() {
     const restoreUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
-            await updateDoc(doc(db, collectionName, user.id), {
+            await supabase.from(tableName).update({
                 isDeleted: false,
                 deletedAt: null,
-            });
+            }).eq('id', user.id);
 
-            if (collectionName !== 'users') {
-                await updateDoc(doc(db, 'users', user.id), {
+            if (tableName !== 'users') {
+                await supabase.from('users').update({
                     isDeleted: false,
                     deletedAt: null,
-                });
+                }).eq('id', user.id);
             }
 
             // إرسال إشعار (نعتبره تفعيل أو تحديث)
@@ -182,18 +181,18 @@ export function useUserActions() {
     const verifyUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
-            await updateDoc(doc(db, collectionName, user.id), {
+            await supabase.from(tableName).update({
                 verificationStatus: 'verified',
-                verifiedAt: new Date(),
-            });
+                verifiedAt: new Date().toISOString(),
+            }).eq('id', user.id);
 
-            if (collectionName !== 'users') {
-                await updateDoc(doc(db, 'users', user.id), {
+            if (tableName !== 'users') {
+                await supabase.from('users').update({
                     verificationStatus: 'verified',
-                    verifiedAt: new Date(),
-                });
+                    verifiedAt: new Date().toISOString(),
+                }).eq('id', user.id);
             }
 
             // إرسال إشعار (كعملية تحديث)
@@ -215,9 +214,9 @@ export function useUserActions() {
         setLoading(true);
         try {
             // تحديث في users
-            await updateDoc(doc(db, 'users', user.id), {
+            await supabase.from('users').update({
                 accountType: newType,
-            });
+            }).eq('id', user.id);
 
             message.success('تم تغيير نوع الحساب بنجاح');
             return true;
@@ -234,10 +233,10 @@ export function useUserActions() {
     const updateUser = useCallback(async (user: User, data: Partial<User>) => {
         setLoading(true);
         try {
-            const collectionName = getCollectionName(user.accountType);
+            const tableName = getTableName(user.accountType);
 
             const updateData: any = {
-                updatedAt: new Date(),
+                updatedAt: new Date().toISOString(),
             };
 
             if (data.name) {
@@ -249,18 +248,17 @@ export function useUserActions() {
             if (data.city) updateData.city = data.city;
             if (data.accountType) updateData.accountType = data.accountType;
 
-            // تحديث في المجموعة الخاصة
-            if (collectionName !== 'users') {
-                // إذا تغير نوع الحساب، قد نحتاج لنقل المستند، لكن للتبسيط الآن سنحدث فقط إذا كان نفس النوع
+            // تحديث في الجدول الخاص
+            if (tableName !== 'users') {
                 if (data.accountType && data.accountType !== user.accountType) {
                     // منطق تغيير النوع يتم التعامل معه في changeAccountType
                 } else {
-                    await updateDoc(doc(db, collectionName, user.id), updateData);
+                    await supabase.from(tableName).update(updateData).eq('id', user.id);
                 }
             }
 
             // تحديث في users
-            await updateDoc(doc(db, 'users', user.id), updateData);
+            await supabase.from('users').update(updateData).eq('id', user.id);
 
             // إرسال إشعار
             await sendNotificationIfNeeded(user, 'update');
@@ -281,12 +279,13 @@ export function useUserActions() {
         setLoading(true);
         try {
             if (method === 'notification') {
-                await addDoc(collection(db, 'notifications'), {
+                await supabase.from('notifications').insert({
+                    id: crypto.randomUUID(),
                     userId: user.id,
                     title,
                     message: body,
                     isRead: false,
-                    createdAt: serverTimestamp(),
+                    createdAt: new Date().toISOString(),
                     type: 'info',
                     category: 'system',
                     metadata: {
@@ -295,8 +294,9 @@ export function useUserActions() {
                     }
                 });
             } else if (method === 'email') {
-                // استخدام مجموعة mail لإرسال البريد عبر Firebase Extension (إذا كان مفعلاً)
-                await addDoc(collection(db, 'mail'), {
+                // استخدام جدول mail لإرسال البريد
+                await supabase.from('mail').insert({
+                    id: crypto.randomUUID(),
                     to: user.email,
                     message: {
                         subject: title,

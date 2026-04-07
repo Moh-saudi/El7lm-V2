@@ -1,189 +1,67 @@
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, addDoc, orderBy, query, Timestamp } from 'firebase/firestore';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * GET /api/careers/applications
- * جلب جميع طلبات التوظيف
- */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('📋 [Careers API] Fetching career applications...');
-
-    // Skip Firebase calls during build time
     if (process.env.NEXT_PHASE === 'phase-production-build') {
-      console.log('🚫 [Careers API] Skipping Firebase calls during build phase');
-      return NextResponse.json({
-        success: true,
-        items: []
-      });
+      return NextResponse.json({ success: true, items: [] });
     }
 
-    // Search in multiple possible collection names
-    const possibleCollections = [
-      'careerApplications',
-      'careersApplications',
-      'careers',
-      'jobApplications',
-      'applications',
-      'career_applications',
-      'careers_applications'
-    ];
+    const db = getSupabaseAdmin();
+    const tables = ['career_applications', 'careerApplications'];
+    const allItems: unknown[] = [];
 
-    const allItems: any[] = [];
-
-    for (const collectionName of possibleCollections) {
+    for (const table of tables) {
       try {
-        console.log(`🔍 [Careers API] Searching in collection: ${collectionName}`);
-        const applicationsRef = collection(db, collectionName);
-        
-        // Try with orderBy first, if it fails, try without
-        let snapshot;
-        try {
-          const q = query(applicationsRef, orderBy('createdAt', 'desc'));
-          snapshot = await getDocs(q);
-        } catch (orderByError) {
-          // If orderBy fails (no index or no createdAt field), get all docs
-          console.log(`⚠️ [Careers API] orderBy failed for ${collectionName}, fetching all docs`);
-          snapshot = await getDocs(applicationsRef);
-        }
-
-        const items = snapshot.docs.map(doc => {
-          const data = doc.data();
-          // Check if this looks like a career application
-          const hasCareerFields = data.fullName || data.email || data.phone || data.role || data.roles;
-          
-          if (hasCareerFields) {
-            return {
-              id: doc.id,
-              collection: collectionName, // Track which collection it came from
-              ...data,
-              // Convert Firestore Timestamp to JavaScript Date
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : 
-                        data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) :
-                        data.createdAt || new Date()
-            };
-          }
-          return null;
-        }).filter(item => item !== null);
-
-        if (items.length > 0) {
-          console.log(`✅ [Careers API] Found ${items.length} applications in ${collectionName}`);
-          allItems.push(...items);
-        }
-      } catch (error: any) {
-        // Collection might not exist, skip it
-        if (error?.code !== 'not-found') {
-          console.log(`⚠️ [Careers API] Error searching ${collectionName}:`, error.message);
-        }
-      }
+        const { data } = await db.from(table).select('*').order('createdAt', { ascending: false });
+        const items = (data ?? []).filter((row: Record<string, unknown>) => row.fullName || row.email || row.phone);
+        if (items.length > 0) allItems.push(...items);
+      } catch {}
     }
 
-    // Sort all items by createdAt (newest first)
-    allItems.sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
-      return dateB - dateA;
+    allItems.sort((a: unknown, b: unknown) => {
+      const aRow = a as Record<string, unknown>;
+      const bRow = b as Record<string, unknown>;
+      return new Date(String(bRow.createdAt ?? 0)).getTime() - new Date(String(aRow.createdAt ?? 0)).getTime();
     });
 
-    console.log(`✅ [Careers API] Total applications found: ${allItems.length}`);
-
-    return NextResponse.json({
-      success: true,
-      items: allItems,
-      collectionsSearched: possibleCollections
-    });
-
+    return NextResponse.json({ success: true, items: allItems });
   } catch (error) {
-    console.error('❌ [Careers API] Error fetching applications:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch applications',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to fetch applications', details: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }
 }
 
-/**
- * POST /api/careers/applications
- * حفظ طلب توظيف جديد
- */
 export async function POST(request: NextRequest) {
   try {
-    console.log('📝 [Careers API] Creating new career application...');
-
     const body = await request.json().catch(() => ({}));
-
-    // Validate required fields
     const requiredFields = ['fullName', 'email', 'phone'];
-    const missingFields = requiredFields.filter(field => !body[field]);
-
-    if (missingFields.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Missing required fields: ${missingFields.join(', ')}`
-        },
-        { status: 400 }
-      );
+    const missing = requiredFields.filter(f => !body[f]);
+    if (missing.length > 0) {
+      return NextResponse.json({ success: false, error: `Missing required fields: ${missing.join(', ')}` }, { status: 400 });
+    }
+    if (!Array.isArray(body.roles) || body.roles.length === 0) {
+      return NextResponse.json({ success: false, error: 'At least one role must be selected' }, { status: 400 });
     }
 
-    // Validate roles
-    if (!body.roles || !Array.isArray(body.roles) || body.roles.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'At least one role must be selected'
-        },
-        { status: 400 }
-      );
-    }
+    const db = getSupabaseAdmin();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
 
-    // Prepare application data
     const applicationData = {
-      fullName: body.fullName,
-      email: body.email,
-      phone: body.phone,
-      country: body.country || '',
-      governorate: body.governorate || '',
-      experience: body.experience || '',
-      linkedin: body.linkedin || '',
-      facebook: body.facebook || '',
-      notes: body.notes || '',
-      roles: body.roles, // Array of selected role keys
-      role: body.role || body.roles[0], // For backward compatibility
-      createdAt: Timestamp.now(),
-      status: 'pending'
+      id,
+      fullName: body.fullName, email: body.email, phone: body.phone,
+      country: body.country || '', governorate: body.governorate || '',
+      experience: body.experience || '', linkedin: body.linkedin || '',
+      facebook: body.facebook || '', notes: body.notes || '',
+      roles: body.roles, role: body.role || body.roles[0],
+      createdAt: now, status: 'pending',
     };
 
-    // Save to Firestore
-    const applicationsRef = collection(db, 'careerApplications');
-    const docRef = await addDoc(applicationsRef, applicationData);
+    const { error } = await db.from('career_applications').insert(applicationData);
+    if (error) throw error;
 
-    console.log(`✅ [Careers API] Application created with ID: ${docRef.id}`);
-
-    // TODO: Send notification to admin (optional)
-    // You can add notification logic here if needed
-
-    return NextResponse.json({
-      success: true,
-      id: docRef.id,
-      message: 'Application submitted successfully'
-    });
-
+    return NextResponse.json({ success: true, id, message: 'Application submitted successfully' });
   } catch (error) {
-    console.error('❌ [Careers API] Error creating application:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to submit application',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to submit application', details: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }
 }
-

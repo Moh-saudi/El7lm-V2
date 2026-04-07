@@ -1,4 +1,5 @@
 // src/lib/azure/storage.ts
+// @ts-ignore
 import { BlobServiceClient } from '@azure/storage-blob';
 
 export async function uploadFile(file: File) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   ArrowLeft,
   Trophy,
   Users,
@@ -25,8 +25,7 @@ import {
   FileText,
   DollarSign
 } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 
 interface Tournament {
@@ -98,18 +97,29 @@ export default function TournamentRegistrationsPage() {
 
   const fetchTournaments = async () => {
     try {
-      const tournamentsQuery = query(
-        collection(db, 'tournaments'),
-        where('isActive', '==', true),
-        orderBy('startDate', 'asc')
-      );
-      
-      const querySnapshot = await getDocs(tournamentsQuery);
-      const tournamentsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('isActive', true)
+        .order('startDate', { ascending: true });
+
+      if (error) throw error;
+
+      const tournamentsData = (data || []).map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        location: row.location,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        registrationDeadline: row.registrationDeadline,
+        maxParticipants: row.maxParticipants,
+        currentParticipants: row.currentParticipants,
+        entryFee: row.entryFee,
+        isPaid: row.isPaid,
+        isActive: row.isActive,
       })) as Tournament[];
-      
+
       setTournaments(tournamentsData);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -119,17 +129,44 @@ export default function TournamentRegistrationsPage() {
 
   const fetchRegistrations = async () => {
     try {
-      const registrationsQuery = query(
-        collection(db, 'tournament_registrations'),
-        orderBy('registrationDate', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(registrationsQuery);
-      const registrationsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const { data, error } = await supabase
+        .from('tournament_registrations')
+        .select('*')
+        .order('registeredAt', { ascending: false });
+
+      if (error) throw error;
+
+      const registrationsData = (data || []).map(row => ({
+        id: row.id,
+        tournamentId: row.tournamentId,
+        playerId: row.organizerId,
+        playerName: row.teamName || row.organizerId,
+        playerEmail: row.accountEmail || '',
+        playerPhone: row.accountPhone || '',
+        playerAge: 0,
+        playerClub: row.organizationName || '',
+        playerPosition: '',
+        registrationDate: row.registeredAt,
+        paymentStatus: row.paymentStatus,
+        paymentAmount: row.amount,
+        notes: row.notes,
+        registrationType: row.organizerType,
+        clubName: row.teamName,
+        clubContact: row.accountPhone,
+        clubPlayers: row.players,
+        accountType: row.organizerType,
+        accountName: row.teamName,
+        accountEmail: row.accountEmail,
+        accountPhone: row.accountPhone,
+        organizationName: row.organizationName,
+        organizationType: row.organizerType,
+        paymentMethod: row.paymentMethod,
+        mobileWalletProvider: row.mobileWalletProvider,
+        mobileWalletNumber: row.mobileWalletNumber,
+        receiptUrl: row.receiptUrl,
+        receiptNumber: row.receiptNumber,
       })) as TournamentRegistration[];
-      
+
       setRegistrations(registrationsData);
     } catch (error) {
       console.error('Error fetching registrations:', error);
@@ -149,7 +186,7 @@ export default function TournamentRegistrationsPage() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(reg => 
+      filtered = filtered.filter(reg =>
         reg.playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         reg.playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         reg.playerPhone.includes(searchTerm) ||
@@ -176,18 +213,16 @@ export default function TournamentRegistrationsPage() {
     if (!date) return 'غير محدد';
     try {
       let d: Date;
-      if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
-        d = date.toDate();
-      } else if (date instanceof Date) {
+      if (date instanceof Date) {
         d = date;
       } else {
         d = new Date(date);
       }
-      
+
       if (isNaN(d.getTime())) {
         return 'غير محدد';
       }
-      
+
       return d.toLocaleDateString('en-GB');
     } catch (error) {
       return 'غير محدد';
@@ -322,15 +357,15 @@ export default function TournamentRegistrationsPage() {
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="mb-8">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => router.push('/dashboard/admin/tournaments')}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             العودة لإدارة البطولات
           </Button>
-          
+
           <div className="text-center">
             <Users className="h-16 w-16 text-blue-600 mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-gray-900 mb-2">بيانات المنضمين للبطولات</h1>
@@ -351,7 +386,7 @@ export default function TournamentRegistrationsPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -363,7 +398,7 @@ export default function TournamentRegistrationsPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -377,7 +412,7 @@ export default function TournamentRegistrationsPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -415,7 +450,7 @@ export default function TournamentRegistrationsPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">البطولة</label>
                 <Select value={selectedTournament} onValueChange={setSelectedTournament}>
@@ -432,7 +467,7 @@ export default function TournamentRegistrationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">حالة الدفع</label>
                 <Select value={paymentFilter} onValueChange={setPaymentFilter}>
@@ -447,7 +482,7 @@ export default function TournamentRegistrationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">نوع الحساب</label>
                 <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
@@ -466,7 +501,7 @@ export default function TournamentRegistrationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">الإجراءات</label>
                 <Button onClick={exportToExcel} className="w-full">
@@ -553,7 +588,7 @@ export default function TournamentRegistrationsPage() {
                               <div className="flex items-center gap-2">
                                 <DollarSign className="h-4 w-4 text-green-600" />
                                 <span className="text-sm text-gray-600">
-                                  <strong>رسوم البطولة:</strong> 
+                                  <strong>رسوم البطولة:</strong>
                                   <span className="font-bold text-green-600 ml-1">
                                     {tournament.entryFee} ج.م
                                   </span>
@@ -624,7 +659,7 @@ export default function TournamentRegistrationsPage() {
                               )}
                               {registration.paymentAmount > 0 && (
                                 <div className="text-sm text-gray-600">
-                                  <strong>قيمة الاشتراك المدفوع:</strong> 
+                                  <strong>قيمة الاشتراك المدفوع:</strong>
                                   <span className="font-bold text-green-600 ml-2">
                                     {registration.paymentAmount} ج.م
                                   </span>

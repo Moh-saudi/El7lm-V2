@@ -1,44 +1,43 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Plus, Trash2, X, Check, Loader2, Tag, Star, Users, Layout, Sparkles, MessageSquare, Target, Eye, RefreshCcw } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { Card, Select, Form, Input, Button, Space, Tag, Typography, Spin, Row, Col, List, Empty, Divider } from 'antd';
+import { PlusOutlined, DeleteOutlined, TagOutlined, StarOutlined, UserOutlined, MessageOutlined, SaveOutlined, EyeOutlined } from '@ant-design/icons';
+import { ConfigProvider, App } from 'antd';
+import arEG from 'antd/locale/ar_EG';
 import { PricingService } from '@/lib/pricing/pricing-service';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from "@/components/ui/button";
 
-// ==================== GUIDELINES TAB ====================
+const { TextArea } = Input;
+const { Text, Title } = Typography;
 
-export default function GuidelinesTab() {
+const ANTD_THEME = {
+    token: { colorPrimary: '#2563eb', borderRadius: 8, fontFamily: 'inherit' },
+    components: { Card: { borderRadiusLG: 12 } },
+};
+
+function GuidelinesContent() {
+    const { message } = App.useApp();
     const [plans, setPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-    const [editForm, setEditForm] = useState<any>({
-        badges: [],
-        highlights: [],
-        recommendedFor: '',
-        description: ''
-    });
+    const [selectedPlanId, setSelectedPlanId] = useState('');
+    const [badges, setBadges] = useState<string[]>([]);
+    const [highlights, setHighlights] = useState<string[]>([]);
+    const [recommendedFor, setRecommendedFor] = useState('');
+    const [description, setDescription] = useState('');
     const [newBadge, setNewBadge] = useState('');
     const [newHighlight, setNewHighlight] = useState('');
 
-    useEffect(() => {
-        loadPlans();
-    }, []);
+    useEffect(() => { loadPlans(); }, []);
 
     useEffect(() => {
         if (selectedPlanId) {
             const plan = plans.find(p => p.id === selectedPlanId);
             if (plan) {
-                setEditForm({
-                    badges: plan.badges || [],
-                    highlights: plan.highlights || [],
-                    recommendedFor: plan.recommendedFor || '',
-                    description: plan.description || ''
-                });
+                setBadges(plan.badges || []);
+                setHighlights(plan.highlights || []);
+                setRecommendedFor(plan.recommendedFor || '');
+                setDescription(plan.description || '');
             }
         }
     }, [selectedPlanId, plans]);
@@ -46,14 +45,11 @@ export default function GuidelinesTab() {
     const loadPlans = async () => {
         setLoading(true);
         try {
-            const plansData = await PricingService.getAllPlans();
-            setPlans(plansData);
-            if (plansData.length > 0 && !selectedPlanId) {
-                setSelectedPlanId(plansData[0].id);
-            }
-        } catch (error) {
-            console.error('Error loading plans:', error);
-            toast.error('Failed to synchronize guidelines');
+            const data = await PricingService.getAllPlans();
+            setPlans(data);
+            if (data.length > 0 && !selectedPlanId) setSelectedPlanId(data[0].id);
+        } catch {
+            message.error('فشل تحميل الباقات');
         } finally {
             setLoading(false);
         }
@@ -62,22 +58,13 @@ export default function GuidelinesTab() {
     const handleSave = async () => {
         if (!selectedPlanId) return;
         setIsSaving(true);
-
         try {
             const plan = plans.find(p => p.id === selectedPlanId);
-            await PricingService.updatePlan({
-                ...plan,
-                badges: editForm.badges,
-                highlights: editForm.highlights,
-                recommendedFor: editForm.recommendedFor,
-                description: editForm.description
-            });
-
-            toast.success('✅ Branding guidelines synchronized');
+            await PricingService.updatePlan({ ...plan, badges, highlights, recommendedFor, description });
+            message.success('تم حفظ الإرشادات');
             loadPlans();
-        } catch (error) {
-            console.error('Error saving guidelines:', error);
-            toast.error('❌ Synchronization failure');
+        } catch {
+            message.error('فشل الحفظ');
         } finally {
             setIsSaving(false);
         }
@@ -85,272 +72,210 @@ export default function GuidelinesTab() {
 
     const addBadge = () => {
         if (!newBadge.trim()) return;
-        setEditForm({
-            ...editForm,
-            badges: [...editForm.badges, newBadge.trim()]
-        });
+        setBadges(prev => [...prev, newBadge.trim()]);
         setNewBadge('');
-        toast.success('Badge appended');
-    };
-
-    const removeBadge = (index: number) => {
-        setEditForm({
-            ...editForm,
-            badges: editForm.badges.filter((_: any, i: number) => i !== index)
-        });
     };
 
     const addHighlight = () => {
         if (!newHighlight.trim()) return;
-        setEditForm({
-            ...editForm,
-            highlights: [...editForm.highlights, newHighlight.trim()]
-        });
+        setHighlights(prev => [...prev, newHighlight.trim()]);
         setNewHighlight('');
-        toast.success('Highlight synchronized');
     };
 
-    const removeHighlight = (index: number) => {
-        setEditForm({
-            ...editForm,
-            highlights: editForm.highlights.filter((_: any, i: number) => i !== index)
-        });
-    };
-
-    if (loading) {
-        return (
-            <div className="flex flex-col justify-center items-center py-24 gap-4">
-                <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Syncing Creative Assets...</p>
-            </div>
-        );
-    }
+    if (loading) return (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+            <Spin size="large" />
+        </div>
+    );
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-12"
-        >
-            {/* Header Section */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Creative Guidelines & Narrative</h2>
-                    <p className="mt-2 text-slate-500 font-bold flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-500" />
-                        Refine plan branding, strategic highlights, and marketing propositions.
-                    </p>
+                    <Title level={5} style={{ margin: 0 }}>الإرشادات والوصف التسويقي</Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>الشارات والمميزات والوصف الظاهر للمستخدم</Text>
                 </div>
-
-                <div className="flex items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-[1.5rem] border border-white shadow-xl">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-4">Active Plan:</span>
-                    <select
-                        value={selectedPlanId}
-                        onChange={(e) => setSelectedPlanId(e.target.value)}
-                        className="h-12 px-6 bg-slate-900 text-white rounded-2xl font-black text-xs tracking-widest uppercase focus:ring-0 outline-none cursor-pointer hover:bg-slate-800 transition-all"
-                    >
-                        {plans.map(plan => (
-                            <option key={plan.id} value={plan.id}>{plan.title}</option>
-                        ))}
-                    </select>
-                </div>
+                <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    loading={isSaving}
+                    onClick={handleSave}
+                >
+                    حفظ التغييرات
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* Visual Anchors & Branding */}
-                <Card className="rounded-[3rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl p-10 overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none" />
-                    <CardHeader className="p-0 mb-10">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="p-4 bg-purple-600 rounded-2xl text-white shadow-lg shadow-purple-500/20">
-                                <Tag className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Strategic Branding</CardTitle>
-                                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visual visibility anchors</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
+            {/* Plan selector */}
+            <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
+                <Space>
+                    <Text style={{ fontSize: 12, color: '#6b7280' }}>الباقة:</Text>
+                    <Select
+                        value={selectedPlanId}
+                        onChange={setSelectedPlanId}
+                        style={{ width: 220 }}
+                        options={plans.map(p => ({ value: p.id, label: p.title }))}
+                    />
+                </Space>
+            </Card>
 
-                    <CardContent className="p-0 space-y-10">
-                        {/* Shارات (Badges) */}
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase text-purple-600 tracking-[0.2em] flex items-center gap-2">
-                                <Tag className="w-3.5 h-3.5" /> Identity Badges
-                            </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
+            <Row gutter={16}>
+                {/* Left: Badges + Highlights */}
+                <Col xs={24} lg={12}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* Badges */}
+                        <Card
+                            size="small"
+                            title={<Space><TagOutlined style={{ color: '#7c3aed' }} /><span>الشارات</span><Text type="secondary" style={{ fontSize: 11 }}>تظهر فوق البطاقة</Text></Space>}
+                        >
+                            <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
+                                <Input
+                                    size="small"
                                     value={newBadge}
-                                    onChange={(e) => setNewBadge(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && addBadge()}
-                                    placeholder="e.g. Most Popular, Elite Select..."
-                                    className="flex-1 h-14 px-6 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-purple-500/10 font-bold text-slate-900 transition-all shadow-sm"
+                                    onChange={e => setNewBadge(e.target.value)}
+                                    onPressEnter={addBadge}
+                                    placeholder="مثال: الأكثر طلباً، موصى به..."
                                 />
-                                <Button onClick={addBadge} className="h-14 w-14 rounded-2xl bg-purple-600 text-white p-0 shadow-lg shadow-purple-500/20 active:scale-90">
-                                    <Plus className="w-6 h-6" />
-                                </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                                {editForm.badges.map((badge: string, index: number) => (
-                                    <Badge key={index} className="h-10 px-4 bg-white border border-purple-100 text-purple-700 rounded-xl font-bold flex items-center gap-3 group hover:border-purple-300 hover:shadow-md transition-all">
+                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addBadge} />
+                            </Space.Compact>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {badges.length === 0 ? (
+                                    <Text type="secondary" italic style={{ fontSize: 12 }}>لا توجد شارات</Text>
+                                ) : badges.map((badge, i) => (
+                                    <Tag
+                                        key={i}
+                                        closable
+                                        onClose={() => setBadges(prev => prev.filter((_, idx) => idx !== i))}
+                                        color="purple"
+                                    >
                                         {badge}
-                                        <button onClick={() => removeBadge(index)} className="hover:text-rose-500 transition-colors">
-                                            <X className="w-3.5 h-3.5" />
-                                        </button>
-                                    </Badge>
+                                    </Tag>
                                 ))}
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* highlights */}
-                        <div className="space-y-4 pt-10 border-t border-slate-100/50">
-                            <label className="text-[10px] font-black uppercase text-yellow-600 tracking-[0.2em] flex items-center gap-2">
-                                <Star className="w-3.5 h-3.5" /> Strategic Highlights
-                            </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
+                        {/* Highlights */}
+                        <Card
+                            size="small"
+                            title={<Space><StarOutlined style={{ color: '#f59e0b' }} /><span>النقاط المميزة</span></Space>}
+                        >
+                            <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
+                                <Input
+                                    size="small"
                                     value={newHighlight}
-                                    onChange={(e) => setNewHighlight(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && addHighlight()}
-                                    placeholder="e.g. Save 35% on annual protocol..."
-                                    className="flex-1 h-14 px-6 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-yellow-500/10 font-bold text-slate-900 transition-all shadow-sm"
+                                    onChange={e => setNewHighlight(e.target.value)}
+                                    onPressEnter={addHighlight}
+                                    placeholder="مثال: وفّر 35% مع الاشتراك السنوي..."
                                 />
-                                <Button onClick={addHighlight} className="h-14 w-14 rounded-2xl bg-yellow-500 text-white p-0 shadow-lg shadow-yellow-500/20 active:scale-90">
-                                    <Plus className="w-6 h-6" />
-                                </Button>
-                            </div>
-                            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
-                                <AnimatePresence mode="popLayout">
-                                    {editForm.highlights.map((highlight: string, index: number) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, scale: 0.95 }}
-                                            className="flex justify-between items-center p-4 bg-yellow-50/30 border border-yellow-100/50 rounded-2xl group hover:border-yellow-300 hover:bg-white hover:shadow-lg transition-all"
+                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addHighlight} />
+                            </Space.Compact>
+                            {highlights.length === 0 ? (
+                                <Empty description="لا توجد نقاط مميزة" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            ) : (
+                                <List
+                                    size="small"
+                                    dataSource={highlights}
+                                    renderItem={(item, index) => (
+                                        <List.Item
+                                            style={{ background: '#fffbeb', borderRadius: 6, marginBottom: 4, padding: '6px 10px' }}
+                                            actions={[
+                                                <Button
+                                                    key="del"
+                                                    type="text"
+                                                    danger
+                                                    size="small"
+                                                    icon={<DeleteOutlined />}
+                                                    onClick={() => setHighlights(prev => prev.filter((_, i) => i !== index))}
+                                                />
+                                            ]}
                                         >
-                                            <span className="text-xs font-bold text-slate-700 flex items-center gap-4">
-                                                <div className="w-6 h-6 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600">
-                                                    <Star className="w-3.5 h-3.5 fill-current" />
-                                                </div>
-                                                {highlight}
-                                            </span>
-                                            <button onClick={() => removeHighlight(index)} className="p-2 hover:bg-rose-50 text-rose-300 hover:text-rose-500 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Narrative & Value Proposition */}
-                <div className="space-y-8">
-                    <Card className="rounded-[3rem] border-white/40 bg-white/60 backdrop-blur-xl shadow-2xl p-10 overflow-hidden relative">
-                        <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none" />
-                        <CardHeader className="p-0 mb-10">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-500/20">
-                                    <Target className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Value Narrative</CardTitle>
-                                    <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target audience & core proposition</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-
-                        <CardContent className="p-0 space-y-8">
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
-                                    <Users className="w-3.5 h-3.5" /> Target Entity Class
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.recommendedFor}
-                                    onChange={(e) => setEditForm({ ...editForm, recommendedFor: e.target.value })}
-                                    placeholder="e.g. Professional Sports Academies..."
-                                    className="w-full h-14 px-6 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold text-slate-900 transition-all shadow-sm"
+                                            <Space size={6}>
+                                                <StarOutlined style={{ color: '#f59e0b' }} />
+                                                <Text style={{ fontSize: 12 }}>{item}</Text>
+                                            </Space>
+                                        </List.Item>
+                                    )}
                                 />
-                            </div>
+                            )}
+                        </Card>
+                    </div>
+                </Col>
 
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] flex items-center gap-2">
-                                    <MessageSquare className="w-3.5 h-3.5" /> Marketing Narrative
-                                </label>
-                                <textarea
-                                    rows={6}
-                                    value={editForm.description}
-                                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                    placeholder="Compose a compelling narrative for this strategic tier..."
-                                    className="w-full p-6 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold text-slate-900 leading-relaxed custom-scrollbar shadow-sm min-h-[160px]"
-                                />
-                            </div>
-                        </CardContent>
+                {/* Right: Description + Target + Preview */}
+                <Col xs={24} lg={12}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <Card size="small">
+                            <Form layout="vertical" size="small">
+                                <Form.Item
+                                    label={<Space size={4}><UserOutlined style={{ color: '#3b82f6' }} />الفئة المستهدفة</Space>}
+                                >
+                                    <Input
+                                        value={recommendedFor}
+                                        onChange={e => setRecommendedFor(e.target.value)}
+                                        placeholder="مثال: الأندية الاحترافية والأكاديميات..."
+                                    />
+                                </Form.Item>
+                                <Divider style={{ margin: '8px 0' }} />
+                                <Form.Item
+                                    label={<Space size={4}><MessageOutlined style={{ color: '#6b7280' }} />الوصف التسويقي</Space>}
+                                >
+                                    <TextArea
+                                        rows={5}
+                                        value={description}
+                                        onChange={e => setDescription(e.target.value)}
+                                        placeholder="اكتب وصفاً جذاباً لهذه الباقة..."
+                                    />
+                                </Form.Item>
+                            </Form>
+                        </Card>
 
-                        <CardFooter className="p-0 mt-10">
-                            <Button
-                                disabled={isSaving}
-                                onClick={handleSave}
-                                className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/40 active:scale-95 transition-all flex items-center justify-center gap-3 group"
-                            >
-                                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                    <>
-                                        <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                        Commit Narrative Updates
-                                    </>
-                                )}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-
-                    {/* Integrated Live Preview */}
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-2xl relative overflow-hidden border border-white/10">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-                        <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-6">
-                            <Eye className="w-3.5 h-3.5" /> Tier Visualization Preview
-                        </h4>
-
-                        <div className="space-y-6">
-                            <div className="flex flex-wrap gap-2">
-                                {editForm.badges.map((badge: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 bg-blue-600 rounded-full text-[9px] font-black tracking-widest uppercase shadow-lg shadow-blue-500/20">
-                                        {badge}
-                                    </span>
+                        {/* Live preview */}
+                        <Card
+                            size="small"
+                            title={<Space><EyeOutlined style={{ color: '#60a5fa' }} /><span style={{ color: '#60a5fa', fontSize: 11 }}>معاينة مباشرة</span></Space>}
+                            style={{ background: '#111827', borderColor: '#1f2937' }}
+                            styles={{ header: { background: '#111827', borderBottom: '1px solid #1f2937' }, body: { background: '#111827' } }}
+                        >
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                                {badges.length === 0 ? (
+                                    <Text style={{ fontSize: 10, color: '#4b5563', fontStyle: 'italic' }}>لا توجد شارات</Text>
+                                ) : badges.map((b, i) => (
+                                    <span key={i} style={{ fontSize: 10, background: '#2563eb', color: '#fff', padding: '2px 8px', borderRadius: 99, fontWeight: 500 }}>{b}</span>
                                 ))}
-                                {editForm.badges.length === 0 && <span className="text-[10px] text-slate-500 font-bold italic tracking-wider">No active badges...</span>}
                             </div>
-
-                            <div className="space-y-3">
-                                {editForm.highlights.map((h: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-3 text-xs font-bold text-slate-300">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-                                        {h}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                                {highlights.map((h, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                                        <Text style={{ fontSize: 12, color: '#d1d5db' }}>{h}</Text>
                                     </div>
                                 ))}
                             </div>
-
-                            <div className="pt-4 border-t border-white/5 font-medium">
-                                <p className="text-xs text-slate-400 leading-relaxed italic">
-                                    {editForm.description || "Narrative pending configuration..."}
-                                </p>
-                            </div>
-
-                            {editForm.recommendedFor && (
-                                <div className="flex items-center gap-2 mt-4 px-4 py-2 bg-white/5 rounded-xl border border-white/5 w-fit">
-                                    <Users className="w-3.5 h-3.5 text-blue-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Targeting:</span>
-                                    <span className="text-[10px] font-black text-blue-300 uppercase tracking-widest">{editForm.recommendedFor}</span>
+                            {description && (
+                                <>
+                                    <Divider style={{ borderColor: '#1f2937', margin: '8px 0' }} />
+                                    <Text style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>{description}</Text>
+                                </>
+                            )}
+                            {recommendedFor && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                                    <UserOutlined style={{ color: '#60a5fa', fontSize: 11 }} />
+                                    <Text style={{ fontSize: 11, color: '#60a5fa' }}>{recommendedFor}</Text>
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     </div>
-                </div>
-            </div>
-        </motion.div>
+                </Col>
+            </Row>
+        </div>
+    );
+}
+
+export default function GuidelinesTab() {
+    return (
+        <ConfigProvider direction="rtl" locale={arEG} theme={ANTD_THEME}>
+            <App>
+                <GuidelinesContent />
+            </App>
+        </ConfigProvider>
     );
 }

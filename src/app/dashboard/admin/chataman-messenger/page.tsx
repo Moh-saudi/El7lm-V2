@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { CheckCircle2, Globe, MessageSquare, Search, Send, User, Reply, ListFilter } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,14 +78,18 @@ export default function ChatAmanMessengerPage() {
       setFilteredTemplates(fetchedTemplates);
 
       // 2. Load Users for quick selection
-      const usersSnap = await getDocs(query(collection(db, 'users'), limit(50)));
-      const fetchedUsers: FirebaseUser[] = [];
-      usersSnap.forEach(doc => {
-        const data = doc.data();
-        if (data.phone) {
-          fetchedUsers.push({ id: doc.id, ...data } as FirebaseUser);
-        }
-      });
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, full_name, name, phone, email')
+        .not('phone', 'is', null)
+        .limit(50);
+      const fetchedUsers: FirebaseUser[] = (usersData || []).map(row => ({
+        id: row.id,
+        full_name: row.full_name,
+        name: row.name,
+        phone: row.phone,
+        email: row.email,
+      }));
       setUsers(fetchedUsers);
 
     } catch (error) {

@@ -1,4 +1,4 @@
-import { supabase } from './config';
+import { supabase } from '@/lib/supabase/config';
 import { STORAGE_BUCKETS } from './config';
 
 export interface AdUploadResponse {
@@ -169,24 +169,14 @@ export async function getAdFiles(adId: string): Promise<AdFileInfo[]> {
   try {
     console.log('Getting files for ad:', adId);
 
-    // البحث في مجلد الصور
-    const { data: images, error: imagesError } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .list('images', {
-        search: adId
-      });
+    const { storageManager } = await import('@/lib/storage');
+    const bucket = STORAGE_BUCKETS.ADS || 'ads';
 
-    // البحث في مجلد الفيديوهات
-    const { data: videos, error: videosError } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .list('videos', {
-        search: adId
-      });
-
-    if (imagesError || videosError) {
-      console.error('Error listing ad files:', imagesError || videosError);
-      return [];
-    }
+    // البحث في مجلد الصور والفيديوهات
+    const [images, videos] = await Promise.all([
+      storageManager.list(bucket, 'images').catch(() => []),
+      storageManager.list(bucket, 'videos').catch(() => []),
+    ]);
 
     const files: AdFileInfo[] = [];
 
@@ -194,16 +184,13 @@ export async function getAdFiles(adId: string): Promise<AdFileInfo[]> {
     if (images) {
       for (const image of images) {
         if (image.name && image.name.includes(adId)) {
-          const { data: urlData } = supabase.storage
-            .from(STORAGE_BUCKETS.ADS)
-            .getPublicUrl(`images/${image.name}`);
-
+          const publicUrl = await storageManager.getPublicUrl(bucket, `images/${image.name}`);
           files.push({
             id: image.id || image.name,
             name: image.name,
             size: image.metadata?.size || 0,
             type: 'image',
-            url: urlData.publicUrl,
+            url: publicUrl,
             uploadedAt: new Date(image.updated_at || Date.now())
           });
         }
@@ -214,16 +201,13 @@ export async function getAdFiles(adId: string): Promise<AdFileInfo[]> {
     if (videos) {
       for (const video of videos) {
         if (video.name && video.name.includes(adId)) {
-          const { data: urlData } = supabase.storage
-            .from(STORAGE_BUCKETS.ADS)
-            .getPublicUrl(`videos/${video.name}`);
-
+          const publicUrl = await storageManager.getPublicUrl(bucket, `videos/${video.name}`);
           files.push({
             id: video.id || video.name,
             name: video.name,
             size: video.metadata?.size || 0,
             type: 'video',
-            url: urlData.publicUrl,
+            url: publicUrl,
             uploadedAt: new Date(video.updated_at || Date.now())
           });
         }
@@ -251,13 +235,13 @@ export async function getAdsStorageStats(): Promise<{
   try {
     console.log('Getting storage stats...');
 
-    const { data: images } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .list('images');
+    const { storageManager } = await import('@/lib/storage');
+    const bucket = STORAGE_BUCKETS.ADS || 'ads';
 
-    const { data: videos } = await supabase.storage
-      .from(STORAGE_BUCKETS.ADS)
-      .list('videos');
+    const [images, videos] = await Promise.all([
+      storageManager.list(bucket, 'images').catch(() => []),
+      storageManager.list(bucket, 'videos').catch(() => []),
+    ]);
 
     const imagesCount = images?.length || 0;
     const videosCount = videos?.length || 0;

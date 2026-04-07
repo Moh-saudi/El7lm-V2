@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 interface PaymentRecord {
   id: string;
@@ -23,7 +22,7 @@ export default function PlayerBillingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       fetchPayments();
     }
   }, [user]);
@@ -32,41 +31,33 @@ export default function PlayerBillingPage() {
     try {
       setLoading(true);
 
-      // جلب المدفوعات من مجموعة bulkPayments
-      const bulkPaymentsQuery = query(
-        collection(db, 'bulkPayments'),
-        where('userId', '==', user?.uid),
-        orderBy('createdAt', 'desc')
-      );
+      // جلب المدفوعات من جدول bulkPayments
+      const { data: bulkPaymentsData } = await supabase
+        .from('bulkPayments')
+        .select('*')
+        .eq('userId', user?.id)
+        .order('createdAt', { ascending: false });
 
-      const bulkPaymentsSnapshot = await getDocs(bulkPaymentsQuery);
-      const bulkPayments = bulkPaymentsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as PaymentRecord[];
+      const bulkPayments = (bulkPaymentsData || []) as PaymentRecord[];
 
-      // جلب المدفوعات من مجموعة payments (إذا وجدت)
-      const paymentsQuery = query(
-        collection(db, 'payments'),
-        where('userId', '==', user?.uid),
-        orderBy('createdAt', 'desc')
-      );
-
+      // جلب المدفوعات من جدول payments (إذا وجدت)
       let regularPayments: PaymentRecord[] = [];
       try {
-        const paymentsSnapshot = await getDocs(paymentsQuery);
-        regularPayments = paymentsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PaymentRecord[];
+        const { data: paymentsData } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('userId', user?.id)
+          .order('createdAt', { ascending: false });
+
+        regularPayments = (paymentsData || []) as PaymentRecord[];
       } catch (error) {
-        console.log('No regular payments collection found');
+        console.log('No regular payments table found');
       }
 
       // دمج المدفوعات وترتيبها حسب التاريخ
       const allPayments = [...bulkPayments, ...regularPayments].sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
 
@@ -113,7 +104,7 @@ export default function PlayerBillingPage() {
 
   const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
-    const dateObj = date?.toDate?.() || new Date(date);
+    const dateObj = new Date(date);
     return new Intl.DateTimeFormat('ar-EG', {
       year: 'numeric',
       month: 'long',
@@ -292,7 +283,7 @@ export default function PlayerBillingPage() {
         </div>
 
         {/* Payment Success Message */}
-        {new URLSearchParams(window.location.search).get('payment') === 'success' && (
+        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('payment') === 'success' && (
           <div className="mt-6 bg-green-50 border border-green-200 rounded-2xl p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -310,4 +301,4 @@ export default function PlayerBillingPage() {
       </div>
     </div>
   );
-} 
+}

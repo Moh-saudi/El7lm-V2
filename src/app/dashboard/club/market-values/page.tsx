@@ -22,8 +22,7 @@ import {
   Minus,
   ArrowLeft
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,16 +74,12 @@ export default function MarketValuesPage() {
   const fetchMarketValues = async () => {
     try {
       setLoading(true);
-      const marketValuesRef = collection(db, 'market_values');
-      const q = query(marketValuesRef, where('clubId', '==', userData?.clubId));
-      const querySnapshot = await getDocs(q);
-      
-      const marketValuesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as MarketValue[];
-      
-      setMarketValues(marketValuesData);
+      const { data: marketValuesData } = await supabase
+        .from('market_values')
+        .select('*')
+        .eq('clubId', userData?.clubId);
+
+      setMarketValues((marketValuesData || []) as MarketValue[]);
     } catch (error) {
       console.error('Error fetching market values:', error);
       toast.error('حدث خطأ أثناء جلب بيانات القيم السوقية');
@@ -201,106 +196,46 @@ export default function MarketValuesPage() {
             className="w-full pr-12"
           />
         </div>
-        <Button
-          onClick={() => router.push('/dashboard/club/market-values/analysis')}
-          className="flex items-center gap-2"
-        >
-          تحليل السوق
-        </Button>
       </div>
 
-      {/* Market Values Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {marketValues.map((value) => (
-          <motion.div
-            key={value.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-lg overflow-hidden"
-          >
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl">{value.playerName}</CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">آخر تحديث: {value.lastUpdate}</p>
-                  </div>
-                  <Badge className={value.changePercentage > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                    <span className="flex items-center gap-1">
-                      {getChangeIcon(value.changePercentage)}
-                      {value.changePercentage}%
-                    </span>
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Current Value */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">القيمة الحالية</h4>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {formatValue(value.currentValue)}
-                    </div>
-                  </div>
-
-                  {/* Value Factors */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">عوامل القيمة</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">الأداء</span>
-                        <span className="text-sm font-semibold">{value.factors.performance}%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">العمر</span>
-                        <span className="text-sm font-semibold">{value.factors.age}%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">العقد</span>
-                        <span className="text-sm font-semibold">{value.factors.contract}%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">السوق</span>
-                        <span className="text-sm font-semibold">{value.factors.market}%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Predictions */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">التوقعات</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-2 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600">الشهر القادم</p>
-                        <p className={`text-lg font-semibold ${getChangeColor(value.predictions.nextMonth - value.currentValue)}`}>
-                          {formatValue(value.predictions.nextMonth)}
-                        </p>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600">الموسم القادم</p>
-                        <p className={`text-lg font-semibold ${getChangeColor(value.predictions.nextSeason - value.currentValue)}`}>
-                          {formatValue(value.predictions.nextSeason)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-4 flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/club/market-values/${value.id}`)}>
-                      عرض التفاصيل
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4 ml-1" />
-                      تحميل التقرير
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* Market Values Table */}
+      {marketValues.length === 0 ? (
+        <div className="bg-white rounded-xl p-12 text-center shadow">
+          <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-700 mb-2">لا توجد بيانات قيم سوقية</h3>
+          <p className="text-gray-500">لم يتم إضافة قيم سوقية للاعبين بعد.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">اللاعب</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">القيمة الحالية</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">التغيير</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">آخر تحديث</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {marketValues
+                .filter(mv => !searchTerm || mv.playerName.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map((mv) => (
+                  <tr key={mv.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{mv.playerName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValue(mv.currentValue)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`flex items-center gap-1 ${getChangeColor(mv.changePercentage)}`}>
+                        {getChangeIcon(mv.changePercentage)}
+                        {Math.abs(mv.changePercentage).toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{mv.lastUpdate}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
-} 
+}

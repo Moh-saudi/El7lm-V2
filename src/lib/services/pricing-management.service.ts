@@ -1,19 +1,4 @@
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
-    orderBy,
-    Timestamp,
-    writeBatch,
-} from 'firebase/firestore';
-// @ts-ignore
-import { db } from './config';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 // ==================== INTERFACES ====================
 
@@ -126,15 +111,18 @@ class PricingManagementService {
      */
     async getAllPlans(): Promise<SubscriptionPlan[]> {
         try {
-            const plansRef = collection(db, 'subscription_plans');
-            const q = query(plansRef, orderBy('displayOrder', 'asc'));
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('subscription_plans')
+                .select('*')
+                .order('displayOrder', { ascending: true });
 
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+            if (error) throw error;
+
+            return (data || []).map(row => ({
+                ...row,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             })) as SubscriptionPlan[];
         } catch (error) {
             console.error('Error getting plans:', error);
@@ -147,18 +135,21 @@ class PricingManagementService {
      */
     async getPlanByKey(key: 'monthly' | 'quarterly' | 'yearly'): Promise<SubscriptionPlan | null> {
         try {
-            const plansRef = collection(db, 'subscription_plans');
-            const q = query(plansRef, where('key', '==', key));
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('subscription_plans')
+                .select('*')
+                .eq('key', key)
+                .limit(1);
 
-            if (snapshot.empty) return null;
+            if (error) throw error;
+            if (!data || data.length === 0) return null;
 
-            const doc = snapshot.docs[0];
+            const row = data[0];
             return {
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+                ...row,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             } as SubscriptionPlan;
         } catch (error) {
             console.error('Error getting plan:', error);
@@ -171,11 +162,16 @@ class PricingManagementService {
      */
     async updatePlanPrice(planId: string, newPrice: number): Promise<void> {
         try {
-            const planRef = doc(db, 'subscription_plans', planId);
-            await updateDoc(planRef, {
-                basePrice: newPrice,
-                updatedAt: Timestamp.now(),
-            });
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('subscription_plans')
+                .update({
+                    basePrice: newPrice,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', planId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error updating plan price:', error);
             throw error;
@@ -191,12 +187,17 @@ class PricingManagementService {
         bonusFeatures: PlanFeature[]
     ): Promise<void> {
         try {
-            const planRef = doc(db, 'subscription_plans', planId);
-            await updateDoc(planRef, {
-                features,
-                bonusFeatures,
-                updatedAt: Timestamp.now(),
-            });
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('subscription_plans')
+                .update({
+                    features,
+                    bonusFeatures,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', planId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error updating plan features:', error);
             throw error;
@@ -208,11 +209,16 @@ class PricingManagementService {
      */
     async togglePlanStatus(planId: string, isActive: boolean): Promise<void> {
         try {
-            const planRef = doc(db, 'subscription_plans', planId);
-            await updateDoc(planRef, {
-                isActive,
-                updatedAt: Timestamp.now(),
-            });
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('subscription_plans')
+                .update({
+                    isActive,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', planId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error toggling plan status:', error);
             throw error;
@@ -226,19 +232,19 @@ class PricingManagementService {
      */
     async getPricingOverridesForCountry(countryCode: string): Promise<PricingOverride[]> {
         try {
-            const overridesRef = collection(db, 'pricing_overrides');
-            const q = query(
-                overridesRef,
-                where('countryCode', '==', countryCode),
-                where('isActive', '==', true)
-            );
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('pricing_overrides')
+                .select('*')
+                .eq('countryCode', countryCode)
+                .eq('isActive', true);
 
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+            if (error) throw error;
+
+            return (data || []).map(row => ({
+                ...row,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             })) as PricingOverride[];
         } catch (error) {
             console.error('Error getting pricing overrides:', error);
@@ -251,22 +257,22 @@ class PricingManagementService {
      */
     async getPricingOverrideForOrganization(organizationId: string): Promise<PricingOverride | null> {
         try {
-            const overridesRef = collection(db, 'pricing_overrides');
-            const q = query(
-                overridesRef,
-                where('organizationId', '==', organizationId),
-                where('isActive', '==', true)
-            );
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('pricing_overrides')
+                .select('*')
+                .eq('organizationId', organizationId)
+                .eq('isActive', true)
+                .limit(1);
 
-            if (snapshot.empty) return null;
+            if (error) throw error;
+            if (!data || data.length === 0) return null;
 
-            const doc = snapshot.docs[0];
+            const row = data[0];
             return {
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+                ...row,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             } as PricingOverride;
         } catch (error) {
             console.error('Error getting organization pricing:', error);
@@ -281,16 +287,22 @@ class PricingManagementService {
         override: Omit<PricingOverride, 'id' | 'createdAt' | 'updatedAt'>
     ): Promise<string> {
         try {
-            const overridesRef = collection(db, 'pricing_overrides');
-            const newOverrideRef = doc(overridesRef);
+            const db = getSupabaseAdmin();
+            const id = crypto.randomUUID();
+            const now = new Date().toISOString();
 
-            await setDoc(newOverrideRef, {
-                ...override,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-            });
+            const { error } = await db
+                .from('pricing_overrides')
+                .insert({
+                    id,
+                    ...override,
+                    createdAt: now,
+                    updatedAt: now,
+                });
 
-            return newOverrideRef.id;
+            if (error) throw error;
+
+            return id;
         } catch (error) {
             console.error('Error creating pricing override:', error);
             throw error;
@@ -305,11 +317,16 @@ class PricingManagementService {
         updates: Partial<PricingOverride>
     ): Promise<void> {
         try {
-            const overrideRef = doc(db, 'pricing_overrides', overrideId);
-            await updateDoc(overrideRef, {
-                ...updates,
-                updatedAt: Timestamp.now(),
-            });
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('pricing_overrides')
+                .update({
+                    ...updates,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', overrideId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error updating pricing override:', error);
             throw error;
@@ -321,8 +338,13 @@ class PricingManagementService {
      */
     async deletePricingOverride(overrideId: string): Promise<void> {
         try {
-            const overrideRef = doc(db, 'pricing_overrides', overrideId);
-            await deleteDoc(overrideRef);
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('pricing_overrides')
+                .delete()
+                .eq('id', overrideId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error deleting pricing override:', error);
             throw error;
@@ -336,26 +358,25 @@ class PricingManagementService {
      */
     async getActiveOffers(): Promise<PromotionalOffer[]> {
         try {
-            const offersRef = collection(db, 'promotional_offers');
-            const now = Timestamp.now();
+            const db = getSupabaseAdmin();
+            const now = new Date().toISOString();
 
-            const q = query(
-                offersRef,
-                where('status', '==', 'active'),
-                where('startDate', '<=', now),
-                where('endDate', '>=', now),
-                orderBy('priority', 'desc')
-            );
+            const { data, error } = await db
+                .from('promotional_offers')
+                .select('*')
+                .eq('status', 'active')
+                .lte('startDate', now)
+                .gte('endDate', now)
+                .order('priority', { ascending: false });
 
-            const snapshot = await getDocs(q);
+            if (error) throw error;
 
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                startDate: doc.data().startDate?.toDate(),
-                endDate: doc.data().endDate?.toDate(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+            return (data || []).map(row => ({
+                ...row,
+                startDate: row.startDate ? new Date(row.startDate) : new Date(),
+                endDate: row.endDate ? new Date(row.endDate) : new Date(),
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             })) as PromotionalOffer[];
         } catch (error) {
             console.error('Error getting active offers:', error);
@@ -368,20 +389,23 @@ class PricingManagementService {
      */
     async getOfferByCode(code: string): Promise<PromotionalOffer | null> {
         try {
-            const offersRef = collection(db, 'promotional_offers');
-            const q = query(offersRef, where('code', '==', code));
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('promotional_offers')
+                .select('*')
+                .eq('code', code)
+                .limit(1);
 
-            if (snapshot.empty) return null;
+            if (error) throw error;
+            if (!data || data.length === 0) return null;
 
-            const doc = snapshot.docs[0];
+            const row = data[0];
             return {
-                id: doc.id,
-                ...doc.data(),
-                startDate: doc.data().startDate?.toDate(),
-                endDate: doc.data().endDate?.toDate(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+                ...row,
+                startDate: row.startDate ? new Date(row.startDate) : new Date(),
+                endDate: row.endDate ? new Date(row.endDate) : new Date(),
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             } as PromotionalOffer;
         } catch (error) {
             console.error('Error getting offer by code:', error);
@@ -396,19 +420,25 @@ class PricingManagementService {
         offer: Omit<PromotionalOffer, 'id' | 'usageCount' | 'createdAt' | 'updatedAt'>
     ): Promise<string> {
         try {
-            const offersRef = collection(db, 'promotional_offers');
-            const newOfferRef = doc(offersRef);
+            const db = getSupabaseAdmin();
+            const id = crypto.randomUUID();
+            const now = new Date().toISOString();
 
-            await setDoc(newOfferRef, {
-                ...offer,
-                usageCount: 0,
-                startDate: Timestamp.fromDate(offer.startDate),
-                endDate: Timestamp.fromDate(offer.endDate),
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-            });
+            const { error } = await db
+                .from('promotional_offers')
+                .insert({
+                    id,
+                    ...offer,
+                    usageCount: 0,
+                    startDate: offer.startDate.toISOString(),
+                    endDate: offer.endDate.toISOString(),
+                    createdAt: now,
+                    updatedAt: now,
+                });
 
-            return newOfferRef.id;
+            if (error) throw error;
+
+            return id;
         } catch (error) {
             console.error('Error creating offer:', error);
             throw error;
@@ -420,24 +450,35 @@ class PricingManagementService {
      */
     async incrementOfferUsage(offerId: string): Promise<void> {
         try {
-            const offerRef = doc(db, 'promotional_offers', offerId);
-            const offerDoc = await getDoc(offerRef);
+            const db = getSupabaseAdmin();
+            const { data, error: fetchError } = await db
+                .from('promotional_offers')
+                .select('*')
+                .eq('id', offerId)
+                .limit(1);
 
-            if (!offerDoc.exists()) {
+            if (fetchError) throw fetchError;
+            if (!data || data.length === 0) {
                 throw new Error('Offer not found');
             }
 
-            const currentCount = offerDoc.data().usageCount || 0;
-            const usageLimit = offerDoc.data().usageLimit;
+            const offerData = data[0];
+            const currentCount = offerData.usageCount || 0;
+            const usageLimit = offerData.usageLimit;
 
             if (usageLimit && currentCount >= usageLimit) {
                 throw new Error('Usage limit reached');
             }
 
-            await updateDoc(offerRef, {
-                usageCount: currentCount + 1,
-                updatedAt: Timestamp.now(),
-            });
+            const { error: updateError } = await db
+                .from('promotional_offers')
+                .update({
+                    usageCount: currentCount + 1,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', offerId);
+
+            if (updateError) throw updateError;
         } catch (error) {
             console.error('Error incrementing offer usage:', error);
             throw error;
@@ -452,11 +493,16 @@ class PricingManagementService {
         status: PromotionalOffer['status']
     ): Promise<void> {
         try {
-            const offerRef = doc(db, 'promotional_offers', offerId);
-            await updateDoc(offerRef, {
-                status,
-                updatedAt: Timestamp.now(),
-            });
+            const db = getSupabaseAdmin();
+            const { error } = await db
+                .from('promotional_offers')
+                .update({
+                    status,
+                    updatedAt: new Date().toISOString(),
+                })
+                .eq('id', offerId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Error updating offer status:', error);
             throw error;
@@ -470,16 +516,19 @@ class PricingManagementService {
      */
     async getAllPartners(): Promise<PartnerPricing[]> {
         try {
-            const partnersRef = collection(db, 'partner_pricing');
-            const snapshot = await getDocs(partnersRef);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('partner_pricing')
+                .select('*');
 
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                validFrom: doc.data().validFrom?.toDate(),
-                validUntil: doc.data().validUntil?.toDate(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+            if (error) throw error;
+
+            return (data || []).map(row => ({
+                ...row,
+                validFrom: row.validFrom ? new Date(row.validFrom) : new Date(),
+                validUntil: row.validUntil ? new Date(row.validUntil) : undefined,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             })) as PartnerPricing[];
         } catch (error) {
             console.error('Error getting partners:', error);
@@ -492,24 +541,24 @@ class PricingManagementService {
      */
     async getPartnerByCode(code: string): Promise<PartnerPricing | null> {
         try {
-            const partnersRef = collection(db, 'partner_pricing');
-            const q = query(
-                partnersRef,
-                where('partnerCode', '==', code),
-                where('status', '==', 'active')
-            );
-            const snapshot = await getDocs(q);
+            const db = getSupabaseAdmin();
+            const { data, error } = await db
+                .from('partner_pricing')
+                .select('*')
+                .eq('partnerCode', code)
+                .eq('status', 'active')
+                .limit(1);
 
-            if (snapshot.empty) return null;
+            if (error) throw error;
+            if (!data || data.length === 0) return null;
 
-            const doc = snapshot.docs[0];
+            const row = data[0];
             return {
-                id: doc.id,
-                ...doc.data(),
-                validFrom: doc.data().validFrom?.toDate(),
-                validUntil: doc.data().validUntil?.toDate(),
-                createdAt: doc.data().createdAt?.toDate(),
-                updatedAt: doc.data().updatedAt?.toDate(),
+                ...row,
+                validFrom: row.validFrom ? new Date(row.validFrom) : new Date(),
+                validUntil: row.validUntil ? new Date(row.validUntil) : undefined,
+                createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+                updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
             } as PartnerPricing;
         } catch (error) {
             console.error('Error getting partner by code:', error);
@@ -524,20 +573,26 @@ class PricingManagementService {
         partner: Omit<PartnerPricing, 'id' | 'activeSubscriptions' | 'totalRevenue' | 'createdAt' | 'updatedAt'>
     ): Promise<string> {
         try {
-            const partnersRef = collection(db, 'partner_pricing');
-            const newPartnerRef = doc(partnersRef);
+            const db = getSupabaseAdmin();
+            const id = crypto.randomUUID();
+            const now = new Date().toISOString();
 
-            await setDoc(newPartnerRef, {
-                ...partner,
-                activeSubscriptions: 0,
-                totalRevenue: 0,
-                validFrom: Timestamp.fromDate(partner.validFrom),
-                validUntil: partner.validUntil ? Timestamp.fromDate(partner.validUntil) : null,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-            });
+            const { error } = await db
+                .from('partner_pricing')
+                .insert({
+                    id,
+                    ...partner,
+                    activeSubscriptions: 0,
+                    totalRevenue: 0,
+                    validFrom: partner.validFrom.toISOString(),
+                    validUntil: partner.validUntil ? partner.validUntil.toISOString() : null,
+                    createdAt: now,
+                    updatedAt: now,
+                });
 
-            return newPartnerRef.id;
+            if (error) throw error;
+
+            return id;
         } catch (error) {
             console.error('Error creating partner:', error);
             throw error;

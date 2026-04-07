@@ -2,21 +2,22 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from "@/lib/firebase/config";
-import { addDoc, collection, doc, getDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
 import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity } from '@/data/countries-from-register';
 import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
 import { createPlayerLoginAccount, checkPlayerHasLoginAccount } from '@/lib/utils/player-login-account';
-import { User } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // Types
-interface ExtendedUser extends User {
+interface ExtendedUser {
+  id?: string;
+  email?: string | null;
+  displayName?: string | null;
   full_name?: string;
   phone?: string;
   country?: string;
@@ -478,11 +479,11 @@ export default function SharedPlayerForm({
 
   // Upload profile image
   const handleProfileImageUpload = async (file: File) => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     setUploadingProfileImage(true);
     try {
-      const result = await uploadPlayerProfileImage(file, user.uid, getAccountType());
+      const result = await uploadPlayerProfileImage(file, user.id, getAccountType());
 
       if (result?.url) {
         setFormData(prev => ({
@@ -508,24 +509,27 @@ export default function SharedPlayerForm({
       if (mode === 'edit' && playerId) {
         console.log('[player-form] محاولة تحميل بيانات اللاعب:', playerId);
         // Edit mode - load player data
-        const docRef = doc(db, 'players', playerId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const { data: playerRow, error: fetchErr } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', playerId)
+          .single();
+        if (!!playerRow) {
+          const data = playerRow;
           console.log('[player-form] ✅ تم العثور على بيانات اللاعب:', data);
 
           // التحقق من الملكية قبل السماح بالتعديل
           const isOwner =
-            data.created_by   === user?.uid ||
-            data.club_id      === user?.uid ||
-            data.clubId       === user?.uid ||
-            data.academy_id   === user?.uid ||
-            data.academyId    === user?.uid ||
-            data.trainer_id   === user?.uid ||
-            data.trainerId    === user?.uid ||
-            data.agent_id     === user?.uid ||
-            data.agentId      === user?.uid ||
-            data.marketerId   === user?.uid ||
+            data.created_by   === user?.id ||
+            data.club_id      === user?.id ||
+            data.clubId       === user?.id ||
+            data.academy_id   === user?.id ||
+            data.academyId    === user?.id ||
+            data.trainer_id   === user?.id ||
+            data.trainerId    === user?.id ||
+            data.agent_id     === user?.id ||
+            data.agentId      === user?.id ||
+            data.marketerId   === user?.id ||
             accountType       === 'admin';
           if (!isOwner) {
             setError('ليس لديك صلاحية تعديل بيانات هذا اللاعب');
@@ -570,12 +574,15 @@ export default function SharedPlayerForm({
       console.log('[loadUserDefaultData] تحميل بيانات المستخدم الحالي:', user);
 
       // جلب بيانات المستخدم الحالي من قاعدة البيانات
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
       let userData = null;
-      if (userDocSnap.exists()) {
-        userData = userDocSnap.data();
+      if (!!userRow) {
+        userData = userRow;
         console.log('[loadUserDefaultData] ✅ تم العثور على بيانات المستخدم:', userData);
       }
 
@@ -595,14 +602,14 @@ export default function SharedPlayerForm({
 
         // تحديد معلومات الاتصال الرسمي حسب نوع الحساب
         official_contact: {
-          name: userData?.full_name || userData?.name || user.displayName || '',
+          name: userData?.full_name || userData?.name || user.user_metadata?.full_name || '',
           title: getAccountTypeTitle(accountType),
           phone: userData?.phone || '',
           email: user.email || ''
         },
 
         // تحديد المصدر
-        ref_source: `تم إضافته من قبل ${getAccountTypeTitle(accountType)}: ${userData?.full_name || userData?.name || user.displayName || ''}`
+        ref_source: `تم إضافته من قبل ${getAccountTypeTitle(accountType)}: ${userData?.full_name || userData?.name || user.user_metadata?.full_name || ''}`
       };
 
       console.log('[loadUserDefaultData] ✅ البيانات الافتراضية المحضرة:', defaultData);
@@ -773,11 +780,13 @@ export default function SharedPlayerForm({
 
     for (const coll of collectionsToCheck) {
       if (email) {
-        const qEmail = query(collection(db, coll), where('email', '==', email));
-        const snapEmail = await getDocs(qEmail);
+        const { data: emailRows } = await supabase
+          .from(coll)
+          .select('id')
+          .eq('email', email);
 
         // Filter out current player in case of edit mode
-        const existingDocs = snapEmail.docs.filter(d => mode === 'add' || d.id !== playerId);
+        const existingDocs = (emailRows || []).filter((d: any) => mode === 'add' || d.id !== playerId);
 
         if (existingDocs.length > 0) {
           return {
@@ -789,11 +798,13 @@ export default function SharedPlayerForm({
       }
 
       if (phone) {
-        const qPhone = query(collection(db, coll), where('phone', '==', phone));
-        const snapPhone = await getDocs(qPhone);
+        const { data: phoneRows } = await supabase
+          .from(coll)
+          .select('id')
+          .eq('phone', phone);
 
         // Filter out current player in case of edit mode
-        const existingDocs = snapPhone.docs.filter(d => mode === 'add' || d.id !== playerId);
+        const existingDocs = (phoneRows || []).filter((d: any) => mode === 'add' || d.id !== playerId);
 
         if (existingDocs.length > 0) {
           return {
@@ -860,7 +871,7 @@ export default function SharedPlayerForm({
       let updateData = {
         ...formData,
         updated_at: new Date(),
-        updated_by: user.uid,
+        updated_by: user.id,
         updated_by_type: accountType
       };
       updateData = cleanObject(updateData);
@@ -880,38 +891,44 @@ export default function SharedPlayerForm({
         const playerData = {
           ...updateData,
           created_at: new Date(),
-          created_by: user.uid,
+          created_by: user.id,
           created_by_type: accountType
         };
 
         // إضافة الحقول المناسبة حسب نوع الحساب
         switch (accountType) {
           case 'club':
-            playerData.club_id = user.uid;
-            playerData.clubId = user.uid;
+            playerData.club_id = user.id;
+            playerData.clubId = user.id;
             break;
           case 'academy':
-            playerData.academy_id = user.uid;
-            playerData.academyId = user.uid;
+            playerData.academy_id = user.id;
+            playerData.academyId = user.id;
             break;
           case 'trainer':
-            playerData.trainer_id = user.uid;
-            playerData.trainerId = user.uid;
+            playerData.trainer_id = user.id;
+            playerData.trainerId = user.id;
             break;
           case 'agent':
-            playerData.agent_id = user.uid;
-            playerData.agentId = user.uid;
+            playerData.agent_id = user.id;
+            playerData.agentId = user.id;
             break;
           case 'marketer':
-            (playerData as any).marketerId = user.uid;
+            (playerData as any).marketerId = user.id;
             break;
           default:
             // للحالات الأخرى، استخدم club_id كافتراضي
-            playerData.club_id = user.uid;
-            playerData.clubId = user.uid;
+            playerData.club_id = user.id;
+            playerData.clubId = user.id;
         }
 
-        const docRef = await addDoc(collection(db, 'players'), playerData);
+        const newPlayerId = crypto.randomUUID();
+        const { data: docRef, error: insertErr } = await supabase
+          .from('players')
+          .insert({ id: newPlayerId, ...playerData })
+          .select('id')
+          .single();
+        if (insertErr) throw insertErr;
         setSuccessMessage('تمت إضافة اللاعب بنجاح');
 
         // إنشاء حساب تسجيل دخول تلقائياً مع كلمة مرور ثابتة
@@ -921,7 +938,7 @@ export default function SharedPlayerForm({
 
             // إنشاء حساب بكلمة المرور الثابتة
             const result = await createPlayerLoginAccount(
-              docRef.id,
+              newPlayerId,
               {
                 full_name: updateData.full_name,
                 name: updateData.full_name,
@@ -969,7 +986,11 @@ export default function SharedPlayerForm({
         }
       } else if (mode === 'edit' && playerId) {
         // تعديل لاعب موجود
-        await updateDoc(doc(db, 'players', playerId), updateData);
+        const { error: updateErr } = await supabase
+          .from('players')
+          .update(updateData)
+          .eq('id', playerId);
+        if (updateErr) throw updateErr;
         setSuccessMessage('تم تحديث بيانات اللاعب بنجاح');
       } else {
         setError('لا يمكن تحديد وضع الحفظ');
@@ -1041,7 +1062,7 @@ export default function SharedPlayerForm({
               }}
               password={createdAccountInfo.password}
               accountOwner={{
-                name: (user as any)?.full_name || user?.displayName,
+                name: (user as any)?.full_name || user?.user_metadata?.full_name,
                 organizationName: (user as any)?.organizationName || (user as any)?.full_name || 'المنظمة',
                 phone: (user as any)?.phone,
                 whatsapp: (user as any)?.whatsapp,

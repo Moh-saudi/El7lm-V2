@@ -12,7 +12,7 @@ export default function InitPricingPage() {
     const [logs, setLogs] = useState<string[]>([]);
 
     const handleInitialize = async () => {
-        if (!user?.uid) {
+        if (!user?.id) {
             setStatus('error');
             setMessage('يجب تسجيل الدخول أولاً');
             return;
@@ -33,7 +33,7 @@ export default function InitPricingPage() {
         };
 
         try {
-            await initializeRealPricingSystem(user.uid);
+            await initializeRealPricingSystem(user.id);
             setStatus('success');
             setMessage('✅ تم تهيئة نظام التسعير بنجاح!');
         } catch (error) {

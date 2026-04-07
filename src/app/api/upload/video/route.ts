@@ -1,258 +1,115 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * POST /api/upload/video
+ *
+ * Uploads a video file to Cloudflare R2 AND saves the metadata record
+ * to `player_videos` in Supabase — in one atomic operation via VideoService.
+ *
+ * FormData fields:
+ *   file        — video File (required)
+ *   userId      — player's Supabase UID (required)
+ *   title       — video title (required)
+ *   description — optional
+ *   category    — skills|match|training|goalkeeper|defense|midfield|attack|other
+ *   tags        — JSON array string, e.g. '["dribble","goal"]'
+ *   accountType — independent|club|trainer|agent|academy (default: independent)
+ *   ownerId     — uploader ID if different from player (clubs, trainers, etc.)
+ *   autoAnalysis — "true" to queue for AI analysis immediately
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import type { VideoCategory } from '@/lib/video/types';
 
-// إعدادات Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// ── Auth ───────────────────────────────────────────────────────────────────
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ متغيرات Supabase غير محددة');
+async function getAuthUser(request: NextRequest) {
+  const token = request.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) return null;
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user;
 }
 
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
-
-// إعدادات الرفع
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (تقليل الحد لـ Vercel)
-const VERCEL_LIMIT = 4.5 * 1024 * 1024; // 4.5MB (حد Vercel)
-const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/quicktime'];
+// ── POST ───────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 استلام طلب رفع فيديو');
-
-    // التحقق من وجود Supabase
-    if (!supabase) {
-      console.error('❌ Supabase غير متاح');
-      return NextResponse.json(
-        { error: 'خدمة التخزين غير متاحة حالياً' },
-        { status: 503 }
-      );
-    }
-
-    // التحقق من وجود bucket للفيديوهات
-    console.log('🔍 التحقق من وجود bucket الفيديوهات...');
-
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    if (listError) {
-      console.error('❌ خطأ في جلب قائمة buckets:', listError);
-      return NextResponse.json(
-        { error: 'فشل في الاتصال بخدمة التخزين' },
-        { status: 503 }
-      );
-    }
-
-    console.log('📋 Buckets المتاحة:', buckets?.map(b => b.name) || []);
-
-    // البحث عن bucket للفيديوهات
-    const videoBucketNames = ['videos', 'player-videos', 'club-videos', 'academy-videos'];
-    const videosBucket = buckets?.find(bucket => videoBucketNames.includes(bucket.name));
-
-    if (!videosBucket) {
-      console.error('❌ لا يوجد bucket للفيديوهات');
-      return NextResponse.json(
-        { error: 'لا يوجد bucket مناسب للفيديوهات' },
-        { status: 503 }
-      );
-    }
-
-    console.log(`✅ تم العثور على bucket الفيديوهات: ${videosBucket.name}`);
-
-    // اختبار بسيط للوصول إلى bucket
-    try {
-      const { data: testList, error: testError } = await supabase.storage
-        .from(videosBucket.name)
-        .list('', { limit: 1 });
-
-      if (testError) {
-        console.warn('⚠️ تحذير: لا يمكن الوصول إلى bucket:', testError.message);
-      } else {
-        console.log('✅ تم التحقق من إمكانية الوصول إلى bucket بنجاح');
-      }
-    } catch (testErr) {
-      console.warn('⚠️ تحذير في اختبار الوصول إلى bucket:', testErr);
-    }
-
-    // الحصول على البيانات من الطلب
     const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const userId = formData.get('userId') as string;
 
-    console.log('📁 بيانات الملف:', {
-      fileName: file?.name,
-      fileSize: file?.size,
-      fileType: file?.type,
-      userId: userId
-    });
+    const file = formData.get('file') as File | null;
+    const userId = formData.get('userId') as string | null;
+    const title = (formData.get('title') as string | null) ?? '';
+    const description = (formData.get('description') as string | null) ?? '';
+    const category = (formData.get('category') as VideoCategory | null) ?? 'other';
+    const accountType = (formData.get('accountType') as string | null) ?? 'independent';
+    const ownerId = (formData.get('ownerId') as string | null) ?? userId ?? '';
+    const autoAnalysis = formData.get('autoAnalysis') === 'true';
+    const tagsRaw = formData.get('tags') as string | null;
 
-    // التحقق من وجود الملف
     if (!file) {
-      return NextResponse.json(
-        { error: 'ملف الفيديو مطلوب' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ملف الفيديو مطلوب' }, { status: 400 });
     }
-
-    // التحقق من معرف المستخدم
     if (!userId) {
-      return NextResponse.json(
-        { error: 'معرف المستخدم مطلوب' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'معرف المستخدم مطلوب' }, { status: 400 });
+    }
+    if (!title.trim()) {
+      return NextResponse.json({ error: 'عنوان الفيديو مطلوب' }, { status: 400 });
     }
 
-    // التحقق من نوع الملف
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: `نوع الملف غير مدعوم. الأنواع المدعومة: ${ALLOWED_TYPES.join(', ')}` },
-        { status: 400 }
-      );
+    let tags: string[] = [];
+    if (tagsRaw) {
+      try { tags = JSON.parse(tagsRaw); } catch { /* ignore */ }
     }
 
-    // التحقق من حد Vercel أولاً
-    if (file.size > VERCEL_LIMIT) {
-      const vercelLimitMB = (VERCEL_LIMIT / (1024 * 1024)).toFixed(1);
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    // Use VideoService for upload + DB record
+    const { videoService } = await import('@/lib/video/video-service');
 
-      console.warn(`⚠️ حجم الملف يتجاوز حد Vercel: ${fileSizeMB}MB (الحد الأقصى: ${vercelLimitMB}MB)`);
-
-      return NextResponse.json(
-        {
-          error: `حجم الفيديو كبير جداً للرفع المباشر!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nحد الرفع المباشر: ${vercelLimitMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake\n• أو استخدم رابط YouTube/Vimeo بدلاً من الرفع المباشر`,
-          fileSize: file.size,
-          maxSize: VERCEL_LIMIT,
-          reason: 'vercel_limit'
-        },
-        { status: 413 }
-      );
-    }
-
-    // التحقق من الحد العام
-    if (file.size > MAX_FILE_SIZE) {
-      const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-
-      console.warn(`⚠️ حجم الملف كبير جداً: ${fileSizeMB}MB (الحد الأقصى: ${maxSizeMB}MB)`);
-
-      return NextResponse.json(
-        {
-          error: `حجم الملف كبير جداً!\n\nحجم الملف: ${fileSizeMB} ميجابايت\nالحد الأقصى المسموح: ${maxSizeMB} ميجابايت\n\n💡 نصائح:\n• جرب ضغط الفيديو قبل الرفع\n• اختر فيديو أقصر مدة\n• استخدم برامج ضغط الفيديو مثل HandBrake`,
-          fileSize: file.size,
-          maxSize: MAX_FILE_SIZE,
-          reason: 'general_limit'
-        },
-        { status: 413 }
-      );
-    }
-
-    // إنشاء اسم فريد للملف
-    const timestamp = Date.now();
-    const fileExt = file.name.split('.').pop() || 'mp4';
-    const fileName = file.name.split('.').slice(0, -1).join('.').replace(/[^a-zA-Z0-9]/g, '_');
-    const filePath = `videos/${userId}/${timestamp}_${fileName}.${fileExt}`;
-
-    console.log('📤 بدء رفع الفيديو:', {
-      bucket: 'videos',
-      filePath,
-      fileSize: file.size,
-      fileType: file.type
+    const { video, uploadUrl } = await videoService.upload({
+      file,
+      playerId: userId,
+      ownerId,
+      title,
+      description,
+      category,
+      tags,
+      accountType,
+      autoQueueAnalysis: autoAnalysis,
     });
 
-    // استخدام bucket الفيديوهات الموجود
-    const bucketName = videosBucket.name;
-    console.log(`📤 رفع الفيديو إلى bucket: ${bucketName}`);
-
-    // رفع الملف إلى Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (error) {
-      console.error('❌ خطأ في رفع الفيديو:', error);
-
-      // معالجة أخطاء محددة
-      if (error.message.includes('File size exceeds maximum allowed size')) {
-        return NextResponse.json(
-          { error: 'حجم الملف يتجاوز الحد المسموح في التخزين السحابي' },
-          { status: 413 }
-        );
-      }
-
-      if (error.message.includes('Bucket not found')) {
-        return NextResponse.json(
-          { error: 'مجلد التخزين غير متاح' },
-          { status: 503 }
-        );
-      }
-
-      return NextResponse.json(
-        { error: `فشل في رفع الفيديو: ${error.message}` },
-        { status: 500 }
-      );
-    }
-
-    // الحصول على الرابط العام
-    const { data: urlData } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(filePath);
-
-    if (!urlData?.publicUrl) {
-      console.error('❌ فشل في الحصول على رابط الفيديو');
-      return NextResponse.json(
-        { error: 'فشل في الحصول على رابط الفيديو' },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ تم رفع الفيديو بنجاح:', urlData.publicUrl);
-
-    // إرجاع النتيجة
     return NextResponse.json({
       success: true,
-      url: urlData.publicUrl,
+      videoId: video.id,
+      url: uploadUrl,
+      storagePath: video.storagePath,
       name: file.name,
       size: file.size,
       type: file.type,
-      path: filePath,
-      message: 'تم رفع الفيديو بنجاح'
+      analysisStatus: video.analysisStatus,
+      message: 'تم رفع الفيديو بنجاح',
     });
 
-  } catch (error: any) {
-    console.error('❌ خطأ في معالجة طلب رفع الفيديو:', error);
-
-    // معالجة أخطاء محددة
-    if (error.message?.includes('Request entity too large')) {
-      return NextResponse.json(
-        { error: 'حجم الطلب كبير جداً. يرجى تقليل حجم الفيديو' },
-        { status: 413 }
-      );
-    }
-
-    if (error.message?.includes('timeout')) {
-      return NextResponse.json(
-        { error: 'انتهت مهلة الرفع. يرجى المحاولة مرة أخرى' },
-        { status: 408 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'حدث خطأ غير متوقع في رفع الفيديو' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    console.error('❌ خطأ في رفع الفيديو:', error);
+    const msg = error instanceof Error ? error.message : 'حدث خطأ في رفع الفيديو';
+    const status = msg.includes('كبير') ? 413 : msg.includes('غير مدعوم') ? 400 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }
 
-// دعم OPTIONS للـ CORS
 export async function OPTIONS() {
-  return new NextResponse(null, {
+  return new Response(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
 }
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';

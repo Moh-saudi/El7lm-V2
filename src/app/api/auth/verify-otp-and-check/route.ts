@@ -1,11 +1,14 @@
 /**
- * Verify OTP and route: existing user → custom token, new user → isNew: true
+ * Verify OTP and route: existing user → session, new user → isNew: true
+ * تم تحويله من Firebase إلى Supabase
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+
+const SEARCH_COLLECTIONS = ['players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'users'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'البيانات مطلوبة' }, { status: 400 });
     }
 
-    // 1. Verify OTP
+    // 1. التحقق من OTP
     const otpResult = await verifyOTPInFirestore(phoneNumber, otp);
     if (!otpResult.success) {
       return NextResponse.json({
@@ -25,51 +28,99 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!adminAuth || !adminDb) {
-      return NextResponse.json({ success: false, error: 'خدمة المصادقة غير متاحة' }, { status: 503 });
-    }
-
-    // 2. Check if user already exists in any collection
-    // 'users' is last (fallback) so role-specific collections take priority
-    const collections = ['players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'users'];
+    const db = getSupabaseAdmin();
     const cleaned = cleanPhoneNumber(phoneNumber);
-    const phoneVariants = [
-      phoneNumber,
-      cleaned,
-      `+${cleaned}`,
-    ];
+    const phoneVariants = [phoneNumber, cleaned, `+${cleaned}`].filter((v, i, a) => a.indexOf(v) === i);
 
-    let uid: string | null = null;
+    // 2. البحث عن المستخدم في قاعدة البيانات
+    let userId: string | null = null;
     let accountType = '';
     let userName = '';
+    let userEmail = '';
+    let cachedSupabaseUid: string | null = null;
 
-    for (const col of collections) {
+    for (const col of SEARCH_COLLECTIONS) {
       for (const variant of phoneVariants) {
-        const snap = await (adminDb as any)
-          .collection(col)
-          .where('phone', '==', variant)
+        const { data } = await db
+          .from(col)
+          .select('id, uid, full_name, name, accountType, email')
+          .eq('phone', variant)
           .limit(1)
-          .get();
-        if (!snap.empty) {
-          const doc = snap.docs[0];
-          uid = doc.id;
-          const data = doc.data();
-          userName = data.full_name || data.name || '';
-          accountType = col === 'admins' ? 'admin' : (data.accountType || (col !== 'users' ? col.replace(/s$/, '') : 'player'));
+          .single();
+
+        if (data) {
+          userId = (data as any).id;
+          userName = (data as any).full_name || (data as any).name || '';
+          accountType = col === 'admins' ? 'admin' : ((data as any).accountType || (col !== 'users' ? col.replace(/s$/, '') : 'player'));
+          userEmail = (data as any).email || '';
+          cachedSupabaseUid = (data as any).uid || null;
           break;
         }
       }
-      if (uid) break;
+      if (userId) break;
     }
 
-    if (uid) {
-      // Existing user - generate custom token and log them in
-      const customToken = await adminAuth.createCustomToken(uid, { accountType, phone: phoneNumber });
-      return NextResponse.json({ success: true, isNew: false, customToken, uid, accountType, userName });
+    if (!userId) {
+      // مستخدم جديد - OTP محقق وجاهز لإنشاء حساب
+      return NextResponse.json({ success: true, isNew: true });
     }
 
-    // New user - OTP is verified and stored as verified:true, let them pick account type
-    return NextResponse.json({ success: true, isNew: true });
+    // 3. مستخدم موجود - إنشاء Supabase Auth session عبر temp password
+    const constructedEmail = userEmail || `${cleaned}@el7lm.com`;
+    let supabaseUserId: string | null = cachedSupabaseUid; // uid محفوظ → لا حاجة لـ listUsers
+
+    if (!supabaseUserId) {
+      // uid غير محفوظ — نبحث في Auth مرة واحدة فقط
+      const { data: usersData } = await db.auth.admin.listUsers({ perPage: 2000 });
+      const allUsers = usersData?.users ?? [];
+      const foundUser = allUsers.find(u =>
+        (userEmail && u.email === userEmail) ||
+        (u.user_metadata?.firebase_uid === userId) ||
+        (u.user_metadata?.db_id === userId) ||
+        u.email === constructedEmail
+      );
+      if (foundUser) supabaseUserId = foundUser.id;
+    }
+
+    if (!supabaseUserId) {
+      const { data: newUser } = await db.auth.admin.createUser({
+        email: constructedEmail,
+        email_confirm: true,
+        user_metadata: { accountType, phone: phoneNumber, firebase_uid: userId, db_id: userId },
+      }).catch(() => ({ data: null }));
+      supabaseUserId = newUser?.user?.id ?? null;
+    }
+
+    if (!supabaseUserId) {
+      return NextResponse.json({ success: false, error: 'تعذر تحديد حساب المصادقة' }, { status: 500 });
+    }
+
+    // تعيين temp password لإنشاء session من الـ frontend
+    const crypto = (await import('crypto')).default;
+    const tempPassword = crypto.randomBytes(32).toString('hex');
+    await db.auth.admin.updateUserById(supabaseUserId, {
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
+    });
+
+    // ربط uid
+    const collectionMap: Record<string, string> = {
+      player: 'players', club: 'clubs', agent: 'agents',
+      academy: 'academies', trainer: 'trainers', marketer: 'marketers',
+    };
+    const tableName = collectionMap[accountType] || 'users';
+    await db.from(tableName).update({ uid: supabaseUserId, lastLogin: new Date().toISOString() } as any).eq('id', userId);
+
+    return NextResponse.json({
+      success: true,
+      isNew: false,
+      uid: userId,
+      accountType,
+      userName,
+      authEmail: constructedEmail,
+      authPassword: tempPassword,
+    });
 
   } catch (error: any) {
     console.error('❌ [verify-otp-and-check]', error);

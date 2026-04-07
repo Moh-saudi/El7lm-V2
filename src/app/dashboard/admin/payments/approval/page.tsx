@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/firebase/notifications';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { SubscriptionPlan } from '@/types/pricing';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -57,33 +56,25 @@ export default function PaymentApprovalPage() {
     try {
       setLoading(true);
 
-      // استعلام Firebase
-      const paymentsRef = collection(db, 'bulkPayments');
-      const q = query(
-        paymentsRef,
-        orderBy('createdAt', 'desc')
-      );
-
-      const snapshot = await getDocs(q);
+      const { data: rows } = await supabase.from('bulk_payments').select('*').order('created_at', { ascending: false });
       const fetchedPayments: PaymentRequest[] = [];
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+      (rows || []).forEach((row) => {
         fetchedPayments.push({
-          id: doc.id,
-          userId: data.userId,
-          userName: data.userName || 'غير محدد',
-          userEmail: data.userEmail || 'غير محدد',
-          accountType: data.accountType,
-          paymentMethod: data.paymentMethod,
-          amount: data.amount,
-          currency: data.currency,
-          status: data.status || 'pending',
-          createdAt: data.createdAt?.toDate() || new Date(),
-          receiptUrl: data.receiptUrl,
-          transactionId: data.transactionId,
-          description: data.description,
-          players: data.players
+          id: row.id,
+          userId: row.userId || row.user_id,
+          userName: row.userName || row.user_name || 'غير محدد',
+          userEmail: row.userEmail || row.user_email || 'غير محدد',
+          accountType: row.accountType,
+          paymentMethod: row.paymentMethod || row.payment_method,
+          amount: row.amount,
+          currency: row.currency,
+          status: row.status || 'pending',
+          createdAt: new Date(row.createdAt || row.created_at),
+          receiptUrl: row.receiptUrl || row.receipt_url,
+          transactionId: row.transactionId || row.transaction_id,
+          description: row.description,
+          players: row.players
         });
       });
 
@@ -153,10 +144,10 @@ export default function PaymentApprovalPage() {
   // تحميل البيانات عند فتح الصفحة
   useEffect(() => {
     PricingService.getAllPlans().then(setAllPlans);
-    if (user?.uid) {
+    if (user?.id) {
       fetchPayments();
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // وظائف الموافقة/الرفض
   const handleApprove = async (payment: PaymentRequest) => {
@@ -164,13 +155,12 @@ export default function PaymentApprovalPage() {
       setActionLoading(payment.id);
 
       // تحديث حالة الدفع
-      const paymentRef = doc(db, 'bulkPayments', payment.id);
-      await updateDoc(paymentRef, {
+      await supabase.from('bulk_payments').update({
         status: 'approved',
-        approvedAt: serverTimestamp(),
-        approvedBy: user?.uid,
-        updatedAt: serverTimestamp()
-      });
+        approvedAt: new Date().toISOString(),
+        approvedBy: user?.id,
+        updatedAt: new Date().toISOString()
+      }).eq('id', payment.id);
 
       // تحديث حالة الاشتراك للاعبين
       if (payment.players && payment.players.length > 0) {
@@ -183,8 +173,7 @@ export default function PaymentApprovalPage() {
 
         for (const player of payment.players) {
           try {
-            const playerRef = doc(db, 'players', player.id);
-            await updateDoc(playerRef, {
+            await supabase.from('players').update({
               subscription_status: 'active',
               subscription_end: endDate.toISOString(),
               package_type: bestMatch.plan?.id || 'standard',
@@ -192,8 +181,8 @@ export default function PaymentApprovalPage() {
               last_payment_id: payment.id,
               last_payment_amount: payment.amount,
               last_payment_date: new Date().toISOString(),
-              updated_at: serverTimestamp()
-            });
+              updated_at: new Date().toISOString()
+            }).eq('id', player.id);
           } catch (error) {
             console.error(`Error updating player ${player.id}:`, error);
           }
@@ -244,13 +233,12 @@ export default function PaymentApprovalPage() {
       setActionLoading(payment.id);
 
       // تحديث حالة الدفع
-      const paymentRef = doc(db, 'bulkPayments', payment.id);
-      await updateDoc(paymentRef, {
+      await supabase.from('bulk_payments').update({
         status: 'rejected',
-        rejectedAt: serverTimestamp(),
-        rejectedBy: user?.uid,
-        updatedAt: serverTimestamp()
-      });
+        rejectedAt: new Date().toISOString(),
+        rejectedBy: user?.id,
+        updatedAt: new Date().toISOString()
+      }).eq('id', payment.id);
 
       // إضافة إشعار للمستخدم
       await addPaymentNotification({
@@ -536,7 +524,7 @@ export default function PaymentApprovalPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {payment.createdAt.toLocaleDateString('ar-EG')}
+                      {new Date(payment.createdAt).toLocaleDateString('ar-EG')}
                     </td>
                     <td className="px-6 py-4 text-left">
                       <div className="flex items-center gap-2">

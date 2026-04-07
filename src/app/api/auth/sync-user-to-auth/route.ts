@@ -1,71 +1,46 @@
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, password, uid, displayName } = body;
+    const { email, password, uid, displayName } = await request.json();
 
     if (!email || !password || !uid) {
-      return NextResponse.json(
-        { success: false, error: 'البيانات المطلوبة ناقصة' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'البيانات المطلوبة ناقصة' }, { status: 400 });
     }
 
-    if (!adminAuth || !adminDb) {
-      return NextResponse.json(
-        { success: false, error: 'الخدمة غير متاحة' },
-        { status: 500 }
-      );
-    }
+    const db = getSupabaseAdmin();
 
+    // التحقق من وجود المستخدم في Supabase Auth
     try {
-      const existingUser = await adminAuth.getUser(uid);
-      return NextResponse.json({
-        success: true,
-        message: 'المستخدم موجود',
-        uid: existingUser.uid,
-        alreadyExists: true
-      });
-    } catch (error: any) {
-      if (error.code !== 'auth/user-not-found') {
-        throw error;
+      const { data } = await db.auth.admin.getUserById(uid);
+      if (data?.user) {
+        return NextResponse.json({ success: true, message: 'المستخدم موجود', uid, alreadyExists: true });
       }
-    }
+    } catch { }
 
-    const userRecord = await adminAuth.createUser({
-      uid: uid,
-      email: email,
-      password: password,
-      displayName: displayName || undefined,
-      emailVerified: false,
-      disabled: false
+    // إنشاء المستخدم في Supabase Auth
+    let createResult = await db.auth.admin.createUser({
+      id: uid,
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { displayName },
     });
-
-    try {
-      const userDoc = await adminDb.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        await adminDb.collection('users').doc(uid).update({
-          syncedToAuth: true,
-          authSyncDate: new Date().toISOString()
-        });
-      }
-    } catch (firestoreError) {
-      console.warn('Failed to update Firestore:', firestoreError);
+    // إذا كان الـ uid مستخدماً، إنشاء بدونه
+    if (createResult.error) {
+      createResult = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { displayName } });
     }
+    const { data: newUser, error } = createResult;
 
-    return NextResponse.json({
-      success: true,
-      message: 'تم إنشاء الحساب',
-      uid: userRecord.uid,
-      alreadyExists: false
-    });
+    if (error) throw error;
+
+    // تحديث قاعدة البيانات
+    await db.from('users').update({ syncedToAuth: true, authSyncDate: new Date().toISOString() }).eq('id', uid);
+
+    return NextResponse.json({ success: true, message: 'تم إنشاء الحساب', uid: newUser?.user?.id ?? uid, alreadyExists: false });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'خطأ' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'خطأ' }, { status: 500 });
   }
 }
 

@@ -2,18 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  doc,
-  updateDoc,
-  limit,
-  getDoc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import NotificationsList from './NotificationsList';
@@ -138,16 +127,19 @@ export default function NotificationsManager({
   const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
     try {
       // محاولة جلب من users أولاً
-      const userDoc = await getDoc(doc(db, 'users', senderId));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (userData) {
         const avatar =
           userData.photoURL ||
           userData.avatar ||
           userData.profileImage ||
           userData.logo ||
           null;
-
         return {
           senderId,
           senderName: userData.displayName || userData.name || userData.fullName || null,
@@ -157,9 +149,13 @@ export default function NotificationsManager({
       }
 
       // إذا لم نجد في users، نحاول البحث في players
-      const playerDoc = await getDoc(doc(db, 'players', senderId));
-      if (playerDoc.exists()) {
-        const playerData = playerDoc.data();
+      const { data: playerData } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (playerData) {
         const avatar = playerData.avatar || playerData.photoURL || playerData.image || null;
         return {
           senderId,
@@ -170,9 +166,13 @@ export default function NotificationsManager({
       }
 
       // محاولة البحث في clubs
-      const clubDoc = await getDoc(doc(db, 'clubs', senderId));
-      if (clubDoc.exists()) {
-        const clubData = clubDoc.data();
+      const { data: clubData } = await supabase
+        .from('clubs')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (clubData) {
         const avatar = clubData.logo || clubData.avatar || clubData.image || null;
         return {
           senderId,
@@ -183,9 +183,13 @@ export default function NotificationsManager({
       }
 
       // محاولة البحث في academies
-      const academyDoc = await getDoc(doc(db, 'academies', senderId));
-      if (academyDoc.exists()) {
-        const academyData = academyDoc.data();
+      const { data: academyData } = await supabase
+        .from('academies')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (academyData) {
         const avatar = academyData.logo || academyData.avatar || academyData.image || null;
         return {
           senderId,
@@ -196,9 +200,13 @@ export default function NotificationsManager({
       }
 
       // محاولة البحث في employees
-      const employeeDoc = await getDoc(doc(db, 'employees', senderId));
-      if (employeeDoc.exists()) {
-        const empData = employeeDoc.data();
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (empData) {
         const avatar = empData.avatar || empData.photoURL || empData.image || null;
         return {
           senderId,
@@ -209,9 +217,13 @@ export default function NotificationsManager({
       }
 
       // محاولة البحث في admins
-      const adminDoc = await getDoc(doc(db, 'admins', senderId));
-      if (adminDoc.exists()) {
-        const adminData = adminDoc.data();
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', senderId)
+        .single();
+
+      if (adminData) {
         const avatar = adminData.avatar || adminData.photoURL || adminData.image || null;
         return {
           senderId,
@@ -226,6 +238,42 @@ export default function NotificationsManager({
     return null;
   };
 
+  // معالجة صفوف الإشعارات النظامية
+  const processSystemNotificationRows = async (rows: any[]): Promise<Notification[]> => {
+    return Promise.all(
+      rows.map(async (row) => {
+        const data = row as Notification;
+        const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
+        const dataWithMetadata = { ...data, metadata: normalizedMetadata };
+
+        let senderInfo = getInitialSenderInfo(dataWithMetadata);
+        const metadata = normalizedMetadata || {};
+        const senderId = data.senderId
+          || metadata.senderId
+          || metadata.viewerId
+          || metadata.profileOwnerId
+          || metadata.userId;
+
+        if (senderId) {
+          const senderData = await fetchSenderInfo(senderId);
+          if (senderData) {
+            senderInfo = mergeSenderInfo(senderInfo, senderData);
+          }
+        }
+
+        if (!senderInfo.senderAvatar && senderInfo.senderName) {
+          senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
+        }
+
+        return {
+          ...dataWithMetadata,
+          senderId: senderId || data.senderId,
+          ...senderInfo
+        } as Notification;
+      })
+    );
+  };
+
   // جلب الإشعارات
   useEffect(() => {
     if (!user) {
@@ -238,210 +286,56 @@ export default function NotificationsManager({
       return;
     }
 
-    console.log('✅ NotificationsManager: بدء جلب الإشعارات للمستخدم:', user.uid);
+    console.log('✅ NotificationsManager: بدء جلب الإشعارات للمستخدم:', user.id);
 
     // جلب الإشعارات النظامية
-    // محاولة الاستعلام مع orderBy أولاً
-    let notificationsQuery = query(
-      collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
+    const fetchSystemNotifications = async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('userId', user.id)
+        .order('createdAt', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('خطأ في جلب الإشعارات النظامية:', error);
+        return;
+      }
+
+      const processed = await processSystemNotificationRows(data ?? []);
+
+      // ترتيب البيانات حسب التاريخ
+      const sortedData = processed.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setSystemNotifications(sortedData);
+    };
 
     // جلب الإشعارات التفاعلية
-    const interactionNotificationsQuery = query(
-      collection(db, 'interaction_notifications'),
-      where('userId', '==', user.uid),
-      limit(100)
-    );
+    const fetchInteractionNotifications = async () => {
+      const { data, error } = await supabase
+        .from('interaction_notifications')
+        .select('*')
+        .eq('userId', user.id)
+        .limit(100);
 
-    // متغير لتخزين unsubscribe function
-    let unsubscribeNotifications: (() => void) | null = null;
-    let useFallback = false;
+      if (error) {
+        console.error('خطأ في جلب الإشعارات التفاعلية:', error);
+        return;
+      }
 
-    // محاولة الاستعلام مع orderBy أولاً
-    try {
-      unsubscribeNotifications = onSnapshot(
-        notificationsQuery,
-        async (snapshot) => {
-          const notificationsData = await Promise.all(
-            snapshot.docs.map(async (doc) => {
-              const data = doc.data() as Notification;
-              const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-              const dataWithMetadata = {
-                ...data,
-                metadata: normalizedMetadata
-              };
+      const rows = data ?? [];
 
-              let senderInfo = getInitialSenderInfo(dataWithMetadata);
-              const metadata = normalizedMetadata || {};
-              const senderId = data.senderId
-                || metadata.senderId
-                || metadata.viewerId
-                || metadata.profileOwnerId
-                || metadata.userId;
-
-              if (senderId) {
-                const senderData = await fetchSenderInfo(senderId);
-                if (senderData) {
-                  senderInfo = mergeSenderInfo(senderInfo, senderData);
-                }
-              }
-
-              if (!senderInfo.senderAvatar && senderInfo.senderName) {
-                senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-              }
-
-              return {
-                id: doc.id,
-                ...dataWithMetadata,
-                senderId: senderId || data.senderId,
-                ...senderInfo
-              } as Notification;
-            })
-          );
-
-          // ترتيب البيانات حسب التاريخ
-          const sortedData = notificationsData.sort((a, b) => {
-            const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-            const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-            return dateB.getTime() - dateA.getTime();
-          });
-
-          setSystemNotifications(sortedData);
-        },
-        (error) => {
-          console.error('خطأ في جلب الإشعارات النظامية:', error);
-
-          // في حالة فشل الاستعلام (مثل عدم وجود فهرس مركب)، نجرب بدون orderBy
-          if ((error.code === 'failed-precondition' || error.message?.includes('index')) && !useFallback) {
-            console.warn('⚠️ محاولة جلب الإشعارات بدون orderBy...');
-            useFallback = true;
-
-            const fallbackQuery = query(
-              collection(db, 'notifications'),
-              where('userId', '==', user.uid),
-              limit(100)
-            );
-
-            if (unsubscribeNotifications) {
-              unsubscribeNotifications();
-            }
-
-            unsubscribeNotifications = onSnapshot(fallbackQuery, async (snapshot) => {
-              const notificationsData = await Promise.all(
-                snapshot.docs.map(async (doc) => {
-                  const data = doc.data() as Notification;
-                  const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-                  const dataWithMetadata = { ...data, metadata: normalizedMetadata };
-
-                  let senderInfo = getInitialSenderInfo(dataWithMetadata);
-                  const metadata = normalizedMetadata || {};
-                  const senderId = data.senderId
-                    || metadata.senderId
-                    || metadata.viewerId
-                    || metadata.profileOwnerId
-                    || metadata.userId;
-
-                  if (senderId) {
-                    const senderData = await fetchSenderInfo(senderId);
-                    if (senderData) {
-                      senderInfo = mergeSenderInfo(senderInfo, senderData);
-                    }
-                  }
-
-                  if (!senderInfo.senderAvatar && senderInfo.senderName) {
-                    senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-                  }
-
-                  return {
-                    id: doc.id,
-                    ...dataWithMetadata,
-                    senderId: senderId || data.senderId,
-                    ...senderInfo
-                  } as Notification;
-                })
-              );
-
-              // ترتيب البيانات على العميل
-              const sortedData = notificationsData.sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-                return dateB.getTime() - dateA.getTime();
-              });
-
-              setSystemNotifications(sortedData);
-            }, (fallbackError) => {
-              console.error('خطأ في جلب الإشعارات (fallback):', fallbackError);
-            });
-          }
-        }
-      );
-    } catch (error) {
-      console.error('خطأ في إنشاء استعلام الإشعارات:', error);
-      // في حالة الخطأ، نجرب الاستعلام بدون orderBy مباشرة
-      const fallbackQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', user.uid),
-        limit(100)
-      );
-
-      unsubscribeNotifications = onSnapshot(fallbackQuery, async (snapshot) => {
-        const notificationsData = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const data = doc.data() as Notification;
-            const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-            const dataWithMetadata = { ...data, metadata: normalizedMetadata };
-
-            let senderInfo = getInitialSenderInfo(dataWithMetadata);
-            const metadata = normalizedMetadata || {};
-            const senderId = data.senderId
-              || metadata.senderId
-              || metadata.viewerId
-              || metadata.profileOwnerId
-              || metadata.userId;
-
-            if (senderId) {
-              const senderData = await fetchSenderInfo(senderId);
-              if (senderData) {
-                senderInfo = mergeSenderInfo(senderInfo, senderData);
-              }
-            }
-
-            if (!senderInfo.senderAvatar && senderInfo.senderName) {
-              senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-            }
-
-            return {
-              id: doc.id,
-              ...dataWithMetadata,
-              senderId: senderId || data.senderId,
-              ...senderInfo
-            } as Notification;
-          })
-        );
-
-        const sortedData = notificationsData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-          const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-          return dateB.getTime() - dateA.getTime();
-        });
-
-        setSystemNotifications(sortedData);
-      });
-    }
-
-    const unsubscribeInteractionNotifications = onSnapshot(interactionNotificationsQuery, async (snapshot) => {
       const interactionNotificationsData = await Promise.all(
-        snapshot.docs.map(async (doc) => {
-          const data = doc.data();
-          const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-          const enrichedData = { ...data, metadata: normalizedMetadata };
+        rows.map(async (row) => {
+          const normalizedMetadata = normalizeNotificationMetadata(row.metadata);
+          const enrichedData = { ...row, metadata: normalizedMetadata };
 
-          // معلومات مبدئية للمرسل
           let senderInfo = getInitialSenderInfo(enrichedData as Notification);
-          const senderCandidateId = data.viewerId || data.senderId || data.profileOwnerId;
+          const senderCandidateId = row.viewerId || row.senderId || row.profileOwnerId;
 
           if (senderCandidateId) {
             const senderData = await fetchSenderInfo(senderCandidateId);
@@ -455,26 +349,26 @@ export default function NotificationsManager({
           }
 
           return {
-            id: doc.id,
-            userId: data.userId,
-            title: data.title || 'إشعار تفاعلي',
-            message: data.message || 'لا توجد تفاصيل',
-            type: data.type === 'profile_view' ? 'info' :
-              data.type === 'message_sent' ? 'success' :
-                data.type === 'connection_request' ? 'warning' : 'info',
-            isRead: data.isRead || false,
-            link: data.actionUrl,
+            id: row.id,
+            userId: row.userId,
+            title: row.title || 'إشعار تفاعلي',
+            message: row.message || 'لا توجد تفاصيل',
+            type: row.type === 'profile_view' ? 'info' :
+              row.type === 'message_sent' ? 'success' :
+                row.type === 'connection_request' ? 'warning' : 'info',
+            isRead: row.isRead || false,
+            link: row.actionUrl,
             metadata: {
               ...enrichedData,
-              profileOwnerId: data.profileOwnerId,
-              viewerId: data.viewerId,
-              profileType: data.profileType || 'player'
+              profileOwnerId: row.profileOwnerId,
+              viewerId: row.viewerId,
+              profileType: row.profileType || 'player'
             },
             scope: 'system',
-            createdAt: data.createdAt,
-            updatedAt: data.createdAt,
-            actionType: data.type,
-            senderId: senderCandidateId || data.senderId,
+            createdAt: row.createdAt,
+            updatedAt: row.createdAt,
+            actionType: row.type,
+            senderId: senderCandidateId || row.senderId,
             ...senderInfo
           } as Notification;
         })
@@ -482,21 +376,44 @@ export default function NotificationsManager({
 
       // ترتيب البيانات يدوياً حسب التاريخ
       const sortedData = interactionNotificationsData.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
 
       setInteractionNotifications(sortedData);
-    }, (error) => {
-      console.error('خطأ في جلب الإشعارات التفاعلية:', error);
-    });
+    };
+
+    fetchSystemNotifications();
+    fetchInteractionNotifications();
+
+    // Supabase realtime: notifications
+    const notificationsChannel = supabase.channel('notifications_mgr_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `userId=eq.${user.id}`
+      }, () => {
+        fetchSystemNotifications();
+      })
+      .subscribe();
+
+    // Supabase realtime: interaction_notifications
+    const interactionChannel = supabase.channel('interaction_notifications_mgr_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interaction_notifications',
+        filter: `userId=eq.${user.id}`
+      }, () => {
+        fetchInteractionNotifications();
+      })
+      .subscribe();
 
     return () => {
-      if (unsubscribeNotifications) {
-        unsubscribeNotifications();
-      }
-      unsubscribeInteractionNotifications();
+      supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(interactionChannel);
     };
   }, [user, userData]);
 
@@ -529,8 +446,8 @@ export default function NotificationsManager({
   useEffect(() => {
     const allNotifications = [...systemNotifications, ...interactionNotifications];
     const sortedNotifications = allNotifications.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -593,19 +510,20 @@ export default function NotificationsManager({
   const markAsRead = async (notificationId: string) => {
     try {
       // محاولة تحديث في notifications أولاً
-      try {
-        await updateDoc(doc(db, 'notifications', notificationId), {
-          isRead: true,
-          updatedAt: new Date()
-        });
-        toast.success('تم تحديد الإشعار كمقروء');
-      } catch (error) {
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .update({ isRead: true, updatedAt: new Date().toISOString() })
+        .eq('id', notificationId);
+
+      if (notifError) {
         // إذا فشل، جرب interaction_notifications
-        await updateDoc(doc(db, 'interaction_notifications', notificationId), {
-          isRead: true
-        });
-        toast.success('تم تحديد الإشعار كمقروء');
+        await supabase
+          .from('interaction_notifications')
+          .update({ isRead: true })
+          .eq('id', notificationId);
       }
+
+      toast.success('تم تحديد الإشعار كمقروء');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
       toast.error('حدث خطأ في تحديث الإشعار');
@@ -615,7 +533,7 @@ export default function NotificationsManager({
   // أرشفة الإشعار
   const archiveNotification = async (notificationId: string) => {
     try {
-      // هنا يمكن إضافة منطق الأرشفة في Firebase
+      // هنا يمكن إضافة منطق الأرشفة في Supabase
       toast.success('تم أرشفة الإشعار');
     } catch (error) {
       console.error('خطأ في أرشفة الإشعار:', error);
@@ -626,7 +544,7 @@ export default function NotificationsManager({
   // حذف الإشعار
   const deleteNotification = async (notificationId: string) => {
     try {
-      // هنا يمكن إضافة منطق الحذف في Firebase
+      // هنا يمكن إضافة منطق الحذف في Supabase
       toast.success('تم حذف الإشعار');
     } catch (error) {
       console.error('خطأ في حذف الإشعار:', error);
@@ -651,17 +569,17 @@ export default function NotificationsManager({
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
       const updatePromises = unreadNotifications.map(async (notification) => {
-        try {
-          // محاولة تحديث في notifications أولاً
-          await updateDoc(doc(db, 'notifications', notification.id), {
-            isRead: true,
-            updatedAt: new Date()
-          });
-        } catch (error) {
+        const { error: notifError } = await supabase
+          .from('notifications')
+          .update({ isRead: true, updatedAt: new Date().toISOString() })
+          .eq('id', notification.id);
+
+        if (notifError) {
           // إذا فشل، جرب interaction_notifications
-          await updateDoc(doc(db, 'interaction_notifications', notification.id), {
-            isRead: true
-          });
+          await supabase
+            .from('interaction_notifications')
+            .update({ isRead: true })
+            .eq('id', notification.id);
         }
       });
 
@@ -701,14 +619,14 @@ export default function NotificationsManager({
     }
 
     // في الحالات الأخرى، نعرض ملف المرسل/المشاهد
-    let accountType = notification?.senderAccountType;
+    let senderAccountType = notification?.senderAccountType;
 
-    // إذا لم نجد نوع الحساب من الإشعار، نحاول جلبها من Firestore
-    if (!accountType) {
+    // إذا لم نجد نوع الحساب من الإشعار، نحاول جلبها من Supabase
+    if (!senderAccountType) {
       try {
         const senderInfo = await fetchSenderInfo(senderId);
         if (senderInfo?.senderAccountType) {
-          accountType = senderInfo.senderAccountType;
+          senderAccountType = senderInfo.senderAccountType;
         }
       } catch (error) {
         console.error('خطأ في جلب معلومات المرسل:', error);
@@ -716,16 +634,16 @@ export default function NotificationsManager({
     }
 
     // تحديد المسار حسب نوع الحساب
-    if (accountType === 'player') {
+    if (senderAccountType === 'player') {
       // للاعبين، نستخدم صفحة تقارير اللاعب
       router.push(`/dashboard/shared/player-profile/${senderId}`);
-    } else if (accountType === 'club') {
+    } else if (senderAccountType === 'club') {
       router.push(`/dashboard/club/profile?id=${senderId}`);
-    } else if (accountType === 'academy') {
+    } else if (senderAccountType === 'academy') {
       router.push(`/dashboard/academy/profile?id=${senderId}`);
-    } else if (accountType === 'trainer') {
+    } else if (senderAccountType === 'trainer') {
       router.push(`/dashboard/trainer/profile?id=${senderId}`);
-    } else if (accountType === 'agent') {
+    } else if (senderAccountType === 'agent') {
       router.push(`/dashboard/agent/profile?id=${senderId}`);
     } else {
       // افتراضياً، إذا كان لاعب أو غير معروف، نستخدم صفحة تقارير اللاعب
@@ -752,7 +670,7 @@ export default function NotificationsManager({
 
   // إنشاء إشعارات تجريبية
   const createTestNotifications = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     try {
       // استيراد ديناميكي لتجنب مشاكل في وقت البناء
@@ -764,10 +682,10 @@ export default function NotificationsManager({
       } = await import('@/lib/firebase/test-notifications');
 
       await Promise.all([
-        createTestNotification(user.uid),
-        createTestInteractionNotification(user.uid),
-        createTestPaymentNotification(user.uid),
-        createTestWarningNotification(user.uid)
+        createTestNotification(user.id),
+        createTestInteractionNotification(user.id),
+        createTestPaymentNotification(user.id),
+        createTestWarningNotification(user.id)
       ]);
 
       toast.success('تم إنشاء الإشعارات التجريبية بنجاح');
@@ -779,14 +697,14 @@ export default function NotificationsManager({
 
   // إنشاء إشعارات متعددة
   const createMultipleNotifications = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     try {
       const { createTestNotification } = await import('@/lib/firebase/test-notifications');
 
       const promises = [];
       for (let i = 0; i < 10; i++) {
-        promises.push(createTestNotification(user.uid));
+        promises.push(createTestNotification(user.id));
       }
 
       await Promise.all(promises);

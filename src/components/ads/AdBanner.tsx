@@ -5,8 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Play, ExternalLink, Eye, Target, Star, Clock, Users, TrendingUp, Sparkles } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, limit, updateDoc, doc, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 
 interface Ad {
@@ -80,62 +79,26 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
 
   const fetchAds = async () => {
     try {
-      // Try the optimized query with index first
-      const q = query(
-        collection(db, 'ads'),
-        where('isActive', '==', true),
-        orderBy('priority', 'desc'),
-        limit(maxAds * 2) // Fetch more to account for filtering
-      );
-      const snapshot = await getDocs(q);
-      const adsData: Ad[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          ctaText: data.ctaText || '',
-          ctaUrl: data.ctaUrl || '',
-          views: data.views || 0,
-          clicks: data.clicks || 0
-        } as Ad;
-      });
-      
-      // Sort by priority in memory if query succeeded
-      adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-      setAds(adsData);
-    } catch (error: any) {
-      // If index is missing, fallback to simpler query
-      if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
-        try {
-          const fallbackQ = query(
-            collection(db, 'ads'),
-            where('isActive', '==', true),
-            limit(maxAds * 2)
-          );
-          const fallbackSnapshot = await getDocs(fallbackQ);
-          const adsData: Ad[] = fallbackSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              ctaText: data.ctaText || '',
-              ctaUrl: data.ctaUrl || '',
-              views: data.views || 0,
-              clicks: data.clicks || 0
-            } as Ad;
-          });
-          
-          // Sort by priority in memory
-          adsData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setAds(adsData);
-        } catch (fallbackError) {
-          console.error('Error fetching ads (fallback also failed):', fallbackError);
-          setAds([]);
-        }
-      } else {
-        console.error('Error fetching ads:', error);
-        setAds([]);
-      }
+      const { data: adsData, error } = await supabase
+        .from('ads')
+        .select('*')
+        .eq('isActive', true)
+        .order('priority', { ascending: false })
+        .limit(maxAds * 2);
+
+      if (error) throw error;
+
+      const mapped: Ad[] = (adsData || []).map((row: any) => ({
+        ...row,
+        ctaText: row.ctaText || '',
+        ctaUrl: row.ctaUrl || '',
+        views: row.views || 0,
+        clicks: row.clicks || 0
+      }));
+      setAds(mapped);
+    } catch (error) {
+      console.error('Error fetching ads:', error);
+      setAds([]);
     } finally {
       setLoading(false);
     }
@@ -143,9 +106,8 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
 
   const handleAdView = async (adId: string) => {
     try {
-      await updateDoc(doc(db, 'ads', adId), {
-        views: increment(1)
-      });
+      const { data } = await supabase.from('ads').select('views').eq('id', adId).single();
+      await supabase.from('ads').update({ views: (data?.views || 0) + 1 }).eq('id', adId);
     } catch (error) {
       console.error('Error updating ad view:', error);
     }
@@ -153,9 +115,8 @@ export default function AdBanner({ className = '', maxAds = 3, location }: AdBan
 
   const handleAdClick = async (adId: string, url?: string) => {
     try {
-      await updateDoc(doc(db, 'ads', adId), {
-        clicks: increment(1)
-      });
+      const { data } = await supabase.from('ads').select('clicks').eq('id', adId).single();
+      await supabase.from('ads').update({ clicks: (data?.clicks || 0) + 1 }).eq('id', adId);
       
       if (url) {
         // Handle both local and external URLs

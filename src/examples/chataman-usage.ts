@@ -5,11 +5,8 @@
 
 import ChatAmanService from '@/services/chataman.service';
 
-// إنشاء instance من خدمة ChatAman
-const chataman = new ChatAmanService({
-    accessToken: process.env.CHATAMAN_ACCESS_TOKEN || '',
-    baseUrl: process.env.CHATAMAN_BASE_URL
-});
+// خدمة ChatAman تم تهيئتها مسبقاً
+const chataman = ChatAmanService;
 
 /**
  * مثال 1: إرسال رسالة نصية بسيطة
@@ -114,7 +111,7 @@ export async function sendVoiceMessage(
     phoneNumber: string,
     audioUrl: string
 ) {
-    const result = await chataman.sendAudio(phoneNumber, audioUrl);
+    const result = await (chataman as any).sendAudio(phoneNumber, audioUrl);
     return result;
 }
 
@@ -126,7 +123,7 @@ export async function sendTemplateMessage(
     templateName: string,
     parameters: Record<string, any>
 ) {
-    const result = await chataman.sendTemplate({
+    const result = await (chataman as any).sendTemplate({
         phone: phoneNumber,
         templateName: templateName,
         parameters: parameters

@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/config';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, writeBatch, limit } from 'firebase/firestore';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Bell, X, Check, MessageSquare, User, Calendar, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,12 +25,13 @@ interface Notification {
 }
 
 export default function ExternalNotifications() {
-  const [user, loading] = useAuthState(auth);
+  const { user, userData } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // إضافة حالة التحميل للتعامل مع Hydration
   useEffect(() => {
@@ -42,74 +42,74 @@ export default function ExternalNotifications() {
   useEffect(() => {
     if (!user || !isClient) return;
 
-    let retryCount = 0;
-    const maxRetries = 3;
-    const retryDelay = 2000; // 2 seconds
-
-    const fetchNotifications = () => {
-      // استخدام استعلام بسيط لا يحتاج فهرس مركب
-      const notificationsQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', user.uid),
-        limit(50) // تحديد عدد النتائج
-      );
-
-      return onSnapshot(
-        notificationsQuery,
-        {
-          next: (snapshot) => {
-            const newNotifications = snapshot.docs
-              .map(doc => ({
-                id: doc.id,
-                ...doc.data()
-              })) as Notification[];
-
-            // ترتيب الإشعارات حسب التاريخ على جانب العميل
-            const sortedNotifications = newNotifications.sort((a, b) => {
-              const timeA = a.createdAt?.toMillis() || 0;
-              const timeB = b.createdAt?.toMillis() || 0;
-              return timeB - timeA;
-            });
-
-            setNotifications(sortedNotifications);
-            setUnreadCount(sortedNotifications.filter(n => !n.isRead).length);
-          },
-          error: (error) => {
-            console.error('خطأ في مراقبة الإشعارات:', error);
-            
-            // إعادة المحاولة في حالة الفشل
-            if (retryCount < maxRetries) {
-              retryCount++;
-              setTimeout(() => {
-                console.log(`إعادة محاولة جلب الإشعارات (${retryCount}/${maxRetries})`);
-                unsubscribe();
-                setupListener();
-              }, retryDelay);
-            }
-          }
-        }
-      );
-    };
-
-    let unsubscribe = () => {};
-    
-    const setupListener = () => {
+    // Initial fetch
+    const fetchNotifications = async () => {
       try {
-        unsubscribe = fetchNotifications();
+        const { data: newNotifications } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('userId', user.id)
+          .limit(50);
+
+        // ترتيب الإشعارات حسب التاريخ على جانب العميل
+        const sortedNotifications = (newNotifications || []).sort((a: Notification, b: Notification) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        });
+
+        setNotifications(sortedNotifications);
+        setUnreadCount(sortedNotifications.filter((n: Notification) => !n.isRead).length);
+        setLoading(false);
       } catch (error) {
-        console.error('خطأ في إعداد مراقب الإشعارات:', error);
+        console.error('خطأ في جلب الإشعارات:', error);
+        setLoading(false);
       }
     };
 
-    setupListener();
-    return () => unsubscribe();
+    fetchNotifications();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('external-notifications')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `userId=eq.${user.id}`
+      }, async () => {
+        // Re-fetch on any change
+        try {
+          const { data: newNotifications } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('userId', user.id)
+            .limit(50);
+
+          const sortedNotifications = (newNotifications || []).sort((a: Notification, b: Notification) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA;
+          });
+
+          setNotifications(sortedNotifications);
+          setUnreadCount(sortedNotifications.filter((n: Notification) => !n.isRead).length);
+        } catch (error) {
+          console.error('خطأ في مراقبة الإشعارات:', error);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, isClient]);
 
   const formatTimeAgo = (timestamp: any) => {
-    if (!timestamp || !timestamp.toDate) return '';
+    if (!timestamp) return '';
 
     try {
-      const date = timestamp.toDate();
+      const date = new Date(timestamp);
       const now = new Date();
       const diff = now.getTime() - date.getTime();
       const diffMinutes = Math.floor(diff / (1000 * 60));
@@ -142,13 +142,13 @@ export default function ExternalNotifications() {
 
     try {
       // تحديث حالة القراءة
-      await updateDoc(doc(db, 'notifications', notification.id), {
-        isRead: true,
-        updatedAt: new Date()
-      }).catch(error => {
-        console.error('خطأ في تحديث حالة الإشعار:', error);
-        throw error;
-      });
+      await supabase
+        .from('notifications')
+        .update({
+          isRead: true,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', notification.id);
 
       // التوجيه إلى الرابط إذا وجد
       if (notification.link) {
@@ -166,32 +166,20 @@ export default function ExternalNotifications() {
     if (!user || notifications.length === 0) return;
 
     try {
-      const batch = writeBatch(db);
-      let batchCount = 0;
-      const maxBatchSize = 500;
-      
-      // تقسيم العمليات إلى مجموعات إذا تجاوز العدد الحد الأقصى
       const unreadNotifications = notifications.filter(n => !n.isRead);
-      
-      for (const notification of unreadNotifications) {
-        const notificationRef = doc(db, 'notifications', notification.id);
-        batch.update(notificationRef, {
-          isRead: true,
-          updatedAt: new Date()
-        });
-        
-        batchCount++;
-        
-        // إذا وصلنا للحد الأقصى، نقوم بتنفيذ المجموعة الحالية
-        if (batchCount === maxBatchSize) {
-          await batch.commit();
-          batchCount = 0;
-        }
-      }
-      
-      // تنفيذ المجموعة الأخيرة إذا تبقت عمليات
-      if (batchCount > 0) {
-        await batch.commit();
+
+      // Update all unread notifications in batches
+      const batchSize = 50;
+      for (let i = 0; i < unreadNotifications.length; i += batchSize) {
+        const batch = unreadNotifications.slice(i, i + batchSize);
+        const ids = batch.map(n => n.id);
+        await supabase
+          .from('notifications')
+          .update({
+            isRead: true,
+            updatedAt: new Date().toISOString()
+          })
+          .in('id', ids);
       }
 
       toast.success('تم تحديد جميع الإشعارات كمقروءة');

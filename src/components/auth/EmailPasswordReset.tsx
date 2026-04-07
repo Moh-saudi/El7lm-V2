@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { auth } from '@/lib/firebase/config';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,7 +42,7 @@ export default function EmailPasswordReset({ onSuccess, onCancel }: EmailPasswor
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                // Check if user needs support (exists in Auth but not Firestore)
+                // Check if user needs support (exists in Auth but not in DB)
                 if (data.needsSupport) {
                     setError(data.error + '\n\n💬 للمساعدة، تواصل مع خدمة العملاء:\nWhatsApp: +966123456789\nEmail: support@el7lm.com');
                 } else {
@@ -54,10 +52,8 @@ export default function EmailPasswordReset({ onSuccess, onCancel }: EmailPasswor
                 return;
             }
 
-
             // Using Resend ONLY - no more Firebase email
             // Email is sent from API route via Resend
-            // await sendPasswordResetEmail(auth, email); // DISABLED
 
             console.log('✅ [Email Reset] Email sent via Resend to:', email);
             console.log('🔗 [Email Reset] Short link:', data.resetLink);
@@ -79,18 +75,19 @@ export default function EmailPasswordReset({ onSuccess, onCancel }: EmailPasswor
             let errorMessage = '';
             let showSupport = false;
 
-            if (err.code === 'auth/user-not-found') {
+            const msg: string = err.message || '';
+            if (msg.includes('User not found') || msg.includes('user_not_found')) {
                 errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
                 showSupport = true;
-            } else if (err.code === 'auth/user-disabled') {
+            } else if (msg.includes('disabled') || msg.includes('banned')) {
                 errorMessage = 'تم تعطيل هذا الحساب. يرجى التواصل مع خدمة العملاء';
                 showSupport = true;
-            } else if (err.code === 'auth/invalid-email') {
+            } else if (msg.includes('invalid') || msg.includes('Invalid')) {
                 errorMessage = 'البريد الإلكتروني غير صحيح';
-            } else if (err.code === 'auth/too-many-requests') {
+            } else if (msg.includes('too many') || msg.includes('rate limit')) {
                 errorMessage = 'تم إرسال طلبات كثيرة، يرجى المحاولة لاحقاً';
             } else {
-                errorMessage = err.message || 'حدث خطأ أثناء إرسال رابط الاسترجاع';
+                errorMessage = msg || 'حدث خطأ أثناء إرسال رابط الاسترجاع';
             }
 
             setError(errorMessage);

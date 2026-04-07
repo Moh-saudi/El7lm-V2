@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, orderBy, where, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { DreamAcademyCategory, DreamAcademyCategoryId } from '@/types/dream-academy';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,28 +35,35 @@ export default function AdminDreamAcademyCategoriesPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const q = query(collection(db, 'dream_academy_categories'), orderBy('id','asc'));
-    const snap = await getDocs(q);
-    const rowsRaw = snap.docs.map(d => {
-      const data = d.data() as any;
-      return { ...(data || {}), id: (data && data.id) ? data.id : d.id, _docId: d.id } as any;
-    }) as (DreamAcademyCategory & { _docId: string })[];
-    // Deduplicate by logical id; prefer canonical where _docId === id
-    const byId = new Map<string, any>();
-    for (const r of rowsRaw) {
-      const existing = byId.get((r as any).id);
-      if (!existing) {
-        byId.set((r as any).id, r);
-      } else {
-        const preferR = ((r as any)._docId === (r as any).id);
-        const preferExisting = ((existing as any)._docId === (existing as any).id);
-        if (preferR && !preferExisting) {
+    const { data, error } = await supabase
+      .from('dream_academy_categories')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (!error && data) {
+      const rowsRaw = data.map((d: any) => ({
+        ...d,
+        id: d.id,
+        _docId: d.id
+      })) as (DreamAcademyCategory & { _docId: string })[];
+
+      // Deduplicate by logical id; prefer canonical where _docId === id
+      const byId = new Map<string, any>();
+      for (const r of rowsRaw) {
+        const existing = byId.get((r as any).id);
+        if (!existing) {
           byId.set((r as any).id, r);
+        } else {
+          const preferR = ((r as any)._docId === (r as any).id);
+          const preferExisting = ((existing as any)._docId === (existing as any).id);
+          if (preferR && !preferExisting) {
+            byId.set((r as any).id, r);
+          }
         }
       }
+      const rows = Array.from(byId.values()) as DreamAcademyCategory[];
+      setItems(rows);
     }
-    const rows = Array.from(byId.values()) as DreamAcademyCategory[];
-    setItems(rows);
     setLoading(false);
   };
 
@@ -76,26 +82,31 @@ export default function AdminDreamAcademyCategoriesPage() {
       currency: (draft as any).currency || 'USD',
       allowedPaymentMethods: (draft.allowedPaymentMethods as any) || ['wallet','geidea'],
       isActive: draft.isActive ?? true,
-      createdAt: (draft as any).createdAt || new Date(),
-      updatedAt: new Date(),
+      createdAt: (draft as any).createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     if (editDocId) {
-      // Update existing document by its Firestore doc id, and do NOT change logical id
-      await updateDoc(doc(db, 'dream_academy_categories', editDocId), {
-        title: payload.title,
-        titleAr: payload.titleAr,
-        titleEn: payload.titleEn,
-        group: payload.group,
-        color: payload.color,
-        basePriceUSD: payload.basePriceUSD,
-        currency: payload.currency,
-        allowedPaymentMethods: payload.allowedPaymentMethods,
-        isActive: payload.isActive,
-        updatedAt: new Date(),
-      } as any);
+      // Update existing document by its id, do NOT change logical id
+      await supabase
+        .from('dream_academy_categories')
+        .update({
+          title: payload.title,
+          titleAr: (payload as any).titleAr,
+          titleEn: (payload as any).titleEn,
+          group: payload.group,
+          color: payload.color,
+          basePriceUSD: payload.basePriceUSD,
+          currency: (payload as any).currency,
+          allowedPaymentMethods: payload.allowedPaymentMethods,
+          isActive: payload.isActive,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', editDocId);
     } else {
-      // Create new using logical id as document id (for consistency going forward)
-      await setDoc(doc(db, 'dream_academy_categories', payload.id), payload as any, { merge: true });
+      // Create new using logical id as record id (for consistency going forward)
+      await supabase
+        .from('dream_academy_categories')
+        .upsert({ ...payload, id: payload.id });
     }
     setDraft({ id: 'tactics' as any, title: '', titleAr: '', titleEn: '', group: 'other', color: '#0ea5e9', basePriceUSD: 0, currency: 'USD', allowedPaymentMethods: ['wallet','geidea'], isActive: true });
     setEditDocId(null);
@@ -104,19 +115,27 @@ export default function AdminDreamAcademyCategoriesPage() {
 
   const toggleActive = async (c: DreamAcademyCategory) => {
     const docId = (c as any)._docId || (c as any).id;
-    await updateDoc(doc(db, 'dream_academy_categories', docId), { isActive: !c.isActive, updatedAt: new Date() });
+    await supabase
+      .from('dream_academy_categories')
+      .update({ isActive: !c.isActive, updatedAt: new Date().toISOString() })
+      .eq('id', docId);
     await fetchAll();
   };
 
   const remove = async (c: DreamAcademyCategory) => {
     // block deletion if there are sources using this category
-    const qs = await getDocs(query(collection(db, 'dream_academy_sources'), where('categoryId','==', (c as any).id)));
-    if (!qs.empty) {
+    const { data: usedSources } = await supabase
+      .from('dream_academy_sources')
+      .select('id')
+      .eq('categoryId', (c as any).id)
+      .limit(1);
+
+    if (usedSources && usedSources.length > 0) {
       alert('لا يمكن حذف الفئة لأنها مرتبطة بفيديوهات. قم بتعديل الفئة أو نقل الفيديوهات أولاً.');
       return;
     }
     const docId = (c as any)._docId || (c as any).id;
-    await deleteDoc(doc(db, 'dream_academy_categories', docId));
+    await supabase.from('dream_academy_categories').delete().eq('id', docId);
     await fetchAll();
   };
 
@@ -227,5 +246,3 @@ export default function AdminDreamAcademyCategoriesPage() {
     </div>
   );
 }
-
-

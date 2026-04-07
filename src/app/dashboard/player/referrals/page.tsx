@@ -68,7 +68,7 @@ export default function PlayerReferralsPage() {
   const [joinRequests, setJoinRequests] = useState<PlayerJoinRequest[]>([]);
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       loadPlayerData();
       loadJoinRequests();
     }
@@ -76,7 +76,7 @@ export default function PlayerReferralsPage() {
 
   const loadJoinRequests = async () => {
     try {
-      const requests = await organizationReferralService.getPlayerJoinRequests(user!.uid);
+      const requests = await organizationReferralService.getPlayerJoinRequests(user!.id);
       setJoinRequests(requests);
     } catch (error) {
       console.error('Error loading join requests:', error);
@@ -88,18 +88,18 @@ export default function PlayerReferralsPage() {
       setLoading(true);
 
       // إنشاء أو جلب نظام مكافآت اللاعب
-      const rewards = await referralService.createOrUpdatePlayerRewards(user!.uid);
+      const rewards = await referralService.createOrUpdatePlayerRewards(user!.id);
       setPlayerRewards(rewards);
 
       // جلب إحصائيات الإحالات
-      const stats = await referralService.getPlayerReferralStats(user!.uid);
+      const stats = await referralService.getPlayerReferralStats(user!.id);
       setReferralStats(stats);
 
       // إنشاء كود إحالة إذا لم يكن موجوداً
       if (!referralCode) {
         const code = referralService.generateReferralCode();
         setReferralCode(code);
-        await referralService.createReferral(user!.uid, code);
+        await referralService.createReferral(user!.id, code);
       }
 
     } catch (error) {
@@ -122,17 +122,17 @@ export default function PlayerReferralsPage() {
   };
 
   const shareViaWhatsApp = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.displayName || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
     window.open(messages.whatsapp, '_blank');
   };
 
   const shareViaSMS = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.displayName || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
     window.open(messages.sms, '_blank');
   };
 
   const shareViaEmail = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.displayName || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
     window.open(messages.email, '_blank');
   };
 
@@ -298,8 +298,8 @@ export default function PlayerReferralsPage() {
       {/* Join Organization Modal */}
       {user && userData && (
         <JoinOrganizationModal
-          playerId={user.uid}
-          playerName={userData.full_name || user.displayName || 'اللاعب'}
+          playerId={user.id}
+          playerName={userData.full_name || user.user_metadata?.full_name || 'اللاعب'}
           isOpen={showJoinModal}
           onClose={() => setShowJoinModal(false)}
           onSuccess={loadJoinRequests}

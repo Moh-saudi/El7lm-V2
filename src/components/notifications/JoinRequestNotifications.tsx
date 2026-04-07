@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { JoinRequestNotification } from '@/types/organization-referral';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,27 +17,52 @@ export default function JoinRequestNotifications() {
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
-    if (!user?.uid || (userData as any)?.accountType === 'player') return;
+    if (!user?.id || (userData as any)?.accountType === 'player') return;
 
-    const q = query(
-      collection(db, 'join_request_notifications'),
-      where('organizationId', '==', user.uid),
-      where('isRead', '==', false),
-      orderBy('createdAt', 'desc')
-    );
+    // جلب أولي
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('join_request_notifications')
+        .select('*')
+        .eq('organizationId', user.id)
+        .eq('isRead', false)
+        .order('createdAt', { ascending: false });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as JoinRequestNotification[];
+      if (error) {
+        console.error('خطأ في جلب إشعارات طلبات الانضمام:', error);
+        return;
+      }
+
+      const notifs = (data ?? []) as JoinRequestNotification[];
       setNotifications(notifs);
       setUnreadCount(notifs.length);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchNotifications();
+
+    // Supabase realtime subscription
+    const channel = supabase.channel('join_request_notifications_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'join_request_notifications',
+        filter: `organizationId=eq.${user.id}`
+      }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, userData]);
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await updateDoc(doc(db, 'join_request_notifications', notificationId), { isRead: true });
+      await supabase
+        .from('join_request_notifications')
+        .update({ isRead: true })
+        .eq('id', notificationId);
     } catch (err) {
       console.error('خطأ في تحديث الإشعار:', err);
     }
@@ -47,7 +71,12 @@ export default function JoinRequestNotifications() {
   const markAllAsRead = async () => {
     try {
       await Promise.all(
-        notifications.map(n => updateDoc(doc(db, 'join_request_notifications', n.id), { isRead: true }))
+        notifications.map(n =>
+          supabase
+            .from('join_request_notifications')
+            .update({ isRead: true })
+            .eq('id', n.id)
+        )
       );
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (err) {
@@ -62,8 +91,8 @@ export default function JoinRequestNotifications() {
       <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <Badge 
-            variant="destructive" 
+          <Badge
+            variant="destructive"
             className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -116,5 +145,3 @@ export default function JoinRequestNotifications() {
     </div>
   );
 }
-
-

@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export interface SliderItem {
     id: string;
@@ -14,12 +13,8 @@ export interface SliderItem {
 
 export const getSliderItems = async (): Promise<SliderItem[]> => {
     try {
-        const docRef = doc(db, 'content', 'slider');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().items) {
-            return docSnap.data().items as SliderItem[];
-        }
+        const { data } = await supabase.from('content').select('items').eq('id', 'slider').limit(1);
+        if (data?.length && data[0].items) return data[0].items as SliderItem[];
         return [];
     } catch (error) {
         console.error('Error fetching slider items:', error);
@@ -29,8 +24,7 @@ export const getSliderItems = async (): Promise<SliderItem[]> => {
 
 export const saveSliderItems = async (items: SliderItem[]): Promise<void> => {
     try {
-        const docRef = doc(db, 'content', 'slider');
-        await setDoc(docRef, { items }, { merge: true });
+        await supabase.from('content').upsert({ id: 'slider', items });
     } catch (error) {
         console.error('Error saving slider items:', error);
         throw error;

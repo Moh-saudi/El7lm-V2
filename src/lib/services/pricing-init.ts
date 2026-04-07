@@ -8,8 +8,7 @@
  * 4. اضغط Enter
  */
 
-import { collection, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 // ========================================
 // البيانات الأولية
@@ -280,42 +279,31 @@ export async function initializePricingData(userId: string) {
     console.log('🚀 بدء تهيئة بيانات الأسعار...');
 
     try {
+        const now = new Date().toISOString();
+
         // 1. إضافة الباقات الأساسية
         console.log('📦 إضافة الباقات الأساسية...');
         for (const plan of INITIAL_PLANS) {
-            const planRef = doc(db, 'subscription_plans', plan.id);
-            await setDoc(planRef, {
-                ...plan,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-                createdBy: userId,
-            });
+            await supabase.from('subscription_plans').upsert({ ...plan, createdAt: now, updatedAt: now, createdBy: userId });
             console.log(`✅ تمت إضافة: ${plan.name}`);
         }
 
         // 2. إضافة الأسعار المخصصة (اختياري)
         console.log('\n🌍 إضافة أمثلة على الأسعار المخصصة...');
         for (const override of SAMPLE_OVERRIDES) {
-            const overrideRef = doc(db, 'pricing_overrides', override.id);
-            await setDoc(overrideRef, {
-                ...override,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-                createdBy: userId,
-            });
+            await supabase.from('pricing_overrides').upsert({ ...override, createdAt: now, updatedAt: now, createdBy: userId });
             console.log(`✅ تمت إضافة: ${override.countryCode} - ${override.planKey}`);
         }
 
         // 3. إضافة العروض الترويجية (اختياري)
         console.log('\n🎁 إضافة أمثلة على العروض الترويجية...');
         for (const offer of SAMPLE_OFFERS) {
-            const offerRef = doc(db, 'promotional_offers', offer.id);
-            await setDoc(offerRef, {
+            await supabase.from('promotional_offers').upsert({
                 ...offer,
-                startDate: Timestamp.fromDate(offer.startDate),
-                endDate: Timestamp.fromDate(offer.endDate),
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
+                startDate: offer.startDate.toISOString(),
+                endDate: offer.endDate.toISOString(),
+                createdAt: now,
+                updatedAt: now,
                 createdBy: userId,
             });
             console.log(`✅ تمت إضافة: ${offer.name}`);

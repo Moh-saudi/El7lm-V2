@@ -20,8 +20,7 @@ import {
   Youtube,
   Linkedin
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,7 @@ export default function MarketingPage() {
   });
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [clubPlayers, setClubPlayers] = useState<any[]>([]);
-  const clubId: string = (userData?.clubId as string) || (user?.uid as string) || "";
+  const clubId: string = (userData?.clubId as string) || (user?.id as string) || "";
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -75,7 +74,6 @@ export default function MarketingPage() {
       }
 
       if (!userData) {
-        // إذا لم تتوفر بيانات المستخدم خلال 2 ثانية، أخرج من التحميل
         setTimeout(() => {
           if (!userData) {
             setLoading(false);
@@ -92,7 +90,6 @@ export default function MarketingPage() {
       if (userData.clubId) {
         await fetchCampaigns();
       } else {
-        // إذا لم تتوفر clubId خلال 2 ثانية، أخرج من التحميل
         setTimeout(() => {
           if (!userData.clubId) {
             setLoading(false);
@@ -114,30 +111,22 @@ export default function MarketingPage() {
 
     try {
       setLoading(true);
-      const campaignsRef = collection(db, 'marketing_campaigns');
-      
-      // إنشاء استعلام أساسي للحملات الخاصة بالنادي
-      const baseQuery = query(campaignsRef, where('clubId', '==', userData.clubId));
-      let finalQuery = baseQuery;
+      let query = supabase
+        .from('marketing_campaigns')
+        .select('*')
+        .eq('clubId', userData.clubId);
 
-      // إضافة فلتر الحالة إذا تم تحديده
       if (selectedFilters.status) {
-        finalQuery = query(finalQuery, where('status', '==', selectedFilters.status));
+        query = query.eq('status', selectedFilters.status);
       }
-
-      // إضافة فلتر النوع إذا تم تحديده
       if (selectedFilters.type) {
-        finalQuery = query(finalQuery, where('type', '==', selectedFilters.type));
+        query = query.eq('type', selectedFilters.type);
       }
 
-      const querySnapshot = await getDocs(finalQuery);
-      
-      if (querySnapshot.size > 0) {
-        const campaignsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as MarketingCampaign[];
-        setCampaigns(campaignsData);
+      const { data: campaignsData } = await query;
+
+      if (campaignsData && campaignsData.length > 0) {
+        setCampaigns(campaignsData as MarketingCampaign[]);
       } else {
         // عرض بيانات تجريبية إذا لم يتم العثور على حملات
         setCampaigns([
@@ -234,9 +223,11 @@ export default function MarketingPage() {
   useEffect(() => {
     if (!clubId) return;
     const fetchPlayers = async () => {
-      const playersRef = collection(db, 'clubs', clubId, 'players');
-      const snapshot = await getDocs(playersRef);
-      setClubPlayers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const { data } = await supabase
+        .from('players')
+        .select('*')
+        .eq('club_id', clubId);
+      setClubPlayers(data || []);
     };
     fetchPlayers();
   }, [clubId, showAddPlayer]);
@@ -257,7 +248,7 @@ export default function MarketingPage() {
       {/* Debug: Show userData */}
       <pre className="p-2 mb-4 text-xs bg-yellow-100 rounded">{JSON.stringify(userData, null, 2)}</pre>
       <Toaster position="top-center" richColors />
-      
+
       {/* Header */}
       <div className="mb-8">
         <button
@@ -277,7 +268,7 @@ export default function MarketingPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="w-full max-w-2xl">
-              <PlayerProfileForm clubId={userData?.clubId || user?.uid || ''} onSuccess={() => setShowAddPlayer(false)} />
+              <PlayerProfileForm clubId={userData?.clubId || user?.id || ''} onSuccess={() => setShowAddPlayer(false)} />
               <Button variant="outline" className="w-full mt-4" onClick={() => setShowAddPlayer(false)}>
                 إغلاق
               </Button>
@@ -397,24 +388,18 @@ export default function MarketingPage() {
                 <th className="p-2 border-b">الصورة</th>
                 <th className="p-2 border-b">الاسم</th>
                 <th className="p-2 border-b">المركز</th>
-                <th className="p-2 border-b">الهاتف</th>
-                <th className="p-2 border-b">البريد</th>
-                <th className="p-2 border-b">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {clubPlayers.map(player => (
+              {clubPlayers.map((player: any) => (
                 <tr key={player.id}>
-                  <td className="p-2 border-b"><img src={player.profile_image?.url || '/default-avatar.png'} alt={player.full_name} className="object-cover w-10 h-10 rounded-full" /></td>
-                  <td className="p-2 font-bold border-b">{player.full_name}</td>
-                  <td className="p-2 border-b">{player.primary_position || player.position || player.center || player.secondary_position || '—'}</td>
-                  <td className="p-2 border-b">{player.phone}</td>
-                  <td className="p-2 border-b">{player.email}</td>
                   <td className="p-2 border-b">
-                    {/* Edit/Delete actions can be added here */}
-                    <Button size="sm" variant="outline">تعديل</Button>
-                    <Button size="sm" variant="destructive" className="ml-2">حذف</Button>
+                    {player.profile_image && (
+                      <img src={player.profile_image} alt={player.full_name || player.name} className="w-10 h-10 rounded-full object-cover" />
+                    )}
                   </td>
+                  <td className="p-2 border-b">{player.full_name || player.name}</td>
+                  <td className="p-2 border-b">{player.primary_position || player.position}</td>
                 </tr>
               ))}
             </tbody>
@@ -423,4 +408,4 @@ export default function MarketingPage() {
       )}
     </div>
   );
-} 
+}

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 
 interface PasswordResetProps {
@@ -41,29 +40,27 @@ export default function PasswordReset({
     setMessage('');
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) throw resetError;
       setIsSuccess(true);
       const successMessage = 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني';
       setMessage(successMessage);
       onSuccess?.();
     } catch (error: any) {
       console.error('Password reset error:', error);
-      
+
       let errorMessage = '';
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'البريد الإلكتروني غير صحيح';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'تم إرسال طلبات كثيرة، يرجى المحاولة لاحقاً';
-          break;
-        default:
-          errorMessage = 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
+      const msg: string = error.message || '';
+      if (msg.includes('User not found') || msg.includes('user_not_found')) {
+        errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
+      } else if (msg.includes('invalid') || msg.includes('Invalid')) {
+        errorMessage = 'البريد الإلكتروني غير صحيح';
+      } else if (msg.includes('too many') || msg.includes('rate limit')) {
+        errorMessage = 'تم إرسال طلبات كثيرة، يرجى المحاولة لاحقاً';
+      } else {
+        errorMessage = 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
       }
-      
+
       setError(errorMessage);
       onError?.(errorMessage);
     } finally {
@@ -187,4 +184,4 @@ export default function PasswordReset({
       </div>
     </div>
   );
-} 
+}

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import { Send, MessageCircle } from 'lucide-react';
@@ -46,15 +45,11 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
 
   const fetchComments = async () => {
     try {
-      // استخراج معرف اللاعب من معرف الفيديو
       const [playerId, videoIndex] = videoId.split('_');
 
-      // جلب بيانات اللاعب
-      const playerRef = doc(db, 'players', playerId);
-      const playerDoc = await getDoc(playerRef);
+      const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).maybeSingle();
 
-      if (playerDoc.exists()) {
-        const playerData = playerDoc.data();
+      if (playerData) {
         const videos = playerData.videos || [];
         const videoIndexNum = parseInt(videoIndex);
 
@@ -89,70 +84,67 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
 
     try {
       const [playerId, videoIndex] = videoId.split('_');
-      const playerRef = doc(db, 'players', playerId);
-      const playerSnap = await getDoc(playerRef);
+      const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).maybeSingle();
 
-      if (!playerSnap.exists()) {
+      if (!playerData) {
         setError('لم يتم العثور على الفيديو');
         return;
       }
 
       // Fetch commenter's display info
-      let userName = user.displayName || 'مستخدم';
-      let userImage = user.photoURL || '';
+      let userName = user.user_metadata?.full_name || 'مستخدم';
+      let userImage = user.user_metadata?.avatar_url || '';
       try {
-        const userSnap = await getDoc(doc(db, 'users', user.uid));
-        if (userSnap.exists()) {
-          const ud = userSnap.data();
+        const { data: ud } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
+        if (ud) {
           userName = ud.displayName || ud.full_name || ud.name || userName;
           userImage = ud.photoURL || ud.avatar || userImage;
         }
-        const playerSnap2 = await getDoc(doc(db, 'players', user.uid));
-        if (playerSnap2.exists()) {
-          const pd = playerSnap2.data();
+        const { data: pd } = await supabase.from('players').select('*').eq('id', user.id).maybeSingle();
+        if (pd) {
           userName = pd.full_name || pd.name || userName;
           userImage = pd.avatar || pd.image || userImage;
         }
       } catch {}
 
       const newCommentObj: Comment = {
-        id: `${user.uid}_${Date.now()}`,
+        id: `${user.id}_${Date.now()}`,
         text: newComment.trim(),
-        userId: user.uid,
+        userId: user.id,
         userName,
         userImage,
         createdAt: { toDate: () => new Date() }, // local mock for instant display
       };
 
-      // Write to Firestore
-      const videos = [...(playerSnap.data().videos || [])];
+      // Write to Supabase
+      const videos = [...(playerData.videos || [])];
       const idx = parseInt(videoIndex);
       if (videos[idx]) {
         const existingComments = Array.isArray(videos[idx].comments) ? videos[idx].comments : [];
-        const firestoreComment = {
+        const supabaseComment = {
           id: newCommentObj.id,
           text: newCommentObj.text,
-          userId: user.uid,
+          userId: user.id,
           userName,
           userImage,
           createdAt: new Date().toISOString(),
         };
         videos[idx] = {
           ...videos[idx],
-          comments: [...existingComments, firestoreComment],
+          comments: [...existingComments, supabaseComment],
           commentsCount: (videos[idx].commentsCount || existingComments.length) + 1,
         };
-        await updateDoc(playerRef, { videos });
+        await supabase.from('players').update({ videos }).eq('id', playerId);
       }
 
       // Dispatch video_comment notification
-      if (user.uid !== playerId) {
-        const userSnapForType = await getDoc(doc(db, 'users', user.uid)).catch(() => null);
-        const actorAccountType = userSnapForType?.data()?.accountType || 'player';
+      if (user.id !== playerId) {
+        const { data: userDataForType } = await supabase.from('users').select('accountType').eq('id', user.id).maybeSingle();
+        const actorAccountType = userDataForType?.accountType || 'player';
         dispatchNotification({
           eventType: 'video_comment',
           targetUserId: playerId,
-          actorId: user.uid,
+          actorId: user.id,
           actorName: userName,
           actorAccountType,
           metadata: { videoId, commentText: newComment.trim().substring(0, 40) },
@@ -307,4 +299,4 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
       </motion.div>
     </div>
   );
-} 
+}

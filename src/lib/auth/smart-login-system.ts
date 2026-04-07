@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 interface LoginAttempt {
   timestamp: Date;
@@ -141,35 +140,32 @@ export class SmartLoginSystem {
    */
   private async getUserSecurityProfile(phone: string): Promise<UserSecurityProfile | null> {
     try {
-      // البحث عن المستخدم بالهاتف
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('phone', '==', phone));
-      const querySnapshot = await getDocs(q);
+      const { data } = await supabase.from('users').select('*').eq('phone', phone).limit(1);
+      if (!data?.length) return null;
 
-      if (querySnapshot.empty) {
-        return null;
-      }
-
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
+      const userData = data[0] as Record<string, unknown>;
 
       return {
-        uid: userDoc.id,
-        phone: userData.phone || '',
-        phoneVerified: userData.phoneVerified || false,
-        totalLogins: userData.totalLogins || 0,
-        successfulLogins: userData.successfulLogins || 0,
-        lastLogin: userData.lastLogin?.toDate() || null,
-        lastLoginDevice: userData.lastLoginDevice || '',
-        lastLoginIP: userData.lastLoginIP || '',
-        trustedDevices: userData.trustedDevices || [],
-        loginAttempts: (userData.loginAttempts || []).map((attempt: any) => ({
+        uid: String(userData.id || ''),
+        phone: String(userData.phone || ''),
+        phoneVerified: Boolean(userData.phoneVerified),
+        totalLogins: Number(userData.totalLogins) || 0,
+        successfulLogins: Number(userData.successfulLogins) || 0,
+        lastLogin: userData.lastLogin ? new Date(String(userData.lastLogin)) : null,
+        lastLoginDevice: String(userData.lastLoginDevice || ''),
+        lastLoginIP: String(userData.lastLoginIP || ''),
+        trustedDevices: (userData.trustedDevices as string[]) || [],
+        loginAttempts: ((userData.loginAttempts as Record<string, any>[]) || []).map((attempt) => ({
+          success: Boolean(attempt.success),
+          deviceInfo: String(attempt.deviceInfo || 'unknown'),
+          ipAddress: attempt.ipAddress ? String(attempt.ipAddress) : undefined,
+          location: attempt.location ? String(attempt.location) : undefined,
           ...attempt,
-          timestamp: attempt.timestamp?.toDate() || new Date()
-        })),
-        securityLevel: userData.securityLevel || 'new',
-        requiresOTP: userData.requiresOTP || false,
-        otpBypassEnabled: userData.otpBypassEnabled || false
+          timestamp: attempt.timestamp ? new Date(String(attempt.timestamp)) : new Date()
+        }) as LoginAttempt),
+        securityLevel: (userData.securityLevel as 'new' | 'trusted' | 'suspicious') || 'new',
+        requiresOTP: Boolean(userData.requiresOTP),
+        otpBypassEnabled: Boolean(userData.otpBypassEnabled),
       };
     } catch (error) {
       console.error('خطأ في جلب ملف الأمان:', error);
@@ -187,44 +183,39 @@ export class SmartLoginSystem {
     ipAddress?: string
   ): Promise<void> {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('phone', '==', phone));
-      const querySnapshot = await getDocs(q);
+      const { data } = await supabase.from('users').select('*').eq('phone', phone).limit(1);
+      if (!data?.length) return;
 
-      if (querySnapshot.empty) {
-        return;
-      }
-
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
+      const userData = data[0] as Record<string, unknown>;
+      const userId = String(userData.id);
 
       const newAttempt: LoginAttempt = {
         timestamp: new Date(),
         success,
         deviceInfo,
         ipAddress: ipAddress || 'unknown',
-        location: 'unknown' // يمكن إضافة تحديد الموقع لاحقاً
+        location: 'unknown'
       };
 
       const updatedAttempts = [
-        ...(userData.loginAttempts || []),
+        ...((userData.loginAttempts as LoginAttempt[]) || []),
         newAttempt
-      ].slice(-10); // الاحتفاظ بآخر 10 محاولات فقط
+      ].slice(-10);
 
-      const updateData: any = {
-        totalLogins: (userData.totalLogins || 0) + 1,
+      const updateData: Record<string, unknown> = {
+        totalLogins: (Number(userData.totalLogins) || 0) + 1,
         loginAttempts: updatedAttempts,
         lastLoginDevice: deviceInfo,
         lastLoginIP: ipAddress || 'unknown'
       };
 
       if (success) {
-        updateData.successfulLogins = (userData.successfulLogins || 0) + 1;
-        updateData.lastLogin = new Date();
+        const newSuccessful = (Number(userData.successfulLogins) || 0) + 1;
+        updateData.successfulLogins = newSuccessful;
+        updateData.lastLogin = new Date().toISOString();
 
-        // إضافة الجهاز للقائمة الموثوقة بعد 3 دخولات ناجحة
-        if (updateData.successfulLogins >= 3) {
-          const trustedDevices = userData.trustedDevices || [];
+        if (newSuccessful >= 3) {
+          const trustedDevices = (userData.trustedDevices as string[]) || [];
           if (!trustedDevices.includes(deviceInfo)) {
             updateData.trustedDevices = [...trustedDevices, deviceInfo];
             updateData.securityLevel = 'trusted';
@@ -232,7 +223,7 @@ export class SmartLoginSystem {
         }
       }
 
-      await updateDoc(userDoc.ref, updateData);
+      await supabase.from('users').update(updateData).eq('id', userId);
     } catch (error) {
       console.error('خطأ في تسجيل محاولة الدخول:', error);
     }
@@ -243,16 +234,9 @@ export class SmartLoginSystem {
    */
   async setUserOTPPreference(phone: string, requiresOTP: boolean): Promise<void> {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('phone', '==', phone));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        await updateDoc(userDoc.ref, {
-          requiresOTP,
-          otpBypassEnabled: !requiresOTP
-        });
+      const { data } = await supabase.from('users').select('id').eq('phone', phone).limit(1);
+      if (data?.length) {
+        await supabase.from('users').update({ requiresOTP, otpBypassEnabled: !requiresOTP }).eq('id', String((data[0] as Record<string, unknown>).id));
       }
     } catch (error) {
       console.error('خطأ في تحديث تفضيلات OTP:', error);

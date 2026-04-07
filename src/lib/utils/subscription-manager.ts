@@ -1,24 +1,19 @@
-import { db } from '@/lib/firebase/config';
-import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'react-hot-toast';
 
 /**
  * تفعيل اشتراك للمستخدم بناءً على المدفوعة
  */
-export async function activateSubscription(payment: any) {
+export async function activateSubscription(payment: Record<string, unknown>) {
     try {
-        const userId = payment.playerId || payment.userId;
+        const userId = String(payment.playerId || payment.userId || '');
         if (!userId || userId === 'unknown') {
             console.error('لا يوجد معرف مستخدم للتفعيل:', payment);
             throw new Error('لا يوجد معرف مستخدم صالح');
         }
 
-        // تحديد مدة الاشتراك بناءً على البيانات المخزنة (التي تأتي من خطة التسعير)
-        const rawDuration = payment.packageDuration || payment.package_duration || payment.packageName || payment.package_name || '';
-
-        let subscriptionMonths = 3; // افتراضي
-
-        // استخراج الرقم من النص (مثال: "6 شهور" -> 6)
+        const rawDuration = String(payment.packageDuration || payment.package_duration || payment.packageName || payment.package_name || '');
+        let subscriptionMonths = 3;
         const match = rawDuration.match(/(\d+)/);
         if (match) {
             subscriptionMonths = parseInt(match[1]);
@@ -26,81 +21,61 @@ export async function activateSubscription(payment: any) {
             subscriptionMonths = 12;
         }
 
-        let packageName = payment.packageName || payment.package_name || `اشتراك ${subscriptionMonths} شهور`;
-        let packageDuration = payment.packageDuration || payment.package_duration || `${subscriptionMonths} شهور`;
-        const packageType = payment.packageType || payment.package_type || 'custom';
-
-        const expiresAt = new Date(Date.now() + subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+        const packageName = String(payment.packageName || payment.package_name || `اشتراك ${subscriptionMonths} شهور`);
+        const packageDuration = String(payment.packageDuration || payment.package_duration || `${subscriptionMonths} شهور`);
+        const packageType = String(payment.packageType || payment.package_type || 'custom');
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + subscriptionMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
 
         const subscriptionData = {
-            userId: userId,
+            id: userId,
+            userId,
             plan_name: packageName,
             package_name: packageName,
-            packageType: packageType,
+            packageType,
             package_duration: packageDuration,
             package_price: payment.amount,
             payment_id: payment.id,
-            activated_at: new Date(),
+            activated_at: now,
             expires_at: expiresAt,
             end_date: expiresAt,
             status: 'active',
             features: ['unlimited_access', 'premium_support', 'advanced_features'],
             invoice_number: `INV-${Date.now()}`,
-            receipt_url: payment.receiptImage || payment.receiptUrl || '',
-            created_at: new Date(),
-            updated_at: new Date()
+            receipt_url: String(payment.receiptImage || payment.receiptUrl || ''),
+            created_at: now,
+            updated_at: now,
         };
 
-        // حفظ الاشتراك في قاعدة البيانات
-        const subscriptionRef = doc(db, 'subscriptions', userId);
+        await supabase.from('subscriptions').upsert(subscriptionData);
 
-        await updateDoc(subscriptionRef, subscriptionData).catch(async () => {
-            // إذا لم يكن موجود، أنشئه
-            await addDoc(collection(db, 'subscriptions'), {
-                ...subscriptionData,
-                id: userId
-            });
-        });
-
-        // تحديث بيانات المستخدم
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
+        await supabase.from('users').update({
             subscriptionStatus: 'active',
-            subscriptionExpiresAt: subscriptionData.expires_at,
-            subscriptionEndDate: subscriptionData.expires_at,
+            subscriptionExpiresAt: expiresAt,
+            subscriptionEndDate: expiresAt,
             lastPaymentId: payment.id,
-            packageType: packageType,
+            packageType,
             selectedPackage: packageName,
-            updatedAt: new Date()
-        });
+            updatedAt: now,
+        }).eq('id', userId);
 
-        // تحديث حالة الدفع في الجدول الأصلي
-        if (payment.collection) {
+        if (payment.collection && payment.id) {
             try {
-                const paymentRef = doc(db, payment.collection, payment.id);
-                await updateDoc(paymentRef, {
+                await supabase.from(String(payment.collection)).update({
                     status: 'completed',
                     subscription_status: 'active',
-                    subscription_expires_at: subscriptionData.expires_at,
-                    updatedAt: new Date(),
-                    updated_at: new Date()
-                });
-            } catch (error: any) {
-                console.log(`تحذير: لم نتمكن من تحديث المدفوعة الأصلية:`, error.message);
+                    subscription_expires_at: expiresAt,
+                    updatedAt: now,
+                    updated_at: now,
+                }).eq('id', payment.id);
+            } catch (error: unknown) {
+                console.log('تحذير: لم نتمكن من تحديث المدفوعة الأصلية:', error instanceof Error ? error.message : error);
             }
         }
 
-        console.log('✅ تم تفعيل الاشتراك بنجاح:', {
-            userId,
-            packageName,
-            expiresAt
-        });
-
-        return {
-            success: true,
-            subscriptionData
-        };
-    } catch (error: any) {
+        console.log('✅ تم تفعيل الاشتراك بنجاح:', { userId, packageName, expiresAt });
+        return { success: true, subscriptionData };
+    } catch (error: unknown) {
         console.error('❌ خطأ في تفعيل الاشتراك:', error);
         throw error;
     }
@@ -110,24 +85,19 @@ export async function activateSubscription(payment: any) {
  * تحديث حالة المدفوعة
  */
 export async function updatePaymentStatus(
-    payment: any,
+    payment: Record<string, unknown>,
     newStatus: string,
     autoActivateSubscription: boolean = true
 ) {
     try {
-        if (!payment.collection || !payment.id) {
-            throw new Error('بيانات المدفوعة غير كاملة');
-        }
+        if (!payment.collection || !payment.id) throw new Error('بيانات المدفوعة غير كاملة');
 
-        // تحديث الحالة في قاعدة البيانات
-        const paymentRef = doc(db, payment.collection, payment.id);
-        await updateDoc(paymentRef, {
+        await supabase.from(String(payment.collection)).update({
             status: newStatus,
-            updatedAt: new Date(),
-            updatedBy: 'admin'
-        });
+            updatedAt: new Date().toISOString(),
+            updatedBy: 'admin',
+        }).eq('id', payment.id);
 
-        // إذا كانت الحالة "مقبولة" وتفعيل تلقائي مطلوب
         if (autoActivateSubscription && ['completed', 'accepted', 'success', 'paid'].includes(newStatus)) {
             await activateSubscription(payment);
             toast.success('✅ تم تحديث الحالة وتفعيل الاشتراك');
@@ -135,11 +105,8 @@ export async function updatePaymentStatus(
             toast.success('✅ تم تحديث الحالة بنجاح');
         }
 
-        return {
-            success: true,
-            newStatus
-        };
-    } catch (error: any) {
+        return { success: true, newStatus };
+    } catch (error: unknown) {
         console.error('❌ خطأ في تحديث حالة المدفوعة:', error);
         toast.error('فشل في تحديث الحالة');
         throw error;
@@ -151,31 +118,15 @@ export async function updatePaymentStatus(
  */
 export async function deactivateSubscription(userId: string) {
     try {
-        if (!userId || userId === 'unknown') {
-            throw new Error('معرف مستخدم غير صالح');
-        }
+        if (!userId || userId === 'unknown') throw new Error('معرف مستخدم غير صالح');
 
-        // تحديث بيانات الاشتراك
-        const subscriptionRef = doc(db, 'subscriptions', userId);
-        await updateDoc(subscriptionRef, {
-            status: 'cancelled',
-            cancelled_at: new Date(),
-            updated_at: new Date()
-        });
-
-        // تحديث بيانات المستخدم
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            subscriptionStatus: 'cancelled',
-            updatedAt: new Date()
-        });
+        const now = new Date().toISOString();
+        await supabase.from('subscriptions').update({ status: 'cancelled', cancelled_at: now, updated_at: now }).eq('id', userId);
+        await supabase.from('users').update({ subscriptionStatus: 'cancelled', updatedAt: now }).eq('id', userId);
 
         toast.success('✅ تم إلغاء الاشتراك بنجاح');
-
-        return {
-            success: true
-        };
-    } catch (error: any) {
+        return { success: true };
+    } catch (error: unknown) {
         console.error('❌ خطأ في إلغاء الاشتراك:', error);
         toast.error('فشل في إلغاء الاشتراك');
         throw error;

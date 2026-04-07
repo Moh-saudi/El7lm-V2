@@ -2,22 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot,
-  orderBy,
-  limit,
-  doc,
-  updateDoc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Bell, 
+import {
+  Bell,
   Eye,
   Search,
   Users,
@@ -61,54 +51,72 @@ const InteractionNotifications: React.FC = () => {
 
   // جلب الإشعارات
   useEffect(() => {
-    console.log('🔍 بدء جلب الإشعارات:', { user: !!user, userData: !!userData, userId: user?.uid });
-    
+    console.log('🔍 بدء جلب الإشعارات:', { user: !!user, userData: !!userData, userId: user?.id });
+
     if (!user || !userData) {
       console.log('⚠️ لا يمكن جلب الإشعارات - بيانات المستخدم غير متوفرة');
       return;
     }
 
-    const notificationsQuery = query(
-      collection(db, 'interaction_notifications'),
-      where('userId', '==', user.uid),
-      limit(20)
-    );
+    // جلب أولي
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('interaction_notifications')
+        .select('*')
+        .eq('userId', user.id)
+        .limit(20);
 
-    const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
-      const notificationsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as InteractionNotification[];
-      
-      console.log('📊 تم جلب الإشعارات:', { 
-        count: notificationsData.length, 
-        unread: notificationsData.filter(n => !n.isRead).length 
+      if (error) {
+        console.error('❌ خطأ في جلب الإشعارات:', error);
+        setLoading(false);
+        return;
+      }
+
+      const notificationsData = (data ?? []) as InteractionNotification[];
+
+      console.log('📊 تم جلب الإشعارات:', {
+        count: notificationsData.length,
+        unread: notificationsData.filter(n => !n.isRead).length
       });
-      
+
       // ترتيب البيانات محلياً
       const sortedNotifications = notificationsData.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-      
+
       setNotifications(sortedNotifications);
       setUnreadCount(sortedNotifications.filter(n => !n.isRead).length);
       setLoading(false);
-    }, (error) => {
-      console.error('❌ خطأ في جلب الإشعارات:', error);
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchNotifications();
+
+    // Supabase realtime subscription
+    const channel = supabase.channel('interaction_notifications_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interaction_notifications',
+        filter: `userId=eq.${user.id}`
+      }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, userData]);
 
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      await updateDoc(doc(db, 'interaction_notifications', notificationId), {
-        isRead: true
-      });
+      await supabase
+        .from('interaction_notifications')
+        .update({ isRead: true })
+        .eq('id', notificationId);
       toast.success('تم تحديد الإشعار كمقروء');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
@@ -153,7 +161,7 @@ const InteractionNotifications: React.FC = () => {
   // تنسيق الوقت
   const formatNotificationTime = (timestamp: any) => {
     try {
-      const date = timestamp?.toDate?.() || new Date(timestamp);
+      const date = new Date(timestamp);
       return formatDistanceToNow(date, { addSuffix: true, locale: ar });
     } catch {
       return 'الآن';
@@ -188,10 +196,10 @@ const InteractionNotifications: React.FC = () => {
     );
   }
 
-  console.log('🔔 عرض مكون الإشعارات:', { 
-    notificationsCount: notifications.length, 
-    unreadCount, 
-    isOpen 
+  console.log('🔔 عرض مكون الإشعارات:', {
+    notificationsCount: notifications.length,
+    unreadCount,
+    isOpen
   });
 
   return (
@@ -201,8 +209,8 @@ const InteractionNotifications: React.FC = () => {
           <Button variant="ghost" size="sm" className="relative">
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -210,7 +218,7 @@ const InteractionNotifications: React.FC = () => {
             )}
           </Button>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>الإشعارات التفاعلية</span>
@@ -220,9 +228,9 @@ const InteractionNotifications: React.FC = () => {
               </Badge>
             )}
           </DropdownMenuLabel>
-          
+
           <DropdownMenuSeparator />
-          
+
           {notifications.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -237,7 +245,7 @@ const InteractionNotifications: React.FC = () => {
                       <div className="flex-shrink-0 mt-1">
                         {getNotificationIcon(notification.type)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-lg">{notification.emoji}</span>
@@ -248,22 +256,22 @@ const InteractionNotifications: React.FC = () => {
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           )}
                         </div>
-                        
+
                         <p className="text-xs text-gray-600 mb-2 line-clamp-2">
                           {notification.message}
                         </p>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1 text-xs text-gray-500">
                             {getAccountTypeIcon(notification.viewerAccountType)}
                             <span>{notification.viewerName}</span>
                           </div>
-                          
+
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-400">
                               {formatNotificationTime(notification.createdAt)}
                             </span>
-                            
+
                             {!notification.isRead && (
                               <Button
                                 size="sm"
@@ -287,7 +295,7 @@ const InteractionNotifications: React.FC = () => {
               </DropdownMenuItem>
             ))
           )}
-          
+
           {notifications.length > 0 && (
             <>
               <DropdownMenuSeparator />
@@ -304,4 +312,4 @@ const InteractionNotifications: React.FC = () => {
   );
 };
 
-export default InteractionNotifications; 
+export default InteractionNotifications;

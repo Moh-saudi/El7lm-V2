@@ -156,7 +156,7 @@ export default function SliderManager() {
                                         <Loader2 className="animate-spin text-blue-500" size={32} />
                                     </div>
                                 ) : slide.image ? (
-                                    <Image src={slide.image} alt={slide.title} fill className="object-cover" />
+                                    <Image src={slide.image} alt={slide.title} fill className="object-cover" priority={true} sizes="(max-width: 768px) 100vw, 50vw" />
                                 ) : (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                                         <ImageIcon size={32} />

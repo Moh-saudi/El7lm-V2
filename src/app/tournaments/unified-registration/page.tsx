@@ -11,11 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Player } from '@/types/player';
 import { Tournament } from '@/types/tournament';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
-import { addDoc, collection, doc, getDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import {
   ArrowLeft,
   ArrowRight,
@@ -148,20 +147,22 @@ export default function UnifiedTournamentRegistrationPage() {
       console.log('[Payment Settings] Tournament data:', { country, tournamentName: selectedTournament.name });
 
       try {
-        const docRef = doc(db, 'payment_settings', country);
-        const docSnap = await getDoc(docRef);
+        const { data: settingsData } = await supabase
+          .from('payment_settings')
+          .select('*')
+          .eq('id', country)
+          .single();
 
-        if (docSnap.exists()) {
-          const settings = docSnap.data();
-          setPaymentSettings(settings);
+        if (!!settingsData) {
+          setPaymentSettings(settingsData);
 
           // Build methods list from settings
-          const methods = settings.methods || [];
+          const methods = settingsData.methods || [];
           setPaymentMethods(methods);
 
-          console.log(`[Payment Settings] ✅ Loaded from Firebase for ${country}:`, methods);
+          console.log(`[Payment Settings] ✅ Loaded from Supabase for ${country}:`, methods);
         } else {
-          console.log(`[Payment Settings] ⚠️ No Firebase settings found for ${country}, using defaults`);
+          console.log(`[Payment Settings] ⚠️ No Supabase settings found for ${country}, using defaults`);
 
           // Set default fallback methods based on country
           const defaultMethods: any[] = [];
@@ -204,10 +205,12 @@ export default function UnifiedTournamentRegistrationPage() {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const q = query(collection(db, 'tournaments'), where('isActive', '==', true));
-        const sn = await getDocs(q);
-        let list = sn.docs.map(d => ({ id: d.id, ...d.data() } as Tournament));
-        list.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        const { data } = await supabase
+          .from('tournaments')
+          .select('*')
+          .eq('isActive', true)
+          .order('createdAt', { ascending: false });
+        const list = (data || []) as Tournament[];
         setTournaments(list.filter(t => t.isActive !== false));
       } catch (e) {
         console.error("Error fetching tournaments", e);
@@ -260,61 +263,59 @@ export default function UnifiedTournamentRegistrationPage() {
 
         if (accountType === 'player') {
           // If account is a player, try multiple approaches to find their data
-          console.log('[Player Fetch] Searching for player with user.uid:', user.uid);
+          console.log('[Player Fetch] Searching for player with user.id:', user.id);
 
-          // Approach 1: Document ID matches user.uid
-          const playerDoc = await getDoc(doc(db, 'players', user.uid));
-          if (playerDoc.exists()) {
+          // Approach 1: Document ID matches user.id
+          const { data: playerData } = await supabase
+            .from('players')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (!!playerData) {
             console.log('[Player Fetch] Found player by document ID');
-            players = [{ id: playerDoc.id, ...playerDoc.data() } as Player];
+            players = [playerData as Player];
           } else {
             console.log('[Player Fetch] Document ID not found, trying queries...');
 
             // Approach 2: Try multiple field names that might contain user ID
-            const queries = [
-              query(collection(db, 'players'), where('user_id', '==', user.uid)),
-              query(collection(db, 'players'), where('userId', '==', user.uid)),
-              query(collection(db, 'players'), where('uid', '==', user.uid)),
-              query(collection(db, 'players'), where('created_by', '==', user.uid))
-            ];
-
-            for (const q of queries) {
+            const fieldNames = ['user_id', 'userId', 'uid', 'created_by'];
+            for (const field of fieldNames) {
               try {
-                const sn = await getDocs(q);
-                if (sn.docs.length > 0) {
-                  console.log(`[Player Fetch] Found ${sn.docs.length} player(s) via query`);
-                  players = sn.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+                const { data: found } = await supabase
+                  .from('players')
+                  .select('*')
+                  .eq(field, user.id);
+                if (found && found.length > 0) {
+                  console.log(`[Player Fetch] Found ${found.length} player(s) via field ${field}`);
+                  players = found as Player[];
                   break;
                 }
               } catch (error) {
-                // Ignore query errors (index might not exist)
-                console.log('[Player Fetch] Query failed (might need index), trying next...');
+                console.log(`[Player Fetch] Query on field ${field} failed, trying next...`);
               }
             }
           }
 
           if (players.length === 0) {
-            console.warn('[Player Fetch] No player data found for user:', user.uid);
+            console.warn('[Player Fetch] No player data found for user:', user.id);
           }
         } else {
           // For organizations (academy, club, agent, etc.), fetch managed players
           console.log('[Player Fetch] Fetching managed players for organization:', accountType);
 
-          const queries = [
-            query(collection(db, 'players'), where('organization_id', '==', user.uid)),
-            query(collection(db, 'players'), where('managed_by', '==', user.uid)),
-            query(collection(db, 'players'), where('academy_id', '==', user.uid)),
-            query(collection(db, 'players'), where('club_id', '==', user.uid))
-          ];
-
-          const results = await Promise.all(queries.map(q => getDocs(q).catch(() => null)));
-          const allPlayerDocs = results.flatMap(sn => sn?.docs || []);
+          const fieldNames = ['organization_id', 'managed_by', 'academy_id', 'club_id'];
+          const results = await Promise.all(
+            fieldNames.map(field =>
+              supabase.from('players').select('*').eq(field, user.id).then(r => r.data || []).then(undefined, () => [])
+            )
+          );
+          const allPlayerRows = results.flat();
 
           // Remove duplicates by ID
           const uniquePlayers = new Map<string, Player>();
-          allPlayerDocs.forEach(doc => {
-            if (!uniquePlayers.has(doc.id)) {
-              uniquePlayers.set(doc.id, { id: doc.id, ...doc.data() } as Player);
+          allPlayerRows.forEach(row => {
+            if (!uniquePlayers.has(row.id)) {
+              uniquePlayers.set(row.id, row as Player);
             }
           });
 
@@ -340,18 +341,16 @@ export default function UnifiedTournamentRegistrationPage() {
     }
     const checkHistory = async () => {
       try {
-        const q = query(
-          collection(db, 'tournament_registrations'),
-          where('tournamentId', '==', selectedTournament.id),
-          where('userId', '==', user.uid)
-        );
-        const sn = await getDocs(q);
+        const { data } = await supabase
+          .from('tournament_registrations')
+          .select('*')
+          .eq('tournamentId', selectedTournament.id)
+          .eq('userId', user.id);
         const paidIds = new Set<string>();
-        sn.docs.forEach(d => {
-          const data = d.data();
+        (data || []).forEach(row => {
           // Include all registration statuses to prevent duplicate registrations
-          if (data.status === 'paid' || data.status === 'approved' || data.status === 'pending_review' || data.status === 'pending') {
-            data.players?.forEach((p: any) => paidIds.add(p.id));
+          if (row.status === 'paid' || row.status === 'approved' || row.status === 'pending_review' || row.status === 'pending') {
+            row.players?.forEach((p: any) => paidIds.add(p.id));
           }
         });
         setPaidPlayerIds(paidIds);
@@ -368,14 +367,15 @@ export default function UnifiedTournamentRegistrationPage() {
     }
     const fetchRegistrations = async () => {
       try {
-        const q = query(collection(db, 'tournament_registrations'), where('userId', '==', user.uid));
-        const sn = await getDocs(q);
+        const { data } = await supabase
+          .from('tournament_registrations')
+          .select('*')
+          .eq('userId', user.id);
         const tournamentsWithStatus = new Map<string, string>();
-        sn.docs.forEach(d => {
-          const data = d.data();
+        (data || []).forEach(row => {
           // Include all registration statuses
-          if (data.status === 'paid' || data.status === 'approved' || data.status === 'pending_review' || data.status === 'pending') {
-            tournamentsWithStatus.set(data.tournamentId, data.status);
+          if (row.status === 'paid' || row.status === 'approved' || row.status === 'pending_review' || row.status === 'pending') {
+            tournamentsWithStatus.set(row.tournamentId, row.status);
           }
         });
         setRegisteredTournamentsMap(tournamentsWithStatus);
@@ -433,16 +433,17 @@ export default function UnifiedTournamentRegistrationPage() {
         return;
       }
 
-      await addDoc(collection(db, 'tournament_registrations'), {
+      await supabase.from('tournament_registrations').insert({
+        id: crypto.randomUUID(),
         tournamentId: selectedTournament.id,
-        userId: user.uid,
+        userId: user.id,
         players: selectedPlayers,
         totalAmount: total,
         currency: selectedTournament.currency || 'EGP',
         status: 'pending',
         paymentStatus: 'pending',
         paymentMethod,
-        createdAt: Timestamp.now()
+        createdAt: new Date().toISOString()
       });
 
       toast.success('تم التسجيل بنجاح! سيتم مراجعة طلبك قريباً');
@@ -460,9 +461,10 @@ export default function UnifiedTournamentRegistrationPage() {
   const handlePaymentSuccess = async (details: any) => {
     if (!selectedTournament || !user) return;
     try {
-      await addDoc(collection(db, 'tournament_registrations'), {
+      await supabase.from('tournament_registrations').insert({
+        id: crypto.randomUUID(),
         tournamentId: selectedTournament.id,
-        userId: user.uid,
+        userId: user.id,
         players: selectedPlayers,
         totalAmount: calculateTotal(),
         currency: selectedTournament.currency || 'EGP',
@@ -470,7 +472,7 @@ export default function UnifiedTournamentRegistrationPage() {
         paymentStatus: 'paid',
         paymentMethod: 'card',
         transactionId: details.id,
-        createdAt: Timestamp.now()
+        createdAt: new Date().toISOString()
       });
       setShowPaymentModal(false);
       toast.success('تم الدفع والتسجيل بنجاح!');
@@ -491,8 +493,8 @@ export default function UnifiedTournamentRegistrationPage() {
         body: JSON.stringify({
           amount: calculateTotal(),
           customerEmail: user?.email || userData?.email || 'customer@example.com',
-          customerPhone: user?.phoneNumber || userData?.phone || userData?.phoneNumber || '00000000',
-          customerName: user?.displayName || userData?.name || 'Customer',
+          customerPhone: user?.phone || userData?.phone || userData?.phoneNumber || '00000000',
+          customerName: user?.user_metadata?.full_name || userData?.name || 'Customer',
           transactionId: `REG-${selectedTournament?.id}-${Date.now()}`,
         })
       });
@@ -516,9 +518,10 @@ export default function UnifiedTournamentRegistrationPage() {
     setWalletUploading(true);
     try {
       await new Promise(r => setTimeout(r, 1500));
-      await addDoc(collection(db, 'tournament_registrations'), {
+      await supabase.from('tournament_registrations').insert({
+        id: crypto.randomUUID(),
         tournamentId: selectedTournament.id,
-        userId: user.uid,
+        userId: user.id,
         players: selectedPlayers,
         totalAmount: calculateTotal(),
         currency: selectedTournament.currency || 'EGP',
@@ -527,7 +530,7 @@ export default function UnifiedTournamentRegistrationPage() {
         paymentMethod: paymentMethod, // Save actual method (vodafone_cash, stc_pay, etc)
         walletProvider,
         receiptNumber: walletReceiptNumber,
-        createdAt: Timestamp.now()
+        createdAt: new Date().toISOString()
       });
 
       // Update registered tournaments map immediately

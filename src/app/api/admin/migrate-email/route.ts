@@ -1,22 +1,24 @@
-import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('📊 [Admin API] Starting email migration...');
 
-    const body = await request.json();
-    const { batchSize = 10, dryRun = false } = body;
+    const { batchSize = 10, dryRun = false } = await request.json();
+    const db = getSupabaseAdmin();
 
-    // Get all users with long email addresses
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '>=', 'user_'));
-    const snapshot = await getDocs(q);
+    // Get users with long email addresses
+    const { data: allUsers, error } = await db
+      .from('users')
+      .select('id, email')
+      .gte('email', 'user_');
 
-    const longEmails = snapshot.docs.filter(doc => {
-      const email = doc.data().email;
-      return email && email.length > 50; // Long email addresses
+    if (error) throw error;
+
+    const longEmails = (allUsers ?? []).filter((u: Record<string, unknown>) => {
+      const email = String(u.email ?? '');
+      return email && email.length > 50;
     });
 
     console.log(`📊 [Admin API] Found ${longEmails.length} users with long emails`);
@@ -26,87 +28,55 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           totalFound: longEmails.length,
-          sampleEmails: longEmails.slice(0, 5).map(doc => ({
-            id: doc.id,
-            email: doc.data().email,
-            length: doc.data().email.length
+          sampleEmails: longEmails.slice(0, 5).map((u: Record<string, unknown>) => ({
+            id: u.id, email: u.email, length: String(u.email ?? '').length,
           })),
-          dryRun: true
+          dryRun: true,
         },
-        message: 'Dry run completed - no changes made'
+        message: 'Dry run completed - no changes made',
       });
     }
 
-    // Process migration in batches
-    const results = {
-      totalProcessed: 0,
-      successful: 0,
-      failed: 0,
-      errors: [] as string[]
-    };
+    const results = { totalProcessed: 0, successful: 0, failed: 0, errors: [] as string[] };
 
     for (let i = 0; i < longEmails.length; i += batchSize) {
       const batch = longEmails.slice(i, i + batchSize);
 
-      for (const userDoc of batch) {
+      for (const user of batch) {
         try {
-          const userData = userDoc.data();
-          const oldEmail = userData.email;
+          const userId = String(user.id);
+          const oldEmail = String(user.email ?? '');
+          const newEmail = `user_${userId}@el7lm.com`;
 
-          // Generate new shorter email
-          const newEmail = `user_${userDoc.id}@el7lm.com`;
-
-          // Update user document
-          await updateDoc(doc(db, 'users', userDoc.id), {
-            email: newEmail,
-            oldEmail: oldEmail,
-            emailMigratedAt: new Date(),
-            emailMigrationStatus: 'completed'
-          });
+          await db.from('users').update({
+            email: newEmail, oldEmail,
+            emailMigratedAt: new Date().toISOString(),
+            emailMigrationStatus: 'completed',
+          }).eq('id', userId);
 
           results.successful++;
-          console.log(`✅ [Admin API] Migrated email for user ${userDoc.id}: ${oldEmail} -> ${newEmail}`);
-
-        } catch (error) {
+          console.log(`✅ [Admin API] Migrated email for user ${userId}: ${oldEmail} -> ${newEmail}`);
+        } catch (e) {
           results.failed++;
-          const errorMsg = `Failed to migrate user ${userDoc.id}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-          results.errors.push(errorMsg);
-          console.error(`❌ [Admin API] ${errorMsg}`);
+          results.errors.push(`Failed to migrate user ${user.id}: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
-
         results.totalProcessed++;
       }
 
-      // Add delay between batches to avoid overwhelming the database
       if (i + batchSize < longEmails.length) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    const response = {
+    return NextResponse.json({
       success: true,
-      data: {
-        ...results,
-        totalFound: longEmails.length,
-        migrationCompleted: true,
-        completedAt: new Date().toISOString()
-      },
-      message: `Email migration completed. ${results.successful} successful, ${results.failed} failed.`
-    };
-
-    console.log('✅ [Admin API] Email migration completed:', results);
-
-    return NextResponse.json(response);
-
+      data: { ...results, totalFound: longEmails.length, migrationCompleted: true, completedAt: new Date().toISOString() },
+      message: `Email migration completed. ${results.successful} successful, ${results.failed} failed.`,
+    });
   } catch (error) {
     console.error('❌ [Admin API] Error during email migration:', error);
-
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to migrate emails',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Failed to migrate emails', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

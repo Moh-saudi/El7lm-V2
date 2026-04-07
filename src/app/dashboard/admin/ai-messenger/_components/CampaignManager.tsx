@@ -5,8 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { db } from '@/lib/firebase/config';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { ChatAmanService, ChatAmanTemplate } from '@/lib/services/chataman-service';
 import { ChatAmanTemplateSelector } from '@/components/messaging/ChatAmanTemplateSelector';
 import { toast } from 'sonner';
@@ -110,17 +109,16 @@ export const CampaignManager: React.FC = () => {
 
   // 📋 1. Load Real Users on mount (Multi-collection aggregations)
   useEffect(() => {
-    const collectionsGroup = ['users', 'players', 'academies', 'academy', 'clubs', 'club', 'trainers', 'trainer', 'agents', 'agent', 'parents', 'parent'];
+    const collectionsGroup = ['users', 'players', 'academies', 'academy', 'clubs', 'club', 'trainers', 'trainer', 'agents', 'agent'];
     const collectionToType: Record<string, string> = {
       users: 'any', players: 'player', academies: 'academy', academy: 'academy',
       clubs: 'club', club: 'club', trainers: 'trainer', trainer: 'trainer',
-      agents: 'agent', agent: 'agent', parents: 'parent', parent: 'parent'
+      agents: 'agent', agent: 'agent'
     };
     const combinedMap = new Map<string, any>();
 
     const upsertDocs = (docs: any[], colName: string) => {
-      for (const d of docs) {
-        const data = d.data();
+      for (const data of docs) {
         const accountType = collectionToType[colName] || data.accountType || colName;
         const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || 'مستخدم مجهول';
         const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
@@ -138,14 +136,25 @@ export const CampaignManager: React.FC = () => {
         }
 
         if (phone) {
-           combinedMap.set(d.id, { id: d.id, name, phone, role: accountType, avatar, country });
+           combinedMap.set(data.id, { id: data.id, name, phone, role: accountType, avatar, country });
         }
+      }
+    };
+
+    // Load all collections once
+    const loadAll = async () => {
+      for (const col of collectionsGroup) {
+        const { data } = await supabase.from(col).select('*');
+        if (data) upsertDocs(data, col);
       }
       setUsers(Array.from(combinedMap.values()));
     };
-
-    const unsubs = collectionsGroup.map(col => onSnapshot(query(collection(db, col)), (snap) => upsertDocs(snap.docs, col)));
-    return () => unsubs.forEach(u => u());
+    loadAll();
+    // Setup realtime for users table
+    const channel = supabase.channel('campaign-users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => loadAll())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // 📋 2. Load Templates on mount

@@ -1,11 +1,14 @@
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { DateOrTimestamp } from '../../types/common';
+/**
+ * Smart Notification Service - Supabase Edition
+ * تم تحويله من Firebase Firestore إلى Supabase
+ */
+
+import { supabase } from '@/lib/supabase/config';
 
 export interface SmartNotification {
   id?: string;
-  userId: string; // المستلم
-  viewerId: string; // المشاهد
+  userId: string;
+  viewerId: string;
   viewerName: string;
   viewerType: string;
   type: 'profile_view' | 'search_result' | 'connection_request' | 'achievement' | 'trending';
@@ -21,11 +24,10 @@ export interface SmartNotification {
     achievementType?: string;
     trendingRank?: number;
   };
-  createdAt: DateOrTimestamp;
-  expiresAt?: DateOrTimestamp;
+  createdAt: string;
+  expiresAt?: string;
 }
 
-// رسائل محفزة ومتطورة
 const MOTIVATIONAL_MESSAGES = {
   profile_view: [
     { emoji: '👀', title: 'شخص مهتم بك!', message: 'قام {viewerName} بمشاهدة ملفك الشخصي. اهتمامهم بك يعني أنك على الطريق الصحيح!' },
@@ -64,7 +66,6 @@ const MOTIVATIONAL_MESSAGES = {
   ]
 };
 
-// رسائل عشوائية محفزة
 const RANDOM_MOTIVATIONAL_MESSAGES = [
   { emoji: '💪', message: 'قوتك الداخلية تجذب الانتباه!' },
   { emoji: '🎯', message: 'أهدافك واضحة وطموحاتك عالية!' },
@@ -79,53 +80,50 @@ const RANDOM_MOTIVATIONAL_MESSAGES = [
 ];
 
 class SmartNotificationService {
-  // إرسال إشعار مشاهدة الملف الشخصي
+  private rand<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  private getTypeName(type: string): string {
+    const typeNames: Record<string, string> = {
+      player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
+      agent: 'وكيل', trainer: 'مدرب', admin: 'مشرف'
+    };
+    return typeNames[type] || 'مستخدم';
+  }
+
+  private async insert(notification: Omit<SmartNotification, 'id'>): Promise<string> {
+    const id = crypto.randomUUID();
+    const { error } = await supabase.from('smart_notifications').insert({ id, ...notification });
+    if (error) throw error;
+    return id;
+  }
+
   async sendProfileViewNotification(
     profileOwnerId: string,
     viewerId: string,
     viewerName: string,
     viewerType: string
   ): Promise<string> {
-    try {
-      const messages = MOTIVATIONAL_MESSAGES.profile_view;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-      const randomMotivational = RANDOM_MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * RANDOM_MOTIVATIONAL_MESSAGES.length)];
+    const msg = this.rand(MOTIVATIONAL_MESSAGES.profile_view);
+    const motivational = this.rand(RANDOM_MOTIVATIONAL_MESSAGES);
 
-      const notification: SmartNotification = {
-        userId: profileOwnerId,
-        viewerId,
-        viewerName,
-        viewerType,
-        type: 'profile_view',
-        title: randomMessage.title,
-        message: randomMessage.message
-          .replace('{viewerName}', viewerName)
-          .replace('{viewerType}', this.getTypeName(viewerType)) + 
-          ' ' + randomMotivational.message,
-        emoji: randomMessage.emoji,
-        isRead: false,
-        priority: 'medium',
-        actionUrl: `/dashboard/profile/${viewerId}`,
-        metadata: {
-          viewCount: 1
-        },
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // أسبوع
-      };
+    await this.updateViewCount(profileOwnerId);
 
-      const docRef = await addDoc(collection(db, 'smart_notifications'), notification);
-      
-      // تحديث عداد المشاهدات
-      await this.updateViewCount(profileOwnerId);
-      
-      return docRef.id;
-    } catch (error) {
-      console.error('خطأ في إرسال إشعار مشاهدة الملف:', error);
-      throw error;
-    }
+    return this.insert({
+      userId: profileOwnerId, viewerId, viewerName, viewerType,
+      type: 'profile_view', title: msg.title,
+      message: msg.message
+        .replace('{viewerName}', viewerName)
+        .replace('{viewerType}', this.getTypeName(viewerType)) + ' ' + motivational.message,
+      emoji: msg.emoji, isRead: false, priority: 'medium',
+      actionUrl: `/dashboard/profile/${viewerId}`,
+      metadata: { viewCount: 1 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
   }
 
-  // إرسال إشعار نتيجة البحث
   async sendSearchResultNotification(
     userId: string,
     searcherId: string,
@@ -134,179 +132,88 @@ class SmartNotificationService {
     searchTerm: string,
     rank: number
   ): Promise<string> {
-    try {
-      const messages = MOTIVATIONAL_MESSAGES.search_result;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    const msg = this.rand(MOTIVATIONAL_MESSAGES.search_result);
 
-      const notification: SmartNotification = {
-        userId,
-        viewerId: searcherId,
-        viewerName: searcherName,
-        viewerType: searcherType,
-        type: 'search_result',
-        title: randomMessage.title,
-        message: randomMessage.message.replace('{searchTerm}', searchTerm),
-        emoji: randomMessage.emoji,
-        isRead: false,
-        priority: 'high',
-        actionUrl: `/dashboard/search?term=${encodeURIComponent(searchTerm)}`,
-        metadata: {
-          searchTerm,
-          viewCount: rank
-        },
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 أيام
-      };
-
-      const docRef = await addDoc(collection(db, 'smart_notifications'), notification);
-      return docRef.id;
-    } catch (error) {
-      console.error('خطأ في إرسال إشعار نتيجة البحث:', error);
-      throw error;
-    }
+    return this.insert({
+      userId, viewerId: searcherId, viewerName: searcherName, viewerType: searcherType,
+      type: 'search_result', title: msg.title,
+      message: msg.message.replace('{searchTerm}', searchTerm),
+      emoji: msg.emoji, isRead: false, priority: 'high',
+      actionUrl: `/dashboard/search?term=${encodeURIComponent(searchTerm)}`,
+      metadata: { searchTerm, viewCount: rank },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    });
   }
 
-  // إرسال إشعار طلب تواصل
   async sendConnectionRequestNotification(
     userId: string,
     requesterId: string,
     requesterName: string,
     requesterType: string
   ): Promise<string> {
-    try {
-      const messages = MOTIVATIONAL_MESSAGES.connection_request;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    const msg = this.rand(MOTIVATIONAL_MESSAGES.connection_request);
 
-      const notification: SmartNotification = {
-        userId,
-        viewerId: requesterId,
-        viewerName: requesterName,
-        viewerType: requesterType,
-        type: 'connection_request',
-        title: randomMessage.title,
-        message: randomMessage.message
-          .replace('{viewerName}', requesterName)
-          .replace('{viewerType}', this.getTypeName(requesterType)),
-        emoji: randomMessage.emoji,
-        isRead: false,
-        priority: 'urgent',
-        actionUrl: `/dashboard/connections/${requesterId}`,
-        metadata: {
-          viewCount: 1
-        },
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // أسبوعين
-      };
-
-      const docRef = await addDoc(collection(db, 'smart_notifications'), notification);
-      return docRef.id;
-    } catch (error) {
-      console.error('خطأ في إرسال إشعار طلب تواصل:', error);
-      throw error;
-    }
+    return this.insert({
+      userId, viewerId: requesterId, viewerName: requesterName, viewerType: requesterType,
+      type: 'connection_request', title: msg.title,
+      message: msg.message
+        .replace('{viewerName}', requesterName)
+        .replace('{viewerType}', this.getTypeName(requesterType)),
+      emoji: msg.emoji, isRead: false, priority: 'urgent',
+      actionUrl: `/dashboard/connections/${requesterId}`,
+      metadata: { viewCount: 1 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    });
   }
 
-  // إرسال إشعار إنجاز
   async sendAchievementNotification(
     userId: string,
     achievementType: string,
     achievementValue?: number
   ): Promise<string> {
-    try {
-      const messages = MOTIVATIONAL_MESSAGES.achievement;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    const msg = this.rand(MOTIVATIONAL_MESSAGES.achievement);
 
-      const notification: SmartNotification = {
-        userId,
-        viewerId: 'system',
-        viewerName: 'النظام',
-        viewerType: 'system',
-        type: 'achievement',
-        title: randomMessage.title,
-        message: randomMessage.message.replace('{achievementType}', achievementType),
-        emoji: randomMessage.emoji,
-        isRead: false,
-        priority: 'high',
-        actionUrl: `/dashboard/achievements`,
-        metadata: {
-          achievementType,
-          viewCount: achievementValue || 1
-        },
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // شهر
-      };
-
-      const docRef = await addDoc(collection(db, 'smart_notifications'), notification);
-      return docRef.id;
-    } catch (error) {
-      console.error('خطأ في إرسال إشعار إنجاز:', error);
-      throw error;
-    }
+    return this.insert({
+      userId, viewerId: 'system', viewerName: 'النظام', viewerType: 'system',
+      type: 'achievement', title: msg.title,
+      message: msg.message.replace('{achievementType}', achievementType),
+      emoji: msg.emoji, isRead: false, priority: 'high',
+      actionUrl: `/dashboard/achievements`,
+      metadata: { achievementType, viewCount: achievementValue || 1 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
   }
 
-  // إرسال إشعار ترند
-  async sendTrendingNotification(
-    userId: string,
-    rank: number,
-    category: string
-  ): Promise<string> {
-    try {
-      const messages = MOTIVATIONAL_MESSAGES.trending;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+  async sendTrendingNotification(userId: string, rank: number, category: string): Promise<string> {
+    const msg = this.rand(MOTIVATIONAL_MESSAGES.trending);
 
-      const notification: SmartNotification = {
-        userId,
-        viewerId: 'system',
-        viewerName: 'النظام',
-        viewerType: 'system',
-        type: 'trending',
-        title: randomMessage.title,
-        message: randomMessage.message.replace('{rank}', rank.toString()),
-        emoji: randomMessage.emoji,
-        isRead: false,
-        priority: 'urgent',
-        actionUrl: `/dashboard/trending`,
-        metadata: {
-          trendingRank: rank,
-          viewCount: 1
-        },
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // يوم واحد
-      };
-
-      const docRef = await addDoc(collection(db, 'smart_notifications'), notification);
-      return docRef.id;
-    } catch (error) {
-      console.error('خطأ في إرسال إشعار ترند:', error);
-      throw error;
-    }
+    return this.insert({
+      userId, viewerId: 'system', viewerName: 'النظام', viewerType: 'system',
+      type: 'trending', title: msg.title,
+      message: msg.message.replace('{rank}', rank.toString()),
+      emoji: msg.emoji, isRead: false, priority: 'urgent',
+      actionUrl: `/dashboard/trending`,
+      metadata: { trendingRank: rank, viewCount: 1 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
   }
 
-  // تحديث عداد المشاهدات
   private async updateViewCount(userId: string): Promise<void> {
     try {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
-        profileViews: increment(1),
-        lastViewedAt: serverTimestamp()
-      });
+      const { data } = await supabase.from('users').select('profileViews').eq('id', userId).maybeSingle();
+      const current = (data as any)?.profileViews ?? 0;
+      await supabase.from('users').update({
+        profileViews: current + 1,
+        lastViewedAt: new Date().toISOString(),
+      }).eq('id', userId);
     } catch (error) {
       console.error('خطأ في تحديث عداد المشاهدات:', error);
     }
   }
-
-  // الحصول على اسم النوع
-  private getTypeName(type: string): string {
-    const typeNames: Record<string, string> = {
-      'player': 'لاعب',
-      'club': 'نادي',
-      'academy': 'أكاديمية',
-      'agent': 'وكيل',
-      'trainer': 'مدرب',
-      'admin': 'مشرف'
-    };
-    return typeNames[type] || 'مستخدم';
-  }
 }
 
-export const smartNotificationService = new SmartNotificationService(); 
+export const smartNotificationService = new SmartNotificationService();

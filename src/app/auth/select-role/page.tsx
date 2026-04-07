@@ -1,8 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
     Briefcase,
     CheckCircle,
@@ -19,8 +18,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast, Toaster } from 'sonner';
-import { deleteUser, GoogleAuthProvider, linkWithPopup, PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
 
 const roles = [
@@ -102,24 +99,14 @@ export default function SelectRolePage() {
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [showOTPModal, setShowOTPModal] = useState(false);
-    const [confirmationResult, setConfirmationResult] = useState<any>(null);
     const [isLinking, setIsLinking] = useState(false);
 
-    const { sendPhoneOTP, setupRecaptcha } = useAuth();
+    const { sendPhoneOTP } = useAuth();
 
     useEffect(() => {
-        // If not logged in, go to login
         if (!authLoading && !user) {
             router.replace('/auth/login');
-            return;
         }
-
-        // If logged in and already has a valid role (not player default for new google users IF we change logic),
-        // For now, we assume this page is only visited if we force redirect or user comes here manually.
-        // However, if we change the auth provider to set "unknown" initially, we check that.
-        // Currently, auth provider sets 'player' by default for Google. 
-        // We will update AuthProvider to be smarter, but for now let's allow role selection if it matches 'player' (default) or 'unknown'.
-        // Or simpler: This page is valid for anyone who wants to "set" their initial role.
     }, [user, authLoading, router]);
 
     const handleContinue = async () => {
@@ -127,31 +114,29 @@ export default function SelectRolePage() {
 
         setIsSubmitting(true);
         try {
+            const now = new Date().toISOString();
             const roleData = {
                 accountType: selectedRole,
-                updated_at: new Date(),
-                // Ensure profile is active
+                updated_at: now,
                 isActive: true
             };
 
-            // 1. Update 'users' collection
-            await updateDoc(doc(db, 'users', user.uid), roleData);
+            // 1. Update 'users' table
+            await supabase.from('users').update(roleData).eq('id', user.id);
 
-            // 2. Create/Update role-specific collection doc
-            // We need to copy basic data to the new collection
+            // 2. Create/Update role-specific table record
             const baseData = {
-                uid: user.uid,
+                id: user.id,
                 email: user.email,
-                full_name: userData?.full_name || user.displayName || '',
-                profile_image: userData?.profile_image || user.photoURL || '',
+                full_name: userData?.full_name || user.user_metadata?.full_name || '',
+                profile_image: userData?.profile_image || user.user_metadata?.avatar_url || '',
                 phone: userData?.phone || '',
                 ...roleData,
-                created_at: userData?.created_at || new Date()
+                created_at: userData?.created_at || now
             };
 
             const collectionName = selectedRole === 'academy' ? 'academies' : `${selectedRole}s`;
-
-            await setDoc(doc(db, collectionName, user.uid), baseData, { merge: true });
+            await supabase.from(collectionName).upsert(baseData);
 
             // 3. Refresh local user data
             await refreshUserData();
@@ -190,24 +175,13 @@ export default function SelectRolePage() {
 
         const fullPhone = phoneNumber.startsWith('+')
             ? phoneNumber.replace(/\s+/g, '')
-            : `+966${phoneNumber.replace(/^0+/, '')}`; // Default to SA if no code, or handled better 
-
-        // Better: Validate format. For now, assuming user enters correctly or we use simple format
-        // Ideally we should use the same phone input component as login, but for simplicity:
-        // We will assume user enters full international format or just handle local formatting if we had country code.
-        // Let's just prompt user to enter with country code or assume default.
+            : `+966${phoneNumber.replace(/^0+/, '')}`;
 
         setIsLinking(true);
         toast.loading('جاري إرسال رمز التحقق...', { id: 'link-otp' });
 
         try {
-            let appVerifier = (window as any).recaptchaVerifier;
-            if (!appVerifier) {
-                appVerifier = await setupRecaptcha('recaptcha-container-link');
-            }
-
-            const confirmation = await sendPhoneOTP(fullPhone, appVerifier);
-            setConfirmationResult(confirmation);
+            await sendPhoneOTP(fullPhone, null);
             setShowOTPModal(true);
             toast.success('تم إرسال الرمز بنجاح', { id: 'link-otp' });
             setShowLinkInput(false);
@@ -220,74 +194,63 @@ export default function SelectRolePage() {
     };
 
     const handleVerifyAndLink = async (otp: string) => {
-        // This function is passed to WhatsAppOTPVerification to handle the custom flow
-        // The flow:
-        // 1. Delete current temp Google user (to free up the Google credential)
-        // 2. Sign in with the Phone credential
-        // 3. Link the Google credential to the Phone user
+        // Flow:
+        // 1. Verify OTP via API to get session for the existing phone account
+        // 2. Switch to that session (replaces the current Google session)
+        // 3. Update the user record with Google email
 
         try {
             toast.loading('جاري استعادة الحساب وربط البيانات...', { id: 'verify-link' });
 
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error('No active session');
+            const fullPhone = phoneNumber.startsWith('+')
+                ? phoneNumber.replace(/\s+/g, '')
+                : `+966${phoneNumber.replace(/^0+/, '')}`;
 
-            // 1. Delete current empty Google User
-            // Note: This relies on the user having *just* signed in, so no re-auth needed usually.
-            await deleteUser(currentUser);
-            console.log('✅ Temporary Google user deleted');
+            // 1. Verify OTP and get credentials for the old phone account
+            const response = await fetch('/api/auth/otp-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber: fullPhone, otp })
+            });
 
-            // 2. Sign In with Phone
-            // confirmationResult is from firebase.auth.RecaptchaVerifier
-            // We need to confirm it.
-            const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, otp);
-            const userCredential = await signInWithCredential(auth, credential);
-            const phoneUser = userCredential.user;
-            console.log('✅ Signed in with Phone:', phoneUser.uid);
+            const data = await response.json();
 
-            // 3. Link Google
-            // We need to trigger the Google Link Popup.
-            // Since we are now on the 'Old' account, we add Google to it.
-            const googleProvider = new GoogleAuthProvider();
-            await linkWithPopup(phoneUser, googleProvider);
-            console.log('✅ Google linked to old account');
+            if (!data.success) {
+                throw new Error(data.error || 'فشل التحقق من الرمز');
+            }
 
-            // 4. Update Email in Firestore if missing 
-            // (Optional, but good practice to sync the Google email to the old account)
-            if (phoneUser.email) {
-                const userRef = doc(db, 'users', phoneUser.uid);
-                await updateDoc(userRef, {
-                    email: phoneUser.email,
+            // 2. Switch to the old phone account session
+            await supabase.auth.signInWithPassword({
+                email: data.authEmail,
+                password: data.authPassword,
+            });
+
+            // 3. Update the phone account with the current user's Google email if available
+            const currentEmail = user?.email;
+            if (currentEmail && data.userId) {
+                await supabase.from('users').update({
+                    email: currentEmail,
                     isGoogleLinked: true,
-                    updated_at: new Date()
-                });
+                    updated_at: new Date().toISOString()
+                }).eq('id', data.userId);
             }
 
             toast.success('🎉 تم استعادة حسابك القديم وربطه بنجاح!', { id: 'verify-link' });
 
-            // 5. Force Refresh / Redirect
-            // We need to find the OLD account type to redirect correctly
-            await refreshUserData(); // This might pick up new user data
-
-            // We can't know the role easily without querying. 
-            // But verifyAndLink is async, we can query quickly or let auth-provider handle logic?
-            // Auth provider updates user/userData state.
-            // Let's wait a moment or just redirect to home/dashboard and let middleware handle it
-            window.location.href = '/dashboard'; // Safe fallback
+            await refreshUserData();
+            window.location.href = '/dashboard';
 
         } catch (error: any) {
             console.error('Link/Recover error:', error);
-            // If delete failed (re-auth needed), we are stuck. 
-            // If link failed (credential in use?), we are signed in as Phone at least.
 
             let msg = 'حدث خطأ أثناء العملية.';
-            if (error.code === 'auth/credential-already-in-use') {
-                msg = 'هذا الحساب مرتبط بالفعل بحساب آخر.';
-            } else if (error.code === 'auth/requires-recent-login') {
-                msg = 'انتهت جلسة الدخول، يرجى إعادة المحاولة من جديد.';
+            if (error.message?.includes('invalid') || error.message?.includes('expired')) {
+                msg = 'الرمز غير صحيح أو منتهي الصلاحية.';
+            } else if (error.message) {
+                msg = error.message;
             }
             toast.error(msg, { id: 'verify-link' });
-            throw error; // Propagate so modal shows error if needed
+            throw error;
         }
     };
 
@@ -432,13 +395,11 @@ export default function SelectRolePage() {
                         </div>
                     </div>
 
-                    <div id="recaptcha-container-link"></div>
-
                     <WhatsAppOTPVerification
                         phoneNumber={phoneNumber}
                         isOpen={showOTPModal}
                         onClose={() => setShowOTPModal(false)}
-                        onVerificationSuccess={() => { }} // We handle logic in verify
+                        onVerificationSuccess={() => { }}
                         onVerificationFailed={(err) => toast.error(err)}
                         onOTPVerify={handleVerifyAndLink}
                         title="تأكيد ملكية الحساب"

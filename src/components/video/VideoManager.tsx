@@ -111,12 +111,12 @@ const VideoManager: React.FC<VideoManagerProps> = ({
 
     try {
       const { storageManager } = await import('@/lib/storage');
-      const { auth } = await import('@/lib/firebase/config');
-      const currentUser = auth.currentUser;
+      const { supabase } = await import('@/lib/supabase/config');
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) throw new Error('يجب تسجيل الدخول');
 
       const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      const filePath = `videos/${currentUser.uid}/${fileName}`;
+      const filePath = `videos/${currentUser.id}/${fileName}`;
 
       const result = await storageManager.upload('videos', filePath, file, {
         contentType: file.type,

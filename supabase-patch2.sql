@@ -1,0 +1,9 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "clubId" TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "accountTypeChangedBy" TEXT;
+ALTER TABLE marketers ADD COLUMN IF NOT EXISTS "city" TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS "timestamp" TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS "priority" TEXT;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "applicationDeadline" TEXT;
+ALTER TABLE geidea_payments ADD COLUMN IF NOT EXISTS "packageType" TEXT;
+ALTER TABLE tournament_registrations ADD COLUMN IF NOT EXISTS "geideaPaymentData" JSONB;
+ALTER TABLE academies ADD COLUMN IF NOT EXISTS "playersCount" INTEGER DEFAULT 0;

@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { storageManager } from '@/lib/storage';
 
 export interface PartnerItem {
@@ -9,16 +8,10 @@ export interface PartnerItem {
     order: number;
 }
 
-const DOC_PATH = 'content/partners';
-
 export const getPartners = async (): Promise<PartnerItem[]> => {
     try {
-        const docRef = doc(db, 'content', 'partners');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().items) {
-            return docSnap.data().items as PartnerItem[];
-        }
+        const { data } = await supabase.from('content').select('items').eq('id', 'partners').limit(1);
+        if (data?.length && data[0].items) return data[0].items as PartnerItem[];
         return [];
     } catch (error) {
         console.error('Error fetching partners:', error);
@@ -28,8 +21,7 @@ export const getPartners = async (): Promise<PartnerItem[]> => {
 
 export const savePartners = async (partners: PartnerItem[]): Promise<void> => {
     try {
-        const docRef = doc(db, 'content', 'partners');
-        await setDoc(docRef, { items: partners }, { merge: true });
+        await supabase.from('content').upsert({ id: 'partners', items: partners });
     } catch (error) {
         console.error('Error saving partners:', error);
         throw error;
@@ -41,10 +33,9 @@ export const uploadPartnerLogo = async (file: File): Promise<string> => {
         const fileExt = file.name.split('.').pop();
         const fileName = `partners/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        // Upload to 'content' bucket (or similar)
         const result = await storageManager.upload('content', fileName, file, {
             contentType: file.type,
-            upsert: true
+            upsert: true,
         });
 
         if (!result?.publicUrl) throw new Error('Upload failed');

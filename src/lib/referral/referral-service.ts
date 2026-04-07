@@ -1,18 +1,4 @@
-import {
-  collection,
-  addDoc,
-  getDocs,
-  getDoc,
-  doc,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  increment,
-  writeBatch
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import {
   Referral,
   PlayerRewards,
@@ -24,7 +10,6 @@ import {
 
 class ReferralService {
 
-  // إنشاء كود إحالة فريد
   generateReferralCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -34,17 +19,12 @@ class ReferralService {
     return result;
   }
 
-  // إنشاء أو تحديث نظام مكافآت اللاعب
   async createOrUpdatePlayerRewards(playerId: string): Promise<PlayerRewards> {
     try {
-      const rewardsRef = doc(db, 'player_rewards', playerId);
-      const rewardsDoc = await getDoc(rewardsRef);
+      const { data: existing } = await supabase.from('player_rewards').select('*').eq('id', playerId).limit(1);
+      if (existing?.length) return existing[0] as PlayerRewards;
 
-      if (rewardsDoc.exists()) {
-        return rewardsDoc.data() as PlayerRewards;
-      }
-
-      // إنشاء نظام مكافآت جديد
+      const now = new Date().toISOString();
       const newRewards: PlayerRewards = {
         playerId,
         totalPoints: 0,
@@ -52,11 +32,11 @@ class ReferralService {
         totalEarnings: 0,
         referralCount: 0,
         badges: [],
-        lastUpdated: serverTimestamp(),
-        createdAt: serverTimestamp()
+        lastUpdated: now,
+        createdAt: now,
       };
 
-      await addDoc(collection(db, 'player_rewards'), newRewards);
+      await supabase.from('player_rewards').insert({ id: playerId, ...newRewards });
       return newRewards;
     } catch (error) {
       console.error('خطأ في إنشاء نظام مكافآت اللاعب:', error);
@@ -64,25 +44,28 @@ class ReferralService {
     }
   }
 
-  // إضافة نقاط للاعب
   async addPointsToPlayer(playerId: string, points: number, reason: string): Promise<void> {
     try {
-      const rewardsRef = doc(db, 'player_rewards', playerId);
+      const { data: existing } = await supabase.from('player_rewards').select('totalPoints, availablePoints, totalEarnings').eq('id', playerId).limit(1);
+      if (!existing?.length) return;
 
-      await updateDoc(rewardsRef, {
-        totalPoints: increment(points),
-        availablePoints: increment(points),
-        totalEarnings: increment(points / POINTS_CONVERSION.POINTS_PER_DOLLAR),
-        lastUpdated: serverTimestamp()
-      });
+      const row = existing[0] as Record<string, unknown>;
+      const now = new Date().toISOString();
 
-      // تسجيل المعاملة
-      await addDoc(collection(db, 'point_transactions'), {
+      await supabase.from('player_rewards').update({
+        totalPoints: Number(row.totalPoints || 0) + points,
+        availablePoints: Number(row.availablePoints || 0) + points,
+        totalEarnings: Number(row.totalEarnings || 0) + points / POINTS_CONVERSION.POINTS_PER_DOLLAR,
+        lastUpdated: now,
+      }).eq('id', playerId);
+
+      await supabase.from('point_transactions').insert({
+        id: crypto.randomUUID(),
         playerId,
         points,
         reason,
-        timestamp: serverTimestamp(),
-        type: 'earned'
+        timestamp: now,
+        type: 'earned',
       });
 
       console.log(`✅ تم إضافة ${points} نقطة للاعب ${playerId} - السبب: ${reason}`);
@@ -92,83 +75,55 @@ class ReferralService {
     }
   }
 
-  // إنشاء إحالة جديدة
   async createReferral(referrerId: string, referralCode: string): Promise<string> {
     try {
-      const referralData: Omit<Referral, 'id'> = {
+      const now = new Date().toISOString();
+      const id = crypto.randomUUID();
+      const referralData = {
+        id,
         referrerId,
-        referredId: '', // سيتم تحديثه عند انضمام اللاعب الجديد
+        referredId: '',
         referralCode,
         status: 'pending',
-        createdAt: serverTimestamp(),
+        createdAt: now,
         rewards: {
           referrerPoints: POINTS_CONVERSION.REFERRAL_POINTS,
           referredPoints: POINTS_CONVERSION.REFERRED_BONUS_POINTS,
-          referrerBadges: []
-        }
+          referrerBadges: [],
+        },
       };
 
-      const docRef = await addDoc(collection(db, 'referrals'), referralData);
-      console.log(`✅ تم إنشاء إحالة جديدة: ${docRef.id}`);
-      return docRef.id;
+      const { error } = await supabase.from('referrals').insert(referralData);
+      if (error) throw error;
+      console.log(`✅ تم إنشاء إحالة جديدة: ${id}`);
+      return id;
     } catch (error) {
       console.error('خطأ في إنشاء الإحالة:', error);
       throw error;
     }
   }
 
-  // إكمال الإحالة عند انضمام اللاعب الجديد
   async completeReferral(referralCode: string, newPlayerId: string): Promise<void> {
     try {
-      // البحث عن الإحالة
-      const referralQuery = query(
-        collection(db, 'referrals'),
-        where('referralCode', '==', referralCode),
-        where('status', '==', 'pending')
-      );
+      const { data: referrals } = await supabase.from('referrals')
+        .select('*').eq('referralCode', referralCode).eq('status', 'pending').limit(1);
 
-      const referralSnapshot = await getDocs(referralQuery);
+      if (!referrals?.length) throw new Error('كود الإحالة غير صحيح أو منتهي الصلاحية');
 
-      if (referralSnapshot.empty) {
-        throw new Error('كود الإحالة غير صحيح أو منتهي الصلاحية');
-      }
+      const referralData = referrals[0] as Record<string, unknown>;
+      if (referralData.referrerId === newPlayerId) throw new Error('لا يمكن استخدام كود الإحالة لنفس اللاعب');
 
-      const referralDoc = referralSnapshot.docs[0];
-      const referralData = referralDoc.data() as Referral;
+      const now = new Date().toISOString();
+      await supabase.from('referrals').update({ referredId: newPlayerId, status: 'completed', completedAt: now }).eq('id', referralData.id);
 
-      // التحقق من عدم استخدام الكود لنفس اللاعب
-      if (referralData.referrerId === newPlayerId) {
-        throw new Error('لا يمكن استخدام كود الإحالة لنفس اللاعب');
-      }
+      await this.addPointsToPlayer(String(referralData.referrerId), POINTS_CONVERSION.REFERRAL_POINTS, 'إحالة لاعب جديد');
+      await this.addPointsToPlayer(newPlayerId, POINTS_CONVERSION.REFERRED_BONUS_POINTS, 'مكافأة انضمام عبر إحالة');
 
-      // تحديث الإحالة
-      await updateDoc(doc(db, 'referrals', referralDoc.id), {
-        referredId: newPlayerId,
-        status: 'completed',
-        completedAt: serverTimestamp()
-      });
+      const { data: rewardRow } = await supabase.from('player_rewards').select('referralCount').eq('id', referralData.referrerId).limit(1);
+      const currentCount = Number((rewardRow?.[0] as Record<string, unknown>)?.referralCount || 0);
+      await supabase.from('player_rewards').update({ referralCount: currentCount + 1 }).eq('id', referralData.referrerId);
 
-      // إضافة نقاط للاعب المحيل
-      await this.addPointsToPlayer(
-        referralData.referrerId,
-        POINTS_CONVERSION.REFERRAL_POINTS,
-        'إحالة لاعب جديد'
-      );
-
-      // إضافة نقاط للاعب الجديد
-      await this.addPointsToPlayer(
-        newPlayerId,
-        POINTS_CONVERSION.REFERRED_BONUS_POINTS,
-        'مكافأة انضمام عبر إحالة'
-      );
-
-      // تحديث عدد الإحالات للاعب المحيل
-      await updateDoc(doc(db, 'player_rewards', referralData.referrerId), {
-        referralCount: increment(1)
-      });
-
-      // فحص الشارات الجديدة
-      await this.checkAndAwardBadges(referralData.referrerId, 'referral');
+      await this.checkAndAwardBadges(String(referralData.referrerId), 'referral');
 
       console.log(`✅ تم إكمال الإحالة: ${referralCode} للاعب الجديد: ${newPlayerId}`);
     } catch (error) {
@@ -177,37 +132,27 @@ class ReferralService {
     }
   }
 
-  // فحص وإعطاء الشارات
   async checkAndAwardBadges(playerId: string, category: 'referral' | 'video' | 'academy'): Promise<void> {
     try {
-      const rewardsRef = doc(db, 'player_rewards', playerId);
-      const rewardsDoc = await getDoc(rewardsRef);
+      const { data: rewardRows } = await supabase.from('player_rewards').select('*').eq('id', playerId).limit(1);
+      if (!rewardRows?.length) return;
 
-      if (!rewardsDoc.exists()) return;
-
-      const rewards = rewardsDoc.data() as PlayerRewards;
-      const currentBadges = rewards.badges.map(b => b.id);
+      const rewards = rewardRows[0] as PlayerRewards;
+      const currentBadges = rewards.badges.map((b: Badge) => b.id);
+      const now = new Date().toISOString();
 
       let badgesToAward: Badge[] = [];
 
       if (category === 'referral') {
-        const referralCount = rewards.referralCount;
-
         for (const badge of BADGES.REFERRAL_BADGES) {
-          if (referralCount >= badge.requirement && !currentBadges.includes(badge.id)) {
-            badgesToAward.push({
-              ...badge,
-              earnedAt: serverTimestamp()
-            });
+          if (rewards.referralCount >= badge.requirement && !currentBadges.includes(badge.id)) {
+            badgesToAward.push({ ...badge, earnedAt: now });
           }
         }
       }
 
       if (badgesToAward.length > 0) {
-        await updateDoc(rewardsRef, {
-          badges: [...rewards.badges, ...badgesToAward]
-        });
-
+        await supabase.from('player_rewards').update({ badges: [...rewards.badges, ...badgesToAward] }).eq('id', playerId);
         console.log(`🏆 تم منح ${badgesToAward.length} شارة جديدة للاعب ${playerId}`);
       }
     } catch (error) {
@@ -215,28 +160,17 @@ class ReferralService {
     }
   }
 
-  // جلب إحصائيات الإحالات للاعب
   async getPlayerReferralStats(playerId: string): Promise<ReferralStats> {
     try {
-      // جلب الإحالات (سنقوم بالفلترة في الذاكرة لتجنب الحاجة لفهرس مركب)
-      const referralsQuery = query(
-        collection(db, 'referrals'),
-        where('referrerId', '==', playerId)
-      );
+      const { data: allReferrals } = await supabase.from('referrals').select('*').eq('referrerId', playerId);
+      const referrals = (allReferrals ?? []).filter((r: Record<string, unknown>) => r.status === 'completed') as Referral[];
 
-      const referralsSnapshot = await getDocs(referralsQuery);
-      const allReferrals = referralsSnapshot.docs.map(doc => doc.data() as Referral);
-      const referrals = allReferrals.filter(ref => ref.status === 'completed');
+      const { data: rewardRows } = await supabase.from('player_rewards').select('*').eq('id', playerId).limit(1);
+      const rewards = rewardRows?.length ? rewardRows[0] as PlayerRewards : null;
 
-      // جلب نظام مكافآت اللاعب
-      const rewardsRef = doc(db, 'player_rewards', playerId);
-      const rewardsDoc = await getDoc(rewardsRef);
-      const rewards = rewardsDoc.exists() ? rewardsDoc.data() as PlayerRewards : null;
-
-      // حساب الإحصائيات الشهرية
       const monthlyReferrals: { [month: string]: number } = {};
       referrals.forEach(referral => {
-        const date = new Date(referral.createdAt.toDate());
+        const date = new Date(String(referral.createdAt));
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         monthlyReferrals[monthKey] = (monthlyReferrals[monthKey] || 0) + 1;
       });
@@ -248,7 +182,7 @@ class ReferralService {
         totalPointsEarned: rewards?.totalPoints || 0,
         totalEarnings: rewards?.totalEarnings || 0,
         monthlyReferrals,
-        topReferrers: [] // سيتم ملؤها من API منفصل
+        topReferrers: [],
       };
     } catch (error) {
       console.error('خطأ في جلب إحصائيات الإحالات:', error);
@@ -256,45 +190,31 @@ class ReferralService {
     }
   }
 
-  // جلب أكواد الإحالة الخاصة بالمستخدم
   async getUserReferralCodes(userId: string): Promise<Referral[]> {
     try {
-      const q = query(
-        collection(db, 'referrals'),
-        where('referrerId', '==', userId)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Referral));
+      const { data } = await supabase.from('referrals').select('*').eq('referrerId', userId);
+      return (data ?? []) as Referral[];
     } catch (error) {
       console.error('خطأ في جلب أكواد الإحالة للمستخدم:', error);
       return [];
     }
   }
 
-  // جلب أفضل المحيلين
   async getTopReferrers(limit: number = 10): Promise<ReferralStats['topReferrers']> {
     try {
-      const rewardsQuery = query(
-        collection(db, 'player_rewards'),
-        orderBy('referralCount', 'desc'),
-        orderBy('totalEarnings', 'desc')
-      );
-
-      const rewardsSnapshot = await getDocs(rewardsQuery);
+      const { data: rewards } = await supabase.from('player_rewards').select('*').order('referralCount', { ascending: false }).order('totalEarnings', { ascending: false }).limit(limit);
       const topReferrers = [];
 
-      for (const rewardDoc of rewardsSnapshot.docs.slice(0, limit)) {
-        const rewards = rewardDoc.data() as PlayerRewards;
-
-        // جلب اسم اللاعب
-        const playerDoc = await getDoc(doc(db, 'players', rewards.playerId));
-        const playerData = playerDoc.exists() ? playerDoc.data() as any : null;
+      for (const reward of (rewards ?? []) as Record<string, unknown>[]) {
+        const resolvedId = reward.playerId || reward.id;
+        const { data: playerRows } = await supabase.from('players').select('full_name, name').eq('id', resolvedId).limit(1);
+        const player = playerRows?.[0] as Record<string, unknown> | undefined;
 
         topReferrers.push({
-          playerId: rewards.playerId,
-          playerName: playerData?.full_name || playerData?.name || 'لاعب مجهول',
-          referralCount: rewards.referralCount,
-          totalEarnings: rewards.totalEarnings
+          playerId: String(resolvedId),
+          playerName: String(player?.full_name || player?.name || 'لاعب مجهول'),
+          referralCount: Number(reward.referralCount || 0),
+          totalEarnings: Number(reward.totalEarnings || 0),
         });
       }
 
@@ -305,38 +225,21 @@ class ReferralService {
     }
   }
 
-  // إنشاء رابط إحالة
   createReferralLink(referralCode: string): string {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     return `${baseUrl}/invite/${referralCode}`;
   }
 
-  // مشاركة الإحالة عبر وسائل التواصل
-  createShareMessages(referralCode: string, playerName: string): {
-    whatsapp: string;
-    sms: string;
-    email: string;
-  } {
+  createShareMessages(referralCode: string, playerName: string): { whatsapp: string; sms: string; email: string; } {
     const referralLink = this.createReferralLink(referralCode);
-
-    const message = `مرحباً! أنا ${playerName} وأدعوك للانضمام إلى منصة كرة القدم الرائدة! 🏆
-
-🎯 احصل على:
-• 5000 نقطة مجانية عند التسجيل
-• خصم 20% على أول اشتراك
-• دروس مجانية من أكاديمية الحلم
-• منتجات رياضية بأسعار مميزة
-
-🔗 انضم الآن: ${referralLink}
-
-#كرة_القدم #منصة_الرياضة`;
+    const message = `مرحباً! أنا ${playerName} وأدعوك للانضمام إلى منصة كرة القدم الرائدة! 🏆\n\n🎯 احصل على:\n• 5000 نقطة مجانية عند التسجيل\n• خصم 20% على أول اشتراك\n• دروس مجانية من أكاديمية الحلم\n• منتجات رياضية بأسعار مميزة\n\n🔗 انضم الآن: ${referralLink}\n\n#كرة_القدم #منصة_الرياضة`;
 
     return {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(message)}`,
       sms: `sms:?body=${encodeURIComponent(message)}`,
-      email: `mailto:?subject=دعوة للانضمام لمنصة كرة القدم&body=${encodeURIComponent(message)}`
+      email: `mailto:?subject=دعوة للانضمام لمنصة كرة القدم&body=${encodeURIComponent(message)}`,
     };
   }
 }
 
-export const referralService = new ReferralService(); 
+export const referralService = new ReferralService();

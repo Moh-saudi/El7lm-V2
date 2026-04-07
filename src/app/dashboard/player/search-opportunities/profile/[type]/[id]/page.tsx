@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase/config';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +83,7 @@ const ENTITY_TYPES = {
 };
 
 export default function EntityProfilePage() {
-  const [user, loading] = useAuthState(auth);
+  const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams();
 
@@ -131,11 +130,14 @@ export default function EntityProfilePage() {
             return;
         }
 
-        const docRef = doc(db, collectionName, entityId);
-        const docSnap = await getDoc(docRef);
+        const { data: docData } = await supabase
+          .from(collectionName)
+          .select('*')
+          .eq('id', entityId)
+          .single();
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        if (!!docData) {
+          const data = docData;
 
           // منع عرض ملفات المشرف
           if (data.accountType === 'admin' || data.type === 'admin') {
@@ -146,7 +148,7 @@ export default function EntityProfilePage() {
 
           // تحويل البيانات إلى تنسيق EntityProfile
           const profile: EntityProfile = {
-            id: docSnap.id,
+            id: data.id,
             name: data.name || data.full_name || data.display_name || data.fullName || 'غير محدد',
             type: entityType as any,
             email: data.email || '',
@@ -189,7 +191,7 @@ export default function EntityProfilePage() {
               ['خبرة متميزة'],
             services: data.programs || ['خدمات متنوعة'],
             established: data.founded || data.established ||
-              (data.createdAt ? new Date(data.createdAt.seconds * 1000).getFullYear().toString() : ''),
+              (data.createdAt ? new Date(data.createdAt).getFullYear().toString() : ''),
             languages: data.spoken_languages || ['العربية'],
             contactInfo: {
               email: data.email || '',
@@ -201,7 +203,7 @@ export default function EntityProfilePage() {
               playersRepresented: data.stats?.active_players || data.stats?.players || data.stats?.students || 0,
               activeContracts: data.stats?.success_rate || data.stats?.training_sessions || 0
             },
-            isFollowing: Array.isArray(data.followers) ? data.followers.includes(user?.uid) : false
+            isFollowing: Array.isArray(data.followers) ? data.followers.includes(user?.id) : false
           };
 
           setEntity(profile);
@@ -234,22 +236,30 @@ export default function EntityProfilePage() {
             entity.type === 'academy' ? 'academies' :
               entity.type === 'trainer' ? 'trainers' : 'entities';
 
-      const ref = doc(db, collectionName, entity.id);
-      const snap = await getDoc(ref);
+      const { data: existingData } = await supabase
+        .from(collectionName)
+        .select('followers')
+        .eq('id', entity.id)
+        .single();
 
-      if (snap.exists()) {
-        if (originalFollowing) {
-          await updateDoc(ref, { followers: arrayRemove(user.uid) });
-        } else {
-          await updateDoc(ref, { followers: arrayUnion(user.uid) });
-        }
+      if (!!existingData) {
+        const currentFollowers: string[] = Array.isArray(existingData.followers) ? existingData.followers : [];
+        const updatedFollowers = originalFollowing
+          ? currentFollowers.filter((f: string) => f !== user!.id)
+          : [...currentFollowers, user!.id];
+        await supabase
+          .from(collectionName)
+          .update({ followers: updatedFollowers })
+          .eq('id', entity.id);
       } else {
-        await setDoc(ref, {
-          id: entity.id,
-          followers: nextFollowing ? [user.uid] : [],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+        await supabase
+          .from(collectionName)
+          .insert({
+            id: entity.id,
+            followers: nextFollowing ? [user!.id] : [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
       }
     } catch (error) {
       console.error('خطأ في المتابعة:', error);

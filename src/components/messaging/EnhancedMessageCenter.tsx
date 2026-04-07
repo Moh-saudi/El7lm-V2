@@ -2,20 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  getDocs,
-  getDoc,
-  limit,
-  addDoc,
-  updateDoc,
-  doc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,47 +171,57 @@ const EnhancedMessageCenter: React.FC = () => {
 
     if (user && userData && !hasSetupConversationsRef.current) {
       setLoading(true);
-      const conversationsQueryRef = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid)
-      );
-      const unsub = onSnapshot(
-        conversationsQueryRef,
-        (snapshot) => {
-          const conversationsData: Conversation[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            conversationsData.push({
-              id: doc.id,
-              participants: data.participants || [],
-              participantNames: data.participantNames || {},
-              participantTypes: data.participantTypes || {},
-              subject: data.subject || 'محادثة جديدة',
-              lastMessage: data.lastMessage || '',
-              lastMessageTime: data.lastMessageTime,
-              lastSenderId: data.lastSenderId || '',
-              unreadCount: data.unreadCount || {},
-              isActive: data.isActive !== false,
-              createdAt: data.createdAt,
-              updatedAt: data.updatedAt,
-              participantAvatars: data.participantAvatars || {}
-            });
-          });
-          conversationsData.sort((a, b) => {
-            const aDate = a.updatedAt?.toDate ? a.updatedAt.toDate() : (a.updatedAt ? new Date(a.updatedAt) : new Date(0));
-            const bDate = b.updatedAt?.toDate ? b.updatedAt.toDate() : (b.updatedAt ? new Date(b.updatedAt) : new Date(0));
-            return bDate.getTime() - aDate.getTime();
-          });
-          setConversations(conversationsData);
-          setLoading(false);
-        },
-        (error) => {
-          console.error('❌ خطأ في جلب المحادثات:', error);
+
+      const fetchConversations = async () => {
+        const { data, error: fetchError } = await supabase
+          .from('conversations')
+          .select('*')
+          .filter('participants', 'cs', `["${user.id}"]`);
+
+        if (fetchError) {
+          console.error('❌ خطأ في جلب المحادثات:', fetchError);
           setError('حدث خطأ في جلب المحادثات');
           setLoading(false);
+          return;
         }
-      );
-      conversationsUnsubRef.current = unsub;
+
+        const conversationsData: Conversation[] = (data || []).map((row: any) => ({
+          id: row.id,
+          participants: row.participants || [],
+          participantNames: row.participantNames || {},
+          participantTypes: row.participantTypes || {},
+          subject: row.subject || 'محادثة جديدة',
+          lastMessage: row.lastMessage || '',
+          lastMessageTime: row.lastMessageTime,
+          lastSenderId: row.lastSenderId || '',
+          unreadCount: row.unreadCount || {},
+          isActive: row.isActive !== false,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          participantAvatars: row.participantAvatars || {}
+        }));
+
+        conversationsData.sort((a, b) => {
+          const aDate = a.updatedAt ? new Date(a.updatedAt) : new Date(0);
+          const bDate = b.updatedAt ? new Date(b.updatedAt) : new Date(0);
+          return bDate.getTime() - aDate.getTime();
+        });
+        setConversations(conversationsData);
+        setLoading(false);
+      };
+
+      fetchConversations();
+
+      const channel = supabase
+        .channel('conversations-realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'conversations' },
+          () => { fetchConversations(); }
+        )
+        .subscribe();
+
+      conversationsUnsubRef.current = () => { supabase.removeChannel(channel); };
       hasSetupConversationsRef.current = true;
       fetchContacts();
     } else if (!user) {
@@ -239,7 +236,7 @@ const EnhancedMessageCenter: React.FC = () => {
         hasSetupConversationsRef.current = false;
       }
     };
-  }, [user?.uid, !!userData]);
+  }, [user?.id, !!userData]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -257,15 +254,19 @@ const EnhancedMessageCenter: React.FC = () => {
     
     try {
       const allContacts: Contact[] = [];
-      const usersQueryRef = query(collection(db, 'users'), limit(100));
-      const usersSnapshot = await getDocs(usersQueryRef);
-      
-      const processUser = async (userDocSnapshot: any): Promise<Contact | null> => {
-        const data = userDocSnapshot.data();
-        if (userDocSnapshot.id === user?.uid) return null;
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .limit(100);
+
+      if (usersError) throw usersError;
+
+      const processUser = async (row: any): Promise<Contact | null> => {
+        const data = row;
+        if (row.id === user?.id) return null;
         const accountType = data.accountType;
         if (!accountType || !['club', 'academy', 'agent', 'trainer', 'player'].includes(accountType)) return null;
-        
+
         let contactName = 'مستخدم';
         let organizationName = null;
         let isDependent = false;
@@ -274,11 +275,14 @@ const EnhancedMessageCenter: React.FC = () => {
         let profileData: any = null;
 
         try {
-          const profileCollection = accountType === 'admin' ? 'users' : `${accountType}s`;
-          const profileDocRef = doc(db, profileCollection, userDocSnapshot.id);
-          const profileDocSnapshot = await getDoc(profileDocRef);
-          if (profileDocSnapshot.exists()) {
-            profileData = profileDocSnapshot.data() as any;
+          const profileTable = accountType === 'admin' ? 'users' : `${accountType}s`;
+          const { data: profileRow } = await supabase
+            .from(profileTable)
+            .select('*')
+            .eq('id', row.id)
+            .single();
+          if (!!profileRow) {
+            profileData = profileRow as any;
             if (accountType === 'player') {
               contactName = profileData.full_name || profileData.name || profileData.displayName || 'لاعب';
               if (profileData.club_id || profileData.academy_id || profileData.trainer_id || profileData.agent_id) {
@@ -311,12 +315,12 @@ const EnhancedMessageCenter: React.FC = () => {
         
         let avatarUrl: string | null = null;
         try {
-          const userDataForAvatar = { ...data, uid: userDocSnapshot.id, accountType };
-          avatarUrl = (await getUserAvatarFromSupabase(userDocSnapshot.id, accountType)) || getPlayerAvatarUrl(userDataForAvatar, user);
+          const userDataForAvatar = { ...data, uid: row.id, accountType };
+          avatarUrl = (await getUserAvatarFromSupabase(row.id, accountType)) || getPlayerAvatarUrl(userDataForAvatar, user);
         } catch (e) {
           avatarUrl = null;
         }
-        
+
         let displayName = contactName;
         if (isDependent && accountType === 'player') {
           const parentTypeNames: any = { club: 'نادي', academy: 'أكاديمية', trainer: 'مدرب', agent: 'وكيل' };
@@ -324,7 +328,7 @@ const EnhancedMessageCenter: React.FC = () => {
         }
 
         return {
-          id: `${accountType}_${userDocSnapshot.id}`,
+          id: `${accountType}_${row.id}`,
           name: displayName,
           type: accountType as any,
           avatar: avatarUrl,
@@ -338,7 +342,7 @@ const EnhancedMessageCenter: React.FC = () => {
         };
       };
 
-      const tasks = usersSnapshot.docs.map((d) => processUser(d));
+      const tasks = (usersData || []).map((d: any) => processUser(d));
       const results = await Promise.allSettled(tasks);
       results.forEach((res) => {
         if (res.status === 'fulfilled' && res.value) {
@@ -363,12 +367,12 @@ const EnhancedMessageCenter: React.FC = () => {
     try {
       const messageData = {
         conversationId: selectedConversation.id,
-        senderId: user.uid,
-        receiverId: selectedConversation.participants.find(id => id !== user.uid) || '',
-        senderName: user.displayName || user.email || userData.name || userData.displayName || userData.full_name || 'أنا',
-        receiverName: selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user.uid) || ''] || 'مستخدم',
+        senderId: user.id,
+        receiverId: selectedConversation.participants.find(id => id !== user.id) || '',
+        senderName: user.user_metadata?.full_name || user.email || userData.name || userData.displayName || userData.full_name || 'أنا',
+        receiverName: selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user.id) || ''] || 'مستخدم',
         senderType: userData.accountType || 'player',
-        receiverType: selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user.uid) || ''] || 'player',
+        receiverType: selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user.id) || ''] || 'player',
         message: newMessage.trim(),
         timestamp: new Date(),
         isRead: false,
@@ -377,14 +381,14 @@ const EnhancedMessageCenter: React.FC = () => {
         deliveryStatus: 'sent'
       };
 
-      await addDoc(collection(db, 'messages'), messageData);
+      await supabase.from('messages').insert({ ...messageData, id: crypto.randomUUID(), timestamp: new Date().toISOString() });
 
-      await updateDoc(doc(db, 'conversations', selectedConversation.id), {
+      await supabase.from('conversations').update({
         lastMessage: newMessage.trim(),
-        lastMessageTime: new Date(),
-        updatedAt: new Date(),
-        lastSenderId: user.uid
-      });
+        lastMessageTime: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSenderId: user.id
+      }).eq('id', selectedConversation.id);
 
       setNewMessage('');
       toast.success('تم إرسال الرسالة');
@@ -477,25 +481,28 @@ const EnhancedMessageCenter: React.FC = () => {
   const openConversation = async (conversation: Conversation) => {
     try {
       setSelectedConversation(conversation);
-      
-      const messagesQuery = query(
-        collection(db, 'messages'),
-        where('conversationId', '==', conversation.id),
-        orderBy('timestamp', 'asc')
-      );
 
-      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        const messagesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date()
-        })) as Message[];
-        
+      const loadMessages = async () => {
+        const { data: rows } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversationId', conversation.id)
+          .order('timestamp', { ascending: true });
+        const messagesData = (rows || []) as Message[];
         setMessages(messagesData);
         setTimeout(scrollToBottom, 100);
-      });
+      };
 
-      return unsubscribe;
+      await loadMessages();
+
+      const channel = supabase
+        .channel(`messages-${conversation.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+          loadMessages();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
     } catch (error) {
       console.error('❌ خطأ في فتح المحادثة:', error);
     }
@@ -626,10 +633,10 @@ const EnhancedMessageCenter: React.FC = () => {
           {filteredConversations.length > 0 ? (
             <div className="p-2">
               {filteredConversations.map((conversation) => {
-                const otherParticipantId = conversation.participants.find(id => id !== user.uid);
+                const otherParticipantId = conversation.participants.find(id => id !== user.id);
                 const otherParticipantName = conversation.participantNames[otherParticipantId || ''] || 'مستخدم';
                 const otherParticipantType = conversation.participantTypes[otherParticipantId || ''] || 'player';
-                const unreadCount = conversation.unreadCount[user.uid] || 0;
+                const unreadCount = conversation.unreadCount[user.id] || 0;
                 const UserIcon = USER_TYPES[otherParticipantType as keyof typeof USER_TYPES]?.icon || Users;
 
                 return (
@@ -690,7 +697,7 @@ const EnhancedMessageCenter: React.FC = () => {
                       </div>
                       {conversation.lastMessage && (
                         <p className="text-sm text-gray-600 truncate mt-1">
-                          {conversation.lastSenderId === user?.uid && (
+                          {conversation.lastSenderId === user?.id && (
                             <span className="text-blue-600 mr-1">أنت:</span>
                           )}
                           {conversation.lastMessage}
@@ -734,8 +741,8 @@ const EnhancedMessageCenter: React.FC = () => {
                   </Button>
                   <Avatar className="h-10 w-10">
                     <AvatarImage 
-                      src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.uid) || ''] || ''}
-                      alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                      src={selectedConversation.participantAvatars?.[selectedConversation.participants.find(id => id !== user?.id) || ''] || ''}
+                      alt={selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                       className="transition-opacity duration-200 hover:scale-105"
                     />
                     <AvatarFallback>
@@ -744,11 +751,11 @@ const EnhancedMessageCenter: React.FC = () => {
                   </Avatar>
                   <div>
                     <h3 className="font-semibold">
-                      {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.uid) || ''] || 'مستخدم'}
+                      {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs border ${USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.bgColor} ${USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.color}`}>
-                        {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.uid) || ''] as keyof typeof USER_TYPES]?.name}
+                      <Badge className={`text-xs border ${USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.id) || ''] as keyof typeof USER_TYPES]?.bgColor} ${USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.id) || ''] as keyof typeof USER_TYPES]?.color}`}>
+                        {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.id) || ''] as keyof typeof USER_TYPES]?.name}
                       </Badge>
                       {selectedConversation.isActive && (
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -763,7 +770,7 @@ const EnhancedMessageCenter: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
               <div className="space-y-4">
                 {messages.map((message, index) => {
-                  const isCurrentUser = message.senderId === user?.uid;
+                  const isCurrentUser = message.senderId === user?.id;
                   const UserIcon = USER_TYPES[message.senderType as keyof typeof USER_TYPES]?.icon || Users;
 
                   return (

@@ -11,8 +11,8 @@ import { Shield, AlertCircle } from 'lucide-react';
  * ⚠️ ملاحظة مهمة: الرسائل منفصلة تماماً لكل حساب!
  * 
  * كيف يعمل النظام:
- * 1. WorkingMessageCenter يستخدم useAuth() للحصول على user.uid
- * 2. الرسائل يتم جلبها بناءً على user.uid للمستخدم الحالي فقط
+ * 1. WorkingMessageCenter يستخدم useAuth() للحصول على user.id
+ * 2. الرسائل يتم جلبها بناءً على user.id للمستخدم الحالي فقط
  * 3. كل حساب (academy, trainer, agent, etc.) له uid مختلف
  * 4. لذلك الرسائل منفصلة تماماً - كل حساب يرى فقط رسائله الخاصة
  * 

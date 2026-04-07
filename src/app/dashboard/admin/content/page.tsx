@@ -10,6 +10,11 @@ import {
   BarChart3,
   Save,
   Settings,
+  Megaphone,
+  Image as ImageIcon2,
+  BrainCircuit,
+  Target,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import SliderManager from './_components/SliderManager';
@@ -17,16 +22,26 @@ import PartnersManager from './_components/PartnersManager';
 import StatsManager from './_components/StatsManager';
 import SuccessStoriesManager from './_components/SuccessStoriesManager';
 import BrandingManager from './_components/BrandingManager';
+import AdsManager from './_components/AdsManager';
+import HomeImagesManager from './_components/HomeImagesManager';
+import AiSectionManager from './_components/AiSectionManager';
+import OppsSectionManager from './_components/OppsSectionManager';
+import PlayersSectionManager from './_components/PlayersSectionManager';
 
 export default function ContentManagerPage() {
   const [activeTab, setActiveTab] = useState('slider');
 
   const tabs = [
-    { id: 'slider', label: 'السلايدر الرئيسي', icon: Images },
+    { id: 'homeImages', label: 'صور الواجهة', icon: ImageIcon2 },
+    { id: 'ads', label: 'الإعلانات', icon: Megaphone },
+    { id: 'aiSection', label: 'الذكاء الاصطناعي', icon: BrainCircuit },
+    { id: 'oppsSection', label: 'الفرص المتاحة', icon: Target },
+    { id: 'playersSection', label: 'أبرز المواهب', icon: UserPlus },
+    { id: 'partners', label: 'الشركاء', icon: Users },
+    { id: 'slider', label: 'السلايدر', icon: Images },
+    { id: 'branding', label: 'الهوية', icon: Settings },
     { id: 'stats', label: 'الإحصائيات', icon: BarChart3 },
-    { id: 'partners', label: 'شركاء النجاح', icon: Users },
     { id: 'stories', label: 'قصص النجاح', icon: Trophy },
-    { id: 'branding', label: 'هوية الموقع', icon: Settings },
   ];
 
   return (
@@ -66,6 +81,41 @@ export default function ContentManagerPage() {
 
       {/* Content Area */}
       <div className="bg-white dark:bg-[#1e293b] rounded-lg border border-slate-200 dark:border-white/5 shadow-sm min-h-[400px] p-6">
+
+        {/* 0. Home Images */}
+        {activeTab === 'homeImages' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <HomeImagesManager />
+          </motion.div>
+        )}
+
+        {/* 0.1 Ads Management */}
+        {activeTab === 'ads' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <AdsManager />
+          </motion.div>
+        )}
+
+        {/* 0.2 AI Section Management */}
+        {activeTab === 'aiSection' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <AiSectionManager />
+          </motion.div>
+        )}
+
+        {/* 0.3 Opps Section Management */}
+        {activeTab === 'oppsSection' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <OppsSectionManager />
+          </motion.div>
+        )}
+
+        {/* 0.4 Players Section Management */}
+        {activeTab === 'playersSection' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <PlayersSectionManager />
+          </motion.div>
+        )}
 
         {/* 1. Slider Management */}
         {activeTab === 'slider' && (

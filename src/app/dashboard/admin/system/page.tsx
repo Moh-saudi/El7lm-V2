@@ -1,14 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  collection,
-  getDocs,
-  query,
-  limit,
-  getCountFromServer
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import {
   Database,
   HardDrive,
@@ -88,11 +81,15 @@ export default function SystemMonitoring() {
     };
 
     try {
-      // Firebase Check
-      await getDocs(query(collection(db, 'users'), limit(1)));
-      health.firebase = 'connected';
+      // Supabase Check (replaces Firebase)
+      const { data, error } = await supabase.from('users').select('id').limit(1);
+      if (!error) {
+        health.firebase = 'connected';
+      } else {
+        health.firebase = 'error';
+      }
     } catch (error) {
-      console.error('Firebase health check failed:', error);
+      console.error('Supabase health check failed:', error);
       health.firebase = 'error';
     }
 
@@ -117,17 +114,21 @@ export default function SystemMonitoring() {
         lastUpdate: new Date()
       };
 
-      const collections = [
+      const tables = [
         'users', 'players', 'clubs', 'academies',
         'trainers', 'agents', 'payments', 'subscriptions', 'ads'
       ];
 
-      await Promise.all(collections.map(async (colName) => {
+      await Promise.all(tables.map(async (tableName) => {
         try {
-          const snapshot = await getCountFromServer(collection(db, colName));
-          (stats as any)[colName] = snapshot.data().count;
+          const { count, error } = await supabase
+            .from(tableName)
+            .select('*', { count: 'exact', head: true });
+          if (!error && count !== null) {
+            (stats as any)[tableName] = count;
+          }
         } catch (error) {
-          console.warn(`Failed to fetch stats for ${colName}:`, error);
+          console.warn(`Failed to fetch stats for ${tableName}:`, error);
         }
       }));
 
@@ -203,11 +204,11 @@ export default function SystemMonitoring() {
 
       {/* System Health Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Firebase */}
+        {/* Supabase */}
         <Card className="border-l-4 border-l-yellow-500 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
-              قاعدة البيانات (Firebase)
+              قاعدة البيانات (Supabase)
               <Database className="h-4 w-4 text-yellow-500" />
             </CardTitle>
           </CardHeader>
@@ -219,7 +220,7 @@ export default function SystemMonitoring() {
                 <span className="text-red-600 flex items-center gap-2 text-lg"><XCircle className="h-5 w-5" /> خطأ</span>
               )}
             </div>
-            <p className="text-xs text-gray-400 mt-1">Firestore NoSQL DB</p>
+            <p className="text-xs text-gray-400 mt-1">Supabase PostgreSQL DB</p>
           </CardContent>
         </Card>
 

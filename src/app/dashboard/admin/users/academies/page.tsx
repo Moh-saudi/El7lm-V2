@@ -1,6 +1,5 @@
 'use client';
 
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,9 +40,7 @@ import {
 } from '@/components/ui/table';
 import { SUPPORTED_COUNTRIES } from '@/data/countries-from-register';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { db } from '@/lib/firebase/config';
-import { getIndexCreationUrls } from '@/lib/firebase/indexes';
-import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import {
   Building2,
   CheckCircle,
@@ -147,57 +144,15 @@ export default function AcademiesManagement() {
     try {
       setLoading(true);
 
-      let academiesData: Academy[] = [];
+      const { data: rows, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('accountType', 'academy')
+        .order('createdAt', { ascending: false });
 
-      try {
-        // Try using the compound query first
-        const academiesQuery = query(
-          collection(db, 'users'),
-          where('accountType', '==', 'academy'),
-          orderBy('createdAt', 'desc')
-        );
-        const academiesSnapshot = await getDocs(academiesQuery);
-        academiesData = await processAcademiesData(academiesSnapshot.docs);
-      } catch (error: any) {
-        if (error.code === 'failed-precondition') {
-          // Show index creation message
-          const urls = getIndexCreationUrls();
-          toast.error(
-            <div className="flex flex-col gap-2">
-              <p>يجب إنشاء فهرس في Firestore للوصول إلى البيانات بشكل أفضل</p>
-              <a
-                href={urls.users}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
-              >
-                انقر هنا لإنشاء الفهرس المطلوب
-              </a>
-            </div>,
-            {
-              duration: 10000,
-              position: 'top-center'
-            }
-          );
+      if (error) throw error;
 
-          // Fallback to simple query
-          const simpleQuery = query(
-            collection(db, 'users'),
-            where('accountType', '==', 'academy')
-          );
-          const simpleSnapshot = await getDocs(simpleQuery);
-          academiesData = await processAcademiesData(simpleSnapshot.docs);
-
-          // Sort in memory
-          academiesData.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(0);
-            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(0);
-            return dateB.getTime() - dateA.getTime();
-          });
-        } else {
-          throw error;
-        }
-      }
+      const academiesData = await processAcademiesData(rows || []);
 
       setAcademies(academiesData);
       updateStats(academiesData);
@@ -211,133 +166,79 @@ export default function AcademiesManagement() {
   };
 
   // Update processAcademiesData function
-  const processAcademiesData = async (docs: any[]) => {
+  const processAcademiesData = async (rows: any[]) => {
     return Promise.all(
-      docs.map(async (doc) => {
-        const basicData = doc.data();
+      rows.map(async (basicData: any) => {
+        const docId = basicData.id;
 
-        // Get players count from both collections
-        const [usersSnapshot1, usersSnapshot2, playersSnapshot1, playersSnapshot2] = await Promise.all([
-          // Check users collection
-          getDocs(query(
-            collection(db, 'users'),
-            where('accountType', '==', 'player'),
-            where('academyId', '==', doc.id)
-          )),
-          getDocs(query(
-            collection(db, 'users'),
-            where('accountType', '==', 'player'),
-            where('academy_id', '==', doc.id)
-          )),
-          // Check players collection
-          getDocs(query(
-            collection(db, 'players'),
-            where('academyId', '==', doc.id)
-          )),
-          getDocs(query(
-            collection(db, 'players'),
-            where('academy_id', '==', doc.id)
-          ))
+        // Get players count from both tables
+        const [usersCount1, usersCount2, playersCount1, playersCount2] = await Promise.all([
+          supabase.from('users').select('id', { count: 'exact', head: true })
+            .eq('accountType', 'player').eq('academyId', docId),
+          supabase.from('users').select('id', { count: 'exact', head: true })
+            .eq('accountType', 'player').eq('academy_id', docId),
+          supabase.from('players').select('id', { count: 'exact', head: true })
+            .eq('academyId', docId),
+          supabase.from('players').select('id', { count: 'exact', head: true })
+            .eq('academy_id', docId),
         ]);
 
-        // Get unique players count
-        const allPlayerIds = new Set([
-          ...usersSnapshot1.docs.map(doc => doc.id),
-          ...usersSnapshot2.docs.map(doc => doc.id),
-          ...playersSnapshot1.docs.map(doc => doc.id),
-          ...playersSnapshot2.docs.map(doc => doc.id)
-        ]);
-        const playersCount = allPlayerIds.size;
+        // Since we can't easily deduplicate across tables, sum unique counts
+        const playersCount = Math.max(
+          (usersCount1.count || 0) + (usersCount2.count || 0),
+          (playersCount1.count || 0) + (playersCount2.count || 0)
+        );
 
         // Get average rating
-        const ratingsQuery = query(
-          collection(db, 'ratings'),
-          where('targetId', '==', doc.id),
-          where('targetType', '==', 'academy')
-        );
-        const ratingsSnapshot = await getDocs(ratingsQuery);
-        const ratings = ratingsSnapshot.docs.map(doc => doc.data().rating);
+        const { data: ratingsData } = await supabase
+          .from('ratings')
+          .select('rating')
+          .eq('targetId', docId)
+          .eq('targetType', 'academy');
+
+        const ratings = (ratingsData || []).map((r: any) => r.rating);
         const averageRating = ratings.length
-          ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+          ? +(ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)
           : 0;
 
-        // Get verification documents with error handling
-        let verificationDocuments = [];
+        // Get verification documents
+        let verificationDocuments: any[] = [];
         try {
-          // Try using compound query first
-          const docsQuery = query(
-            collection(db, 'verificationDocuments'),
-            where('userId', '==', doc.id),
-            orderBy('uploadedAt', 'desc')
-          );
-          const docsSnapshot = await getDocs(docsQuery);
-          verificationDocuments = docsSnapshot.docs.map(doc => ({
-            ...doc.data(),
-            uploadedAt: doc.data().uploadedAt?.toDate()
-          }));
-        } catch (error: any) {
-          if (error.code === 'failed-precondition') {
-            // Show index creation message
-            toast.error(
-              <div className="flex flex-col gap-2">
-                <p>يجب إنشاء فهرس في Firestore للوصول إلى مستندات التحقق بشكل أفضل</p>
-                <a
-                  href="https://console.firebase.google.com/v1/r/project/hagzzgo-87884/firestore/indexes?create_composite=Cltwcm9qZWN0cy9oYWd6emdvLTg3ODg0L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy92ZXJpZmljYXRpb25Eb2N1bWVudHMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaDgoKdXBsb2FkZWRBdBACGgwKCF9fbmFtZV9fEAI"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  انقر هنا لإنشاء الفهرس المطلوب
-                </a>
-              </div>,
-              {
-                duration: 10000,
-                position: 'top-center'
-              }
-            );
+          const { data: docsData } = await supabase
+            .from('verificationDocuments')
+            .select('*')
+            .eq('userId', docId)
+            .order('uploadedAt', { ascending: false });
 
-            // Fallback to simple query
-            const simpleQuery = query(
-              collection(db, 'verificationDocuments'),
-              where('userId', '==', doc.id)
-            );
-            const simpleSnapshot = await getDocs(simpleQuery);
-            verificationDocuments = simpleSnapshot.docs
-              .map(doc => ({
-                ...doc.data(),
-                uploadedAt: doc.data().uploadedAt?.toDate()
-              }))
-              .sort((a, b) => {
-                if (!a.uploadedAt || !b.uploadedAt) return 0;
-                return b.uploadedAt.getTime() - a.uploadedAt.getTime();
-              });
-          } else {
-            console.error('Error fetching verification documents:', error);
-            verificationDocuments = []; // Use empty array on error
-          }
+          verificationDocuments = (docsData || []).map((d: any) => ({
+            ...d,
+            uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined
+          }));
+        } catch (error) {
+          verificationDocuments = [];
         }
 
         // Get subscription info
-        const subscriptionQuery = query(
-          collection(db, 'subscriptions'),
-          where('userId', '==', doc.id)
-        );
-        const subscriptionSnapshot = await getDocs(subscriptionQuery);
-        const subscriptions = subscriptionSnapshot.docs
-          .map(doc => ({
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            expiresAt: doc.data().expiresAt?.toDate()
+        const { data: subscriptionsData } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('userId', docId);
+
+        const subscriptions = (subscriptionsData || [])
+          .map((sub: any) => ({
+            ...sub,
+            createdAt: sub.createdAt ? new Date(sub.createdAt) : undefined,
+            expiresAt: sub.expiresAt ? new Date(sub.expiresAt) : undefined
           }))
           .filter((sub: any) => ['active', 'trial'].includes(sub.status))
           .sort((a: any, b: any) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
 
         const subscription = subscriptions[0];
 
-        // Format dates - handle both Timestamp and Date objects
-        const createdAt = basicData.createdAt?.toDate ? basicData.createdAt.toDate() : basicData.createdAt;
-        const lastLogin = basicData.lastLogin?.toDate ? basicData.lastLogin.toDate() : basicData.lastLogin;
-        const verifiedAt = basicData.verifiedAt?.toDate ? basicData.verifiedAt.toDate() : basicData.verifiedAt;
+        // Format dates
+        const createdAt = basicData.createdAt ? new Date(basicData.createdAt) : new Date();
+        const lastLogin = basicData.lastLogin ? new Date(basicData.lastLogin) : undefined;
+        const verifiedAt = basicData.verifiedAt ? new Date(basicData.verifiedAt) : undefined;
         const subscriptionData = subscription ? {
           status: (subscription as any).status,
           plan: (subscription as any).plan,
@@ -345,7 +246,7 @@ export default function AcademiesManagement() {
         } : undefined;
 
         return {
-          id: doc.id,
+          id: docId,
           ...basicData,
           createdAt,
           lastLogin,
@@ -409,10 +310,10 @@ export default function AcademiesManagement() {
   // Update toggleAcademyStatus function
   const toggleAcademyStatus = async (academyId: string, currentStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', academyId), {
+      await supabase.from('users').update({
         isActive: !currentStatus,
-        updatedAt: new Date()
-      });
+        updatedAt: new Date().toISOString()
+      }).eq('id', academyId);
 
       // Update local state immediately
       setAcademies(prevAcademies =>
@@ -508,8 +409,7 @@ export default function AcademiesManagement() {
     if (!selectedAcademy) return;
 
     try {
-      // Delete from Firestore
-      await deleteDoc(doc(db, 'users', selectedAcademy.id));
+      await supabase.from('users').delete().eq('id', selectedAcademy.id);
 
       // Update local state
       setAcademies(prevAcademies =>
@@ -533,13 +433,13 @@ export default function AcademiesManagement() {
       const suspensionEndDate = new Date();
       suspensionEndDate.setDate(suspensionEndDate.getDate() + 30); // 30 days suspension
 
-      await updateDoc(doc(db, 'users', selectedAcademy.id), {
+      await supabase.from('users').update({
         isActive: false,
-        suspendedAt: new Date(),
-        suspensionEndDate,
+        suspendedAt: new Date().toISOString(),
+        suspensionEndDate: suspensionEndDate.toISOString(),
         suspensionReason: 'تم إيقاف الحساب مؤقتاً من قبل الإدارة',
-        updatedAt: new Date()
-      });
+        updatedAt: new Date().toISOString()
+      }).eq('id', selectedAcademy.id);
 
       // Update local state
       setAcademies(prevAcademies =>
@@ -1039,8 +939,6 @@ export default function AcademiesManagement() {
           </Table>
         </div>
       </main>
-
-
 
       {/* Add Dialogs */}
       <ProfileDialog />

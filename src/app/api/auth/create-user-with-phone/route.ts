@@ -1,10 +1,20 @@
 /**
  * Create a new user account using a verified phone number (WhatsApp OTP flow)
+ * تم تحويله من Firebase Admin إلى Supabase Admin
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+
+const COLLECTION_MAP: Record<string, string> = {
+  player: 'players',
+  club: 'clubs',
+  agent: 'agents',
+  academy: 'academies',
+  trainer: 'trainers',
+  marketer: 'marketers',
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,95 +24,99 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'البيانات مطلوبة' }, { status: 400 });
     }
 
-    if (!adminAuth || !adminDb) {
-      return NextResponse.json({ success: false, error: 'الخدمة غير متاحة' }, { status: 503 });
-    }
-
-    // Security: ensure OTP was recently verified for this phone
+    const db = getSupabaseAdmin();
     const cleanDigits = cleanPhoneNumber(phoneNumber);
-    const docId = `otp_${cleanDigits}`;
-    const otpDoc = await (adminDb as any).collection('otp_verifications').doc(docId).get();
+    const otpDocId = `otp_${cleanDigits}`;
 
-    if (!otpDoc.exists || !otpDoc.data()?.verified) {
+    // التحقق من أن OTP تم التحقق منه مسبقاً
+    const { data: otpData } = await db
+      .from('otp_verifications')
+      .select('*')
+      .eq('id', otpDocId)
+      .single();
+
+    if (!otpData || !otpData.verified) {
       return NextResponse.json({ success: false, error: 'يجب التحقق من رقم الهاتف أولاً' }, { status: 403 });
     }
 
-    // Check verification is recent (within 15 minutes)
-    const verifiedAt = otpDoc.data()?.verifiedAt;
-    if (verifiedAt) {
-      const verifiedMs = verifiedAt.toMillis
-        ? verifiedAt.toMillis()
-        : verifiedAt instanceof Date
-        ? verifiedAt.getTime()
-        : 0;
+    // التحقق من حداثة التحقق (خلال 15 دقيقة)
+    if (otpData.verifiedAt) {
+      const verifiedMs = new Date(otpData.verifiedAt).getTime();
       if (Date.now() - verifiedMs > 15 * 60 * 1000) {
         return NextResponse.json({ success: false, error: 'انتهت صلاحية التحقق، يرجى إعادة إرسال الرمز' }, { status: 403 });
       }
     }
 
-    // Build Firebase Auth email from phone digits
-    const email = `${cleanDigits}@el7lm.com`;
-    // const password = `${cleanDigits}_${Math.random().toString(36).slice(2, 10)}`; // Security: better random password
+    const e164Phone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    const constructedEmail = `${cleanDigits}@el7lm.com`;
     const password = `${cleanDigits}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    // Normalize phone to E.164
-    const e164Phone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    // التحقق من عدم وجود الهاتف مسبقاً
+    const tableName = COLLECTION_MAP[accountType] || 'users';
+    const { data: existingUser } = await db
+      .from(tableName)
+      .select('id')
+      .eq('phone', e164Phone)
+      .single();
 
-    // Create Firebase Auth user
-    let userRecord;
-    try {
-      userRecord = await adminAuth.createUser({
-        email,
-        password,
-        displayName: name,
-        phoneNumber: e164Phone,
-      });
-    } catch (err: any) {
-      if (err.code === 'auth/email-already-exists' || err.code === 'auth/phone-number-already-exists') {
-        return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
-      }
-      throw err;
+    if (existingUser) {
+      return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
     }
 
-    const uid = userRecord.uid;
-    const now = new Date();
+    // إنشاء مستخدم في Supabase Auth
+    const { data: authData, error: authError } = await db.auth.admin.createUser({
+      email: constructedEmail,
+      password,
+      email_confirm: true,
+      phone: e164Phone,
+      phone_confirm: true,
+      user_metadata: { accountType, phone: e164Phone, full_name: name },
+    });
 
-    const collectionMap: Record<string, string> = {
-      player: 'players',
-      club: 'clubs',
-      agent: 'agents',
-      academy: 'academies',
-      trainer: 'trainers',
-      marketer: 'marketers',
-    };
-    const collectionName = collectionMap[accountType] || 'users';
+    if (authError) {
+      if (authError.message?.includes('already')) {
+        return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
+      }
+      throw authError;
+    }
+
+    const uid = authData.user.id;
+    const now = new Date().toISOString();
 
     const userDoc = {
+      id: uid,
       uid,
       full_name: name,
       phone: e164Phone,
-      email,
+      email: constructedEmail,
       accountType,
       createdAt: now,
       isVerifiedLocal: true,
-      status: 'active',
+      isActive: true,
+      isDeleted: false,
     };
 
-    // Write to role collection + users collection
-    await (adminDb as any).collection(collectionName).doc(uid).set(userDoc);
-    if (collectionName !== 'users') {
-      await (adminDb as any).collection('users').doc(uid).set(userDoc);
+    // كتابة في الجدول المخصص للنوع
+    await db.from(tableName).insert(userDoc);
+
+    // كتابة في جدول users أيضاً (للتوافق)
+    if (tableName !== 'users') {
+      try { await db.from('users').insert(userDoc); } catch { }
     }
 
-    // Clean up OTP record
-    await (adminDb as any).collection('otp_verifications').doc(docId).delete();
+    // حذف OTP بعد الاستخدام
+    await db.from('otp_verifications').delete().eq('id', otpDocId);
 
-    // Return custom token
-    const customToken = await adminAuth.createCustomToken(uid, { accountType, phone: e164Phone });
+    console.log(`✅ [create-user] Created ${uid} as ${accountType}`);
 
-    console.log(`✅ [create-user-with-phone] Created user ${uid} as ${accountType}`);
-
-    return NextResponse.json({ success: true, customToken, uid, accountType, userName: name });
+    return NextResponse.json({
+      success: true,
+      uid,
+      accountType,
+      userName: name,
+      authEmail: constructedEmail,
+      authPassword: password,
+    });
 
   } catch (error: any) {
     console.error('❌ [create-user-with-phone]', error);

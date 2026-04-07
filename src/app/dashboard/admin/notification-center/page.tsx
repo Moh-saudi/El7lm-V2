@@ -56,10 +56,10 @@ export default function AdminNotificationCenterPage() {
   const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
   React.useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       loadNotifications();
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   React.useEffect(() => {
     if (showWhatsAppDialog) {

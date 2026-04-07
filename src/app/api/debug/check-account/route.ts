@@ -1,55 +1,33 @@
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { NextRequest, NextResponse } from 'next/server';
 
-const COLLECTIONS = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
+const TABLES = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const phone = (body?.phone || '').toString();
-    
-    if (!phone) {
-      return NextResponse.json({ error: 'phone is required' }, { status: 400 });
-    }
+    const phone = String((await req.json().catch(() => ({}))).phone || '');
+    if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
 
-    const results: any[] = [];
-
-    // البحث في جميع المجموعات
-    for (const coll of COLLECTIONS) {
+    const results: unknown[] = [];
+    for (const table of TABLES) {
       try {
-        const q = query(collection(db, coll), where('phone', '==', phone));
-        const snapshot = await getDocs(q);
-        
-        snapshot.forEach(doc => {
-          const data = doc.data();
+        const { data } = await supabase.from(table).select('id, email, phone, isDeleted, isActive, accountType, name, full_name').eq('phone', phone);
+        (data ?? []).forEach((row: Record<string, unknown>) => {
           results.push({
-            collection: coll,
-            id: doc.id,
-            email: data.email,
-            phone: data.phone,
-            isDeleted: data.isDeleted,
-            isDeletedType: typeof data.isDeleted,
-            isActive: data.isActive,
-            isActiveType: typeof data.isActive,
-            accountType: data.accountType,
-            name: data.name || data.full_name,
-            allFields: Object.keys(data)
+            collection: table, id: row.id, email: row.email, phone: row.phone,
+            isDeleted: row.isDeleted, isDeletedType: typeof row.isDeleted,
+            isActive: row.isActive, isActiveType: typeof row.isActive,
+            accountType: row.accountType, name: row.name ?? row.full_name,
+            allFields: Object.keys(row),
           });
         });
-      } catch (error) {
-        console.error(`Error checking ${coll}:`, error);
+      } catch (e) {
+        console.error(`Error checking ${table}:`, e);
       }
     }
 
-    return NextResponse.json({
-      phone,
-      found: results.length > 0,
-      count: results.length,
-      accounts: results
-    });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
+    return NextResponse.json({ phone, found: results.length > 0, count: results.length, accounts: results });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 });
   }
 }
-

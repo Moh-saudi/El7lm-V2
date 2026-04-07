@@ -10,9 +10,8 @@ import {
   Star, FileText, Save, X, Camera, Trash2, Linkedin, Shield,
   CheckSquare
 } from 'lucide-react';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 
 interface Branch {
   name: string;
@@ -148,12 +147,10 @@ export default function AcademyProfilePage() {
   const [newBranch, setNewBranch] = useState<Branch>({ name: '', address: '', contact: '' });
 
   const fetchData = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const ref = doc(db, 'academies', user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() as Partial<AcademyData> & Record<string, unknown>;
+      const { data } = await supabase.from('academies').select('*').eq('id', user.id).maybeSingle();
+      if (!!data) {
         setAcademyData({
           ...initialAcademyData,
           ...data,
@@ -180,7 +177,7 @@ export default function AcademyProfilePage() {
           email: userData?.email || '',
           phone: userData?.phone || '',
         };
-        await setDoc(ref, { ...basicData, createdAt: new Date(), accountType: 'academy' });
+        await supabase.from('academies').upsert({ id: user.id, ...basicData, createdAt: new Date().toISOString(), accountType: 'academy' });
         setAcademyData(basicData);
       }
     } catch (err) {
@@ -200,12 +197,13 @@ export default function AcademyProfilePage() {
     }
   }, [user, fetchData, router]);
 
+
   const missingFields = REQUIRED_FIELDS.filter(({ key }) => {
     const val = academyData[key];
     return !val || (typeof val === 'string' && !val.trim());
   });
 
-  const BANNER_SNOOZE_KEY = `academy_profile_banner_snoozed_${user?.uid}`;
+  const BANNER_SNOOZE_KEY = `academy_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
 
   useEffect(() => {
@@ -255,7 +253,7 @@ export default function AcademyProfilePage() {
   };
 
   const handleImageUpload = async (file: File, type: 'logo' | 'cover' | 'gallery') => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!file.type.startsWith('image/')) { toast.error('يرجى اختيار ملف صورة صالح'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة يتجاوز 5 ميجابايت'); return; }
     setUploading(true);
@@ -265,7 +263,7 @@ export default function AcademyProfilePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('bucket', 'academies');
-      formData.append('path', `${user.uid}/${fileName}`);
+      formData.append('path', `${user.id}/${fileName}`);
       formData.append('contentType', file.type);
 
       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
@@ -287,34 +285,32 @@ export default function AcademyProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     if (!validateForm()) return;
     setUploading(true);
     try {
-      const ref = doc(db, 'academies', user.uid);
-      const snap = await getDoc(ref);
       const dataToSave = {
         ...academyData,
         // مزامنة name مع الـ sidebar (auth-provider يقرأ name/full_name)
         name: academyData.academy_name,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       };
-      if (snap.exists()) {
-        await updateDoc(ref, dataToSave as Record<string, unknown>);
+      const { data: existing } = await supabase.from('academies').select('id').eq('id', user.id).maybeSingle();
+      if (!!existing) {
+        await supabase.from('academies').update(dataToSave as Record<string, unknown>).eq('id', user.id);
       } else {
-        await setDoc(ref, { ...dataToSave, createdAt: new Date(), accountType: 'academy' });
+        await supabase.from('academies').upsert({ id: user.id, ...dataToSave, createdAt: new Date().toISOString(), accountType: 'academy' });
       }
-      // مزامنة الاسم في users collection إن وُجدت (لضمان تحديث sidebar فوراً)
+      // مزامنة الاسم في users table إن وُجدت (لضمان تحديث sidebar فوراً)
       try {
-        const usersRef = doc(db, 'users', user.uid);
-        const usersSnap = await getDoc(usersRef);
-        if (usersSnap.exists()) {
-          await updateDoc(usersRef, {
+        const { data: usersRow } = await supabase.from('users').select('id').eq('id', user.id).maybeSingle();
+        if (!!usersRow) {
+          await supabase.from('users').update({
             name: academyData.academy_name,
             academy_name: academyData.academy_name,
-          });
+          }).eq('id', user.id);
         }
-      } catch (_) { /* users doc may not exist — ignore */ }
+      } catch (_) { /* users row may not exist — ignore */ }
       toast.success('تم حفظ بيانات الأكاديمية بنجاح');
       setEditMode(false);
     } catch (err) {
@@ -708,13 +704,13 @@ export default function AcademyProfilePage() {
                 {editMode && (
                   <label className="flex absolute inset-0 justify-center items-center rounded-full cursor-pointer bg-black/40 hover:bg-black/60">
                     <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                      if (!e.target.files?.[0] || !user?.uid) return;
+                      if (!e.target.files?.[0] || !user?.id) return;
                       const file = e.target.files[0];
                       setUploading(true);
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('bucket', 'academies');
-                      formData.append('path', `${user.uid}/tech_director_${Date.now()}.${file.name.split('.').pop()}`);
+                      formData.append('path', `${user.id}/tech_director_${Date.now()}.${file.name.split('.').pop()}`);
                       formData.append('contentType', file.type);
                       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {
@@ -763,13 +759,13 @@ export default function AcademyProfilePage() {
                 {editMode && (
                   <label className="flex absolute inset-0 justify-center items-center rounded-full cursor-pointer bg-black/40 hover:bg-black/60">
                     <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                      if (!e.target.files?.[0] || !user?.uid) return;
+                      if (!e.target.files?.[0] || !user?.id) return;
                       const file = e.target.files[0];
                       setUploading(true);
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('bucket', 'academies');
-                      formData.append('path', `${user.uid}/director_${Date.now()}.${file.name.split('.').pop()}`);
+                      formData.append('path', `${user.id}/director_${Date.now()}.${file.name.split('.').pop()}`);
                       formData.append('contentType', file.type);
                       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {

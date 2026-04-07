@@ -1,23 +1,21 @@
 /**
- * Hook لجلب المستخدمين من Firebase
+ * Hook لجلب المستخدمين من Supabase
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, query, limit, orderBy, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { supabase } from '@/lib/supabase/config';
 import { User, UsersStats, UsersFilters, AccountType } from '../_types';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 
 dayjs.extend(isBetween);
 
-const COLLECTIONS = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'parents'];
+const TABLES = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
 
-// تحويل Firestore Timestamp إلى Date
+// تحويل قيمة التاريخ إلى Date
 const toDate = (value: any): Date | null => {
     if (!value) return null;
     if (value._seconds) return new Date(value._seconds * 1000);
-    if (value.toDate) return value.toDate();
     if (value instanceof Date) return value;
     if (typeof value === 'string') return new Date(value);
     return null;
@@ -53,21 +51,24 @@ export function useUsers(initialLimit = 100) {
 
             const usersMap = new Map<string, User>();
 
-            // جلب من جميع المجموعات مع دمج البيانات
-            for (const collectionName of COLLECTIONS) {
+            // جلب من جميع الجداول مع دمج البيانات
+            for (const tableName of TABLES) {
                 try {
-                    const q = query(
-                        collection(db, collectionName)
-                    );
+                    const { data: rows, error: fetchError } = await supabase
+                        .from(tableName)
+                        .select('*');
 
-                    const snapshot = await getDocs(q);
+                    if (fetchError) {
+                        console.warn(`Error fetching ${tableName}:`, fetchError);
+                        continue;
+                    }
 
-                    snapshot.docs.forEach(doc => {
-                        const data = doc.data();
-                        const id = doc.id;
-                        const accountType = (data.accountType || data.role || collectionName.replace(/s$/, '')) as AccountType;
+                    (rows || []).forEach((data: any) => {
+                        const id = data.id;
+                        if (!id) return;
+                        const accountType = (data.accountType || data.role || tableName.replace(/s$/, '')) as AccountType;
 
-                        // تجهيز بيانات المستخدم من المستند الحالي
+                        // تجهيز بيانات المستخدم من السجل الحالي
                         const userData: User = {
                             id: id,
                             uid: id,
@@ -103,16 +104,14 @@ export function useUsers(initialLimit = 100) {
                             const existing = usersMap.get(id)!;
                             usersMap.set(id, {
                                 ...existing,
-                                // نفضل البيانات من المجموعات الفرعية (مثل players/marketers) إذا كانت موجودة
-                                // أو نفضل البيانات غير الفارغة
                                 name: (userData.name !== 'غير محدد' && userData.name) || existing.name,
-                                email: userData.email || existing.email, // ✅ إضافة دمج البريد الإلكتروني
+                                email: userData.email || existing.email,
                                 phone: userData.phone || existing.phone,
                                 country: userData.country || existing.country,
                                 city: userData.city || existing.city,
                                 profileImage: userData.profileImage || existing.profileImage,
                                 lastLogin: (userData.lastLogin && existing.lastLogin)
-                                    ? (userData.lastLogin > existing.lastLogin ? userData.lastLogin : existing.lastLogin) // نأخذ التاريخ الأحدث
+                                    ? (userData.lastLogin > existing.lastLogin ? userData.lastLogin : existing.lastLogin)
                                     : (userData.lastLogin || existing.lastLogin),
                                 createdAt: existing.createdAt || userData.createdAt,
                                 profileCompletion: Math.max(existing.profileCompletion, userData.profileCompletion),
@@ -125,7 +124,7 @@ export function useUsers(initialLimit = 100) {
                         }
                     });
                 } catch (e) {
-                    console.warn(`Error fetching ${collectionName}:`, e);
+                    console.warn(`Error fetching ${tableName}:`, e);
                 }
             }
 

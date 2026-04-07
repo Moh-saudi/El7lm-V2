@@ -1,7 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, orderBy, query, limit, Timestamp } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History, Loader2, Send, Radio } from 'lucide-react';
@@ -24,14 +23,14 @@ interface CampaignLog {
 
 const formatDate = (ts: any): string => {
   if (!ts) return '—';
-  const d = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+  const d = new Date(ts);
   return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
 };
 
 const durationStr = (start: any, end: any): string => {
   if (!start || !end) return '—';
-  const s = start instanceof Timestamp ? start.toDate() : new Date(start);
-  const e = end instanceof Timestamp ? end.toDate() : new Date(end);
+  const s = new Date(start);
+  const e = new Date(end);
   const diffMs = e.getTime() - s.getTime();
   const mins = Math.floor(diffMs / 60000);
   const secs = Math.floor((diffMs % 60000) / 1000);
@@ -51,25 +50,15 @@ export const CampaignHistory: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Try with orderBy first (requires index)
-      const snap = await getDocs(
-        query(collection(db, 'campaign_logs'), orderBy('startedAt', 'desc'), limit(50))
-      );
-      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as CampaignLog)));
+      const { data, error: fetchError } = await supabase
+        .from('campaign_logs')
+        .select('*')
+        .order('startedAt', { ascending: false })
+        .limit(50);
+      if (fetchError) throw fetchError;
+      setLogs((data || []) as CampaignLog[]);
     } catch (e: any) {
-      // Fallback: fetch without ordering (no index required)
-      try {
-        const snap2 = await getDocs(collection(db, 'campaign_logs'));
-        const items = snap2.docs.map(d => ({ id: d.id, ...d.data() } as CampaignLog));
-        items.sort((a, b) => {
-          const ta = a.startedAt?.toDate?.()?.getTime?.() ?? 0;
-          const tb = b.startedAt?.toDate?.()?.getTime?.() ?? 0;
-          return tb - ta;
-        });
-        setLogs(items);
-      } catch (e2: any) {
-        setError(e2?.message || 'خطأ في تحميل السجلات');
-      }
+      setError(e?.message || 'خطأ في تحميل السجلات');
     } finally {
       setLoading(false);
     }

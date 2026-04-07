@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 
 export interface Tournament {
     id?: string;
@@ -114,9 +113,7 @@ export const formatDate = (date: any) => {
     if (!date) return 'غير محدد';
     try {
         let d: Date;
-        if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
-            d = date.toDate();
-        } else if (date instanceof Date) {
+        if (date instanceof Date) {
             d = date;
         } else {
             d = new Date(date);

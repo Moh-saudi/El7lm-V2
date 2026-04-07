@@ -377,10 +377,10 @@ function PlayerJoinForm() {
   };
 
   const handleJoin = async () => {
-    if (!found || !user?.uid || !userData) return;
+    if (!found || !user?.id || !userData) return;
     setLoading(true);
     try {
-      await organizationReferralService.createJoinRequest(user.uid, userData, code.trim().toUpperCase());
+      await organizationReferralService.createJoinRequest(user.id, userData, code.trim().toUpperCase());
       toast.success(`تم إرسال طلب الانضمام إلى ${found.organizationName} بنجاح`);
       setCode('');
       setFound(null);
@@ -505,23 +505,23 @@ export default function InviteCodePage() {
   const orgName = getOrgName(userData, accountType);
 
   const loadCodes = useCallback(async () => {
-    if (!user?.uid || !isOrg) { setLoading(false); return; }
+    if (!user?.id || !isOrg) { setLoading(false); return; }
     setLoading(true);
     try {
-      const list = await organizationReferralService.getOrganizationReferrals(user.uid);
+      const list = await organizationReferralService.getOrganizationReferrals(user.id);
       setCodes(list);
     } catch {
       toast.error('حدث خطأ في تحميل الأكواد');
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, isOrg]);
+  }, [user?.id, isOrg]);
 
   useEffect(() => { loadCodes(); }, [loadCodes]);
 
   const handleToggle = async (id: string, currentActive: boolean) => {
     try {
-      await organizationReferralService.updateOrganizationReferral(id, user!.uid, { isActive: !currentActive });
+      await organizationReferralService.updateOrganizationReferral(id, user!.id, { isActive: !currentActive });
       setCodes(prev => prev.map(c => c.id === id ? { ...c, isActive: !currentActive } : c));
       toast.success(!currentActive ? 'تم تفعيل الكود' : 'تم تعطيل الكود');
     } catch {
@@ -621,11 +621,11 @@ export default function InviteCodePage() {
 
       {/* Create Sheet */}
       <AnimatePresence>
-        {showCreate && user?.uid && orgName && (
+        {showCreate && user?.id && orgName && (
           <CreateSheet
             onClose={() => setShowCreate(false)}
             onCreated={loadCodes}
-            organizationId={user.uid}
+            organizationId={user.id}
             organizationType={accountType}
             organizationName={orgName}
           />

@@ -1,37 +1,39 @@
-import { FirebaseError } from 'firebase/app';
+// Connection handler - migrated from Firebase to generic retry logic
 
-export class FirebaseConnectionHandler {
+export class ConnectionHandler {
   private static retryAttempts = 0;
   private static maxRetries = 3;
-  private static retryDelay = 1000; // 1 ثانية
+  private static retryDelay = 1000;
 
-  static async handleFirebaseError(error: FirebaseError, operation: () => Promise<any>): Promise<any> {
-    console.log('Firebase Error:', error.code, error.message);
+  static async handleError(error: Error, operation: () => Promise<any>): Promise<any> {
+    console.log('Connection Error:', error.message);
 
-    // التعامل مع أخطاء الاتصال
     if (this.isConnectionError(error)) {
       return this.handleConnectionError(error, operation);
     }
 
-    // رفع الخطأ إذا لم يكن خطأ اتصال
     throw error;
   }
 
-  private static isConnectionError(error: FirebaseError): boolean {
-    const connectionErrors = [
-      'unavailable',
-      'failed-precondition',
-      'deadline-exceeded',
-      'cancelled',
-      'unknown'
-    ];
-
-    return connectionErrors.includes(error.code) || 
-           error.message.includes('offline') ||
-           error.message.includes('network');
+  // Alias for backward compatibility
+  static async handleFirebaseError(error: any, operation: () => Promise<any>): Promise<any> {
+    return this.handleError(error instanceof Error ? error : new Error(String(error)), operation);
   }
 
-  private static async handleConnectionError(error: FirebaseError, operation: () => Promise<any>): Promise<any> {
+  private static isConnectionError(error: Error): boolean {
+    const msg = error.message || '';
+    return (
+      msg.includes('unavailable') ||
+      msg.includes('failed-precondition') ||
+      msg.includes('deadline-exceeded') ||
+      msg.includes('offline') ||
+      msg.includes('network') ||
+      msg.includes('NetworkError') ||
+      msg.includes('Failed to fetch')
+    );
+  }
+
+  private static async handleConnectionError(error: Error, operation: () => Promise<any>): Promise<any> {
     if (this.retryAttempts >= this.maxRetries) {
       console.error('تم تجاوز محاولات إعادة المحاولة:', error.message);
       this.retryAttempts = 0;
@@ -41,16 +43,15 @@ export class FirebaseConnectionHandler {
     console.log(`إعادة المحاولة ${this.retryAttempts + 1} من ${this.maxRetries}...`);
     this.retryAttempts++;
 
-    // انتظار قبل إعادة المحاولة
     await new Promise(resolve => setTimeout(resolve, this.retryDelay * this.retryAttempts));
 
     try {
       const result = await operation();
-      this.retryAttempts = 0; // إعادة تعيين العداد عند النجاح
+      this.retryAttempts = 0;
       return result;
     } catch (retryError) {
-      if (retryError instanceof FirebaseError) {
-        return this.handleFirebaseError(retryError, operation);
+      if (retryError instanceof Error) {
+        return this.handleError(retryError, operation);
       }
       throw retryError;
     }
@@ -61,14 +62,13 @@ export class FirebaseConnectionHandler {
   }
 }
 
-// دالة مساعدة لتنفيذ العمليات مع معالجة الأخطاء
+// Backward compatibility alias
+export const FirebaseConnectionHandler = ConnectionHandler;
+
 export async function executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
   } catch (error) {
-    if (error instanceof FirebaseError) {
-      return FirebaseConnectionHandler.handleFirebaseError(error, operation);
-    }
-    throw error;
+    return ConnectionHandler.handleFirebaseError(error, operation);
   }
-} 
+}

@@ -1,30 +1,19 @@
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase/config';
 
 export interface LandingStats {
     players: number;
     countries: number;
     successRate: number;
-    countriesList?: string[]; // Optional: list of country names
+    countriesList?: string[];
 }
 
-const STATS_DOC_PATH = 'content/landing-stats';
+const DEFAULTS: LandingStats = { players: 1240, countries: 6, successRate: 89 };
 
 export const getLandingStats = async (): Promise<LandingStats> => {
     try {
-        const statsRef = doc(db, 'content', 'landing-stats');
-        const docSnap = await getDoc(statsRef);
-
-        if (docSnap.exists()) {
-            return docSnap.data() as LandingStats;
-        } else {
-            // Return defaults if not found
-            return {
-                players: 1240,
-                countries: 6,
-                successRate: 89
-            };
-        }
+        const { data } = await supabase.from('content').select('*').eq('id', 'landing-stats').limit(1);
+        if (data?.length) return data[0] as LandingStats;
+        return DEFAULTS;
     } catch (error) {
         console.error('Error fetching landing stats:', error);
         throw error;
@@ -33,21 +22,20 @@ export const getLandingStats = async (): Promise<LandingStats> => {
 
 export const updateLandingStats = async (stats: LandingStats): Promise<void> => {
     try {
-        const statsRef = doc(db, 'content', 'landing-stats');
-        // Use setDoc with merge to create if not exists or update
-        await setDoc(statsRef, stats, { merge: true });
+        await supabase.from('content').upsert({ id: 'landing-stats', ...stats });
     } catch (error) {
         console.error('Error updating landing stats:', error);
         throw error;
     }
 };
 
-// Real-time listener hook helper (to be used in components if needed)
 export const subscribeToLandingStats = (callback: (stats: LandingStats) => void) => {
-    const statsRef = doc(db, 'content', 'landing-stats');
-    return onSnapshot(statsRef, (doc) => {
-        if (doc.exists()) {
-            callback(doc.data() as LandingStats);
-        }
-    });
+    const channel = supabase
+        .channel('landing-stats-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'content', filter: 'id=eq.landing-stats' }, payload => {
+            if (payload.new) callback(payload.new as LandingStats);
+        })
+        .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
 };
