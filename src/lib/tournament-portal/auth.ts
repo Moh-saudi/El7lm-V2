@@ -49,6 +49,32 @@ export async function signOutClient() {
     await supabase.auth.signOut();
 }
 
+// ── إنشاء حساب جديد ───────────────────────────────────────
+export async function signUpClient(params: {
+    email: string;
+    password: string;
+    name: string;
+    organizationName?: string;
+    phone?: string;
+    country?: string;
+}) {
+    const supabase = createPortalClient();
+    const { data, error } = await supabase.auth.signUp({
+        email: params.email,
+        password: params.password,
+        options: {
+            data: {
+                name: params.name,
+                organization_name: params.organizationName,
+                phone: params.phone,
+                country: params.country,
+            }
+        }
+    });
+    if (error) throw new Error(error.message);
+    return data;
+}
+
 // ── جلب المستخدم الحالي ──────────────────────────────────────
 export async function getCurrentClient(): Promise<TournamentClient | null> {
     const supabase = createPortalClient();
