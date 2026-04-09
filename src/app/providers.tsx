@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { FirebaseAuthProvider } from '@/lib/firebase/auth-provider';
+import { SupabaseAuthProvider } from '@/lib/firebase/auth-provider';
 import { MantineProvider } from '@mantine/core';
 import { initializeConsoleFilter } from '@/utils/console-filter';
 
@@ -17,9 +17,9 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <MantineProvider>
-      <FirebaseAuthProvider>
+      <SupabaseAuthProvider>
         {children}
-      </FirebaseAuthProvider>
+      </SupabaseAuthProvider>
     </MantineProvider>
   );
 }

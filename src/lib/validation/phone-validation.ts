@@ -103,3 +103,45 @@ export function cleanPhoneNumber(phone: string): string {
 export function buildFullPhone(countryCode: string, localPhone: string): string {
   return `${countryCode.trim()}${cleanPhoneNumber(localPhone)}`;
 }
+
+/**
+ * Generate multiple possible variants of a phone number for broad database searching.
+ * This helps match users regardless of how their phone was originally stored 
+ * (with/without country code, with/without localized leading zero).
+ */
+export function generatePhoneVariants(phone: string): string[] {
+  if (!phone) return [];
+  
+  const cleaned = cleanPhoneNumber(phone);
+  const variants = new Set<string>([phone.trim(), cleaned, `+${cleaned}`]);
+  
+  // Handle Egypt (20)
+  if (cleaned.startsWith('20')) {
+    const local = cleaned.substring(2);
+    variants.add(local);
+    variants.add(`0${local}`);
+  } else if (phone.startsWith('01') && cleaned.length === 11) {
+    // Possibly Egyptian local
+    variants.add(`20${cleaned.substring(1)}`);
+    variants.add(cleaned.substring(1));
+  }
+  
+  // Handle Saudi Arabia (966)
+  if (cleaned.startsWith('966')) {
+    const local = cleaned.substring(3);
+    variants.add(local);
+    variants.add(`0${local}`);
+  } else if (phone.startsWith('05') && cleaned.length === 10) {
+    // Possibly Saudi local
+    variants.add(`966${cleaned.substring(1)}`);
+    variants.add(cleaned.substring(1));
+  }
+
+  // Common cleanup variants
+  if (cleaned.length > 7) {
+    variants.add(cleaned);
+    if (!cleaned.startsWith('+')) variants.add(`+${cleaned}`);
+  }
+
+  return Array.from(variants).filter(v => v.length >= 8);
+}

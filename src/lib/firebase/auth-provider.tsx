@@ -39,7 +39,7 @@ export function useAuth() {
   return context;
 }
 
-interface FirebaseAuthProviderProps {
+interface SupabaseAuthProviderProps {
   children: ReactNode;
 }
 
@@ -158,7 +158,7 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
   return null;
 }
 
-export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
+export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,7 +166,6 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
-    process.env.DISABLE_FIREBASE_DURING_BUILD === 'true' ||
     (process.env.NODE_ENV === 'production' && typeof window === 'undefined');
 
   if (isBuildTime) {
@@ -451,19 +450,27 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
   const signInWithGoogle = async (defaultRole: UserRole = 'player'): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
     try {
       setError(null);
+      
+      // Ensure we're using the correct site URL for redirect
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '';
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
-          queryParams: { prompt: 'select_account', hl: 'ar', defaultRole },
+          redirectTo: `${siteUrl}/auth/callback`,
+          queryParams: { 
+            prompt: 'select_account', 
+            hl: 'ar'
+          },
         },
       });
+      
       if (error) throw error;
-      // OAuth redirects — return placeholder; real user data arrives via onAuthStateChange after redirect
-      throw new Error('REDIRECT_IN_PROGRESS');
+      
+      // Redirect happens automatically, but we stop execution here
+      return new Promise(() => {}); 
     } catch (error: unknown) {
       const err = error as Error;
-      if (err.message === 'REDIRECT_IN_PROGRESS') throw err;
       const errorMessage = err.message || 'فشل تسجيل الدخول بواسطة Google';
       setError(errorMessage);
       throw new Error(errorMessage);
@@ -482,69 +489,15 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
   };
 
   const verifyPhoneOTP = async (
-    confirmationResult: unknown,
+    _confirmationResult: unknown,
     otp: string,
-    defaultRole: UserRole = 'player',
-    additionalData: Record<string, unknown> = {}
+    _defaultRole: UserRole = 'player',
+    _additionalData: Record<string, unknown> = {}
   ): Promise<{ user: User; userData: UserData; isNewUser: boolean }> => {
-    // Custom phone OTP is verified via unified-otp-service, not Firebase phone auth
-    // After OTP is verified, sign in with email/password using a derived account
-    const phoneNumber = (confirmationResult as { phoneNumber: string })?.phoneNumber || '';
-
-    // Check if user with this phone exists
-    const { data: usersData } = await supabase.from('users').select('*').eq('phone', phoneNumber).limit(1);
-    if (usersData?.length) {
-      const existingUser = usersData[0] as Record<string, unknown>;
-      const finalRole = (existingUser.accountType as UserRole) || defaultRole;
-      const email = String(existingUser.email || '');
-
-      if (email) {
-        const { data: authData } = await supabase.auth.signInWithPassword({ email, password: 'PhoneAuth_' + otp });
-        if (authData?.user) {
-          const userData: UserData = { ...existingUser, uid: authData.user.id, accountType: finalRole } as UserData;
-          setUser(authData.user);
-          setUserData(userData);
-          return { user: authData.user, userData, isNewUser: false };
-        }
-      }
-    }
-
-    // New user registration via phone
-    const finalRole = (additionalData.accountType as UserRole) || defaultRole;
-    const now = new Date().toISOString();
-    const tempEmail = `phone_${phoneNumber.replace(/\D/g, '')}@el7lm.local`;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: tempEmail,
-      password: 'PhoneAuth_' + otp,
-    });
-    if (signUpError) throw signUpError;
-    const authUser = signUpData.user!;
-
-    const userData: UserData = {
-      ...additionalData,
-      uid: authUser.id,
-      email: String(additionalData.email || tempEmail),
-      accountType: finalRole,
-      full_name: String(additionalData.full_name || additionalData.name || ''),
-      phone: phoneNumber,
-      profile_image: '',
-      isNewUser: true,
-      isPhoneAuth: true,
-      created_at: now,
-      createdAt: now,
-      updated_at: now,
-      updatedAt: now,
-      lastLogin: now,
-    } as UserData;
-
-    await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-    if (finalRole !== 'admin') {
-      await supabase.from(finalRole + 's').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-    }
-
-    setUser(authUser);
-    setUserData(userData);
-    return { user: authUser, userData, isNewUser: true };
+    // This is a legacy function for backward compatibility.
+    // Modern OTP verification is handled via dedicated API routes and handleVerifyOTP in components.
+    console.warn('⚠️ verifyPhoneOTP called: This is a legacy path. Use /api/auth/verify-otp-and-check instead.');
+    throw new Error('يرجى استخدام نظام التحقق الجديد');
   };
 
   // Register

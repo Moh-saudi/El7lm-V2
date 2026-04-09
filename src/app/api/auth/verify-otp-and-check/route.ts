@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 
 const SEARCH_COLLECTIONS = ['players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'users'];
 
@@ -29,8 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
-    const cleaned = cleanPhoneNumber(phoneNumber);
-    const phoneVariants = [phoneNumber, cleaned, `+${cleaned}`].filter((v, i, a) => a.indexOf(v) === i);
+    const phoneVariants = generatePhoneVariants(phoneNumber);
 
     // 2. البحث عن المستخدم في قاعدة البيانات
     let userId: string | null = null;
@@ -66,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. مستخدم موجود - إنشاء Supabase Auth session عبر temp password
+    const cleaned = cleanPhoneNumber(phoneNumber);
     const constructedEmail = userEmail || `${cleaned}@el7lm.com`;
     let supabaseUserId: string | null = cachedSupabaseUid; // uid محفوظ → لا حاجة لـ listUsers
 

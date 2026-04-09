@@ -5,27 +5,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 
 const COLLECTIONS = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'employees', 'users'];
-
-function generatePhoneVariants(phone: string): string[] {
-  const cleaned = cleanPhoneNumber(phone);
-  const variants = new Set<string>([phone, cleaned, `+${cleaned}`]);
-  if (cleaned.startsWith('20')) {
-    variants.add(cleaned.substring(2));
-    variants.add(`0${cleaned.substring(2)}`);
-  }
-  if (cleaned.startsWith('0') && cleaned.length === 11) {
-    variants.add(`20${cleaned.substring(1)}`);
-    variants.add(cleaned.substring(1));
-  }
-  if (cleaned.startsWith('966')) {
-    variants.add(cleaned.substring(3));
-    variants.add(`0${cleaned.substring(3)}`);
-  }
-  return [...variants].filter(v => v.length >= 8);
-}
 
 async function findByEmail(email: string) {
   const db = getSupabaseAdmin();

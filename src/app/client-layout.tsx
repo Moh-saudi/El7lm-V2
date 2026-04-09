@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { FirebaseAuthProvider } from '@/lib/firebase/auth-provider';
+import { SupabaseAuthProvider } from '@/lib/firebase/auth-provider';
 import { initializePerformanceOptimizations } from '@/lib/performance/console-optimizer';
 
 interface ClientLayoutProps {
@@ -13,5 +13,5 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     initializePerformanceOptimizations();
   }, []);
 
-  return <FirebaseAuthProvider>{children}</FirebaseAuthProvider>;
+  return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
