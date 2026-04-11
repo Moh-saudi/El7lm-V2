@@ -20,15 +20,15 @@ async function findByEmail(email: string) {
   for (const coll of COLLECTIONS) {
     const { data } = await db
       .from(coll)
-      .select('id, full_name, name, accountType, email')
+      .select('id, full_name, name, email')
       .eq('email', email)
       .limit(1)
-      .single();
+      .maybeSingle();
     if (data) {
       return {
         exists: true,
         userName: (data as any).full_name || (data as any).name || 'مستخدم',
-        accountType: (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
+        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
         uid: (data as any).id,
       };
     }
@@ -51,26 +51,25 @@ async function findByPhone(phone: string) {
     // نستعلم فقط عن الأعمدة الأساسية الموجودة في كل جدول لتجنب خطأ "column does not exist"
     const { data, error } = await db
       .from(coll)
-      .select('id, email, accountType')
+      .select('id, email')
       .in('phone', variants.slice(0, 10))
       .limit(1)
       .maybeSingle();
-    if (error) {
+    if (error && error.code !== '42703') {
       console.error(`[check-user] findByPhone error in ${coll}:`, error.message);
-      continue;
     }
     if (data) {
       return {
         exists: true,
         userName: 'مستخدم',
-        accountType: (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
+        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
         email: (data as any).email || '',
       };
     }
     // بحث إضافي بـ originalPhone
     const { data: data2, error: error2 } = await db
       .from(coll)
-      .select('id, email, accountType')
+      .select('id, email')
       .in('originalPhone', variants.slice(0, 10))
       .limit(1)
       .maybeSingle();
@@ -81,7 +80,7 @@ async function findByPhone(phone: string) {
       return {
         exists: true,
         userName: 'مستخدم',
-        accountType: (data2 as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
+        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
         email: (data2 as any).email || '',
       };
     }

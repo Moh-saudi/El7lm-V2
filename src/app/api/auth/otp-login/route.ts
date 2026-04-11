@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       for (const phoneVariant of phoneVariants) {
         const { data } = await db
           .from(coll)
-          .select('id, uid, full_name, name, accountType, email')
+          .select('id, uid, full_name, name, email')
           .eq('phone', phoneVariant)
           .limit(1)
           .maybeSingle();
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         if (data) {
           userId = (data as any).id;
           userName = (data as any).full_name || (data as any).name || '';
-          accountType = (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player';
+          accountType = TABLE_TO_ACCOUNT_TYPE[coll] || 'player';
           userEmail = (data as any).email || '';
           // نتأكد أن uid هو Supabase UUID وليس Firebase UID
           const rawUid = (data as any).uid;
