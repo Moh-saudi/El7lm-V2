@@ -47,6 +47,7 @@ async function findByEmail(email: string) {
 async function findByPhone(phone: string) {
   const db = getSupabaseAdmin();
   const variants = generatePhoneVariants(phone);
+  console.log(`[check-user] searching phone: ${phone} | variants: ${variants.join(', ')}`);
   for (const coll of COLLECTIONS) {
     // نستعلم فقط عن الأعمدة الأساسية الموجودة في كل جدول لتجنب خطأ "column does not exist"
     const { data, error } = await db
@@ -55,10 +56,11 @@ async function findByPhone(phone: string) {
       .in('phone', variants.slice(0, 10))
       .limit(1)
       .maybeSingle();
-    if (error && error.code !== '42703') {
-      console.error(`[check-user] findByPhone error in ${coll}:`, error.message);
+    if (error) {
+      console.error(`[check-user] ${coll} phone error: ${error.code} ${error.message}`);
     }
     if (data) {
+      console.log(`[check-user] FOUND in ${coll}`);
       return {
         exists: true,
         userName: 'مستخدم',
