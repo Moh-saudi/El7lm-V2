@@ -19,9 +19,6 @@ export function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    console.log('[supabase-admin] URL:', url ? url.substring(0, 40) : 'MISSING');
-    console.log('[supabase-admin] SERVICE_KEY:', serviceKey ? serviceKey.substring(0, 20) + '...' : 'MISSING');
-
     if (!url || !serviceKey) {
       throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
     }
