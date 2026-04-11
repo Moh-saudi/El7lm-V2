@@ -117,24 +117,30 @@ export function generatePhoneVariants(phone: string): string[] {
   
   // Handle Egypt (20)
   if (cleaned.startsWith('20')) {
-    const local = cleaned.substring(2);
+    const local = cleaned.substring(2);    // e.g. 1017799580
     variants.add(local);
-    variants.add(`0${local}`);
-  } else if (phone.startsWith('01') && cleaned.length === 11) {
-    // Possibly Egyptian local
-    variants.add(`20${cleaned.substring(1)}`);
-    variants.add(cleaned.substring(1));
+    variants.add(`0${local}`);             // 01017799580
+    variants.add(`+20${local}`);
+  } else if (phone.startsWith('01') && phone.replace(/\D/g,'').length === 11) {
+    // Egyptian local format: 01xxxxxxxxx (11 digits total)
+    const withoutLeadingZero = phone.replace(/\D/g,'').substring(1); // 1017799580
+    variants.add(withoutLeadingZero);
+    variants.add(`20${withoutLeadingZero}`);   // 201017799580
+    variants.add(`+20${withoutLeadingZero}`);  // +201017799580
   }
-  
+
   // Handle Saudi Arabia (966)
   if (cleaned.startsWith('966')) {
     const local = cleaned.substring(3);
     variants.add(local);
     variants.add(`0${local}`);
-  } else if (phone.startsWith('05') && cleaned.length === 10) {
-    // Possibly Saudi local
-    variants.add(`966${cleaned.substring(1)}`);
-    variants.add(cleaned.substring(1));
+    variants.add(`+966${local}`);
+  } else if (phone.startsWith('05') && phone.replace(/\D/g,'').length === 10) {
+    // Saudi local format: 05xxxxxxxx (10 digits total)
+    const withoutLeadingZero = phone.replace(/\D/g,'').substring(1);
+    variants.add(withoutLeadingZero);
+    variants.add(`966${withoutLeadingZero}`);
+    variants.add(`+966${withoutLeadingZero}`);
   }
 
   // Common cleanup variants
