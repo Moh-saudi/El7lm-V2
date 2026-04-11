@@ -6,10 +6,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import crypto from 'crypto';
 
 const SEARCH_COLLECTIONS = ['players', 'clubs', 'academies', 'users', 'trainers', 'agents', 'admins'];
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
+
+const TABLE_TO_ACCOUNT_TYPE: Record<string, string> = {
+  players: 'player', clubs: 'club', academies: 'academy',
+  trainers: 'trainer', agents: 'agent', marketers: 'marketer',
+  admins: 'admin', users: 'player',
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,19 +37,16 @@ export async function POST(request: NextRequest) {
 
     const db = getSupabaseAdmin();
     const cleanedPhone = cleanPhoneNumber(phoneNumber);
-    const phoneVariants = [
-      cleanedPhone,
-      `+${cleanedPhone}`,
-      phoneNumber,
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    const phoneVariants = generatePhoneVariants(phoneNumber);
 
     // 2. البحث عن المستخدم في قاعدة البيانات
     let userId: string | null = null;
     let accountType = 'player';
     let userName = '';
     let userEmail = '';
-    let cachedSupabaseUid: string | null = null; // uid محفوظ من الجلسات السابقة
+    let cachedSupabaseUid: string | null = null;
 
+    outer:
     for (const coll of SEARCH_COLLECTIONS) {
       for (const phoneVariant of phoneVariants) {
         const { data } = await db
@@ -48,45 +54,55 @@ export async function POST(request: NextRequest) {
           .select('id, uid, full_name, name, accountType, email')
           .eq('phone', phoneVariant)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (data) {
           userId = (data as any).id;
           userName = (data as any).full_name || (data as any).name || '';
-          accountType = coll === 'admins' ? 'admin' : ((data as any).accountType || coll.replace(/s$/, ''));
+          accountType = (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player';
           userEmail = (data as any).email || '';
-          cachedSupabaseUid = (data as any).uid || null;
-          break;
+          // نتأكد أن uid هو Supabase UUID وليس Firebase UID
+          const rawUid = (data as any).uid;
+          cachedSupabaseUid = isUUID(rawUid) ? rawUid : null;
+          break outer;
         }
       }
-      if (userId) break;
     }
 
     if (!userId) {
+      console.warn(`[OTP Login] Phone not found. variants tried: ${phoneVariants.join(', ')}`);
       return NextResponse.json({ success: false, error: 'رقم الهاتف غير مسجل في النظام' }, { status: 404 });
     }
 
     // 3. البحث عن مستخدم في Supabase Auth
     const constructedEmail = userEmail || `${cleanedPhone}@el7lm.com`;
-    let supabaseUserId: string | null = cachedSupabaseUid; // استخدام الـ uid المحفوظ مباشرة
+    let supabaseUserId: string | null = cachedSupabaseUid;
     let authEmail = constructedEmail;
 
     if (!supabaseUserId) {
-      // uid غير محفوظ بعد — نبحث في Auth مرة واحدة فقط
-      const { data: usersData } = await db.auth.admin.listUsers({ perPage: 2000 });
-      const allUsers = usersData?.users ?? [];
-      const foundUser = allUsers.find(u =>
-        (userEmail && u.email === userEmail) ||
-        (u.user_metadata?.firebase_uid === userId) ||
-        (u.email === constructedEmail)
-      );
-      if (foundUser) {
-        supabaseUserId = foundUser.id;
-        authEmail = foundUser.email || constructedEmail;
+      // نبحث في Auth عن طريق listUsers (محاطة بـ try-catch للأمان)
+      try {
+        const { data: usersData, error: listError } = await db.auth.admin.listUsers({ perPage: 2000 });
+        if (listError) {
+          console.warn('[OTP Login] listUsers error (non-fatal):', listError.message);
+        } else {
+          const allUsers = usersData?.users ?? [];
+          const foundUser = allUsers.find(u =>
+            (userEmail && u.email === userEmail) ||
+            (u.user_metadata?.firebase_uid === userId) ||
+            (u.email === constructedEmail)
+          );
+          if (foundUser) {
+            supabaseUserId = foundUser.id;
+            authEmail = foundUser.email || constructedEmail;
+          }
+        }
+      } catch (listErr: any) {
+        console.warn('[OTP Login] listUsers threw (non-fatal):', listErr?.message);
       }
     }
 
-    // إنشاء مستخدم جديد إذا لم يوجد في Auth نهائياً
+    // إنشاء مستخدم جديد إذا لم يوجد في Auth
     if (!supabaseUserId) {
       const { data: newAuthUser, error: createError } = await db.auth.admin.createUser({
         email: constructedEmail,
@@ -94,11 +110,26 @@ export async function POST(request: NextRequest) {
         user_metadata: { accountType, phone: phoneNumber, full_name: userName, firebase_uid: userId },
       });
       if (createError) {
-        console.error('❌ [OTP Login] createUser error:', createError.message);
-        return NextResponse.json({ success: false, error: 'فشل إنشاء حساب المصادقة: ' + createError.message }, { status: 500 });
+        // إذا كان الإيميل موجوداً بالفعل، نحاول الحصول على المستخدم عبر طريقة بديلة
+        if (createError.message?.includes('already registered') || createError.message?.includes('already been registered')) {
+          console.warn('[OTP Login] Email already exists, attempting to find via listUsers again...');
+          try {
+            const { data: usersData2 } = await db.auth.admin.listUsers({ perPage: 2000 });
+            const match = (usersData2?.users ?? []).find(u => u.email === constructedEmail || (userEmail && u.email === userEmail));
+            if (match) {
+              supabaseUserId = match.id;
+              authEmail = match.email || constructedEmail;
+            }
+          } catch { /* ignore */ }
+        }
+        if (!supabaseUserId) {
+          console.error('❌ [OTP Login] createUser error:', createError.message);
+          return NextResponse.json({ success: false, error: 'فشل إنشاء حساب المصادقة: ' + createError.message }, { status: 500 });
+        }
+      } else {
+        supabaseUserId = newAuthUser?.user?.id ?? null;
+        authEmail = constructedEmail;
       }
-      supabaseUserId = newAuthUser?.user?.id ?? null;
-      authEmail = constructedEmail;
     }
 
     if (!supabaseUserId) {
@@ -118,16 +149,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة: ' + updateError.message }, { status: 500 });
     }
 
-    // تحديث آخر تسجيل دخول
+    // ربط Supabase Auth UUID بعمود uid وتحديث آخر تسجيل دخول
     const collectionMap: Record<string, string> = {
       player: 'players', club: 'clubs', agent: 'agents',
       academy: 'academies', trainer: 'trainers', marketer: 'marketers',
     };
     const tableName = collectionMap[accountType] || 'users';
-    // ربط Supabase Auth UUID بعمود uid - ضروري لعمل سياسات RLS
     await db.from(tableName).update({ uid: supabaseUserId, lastLogin: new Date().toISOString() } as any).eq('id', userId);
 
-    console.log(`✅ [OTP Login] User ${userId} logged in as ${accountType}`);
+    console.log(`✅ [OTP Login] User ${userId} (${accountType}) logged in`);
 
     return NextResponse.json({
       success: true,
@@ -140,7 +170,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ [OTP Login] Error:', error);
+    console.error('❌ [OTP Login] Unhandled error:', error?.message || error);
     return NextResponse.json({ success: false, error: error.message || 'حدث خطأ أثناء تسجيل الدخول' }, { status: 500 });
   }
 }

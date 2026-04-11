@@ -183,17 +183,14 @@ export default function LoginPage() {
   };
 
 
-  // Auto-detect country from IP on page load
+  // Auto-detect country from IP on page load (عبر server-side route لتجنب CORS)
   useEffect(() => {
     const detectCountry = async () => {
       try {
-        console.log('🌍 Detecting country from IP...');
-        const response = await fetch('https://ipapi.co/json/');
+        const response = await fetch('/api/geo');
         const data = await response.json();
+        if (!data.country_code) return;
 
-        console.log('📍 IP Location:', data.country_name, data.country_code);
-
-        // Map ISO country code to phone code
         const countryMap: Record<string, string> = {
           'SA': '+966', 'AE': '+971', 'KW': '+965', 'QA': '+974',
           'BH': '+973', 'OM': '+968', 'EG': '+20', 'JO': '+962',
@@ -207,13 +204,8 @@ export default function LoginPage() {
         const detectedCode = countryMap[data.country_code];
         if (detectedCode) {
           setCountryCode(detectedCode);
-          console.log(`✅ Country auto-detected: ${data.country_name} (${detectedCode})`);
-          toast.success(`🌍 تم اكتشاف بلدك: ${data.country_name}`, { duration: 3000 });
-        } else {
-          console.log('⚠️ Country not supported, using default');
         }
-      } catch (error) {
-        console.error('❌ Failed to detect country:', error);
+      } catch {
         // Keep default (+20)
       }
     };

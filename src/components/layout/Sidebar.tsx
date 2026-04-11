@@ -149,14 +149,15 @@ export default function Sidebar({
           <button
             onClick={onLogout}
             className={cn(
-              'sidebar-item w-full border-none cursor-pointer',
-              collapsed ? 'justify-center' : '',
+              'w-full border-none cursor-pointer flex items-center gap-2.5 mx-2 my-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
+              'text-red-500 hover:bg-red-50 hover:text-red-600 active:scale-95',
+              collapsed ? 'justify-center mx-auto w-10 px-0' : '',
             )}
             data-tooltip={collapsed ? 'تسجيل الخروج' : undefined}
-            style={{ background: 'transparent' }}
+            style={{ width: collapsed ? 40 : 'calc(100% - 16px)' }}
           >
-            <LogOut className="item-icon" size={16} />
-            {!collapsed && <span className="item-label">تسجيل الخروج</span>}
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span>تسجيل الخروج</span>}
           </button>
 
           {/* Collapse toggle (desktop only) */}

@@ -43,6 +43,7 @@ export default function WhatsAppOTPVerification({
   const [attempts, setAttempts] = useState(0);
 
   const isInitializedRef = useRef(false);
+  const isVerifyingRef = useRef(false); // منع double-invocation
 
   useEffect(() => {
     if (isOpen && !isInitializedRef.current) {
@@ -97,7 +98,8 @@ export default function WhatsAppOTPVerification({
   };
 
   const verifyOTP = useCallback(async (otpCode: string) => {
-    if (loading) return;
+    if (loading || isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -143,6 +145,7 @@ export default function WhatsAppOTPVerification({
       document.getElementById('whatsapp-otp-0')?.focus();
     } finally {
       setLoading(false);
+      isVerifyingRef.current = false;
     }
   }, [phoneNumber, onVerificationSuccess, loading, attempts, maxAttempts, onOTPVerify]);
 

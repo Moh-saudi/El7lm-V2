@@ -194,16 +194,34 @@ const VideoSlide = memo(({
 
   // Play / pause sync
   useEffect(() => {
+    const el = videoRef.current;
     if (isActive && playing) {
-      // YouTube needs more time to initialize; direct files need less
       const timeout = isYouTube ? 25000 : 18000;
       stuckRef.current = setTimeout(() => {
         if (isLoading) { setHasError(true); setErrorType('timeout'); setIsLoading(false); }
       }, timeout);
-      videoRef.current?.play(); // catch removed;
+      if (el) {
+        const p = el.play();
+        if (p !== undefined) {
+          p.catch((err: any) => {
+            // Ignore AbortError — happens when pause() interrupts play() during scroll
+            if (err?.name !== 'AbortError') {
+              handleVideoError(err);
+            }
+          });
+        }
+      }
     } else {
       if (stuckRef.current) clearTimeout(stuckRef.current);
-      videoRef.current?.pause();
+      if (el) {
+        // Use Promise chain to avoid pause() interrupting an in-flight play()
+        const p = el.play();
+        if (p !== undefined) {
+          p.then(() => el.pause()).catch(() => { el.pause(); });
+        } else {
+          el.pause();
+        }
+      }
     }
     return () => { if (stuckRef.current) clearTimeout(stuckRef.current); };
   }, [isActive, playing, isLoading, isYouTube]);
@@ -332,6 +350,21 @@ const VideoSlide = memo(({
         </div>
       )}
 
+      {/* External link badge — always visible for non-direct videos */}
+      {!isDirect && !hasError && (
+        <div className="absolute top-16 left-3 z-40 pointer-events-none">
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+            style={{ background: 'rgba(251,191,36,0.18)', border: '1px solid rgba(251,191,36,0.45)', color: '#fbbf24' }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            رابط خارجي
+          </div>
+        </div>
+      )}
+
       {/* Error overlay */}
       {hasError && (
         <div
@@ -342,13 +375,27 @@ const VideoSlide = memo(({
             <Play className="w-7 h-7 opacity-30" />
           </div>
           <p className="font-black text-base mb-1">{errorMessages[errorType]}</p>
-          {errorType === 'timeout' && (
+
+          {/* External link notice */}
+          {!isDirect && (
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold mb-4 mt-1"
+              style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              هذا رابط خارجي — ليس خللاً في المنصة
+            </div>
+          )}
+
+          {errorType === 'timeout' && isDirect && (
             <p className="text-xs text-white/40 mb-5">قد يكون الاتصال بطيئاً</p>
           )}
           {errorType === 'format' && (
             <p className="text-xs text-white/40 mb-5">جرّب الفتح في المتصفح</p>
           )}
-          {(errorType === 'network' || errorType === 'unknown') && (
+          {(errorType === 'network' || errorType === 'unknown') && isDirect && (
             <p className="text-xs text-white/40 mb-5">قد يكون الفيديو محذوفاً أو خاصاً</p>
           )}
           <div className="flex items-center gap-3 mt-2">
@@ -583,8 +630,14 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const { user, userData } = useAuth();
   const router = useRouter();
 
+  // Fetch videos once on mount — do NOT depend on `user` to avoid re-fetching when auth loads
   useEffect(() => {
     fetchVideos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load user preferences separately when user becomes available
+  useEffect(() => {
     if (user) loadUserPreferences();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -604,7 +657,9 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const { data: playersData } = await supabase.from('players').select('*').eq('isDeleted', false);
+      const res = await fetch('/api/players/videos');
+      const json = await res.json();
+      const playersData = json.data || [];
       const all: Video[] = [];
       for (const d of (playersData || [])) {
         (d.videos || []).forEach((v: any, idx: number) => {
@@ -667,10 +722,10 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
   const [uniqueCountries, setUniqueCountries] = useState<string[]>([]);
 
   useEffect(() => {
-    supabase.from('players').select('country,nationality,primary_position,position').then(({ data }) => {
+    fetch('/api/players/videos').then(r => r.json()).then(({ data }) => {
       const countries = new Set<string>();
       const positions = new Set<string>();
-      (data || []).forEach(d => {
+      (data || []).forEach((d: any) => {
         const c = d.country || d.nationality;
         if (c && typeof c === 'string' && c.trim()) countries.add(c.trim());
         const p = d.primary_position || d.position;
@@ -678,7 +733,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
       });
       setUniqueCountries(Array.from(countries).sort());
       setUniquePositions(Array.from(positions).sort());
-    }); // catch removed;
+    }).catch(() => {});
   }, []);
 
   const filteredVideos = useMemo(() => {

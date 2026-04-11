@@ -143,7 +143,8 @@ body,
   --sidebar-transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   --main-transition: margin-inline-start 220ms cubic-bezier(0.4, 0, 0.2, 1);
   --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-bg-hover: color-mix(in srgb, var(--accent-current, #3b82f6) 12%, transparent);
+  --sidebar-text-hover: var(--accent-current, #3b82f6);
   --sidebar-bg-active: var(--accent-current, #3b82f6);
   --sidebar-text: #4b5563;
   --sidebar-text-strong: #111827;
@@ -186,7 +187,8 @@ body,
 .dark {
   --sidebar-bg: #0f172a;
   --sidebar-text-strong: #f1f5f9;
-  --sidebar-bg-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-bg-hover: color-mix(in srgb, var(--accent-current, #3b82f6) 15%, transparent);
+  --sidebar-text-hover: var(--accent-current, #3b82f6);
   --sidebar-text: #94a3b8;
   --sidebar-text-muted: #475569;
   --sidebar-border: rgba(255, 255, 255, 0.07);
@@ -355,7 +357,7 @@ body,
 
 .sidebar-item:hover {
   background-color: var(--sidebar-bg-hover);
-  color: var(--sidebar-text-active);
+  color: var(--sidebar-text-hover, var(--accent-current, #3b82f6));
 }
 
 .sidebar-item.active {
@@ -1289,13 +1291,13 @@ body,
    ============================================== */
 
 ::selection {
-  background-color: var(--primary);
-  color: white;
+  background-color: #22c55e;
+  color: #fff;
 }
 
 ::-moz-selection {
-  background-color: var(--primary);
-  color: white;
+  background-color: #22c55e;
+  color: #fff;
 }
 
 /* ==============================================

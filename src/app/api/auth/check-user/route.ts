@@ -9,6 +9,12 @@ import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-
 
 const COLLECTIONS = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'employees', 'users'];
 
+const TABLE_TO_ACCOUNT_TYPE: Record<string, string> = {
+  players: 'player', clubs: 'club', academies: 'academy',
+  trainers: 'trainer', agents: 'agent', marketers: 'marketer',
+  admins: 'admin', employees: 'admin', users: 'player',
+};
+
 async function findByEmail(email: string) {
   const db = getSupabaseAdmin();
   for (const coll of COLLECTIONS) {
@@ -22,7 +28,7 @@ async function findByEmail(email: string) {
       return {
         exists: true,
         userName: (data as any).full_name || (data as any).name || 'مستخدم',
-        accountType: (data as any).accountType || coll.replace(/s$/, ''),
+        accountType: (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
         uid: (data as any).id,
       };
     }
@@ -42,18 +48,41 @@ async function findByPhone(phone: string) {
   const db = getSupabaseAdmin();
   const variants = generatePhoneVariants(phone);
   for (const coll of COLLECTIONS) {
-    const { data } = await db
+    // نستعلم فقط عن الأعمدة الأساسية الموجودة في كل جدول لتجنب خطأ "column does not exist"
+    const { data, error } = await db
       .from(coll)
-      .select('id, full_name, name, accountType, email')
+      .select('id, email, accountType')
       .in('phone', variants.slice(0, 10))
       .limit(1)
-      .single();
+      .maybeSingle();
+    if (error) {
+      console.error(`[check-user] findByPhone error in ${coll}:`, error.message);
+      continue;
+    }
     if (data) {
       return {
         exists: true,
-        userName: (data as any).full_name || (data as any).name || 'مستخدم',
-        accountType: (data as any).accountType || coll.replace(/s$/, ''),
+        userName: 'مستخدم',
+        accountType: (data as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
         email: (data as any).email || '',
+      };
+    }
+    // بحث إضافي بـ originalPhone
+    const { data: data2, error: error2 } = await db
+      .from(coll)
+      .select('id, email, accountType')
+      .in('originalPhone', variants.slice(0, 10))
+      .limit(1)
+      .maybeSingle();
+    if (error2 && error2.code !== '42703') {
+      console.error(`[check-user] originalPhone error in ${coll}:`, error2.message);
+    }
+    if (data2) {
+      return {
+        exists: true,
+        userName: 'مستخدم',
+        accountType: (data2 as any).accountType || TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
+        email: (data2 as any).email || '',
       };
     }
   }

@@ -160,11 +160,12 @@ export function getAccountMenuGroups(
         title: 'إدارة الفريق',
         icon: Users,
         items: [
-          { id: 'players',           label: 'إدارة اللاعبين',         icon: Users,        href: '/dashboard/club/players' },
-          { id: 'player-evaluation', label: 'تقييم اللاعبين',          icon: BarChart3,    href: '/dashboard/club/player-evaluation' },
-          { id: 'contracts',         label: 'العقود',                   icon: FileText,     href: '/dashboard/club/contracts' },
+          { id: 'players',           label: 'إدارة اللاعبين',         icon: Users,         href: '/dashboard/club/players' },
+          { id: 'player-evaluation', label: 'تقييم اللاعبين',          icon: BarChart3,     href: '/dashboard/club/player-evaluation' },
+          { id: 'contracts',         label: 'العقود',                   icon: FileText,      href: '/dashboard/club/contracts' },
           { id: 'negotiations',      label: 'المفاوضات',                icon: MessageSquare, href: '/dashboard/club/negotiations' },
-          { id: 'player-videos',     label: 'فيديوهات اللاعبين',        icon: Video,        href: '/dashboard/club/player-videos' },
+          { id: 'player-videos',     label: 'فيديوهات اللاعبين',        icon: Video,         href: '/dashboard/club/player-videos' },
+          { id: 'opportunities',     label: 'الفرص والخدمات',            icon: Target,        href: '/dashboard/opportunities' },
         ],
       },
       {
@@ -228,8 +229,9 @@ export function getAccountMenuGroups(
         title: 'إدارة الأكاديمية',
         icon: Users,
         items: [
-          { id: 'players',       label: 'إدارة اللاعبين',      icon: Users, href: '/dashboard/academy/players' },
-          { id: 'player-videos', label: 'فيديوهات اللاعبين',   icon: Video, href: '/dashboard/academy/player-videos' },
+          { id: 'players',       label: 'إدارة اللاعبين',      icon: Users,   href: '/dashboard/academy/players' },
+          { id: 'player-videos', label: 'فيديوهات اللاعبين',   icon: Video,   href: '/dashboard/academy/player-videos' },
+          { id: 'opportunities', label: 'الفرص والخدمات',       icon: Target,  href: '/dashboard/opportunities' },
         ],
       },
       {
@@ -286,8 +288,9 @@ export function getAccountMenuGroups(
         title: `إدارة ${typeLabel}`,
         icon: Users,
         items: [
-          { id: 'players',       label: 'إدارة اللاعبين',    icon: Users, href: `/dashboard/${accountType}/players` },
-          { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video, href: `/dashboard/${accountType}/player-videos` },
+          { id: 'players',       label: 'إدارة اللاعبين',    icon: Users,   href: `/dashboard/${accountType}/players` },
+          { id: 'player-videos', label: 'فيديوهات اللاعبين', icon: Video,   href: `/dashboard/${accountType}/player-videos` },
+          { id: 'opportunities', label: 'الفرص والخدمات',     icon: Target,  href: '/dashboard/opportunities' },
         ],
       },
       {
