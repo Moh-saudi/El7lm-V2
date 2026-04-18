@@ -434,8 +434,18 @@ export default function PlayerDashboard() {
                   <Link
                     key={opp.id}
                     href={`/dashboard/opportunities/${opp.id}`}
-                    className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow"
+                    className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                   >
+                    {opp.coverImage ? (
+                      <div className="h-36 overflow-hidden bg-gray-100">
+                        <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
+                      </div>
+                    ) : opp.promoVideo ? (
+                      <div className="h-36 overflow-hidden bg-black">
+                        <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                      </div>
+                    ) : null}
+                    <div className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white"
@@ -448,6 +458,7 @@ export default function PlayerDashboard() {
                     <p className="text-xs text-gray-500 flex items-center gap-1">
                       <MapPin className="w-3 h-3" /> {opp.organizerName}
                     </p>
+                    </div>
                   </Link>
                 );
               })}
@@ -480,8 +491,18 @@ export default function PlayerDashboard() {
                     <Link
                       key={opp.id}
                       href={`/dashboard/opportunities/${opp.id}`}
-                      className="bg-white rounded-xl border border-green-100 shadow-sm p-4 hover:shadow-md transition-shadow relative"
+                      className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative"
                     >
+                      {opp.coverImage ? (
+                        <div className="h-36 overflow-hidden bg-gray-100">
+                          <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
+                        </div>
+                      ) : opp.promoVideo ? (
+                        <div className="h-36 overflow-hidden bg-black">
+                          <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                        </div>
+                      ) : null}
+                      <div className="p-4">
                       <span className="absolute top-2 left-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
                         مناسب لك
                       </span>
@@ -497,6 +518,7 @@ export default function PlayerDashboard() {
                       <p className="text-xs text-gray-500 flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {opp.organizerName}
                       </p>
+                      </div>
                     </Link>
                   );
                 })}

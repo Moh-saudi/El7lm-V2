@@ -368,7 +368,9 @@ export default function ForgotPasswordPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full text-xs text-slate-600 font-medium" dir="ltr">
                 <span>{fullPhone}</span>
                 <button type="button" onClick={() => { setWaStep('phone'); setOtp(['', '', '', '', '', '']); }}
-                  className="text-slate-400 hover:text-slate-700 transition-colors leading-none">✕</button>
+                  className="text-slate-400 hover:text-slate-700 transition-colors leading-none"
+                  aria-label="تغيير الرقم"
+                  title="تغيير الرقم">✕</button>
               </div>
             </div>
             <div className="flex justify-center gap-2 sm:gap-2.5" dir="ltr">
@@ -414,7 +416,9 @@ export default function ForgotPasswordPage() {
                 className="w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 pl-10 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               />
               <button type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                aria-label={showPass ? 'إخفاء كلمة المرور الجديدة' : 'إظهار كلمة المرور الجديدة'}
+                title={showPass ? 'إخفاء كلمة المرور الجديدة' : 'إظهار كلمة المرور الجديدة'}>
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -428,7 +432,9 @@ export default function ForgotPasswordPage() {
                 }`}
               />
               <button type="button" onClick={() => setShowConfirm(v => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                aria-label={showConfirm ? 'إخفاء تأكيد كلمة المرور' : 'إظهار تأكيد كلمة المرور'}
+                title={showConfirm ? 'إخفاء تأكيد كلمة المرور' : 'إظهار تأكيد كلمة المرور'}>
                 {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>

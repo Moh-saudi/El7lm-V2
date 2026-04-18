@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime     = 'nodejs';
@@ -35,6 +35,13 @@ const s3 = new S3Client({
 
 const BUCKET     = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
 const PUBLIC_URL = (process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com').replace(/\/$/, '');
+const PUBLIC_ORIGIN = (() => {
+    try {
+        return new URL(PUBLIC_URL).origin;
+    } catch {
+        return PUBLIC_URL;
+    }
+})();
 
 // ─── URL helpers ─────────────────────────────────────────────
 const resolveUrl = (val: unknown): string => {
@@ -45,6 +52,7 @@ const resolveUrl = (val: unknown): string => {
     }
     const s = String(val).trim();
     if (!s || s === 'null' || s === 'undefined') return '';
+    if (s.startsWith('data:') || s.startsWith('blob:')) return s;
 
     // Supabase Storage → Cloudflare R2
     // مثال: https://xxx.supabase.co/storage/v1/object/public/avatars/userId.jpg
@@ -60,6 +68,16 @@ const resolveUrl = (val: unknown): string => {
 
     // مسار نسبي → R2
     return `${PUBLIC_URL}/${s.replace(/^\//, '')}`;
+};
+
+const extractAssetKey = (url: string): string | null => {
+    try {
+        const parsed = new URL(url);
+        if (parsed.origin !== PUBLIC_ORIGIN) return null;
+        return decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
+    } catch {
+        return null;
+    }
 };
 
 function extractArr(raw: unknown): any[] {
@@ -129,6 +147,31 @@ async function listAll(prefix: string, maxItems = 2000) {
 export async function GET(_req: NextRequest) {
     try {
         const db = getSupabaseAdmin();
+        const assetExistsCache = new Map<string, boolean>();
+
+        const assetExists = async (url: string): Promise<boolean> => {
+            if (!url) return false;
+            if (url.startsWith('data:') || url.startsWith('blob:')) return true;
+
+            const key = extractAssetKey(url);
+            if (!key) return true;
+
+            if (assetExistsCache.has(key)) {
+                return assetExistsCache.get(key)!;
+            }
+
+            try {
+                await s3.send(new HeadObjectCommand({
+                    Bucket: BUCKET,
+                    Key: key,
+                }));
+                assetExistsCache.set(key, true);
+                return true;
+            } catch {
+                assetExistsCache.set(key, false);
+                return false;
+            }
+        };
 
         // ══════════════════════════════════════════
         // 1. قائمة فيديوهات R2
@@ -241,10 +284,11 @@ export async function GET(_req: NextRequest) {
 
             // ── فيديوهات خارجية (YouTube / TikTok / Vimeo) ──
             const vids = extractArr(player.videos);
-            vids.forEach((v: any, i: number) => {
+            for (let i = 0; i < vids.length; i++) {
+                const v = vids[i];
                 const raw = typeof v === 'string' ? { url: v } : v;
                 const url = resolveUrl(raw?.url);
-                if (!url || !isExternal(url)) return;
+                if (!url || !isExternal(url)) continue;
 
                 // معرّف ثابت مبني على URL (لا يتغير لو أضاف اللاعب فيديو جديد)
                 const urlHash = shortHash(url);
@@ -273,14 +317,15 @@ export async function GET(_req: NextRequest) {
                     category:    isExternal(url) ? 'خارجي' : 'عام',
                     fileSize:    undefined,
                 });
-            });
+            }
 
             // ── صور ──
             const imgs = extractArr(player.images);
-            imgs.forEach((img: any, i: number) => {
+            for (let i = 0; i < imgs.length; i++) {
+                const img = imgs[i];
                 const raw = typeof img === 'string' ? { url: img } : img;
                 const url = resolveUrl(raw?.url);
-                if (!url) return;
+                if (!url) continue;
 
                 const urlHash = shortHash(url);
                 const r2Key = `ext/${player.supabaseId}/image/${urlHash}`;
@@ -308,7 +353,7 @@ export async function GET(_req: NextRequest) {
                     category:    'صورة',
                     fileSize:    undefined,
                 });
-            });
+            }
         }
 
         // ══════════════════════════════════════════
@@ -341,11 +386,37 @@ export async function GET(_req: NextRequest) {
             };
         });
 
-        final.sort((a: any, b: any) =>
+        const needsAssetCheck = (url?: string) =>
+            !!url && !url.startsWith('data:') && !url.startsWith('blob:') && extractAssetKey(url) !== null;
+
+        const urlsToCheck = Array.from(new Set(
+            final.flatMap((item: any) => {
+                const urls: string[] = [];
+                if (item.type === 'image' && needsAssetCheck(item.url)) urls.push(item.url);
+                if (needsAssetCheck(item.userImage)) urls.push(item.userImage);
+                return urls;
+            })
+        ));
+
+        const existingEntries = await Promise.all(
+            urlsToCheck.map(async url => [url, await assetExists(url)] as const)
+        );
+        const existingMap = new Map(existingEntries);
+
+        const cleaned = final
+            .filter((item: any) => item.type !== 'image' || !needsAssetCheck(item.url) || existingMap.get(item.url) !== false)
+            .map((item: any) => ({
+                ...item,
+                userImage: needsAssetCheck(item.userImage) && existingMap.get(item.userImage) === false
+                    ? ''
+                    : item.userImage,
+            }));
+
+        cleaned.sort((a: any, b: any) =>
             new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
         );
 
-        return NextResponse.json({ success: true, items: final, total: final.length });
+        return NextResponse.json({ success: true, items: cleaned, total: cleaned.length });
 
     } catch (e: any) {
         console.error('[list-r2]', e);

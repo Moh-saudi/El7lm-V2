@@ -63,6 +63,8 @@ export const ShareTournamentModal: React.FC<ShareTournamentModalProps> = ({
                         size="icon"
                         onClick={onClose}
                         className="absolute left-3 top-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors z-20"
+                        aria-label="إغلاق نافذة مشاركة البطولة"
+                        title="إغلاق"
                     >
                         <X className="h-5 w-5" />
                     </Button>
@@ -120,6 +122,8 @@ export const ShareTournamentModal: React.FC<ShareTournamentModalProps> = ({
                                         variant="ghost"
                                         onClick={() => copyToClipboard(publicUrl, true)}
                                         className={copiedPublic ? "text-green-600 bg-green-50" : "text-gray-500 hover:text-blue-600 hover:bg-blue-50"}
+                                        aria-label={copiedPublic ? "تم نسخ رابط صفحة البطولة" : "نسخ رابط صفحة البطولة"}
+                                        title={copiedPublic ? "تم النسخ" : "نسخ الرابط"}
                                     >
                                         {copiedPublic ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                     </Button>
@@ -146,6 +150,8 @@ export const ShareTournamentModal: React.FC<ShareTournamentModalProps> = ({
                                         variant="ghost"
                                         onClick={() => copyToClipboard(registrationUrl, false)}
                                         className={copiedReg ? "text-green-600 bg-green-50" : "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"}
+                                        aria-label={copiedReg ? "تم نسخ رابط التسجيل المباشر" : "نسخ رابط التسجيل المباشر"}
+                                        title={copiedReg ? "تم النسخ" : "نسخ الرابط"}
                                     >
                                         {copiedReg ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                     </Button>

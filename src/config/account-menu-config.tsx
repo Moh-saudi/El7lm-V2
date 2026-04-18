@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Play,
   Search,
+  ShoppingBag,
   Target,
   TrendingUp,
   Trophy,
@@ -106,6 +107,7 @@ export function getAccountMenuGroups(
           { id: 'stats',      label: 'إحصائياتي',           icon: BarChart3,   href: '/dashboard/player/stats' },
           { id: 'reports',    label: 'تقارير الكشافين',     icon: FileText,    href: '/dashboard/player/reports' },
           { id: 'referrals',  label: 'سفراء الحلم',         icon: UserPlus,    href: '/dashboard/player/referrals' },
+          { id: 'store',      label: '\u0627\u0644\u0645\u062a\u062c\u0631', icon: ShoppingBag, href: '/dashboard/player/store' },
           { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/player/notifications' },
         ],
       },
@@ -152,6 +154,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',       icon: Home,     href: '/dashboard/club' },
           { id: 'profile',   label: 'الملف الشخصي',   icon: Building, href: '/dashboard/club/profile' },
+          { id: 'store',     label: '\u0627\u0644\u0645\u062a\u062c\u0631', icon: ShoppingBag, href: '/dashboard/club/store' },
           { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/club/notifications' },
         ],
       },
@@ -221,6 +224,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',       icon: Home,         href: '/dashboard/academy' },
           { id: 'profile',   label: 'الملف الشخصي',   icon: GraduationCap, href: '/dashboard/academy/profile' },
+          { id: 'store',     label: '\u0627\u0644\u0645\u062a\u062c\u0631', icon: ShoppingBag,     href: '/dashboard/academy/store' },
           { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/academy/notifications' },
         ],
       },
@@ -280,6 +284,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',      icon: Home,     href: `/dashboard/${accountType}` },
           { id: 'profile',   label: 'الملف الشخصي',  icon: typeIcon, href: `/dashboard/${accountType}/profile` },
+          { id: 'store',     label: '\u0627\u0644\u0645\u062a\u062c\u0631', icon: ShoppingBag, href: `/dashboard/${accountType}/store` },
           { id: 'notifications', label: 'الإشعارات', icon: Bell, href: `/dashboard/${accountType}/notifications` },
         ],
       },
@@ -336,6 +341,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'dashboard', label: 'الرئيسية',      icon: Home,     href: '/dashboard/marketer' },
           { id: 'profile',   label: 'الملف الشخصي',  icon: Briefcase, href: '/dashboard/marketer/profile' },
+          { id: 'store',     label: '\u0627\u0644\u0645\u062a\u062c\u0631', icon: ShoppingBag, href: '/dashboard/marketer/store' },
           { id: 'notifications', label: 'الإشعارات', icon: Bell, href: '/dashboard/marketer/notifications' },
         ],
       },

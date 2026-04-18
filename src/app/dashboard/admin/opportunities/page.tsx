@@ -797,6 +797,15 @@ export default function AdminOpportunitiesPage() {
                         <td className="py-4 px-5">
                           <div className="flex items-start gap-2">
                             {opp.isFeatured && <Star className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" />}
+                            {opp.coverImage ? (
+                              <div className="h-12 w-12 overflow-hidden rounded-lg border border-slate-100 bg-slate-100 flex-shrink-0">
+                                <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
+                              </div>
+                            ) : opp.promoVideo ? (
+                              <div className="h-12 w-12 overflow-hidden rounded-lg border border-slate-100 bg-black flex-shrink-0">
+                                <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                              </div>
+                            ) : null}
                             <div>
                               <p className="font-semibold text-slate-900 max-w-[220px] leading-snug line-clamp-2">{opp.title}</p>
                               {opp.city && (

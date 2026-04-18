@@ -29,6 +29,7 @@ import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 import { supabase } from '@/lib/supabase/config';
 import { InvoiceService } from '@/lib/payments/invoice-service';
 import { storageManager } from '@/lib/storage';
+import { isSkipCashAvailable, skipCashUnavailableMessage } from '@/lib/skipcash/config';
 
 // Extend Window interface
 declare global {
@@ -74,7 +75,6 @@ const DEFAULT_PAYMENT_METHODS = {
     { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'دفع آمن ومضمون', discount: 0, popular: false }
   ],
   QA: [
-    { id: 'skipcash', name: 'SkipCash (بطاقة بنكية)', icon: '💳', description: 'Visa, MasterCard, Apple Pay (Qatar)', discount: 0, popular: true },
     { id: 'fawran', name: 'خدمة فورا (Fawran)', icon: '⚡', description: 'تحويل فوري برقم الجوال', discount: 0, popular: true, details: '70900058' },
     { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'تحويل مباشر للحساب', discount: 0, popular: false }
   ],
@@ -402,7 +402,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               ...baseMethod,
               enabled: true
             };
-          }).filter((m: any) => m.enabled === true);
+          }).filter((m: any) => m.enabled === true)
+            .filter((m: any) => m.id !== 'skipcash' || isSkipCashAvailable);
 
           // If the resulting list is valid, use it
           if (syncedMethods.length > 0) {
@@ -415,14 +416,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               setSelectedPaymentMethod(hasDefault ? hasDefault.id : syncedMethods[0].id);
             }
           } else {
-            setPaymentMethods(baseMethods);
+            setPaymentMethods(baseMethods.filter((m: any) => m.id !== 'skipcash' || isSkipCashAvailable));
           }
         } else {
-          setPaymentMethods(baseMethods);
+          setPaymentMethods(baseMethods.filter((m: any) => m.id !== 'skipcash' || isSkipCashAvailable));
         }
       } catch (error) {
         console.error('Error fetching payment settings:', error);
-        setPaymentMethods(baseMethods);
+        setPaymentMethods(baseMethods.filter((m: any) => m.id !== 'skipcash' || isSkipCashAvailable));
       }
     };
 
@@ -1054,7 +1055,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                         )}
                       </div>
                     )
-                  })}
+                })}
+                {!isSkipCashAvailable && (
+                  <p className="mt-3 text-xs text-amber-700">{skipCashUnavailableMessage}</p>
+                )}
               </div>
             </section>
 

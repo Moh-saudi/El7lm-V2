@@ -165,13 +165,14 @@ export default function UnifiedMediaModal({
                 variant="secondary"
                 className="bg-black/50 text-white hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-full w-8 h-8"
                 onClick={rotateMedia}
+                aria-label="تدوير الوسائط 90 درجة"
                 title="تدوير 90 درجة"
               >
                 <RotateCw className="w-4 h-4" />
               </Button>
 
               {/* Mobile Close Button */}
-              <Button size="icon" variant="ghost" className="lg:hidden text-white hover:bg-white/20 rounded-full w-8 h-8" onClick={onClose}>
+              <Button size="icon" variant="ghost" className="lg:hidden text-white hover:bg-white/20 rounded-full w-8 h-8" onClick={onClose} aria-label="إغلاق النافذة" title="إغلاق">
                 <XCircle className="w-6 h-6" />
               </Button>
             </div>
@@ -248,7 +249,7 @@ export default function UnifiedMediaModal({
             </div>
 
             {/* Desktop Close */}
-            <Button size="icon" variant="ghost" className="hidden lg:flex text-zinc-500 hover:text-red-500 hover:bg-red-50" onClick={onClose}>
+            <Button size="icon" variant="ghost" className="hidden lg:flex text-zinc-500 hover:text-red-500 hover:bg-red-50" onClick={onClose} aria-label="إغلاق النافذة" title="إغلاق">
               <XCircle className="w-6 h-6" />
             </Button>
           </div>

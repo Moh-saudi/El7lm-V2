@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ArrowRight, ArrowLeft, CheckCircle, Loader2, Calendar, AlertCircle, Search, X,
+  ArrowRight, ArrowLeft, CheckCircle, Loader2, Calendar, AlertCircle, Search, X, ImagePlus,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { createOpportunity } from '@/lib/firebase/opportunities';
@@ -13,6 +13,7 @@ import { broadcastOpportunityWhatsApp } from '@/lib/notifications/broadcast-disp
 import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/config';
 import { OpportunityType } from '@/types/opportunities';
 import { supabase } from '@/lib/supabase/config';
+import { storageManager } from '@/lib/storage';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ type FormData = {
   opportunityType: OpportunityType | '';
   title: string;
   description: string;
+  coverImage: string;
   startDate: string;
   endDate: string;
   applicationDeadline: string;
@@ -54,6 +56,7 @@ type FormData = {
 
 const INITIAL_FORM: FormData = {
   opportunityType: '', title: '', description: '',
+  coverImage: '',
   startDate: '', endDate: '', applicationDeadline: '',
   location: '', city: '', country: '',
   maxApplicants: '', targetPositions: [],
@@ -287,6 +290,7 @@ export default function AdminCreateOpportunityPage() {
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
 
   const handleOrganizerSelect = (org: OrganizerInfo | null) => {
     setSelectedOrganizer(org);
@@ -312,6 +316,36 @@ export default function AdminCreateOpportunityPage() {
     const diff = Math.ceil((toDate(form.endDate).getTime() - toDate(form.startDate).getTime()) / 86400000);
     return diff > 0 ? diff : 0;
   })();
+
+  const uploadOpportunityImage = async (file: File) => {
+    const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const result = await storageManager.upload('content', `opportunities/${safeName}`, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+    if (!result?.publicUrl) {
+      throw new Error('لم يتم إرجاع رابط الصورة بعد الرفع.');
+    }
+
+    return result.publicUrl;
+  };
+
+  const handleCoverImageUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+
+    try {
+      setUploadingCoverImage(true);
+      const imageUrl = await uploadOpportunityImage(file);
+      set('coverImage', imageUrl);
+      toast.success('تم رفع صورة الفرصة بنجاح.');
+    } catch (error) {
+      console.error('Error uploading opportunity image:', error);
+      toast.error('تعذر رفع صورة الفرصة.');
+    } finally {
+      setUploadingCoverImage(false);
+    }
+  };
 
   const goNext = () => {
     if (step === 1) { setStep(2); return; }
@@ -346,6 +380,7 @@ export default function AdminCreateOpportunityPage() {
         opportunityType: form.opportunityType as OpportunityType,
         title: form.title.trim(),
         description: form.description.trim(),
+        coverImage: form.coverImage.trim() || undefined,
         startDate: form.startDate,
         endDate: form.endDate,
         durationDays,
@@ -492,6 +527,59 @@ export default function AdminCreateOpportunityPage() {
                   <span className={`text-xs mr-auto ${form.description.length < 30 ? 'text-red-400' : 'text-gray-400'}`}>
                     {form.description.length}/1000
                   </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-2 block">صورة الفرصة <span className="text-gray-400">(اختياري)</span></label>
+                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-3">
+                  {form.coverImage ? (
+                    <div className="space-y-3">
+                      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                        <img src={form.coverImage} alt="صورة الفرصة" className="h-48 w-full object-cover" />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
+                          <ImagePlus className="h-4 w-4" />
+                          {uploadingCoverImage ? 'جاري الرفع...' : 'تغيير الصورة'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploadingCoverImage}
+                            onChange={(e) => handleCoverImageUpload(e.target.files?.[0])}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => set('coverImage', '')}
+                          className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          إزالة الصورة
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-indigo-500 shadow-sm">
+                        <ImagePlus className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700">أضف صورة توضيحية للفرصة</p>
+                        <p className="mt-1 text-xs text-gray-500">ستظهر في بطاقات الفرص والصفحات المرتبطة عند توفرها.</p>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
+                        <ImagePlus className="h-4 w-4" />
+                        {uploadingCoverImage ? 'جاري الرفع...' : 'رفع صورة'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingCoverImage}
+                          onChange={(e) => handleCoverImageUpload(e.target.files?.[0])}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

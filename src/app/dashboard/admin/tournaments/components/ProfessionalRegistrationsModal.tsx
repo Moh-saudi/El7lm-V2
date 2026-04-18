@@ -170,7 +170,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                             <Download className="h-4 w-4 mr-2" />
                             Excel
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={onClose} aria-label="إغلاق نافذة التسجيلات" title="إغلاق"><X className="h-5 w-5" /></Button>
                     </div>
                 </div>
 
@@ -275,6 +275,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-8 w-8 text-green-600 hover:bg-green-50 hover:text-green-700 rounded-full"
+                                                            aria-label="قبول التسجيل"
                                                             onClick={() => handleStatusUpdate(reg.id, 'approved')}
                                                             title="قبول التسجيل"
                                                         >
@@ -284,6 +285,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-full"
+                                                            aria-label="رفض التسجيل"
                                                             onClick={() => handleStatusUpdate(reg.id, 'rejected')}
                                                             title="رفض التسجيل"
                                                         >

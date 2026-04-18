@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ArrowRight, ArrowLeft, CheckCircle, Loader2, Calendar, AlertCircle,
+  ArrowRight, ArrowLeft, CheckCircle, Loader2, Calendar, AlertCircle, ImagePlus, Video,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { createOpportunity, updateOpportunity, getOpportunityById } from '@/lib/firebase/opportunities';
@@ -12,6 +12,7 @@ import { broadcastNewOpportunity } from '@/lib/opportunities/notifications';
 import { broadcastOpportunityWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
 import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/config';
 import { OpportunityType } from '@/types/opportunities';
+import { storageManager } from '@/lib/storage';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,8 @@ type FormData = {
   opportunityType: OpportunityType | '';
   title: string;
   description: string;
+  coverImage: string;
+  promoVideo: string;
   startDate: string;
   endDate: string;
   applicationDeadline: string;
@@ -43,6 +46,7 @@ type FormData = {
 
 const INITIAL_FORM: FormData = {
   opportunityType: '', title: '', description: '',
+  coverImage: '', promoVideo: '',
   startDate: '', endDate: '', applicationDeadline: '',
   location: '', city: '', country: '',
   maxApplicants: '', targetPositions: [],
@@ -220,6 +224,8 @@ export default function CreateOpportunityPage() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(!!editId);
+  const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
+  const [uploadingPromoVideo, setUploadingPromoVideo] = useState(false);
 
   useEffect(() => {
     if (!editId) return;
@@ -230,6 +236,8 @@ export default function CreateOpportunityPage() {
           setForm({
             opportunityType: opp.opportunityType,
             title: opp.title, description: opp.description,
+            coverImage: opp.coverImage || '',
+            promoVideo: opp.promoVideo || '',
             startDate: opp.startDate, endDate: opp.endDate,
             applicationDeadline: opp.applicationDeadline,
             location: opp.location || '', city: opp.city || '', country: opp.country || '',
@@ -276,6 +284,54 @@ export default function CreateOpportunityPage() {
     return diff > 0 ? diff : 0;
   })();
 
+  const uploadOpportunityAsset = async (
+    file: File,
+    bucket: 'content' | 'videos',
+    folder: string,
+  ) => {
+    const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const result = await storageManager.upload(bucket, `${folder}/${safeName}`, file, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+    if (!result?.publicUrl) {
+      throw new Error('لم يتم إرجاع رابط عام بعد الرفع.');
+    }
+
+    return result.publicUrl;
+  };
+
+  const handleCoverImageUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+    try {
+      setUploadingCoverImage(true);
+      const imageUrl = await uploadOpportunityAsset(file, 'content', 'opportunities');
+      set('coverImage', imageUrl);
+      toast.success('تم رفع صورة الفرصة بنجاح');
+    } catch (error) {
+      console.error('Error uploading opportunity image:', error);
+      toast.error('تعذر رفع صورة الفرصة');
+    } finally {
+      setUploadingCoverImage(false);
+    }
+  };
+
+  const handlePromoVideoUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+    try {
+      setUploadingPromoVideo(true);
+      const videoUrl = await uploadOpportunityAsset(file, 'videos', 'opportunities');
+      set('promoVideo', videoUrl);
+      toast.success('تم رفع فيديو الفرصة بنجاح');
+    } catch (error) {
+      console.error('Error uploading opportunity video:', error);
+      toast.error('تعذر رفع فيديو الفرصة');
+    } finally {
+      setUploadingPromoVideo(false);
+    }
+  };
+
   const goNext = () => {
     if (step === 1) {
       if (!form.opportunityType) {
@@ -316,6 +372,8 @@ export default function CreateOpportunityPage() {
         opportunityType: form.opportunityType as OpportunityType,
         title: form.title.trim(),
         description: form.description.trim(),
+        coverImage: form.coverImage.trim() || undefined,
+        promoVideo: form.promoVideo.trim() || undefined,
         startDate: form.startDate,
         endDate: form.endDate,
         durationDays,
@@ -490,6 +548,129 @@ export default function CreateOpportunityPage() {
                   <span className={`text-xs mr-auto ${form.description.length < 30 ? 'text-red-400' : 'text-gray-400'}`}>
                     {form.description.length}/1000 {form.description.length < 30 && `(${30 - form.description.length} حرف إضافي)`}
                   </span>
+                </div>
+              </div>
+
+              {/* Media */}
+              <div className="grid grid-cols-1 gap-4">
+                <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">صورة الفرصة أو الخدمة</p>
+                      <p className="text-xs text-gray-500">اختيارية، وتظهر في بطاقات العرض وتفاصيل الفرصة</p>
+                    </div>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-green-700 shadow-sm ring-1 ring-gray-200 transition hover:bg-green-50">
+                      {uploadingCoverImage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      {form.coverImage ? 'تغيير الصورة' : 'رفع صورة'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async e => {
+                          const input = e.currentTarget;
+                          const file = input.files?.[0];
+                          await handleCoverImageUpload(file);
+                          input.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {form.coverImage ? (
+                    <div className="space-y-3">
+                      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                        <img
+                          src={form.coverImage}
+                          alt="صورة الفرصة"
+                          className="h-52 w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => set('coverImage', '')}
+                          className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          حذف الصورة
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-4 py-8 text-center text-sm text-gray-500">
+                      لا توجد صورة مرفوعة حاليًا
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">فيديو الفرصة أو الخدمة</p>
+                      <p className="text-xs text-gray-500">يمكن رفع فيديو قصير أو وضع رابط مباشر له</p>
+                    </div>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-green-700 shadow-sm ring-1 ring-gray-200 transition hover:bg-green-50">
+                      {uploadingPromoVideo ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Video className="h-4 w-4" />
+                      )}
+                      {form.promoVideo ? 'تغيير الفيديو' : 'رفع فيديو'}
+                      <input
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={async e => {
+                          const input = e.currentTarget;
+                          const file = input.files?.[0];
+                          await handlePromoVideoUpload(file);
+                          input.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                      رابط الفيديو
+                      <span className="font-normal text-gray-400 mr-1">(اختياري)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={form.promoVideo}
+                      onChange={e => set('promoVideo', e.target.value)}
+                      placeholder="https://example.com/opportunity-video.mp4"
+                      className={inputCls()}
+                    />
+                  </div>
+
+                  {form.promoVideo ? (
+                    <div className="space-y-3">
+                      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-black">
+                        <video
+                          src={form.promoVideo}
+                          controls
+                          className="h-56 w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => set('promoVideo', '')}
+                          className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          حذف الفيديو
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-4 py-8 text-center text-sm text-gray-500">
+                      لا يوجد فيديو مرفوع حاليًا
+                    </div>
+                  )}
                 </div>
               </div>
 

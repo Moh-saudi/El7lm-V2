@@ -590,7 +590,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
                                 </DialogDescription>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8"><X className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="إغلاق نموذج البطولة" title="إغلاق"><X className="h-4 w-4" /></Button>
                     </div>
 
                     {/* Compact Stepper */}

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
+import { isSkipCashAvailable, skipCashUnavailableMessage } from '@/lib/skipcash/config';
 import { Player } from '@/types/player';
 import { Tournament } from '@/types/tournament';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
@@ -968,7 +969,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           paymentMethods.forEach(setting => {
                             if (setting.enabled) {
                               // Map Admin Setting ID to UI Component
-                              if (setting.id === 'skipcash') {
+                              if (setting.id === 'skipcash' && isSkipCashAvailable) {
                                 methods.push({ id: 'skipcash', label: setting.name || 'بطاقة بنكية / Apple Pay', icon: CreditCard });
                               } else if (setting.id === 'geidea' || (setting.type === 'card' && setting.id !== 'skipcash')) {
                                 // Generic Card or Geidea
@@ -991,7 +992,7 @@ export default function UnifiedTournamentRegistrationPage() {
                         } else {
                           // FALLBACK if no settings loaded (e.g. offline or error)
                           const country = selectedTournament.country || selectedTournament.location_country || 'EG';
-                          if (['QA', 'Qatar', 'قطر'].includes(country)) {
+                          if (isSkipCashAvailable && ['QA', 'Qatar', 'قطر'].includes(country)) {
                             methods.push({ id: 'skipcash', label: 'بطاقة بنكية / Apple Pay', icon: CreditCard });
                           } else {
                             methods.push({ id: 'card', label: 'بطاقة بنكية', icon: CreditCard });
@@ -1053,6 +1054,9 @@ export default function UnifiedTournamentRegistrationPage() {
                         ));
                       })()}
                     </div>
+                    {!isSkipCashAvailable ? (
+                      <p className="mt-3 text-xs text-amber-700">{skipCashUnavailableMessage}</p>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

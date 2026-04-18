@@ -1,5 +1,3 @@
-const isProduction = process.env.NODE_ENV === 'production';
-
 export const skipCashConfig = {
     sandboxUrl: 'https://skipcashtest.azurewebsites.net',
     productionUrl: 'https://api.skipcash.app',
@@ -13,7 +11,12 @@ export const config = {
     baseUrl: process.env.SKIPCASH_MODE === 'live'
         ? skipCashConfig.productionUrl
         : skipCashConfig.sandboxUrl,
-    ...skipCashConfig
+    ...skipCashConfig,
 };
 
 export const getSkipCashBaseUrl = () => config.baseUrl;
+
+// Customer-facing availability flag for shared payment flows.
+export const isSkipCashAvailable = true;
+export const skipCashUnavailableMessage =
+    'خدمة SkipCash غير متاحة مؤقتًا حتى اكتمال مراجعة الربط مع مزود الدفع.';

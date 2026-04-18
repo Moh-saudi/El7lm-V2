@@ -462,7 +462,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-900">الشروط والأحكام</h2>
-              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="إغلاق نافذة الشروط والأحكام" title="إغلاق">
                 <X className="w-4 h-4" />
               </button>
             </div>

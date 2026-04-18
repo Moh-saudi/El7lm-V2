@@ -135,7 +135,7 @@ function GuidelinesContent() {
                                     onPressEnter={addBadge}
                                     placeholder="مثال: الأكثر طلباً، موصى به..."
                                 />
-                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addBadge} />
+                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addBadge} aria-label="إضافة شارة" title="إضافة شارة" />
                             </Space.Compact>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {badges.length === 0 ? (
@@ -166,7 +166,7 @@ function GuidelinesContent() {
                                     onPressEnter={addHighlight}
                                     placeholder="مثال: وفّر 35% مع الاشتراك السنوي..."
                                 />
-                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addHighlight} />
+                                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addHighlight} aria-label="إضافة نقطة مميزة" title="إضافة نقطة مميزة" />
                             </Space.Compact>
                             {highlights.length === 0 ? (
                                 <Empty description="لا توجد نقاط مميزة" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -185,6 +185,8 @@ function GuidelinesContent() {
                                                     size="small"
                                                     icon={<DeleteOutlined />}
                                                     onClick={() => setHighlights(prev => prev.filter((_, i) => i !== index))}
+                                                    aria-label={`حذف النقطة المميزة ${item}`}
+                                                    title={`حذف النقطة المميزة ${item}`}
                                                 />
                                             ]}
                                         >

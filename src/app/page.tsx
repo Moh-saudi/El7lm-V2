@@ -1,18 +1,43 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { getAds, AdItem } from '@/lib/content/ads-service';
 import { getHomeImages, HomeImagesData } from '@/lib/content/home-images-service';
 import { getPartners, PartnerItem } from '@/lib/content/partners-service';
 import { getAiSection, AiSectionData } from '@/lib/content/ai-section-service';
 import { getOppsSection, OppsSectionData } from '@/lib/content/opps-section-service';
+import { getStoreSection, StoreSectionData } from '@/lib/content/store-section-service';
 import { supabase } from '@/lib/supabase/config';
 import { getExploreOpportunities } from '@/lib/firebase/opportunities';
 import { Opportunity } from '@/types/opportunities';
 
 import { useRouter } from 'next/navigation';
-import { Target, Calendar, Eye, Home as HomeIcon, LayoutGrid, Cpu, MessageCircle, Info, Globe } from 'lucide-react';
+import { Target, Calendar, Eye, Home as HomeIcon, LayoutGrid, Cpu, MessageCircle, Info, Globe, ShoppingBag, CreditCard, WalletCards } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FloatingDock } from "@/components/ui/floating-dock";
+
+type LandingStoreCategory =
+  | 'equipment'
+  | 'clothing'
+  | 'accessories'
+  | 'nutrition'
+  | 'electronics'
+  | 'other';
+
+interface LandingStoreProduct {
+  id: string;
+  name: string;
+  description: string;
+  category: LandingStoreCategory;
+  price: number;
+  currency: string;
+  brand?: string;
+  model?: string;
+  image?: string;
+  images?: string[];
+  stock: number;
+  isAvailable: boolean;
+  featured?: boolean;
+}
 
 
 const TR = {
@@ -116,6 +141,16 @@ const TR = {
       { num: '02', title: 'للأكاديميات', desc: 'إدارة أكثر تنظيماً للمواهب والخدمات والحجوزات ضمن تجربة رقمية أووضوح وأكثر كفاءة.', btn: 'اطلب نسخة للأكاديميات', href: '/auth/register?role=academy', color: '#bdc4ef' },
       { num: '03', title: 'للأندية والكشافين', desc: 'الوصول إلى اللاعبين والفيديوهات والتحليلات بصورة أسرع بما يدعم كفاءة المراجعة واتخاذ القرار.', btn: 'ابدأ كنادٍ أو كشاف', href: '/auth/register?role=club', color: '#fdba45' },
       { num: '04', title: 'للشركاء والجهات الرياضية', desc: 'واجهة مؤسسية حديثة تدعم الشراكات والعروض والفرص التجارية ضمن بيئة أكثر وضوحاً وتنظيماً.', btn: 'ناقش الشراكة', href: '/contact', color: '#10b981' },
+    ],
+    storeTitle: 'المتجر الرياضي',
+    storeSub: 'قسم مخصص لبيع المنتجات والخدمات الرياضية لكل أنواع الحسابات، مع إبراز خيارات الدفع المرنة والتقسيط.',
+    storeBadge: 'المتجر المشترك + تقسيط مرن',
+    storeCta: 'ادخل المتجر',
+    storeSecondary: 'اعرف خيارات الدفع',
+    storeHighlights: [
+      { title: 'متجر واحد للجميع', desc: 'اللاعبون والأندية والأكاديميات وبقية الحسابات يمكنها تصفح نفس المتجر وإرسال الطلبات.' },
+      { title: 'دفع مباشر واحترافي', desc: 'ادعم البطاقات والمحافظ الرقمية عبر Geidea و SkipCash والحلول المحلية.' },
+      { title: 'ميزة التقسيط', desc: 'أبرز عروضك مع خيارات تقسيط مثل Tamara و Tabby لتقليل الحاجز أمام الشراء.' },
     ],
     stats: [
       { label: 'الأداء الحالي', value: 'نخبة 98.4' },
@@ -235,6 +270,16 @@ const TR = {
       {num:'03',title:'For Clubs & Scouts',desc:'Faster access to players, videos, and analytics to support efficient review and decision-making.',btn:'Start as a Club or Scout',href:'/auth/register?role=club',color:'#fdba45'},
       {num:'04',title:'For Partners & Sports Organisations',desc:'A modern institutional interface that supports partnerships, offers, and commercial opportunities within a clearer and more organised environment.',btn:'Discuss Partnership',href:'/contact',color:'#10b981'},
     ],
+    storeTitle:'Sports Store',
+    storeSub:'A dedicated section for selling sports products and services to all account types, with flexible payment choices and installment options highlighted as a key value proposition.',
+    storeBadge:'Shared Store + Flexible Installments',
+    storeCta:'Enter The Store',
+    storeSecondary:'Explore Payment Options',
+    storeHighlights:[
+      { title:'One Store For Everyone', desc:'Players, clubs, academies, and all other account types can browse the same store and submit purchase requests.' },
+      { title:'Professional Payment Methods', desc:'Support cards and digital wallets through Geidea, SkipCash, and other regional payment methods.' },
+      { title:'Installments As A Sales Advantage', desc:'Highlight installment options like Tamara and Tabby to lower purchase friction and increase conversion.' },
+    ],
   },
 };
 
@@ -300,6 +345,9 @@ export default function Home() {
   const [partners, setPartners] = useState<PartnerItem[]>([]);
   const [aiSection, setAiSection] = useState<AiSectionData | null>(null);
   const [oppsSection, setOppsSection] = useState<OppsSectionData | null>(null);
+  const [storeSection, setStoreSection] = useState<StoreSectionData | null>(null);
+  const [storeProducts, setStoreProducts] = useState<LandingStoreProduct[]>([]);
+  const [storeCategoryFilter, setStoreCategoryFilter] = useState<'all' | LandingStoreCategory>('all');
   const [playersSection, setPlayersSection] = useState<any | null>(null);
   const [featuredPlayers, setFeaturedPlayers] = useState<any[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -329,9 +377,56 @@ export default function Home() {
     getHomeImages().then(data => setHomeImages(data));
     getPartners().then(data => setPartners(data));
     getAiSection().then(data => setAiSection(data));
+    getStoreSection().then(data => setStoreSection(data));
 
     const fetchData = async () => {
       try {
+        const { data: inventoryData } = await supabase
+          .from('inventory')
+          .select('*')
+          .order('createdAt', { ascending: false })
+          .limit(24);
+
+        const normalizedProducts = (inventoryData || [])
+          .map((item: any): LandingStoreProduct | null => {
+            if (!item?.id || !item?.name) return null;
+
+            const category = (
+              ['equipment', 'clothing', 'accessories', 'nutrition', 'electronics', 'other'].includes(item.category || '')
+                ? item.category
+                : 'other'
+            ) as LandingStoreCategory;
+
+            const stock = Number(item.stock || 0);
+            const images = Array.isArray(item.images)
+              ? item.images.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+              : [];
+            const primaryImage = item.image || images[0] || undefined;
+
+            return {
+              id: item.id,
+              name: item.name,
+              description:
+                item.description ||
+                (isRTL
+                  ? 'منتج متاح حالياً من متجر الحلم.'
+                  : 'A currently available product from the El7lm store.'),
+              category,
+              price: Number(item.price || 0),
+              currency: item.currency || 'SAR',
+              brand: item.brand || undefined,
+              model: item.model || undefined,
+              image: primaryImage,
+              images,
+              stock,
+              isAvailable: stock > 0 && item.status !== 'discontinued',
+              featured: Boolean(item.featured),
+            };
+          })
+          .filter((item): item is LandingStoreProduct => Boolean(item));
+
+        setStoreProducts(normalizedProducts);
+
         const oppsConfig = await getOppsSection();
         setOppsSection(oppsConfig);
 
@@ -401,8 +496,83 @@ export default function Home() {
     btnText: '#ffffff'
   };
 
+  const storeEnabled = storeSection?.isEnabled ?? true;
+  const storeBadge = storeSection ? (isRTL ? storeSection.badgeAr : storeSection.badgeEn) : t.storeBadge;
+  const storeTitle = storeSection ? (isRTL ? storeSection.titleAr : storeSection.titleEn) : t.storeTitle;
+  const storeSub = storeSection ? (isRTL ? storeSection.subAr : storeSection.subEn) : t.storeSub;
+  const storeCta = storeSection ? (isRTL ? storeSection.ctaAr : storeSection.ctaEn) : t.storeCta;
+  const storeSecondary = storeSection ? (isRTL ? storeSection.secondaryAr : storeSection.secondaryEn) : t.storeSecondary;
+  const storeHighlights = storeSection
+    ? (isRTL ? storeSection.highlightsAr : storeSection.highlightsEn)
+    : (t.storeHighlights as { title: string; desc: string }[]);
+  const configuredStoreProductIds = storeSection?.selectedProductIds || [];
+  const storeItemsLimit = Math.max(1, Math.min(8, storeSection?.maxItems || 6));
+  const storeCategoryLabels: Record<'all' | LandingStoreCategory, string> = isRTL
+    ? {
+        all: 'الكل',
+        equipment: 'معدات',
+        clothing: 'ملابس',
+        accessories: 'إكسسوارات',
+        nutrition: 'تغذية',
+        electronics: 'إلكترونيات',
+        other: 'أخرى',
+      }
+    : {
+        all: 'All',
+        equipment: 'Equipment',
+        clothing: 'Clothing',
+        accessories: 'Accessories',
+        nutrition: 'Nutrition',
+        electronics: 'Electronics',
+        other: 'Other',
+      };
+  const availableStoreProducts = storeProducts.filter((product) => product.isAvailable);
+  const featuredStoreProducts = availableStoreProducts.filter((product) => product.featured);
+  const storeCategories = [
+    'all',
+    ...Array.from(new Set(availableStoreProducts.map((product) => product.category))),
+  ] as Array<'all' | LandingStoreCategory>;
+  const preferredStoreProducts =
+    configuredStoreProductIds.length > 0
+      ? configuredStoreProductIds
+          .map((productId) => availableStoreProducts.find((product) => product.id === productId))
+          .filter((product): product is LandingStoreProduct => Boolean(product))
+      : featuredStoreProducts.length > 0
+        ? featuredStoreProducts
+        : availableStoreProducts;
+  const visibleStoreProducts = (
+    storeCategoryFilter === 'all'
+      ? preferredStoreProducts
+      : preferredStoreProducts.filter((product) => product.category === storeCategoryFilter)
+  ).slice(0, storeItemsLimit);
+  const formatLandingStorePrice = (amount: number, currency: string) =>
+    new Intl.NumberFormat(isRTL ? 'ar-SA' : 'en-US', {
+      style: 'currency',
+      currency: currency || 'SAR',
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
+  const landingNavItems = langAr
+    ? [
+        { label: 'الرئيسية', href: '#top' },
+        { label: 'المميزات', href: '#features' },
+        { label: 'الشركاء', href: '#partners' },
+        { label: 'الفرص', href: '#opportunities' },
+        { label: 'المتجر', href: '#store' },
+        { label: 'البطولات', href: '#tournaments' },
+        { label: 'تواصل معنا', href: '#contact' },
+      ]
+    : [
+        { label: 'Home', href: '#top' },
+        { label: 'Features', href: '#features' },
+        { label: 'Partners', href: '#partners' },
+        { label: 'Opportunities', href: '#opportunities' },
+        { label: 'Store', href: '#store' },
+        { label: 'Tournaments', href: '#tournaments' },
+        { label: 'Contact', href: '#contact' },
+      ];
+
   return (
-    <div dir={t.dir} lang={t.lang}>
+    <div id="top" dir={t.dir} lang={t.lang}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Inter','IBM Plex Sans Arabic',sans-serif;background:${theme.bg};color:${theme.text};overflow-x:hidden;transition:background 0.3s, color 0.3s}
@@ -558,10 +728,10 @@ export default function Home() {
             
           </div>
           <nav className="hm" style={{display:'flex',gap:'2rem'}}>
-            {t.nav.map((item,i)=>(
-              <a key={i} href="#" className="hl" style={{fontWeight:700,textTransform:'uppercase',letterSpacing:'-0.025em',textDecoration:'none',color:i===0?(dark?'#bdc4ef':'#4f46e5'):theme.subText,borderBottom:i===0?`2px solid ${dark?'#bdc4ef':'#4f46e5'}`:'none',paddingBottom:i===0?'2px':'0',transition:'color .2s'}}
+            {landingNavItems.map((item,i)=>(
+              <a key={item.href} href={item.href} className="hl" style={{fontWeight:700,textTransform:langAr?'none':'uppercase',letterSpacing:langAr?'0':'-0.025em',textDecoration:'none',color:i===0?(dark?'#bdc4ef':'#4f46e5'):theme.subText,borderBottom:i===0?`2px solid ${dark?'#bdc4ef':'#4f46e5'}`:'none',paddingBottom:i===0?'2px':'0',transition:'color .2s'}}
                 onMouseEnter={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color=(dark?'#bdc4ef':'#4f46e5')}}
-                onMouseLeave={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color=theme.subText}}>{item}</a>
+                onMouseLeave={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color=theme.subText}}>{item.label}</a>
             ))}
           </nav>
         </div>
@@ -707,7 +877,7 @@ export default function Home() {
 
 
         {/* PARTNERS */}
-        <section className="reveal" style={{padding:'3.5rem 0',background: dark ? '#0a1025' : '#f8fafc',borderTop:`1px solid ${theme.border}`,borderBottom:`1px solid ${theme.border}`,overflow:'hidden'}}>
+        <section id="partners" className="reveal" style={{padding:'3.5rem 0',background: dark ? '#0a1025' : '#f8fafc',borderTop:`1px solid ${theme.border}`,borderBottom:`1px solid ${theme.border}`,overflow:'hidden'}}>
           {/* Section Header */}
           <div className="ct" style={{marginBottom:'2.5rem', textAlign:'center'}}>
             <span style={{
@@ -755,6 +925,172 @@ export default function Home() {
           </div>
         </section>
 
+        {/* PARTNERS -> OPPORTUNITIES VISUAL BRIDGE */}
+        <section
+          aria-hidden="true"
+          style={{
+            position: 'relative',
+            padding: '1.25rem 0 1.75rem',
+            background: `linear-gradient(180deg, ${dark ? '#0a1025' : '#f8fafc'} 0%, ${theme.cardBg} 100%)`,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(circle at 50% 0%, ${theme.glow} 0%, transparent 60%)`,
+              opacity: 0.7,
+              pointerEvents: 'none',
+            }}
+          />
+          <div className="ct" style={{ position: 'relative', zIndex: 1 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  height: '1px',
+                  flex: 1,
+                  maxWidth: '220px',
+                  background: `linear-gradient(${isRTL ? '270deg' : '90deg'}, transparent 0%, ${theme.primary} 100%)`,
+                  opacity: 0.6,
+                }}
+              />
+              <div
+                className="hl"
+                style={{
+                  padding: '.95rem 1.9rem',
+                  borderRadius: '999px',
+                  border: `1px solid ${theme.border}`,
+                  background: dark ? 'rgba(11,17,32,0.82)' : 'rgba(255,255,255,0.82)',
+                  backdropFilter: 'blur(10px)',
+                  color: theme.primary,
+                  fontSize: '1rem',
+                  fontWeight: 900,
+                  letterSpacing: isRTL ? '.02em' : '.12em',
+                  textTransform: isRTL ? 'none' : 'uppercase',
+                  boxShadow: `0 12px 30px ${theme.glow}`,
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.2,
+                }}
+              >
+                {isRTL ? 'شركاؤنا يقودونك إلى الفرص' : 'Partners Lead You To Opportunities'}
+              </div>
+              <div
+                style={{
+                  height: '1px',
+                  flex: 1,
+                  maxWidth: '220px',
+                  background: `linear-gradient(${isRTL ? '90deg' : '270deg'}, transparent 0%, ${theme.primary} 100%)`,
+                  opacity: 0.6,
+                }}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* OPPORTUNITIES (DYNAMIC SECTION) */}
+        {(oppsSection === null || oppsSection.isEnabled) && (() => {
+          const displayedOpps = opportunities.filter(o => {
+            if (activeTab === 'all') return true;
+            if (activeTab === 'trials') return o.opportunityType === 'trial' || o.opportunityType === 'tryout';
+            if (activeTab === 'pro') return o.opportunityType === 'job' || o.opportunityType === 'intl';
+            if (activeTab === 'camps') return o.opportunityType === 'camp';
+            if (activeTab === 'training') return o.opportunityType === 'training';
+            return true;
+          }) || [];
+
+          const sectionTitle = oppsSection ? (isRTL ? oppsSection.titleAr : oppsSection.titleEn) : t.oppsTitle;
+          const sectionSub = oppsSection ? (isRTL ? oppsSection.subAr : oppsSection.subEn) : t.oppsSub;
+
+          if (opportunities.length === 0 && oppsSection !== null) {
+              return null; // hide completely if no opps selected and data has loaded
+          }
+
+          const tabs = [
+            { id: 'all', label: t.all },
+            { id: 'trials', label: t.trials },
+            { id: 'pro', label: t.pro },
+            { id: 'camps', label: t.camps },
+            { id: 'training', label: t.training },
+          ];
+
+          return (
+            <section id="opportunities" className="reveal" style={{background: theme.cardBg, borderTop:'1px solid rgba(70,70,78,.1)'}}>
+            <div className="ct">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'4rem',flexWrap:'wrap',gap:'1rem'}}>
+                <div style={{textAlign:isRTL?'right':'left'}}>
+                  <h2 className="st" style={{fontSize:'2.25rem', color: theme.text}}>{sectionTitle || t.oppsTitle}</h2>
+                  <p style={{color: theme.subText,marginTop:'.5rem'}}>{sectionSub || t.oppsSub}</p>
+                </div>
+                <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap', justifyContent:isRTL?'flex-end':'flex-start'}}>
+                  {tabs.map(tab => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="hl" style={{padding:'0.5rem 1.25rem', borderRadius:'99px', fontSize:'0.875rem', fontWeight:700, border:`1px solid ${activeTab === tab.id ? theme.primary : theme.border}`, background: activeTab === tab.id ? theme.primary : 'transparent', color: activeTab === tab.id ? theme.btnText : theme.subText, cursor:'pointer', transition:'all 0.2s'}}>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <a href="/auth/login" className="tc" style={{color: theme.primary,fontWeight:700,display:'flex',alignItems:'center',gap:'.5rem',textDecoration:'none'}}
+                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.transform=isRTL?'translateX(-8px)':'translateX(8px)'}
+                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.transform='none'}>
+                  {t.viewOpps}
+                  {isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform:'rotate(180deg)'}}><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
+                  {!isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
+                </a>
+              </div>
+              
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:'1.5rem'}}>
+                {displayedOpps.map((opp, idx) => (
+                  <div key={opp.id} onClick={() => router.push('/auth/login')} className={`tc5 reveal reveal-delay-${(idx % 3) + 1}`} style={{background: theme.bg,borderRadius:'16px',overflow:'hidden',border:`1px solid ${theme.border}`,cursor:'pointer',boxShadow:'0 4px 20px rgba(0,0,0,0.05)'}}
+                    onMouseEnter={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor=theme.primary;el.style.transform='translateY(-10px) scale(1.01)'; el.style.boxShadow=`0 10px 40px ${theme.glow}`;}}
+                    onMouseLeave={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor=theme.border;el.style.transform='none'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.05)';}}>
+                    <div style={{height:'6px', width:'100%', backgroundColor: '#4f46e5'}} />
+                    {opp.coverImage ? (
+                      <div style={{height:'220px',overflow:'hidden',background:'#eef2ff'}}>
+                        <img src={opp.coverImage} alt={opp.title} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                      </div>
+                    ) : opp.promoVideo ? (
+                      <div style={{height:'220px',overflow:'hidden',background:'#020617'}}>
+                        <video src={opp.promoVideo} style={{width:'100%',height:'100%',objectFit:'cover'}} muted playsInline preload="metadata" />
+                      </div>
+                    ) : null}
+                    <div style={{padding:'1.5rem'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem'}}>
+                        <span style={{backgroundColor:'#4f46e5', color:'#fff', padding:'0.25rem 0.75rem', borderRadius:'999px', fontSize:'0.75rem', fontWeight:'bold'}}>
+                          {opp.opportunityType}
+                        </span>
+                        {opp.applicationDeadline && (
+                          <span style={{fontSize:'0.75rem', color:'#909099', display:'flex', alignItems:'center', gap:'0.25rem', marginRight:'auto'}}>
+                            <Calendar size={12} />
+                            {new Date(opp.applicationDeadline).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                          </span>
+                        )}
+                      </div>
+                      <h3 style={{fontSize:'1.125rem', fontWeight:'bold', color: theme.text, marginBottom:'0.5rem'}}>{opp.title}</h3>
+                      <p style={{fontSize:'0.875rem', color: theme.subText, marginBottom:'1rem'}}>{opp.organizerName}</p>
+                      
+                      <div style={{display:'flex', width:'100%', marginTop:'1rem'}}>
+                        <button style={{width:'100%', padding:'0.75rem', backgroundColor: theme.panelBg, color: theme.primary, borderRadius:'12px', fontSize:'0.875rem', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', border:`1px solid ${theme.border}`, cursor:'pointer'}}
+                          onMouseEnter={e=>{const el=e.currentTarget as HTMLButtonElement; el.style.backgroundColor=theme.primary; el.style.color=theme.btnText;}}
+                          onMouseLeave={e=>{const el=e.currentTarget as HTMLButtonElement; el.style.backgroundColor=theme.panelBg; el.style.color=theme.primary;}}>
+                          <Eye size={16} />   
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+          );
+        })()}
+
                 {/* ADS SECTION - AUTO CAROUSEL */}
         {ads.length > 0 && (() => {
           const activeAds = ads.slice(0, 5);
@@ -781,7 +1117,7 @@ export default function Home() {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.1em'
-                  }}>🔥 {isRTL ? 'عروض مميزة' : 'Featured Offers'}</span>
+                  }}>ðŸ”¥ {isRTL ? 'عروض مميزة' : 'Featured Offers'}</span>
                 </div>
 
                 {/* Slider Container */}
@@ -1353,6 +1689,382 @@ export default function Home() {
           </div>
         </section>
 
+        {/* STORE SECTION */}
+        {storeEnabled && <section
+          id="store"
+          className="reveal"
+          style={{
+            background: dark ? '#08111f' : 'linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)',
+            position: 'relative',
+            overflow: 'hidden',
+            padding: '7rem 0',
+          }}
+        >
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: '-6rem',
+                [isRTL ? 'right' : 'left']: '-8rem',
+                width: '24rem',
+                height: '24rem',
+                borderRadius: '50%',
+                background: 'rgba(59,130,246,.10)',
+                filter: 'blur(80px)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-6rem',
+                [isRTL ? 'left' : 'right']: '-8rem',
+                width: '22rem',
+                height: '22rem',
+                borderRadius: '50%',
+                background: 'rgba(16,185,129,.10)',
+                filter: 'blur(80px)',
+              }}
+            />
+          </div>
+
+          <div className="ct" style={{ position: 'relative', zIndex: 5 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,1.1fr) minmax(320px,.9fr)',
+                gap: '2rem',
+                alignItems: 'stretch',
+              }}
+              className="store-grid"
+            >
+              <div
+                style={{
+                  background: theme.cardBg,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '30px',
+                  padding: '2.5rem',
+                  boxShadow: dark ? '0 24px 60px rgba(0,0,0,.22)' : '0 20px 45px rgba(15,23,42,.06)',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '.6rem',
+                    background: 'rgba(37,99,235,.10)',
+                    color: '#2563eb',
+                    padding: '.55rem 1rem',
+                    borderRadius: '9999px',
+                    fontSize: '.85rem',
+                    fontWeight: 800,
+                    marginBottom: '1.25rem',
+                  }}
+                >
+                  <ShoppingBag size={16} />
+                  {storeBadge}
+                </span>
+
+                <h2
+                  className="st"
+                  style={{
+                    fontSize: '3rem',
+                    lineHeight: 1.15,
+                    marginBottom: '1rem',
+                    color: theme.text,
+                    fontWeight: 900,
+                  }}
+                >
+                  {storeTitle}
+                </h2>
+
+                <p
+                  style={{
+                    color: theme.subText,
+                    fontSize: '1.08rem',
+                    lineHeight: 1.9,
+                    maxWidth: '46rem',
+                    marginBottom: '2rem',
+                  }}
+                >
+                  {storeSub}
+                </p>
+
+                <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+                  {storeHighlights.map((item, idx) => {
+                    const Icon = idx === 0 ? ShoppingBag : idx === 1 ? CreditCard : WalletCards;
+                    const iconColor = idx === 0 ? '#2563eb' : idx === 1 ? '#10b981' : '#7c3aed';
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          gap: '1rem',
+                          alignItems: 'flex-start',
+                          background: dark ? 'rgba(15,23,42,.55)' : '#ffffff',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '20px',
+                          padding: '1rem 1.1rem',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '14px',
+                            background: `${iconColor}15`,
+                            color: iconColor,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon size={22} />
+                        </div>
+                        <div>
+                          <div
+                            className="hl"
+                            style={{ color: theme.text, fontWeight: 800, fontSize: '1.05rem', marginBottom: '.35rem' }}
+                          >
+                            {item.title}
+                          </div>
+                          <div style={{ color: theme.subText, lineHeight: 1.75, fontSize: '.95rem' }}>{item.desc}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.85rem' }}>
+                  <a
+                    href="/dashboard/shared/store"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1rem 1.7rem',
+                      borderRadius: '16px',
+                      background: theme.btnGradient,
+                      color: '#fff',
+                      textDecoration: 'none',
+                      fontWeight: 800,
+                      boxShadow: `0 12px 30px ${theme.glow}`,
+                    }}
+                  >
+                    {storeCta}
+                  </a>
+                  <a
+                    href="/dashboard/admin/pricing-management"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1rem 1.4rem',
+                      borderRadius: '16px',
+                      background: dark ? 'rgba(255,255,255,.04)' : '#fff',
+                      color: theme.text,
+                      textDecoration: 'none',
+                      fontWeight: 700,
+                      border: `1px solid ${theme.border}`,
+                    }}
+                  >
+                    {storeSecondary}
+                  </a>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: dark ? 'linear-gradient(180deg, rgba(15,23,42,.94), rgba(30,41,59,.88))' : 'linear-gradient(180deg, #ffffff, #f8fafc)',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '30px',
+                  padding: '2rem',
+                  boxShadow: dark ? '0 24px 60px rgba(0,0,0,.22)' : '0 20px 45px rgba(15,23,42,.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '.5rem',
+                        background: 'rgba(124,58,237,.10)',
+                        color: '#7c3aed',
+                        padding: '.45rem .85rem',
+                        borderRadius: '9999px',
+                        fontSize: '.8rem',
+                        fontWeight: 800,
+                        marginBottom: '1rem',
+                      }}
+                    >
+                      <WalletCards size={15} />
+                      {isRTL ? 'منتجات مختارة' : 'Selected Products'}
+                    </div>
+
+                    <h3 className="hl" style={{ color: theme.text, fontSize: '1.8rem', fontWeight: 900, lineHeight: 1.2, marginBottom: '.5rem' }}>
+                      {isRTL ? 'منتجات المتجر من إدارة المحتوى' : 'Store Products From Content Management'}
+                    </h3>
+
+                    <p style={{ color: theme.subText, lineHeight: 1.8, fontSize: '.95rem' }}>
+                      {configuredStoreProductIds.length > 0
+                        ? (isRTL ? 'يتم عرض المنتجات هنا بنفس الاختيار والترتيب المحددين من لوحة إدارة المحتوى.' : 'Products here follow the exact selection and order configured in content management.')
+                        : (isRTL ? 'في حال عدم اختيار منتجات يدويًا، يتم عرض المنتجات المميزة أو الأحدث المتاحة تلقائيًا.' : 'If no products are selected manually, featured or latest available products are shown automatically.')}
+                    </p>
+                  </div>
+
+                  <a
+                    href="/dashboard/shared/store"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '.85rem 1.2rem',
+                      borderRadius: '14px',
+                      background: dark ? 'rgba(255,255,255,.04)' : '#fff',
+                      color: theme.text,
+                      textDecoration: 'none',
+                      fontWeight: 800,
+                      border: `1px solid ${theme.border}`,
+                    }}
+                  >
+                    {isRTL ? 'عرض المتجر الكامل' : 'Open Full Store'}
+                  </a>
+                </div>
+
+                <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+                  {storeCategories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setStoreCategoryFilter(category)}
+                      style={{
+                        padding: '.65rem 1rem',
+                        borderRadius: '9999px',
+                        border: `1px solid ${storeCategoryFilter === category ? 'transparent' : theme.border}`,
+                        background: storeCategoryFilter === category ? theme.btnGradient : (dark ? 'rgba(255,255,255,.03)' : '#fff'),
+                        color: storeCategoryFilter === category ? '#fff' : theme.text,
+                        fontWeight: 800,
+                        fontSize: '.85rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {storeCategoryLabels[category]}
+                    </button>
+                  ))}
+                </div>
+
+                {visibleStoreProducts.length === 0 ? (
+                  <div
+                    style={{
+                      borderRadius: '22px',
+                      border: `1px dashed ${theme.border}`,
+                      padding: '2rem',
+                      textAlign: 'center',
+                      color: theme.subText,
+                      background: dark ? 'rgba(255,255,255,.02)' : 'rgba(255,255,255,.75)',
+                    }}
+                  >
+                    {isRTL ? 'لا توجد منتجات متاحة ضمن الاختيار الحالي.' : 'No products are available for the current selection.'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {visibleStoreProducts.map((product) => {
+                      const productImage = product.image || product.images?.[0];
+                      const productLabel = [product.brand, product.model].filter(Boolean).join(' • ');
+
+                      return (
+                        <a
+                          key={product.id}
+                          href="/dashboard/shared/store"
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '112px minmax(0,1fr)',
+                            gap: '1rem',
+                            alignItems: 'center',
+                            padding: '1rem',
+                            borderRadius: '22px',
+                            background: dark ? 'rgba(255,255,255,.03)' : '#fff',
+                            border: `1px solid ${theme.border}`,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '112px',
+                              borderRadius: '18px',
+                              overflow: 'hidden',
+                              background: dark ? 'rgba(255,255,255,.04)' : '#f8fafc',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {productImage ? (
+                              <img src={productImage} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <ShoppingBag size={28} color={dark ? '#94a3b8' : '#64748b'} />
+                            )}
+                          </div>
+
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: '.75rem', marginBottom: '.45rem' }}>
+                              <h4 className="hl" style={{ color: theme.text, fontSize: '1.1rem', fontWeight: 900, lineHeight: 1.3 }}>
+                                {product.name}
+                              </h4>
+                              <span
+                                style={{
+                                  whiteSpace: 'nowrap',
+                                  borderRadius: '9999px',
+                                  padding: '.35rem .7rem',
+                                  background: 'rgba(16,185,129,.10)',
+                                  color: '#059669',
+                                  fontWeight: 900,
+                                  fontSize: '.82rem',
+                                }}
+                              >
+                                {formatLandingStorePrice(product.price, product.currency)}
+                              </span>
+                            </div>
+
+                            {productLabel ? (
+                              <div style={{ color: theme.subText, fontSize: '.85rem', marginBottom: '.35rem' }}>{productLabel}</div>
+                            ) : null}
+
+                            <div style={{ color: theme.subText, fontSize: '.84rem', lineHeight: 1.7, marginBottom: '.6rem' }}>
+                              {product.description || (isRTL ? 'منتج معروض من المتجر الرياضي الموحد.' : 'Featured product from the shared sports store.')}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                              <span style={{ borderRadius: '9999px', background: dark ? 'rgba(59,130,246,.14)' : 'rgba(59,130,246,.10)', color: '#2563eb', padding: '.28rem .65rem', fontSize: '.75rem', fontWeight: 800 }}>
+                                {storeCategoryLabels[product.category]}
+                              </span>
+                              <span style={{ borderRadius: '9999px', background: dark ? 'rgba(124,58,237,.14)' : 'rgba(124,58,237,.10)', color: '#7c3aed', padding: '.28rem .65rem', fontSize: '.75rem', fontWeight: 800 }}>
+                                {isRTL ? 'يدعم التقسيط' : 'Installments Available'}
+                              </span>
+                            </div>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <style>{`
+              @media(max-width: 980px){
+                .store-grid{grid-template-columns:1fr !important;}
+              }
+            `}</style>
+          </div>
+        </section>}
+
         {/* AI VIDEO ANALYSIS */}
         <section id="ai-analysis" className="reveal" style={{background: theme.cardBg,position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',inset:0,pointerEvents:'none',opacity:.1}}>
@@ -1503,7 +2215,7 @@ export default function Home() {
                    }}>
                      <span style={{ fontSize: '5rem', position: 'absolute', top: '-1.5rem', [isRTL ? 'right' : 'left']: '-2.5rem', opacity: 0.07, color: theme.primary }}>"</span>
                      {isRTL 
-                       ? 'بدأنا "الحلم" لأننا نؤمن بأن في كل شارع وكل أكاديمية، هناك موهبة دفينة تنتظر من يراها. هدفنا هو تزويد هذه المواهب بـ "العين الرقمية" التي لا تنام، والفرصة التي يستحقونها للوصول إلى الساحة العالمية.'
+                      ? 'بدأنا "الحلم" لأننا نؤمن بأن في كل شارع وكل أكاديمية، هناك موهبة دفينة تنتظر من يراها. هدفنا هو تزويد هذه المواهب بـ "العين الرقمية" التي لا تنام، والفرصة التي يستحقونها للوصول إلى الساحة العالمية.'
                        : 'We started "El7lm" because we believe that in every street and every academy, there is a buried talent waiting to be seen. Our goal is to provide these talents with the "Digital Eye" that never sleeps, and the opportunity they deserve to reach the world stage.'
                      }
                    </p>
@@ -1529,7 +2241,7 @@ export default function Home() {
         </section>
 
         {/* TOURNAMENTS */}
-        <section style={{background: dark ? '#080d20' : '#f1f5f9'}}>
+        <section id="tournaments" style={{background: dark ? '#080d20' : '#f1f5f9'}}>
           <div className="ct">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4rem',flexWrap:'wrap',gap:'1rem'}}>
               <div style={{textAlign:isRTL?'right':'left'}}>
@@ -1690,95 +2402,8 @@ export default function Home() {
           );
         })()}
 
-        {/* OPPORTUNITIES (DYNAMIC SECTION) */}
-        {(oppsSection === null || oppsSection.isEnabled) && (() => {
-          const displayedOpps = opportunities.filter(o => {
-            if (activeTab === 'all') return true;
-            if (activeTab === 'trials') return o.opportunityType === 'trial' || o.opportunityType === 'tryout';
-            if (activeTab === 'pro') return o.opportunityType === 'job' || o.opportunityType === 'intl';
-            if (activeTab === 'camps') return o.opportunityType === 'camp';
-            if (activeTab === 'training') return o.opportunityType === 'training';
-            return true;
-          }) || [];
-
-          const sectionTitle = oppsSection ? (isRTL ? oppsSection.titleAr : oppsSection.titleEn) : t.oppsTitle;
-          const sectionSub = oppsSection ? (isRTL ? oppsSection.subAr : oppsSection.subEn) : t.oppsSub;
-
-          if (opportunities.length === 0 && oppsSection !== null) {
-              return null; // hide completely if no opps selected and data has loaded
-          }
-
-          const tabs = [
-            { id: 'all', label: t.all },
-            { id: 'trials', label: t.trials },
-            { id: 'pro', label: t.pro },
-            { id: 'camps', label: t.camps },
-            { id: 'training', label: t.training },
-          ];
-
-          return (
-            <section className="reveal" style={{background: theme.cardBg, borderTop:'1px solid rgba(70,70,78,.1)'}}>
-            <div className="ct">
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'4rem',flexWrap:'wrap',gap:'1rem'}}>
-                <div style={{textAlign:isRTL?'right':'left'}}>
-                  <h2 className="st" style={{fontSize:'2.25rem', color: theme.text}}>{sectionTitle || t.oppsTitle}</h2>
-                  <p style={{color: theme.subText,marginTop:'.5rem'}}>{sectionSub || t.oppsSub}</p>
-                </div>
-                <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap', justifyContent:isRTL?'flex-end':'flex-start'}}>
-                  {tabs.map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="hl" style={{padding:'0.5rem 1.25rem', borderRadius:'99px', fontSize:'0.875rem', fontWeight:700, border:`1px solid ${activeTab === tab.id ? theme.primary : theme.border}`, background: activeTab === tab.id ? theme.primary : 'transparent', color: activeTab === tab.id ? theme.btnText : theme.subText, cursor:'pointer', transition:'all 0.2s'}}>
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <a href="/auth/login" className="tc" style={{color: theme.primary,fontWeight:700,display:'flex',alignItems:'center',gap:'.5rem',textDecoration:'none'}}
-                  onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.transform=isRTL?'translateX(-8px)':'translateX(8px)'}
-                  onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.transform='none'}>
-                  {t.viewOpps}
-                  {isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{transform:'rotate(180deg)'}}><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
-                  {!isRTL && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
-                </a>
-              </div>
-              
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:'1.5rem'}}>
-                {displayedOpps.map((opp, idx) => (
-                  <div key={opp.id} onClick={() => router.push('/auth/login')} className={`tc5 reveal reveal-delay-${(idx % 3) + 1}`} style={{background: theme.bg,borderRadius:'16px',overflow:'hidden',border:`1px solid ${theme.border}`,cursor:'pointer',boxShadow:'0 4px 20px rgba(0,0,0,0.05)'}}
-                    onMouseEnter={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor=theme.primary;el.style.transform='translateY(-10px) scale(1.01)'; el.style.boxShadow=`0 10px 40px ${theme.glow}`;}}
-                    onMouseLeave={e=>{const el=e.currentTarget as HTMLDivElement;el.style.borderColor=theme.border;el.style.transform='none'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.05)';}}>
-                    <div style={{height:'6px', width:'100%', backgroundColor: '#4f46e5'}} />
-                    <div style={{padding:'1.5rem'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'1rem'}}>
-                        <span style={{backgroundColor:'#4f46e5', color:'#fff', padding:'0.25rem 0.75rem', borderRadius:'999px', fontSize:'0.75rem', fontWeight:'bold'}}>
-                          {opp.opportunityType}
-                        </span>
-                        {opp.applicationDeadline && (
-                          <span style={{fontSize:'0.75rem', color:'#909099', display:'flex', alignItems:'center', gap:'0.25rem', marginRight:'auto'}}>
-                            <Calendar size={12} />
-                            {new Date(opp.applicationDeadline).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
-                          </span>
-                        )}
-                      </div>
-                      <h3 style={{fontSize:'1.125rem', fontWeight:'bold', color: theme.text, marginBottom:'0.5rem'}}>{opp.title}</h3>
-                      <p style={{fontSize:'0.875rem', color: theme.subText, marginBottom:'1rem'}}>{opp.organizerName}</p>
-                      
-                      <div style={{display:'flex', width:'100%', marginTop:'1rem'}}>
-                        <button style={{width:'100%', padding:'0.75rem', backgroundColor: theme.panelBg, color: theme.primary, borderRadius:'12px', fontSize:'0.875rem', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', border:`1px solid ${theme.border}`, cursor:'pointer'}}
-                          onMouseEnter={e=>{const el=e.currentTarget as HTMLButtonElement; el.style.backgroundColor=theme.primary; el.style.color=theme.btnText;}}
-                          onMouseLeave={e=>{const el=e.currentTarget as HTMLButtonElement; el.style.backgroundColor=theme.panelBg; el.style.color=theme.primary;}}>
-                          <Eye size={16} />   
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-          );
-        })()}
-
         {/* CONTACT */}
-        <section className="reveal" style={{background: dark ? '#161b2e' : '#e2e8f0',borderTop:'1px solid rgba(70,70,78,.1)',borderBottom:'1px solid rgba(70,70,78,.1)'}}>
+        <section id="contact" className="reveal" style={{background: dark ? '#161b2e' : '#e2e8f0',borderTop:'1px solid rgba(70,70,78,.1)',borderBottom:'1px solid rgba(70,70,78,.1)'}}>
           <div className="ct">
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}} className="g2">
               <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
@@ -1817,7 +2442,7 @@ export default function Home() {
                     
                     try {
                       // alert to inform the user what is happening so they don't think it's broken
-                      alert(isRTL ? "    䫺  (Gmail/Outlook). Ѻ      ѻ     ." : "Opening your default email client. If nothing happens, please ensure you have a default mail app configured.");
+                      alert(isRTL ? "    ä«º  (Gmail/Outlook). Ñº      Ñ»     ." : "Opening your default email client. If nothing happens, please ensure you have a default mail app configured.");
                       
                       const link = document.createElement('a');
                       link.href = targetUrl;
@@ -2006,3 +2631,4 @@ export default function Home() {
     </div>
   );
 }
+

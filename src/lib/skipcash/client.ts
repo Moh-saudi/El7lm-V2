@@ -4,7 +4,20 @@ import { skipCashConfig, getSkipCashBaseUrl } from './config';
 import { SkipCashPaymentRequest, SkipCashPaymentResponse } from './types';
 
 export const createSkipCashPayment = async (request: SkipCashPaymentRequest): Promise<SkipCashPaymentResponse> => {
-    const { amount, customerEmail, customerPhone, customerName, transactionId, custom1, returnUrl } = request;
+    const {
+        amount,
+        customerEmail,
+        customerPhone,
+        customerName,
+        transactionId,
+        custom1,
+        returnUrl,
+        street,
+        city,
+        state,
+        country,
+        postalCode,
+    } = request;
 
     if (!skipCashConfig.secretKey || !skipCashConfig.keyId) {
         throw new Error('SkipCash configuration is missing (SKIPCASH_SECRET_KEY or SKIPCASH_KEY_ID)');
@@ -18,20 +31,23 @@ export const createSkipCashPayment = async (request: SkipCashPaymentRequest): Pr
     const firstName = names[0] || 'Customer';
     const lastName = names.slice(1).join(' ') || 'Platform';
 
-    // Normalize Phone
+    // The working legacy script used an 8-digit local phone number.
     let phoneStr = customerPhone || '33333333';
     phoneStr = phoneStr.replace(/\D/g, '');
-    if (phoneStr.startsWith('974')) {
-        phoneStr = '+' + phoneStr;
-    } else if (phoneStr.length === 8 && (['3', '5', '6', '7'].some(p => phoneStr.startsWith(p)))) {
-        phoneStr = '+974' + phoneStr;
-    } else if (phoneStr.length > 8) {
-        phoneStr = '+' + phoneStr;
+    if (phoneStr.startsWith('974') && phoneStr.length > 8) {
+        phoneStr = phoneStr.slice(3);
     }
+    if (phoneStr.length > 8) phoneStr = phoneStr.slice(-8);
 
     const amountStr = Number(amount).toFixed(2);
+    const normalizedCustom1 = (custom1 || '').trim();
+    const resolvedStreet = street || 'Test St';
+    const resolvedCity = city || 'Doha';
+    const resolvedState = state || 'QA';
+    const resolvedCountry = country || 'QA';
+    const resolvedPostalCode = postalCode || '00000';
 
-    // Fields for signature as per SkipCash documentation
+    // Match the working legacy script and official Node.js guide field order.
     const signatureFields: any = {
         Uid: uid,
         KeyId: keyId,
@@ -40,43 +56,43 @@ export const createSkipCashPayment = async (request: SkipCashPaymentRequest): Pr
         LastName: lastName,
         Phone: phoneStr,
         Email: customerEmail,
-        Street: "Doha",
-        City: "Doha",
-        State: "QA",
-        Country: "QA",
-        PostalCode: "00000",
+        Street: resolvedStreet,
+        City: resolvedCity,
+        State: resolvedState,
+        Country: resolvedCountry,
+        PostalCode: resolvedPostalCode,
         TransactionId: transactionId || uid,
-        Custom1: custom1 || ''
     };
+    if (normalizedCustom1) {
+        signatureFields.Custom1 = normalizedCustom1;
+    }
 
-    const signatureParts: string[] = [];
-    const fieldsOrder = ["Uid", "KeyId", "Amount", "FirstName", "LastName", "Phone", "Email", "Street", "City", "State", "Country", "PostalCode", "TransactionId", "Custom1"];
-
-    fieldsOrder.forEach(key => {
-        const val = signatureFields[key];
-        if (val !== undefined && val !== null && val !== '') {
-            signatureParts.push(`${key}=${val}`);
-        }
-    });
-
-    const combinedData = signatureParts.join(',');
+    const combinedParts = [
+        `Uid=${signatureFields.Uid}`,
+        `KeyId=${signatureFields.KeyId}`,
+        `Amount=${signatureFields.Amount}`,
+        `FirstName=${signatureFields.FirstName}`,
+        `LastName=${signatureFields.LastName}`,
+        `Phone=${signatureFields.Phone}`,
+        `Email=${signatureFields.Email}`,
+        `Street=${signatureFields.Street}`,
+        `City=${signatureFields.City}`,
+        `State=${signatureFields.State}`,
+        `Country=${signatureFields.Country}`,
+        `PostalCode=${signatureFields.PostalCode}`,
+        `TransactionId=${signatureFields.TransactionId}`,
+    ];
+    if (normalizedCustom1) {
+        combinedParts.push(`Custom1=${signatureFields.Custom1}`);
+    }
+    const combinedData = combinedParts.join(',');
     const combinedDataHash = CryptoJS.HmacSHA256(combinedData, skipCashConfig.secretKey);
     const hashInBase64 = CryptoJS.enc.Base64.stringify(combinedDataHash);
 
-    // Payload for the POST request
-    // IMPORTANT: SkipCash expects ReturnUrl in the payload but it is NOT part of the signature
-    const payload: any = {};
-    fieldsOrder.forEach(key => {
-        const val = signatureFields[key];
-        if (val !== undefined && val !== null && val !== '') {
-            payload[key] = val;
-        }
-    });
-
-    // Add ReturnUrl to payload
-    if (returnUrl) {
-        payload.ReturnUrl = returnUrl;
-    }
+    const payload = {
+        ...signatureFields,
+        ...(returnUrl ? { ReturnUrl: returnUrl } : {}),
+    };
 
     try {
         const baseUrl = getSkipCashBaseUrl();

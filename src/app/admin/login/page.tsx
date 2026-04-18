@@ -10,27 +10,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase/config';
 import {
-  Activity,
   AlertCircle,
   AlertTriangle,
-  BarChart3,
   CheckCircle,
-  Clock,
   Eye,
   EyeOff,
   Globe,
-  Info,
   Loader2,
   Lock,
   LogIn,
   Mail,
-  Monitor,
   Settings,
   Shield,
-  Smartphone,
-  TrendingUp,
-  Users,
-  XCircle
+  XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -45,43 +37,14 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [securityInfo, setSecurityInfo] = useState<any>(null);
-  const [systemStats, setSystemStats] = useState<any>(null);
-  const [lastLogin, setLastLogin] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [showEmailVerification, setShowEmailVerification] = useState(false);
 
-  // Update time every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Load system stats and security info
-  useEffect(() => {
-    loadSystemInfo();
     loadSecurityInfo();
   }, []);
 
-  const loadSystemInfo = async () => {
-    try {
-      // Simulate loading system stats
-      const stats = {
-        totalUsers: 1250,
-        activeToday: 85,
-        systemLoad: 23,
-        uptime: '99.9%'
-      };
-      setSystemStats(stats);
-    } catch (error) {
-      console.error('Error loading system stats:', error);
-    }
-  };
-
   const loadSecurityInfo = async () => {
     try {
-      // Get device info
       const deviceInfo = {
         userAgent: navigator.userAgent,
         language: navigator.language,
@@ -89,18 +52,17 @@ export default function AdminLoginPage() {
         cookieEnabled: navigator.cookieEnabled,
         screenResolution: `${screen.width}x${screen.height}`,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        ipAddress: 'Loading...' // Would normally get from IP service
+        ipAddress: 'Loading...',
       };
 
       setSecurityInfo(deviceInfo);
-    } catch (error) {
-      console.error('Error loading security info:', error);
+    } catch (loadError) {
+      console.error('Error loading security info:', loadError);
     }
   };
 
   const logSecurityEvent = async (event: string, details: any = {}) => {
     try {
-      // Create a more structured event document
       const eventData = {
         id: crypto.randomUUID(),
         event,
@@ -108,19 +70,44 @@ export default function AdminLoginPage() {
           ...details,
           userAgent: navigator.userAgent || 'Unknown',
           ipAddress: securityInfo?.ipAddress || 'Unknown',
-          location: securityInfo?.timezone || 'Unknown'
+          location: securityInfo?.timezone || 'Unknown',
         },
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
       };
 
       await supabase.from('security_logs').insert(eventData);
-    } catch (error) {
-      // Log error but don't block the login process
-      console.error('Error logging security event:', error);
-      // Continue execution without throwing
+    } catch (logError) {
+      console.error('Error logging security event:', logError);
     }
   };
+
+  const buildSyncedUserPayload = (payload: {
+    id: string;
+    accountType: string;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    isActive?: boolean | null;
+    employeeId?: string | null;
+    employeeRole?: string | null;
+    role?: string | null;
+    roleId?: string | null;
+    permissions?: string[] | null;
+  }) => ({
+    id: payload.id,
+    accountType: payload.accountType,
+    name: payload.name || null,
+    email: payload.email || null,
+    phone: payload.phone || null,
+    isActive: payload.isActive ?? true,
+    employeeId: payload.employeeId || null,
+    employeeRole: payload.employeeRole || null,
+    role: payload.role || null,
+    roleId: payload.roleId || null,
+    permissions: payload.permissions || null,
+    updated_at: new Date().toISOString(),
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,25 +116,31 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // Log login attempt
       await logSecurityEvent('login_attempt', { email, timestamp: new Date().toISOString() });
 
-      // Authenticate with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (authError) throw authError;
-      const user = authData.user;
 
-      // Check user document
-      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
+      const user = authData.user;
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
 
       let userDataFinal: any = userData;
       let isEmployee = false;
 
       if (!userDataFinal) {
-        // إذا لم توجد في users، ابحث في employees collection
         try {
-          // أولاً: البحث مباشرة بـ UID كـ document ID (الطريقة الجديدة)
-          const { data: employeeByUid } = await supabase.from('employees').select('*').eq('id', user.id).single();
+          const { data: employeeByUid } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
 
           let employeeData: any = null;
           let employeeId: string | null = null;
@@ -156,7 +149,6 @@ export default function AdminLoginPage() {
             employeeData = employeeByUid;
             employeeId = employeeByUid.id;
           } else {
-            // ثانياً: البحث بـ authUserId (الطريقة القديمة)
             const { data: employeesByAuthId } = await supabase
               .from('employees')
               .select('*')
@@ -171,53 +163,54 @@ export default function AdminLoginPage() {
           if (employeeData && employeeId) {
             isEmployee = true;
 
-            // جلب صلاحيات الدور من Supabase
             let rolePermissions: string[] = [];
-            console.log('🔍 Employee data:', {
-              roleId: employeeData.roleId,
-              role: employeeData.role,
-              name: employeeData.name
-            });
 
             if (employeeData.roleId) {
               try {
-                console.log('📡 Fetching role from Supabase:', employeeData.roleId);
-                const { data: roleData } = await supabase.from('roles').select('*').eq('id', employeeData.roleId).single();
+                const { data: roleData } = await supabase
+                  .from('roles')
+                  .select('*')
+                  .eq('id', employeeData.roleId)
+                  .maybeSingle();
+
                 if (roleData) {
                   rolePermissions = roleData.permissions || [];
-                  console.log('✅ Fetched role permissions:', rolePermissions);
-                } else {
-                  console.warn('⚠️ Role document not found in Supabase:', employeeData.roleId);
                 }
               } catch (roleError) {
                 console.warn('Error fetching role permissions:', roleError);
               }
-            } else {
-              console.warn('⚠️ Employee has no roleId');
             }
 
-            // إنشاء userData من بيانات الموظف
             userDataFinal = {
-              accountType: 'admin', // الموظفون يستخدمون dashboard المدير
+              accountType: 'admin',
               name: employeeData.name,
               email: employeeData.email || user.email,
               phone: employeeData.phone,
               isActive: employeeData.isActive !== false,
-              employeeId: employeeId,
+              employeeId,
               employeeRole: employeeData.roleId || employeeData.role,
               role: employeeData.roleId || employeeData.role,
               roleId: employeeData.roleId,
-              permissions: rolePermissions, // صلاحيات CASL
-              ...employeeData
+              permissions: rolePermissions,
+              ...employeeData,
             };
 
-            // إنشاء document في users collection للموظف
             try {
-              await supabase.from('users').upsert({
-                id: user.id,
-                ...userDataFinal,
-                updated_at: new Date().toISOString()
-              });
+              await supabase.from('users').upsert(
+                buildSyncedUserPayload({
+                  id: user.id,
+                  accountType: 'admin',
+                  name: employeeData.name,
+                  email: employeeData.email || user.email,
+                  phone: employeeData.phone,
+                  isActive: employeeData.isActive !== false,
+                  employeeId,
+                  employeeRole: employeeData.roleId || employeeData.role,
+                  role: employeeData.roleId || employeeData.role,
+                  roleId: employeeData.roleId,
+                  permissions: rolePermissions,
+                })
+              );
             } catch (syncError) {
               console.warn('Error syncing employee data to users collection:', syncError);
             }
@@ -227,10 +220,13 @@ export default function AdminLoginPage() {
         }
       }
 
-      // إذا لم نجد بيانات في users أو employees، ابحث في admins collection
       if (!userDataFinal) {
         try {
-          const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
+          const { data: adminData } = await supabase
+            .from('admins')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
 
           if (adminData) {
             userDataFinal = {
@@ -239,16 +235,22 @@ export default function AdminLoginPage() {
               email: adminData.email || user.email,
               phone: adminData.phone || '',
               isActive: adminData.isActive !== false,
-              ...adminData
+              ...adminData,
             };
 
-            // مزامنة البيانات مع users collection
             try {
-              await supabase.from('users').upsert({
-                id: user.id,
-                ...userDataFinal,
-                updated_at: new Date().toISOString()
-              });
+              await supabase.from('users').upsert(
+                buildSyncedUserPayload({
+                  id: user.id,
+                  accountType: 'admin',
+                  name: adminData.name || adminData.full_name || 'مدير النظام',
+                  email: adminData.email || user.email,
+                  phone: adminData.phone || '',
+                  isActive: adminData.isActive !== false,
+                  role: adminData.role || 'admin',
+                  permissions: adminData.permissions || null,
+                })
+              );
             } catch (syncError) {
               console.warn('Error syncing admin data to users collection:', syncError);
             }
@@ -262,51 +264,55 @@ export default function AdminLoginPage() {
         throw new Error('User data not found in database');
       }
 
-      // Check admin permissions
       if (userDataFinal.accountType !== 'admin' && !isEmployee) {
-        // Check admins collection as fallback
-        const { data: adminData } = await supabase.from('admins').select('*').eq('id', user.id).single();
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
 
         if (!adminData) {
           await logSecurityEvent('unauthorized_access_attempt', {
             email,
             userRole: userDataFinal.accountType,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
           throw new Error('You do not have admin permissions to access this panel');
         }
 
         if (!adminData.isActive) {
-          await logSecurityEvent('inactive_admin_login_attempt', { email, timestamp: new Date().toISOString() });
+          await logSecurityEvent('inactive_admin_login_attempt', {
+            email,
+            timestamp: new Date().toISOString(),
+          });
           throw new Error('Your admin account is deactivated. Please contact administration');
         }
       }
 
-      // التحقق من حالة الموظف إذا كان موظفاً
       if (isEmployee && userDataFinal.isActive === false) {
-        await logSecurityEvent('inactive_employee_login_attempt', { email, timestamp: new Date().toISOString() });
+        await logSecurityEvent('inactive_employee_login_attempt', {
+          email,
+          timestamp: new Date().toISOString(),
+        });
         throw new Error('Your employee account is deactivated. Please contact administration');
       }
 
-      // Update last login info
       const loginData = {
         lastLogin: new Date().toISOString(),
         lastLoginIP: securityInfo?.ipAddress || 'Unknown',
         lastLoginDevice: securityInfo?.userAgent || 'Unknown',
         lastLoginLocation: securityInfo?.timezone || 'Unknown',
-        loginCount: (userDataFinal.loginCount || 0) + 1
+        loginCount: (userDataFinal.loginCount || 0) + 1,
       };
 
       await supabase.from('users').update(loginData).eq('id', user.id);
 
-      // Log successful login
       await logSecurityEvent('admin_login_success', {
         email,
         timestamp: new Date().toISOString(),
-        sessionInfo: loginData
+        sessionInfo: loginData,
       });
 
-      // Handle remember me
       try {
         if (rememberMe) {
           localStorage.setItem('adminRememberMe', 'true');
@@ -315,53 +321,47 @@ export default function AdminLoginPage() {
           localStorage.removeItem('adminRememberMe');
           localStorage.removeItem('adminEmail');
         }
-      } catch (error) {
-        console.error('Error saving remember me preference:', error);
-        // Continue even if localStorage fails
+      } catch (storageError) {
+        console.error('Error saving remember me preference:', storageError);
       }
 
-      setSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+      setSuccess('تم تسجيل الدخول بنجاح، جاري تحويلك إلى لوحة التحكم...');
 
-      // تخزين علامة نجاح تسجيل الدخول للأدمن
       try {
         sessionStorage.setItem('adminLoginSuccess', 'true');
         sessionStorage.setItem('adminLoginTime', Date.now().toString());
-        console.log('✅ Set admin login success flag');
-      } catch (e) {
-        console.warn('Could not set session storage:', e);
+      } catch (sessionError) {
+        console.warn('Could not set session storage:', sessionError);
       }
 
-      // Wait for AuthProvider to sync before redirecting
-      // Using window.location.href for a hard redirect to ensure auth state is synced
-      console.log('🔄 Waiting 3 seconds before redirect...');
       setTimeout(() => {
-        console.log('🚀 Redirecting to /dashboard/admin...');
-        // Hard redirect ensures the page fully reloads with auth state
         window.location.href = '/dashboard/admin';
-      }, 3000); // 3 second delay for auth state sync
+      }, 3000);
+    } catch (loginError: any) {
+      console.error('Login error:', loginError);
 
-    } catch (error: any) {
-      console.error('Login error:', error);
-
-      // Log failed login
       await logSecurityEvent('admin_login_failed', {
         email,
-        error: error.message,
-        timestamp: new Date().toISOString()
+        error: loginError.message,
+        timestamp: new Date().toISOString(),
       });
 
       let errorMessage = 'An error occurred during login';
 
-      if (error.message?.includes('Failed to fetch') || error.name === 'AuthRetryableFetchError') {
-        errorMessage = 'خطأ في الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والتحقق من إعدادات Vercel (NEXT_PUBLIC_SUPABASE_URL)';
-      } else if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password';
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Email address not confirmed';
-      } else if (error.message?.includes('Too many requests')) {
-        errorMessage = 'Too many failed attempts. Please try again later';
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (
+        loginError.message?.includes('Failed to fetch') ||
+        loginError.name === 'AuthRetryableFetchError'
+      ) {
+        errorMessage =
+          'خطأ في الاتصال بالخادم. يرجى التأكد من اتصال الإنترنت والتحقق من إعدادات Supabase.';
+      } else if (loginError.message?.includes('Invalid login credentials')) {
+        errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+      } else if (loginError.message?.includes('Email not confirmed')) {
+        errorMessage = 'لم يتم تأكيد البريد الإلكتروني بعد';
+      } else if (loginError.message?.includes('Too many requests')) {
+        errorMessage = 'عدد المحاولات كبير جدًا. حاول مرة أخرى لاحقًا';
+      } else if (loginError.message) {
+        errorMessage = loginError.message;
       }
 
       setError(errorMessage);
@@ -370,7 +370,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  // Load remembered email on component mount
   useEffect(() => {
     try {
       const remembered = localStorage.getItem('adminRememberMe');
@@ -380,261 +379,100 @@ export default function AdminLoginPage() {
         setEmail(savedEmail);
         setRememberMe(true);
       }
-    } catch (error) {
-      console.error('Error loading remembered email:', error);
-      // Clear invalid data
+    } catch (storageError) {
+      console.error('Error loading remembered email:', storageError);
       localStorage.removeItem('adminRememberMe');
       localStorage.removeItem('adminEmail');
     }
   }, []);
 
-  const getDeviceIcon = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes('mobile')) return <Smartphone className="w-4 h-4" />;
-    if (ua.includes('tablet')) return <Smartphone className="w-4 h-4" />;
-    return <Monitor className="w-4 h-4" />;
-  };
-
-  // دالة التحقق من البريد الإلكتروني للأدمن
   const handleAdminEmailVerification = async (otp: string) => {
-    // منطق التحقق من OTP للأدمن
     console.log('تم التحقق من OTP للأدمن:', otp);
     setShowEmailVerification(false);
-    // متابعة عملية تسجيل الدخول
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950">
-      {/* Enhanced Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Animated gradient orbs - Smaller on mobile */}
-        <div className="absolute top-0 -left-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob"></div>
-        <div className="absolute top-0 -right-4 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-1/2 w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 bg-pink-600 rounded-full mix-blend-multiply filter blur-3xl opacity-15 sm:opacity-20 animate-blob animation-delay-4000"></div>
-
-        {/* Grid pattern overlay - Smaller on mobile */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] sm:bg-[size:24px_24px]"></div>
-
-        {/* Shine effect */}
-        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/5"></div>
-      </div>
-
-      <div className="relative z-10 flex min-h-screen">
-        {/* Left Panel - System Info (Enhanced) */}
-        <div className="hidden lg:flex lg:w-2/5 xl:w-1/3 flex-col justify-center p-8 lg:p-12">
-          <div className="space-y-6 animate-fade-in">
-            {/* Brand/Logo Section */}
-            <div className="mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl shadow-lg">
-                <Shield className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-2">لوحة التحكم الإدارية</h1>
-              <p className="text-indigo-200 text-sm">نظام إدارة آمن ومتقدم</p>
-            </div>
-
-            {/* System Stats - Enhanced */}
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <BarChart3 className="w-5 h-5 text-indigo-300" />
-                  <span>نظرة عامة على النظام</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {systemStats && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs text-indigo-200">إجمالي المستخدمين</span>
-                      </div>
-                      <div className="text-2xl font-bold text-blue-400">{systemStats.totalUsers.toLocaleString()}</div>
-                    </div>
-                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-green-400" />
-                        <span className="text-xs text-indigo-200">نشط اليوم</span>
-                      </div>
-                      <div className="text-2xl font-bold text-green-400">{systemStats.activeToday}</div>
-                    </div>
-                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-yellow-400" />
-                        <span className="text-xs text-indigo-200">حمل النظام</span>
-                      </div>
-                      <div className="text-2xl font-bold text-yellow-400">{systemStats.systemLoad}%</div>
-                    </div>
-                    <div className="space-y-2 p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs text-indigo-200">وقت التشغيل</span>
-                      </div>
-                      <div className="text-2xl font-bold text-emerald-400">{systemStats.uptime}</div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Security Info - Enhanced */}
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Shield className="w-5 h-5 text-indigo-300" />
-                  <span>معلومات الأمان</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {securityInfo && (
-                  <>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                      {getDeviceIcon()}
-                      <span className="text-sm text-indigo-100">نوع الجهاز: {navigator.platform}</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                      <Globe className="w-4 h-4 text-indigo-300" />
-                      <span className="text-sm text-indigo-100">الموقع: {securityInfo.timezone}</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                      <Clock className="w-4 h-4 text-indigo-300" />
-                      <span className="text-sm text-indigo-100">الوقت الحالي: {currentTime.toLocaleTimeString('ar-SA')}</span>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Links - Enhanced */}
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Settings className="w-5 h-5 text-indigo-300" />
-                  <span>وصول سريع</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-white hover:bg-white/20 transition-all"
-                  onClick={() => router.push('/admin/login-advanced')}
-                >
-                  <Info className="w-4 h-4 ml-2" />
-                  تسجيل دخول متقدم
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-white hover:bg-white/20 transition-all"
-                  onClick={() => router.push('/')}
-                >
-                  <Globe className="w-4 h-4 ml-2" />
-                  الموقع الرئيسي
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+    <div className="min-h-screen bg-[#f6f6f7] text-slate-900">
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-[#eceff8] to-transparent" />
+          <div className="absolute -top-16 right-[-60px] h-56 w-56 rounded-full bg-[#dfe7ff] opacity-70 blur-3xl" />
+          <div className="absolute left-[-40px] top-1/3 h-60 w-60 rounded-full bg-[#f3d9e6] opacity-60 blur-3xl" />
         </div>
 
-        {/* Right Panel - Login Form (Enhanced) */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-          <div className="w-full max-w-md">
-            <Card className="bg-white/95 backdrop-blur-2xl shadow-2xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
-              {/* Gradient top border */}
-              <div className="h-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
+        <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
+          <section className="w-full max-w-[340px] sm:max-w-[360px]">
+            <div className="mb-4 flex justify-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
+              <Shield className="h-4 w-4 text-indigo-600" />
+              بوابة الإدارة الآمنة
+              </div>
+            </div>
 
-              <CardHeader className="space-y-4 sm:space-y-6 text-center pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6">
-                {/* Icon */}
-                <div className="mx-auto mb-3 sm:mb-4 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105">
-                  <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
+            <Card className="w-full overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.08)]">
+              <CardHeader className="space-y-3 px-4 pb-0 pt-4 text-center sm:px-5 sm:pt-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-700 shadow-lg">
+                    <Shield className="h-5 w-5 text-white" />
+                  </div>
+                  <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
+                    <Shield className="ml-1 h-3 w-3 text-indigo-600" />
+                    آمن
+                  </Badge>
                 </div>
 
-                <div>
-                  <CardTitle className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 sm:mb-2">
-                    لوحة التحكم الإدارية
+                <div className="space-y-2 text-right">
+                  <CardTitle className="text-xl font-black text-slate-900 sm:text-2xl">
+                    تسجيل دخول الإدارة
                   </CardTitle>
-                  <CardDescription className="text-gray-600 text-sm sm:text-base">
-                    بوابة الوصول الآمنة للإدارة
+                  <CardDescription className="text-xs leading-6 text-slate-500 sm:text-sm">
+                    أدخل بياناتك للوصول إلى لوحة التحكم.
                   </CardDescription>
-                </div>
-
-                {/* Status badges - Enhanced */}
-                <div className="flex justify-center gap-2 sm:gap-3 flex-wrap">
-                  <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50/80 px-2.5 sm:px-3 py-1 text-xs sm:text-sm">
-                    <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1" />
-                    النظام متصل
-                  </Badge>
-                  <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50/80 px-2.5 sm:px-3 py-1 text-xs sm:text-sm">
-                    <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1" />
-                    آمن SSL
-                  </Badge>
                 </div>
               </CardHeader>
 
-              <CardContent className="px-4 sm:px-6 md:px-8 pb-6 sm:pb-8">
-                <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
-                  {error && (
-                    <div className="relative overflow-hidden rounded-xl border border-red-200/80 bg-gradient-to-r from-red-50 via-red-50/95 to-red-50 shadow-lg backdrop-blur-sm animate-fade-in">
-                      {/* Gradient accent border */}
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 via-red-400 to-red-500"></div>
+              <CardContent className="space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+                {error && (
+                  <Alert className="rounded-2xl border-red-200 bg-red-50 text-red-900">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="flex items-start justify-between gap-3">
+                      <span className="text-xs leading-6 sm:text-sm">{error}</span>
+                      <button
+                        type="button"
+                        onClick={() => setError('')}
+                        className="rounded-lg p-1 text-red-400 transition hover:bg-red-100 hover:text-red-600"
+                        aria-label="إغلاق رسالة الخطأ"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-                      <div className="flex items-start gap-3 p-4 sm:p-4">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-red-100/80 backdrop-blur-sm">
-                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-sm sm:text-base font-semibold text-red-900">خطأ في تسجيل الدخول</h4>
-                          </div>
-                          <p className="text-xs sm:text-sm text-red-800 leading-relaxed">{error}</p>
-                        </div>
-                        <button
-                          onClick={() => setError('')}
-                          className="flex-shrink-0 p-1 text-red-400 hover:text-red-600 hover:bg-red-100/50 rounded-lg transition-colors"
-                          aria-label="إغلاق"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {success && (
+                  <Alert className="rounded-2xl border-emerald-200 bg-emerald-50 text-emerald-900">
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription className="flex items-start justify-between gap-3">
+                      <span className="text-xs leading-6 sm:text-sm">{success}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSuccess('')}
+                        className="rounded-lg p-1 text-emerald-400 transition hover:bg-emerald-100 hover:text-emerald-600"
+                        aria-label="إغلاق رسالة النجاح"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-                  {success && (
-                    <div className="relative overflow-hidden rounded-xl border border-green-200/80 bg-gradient-to-r from-green-50 via-emerald-50/95 to-green-50 shadow-lg backdrop-blur-sm animate-fade-in">
-                      {/* Gradient accent border */}
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500"></div>
-
-                      <div className="flex items-start gap-3 p-4 sm:p-4">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-green-100/80 backdrop-blur-sm">
-                            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-sm sm:text-base font-semibold text-green-900">تم بنجاح!</h4>
-                          </div>
-                          <p className="text-xs sm:text-sm text-green-800 leading-relaxed">{success}</p>
-                        </div>
-                        <button
-                          onClick={() => setSuccess('')}
-                          className="flex-shrink-0 p-1 text-green-400 hover:text-green-600 hover:bg-green-100/50 rounded-lg transition-colors"
-                          aria-label="إغلاق"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
+                <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-gray-700 font-semibold text-xs sm:text-sm">
-                      البريد الإلكتروني
+                    <Label htmlFor="email" className="text-xs font-bold text-slate-800 sm:text-sm">
+                      البريد الإلكتروني الإداري
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <Mail className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input
                         id="email"
                         type="email"
@@ -643,143 +481,128 @@ export default function AdminLoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         autoComplete="email"
-                        className="pr-9 sm:pr-10 h-11 sm:h-12 text-sm sm:text-base border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl"
                         dir="ltr"
+                        className="h-10 rounded-2xl border-slate-200 bg-slate-50 pr-11 text-sm shadow-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/60"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-gray-700 font-semibold text-xs sm:text-sm">
+                    <Label htmlFor="password" className="text-xs font-bold text-slate-800 sm:text-sm">
                       كلمة المرور
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      <Lock className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input
                         id="password"
-                        type={showPassword ? "text" : "password"}
+                        type={showPassword ? 'text' : 'password'}
                         placeholder="أدخل كلمة المرور"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         autoComplete="current-password"
-                        className="pr-9 sm:pr-10 pl-10 sm:pl-12 h-11 sm:h-12 text-sm sm:text-base border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl"
                         dir="ltr"
+                        className="h-10 rounded-2xl border-slate-200 bg-slate-50 pl-12 pr-11 text-sm shadow-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/60"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-100 text-gray-500"
+                        className="absolute left-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                        title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                       >
-                        {showPassword ? <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 space-x-reverse">
-                    <Checkbox
-                      id="remember"
-                      checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(checked === true)}
-                      className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 h-4 w-4 sm:h-5 sm:w-5"
-                    />
-                    <Label
-                      htmlFor="remember"
-                      className="text-xs sm:text-sm text-gray-600 cursor-pointer font-medium"
-                    >
-                      تذكرني في المستقبل
-                    </Label>
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <Checkbox
+                        id="remember"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked === true)}
+                        className="border-slate-300 data-[state=checked]:border-slate-900 data-[state=checked]:bg-slate-900"
+                      />
+                      <Label htmlFor="remember" className="cursor-pointer text-xs font-medium text-slate-700 sm:text-sm">
+                        تذكرني لاحقًا
+                      </Label>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">SSL</span>
                   </div>
 
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-11 sm:h-12 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-xl rounded-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none active:scale-[0.98]"
+                    className="h-10 w-full rounded-2xl bg-slate-900 text-sm font-black text-white shadow-lg transition hover:bg-slate-800"
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="ml-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                        <span className="text-xs sm:text-sm">جاري التحقق...</span>
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        جاري التحقق...
                       </>
                     ) : (
                       <>
-                        <LogIn className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                        <span className="text-xs sm:text-sm">تسجيل الدخول</span>
+                        <LogIn className="ml-2 h-4 w-4" />
+                        تسجيل الدخول
                       </>
                     )}
                   </Button>
                 </form>
 
-                <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
-                  {/* Security Notice - Enhanced */}
-                  <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg sm:rounded-xl">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs sm:text-sm text-amber-900">
-                        <p className="font-semibold mb-1 text-xs sm:text-sm">إشعار الأمان</p>
-                        <p className="text-[10px] sm:text-xs leading-relaxed">هذه منطقة إدارية مقيدة. يتم مراقبة وتسجيل جميع محاولات تسجيل الدخول.</p>
-                      </div>
+                <div className="space-y-3 border-t border-slate-100 pt-3">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 sm:text-sm">
+                    <div className="mb-1 flex items-center gap-2 font-bold">
+                      <AlertTriangle className="h-4 w-4" />
+                      إشعار أمني
                     </div>
+                    هذه الصفحة مخصصة للإدارة فقط، ويتم تسجيل ومراجعة محاولات الدخول للحفاظ على
+                    أمان النظام.
                   </div>
 
-                  {/* Links - Enhanced */}
-                  <div className="text-center text-xs sm:text-sm text-gray-600 space-y-2 sm:space-y-3">
-                    <p className="leading-relaxed text-xs sm:text-sm">
-                      للمستخدمين العاديين، يرجى استخدام{' '}
-                      <a href="/auth/login" className="text-indigo-600 hover:text-indigo-700 font-semibold hover:underline transition-colors break-words">
-                        صفحة تسجيل الدخول العادية
-                      </a>
-                    </p>
-                    <div className="flex justify-center items-center gap-2 sm:gap-3 pt-2 flex-wrap">
-                      <a href="/admin/login-advanced" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline transition-colors text-xs sm:text-sm">
-                        تسجيل دخول متقدم
-                      </a>
-                      <span className="text-gray-400">•</span>
-                      <a href="/" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline transition-colors text-xs sm:text-sm">
-                        الموقع الرئيسي
-                      </a>
-                    </div>
+                  <div className="grid gap-2 text-sm sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-2xl border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50 sm:text-sm"
+                      onClick={() => router.push('/admin/login-advanced')}
+                    >
+                      <Settings className="ml-2 h-4 w-4" />
+                      دخول متقدم
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-2xl border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50 sm:text-sm"
+                      onClick={() => router.push('/')}
+                    >
+                      <Globe className="ml-2 h-4 w-4" />
+                      الموقع الرئيسي
+                    </Button>
                   </div>
+
+                  <p className="text-center text-xs leading-6 text-slate-500 sm:text-sm">
+                    للمستخدمين العاديين، استخدم{' '}
+                    <a href="/auth/login" className="font-bold text-slate-900 underline-offset-4 hover:underline">
+                      صفحة تسجيل الدخول العادية
+                    </a>
+                    .
+                  </p>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </section>
         </div>
       </div>
-
-      {/* Custom styles for animations */}
-      <style jsx>{`
-        @keyframes blob {
-          0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        .animate-blob {
-          animation: blob 8s ease-in-out infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out;
-        }
-      `}</style>
 
       <EmailOTPVerification
         email="admin@el7lm.com"
         name="المشرف"
         isOpen={showEmailVerification}
         onVerificationSuccess={handleAdminEmailVerification}
-        onVerificationFailed={(error) => console.error('خطأ في التحقق:', error)}
+        onVerificationFailed={(otpError) => console.error('خطأ في التحقق:', otpError)}
         onClose={() => setShowEmailVerification(false)}
         title="التحقق من هوية المشرف"
         subtitle="تم إرسال رمز التحقق إلى بريد المشرف"

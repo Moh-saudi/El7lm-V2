@@ -198,6 +198,15 @@ export default function OppsSectionManager() {
                     {(data.selectedOpportunityIds || []).includes(opp.id) && <Check size={14} />}
                   </div>
                 </div>
+                {opp.coverImage ? (
+                  <div className="mb-3 h-32 overflow-hidden rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-100 dark:bg-gray-900">
+                    <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
+                  </div>
+                ) : opp.promoVideo ? (
+                  <div className="mb-3 h-32 overflow-hidden rounded-lg border border-slate-200 dark:border-gray-700 bg-black">
+                    <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                  </div>
+                ) : null}
                 <div className="text-xs text-slate-500 dark:text-gray-400 space-y-1">
                   <p>المنظم: <span className="font-medium text-slate-700 dark:text-gray-300">{opp.organizerName}</span></p>
                   <p>النوع: <span className="font-medium text-slate-700 dark:text-gray-300 text-[10px] bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded">{opp.opportunityType}</span></p>

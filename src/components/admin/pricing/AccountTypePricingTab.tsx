@@ -184,7 +184,7 @@ function AccountTypePricingContent() {
                                             cancelText="إلغاء"
                                             okButtonProps={{ danger: true }}
                                         >
-                                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                                            <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label={`حذف التسعير الخاص بنوع الحساب ${type.name}`} title={`حذف التسعير الخاص بنوع الحساب ${type.name}`} />
                                         </Popconfirm>
                                     ] : []),
                                 ]}

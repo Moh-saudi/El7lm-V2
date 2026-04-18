@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Target,
@@ -65,6 +65,42 @@ function formatDate(iso: string) {
 function daysUntil(iso: string) {
   const diff = Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
   return diff;
+}
+
+function OpportunityMediaPreview({
+  opportunity,
+  height = 'h-44',
+}: {
+  opportunity: Opportunity;
+  height?: string;
+}) {
+  if (opportunity.coverImage) {
+    return (
+      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-gray-50 ${height}`}>
+        <img
+          src={opportunity.coverImage}
+          alt={opportunity.title}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  if (opportunity.promoVideo) {
+    return (
+      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-black ${height}`}>
+        <video
+          src={opportunity.promoVideo}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+        />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ─── Loading Spinner ───────────────────────────────────────────────────────────
@@ -272,6 +308,8 @@ function PublisherView({
                     <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-snug">
                       {opp.title}
                     </h3>
+
+                    <OpportunityMediaPreview opportunity={opp} height="h-40" />
 
                     {/* Row 3: progress */}
                     <div className="space-y-1">
@@ -595,6 +633,8 @@ function ExploreView({
                     {/* Title */}
                     <h3 className="text-base font-bold text-gray-900 leading-snug">{opp.title}</h3>
 
+                    <OpportunityMediaPreview opportunity={opp} height="h-44" />
+
                     {/* Dates */}
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <Calendar className="w-3.5 h-3.5" />
@@ -748,7 +788,10 @@ function ExploreView({
 
 export default function OpportunitiesPage() {
   const { user, userData } = useAuth();
+  const searchParams = useSearchParams();
   const accountType = userData?.accountType;
+  const viewParam = searchParams.get('view');
+  const publisherAccountTypes = new Set(['club', 'academy', 'agent', 'trainer', 'marketer', 'admin', 'parent']);
 
   if (!userData || !user) return <LoadingSpinner />;
 
@@ -756,5 +799,22 @@ export default function OpportunitiesPage() {
     return <ExploreView user={user} userData={userData} />;
   }
 
+  if (viewParam === 'explore') {
+    return <ExploreView user={user} userData={userData} />;
+  }
+
+  if (publisherAccountTypes.has(accountType)) {
+    return <PublisherView user={user} userData={userData} />;
+  }
+
+  if (viewParam === 'manage') {
+    return <PublisherView user={user} userData={userData} />;
+  }
+
   return <PublisherView user={user} userData={userData} />;
 }
+
+// Legacy note:
+// `/dashboard/opportunities` now defaults to publisher management for
+// organization-style accounts, while players continue to see the explore view.
+// Explore mode remains available explicitly through `?view=explore`.

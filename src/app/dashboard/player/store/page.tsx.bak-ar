@@ -1,0 +1,1098 @@
+﻿'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { supabase } from '@/lib/supabase/config';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  CheckCircle,
+  CreditCard,
+  Package,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Store,
+  Truck,
+  Wallet,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { motion } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+
+type StoreCategory =
+  | 'equipment'
+  | 'clothing'
+  | 'accessories'
+  | 'nutrition'
+  | 'electronics'
+  | 'other';
+
+type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled';
+
+type DashboardAccountType =
+  | 'player'
+  | 'academy'
+  | 'club'
+  | 'agent'
+  | 'trainer'
+  | 'marketer'
+  | 'admin'
+  | 'parent';
+
+interface StoreProduct {
+  id: string;
+  name: string;
+  description: string;
+  category: StoreCategory;
+  price: number;
+  currency: string;
+  brand?: string;
+  model?: string;
+  image?: string;
+  images: string[];
+  stock: number;
+  isAvailable: boolean;
+}
+
+interface StoreOrder {
+  id: string;
+  product_name: string;
+  quantity: number;
+  total_price: number;
+  currency: string;
+  payment_method: string | null;
+  payment_provider: string | null;
+  payment_type: string | null;
+  installment_months: number | null;
+  status: OrderStatus;
+  created_at: string;
+}
+
+interface OrderFormState {
+  buyerName: string;
+  buyerPhone: string;
+  paymentMethod: string;
+  paymentType: 'full' | 'installment';
+  installmentMonths: string;
+  shippingAddress: string;
+  shippingCity: string;
+  shippingCountry: string;
+  notes: string;
+}
+
+interface InventoryRow {
+  id?: string;
+  name?: string;
+  category?: string;
+  stock?: number;
+  price?: number;
+  currency?: string;
+  brand?: string;
+  model?: string;
+  description?: string;
+  image?: string;
+  images?: string[];
+  status?: string;
+}
+
+const EMPTY_ORDER_FORM: OrderFormState = {
+  buyerName: '',
+  buyerPhone: '',
+  paymentMethod: 'geidea',
+  paymentType: 'full',
+  installmentMonths: '',
+  shippingAddress: '',
+  shippingCity: '',
+  shippingCountry: 'Saudi Arabia',
+  notes: '',
+};
+
+const STORE_PAYMENT_OPTIONS = [
+  { id: 'geidea', label: 'Geidea - Ø¨Ø·Ø§Ù‚Ø© Ø¨Ù†ÙƒÙŠØ©', type: 'full' as const },
+  { id: 'skipcash', label: 'SkipCash - Ø¨Ø·Ø§Ù‚Ø© Ø¨Ù†ÙƒÙŠØ©', type: 'full' as const },
+  { id: 'tamara', label: 'Tamara - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [2, 3, 4] },
+  { id: 'tabby', label: 'Tabby - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [4] },
+  { id: 'valu', label: 'valU - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [6, 12, 18, 24] },
+  { id: 'sympl', label: 'Sympl - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [3, 4, 5] },
+  { id: 'souhoola', label: 'Souhoola - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [6, 12, 18, 24] },
+  { id: 'contact', label: 'Contact - ØªÙ‚Ø³ÙŠØ·', type: 'installment' as const, plans: [6, 12, 18, 24] },
+  { id: 'bank_transfer', label: 'ØªØ­ÙˆÙŠÙ„ Ø¨Ù†ÙƒÙŠ', type: 'full' as const },
+];
+
+const CATEGORY_LABELS: Record<'all' | StoreCategory, string> = {
+  all: 'ÙƒÙ„ Ø§Ù„Ø£Ù‚Ø³Ø§Ù…',
+  equipment: 'Ù…Ø¹Ø¯Ø§Øª',
+  clothing: 'Ù…Ù„Ø§Ø¨Ø³',
+  accessories: 'Ø¥ÙƒØ³Ø³ÙˆØ§Ø±Ø§Øª',
+  nutrition: 'ØªØºØ°ÙŠØ©',
+  electronics: 'Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠØ§Øª',
+  other: 'Ù…Ù†ØªØ¬Ø§Øª Ø£Ø®Ø±Ù‰',
+};
+
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: 'Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©',
+  confirmed: 'ØªÙ… Ø§Ù„ØªØ£ÙƒÙŠØ¯',
+  processing: 'Ù‚ÙŠØ¯ Ø§Ù„ØªØ¬Ù‡ÙŠØ²',
+  shipped: 'ØªÙ… Ø§Ù„Ø´Ø­Ù†',
+  delivered: 'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…',
+  cancelled: 'Ù…Ù„ØºÙŠ',
+};
+
+const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
+  pending: 'bg-amber-100 text-amber-800',
+  confirmed: 'bg-blue-100 text-blue-800',
+  processing: 'bg-indigo-100 text-indigo-800',
+  shipped: 'bg-cyan-100 text-cyan-800',
+  delivered: 'bg-emerald-100 text-emerald-800',
+  cancelled: 'bg-rose-100 text-rose-800',
+};
+
+const ACCOUNT_TYPE_LABELS: Record<DashboardAccountType, string> = {
+  player: 'Ù„Ø§Ø¹Ø¨',
+  academy: 'Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©',
+  club: 'Ù†Ø§Ø¯ÙŠ',
+  agent: 'ÙˆÙƒÙŠÙ„',
+  trainer: 'Ù…Ø¯Ø±Ø¨',
+  marketer: 'Ù…Ø³ÙˆÙ‘Ù‚',
+  admin: 'Ø£Ø¯Ù…Ù†',
+  parent: 'ÙˆÙ„ÙŠ Ø£Ù…Ø±',
+};
+
+function inferAccountTypeFromPath(pathname: string | null): DashboardAccountType {
+  if (!pathname) return 'player';
+  if (pathname.includes('/dashboard/academy/')) return 'academy';
+  if (pathname.includes('/dashboard/club/')) return 'club';
+  if (pathname.includes('/dashboard/agent/')) return 'agent';
+  if (pathname.includes('/dashboard/trainer/')) return 'trainer';
+  if (pathname.includes('/dashboard/marketer/')) return 'marketer';
+  if (pathname.includes('/dashboard/admin/')) return 'admin';
+  if (pathname.includes('/dashboard/parent/')) return 'parent';
+  return 'player';
+}
+
+function getCategoryIcon(category: StoreCategory) {
+  switch (category) {
+    case 'equipment':
+      return 'âš½';
+    case 'clothing':
+      return 'ðŸ‘•';
+    case 'accessories':
+      return 'âŒš';
+    case 'nutrition':
+      return 'ðŸ’ª';
+    case 'electronics':
+      return 'ðŸŽ§';
+    default:
+      return 'ðŸ›ï¸';
+  }
+}
+
+function formatStorePrice(amount: number, currency: string) {
+  return `${Number(amount || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} ${currency || 'SAR'}`;
+}
+
+export default function PlayerStorePage() {
+  const { user, userData } = useAuth();
+  const pathname = usePathname();
+  const inferredAccountType = inferAccountTypeFromPath(pathname);
+  const accountType = (userData?.accountType as DashboardAccountType | undefined) || inferredAccountType;
+  const accountTypeLabel = ACCOUNT_TYPE_LABELS[accountType] || accountType;
+
+  const [loading, setLoading] = useState(true);
+  const [inventoryUnavailable, setInventoryUnavailable] = useState(false);
+  const [ordersUnavailable, setOrdersUnavailable] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | StoreCategory>('all');
+  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+  const [orderForm, setOrderForm] = useState<OrderFormState>(EMPTY_ORDER_FORM);
+
+  const selectedPaymentOption = STORE_PAYMENT_OPTIONS.find(
+    (option) => option.id === orderForm.paymentMethod
+  );
+
+  useEffect(() => {
+    void loadProducts();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setOrders([]);
+      setOrdersLoading(false);
+      return;
+    }
+
+    void loadOrders();
+  }, [user]);
+
+  useEffect(() => {
+    const buyerName = String(
+      userData?.full_name ||
+        userData?.name ||
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        ''
+    ).trim();
+
+    const buyerPhone = String(
+      userData?.phone ||
+        userData?.phoneNumber ||
+        user?.user_metadata?.phone ||
+        user?.phone ||
+        ''
+    ).trim();
+
+    setOrderForm((current) => ({
+      ...current,
+      buyerName: current.buyerName || buyerName,
+      buyerPhone: current.buyerPhone || buyerPhone,
+    }));
+  }, [user, userData]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        !searchTerm ||
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
+
+  const availableProducts = filteredProducts.filter((product) => product.isAvailable);
+  const totalVisibleValue = filteredProducts.reduce((sum, product) => sum + product.price, 0);
+  const availableCount = products.filter((product) => product.isAvailable).length;
+  const visibleCurrencies = Array.from(new Set(filteredProducts.map((product) => product.currency)));
+
+  async function loadProducts() {
+    try {
+      setLoading(true);
+      setInventoryUnavailable(false);
+
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, name, category, stock, price, currency, brand, model, description, image, images, status')
+        .order('createdAt', { ascending: false });
+
+      if (error) {
+        if (error.code === 'PGRST205') {
+          setProducts([]);
+          setInventoryUnavailable(true);
+          return;
+        }
+        throw error;
+      }
+
+      const normalized = (data || [])
+        .map((item: InventoryRow): StoreProduct | null => {
+          if (!item.id || !item.name) return null;
+
+          const category = (
+            ['equipment', 'clothing', 'accessories', 'nutrition', 'electronics', 'other'].includes(
+              item.category || ''
+            )
+              ? item.category
+              : 'other'
+          ) as StoreCategory;
+
+          const stock = Number(item.stock || 0);
+          const price = Number(item.price || 0);
+          const isAvailable = stock > 0 && item.status !== 'discontinued';
+          const images = Array.isArray(item.images)
+            ? item.images.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            : [];
+          const primaryImage = item.image || images[0] || undefined;
+
+          return {
+            id: item.id,
+            name: item.name,
+            description: item.description || 'Ù…Ù†ØªØ¬ Ø±ÙŠØ§Ø¶ÙŠ Ù…ØªØ§Ø­ Ù„Ù„Ø·Ù„Ø¨ Ù…Ù† Ù…ØªØ¬Ø± Ø§Ù„Ø­Ù„Ù….',
+            category,
+            price,
+            currency: item.currency || 'SAR',
+            brand: item.brand || undefined,
+            model: item.model || undefined,
+            image: primaryImage,
+            images,
+            stock,
+            isAvailable,
+          };
+        })
+        .filter((item): item is StoreProduct => Boolean(item));
+
+      setProducts(normalized);
+    } catch (error) {
+      console.error('Store inventory load failed:', error);
+      setProducts([]);
+      toast.error('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ø­Ù‚ÙŠÙ‚ÙŠØ© Ù…Ù† Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…ØªØ¬Ø±');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadOrders() {
+    try {
+      setOrdersLoading(true);
+      setOrdersUnavailable(false);
+
+      if (!user) {
+        setOrders([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('store_orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (error.code === 'PGRST205') {
+          setOrders([]);
+          setOrdersUnavailable(true);
+          return;
+        }
+        throw error;
+      }
+
+      setOrders((data || []) as StoreOrder[]);
+    } catch (error) {
+      console.error('Store orders load failed:', error);
+      setOrders([]);
+      toast.error('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø·Ù„Ø¨Ø§ØªÙƒ Ø§Ù„Ø­Ø§Ù„ÙŠØ© Ù…Ù† Ø§Ù„Ù…ØªØ¬Ø±');
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
+
+  function resetPurchaseState() {
+    setShowPurchaseModal(false);
+    setSelectedProduct(null);
+    setPurchaseQuantity(1);
+    setOrderForm((current) => ({
+      ...EMPTY_ORDER_FORM,
+      buyerName: current.buyerName,
+      buyerPhone: current.buyerPhone,
+    }));
+  }
+
+  function handlePurchase(product: StoreProduct) {
+    if (!product.isAvailable) {
+      toast.error('Ù‡Ø°Ø§ Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ØªØ§Ø­ Ø­Ø§Ù„ÙŠÙ‹Ø§');
+      return;
+    }
+
+    const defaultOption = STORE_PAYMENT_OPTIONS[0];
+    setSelectedProduct(product);
+    setPurchaseQuantity(1);
+    setOrderForm((current) => ({
+      ...current,
+      paymentMethod: defaultOption.id,
+      paymentType: defaultOption.type,
+      installmentMonths: '',
+    }));
+    setShowPurchaseModal(true);
+  }
+
+  async function confirmPurchase() {
+    if (!selectedProduct || !user) {
+      toast.error('ÙŠØ¬Ø¨ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨');
+      return;
+    }
+
+    if (!orderForm.buyerName.trim()) {
+      toast.error('ÙŠØ±Ø¬Ù‰ Ø¥Ø¯Ø®Ø§Ù„ Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªÙ„Ù…');
+      return;
+    }
+
+    if (!orderForm.buyerPhone.trim()) {
+      toast.error('ÙŠØ±Ø¬Ù‰ Ø¥Ø¯Ø®Ø§Ù„ Ø±Ù‚Ù… Ø§Ù„Ø¬ÙˆØ§Ù„');
+      return;
+    }
+
+    if (!orderForm.shippingAddress.trim() || !orderForm.shippingCity.trim()) {
+      toast.error('ÙŠØ±Ø¬Ù‰ Ø¥Ø¯Ø®Ø§Ù„ Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø´Ø­Ù† ÙˆØ§Ù„Ù…Ø¯ÙŠÙ†Ø©');
+      return;
+    }
+
+    if (orderForm.paymentType === 'installment' && !orderForm.installmentMonths) {
+      toast.error('ÙŠØ±Ø¬Ù‰ Ø§Ø®ØªÙŠØ§Ø± Ù…Ø¯Ø© Ø§Ù„ØªÙ‚Ø³ÙŠØ·');
+      return;
+    }
+
+    try {
+      setSubmittingOrder(true);
+
+      const { error } = await supabase.from('store_orders').insert({
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        buyer_name: orderForm.buyerName,
+        buyer_email: user.email || null,
+        buyer_phone: orderForm.buyerPhone,
+        buyer_account_type: accountType,
+        product_id: selectedProduct.id,
+        product_name: selectedProduct.name,
+        product_category: selectedProduct.category,
+        product_image: selectedProduct.image || null,
+        product_brand: selectedProduct.brand || null,
+        product_model: selectedProduct.model || null,
+        unit_price: selectedProduct.price,
+        quantity: purchaseQuantity,
+        total_price: selectedProduct.price * purchaseQuantity,
+        currency: selectedProduct.currency || 'SAR',
+        payment_method: orderForm.paymentMethod,
+        payment_provider: orderForm.paymentMethod,
+        payment_type: orderForm.paymentType,
+        installment_months:
+          orderForm.paymentType === 'installment'
+            ? Number(orderForm.installmentMonths || 0)
+            : null,
+        status: 'pending',
+        shipping_address: orderForm.shippingAddress,
+        shipping_city: orderForm.shippingCity,
+        shipping_country: orderForm.shippingCountry,
+        notes: orderForm.notes || null,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        if (error.code === 'PGRST205') {
+          setOrdersUnavailable(true);
+          throw new Error('Ø¬Ø¯ÙˆÙ„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…ØªØ¬Ø± ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„ ÙÙŠ Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø¨Ø¹Ø¯');
+        }
+        throw error;
+      }
+
+      toast.success(`تم إرسال طلب ${selectedProduct.name} بقيمة ${formatStorePrice(selectedProduct.price * purchaseQuantity, selectedProduct.currency)}`);
+
+      resetPurchaseState();
+      await loadOrders();
+    } catch (error) {
+      console.error('Store order submit failed:', error);
+      toast.error(error instanceof Error ? error.message : 'ØªØ¹Ø°Ø± Ø¥Ø±Ø³Ø§Ù„ Ø·Ù„Ø¨ Ø§Ù„Ø´Ø±Ø§Ø¡');
+    } finally {
+      setSubmittingOrder(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-lg text-slate-600">Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…ØªØ¬Ø±...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#eef3f8] text-slate-900">
+      <div className="mx-auto max-w-[1600px] space-y-5 p-3 sm:p-4 lg:p-6">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-[#101828] px-4 py-3 text-white sm:px-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ffb703] text-[#101828]">
+                  <Store className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm text-slate-300">Ù…ØªØ¬Ø± Ø§Ù„Ø­Ù„Ù… Ø§Ù„Ø±ÙŠØ§Ø¶ÙŠ</div>
+                  <div className="text-lg font-black">ÙˆØ§Ø¬Ù‡Ø© Ø´Ø±Ø§Ø¡ Ù…ÙˆØ­Ø¯Ø© Ù„ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª</div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white/10 px-3 py-2 text-center">
+                  <div className="text-[11px] text-slate-300">Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª</div>
+                  <div className="text-base font-black">{products.length}</div>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-3 py-2 text-center">
+                  <div className="text-[11px] text-slate-300">Ø§Ù„Ù…ØªØ§Ø­ Ø§Ù„Ø¢Ù†</div>
+                  <div className="text-base font-black">{availableCount}</div>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-3 py-2 text-center">
+                  <div className="text-[11px] text-slate-300">Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø­Ø§Ù„ÙŠ</div>
+                  <div className="text-sm font-black">{accountTypeLabel}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 bg-gradient-to-r from-[#fff9ec] via-white to-[#eef7ff] p-4 sm:p-6 lg:grid-cols-[1.3fr_.9fr]">
+            <div className="space-y-4">
+              <Badge className="rounded-full bg-[#ffedd5] px-4 py-1 text-[#9a3412] hover:bg-[#ffedd5]">
+                Ù…ØªØ¬Ø± Ø¨Ø£Ø³Ù„ÙˆØ¨ Ø§Ø­ØªØ±Ø§ÙÙŠ ÙˆØ´Ø±Ø§Ø¡ Ù…Ø¨Ø§Ø´Ø±
+              </Badge>
+              <div>
+                <h1 className="max-w-3xl text-2xl font-black leading-tight sm:text-4xl">
+                  ØªØ³ÙˆÙ‚ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ø±ÙŠØ§Ø¶ÙŠØ© ÙƒÙ…Ø§ ÙÙŠ ØµÙØ­Ø§Øª Ø§Ù„Ù…ØªØ§Ø¬Ø± Ø§Ù„ÙƒØ¨ÙŠØ±Ø©
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+                  Ø§Ø³ØªØ¹Ø±Ø¶ Ø§Ù„Ù…Ù†ØªØ¬Ø§ØªØŒ ØµÙÙ‡Ø§ Ø­Ø³Ø¨ Ø§Ù„Ù‚Ø³Ù…ØŒ ÙˆØ£Ø±Ø³Ù„ Ø·Ù„Ø¨ Ø§Ù„Ø´Ø±Ø§Ø¡ Ø£Ùˆ Ø§Ù„ØªÙ‚Ø³ÙŠØ· Ù…Ù† Ù†ÙØ³ Ø§Ù„ØµÙØ­Ø©
+                  Ø¨ÙˆØ§Ø¬Ù‡Ø© Ø£ÙˆØ¶Ø­ ÙˆØ£Ù‚Ø±Ø¨ Ù„Ø£Ø³Ù„ÙˆØ¨ Ø§Ù„ØªØ¬Ø§Ø±Ø© Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠØ© Ø§Ù„Ø­Ø¯ÙŠØ«.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <CreditCard className="mb-3 h-5 w-5 text-[#0f766e]" />
+                  <div className="text-sm font-black">Ø¯ÙØ¹ ÙÙˆØ±ÙŠ</div>
+                  <div className="mt-1 text-xs leading-6 text-slate-500">
+                    Geidea Ùˆ SkipCash ÙˆØªØ­ÙˆÙŠÙ„ Ø¨Ù†ÙƒÙŠ.
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <Wallet className="mb-3 h-5 w-5 text-[#7c3aed]" />
+                  <div className="text-sm font-black">ØªÙ‚Ø³ÙŠØ· Ù…Ø±Ù†</div>
+                  <div className="mt-1 text-xs leading-6 text-slate-500">
+                    Tamara Ùˆ Tabby Ø¨Ø®Ø·Ø· Ø³Ø±ÙŠØ¹Ø© ÙˆÙˆØ§Ø¶Ø­Ø©.
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <ShieldCheck className="mb-3 h-5 w-5 text-[#2563eb]" />
+                  <div className="text-sm font-black">Ø·Ù„Ø¨Ø§Øª Ù…ÙˆØ«Ù‚Ø©</div>
+                  <div className="mt-1 text-xs leading-6 text-slate-500">
+                    ÙƒÙ„ Ø·Ù„Ø¨ ÙŠÙØ­ÙØ¸ ÙˆÙŠÙ…ÙƒÙ† Ù…ØªØ§Ø¨Ø¹ØªÙ‡ Ù…Ù† Ù†ÙØ³ Ø§Ù„ØµÙØ­Ø©.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-slate-500">Ù…Ù„Ø®Øµ Ø³Ø±ÙŠØ¹</div>
+                  <div className="text-xl font-black">ÙˆØ§Ø¬Ù‡Ø© ØªØµÙØ­ ÙˆØ´Ø±Ø§Ø¡</div>
+                </div>
+                <Sparkles className="h-5 w-5 text-[#f59e0b]" />
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø­Ø§Ù„ÙŠØ©</div>
+                  <div className="mt-1 text-2xl font-black">{filteredProducts.length}</div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø£Ø³Ø¹Ø§Ø± Ø§Ù„Ù…Ø¹Ø±ÙˆØ¶</div>
+                  <div className="mt-1 text-2xl font-black">
+                    {visibleCurrencies.length > 1
+                      ? `${visibleCurrencies.length} عملات`
+                      : formatStorePrice(totalVisibleValue, visibleCurrencies[0] || 'SAR')}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-[#0f172a] p-4 text-white">
+                  <div className="text-xs text-slate-300">Ù…Ù„Ø§Ø­Ø¸Ø©</div>
+                  <div className="mt-2 text-sm leading-7 text-slate-100">
+                    Ø§Ù„ÙˆØ§Ø¬Ù‡Ø© ØªØ¹ØªÙ…Ø¯ ÙÙ‚Ø· Ø¹Ù„Ù‰ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ø­Ù‚ÙŠÙ‚ÙŠØ© Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯Ø© ÙÙŠ Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§ØªØŒ ÙˆÙ„Ø§
+                    ØªØ¹Ø±Ø¶ Ø£ÙŠ Ù…Ù†ØªØ¬Ø§Øª ÙˆÙ‡Ù…ÙŠØ©.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_340px]">
+          <aside className="space-y-4">
+            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+              <CardContent className="space-y-4 p-5">
+                <div>
+                  <div className="text-xs font-bold text-slate-500">Ø§Ù„Ø¨Ø­Ø« ÙˆØ§Ù„ØªØµÙÙŠØ©</div>
+                  <div className="text-lg font-black">ØªØµÙØ­ Ø§Ù„Ø£Ù‚Ø³Ø§Ù…</div>
+                </div>
+
+                <div className="relative">
+                  <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Ø§Ø¨Ø­Ø« Ø¹Ù† Ù…Ù†ØªØ¬"
+                    className="rounded-2xl border-slate-200 pr-10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  {(Object.keys(CATEGORY_LABELS) as Array<'all' | StoreCategory>).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSelectedCategory(value)}
+                      className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-sm font-bold transition ${
+                        selectedCategory === value
+                          ? 'border-[#0f172a] bg-[#0f172a] text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{CATEGORY_LABELS[value]}</span>
+                      <span className="text-lg">
+                        {value === 'all' ? 'ðŸ§­' : getCategoryIcon(value)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+              <CardContent className="space-y-3 p-5">
+                <div className="text-lg font-black">Ø§Ù„Ø¯ÙØ¹ ÙˆØ§Ù„ØªÙ‚Ø³ÙŠØ·</div>
+                {STORE_PAYMENT_OPTIONS.map((option) => (
+                  <div
+                    key={option.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"
+                  >
+                    <div className="font-bold text-slate-900">{option.label}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {option.type === 'installment'
+                        ? `Ø®Ø·Ø· Ù…ØªØ§Ø­Ø©: ${(option.plans || []).join(' / ')} Ø£Ø´Ù‡Ø±`
+                        : 'Ø¯ÙØ¹ Ù…Ø¨Ø§Ø´Ø± ÙˆÙÙˆØ±ÙŠ'}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </aside>
+
+          <main className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <div>
+                <div className="text-xs font-bold text-slate-500">Ø§Ù„Ù†ØªØ§Ø¦Ø¬</div>
+                <div className="text-lg font-black">
+                  {filteredProducts.length} Ù…Ù†ØªØ¬
+                  {selectedCategory !== 'all' ? ` ÙÙŠ Ù‚Ø³Ù… ${CATEGORY_LABELS[selectedCategory]}` : ''}
+                </div>
+              </div>
+              <div className="rounded-full bg-[#eff6ff] px-4 py-2 text-sm font-bold text-[#1d4ed8]">
+                {availableProducts.length} Ù…Ù†ØªØ¬ Ù…ØªØ§Ø­ Ù„Ù„Ø·Ù„Ø¨ Ø§Ù„Ø¢Ù†
+              </div>
+            </div>
+
+            {filteredProducts.length === 0 ? (
+              <Card className="rounded-[28px] border-dashed border-slate-300 shadow-sm">
+                <CardContent className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-8 text-center">
+                  <Package className="h-12 w-12 text-slate-400" />
+                  <div className="text-xl font-black text-slate-800">
+                    {inventoryUnavailable
+                      ? 'Ø¬Ø¯ÙˆÙ„ Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ù…ØªØ¬Ø± ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„ Ø¨Ø¹Ø¯'
+                      : 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù†ØªØ¬Ø§Øª Ø­Ù‚ÙŠÙ‚ÙŠØ© Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø¢Ù†'}
+                  </div>
+                  <p className="max-w-xl text-sm leading-7 text-slate-500">
+                    {inventoryUnavailable
+                      ? 'Ù†ÙÙ‘Ø° Ù…Ù„Ù Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø®Ø§Øµ Ø¨Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø£ÙˆÙ„Ù‹Ø§ØŒ ÙˆØ¨Ø¹Ø¯Ù‡Ø§ Ø³ØªØ¸Ù‡Ø± Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ø­Ù‚ÙŠÙ‚ÙŠØ© ØªÙ„Ù‚Ø§Ø¦ÙŠÙ‹Ø§ Ù…Ù† Ù„ÙˆØ­Ø© Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…ØªØ¬Ø±.'
+                      : 'Ø¬Ø±Ù‘Ø¨ Ø§Ù„Ø¨Ø­Ø« Ø¨Ø§Ø³Ù… Ù…Ø®ØªÙ„Ù Ø£Ùˆ Ø§Ø®ØªØ± Ù‚Ø³Ù…Ù‹Ø§ Ø¢Ø®Ø±ØŒ Ø£Ùˆ Ø£Ø¶Ù Ù…Ù†ØªØ¬Ø§Øª ÙØ¹Ù„ÙŠØ© Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„Ø£Ø¯Ù…Ù†.'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                {filteredProducts.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                  >
+                    <Card className="overflow-hidden rounded-[26px] border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
+                      <CardContent className="p-0">
+                        <div className="relative">
+                          <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,#f8fafc,#e2e8f0)]">
+                            {product.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-6xl">{getCategoryIcon(product.category)}</span>
+                            )}
+                          </div>
+
+                          <div className="absolute left-3 top-3 flex items-center gap-2">
+                            <Badge className="rounded-full bg-white/95 px-3 py-1 text-slate-900 hover:bg-white">
+                              {CATEGORY_LABELS[product.category]}
+                            </Badge>
+                            <Badge
+                              className={`rounded-full px-3 py-1 ${
+                                product.isAvailable
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
+                                  : 'bg-slate-200 text-slate-700 hover:bg-slate-200'
+                              }`}
+                            >
+                              {product.isAvailable ? 'Ù…ØªÙˆÙØ±' : 'ØºÙŠØ± Ù…ØªÙˆÙØ±'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-5">
+                          <div className="space-y-2">
+                            <h3 className="line-clamp-1 text-lg font-black text-slate-900">
+                              {product.name}
+                            </h3>
+                            <p className="text-xs font-bold text-slate-400">
+                              {product.brand || 'بدون ماركة'}
+                              {product.model ? ` • ${product.model}` : ''}
+                            </p>
+                            <p className="line-clamp-2 text-sm leading-7 text-slate-600">
+                              {product.description}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <div className="text-[11px] font-bold text-slate-500">Ø§Ù„Ø³Ø¹Ø±</div>
+                              <div className="mt-1 text-lg font-black text-slate-900">
+                                {formatStorePrice(product.price, product.currency)}
+                              </div>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <div className="text-[11px] font-bold text-slate-500">Ø§Ù„Ù…Ø®Ø²ÙˆÙ†</div>
+                              <div className="mt-1 text-lg font-black text-slate-900">
+                                {product.stock}
+                              </div>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={() => handlePurchase(product)}
+                            disabled={!product.isAvailable}
+                            className="h-11 w-full rounded-2xl bg-[#ffb703] font-black text-[#111827] hover:bg-[#f59e0b]"
+                          >
+                            <ShoppingCart className="ml-2 h-4 w-4" />
+                            Ø§Ø·Ù„Ø¨ Ø§Ù„Ø¢Ù†
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </main>
+
+          <aside className="space-y-4">
+            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+              <CardContent className="space-y-4 p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-[#e0f2fe] p-3 text-[#0369a1]">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-black">Ø·Ù„Ø¨Ø§ØªÙŠ</div>
+                    <div className="text-xs text-slate-500">Ø¢Ø®Ø± Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…Ø±Ø³Ù„Ø© Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„Ø­Ø³Ø§Ø¨</div>
+                  </div>
+                </div>
+
+                {ordersLoading ? (
+                  <div className="rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª...
+                  </div>
+                ) : ordersUnavailable ? (
+                  <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+                    Ø¬Ø¯ÙˆÙ„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…ØªØ¬Ø± ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„ ÙÙŠ Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø¨Ø¹Ø¯.
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                    Ù„Ù… ØªÙÙ†Ø´Ø¦ Ø£ÙŠ Ø·Ù„Ø¨Ø§Øª Ø´Ø±Ø§Ø¡ Ø¨Ø¹Ø¯.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.slice(0, 6).map((order) => (
+                      <div key={order.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-black text-slate-900">{order.product_name}</div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {new Date(order.created_at).toLocaleDateString('ar-EG')}
+                            </div>
+                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${ORDER_STATUS_STYLES[order.status]}`}
+                          >
+                            {ORDER_STATUS_LABELS[order.status]}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-sm text-slate-600">
+                          <div className="flex items-center justify-between">
+                            <span>Ø§Ù„ÙƒÙ…ÙŠØ©</span>
+                            <span className="font-bold">{order.quantity}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ</span>
+                            <span className="font-black text-slate-900">
+                              {Number(order.total_price || 0).toLocaleString()} {order.currency || 'SAR'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-500">
+                          {order.payment_type === 'installment'
+                            ? `${order.payment_method || 'ØªÙ‚Ø³ÙŠØ·'} â€¢ ${order.installment_months || '-'} Ø£Ø´Ù‡Ø±`
+                            : order.payment_method || 'Ø¯ÙØ¹ ÙƒØ§Ù…Ù„'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      </div>
+
+      {showPurchaseModal && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900">ØªØ£ÙƒÙŠØ¯ Ø·Ù„Ø¨ Ø§Ù„Ø´Ø±Ø§Ø¡</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Ø£ÙƒÙ…Ù„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ØªØ§Ù„ÙŠØ© Ù„Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨ Ø¥Ù„Ù‰ Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…ØªØ¬Ø±.
+                </p>
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={resetPurchaseState}>
+                <XCircle className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="space-y-4">
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">
+                      {getCategoryIcon(selectedProduct.category)}
+                    </div>
+                    <div>
+                      <div className="font-black text-slate-900">{selectedProduct.name}</div>
+                      <div className="text-sm text-slate-500">{CATEGORY_LABELS[selectedProduct.category]}</div>
+                      <div className="text-xs text-slate-400">
+                        {selectedProduct.brand || 'بدون ماركة'}
+                        {selectedProduct.model ? ` • ${selectedProduct.model}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm leading-7 text-slate-600">{selectedProduct.description}</p>
+
+                  {selectedProduct.images.length > 1 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {selectedProduct.images.slice(0, 4).map((image, imageIndex) => (
+                        <div
+                          key={`${selectedProduct.id}-thumb-${imageIndex}`}
+                          className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={image} alt={`${selectedProduct.name}-${imageIndex + 1}`} className="h-full w-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 space-y-3 rounded-2xl bg-white p-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Ø³Ø¹Ø± Ø§Ù„Ù‚Ø·Ø¹Ø©</span>
+                      <span className="font-black">{formatStorePrice(selectedProduct.price, selectedProduct.currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-slate-500">Ø§Ù„ÙƒÙ…ÙŠØ©</span>
+                      <Input
+                        type="number"
+                        min="1"
+                        max={Math.max(selectedProduct.stock, 1)}
+                        value={purchaseQuantity}
+                        onChange={(e) =>
+                          setPurchaseQuantity(
+                            Math.min(
+                              Math.max(1, parseInt(e.target.value || '1', 10)),
+                              Math.max(selectedProduct.stock, 1)
+                            )
+                          )
+                        }
+                        className="w-24"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base">
+                      <span className="font-bold text-slate-700">Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ</span>
+                      <span className="text-xl font-black text-[#0f766e]">
+                        {formatStorePrice(selectedProduct.price * purchaseQuantity, selectedProduct.currency)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4 text-sm text-slate-600">
+                  Ø³ÙŠØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨ Ø¥Ù„Ù‰ Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…ØªØ¬Ø± Ù„ÙŠØªÙ… Ù…Ø±Ø§Ø¬Ø¹ØªÙ‡ ÙˆØªØ£ÙƒÙŠØ¯Ù‡ ÙˆØ±Ø¨Ø·Ù‡ Ø¨Ø®Ø·ÙˆØ© Ø§Ù„Ø¯ÙØ¹ Ø£Ùˆ
+                  Ø§Ù„ØªÙˆØµÙŠÙ„.
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ø§Ø³Ù… Ø§Ù„Ù…Ø³ØªÙ„Ù…</label>
+                    <Input
+                      value={orderForm.buyerName}
+                      onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
+                      placeholder="Ø§Ù„Ø§Ø³Ù… Ø§Ù„ÙƒØ§Ù…Ù„"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ø±Ù‚Ù… Ø§Ù„Ø¬ÙˆØ§Ù„</label>
+                    <Input
+                      value={orderForm.buyerPhone}
+                      onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerPhone: e.target.value }))}
+                      placeholder="05xxxxxxxx"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ø·Ø±ÙŠÙ‚Ø© Ø§Ù„Ø¯ÙØ¹</label>
+                    <select
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      value={orderForm.paymentMethod}
+                      onChange={(e) => {
+                        const nextOption =
+                          STORE_PAYMENT_OPTIONS.find((option) => option.id === e.target.value) ||
+                          STORE_PAYMENT_OPTIONS[0];
+                        setOrderForm((prev) => ({
+                          ...prev,
+                          paymentMethod: nextOption.id,
+                          paymentType: nextOption.type,
+                          installmentMonths:
+                            nextOption.type === 'installment'
+                              ? String(nextOption.plans?.[0] || '')
+                              : '',
+                        }));
+                      }}
+                    >
+                      {STORE_PAYMENT_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ù†ÙˆØ¹ Ø§Ù„Ø³Ø¯Ø§Ø¯</label>
+                    <Input
+                      value={orderForm.paymentType === 'installment' ? 'ØªÙ‚Ø³ÙŠØ·' : 'Ø¯ÙØ¹ ÙƒØ§Ù…Ù„'}
+                      readOnly
+                    />
+                  </div>
+                  {selectedPaymentOption?.type === 'installment' ? (
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-bold text-slate-700">Ø®Ø·Ø© Ø§Ù„ØªÙ‚Ø³ÙŠØ·</label>
+                      <div className="flex flex-wrap gap-2">
+                        {(selectedPaymentOption.plans || []).map((plan) => (
+                          <Button
+                            key={plan}
+                            type="button"
+                            variant={orderForm.installmentMonths === String(plan) ? 'default' : 'outline'}
+                            onClick={() =>
+                              setOrderForm((prev) => ({ ...prev, installmentMonths: String(plan) }))
+                            }
+                          >
+                            {plan} Ø£Ø´Ù‡Ø±
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-bold text-slate-700">Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø´Ø­Ù†</label>
+                    <Input
+                      value={orderForm.shippingAddress}
+                      onChange={(e) =>
+                        setOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))
+                      }
+                      placeholder="Ø§Ù„Ø­ÙŠØŒ Ø§Ù„Ø´Ø§Ø±Ø¹ØŒ Ø±Ù‚Ù… Ø§Ù„Ù…Ø¨Ù†Ù‰"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©</label>
+                    <Input
+                      value={orderForm.shippingCity}
+                      onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingCity: e.target.value }))}
+                      placeholder="Ø§Ù„Ø±ÙŠØ§Ø¶"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Ø§Ù„Ø¯ÙˆÙ„Ø©</label>
+                    <Input
+                      value={orderForm.shippingCountry}
+                      onChange={(e) =>
+                        setOrderForm((prev) => ({ ...prev, shippingCountry: e.target.value }))
+                      }
+                      placeholder="Saudi Arabia"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-bold text-slate-700">Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©</label>
+                    <Textarea
+                      value={orderForm.notes}
+                      onChange={(e) => setOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Ø£ÙŠ ØªÙØ§ØµÙŠÙ„ Ø®Ø§ØµØ© Ø¨Ø§Ù„ØªÙˆØµÙŠÙ„ Ø£Ùˆ Ø§Ù„Ù…Ù‚Ø§Ø³ Ø£Ùˆ Ø§Ù„ØªÙˆØ§ØµÙ„"
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    className="h-11 flex-1 rounded-2xl bg-[#ffb703] font-black text-[#111827] hover:bg-[#f59e0b]"
+                    onClick={() => void confirmPurchase()}
+                    disabled={submittingOrder}
+                  >
+                    <CheckCircle className="ml-2 h-4 w-4" />
+                    {submittingOrder ? 'Ø¬Ø§Ø±ÙŠ Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨...' : 'ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø·Ù„Ø¨'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 rounded-2xl"
+                    onClick={resetPurchaseState}
+                  >
+                    Ø¥Ù„ØºØ§Ø¡
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+

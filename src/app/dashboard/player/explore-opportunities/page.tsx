@@ -623,6 +623,15 @@ export default function SearchPage() {
                   return (
                     <div key={opp.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                       <div className="h-1 w-full" style={{ backgroundColor: cfg.color }} />
+                      {opp.coverImage ? (
+                        <div className="h-44 overflow-hidden bg-slate-100">
+                          <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
+                        </div>
+                      ) : opp.promoVideo ? (
+                        <div className="h-44 overflow-hidden bg-black">
+                          <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                        </div>
+                      ) : null}
                       <div className="p-5">
                         <div className="flex items-center gap-2 mb-3">
                           <span
@@ -716,6 +725,15 @@ export default function SearchPage() {
 
               {/* Scrollable body */}
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+                {detailOpp.coverImage ? (
+                  <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
+                    <img src={detailOpp.coverImage} alt={detailOpp.title} className="h-56 w-full object-cover" />
+                  </div>
+                ) : detailOpp.promoVideo ? (
+                  <div className="overflow-hidden rounded-2xl border border-gray-100 bg-black">
+                    <video src={detailOpp.promoVideo} controls className="h-56 w-full object-cover" />
+                  </div>
+                ) : null}
 
                 {/* حالة طلب التقديم */}
                 {myApplications[detailOpp.id] && (() => {

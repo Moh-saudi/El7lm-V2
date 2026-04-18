@@ -128,6 +128,7 @@ export function AdminNotificationsDropdown() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
+                                    aria-label="تحديد الإشعار كمقروء"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         markAsRead(notification.id!);
@@ -141,6 +142,7 @@ export function AdminNotificationsDropdown() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                aria-label="حذف الإشعار"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     deleteNotification(notification.id!);
@@ -163,6 +165,7 @@ export function AdminNotificationsDropdown() {
                     variant="ghost"
                     size="icon"
                     className="relative rounded-full hover:bg-blue-50 transition-all duration-300 w-10 h-10"
+                    aria-label={unreadCount > 0 ? `فتح مركز الإشعارات، لديك ${unreadCount} إشعارات غير مقروءة` : "فتح مركز الإشعارات"}
                 >
                     <div className={`absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 ${unreadCount > 0 ? 'bg-blue-500/10 opacity-100' : ''}`} />
                     <Bell className={`w-5 h-5 transition-colors duration-300 ${unreadCount > 0 ? 'text-blue-600 fill-blue-100' : 'text-gray-500'}`} />

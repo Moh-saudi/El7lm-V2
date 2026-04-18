@@ -7,6 +7,11 @@ export interface SkipCashPaymentRequest {
     transactionId?: string; // Internal order ID
     returnUrl?: string; // Where to redirect after payment
     custom1?: string; // Optional metadata
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
 }
 
 export interface SkipCashPaymentResponse {

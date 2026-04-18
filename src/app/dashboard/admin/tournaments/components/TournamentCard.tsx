@@ -96,6 +96,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                             size="sm"
                             onClick={() => onViewRegistrations(tournament)}
                             className="h-9 w-9 p-0"
+                            aria-label="عرض تسجيلات البطولة"
                             title="عرض التسجيلات"
                         >
                             <Users className="h-4 w-4" />
@@ -105,6 +106,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                             size="sm"
                             onClick={() => onEdit(tournament)}
                             className="h-9 w-9 p-0"
+                            aria-label="تعديل البطولة"
                             title="تعديل البطولة"
                         >
                             <Edit className="h-4 w-4" />
@@ -114,6 +116,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                             size="sm"
                             onClick={() => onDelete(tournament.id!)}
                             className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            aria-label="حذف البطولة"
                             title="حذف البطولة"
                         >
                             <Trash2 className="h-4 w-4" />

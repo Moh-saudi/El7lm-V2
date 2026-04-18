@@ -16,6 +16,14 @@ export function defineAbilityFor(userData: any, role?: Role) {
         return build();
     }
 
+    // الحساب الرئيسي للنظام يجب أن يملك صلاحية كاملة دائمًا، حتى لو كانت
+    // هناك بيانات دور/صلاحيات قديمة أو متزامنة جزئيًا في userData.
+    const normalizedEmail = String(userData.email || '').trim().toLowerCase();
+    if (normalizedEmail === 'admin@el7lm.com' || normalizedEmail === 'admin@elhilm.com') {
+        can('manage', 'all');
+        return build();
+    }
+
     // 1. صلاحيات السوبر أدمن (مدير النظام)
     const userRole = userData.roleId || userData.employeeRole || userData.role || userData.accountType;
     const userPermissions = userData.permissions;

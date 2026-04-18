@@ -54,7 +54,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     success: false,
-                    error: result.returnMessage || 'Failed to create payment session',
+                    error:
+                        result.returnMessage ||
+                        (result as any).errorMessage ||
+                        (result as any).error?.message ||
+                        'Failed to create payment session',
                     details: result, // Full result for better debugging
                 },
                 { status: 400 }

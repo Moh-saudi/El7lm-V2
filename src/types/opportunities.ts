@@ -43,6 +43,7 @@ export interface Opportunity {
   providesTransport: boolean;
   compensation?: string;
   coverImage?: string;
+  promoVideo?: string;
   status: OpportunityStatus;
   isActive: boolean;
   isFeatured: boolean;

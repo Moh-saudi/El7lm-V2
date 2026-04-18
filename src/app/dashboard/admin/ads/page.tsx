@@ -14,7 +14,6 @@ import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { supabase } from '@/lib/supabase/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import AdAnalytics from '@/components/ads/AdAnalytics';
-import { ensureAdsBucketExists, getAdsStorageStats } from '@/lib/supabase/ads-storage';
 import AdFormDialog from '@/components/ads/AdFormDialog';
 import { Ad } from '@/types/ads';
 
@@ -69,16 +68,19 @@ export default function AdminAdsPage() {
 
   const checkBucketStatus = async () => {
     try {
-      const exists = await ensureAdsBucketExists();
-      setBucketStatus(exists ? 'exists' : 'missing');
+      const response = await fetch('/api/admin/ads/storage-stats', { cache: 'no-store' });
+      const payload = await response.json();
 
-      if (exists) {
-        const stats = await getAdsStorageStats();
-        setStorageStats(stats);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || 'Failed to fetch ads storage stats');
       }
+
+      setBucketStatus(payload.exists ? 'exists' : 'missing');
+      setStorageStats(payload.data ?? null);
     } catch (error) {
       console.error('Error checking bucket status:', error);
       setBucketStatus('missing');
+      setStorageStats(null);
     }
   };
 

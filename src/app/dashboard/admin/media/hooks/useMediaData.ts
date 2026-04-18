@@ -23,6 +23,18 @@ export const getYouTubeThumbnail = (url: string): string | null => {
     return id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null;
 };
 
+const sanitizeMediaUrl = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return undefined;
+
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+    return undefined;
+};
+
 export function useMediaData() {
     const [items, setItems]           = useState<MediaItem[]>([]);
     const [loading, setLoading]       = useState(false);
@@ -41,9 +53,12 @@ export function useMediaData() {
             // تحويل التواريخ من string إلى Date
             const mapped: MediaItem[] = (data.items || []).map((item: any) => ({
                 ...item,
+                url: sanitizeMediaUrl(item.url) || '',
+                thumbnailUrl: sanitizeMediaUrl(item.thumbnailUrl),
+                userImage: sanitizeMediaUrl(item.userImage),
                 uploadDate:   new Date(item.uploadDate),
                 aiAnalyzedAt: item.aiAnalyzedAt ? new Date(item.aiAnalyzedAt) : undefined,
-            }));
+            })).filter((item: MediaItem) => !!item.url);
 
             setItems(mapped);
             setLastFetched(new Date());
