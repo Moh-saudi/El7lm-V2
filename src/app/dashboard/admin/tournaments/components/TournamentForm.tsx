@@ -1,25 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
-} from '@/components/ui/dialog';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Modal, Form, Input, InputNumber, Select, Switch, Row, Col, ConfigProvider, Divider, Typography, Upload, Button, Tag } from 'antd';
+import { TrophyOutlined, CalendarOutlined, DollarOutlined, FileTextOutlined, EnvironmentOutlined, LinkOutlined, PhoneOutlined, UploadOutlined, CheckCircleOutlined, TeamOutlined, BankOutlined } from '@ant-design/icons';
+import arEG from 'antd/locale/ar_EG';
 import { toast } from 'sonner';
-import {
-    Trophy, Calendar, Users, MapPin, DollarSign, Save, X, Link,
-    Info, CreditCard, FileText, Image as ImageIcon, Upload, Navigation, Copy,
-    CheckCircle2, ChevronRight, ChevronLeft, Flag, HelpCircle, Loader2
-} from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { Tournament, getCurrencySymbol } from '../utils';
+import { Tournament } from '../utils';
 import { storageManager } from '@/lib/storage';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface TournamentFormProps {
     initialData: Tournament | null;
@@ -28,629 +20,480 @@ interface TournamentFormProps {
     onSuccess: () => void;
 }
 
+const ANTD_THEME = { token: { colorPrimary: '#d97706', borderRadius: 8, fontFamily: 'inherit' } };
 const STEPS = [
-    { id: 1, title: 'البيانات الأساسية', icon: Info, description: 'الاسم، الوصف، والموقع' },
-    { id: 2, title: 'التواريخ', icon: Calendar, description: 'مواعيد البطولة والتسجيل' },
-    { id: 3, title: 'المالية', icon: DollarSign, description: 'الرسوم وطرق الدفع' },
-    { id: 4, title: 'تفاصيل إضافية', icon: FileText, description: 'القواعد والفئات والجوائز' },
+    { title: 'البيانات الأساسية', subtitle: 'الاسم والمكان والشعار', icon: <TrophyOutlined /> },
+    { title: 'التواريخ', subtitle: 'بداية ونهاية البطولة والتسجيل', icon: <CalendarOutlined /> },
+    { title: 'المالية', subtitle: 'الرسوم وطرق الدفع', icon: <DollarOutlined /> },
+    { title: 'التفاصيل', subtitle: 'الفئات والشروط والتواصل', icon: <FileTextOutlined /> },
 ];
 
-export const TournamentForm: React.FC<TournamentFormProps> = ({
-    initialData,
-    isOpen,
-    onClose,
-    onSuccess
-}) => {
-    const [currentStep, setCurrentStep] = useState(1);
+const COUNTRIES = [
+    { code: 'EG', name: 'مصر', currency: 'EGP', flag: '🇪🇬' },
+    { code: 'SA', name: 'السعودية', currency: 'SAR', flag: '🇸🇦' },
+    { code: 'AE', name: 'الإمارات', currency: 'AED', flag: '🇦🇪' },
+    { code: 'KW', name: 'الكويت', currency: 'KWD', flag: '🇰🇼' },
+    { code: 'QA', name: 'قطر', currency: 'QAR', flag: '🇶🇦' },
+    { code: 'BH', name: 'البحرين', currency: 'BHD', flag: '🇧🇭' },
+    { code: 'OM', name: 'عمان', currency: 'OMR', flag: '🇴🇲' },
+    { code: 'JO', name: 'الأردن', currency: 'JOD', flag: '🇯🇴' },
+    { code: 'LB', name: 'لبنان', currency: 'USD', flag: '🇱🇧' },
+    { code: 'IQ', name: 'العراق', currency: 'IQD', flag: '🇮🇶' },
+    { code: 'YE', name: 'اليمن', currency: 'YER', flag: '🇾🇪' },
+    { code: 'PS', name: 'فلسطين', currency: 'ILS', flag: '🇵🇸' },
+    { code: 'MA', name: 'المغرب', currency: 'MAD', flag: '🇲🇦' },
+    { code: 'DZ', name: 'الجزائر', currency: 'DZD', flag: '🇩🇿' },
+    { code: 'TN', name: 'تونس', currency: 'TND', flag: '🇹🇳' },
+    { code: 'LY', name: 'ليبيا', currency: 'LYD', flag: '🇱🇾' },
+    { code: 'SD', name: 'السودان', currency: 'SDG', flag: '🇸🇩' },
+    { code: 'TR', name: 'تركيا', currency: 'TRY', flag: '🇹🇷' },
+    { code: 'US', name: 'الولايات المتحدة', currency: 'USD', flag: '🇺🇸' },
+    { code: 'GB', name: 'المملكة المتحدة', currency: 'GBP', flag: '🇬🇧' },
+    { code: 'EU', name: 'أوروبا', currency: 'EUR', flag: '🇪🇺' },
+    { code: 'CA', name: 'كندا', currency: 'CAD', flag: '🇨🇦' },
+    { code: 'AU', name: 'أستراليا', currency: 'AUD', flag: '🇦🇺' },
+];
+
+const CURRENCIES = ['EGP', 'USD', 'SAR', 'AED', 'KWD', 'QAR', 'BHD', 'JOD', 'GBP', 'EUR'];
+const PAYMENT_METHODS = [
+    { id: 'credit_card', label: 'بطاقة ائتمان', icon: '💳' },
+    { id: 'bank_transfer', label: 'تحويل بنكي', icon: '🏦' },
+    { id: 'mobile_wallet', label: 'محفظة إلكترونية', icon: '📱' },
+    { id: 'cash', label: 'نقدًا', icon: '💵' },
+];
+const AGE_GROUPS = ['تحت 8 سنوات', 'تحت 10 سنوات', 'تحت 12 سنة', 'تحت 14 سنة', 'تحت 16 سنة', 'تحت 18 سنة', 'تحت 20 سنة', 'كبار (20+ سنة)'];
+const CATEGORIES = ['أولاد', 'بنات', 'مختلط'];
+
+const EMPTY: Partial<Tournament> = {
+    name: '', description: '', location: '', locationUrl: '', startDate: '', endDate: '', registrationDeadline: '',
+    maxParticipants: 16, currentParticipants: 0, entryFee: 0, currency: 'EGP', isPaid: false, isActive: true,
+    ageGroups: [], categories: [], rules: '', prizes: '', contactInfo: '', logo: '', paymentMethods: ['credit_card', 'bank_transfer'],
+    paymentDeadline: '', feeType: 'individual', maxPlayersPerClub: 11, allowInstallments: false, installmentsCount: 2,
+    installmentsDetails: '', registrations: [], walletName: '', walletNumber: '', country: 'EG',
+};
+
+export const TournamentForm: React.FC<TournamentFormProps> = ({ initialData, isOpen, onClose, onSuccess }) => {
+    const [step, setStep] = useState(0);
+    const [data, setData] = useState<Partial<Tournament>>(EMPTY);
     const [logoFile, setLogoFile] = useState<File | null>(null);
-    const [logoUploading, setLogoUploading] = useState(false);
-    const [logoPreview, setLogoPreview] = useState<string>('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [logoPreview, setLogoPreview] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    const [formData, setFormData] = useState<Partial<Tournament>>({
-        name: '', description: '', location: '', locationUrl: '', startDate: '', endDate: '',
-        registrationDeadline: '', maxParticipants: 100, currentParticipants: 0, entryFee: 0,
-        currency: 'EGP', isPaid: false, isActive: true, ageGroups: [], categories: [],
-        rules: '', prizes: '', contactInfo: '', logo: '', paymentMethods: ['credit_card', 'bank_transfer'],
-        paymentDeadline: '', refundPolicy: '', feeType: 'individual', maxPlayersPerClub: 1,
-        allowInstallments: false, installmentsCount: 2, installmentsDetails: '', registrations: [],
-        walletName: '', walletNumber: ''
-    });
-
-    const ageGroupsList = [
-        'تحت 8 سنوات', 'تحت 10 سنوات', 'تحت 12 سنة', 'تحت 14 سنة',
-        'تحت 16 سنة', 'تحت 18 سنة', 'تحت 20 سنة', 'كبار (20+ سنة)'
-    ];
-
-    const categoriesList = ['أولاد', 'بنات', 'مختلط'];
-
-    const paymentMethodsList = [
-        { id: 'credit_card', name: 'بطاقة ائتمان', icon: '💳' },
-        { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦' },
-        { id: 'mobile_wallet', name: 'محفظة إلكترونية', icon: '📱' },
-        { id: 'cash', name: 'نقداً', icon: '💵' }
-    ];
+    const upd = (patch: Partial<Tournament>) => setData((prev) => ({ ...prev, ...patch }));
 
     useEffect(() => {
-        if (isOpen) {
-            if (initialData) {
-                setFormData({
-                    ...initialData,
-                    startDate: initialData.startDate.split('T')[0],
-                    endDate: initialData.endDate.split('T')[0],
-                    registrationDeadline: initialData.registrationDeadline.split('T')[0],
-                    paymentDeadline: initialData.paymentDeadline ? initialData.paymentDeadline.split('T')[0] : '',
-                    isActive: initialData.isActive === true,
-                    paymentMethods: initialData.paymentMethods || ['credit_card', 'bank_transfer'],
-                    ageGroups: initialData.ageGroups || [],
-                    categories: initialData.categories || [],
-                    registrations: initialData.registrations || [],
-                    walletName: initialData.walletName || '',
-                    walletNumber: initialData.walletNumber || '',
-                });
-                setLogoPreview(initialData.logo || '');
-            } else {
-                resetForm();
-            }
-            setCurrentStep(1);
+        if (!isOpen) return;
+        setStep(0);
+        if (initialData) {
+            setData({
+                ...initialData,
+                startDate: initialData.startDate?.split('T')[0] || '',
+                endDate: initialData.endDate?.split('T')[0] || '',
+                registrationDeadline: initialData.registrationDeadline?.split('T')[0] || '',
+                paymentDeadline: initialData.paymentDeadline?.split('T')[0] || '',
+                isActive: initialData.isActive === true,
+                paymentMethods: initialData.paymentMethods?.length ? initialData.paymentMethods : ['credit_card', 'bank_transfer'],
+                ageGroups: initialData.ageGroups || [],
+                categories: initialData.categories || [],
+                registrations: initialData.registrations || [],
+                walletName: initialData.walletName || '',
+                walletNumber: initialData.walletNumber || '',
+                country: initialData.country || 'EG',
+            });
+            setLogoPreview(initialData.logo || '');
+        } else {
+            setData(EMPTY);
+            setLogoFile(null);
+            setLogoPreview('');
         }
     }, [isOpen, initialData]);
 
-    const resetForm = () => {
-        setFormData({
-            name: '', description: '', location: '', locationUrl: '', startDate: '', endDate: '',
-            registrationDeadline: '', maxParticipants: 100, currentParticipants: 0, entryFee: 0,
-            isPaid: false, isActive: true, ageGroups: [], categories: [], rules: '', prizes: '',
-            contactInfo: '', logo: '', paymentMethods: ['credit_card', 'bank_transfer'], paymentDeadline: '',
-            refundPolicy: '', feeType: 'individual', maxPlayersPerClub: 1, allowInstallments: false,
-            installmentsCount: 2, installmentsDetails: '', registrations: [], walletName: '', walletNumber: ''
-        });
-        setLogoFile(null);
-        setLogoPreview('');
+    const handleCountryChange = (code: string) => {
+        const country = COUNTRIES.find((item) => item.code === code);
+        upd({ country: code, currency: country?.currency || 'USD' });
     };
 
-    const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setLogoFile(file);
-            const reader = new FileReader();
-            reader.onload = (e) => setLogoPreview(e.target?.result as string);
-            reader.readAsDataURL(file);
+    const toggleItem = (arr: string[], value: string) => arr.includes(value) ? arr.filter((item) => item !== value) : [...arr, value];
+
+    const validate = () => {
+        if (step === 0) {
+            if (!data.name?.trim()) return toast.error('يرجى إدخال اسم البطولة'), false;
+            if (!data.location?.trim()) return toast.error('يرجى إدخال موقع البطولة'), false;
         }
+        if (step === 1) {
+            if (!data.startDate) return toast.error('يرجى تحديد تاريخ البداية'), false;
+            if (!data.endDate) return toast.error('يرجى تحديد تاريخ النهاية'), false;
+            if (!data.registrationDeadline) return toast.error('يرجى تحديد آخر موعد للتسجيل'), false;
+            if (new Date(data.endDate) < new Date(data.startDate)) return toast.error('تاريخ النهاية يجب أن يكون بعد تاريخ البداية'), false;
+        }
+        if (step === 2 && data.isPaid) {
+            if (!data.entryFee || data.entryFee <= 0) return toast.error('يرجى إدخال قيمة رسوم الاشتراك'), false;
+            if (!data.paymentMethods?.length) return toast.error('يرجى اختيار طريقة دفع واحدة على الأقل'), false;
+        }
+        return true;
+    };
+
+    const handleNext = () => {
+        if (validate()) setStep((current) => current + 1);
+    };
+
+    const handleBack = () => {
+        setStep((current) => current - 1);
+    };
+
+    const handleLogoChange = (file: File) => {
+        setLogoFile(file);
+        const reader = new FileReader();
+        reader.onload = (event) => setLogoPreview(event.target?.result as string);
+        reader.readAsDataURL(file);
+        return false;
     };
 
     const uploadLogo = async (): Promise<string | null> => {
         if (!logoFile) return null;
         try {
-            setLogoUploading(true);
-            const fileExt = logoFile.name.split('.').pop();
-            const fileName = `tournaments/logos/${Date.now()}.${fileExt}`;
-
-            const result = await storageManager.upload('tournaments', fileName, logoFile, {
-                cacheControl: '3600', upsert: true, contentType: logoFile.type
+            const ext = logoFile.name.split('.').pop();
+            const result = await storageManager.upload('tournaments', `tournaments/logos/${Date.now()}.${ext}`, logoFile, {
+                cacheControl: '3600', upsert: true, contentType: logoFile.type,
             });
             return result?.publicUrl || null;
-        } catch (error) {
-            console.error('Error uploading logo:', error);
+        } catch {
             return null;
-        } finally {
-            setLogoUploading(false);
         }
     };
 
     const handleSubmit = async () => {
-        if (isSubmitting) return;
-        setIsSubmitting(true);
+        if (!validate()) return;
+        setSaving(true);
         try {
-            let logoUrl = formData.logo;
+            let logoUrl = data.logo;
             if (logoFile) {
-                logoUrl = await uploadLogo();
-                if (!logoUrl && logoFile) {
-                    toast.error('فشل في رفع الشعار');
-                    setIsSubmitting(false);
-                    return;
-                }
+                const uploaded = await uploadLogo();
+                if (!uploaded) return toast.error('فشل في رفع الشعار');
+                logoUrl = uploaded;
             }
-
             const now = new Date().toISOString();
-            const tournamentData = {
-                ...formData,
-                logo: logoUrl || '',
-                createdAt: initialData ? undefined : now,
-                updatedAt: now,
-                currentParticipants: initialData?.currentParticipants || 0,
-            };
-
-            // Remove undefined fields
-            Object.keys(tournamentData).forEach(key => {
-                if ((tournamentData as any)[key] === undefined) {
-                    delete (tournamentData as any)[key];
-                }
-            });
-
+            const payload: any = { ...data, logo: logoUrl || '', updatedAt: now, currentParticipants: initialData?.currentParticipants || 0 };
+            if (!initialData) payload.createdAt = now;
+            Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
             if (initialData) {
-                const { error } = await supabase
-                    .from('tournaments')
-                    .update(tournamentData)
-                    .eq('id', initialData.id!);
+                const { error } = await supabase.from('tournaments').update(payload).eq('id', initialData.id!);
                 if (error) throw error;
                 toast.success('تم تحديث البطولة بنجاح');
             } else {
-                const id = crypto.randomUUID();
-                const { error } = await supabase
-                    .from('tournaments')
-                    .insert({ id, ...tournamentData });
+                const { error } = await supabase.from('tournaments').insert({ id: crypto.randomUUID(), ...payload });
                 if (error) throw error;
                 toast.success('تم إنشاء البطولة بنجاح');
             }
             onSuccess();
             onClose();
         } catch (error) {
-            console.error('Error saving tournament:', error);
+            console.error(error);
             toast.error('فشل في حفظ البطولة');
         } finally {
-            setIsSubmitting(false);
+            setSaving(false);
         }
     };
 
-    // List of countries with their currencies and flags
-    const COUNTRIES = [
-        { code: 'EG', name: 'مصر', currency: 'EGP', flag: '🇪🇬' },
-        { code: 'SA', name: 'السعودية', currency: 'SAR', flag: '🇸🇦' },
-        { code: 'AE', name: 'الإمارات', currency: 'AED', flag: '🇦🇪' },
-        { code: 'KW', name: 'الكويت', currency: 'KWD', flag: '🇰🇼' },
-        { code: 'QA', name: 'قطر', currency: 'QAR', flag: '🇶🇦' },
-        { code: 'BH', name: 'البحرين', currency: 'BHD', flag: '🇧🇭' },
-        { code: 'OM', name: 'عمان', currency: 'OMR', flag: '🇴🇲' },
-        { code: 'JO', name: 'الأردن', currency: 'JOD', flag: '🇯🇴' },
-        { code: 'LB', name: 'لبنان', currency: 'USD', flag: '🇱🇧' },
-        { code: 'IQ', name: 'العراق', currency: 'IQD', flag: '🇮🇶' },
-        { code: 'YE', name: 'اليمن', currency: 'YER', flag: '🇾🇪' },
-        { code: 'PS', name: 'فلسطين', currency: 'ILS', flag: '🇵🇸' },
-        { code: 'MA', name: 'المغرب', currency: 'MAD', flag: '🇲🇦' },
-        { code: 'DZ', name: 'الجزائر', currency: 'DZD', flag: '🇩🇿' },
-        { code: 'TN', name: 'تونس', currency: 'TND', flag: '🇹🇳' },
-        { code: 'LY', name: 'ليبيا', currency: 'LYD', flag: '🇱🇾' },
-        { code: 'SD', name: 'السودان', currency: 'SDG', flag: '🇸🇩' },
-        { code: 'TR', name: 'تركيا', currency: 'TRY', flag: '🇹🇷' },
-        { code: 'US', name: 'الولايات المتحدة', currency: 'USD', flag: '🇺🇸' },
-        { code: 'GB', name: 'المملكة المتحدة', currency: 'GBP', flag: '🇬🇧' },
-        { code: 'EU', name: 'أوروبا (يورو)', currency: 'EUR', flag: '🇪🇺' },
-        { code: 'CA', name: 'كندا', currency: 'CAD', flag: '🇨🇦' },
-        { code: 'AU', name: 'أستراليا', currency: 'AUD', flag: '🇦🇺' },
-    ];
-
-    const handleCountryChange = (countryCode: string) => {
-        const country = COUNTRIES.find(c => c.code === countryCode);
-        let currency = country?.currency || 'USD';
-        let defaultPaymentMethods = ['credit_card'];
-
-        if (countryCode === 'EG') {
-            defaultPaymentMethods = ['credit_card', 'mobile_wallet', 'bank_transfer'];
-        } else if (['SA', 'AE', 'KW', 'QA', 'BH'].includes(countryCode)) {
-            defaultPaymentMethods = ['credit_card', 'bank_transfer'];
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            currency,
-            country: countryCode,
-            paymentMethods: prev.paymentMethods?.length ? prev.paymentMethods : defaultPaymentMethods
-        }));
-    };
-
-    const nextStep = () => {
-        if (currentStep === 1 && !formData.name) {
-            toast.error('يرجى إدخال اسم البطولة');
-            return;
-        }
-        if (currentStep === 2 && (!formData.startDate || !formData.endDate)) {
-            toast.error('يرجى إدخال تواريخ البداية والنهاية');
-            return;
-        }
-        if (currentStep < 4) setCurrentStep(c => c + 1);
-        else handleSubmit();
-    };
-
-    const prevStep = () => {
-        if (currentStep > 1) setCurrentStep(c => c - 1);
-    };
-
-    const renderStep1_Basic = () => (
-        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Logo Upload - Compact */}
-                <div className="md:col-span-2 flex items-center gap-4 p-4 border rounded-xl bg-gray-50/50">
-                    <div className="relative group shrink-0">
-                        <div className="w-20 h-20 rounded-full bg-white shadow-sm border overflow-hidden">
-                            {logoPreview || formData.logo ? (
-                                <img src={logoPreview || fixReceiptUrl(formData.logo) || ''} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                    <ImageIcon className="h-8 w-8" />
-                                </div>
-                            )}
-                        </div>
-                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => document.getElementById('logo-upload')?.click()}>
-                            <Upload className="h-4 w-4 text-white" />
-                        </div>
+    const step0_Basic = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 6 }}>
+            <Form.Item label="شعار البطولة" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 14, border: '1px solid #e5e7eb', overflow: 'hidden', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {logoPreview || data.logo ? (
+                            <img src={logoPreview || fixReceiptUrl(data.logo) || data.logo || ''} alt="شعار البطولة" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <TrophyOutlined style={{ fontSize: 24, color: '#d1d5db' }} />
+                        )}
                     </div>
-                    <div className="flex-1">
-                        <Label htmlFor="logo-upload" className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium text-sm block mb-1">
-                            {logoPreview ? 'تغيير الشعار' : 'رفع شعار البطولة'}
-                        </Label>
-                        <p className="text-xs text-gray-400">صورة مربعة، بحد أقصى 2MB</p>
-                        <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoFileChange} />
-                    </div>
+                    <Upload accept="image/*" showUploadList={false} beforeUpload={handleLogoChange} maxCount={1}>
+                        <Button icon={<UploadOutlined />}>{logoPreview || data.logo ? 'تغيير الشعار' : 'رفع الشعار'}</Button>
+                    </Upload>
+                    {(logoPreview || data.logo) && (
+                        <Button danger onClick={() => { setLogoFile(null); setLogoPreview(''); upd({ logo: '' }); }}>
+                            حذف
+                        </Button>
+                    )}
                 </div>
+            </Form.Item>
 
-                <div className="space-y-2 md:col-span-2">
-                    <Label className="text-gray-700 text-sm">اسم البطولة <span className="text-red-500">*</span></Label>
-                    <Input
-                        value={formData.name}
-                        onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-                        placeholder="مثال: كأس الصيف 2024"
-                        className="h-10"
-                    />
-                </div>
+            <Form.Item label="اسم البطولة" required style={{ marginBottom: 0 }}>
+                <Input prefix={<TrophyOutlined style={{ color: '#9ca3af' }} />} value={data.name || ''} onChange={(e) => upd({ name: e.target.value })} placeholder="مثال: كأس رمضان للشباب 2025" />
+            </Form.Item>
 
-                <div className="space-y-2">
-                    <Label className="text-gray-700 text-sm">الدولة (لتحديد العملة)</Label>
-                    <Select onValueChange={handleCountryChange} defaultValue={formData.country}>
-                        <SelectTrigger className="h-10 text-right">
-                            <SelectValue placeholder="اختر الدولة" />
-                        </SelectTrigger>
-                        <SelectContent className="text-right max-h-[200px]">
-                            {COUNTRIES.map((c) => (
-                                <SelectItem key={c.code} value={c.code}>
-                                    {c.flag} {c.name} ({c.currency})
-                                </SelectItem>
+            <Row gutter={12}>
+                <Col span={10}>
+                    <Form.Item label="الدولة" style={{ marginBottom: 0 }}>
+                        <Select value={data.country || 'EG'} onChange={handleCountryChange} showSearch optionFilterProp="children">
+                            {COUNTRIES.map((country) => (
+                                <Select.Option key={country.code} value={country.code}>{country.flag} {country.name}</Select.Option>
                             ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col span={14}>
+                    <Form.Item label="الموقع" required style={{ marginBottom: 0 }}>
+                        <Input prefix={<EnvironmentOutlined style={{ color: '#9ca3af' }} />} value={data.location || ''} onChange={(e) => upd({ location: e.target.value })} placeholder="الملعب / المنشأة، المدينة" />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-                <div className="space-y-2">
-                    <Label className="text-gray-700 text-sm">المكان <span className="text-red-500">*</span></Label>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <MapPin className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
-                            <Input
-                                value={formData.location}
-                                onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
-                                placeholder="حي الملز، الرياض"
-                                className="pr-9 h-10"
-                            />
-                        </div>
-                    </div>
-                </div>
+            <Form.Item label="رابط الخريطة" style={{ marginBottom: 0 }}>
+                <Input prefix={<LinkOutlined style={{ color: '#9ca3af' }} />} value={data.locationUrl || ''} onChange={(e) => upd({ locationUrl: e.target.value })} placeholder="https://maps.google.com/..." dir="ltr" />
+            </Form.Item>
 
-                <div className="space-y-2 md:col-span-2">
-                    <Label className="text-gray-700 text-sm">وصف البطولة</Label>
-                    <Textarea
-                        value={formData.description}
-                        onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                        placeholder="نبذة مختصرة عن البطولة..."
-                        rows={2}
-                        className="resize-none min-h-[80px]"
-                    />
-                </div>
-            </div>
+            <Form.Item label="وصف البطولة" style={{ marginBottom: 0 }}>
+                <TextArea value={data.description || ''} onChange={(e) => upd({ description: e.target.value })} placeholder="نبذة مختصرة عن البطولة وأهدافها..." autoSize={{ minRows: 3, maxRows: 5 }} />
+            </Form.Item>
         </div>
     );
 
-    const renderStep2_Dates = () => (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 mb-6">
-                <h3 className="text-yellow-800 font-semibold flex items-center gap-2 mb-1">
-                    <Calendar className="h-4 w-4" /> تنبيه
-                </h3>
-                <p className="text-sm text-yellow-600">
-                    تأكد من تحديد تواريخ دقيقة. لن يتمكن المشاركون من التسجيل بعد انتهاء موعد التسجيل.
-                </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4 p-4 border rounded-xl bg-gray-50/30">
-                    <h4 className="font-semibold text-gray-900 flex items-center gap-2"><Flag className="h-4 w-4 text-green-600" /> فترة إقامة البطولة</h4>
-                    <div className="space-y-3">
-                        <Label>البداية <span className="text-red-500">*</span></Label>
-                        <Input type="date" value={formData.startDate} onChange={e => setFormData(p => ({ ...p, startDate: e.target.value }))} className="h-11" />
-                    </div>
-                    <div className="space-y-3">
-                        <Label>النهاية <span className="text-red-500">*</span></Label>
-                        <Input type="date" value={formData.endDate} onChange={e => setFormData(p => ({ ...p, endDate: e.target.value }))} className="h-11" />
-                    </div>
-                </div>
-
-                <div className="space-y-4 p-4 border rounded-xl bg-gray-50/30">
-                    <h4 className="font-semibold text-gray-900 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-600" /> التسجيل والمشاركين</h4>
-                    <div className="space-y-3">
-                        <Label>آخر موعد للتسجيل <span className="text-red-500">*</span></Label>
-                        <Input type="date" value={formData.registrationDeadline} onChange={e => setFormData(p => ({ ...p, registrationDeadline: e.target.value }))} className="h-11" />
-                    </div>
-                    <div className="space-y-3">
-                        <Label>الحد الأقصى للمشاركين (فرق/لاعبين)</Label>
-                        <Input type="number" value={formData.maxParticipants} onChange={e => setFormData(p => ({ ...p, maxParticipants: parseInt(e.target.value) }))} className="h-11" />
-                    </div>
-                </div>
-            </div>
+    const step1_Dates = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 6 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>تأكد من صحة التواريخ لأن التسجيل سيتوقف تلقائيًا بعد انتهاء الموعد المحدد.</Text>
+            <Divider style={{ margin: '2px 0 4px' }}>فترة البطولة</Divider>
+            <Row gutter={12}>
+                <Col span={12}>
+                    <Form.Item label="تاريخ البداية" required style={{ marginBottom: 0 }}>
+                        <Input type="date" value={data.startDate || ''} onChange={(e) => upd({ startDate: e.target.value })} />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item label="تاريخ النهاية" required style={{ marginBottom: 0 }}>
+                        <Input type="date" value={data.endDate || ''} onChange={(e) => upd({ endDate: e.target.value })} />
+                    </Form.Item>
+                </Col>
+            </Row>
+            <Divider style={{ margin: '2px 0 4px' }}>التسجيل والمشاركة</Divider>
+            <Row gutter={12}>
+                <Col span={12}>
+                    <Form.Item label="آخر موعد للتسجيل" required style={{ marginBottom: 0 }}>
+                        <Input type="date" value={data.registrationDeadline || ''} onChange={(e) => upd({ registrationDeadline: e.target.value })} />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item label="الحد الأقصى للمشاركين" style={{ marginBottom: 0 }}>
+                        <InputNumber min={1} max={512} value={data.maxParticipants || 16} onChange={(value) => upd({ maxParticipants: value || 16 })} style={{ width: '100%' }} addonAfter={<TeamOutlined />} />
+                    </Form.Item>
+                </Col>
+            </Row>
         </div>
     );
 
-    const renderStep3_Financials = () => (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between p-6 bg-white border rounded-xl shadow-sm">
-                <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${formData.isPaid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                        <DollarSign className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-lg text-gray-900">حالة الدفع</h3>
-                        <p className="text-sm text-gray-500">{formData.isPaid ? 'هذه البطولة تتطلب رسوم اشتراك' : 'هذه البطولة مجانية للمشاركة'}</p>
-                    </div>
+    const step2_Financials = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: data.isPaid ? '#f0fdf4' : '#f9fafb', border: `1px solid ${data.isPaid ? '#86efac' : '#e5e7eb'}` }}>
+                <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{data.isPaid ? 'بطولة مدفوعة' : 'بطولة مجانية'}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{data.isPaid ? 'سيتم تحصيل رسوم من المشاركين' : 'المشاركة متاحة بدون رسوم'}</div>
                 </div>
-                <Switch checked={formData.isPaid} onCheckedChange={checked => setFormData(p => ({ ...p, isPaid: checked }))} />
+                <Switch checked={data.isPaid || false} onChange={(checked) => upd({ isPaid: checked })} />
             </div>
 
-            {formData.isPaid && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2">
-                    <div className="space-y-3">
-                        <Label>قيمة الاشتراك</Label>
-                        <div className="flex gap-2">
-                            <Input
-                                type="number"
-                                value={isNaN(Number(formData.entryFee)) ? '' : formData.entryFee}
-                                onChange={e => setFormData(p => ({ ...p, entryFee: parseFloat(e.target.value) }))}
-                                className="h-11 text-lg font-bold"
-                            />
-                            <Select value={formData.currency} onValueChange={v => setFormData(p => ({ ...p, currency: v }))}>
-                                <SelectTrigger className="w-24 h-11"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="EGP">EGP</SelectItem>
-                                    <SelectItem value="USD">USD</SelectItem>
-                                    <SelectItem value="SAR">SAR</SelectItem>
-                                    <SelectItem value="AED">AED</SelectItem>
-                                    <SelectItem value="KWD">KWD</SelectItem>
-                                    <SelectItem value="QAR">QAR</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+            {data.isPaid && (
+                <>
+                    <Divider style={{ margin: '2px 0 4px' }}>تفاصيل الرسوم</Divider>
+                    <Row gutter={12}>
+                        <Col span={10}>
+                            <Form.Item label="قيمة الاشتراك" required style={{ marginBottom: 0 }}>
+                                <InputNumber min={0} value={data.entryFee || 0} onChange={(value) => upd({ entryFee: value || 0 })} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item label="العملة" style={{ marginBottom: 0 }}>
+                                <Select value={data.currency || 'EGP'} onChange={(value) => upd({ currency: value })}>
+                                    {CURRENCIES.map((currency) => <Select.Option key={currency} value={currency}>{currency}</Select.Option>)}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item label="نوع الرسوم" style={{ marginBottom: 0 }}>
+                                <Select value={data.feeType || 'individual'} onChange={(value) => upd({ feeType: value as 'individual' | 'club' })}>
+                                    <Select.Option value="individual">لكل لاعب</Select.Option>
+                                    <Select.Option value="club">لكل فريق</Select.Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <div className="space-y-3">
-                        <Label>نوع الرسوم</Label>
-                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                            <button
-                                type="button"
-                                onClick={() => setFormData(p => ({ ...p, feeType: 'individual' }))}
-                                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${formData.feeType === 'individual' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
-                            >
-                                لكل لاعب
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setFormData(p => ({ ...p, feeType: 'club' }))}
-                                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${formData.feeType === 'club' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
-                            >
-                            </button>
-                        </div>
-                    </div>
+                    <Divider style={{ margin: '2px 0 4px' }}><BankOutlined /> بيانات الاستلام</Divider>
+                    <Row gutter={12}>
+                        <Col span={12}>
+                            <Form.Item label="اسم المحفظة أو البنك" style={{ marginBottom: 0 }}>
+                                <Input value={data.walletName || ''} onChange={(e) => upd({ walletName: e.target.value })} placeholder="مثال: فودافون كاش" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label="رقم الحساب أو المحفظة" style={{ marginBottom: 0 }}>
+                                <Input value={data.walletNumber || ''} onChange={(e) => upd({ walletNumber: e.target.value })} placeholder="01xxxxxxxxx" dir="ltr" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                    <div className="md:col-span-2 space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <Label className="font-semibold text-gray-900">بيانات التحويل (المحفظة/الحساب)</Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm text-gray-600">
-                                    {formData.country === 'EG' ? 'اسم المحفظة (فودافون كاش/انستاباي)' :
-                                        formData.country === 'SA' ? 'اسم المحفظة (STC Pay/Alinma)' :
-                                            'اسم البنك / المحفظة'}
-                                </Label>
-                                <Input
-                                    value={formData.walletName}
-                                    onChange={e => setFormData(p => ({ ...p, walletName: e.target.value }))}
-                                    placeholder={formData.country === 'EG' ? 'مثال: فودافون كاش' : 'اسم المحفظة أو البنك'}
-                                    className="bg-white"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm text-gray-600">
-                                    {formData.country === 'EG' ? 'رقم المحفظة / عنوان الدفع' :
-                                        'رقم الحساب / المحفظة'}
-                                </Label>
-                                <Input
-                                    value={formData.walletNumber}
-                                    onChange={e => setFormData(p => ({ ...p, walletNumber: e.target.value }))}
-                                    placeholder="01xxxxxxxxx"
-                                    className="bg-white"
-                                    dir="ltr"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="md:col-span-2 space-y-3">
-                        <Label>طرق الدفع المتاحة للمشتركين</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {paymentMethodsList.map(method => (
-                                <div
-                                    key={method.id}
-                                    onClick={() => {
-                                        const current = formData.paymentMethods || [];
-                                        const next = current.includes(method.id) ? current.filter(X => X !== method.id) : [...current, method.id];
-                                        setFormData(p => ({ ...p, paymentMethods: next }));
-                                    }}
-                                    className={`cursor-pointer border rounded-lg p-3 flex flex-col items-center gap-2 transition-all ${formData.paymentMethods?.includes(method.id) ? 'bg-green-50 border-green-500 text-green-700' : 'hover:bg-gray-50'}`}
-                                >
-                                    <span className="text-2xl">{method.icon}</span>
-                                    <span className="text-sm font-medium">{method.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                    <Divider style={{ margin: '2px 0 4px' }}>طرق الدفع المتاحة</Divider>
+                    <Row gutter={[8, 8]}>
+                        {PAYMENT_METHODS.map((method) => {
+                            const selected = data.paymentMethods?.includes(method.id);
+                            return (
+                                <Col span={6} key={method.id}>
+                                    <div onClick={() => upd({ paymentMethods: toggleItem(data.paymentMethods || [], method.id) })} style={{ border: `1px solid ${selected ? '#d97706' : '#e5e7eb'}`, borderRadius: 10, padding: '10px 8px', textAlign: 'center', cursor: 'pointer', background: selected ? '#fff7ed' : '#fff', userSelect: 'none' }}>
+                                        <div style={{ fontSize: 20, marginBottom: 4 }}>{method.icon}</div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: selected ? '#92400e' : '#6b7280' }}>{method.label}</div>
+                                    </div>
+                                </Col>
+                            );
+                        })}
+                    </Row>
+                </>
             )}
         </div>
     );
 
-    const renderStep4_Details = () => (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2 space-y-3 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
-                    <Label className="font-semibold text-blue-900 flex items-center gap-2">
-                        <Users className="w-4 h-4" /> نظام الفرق واللاعبين
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-sm">عدد اللاعبين المطلوب للفريق <span className="text-red-500">*</span></Label>
-                            <Input
-                                type="number"
-                                min="1"
-                                value={formData.maxPlayersPerClub || 1}
-                                onChange={e => setFormData(p => ({ ...p, maxPlayersPerClub: parseInt(e.target.value) }))}
-                                className="bg-white"
-                                placeholder="مثال: 11"
-                            />
-                            <p className="text-xs text-gray-500">سيتم منع التسجيل إذا كان عدد اللاعبين المختارين أقل من هذا الرقم</p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-sm">الحد الأقصى للبدلاء (اختياري)</Label>
-                            <Input type="number" min="0" placeholder="مثال: 5" className="bg-white" />
-                        </div>
-                    </div>
-                </div>
+    const step3_Details = (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 6 }}>
+            <Row gutter={12}>
+                <Col span={12}>
+                    <Form.Item label="عدد لاعبي الفريق" required style={{ marginBottom: 0 }}>
+                        <InputNumber min={1} max={50} value={data.maxPlayersPerClub || 11} onChange={(value) => upd({ maxPlayersPerClub: value || 1 })} style={{ width: '100%' }} />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item label="معلومات التواصل" style={{ marginBottom: 0 }}>
+                        <Input prefix={<PhoneOutlined style={{ color: '#9ca3af' }} />} value={data.contactInfo || ''} onChange={(e) => upd({ contactInfo: e.target.value })} placeholder="رقم الهاتف أو البريد الإلكتروني" />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-                <div className="space-y-3">
-                    <Label>الفئات العمرية المسموحة</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                        {ageGroupsList.map(age => (
-                            <div
-                                key={age}
-                                onClick={() => {
-                                    const current = formData.ageGroups || [];
-                                    const next = current.includes(age) ? current.filter(x => x !== age) : [...current, age];
-                                    setFormData(p => ({ ...p, ageGroups: next }));
-                                }}
-                                className={`text-xs p-2 rounded border cursor-pointer text-center select-none ${formData.ageGroups?.includes(age) ? 'bg-indigo-50 border-indigo-500 text-indigo-700' : 'hover:bg-gray-50'}`}
-                            >
+            <Divider style={{ margin: '2px 0 4px' }}>الفئات العمرية</Divider>
+            <Row gutter={[8, 8]}>
+                {AGE_GROUPS.map((age) => {
+                    const selected = data.ageGroups?.includes(age);
+                    return (
+                        <Col span={6} key={age}>
+                            <div onClick={() => upd({ ageGroups: toggleItem(data.ageGroups || [], age) })} style={{ border: `1px solid ${selected ? '#6366f1' : '#e5e7eb'}`, borderRadius: 10, padding: '8px 6px', textAlign: 'center', cursor: 'pointer', background: selected ? '#eef2ff' : '#fff', fontSize: 11, fontWeight: 700, color: selected ? '#3730a3' : '#6b7280', userSelect: 'none' }}>
                                 {age}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </Col>
+                    );
+                })}
+            </Row>
 
-                <div className="space-y-3">
-                    <Label>فئة المشاركين</Label>
-                    <div className="flex gap-2">
-                        {categoriesList.map(cat => (
-                            <div
-                                key={cat}
-                                onClick={() => {
-                                    const current = formData.categories || [];
-                                    const next = current.includes(cat) ? current.filter(x => x !== cat) : [...current, cat];
-                                    setFormData(p => ({ ...p, categories: next }));
-                                }}
-                                className={`flex-1 text-sm p-3 rounded border cursor-pointer text-center select-none ${formData.categories?.includes(cat) ? 'bg-purple-50 border-purple-500 text-purple-700' : 'hover:bg-gray-50'}`}
-                            >
-                                {cat}
+            <Divider style={{ margin: '2px 0 4px' }}>فئة المشاركين</Divider>
+            <Row gutter={8}>
+                {CATEGORIES.map((category) => {
+                    const selected = data.categories?.includes(category);
+                    return (
+                        <Col span={8} key={category}>
+                            <div onClick={() => upd({ categories: toggleItem(data.categories || [], category) })} style={{ border: `1px solid ${selected ? '#a855f7' : '#e5e7eb'}`, borderRadius: 10, padding: '9px 6px', textAlign: 'center', cursor: 'pointer', background: selected ? '#faf5ff' : '#fff', fontSize: 12, fontWeight: 700, color: selected ? '#6b21a8' : '#6b7280', userSelect: 'none' }}>
+                                {category}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </Col>
+                    );
+                })}
+            </Row>
 
-                <div className="md:col-span-2 space-y-3">
-                    <Label>الجوائز</Label>
-                    <Input value={formData.prizes} onChange={e => setFormData(p => ({ ...p, prizes: e.target.value }))} placeholder="مثال: المركز الأول 10000 جنيه + كأس" className="h-11" />
-                </div>
+            <Form.Item label="الجوائز" style={{ marginBottom: 0 }}>
+                <Input value={data.prizes || ''} onChange={(e) => upd({ prizes: e.target.value })} placeholder="مثال: المركز الأول - 10,000 ج.م + كأس" />
+            </Form.Item>
 
-                <div className="md:col-span-2 space-y-3">
-                    <Label>القواعد والشروط</Label>
-                    <Textarea value={formData.rules} onChange={e => setFormData(p => ({ ...p, rules: e.target.value }))} placeholder="اكتب الشروط الخاصة بالبطولة هنا..." rows={4} className="resize-none" />
-                </div>
-            </div>
+            <Form.Item label="القواعد والشروط" style={{ marginBottom: 0 }}>
+                <TextArea value={data.rules || ''} onChange={(e) => upd({ rules: e.target.value })} placeholder="اكتب الشروط والقواعد الخاصة بالبطولة..." autoSize={{ minRows: 4, maxRows: 7 }} />
+            </Form.Item>
         </div>
     );
 
-    const CurrentStepIcon = STEPS[currentStep - 1].icon;
+    const stepContent = [step0_Basic, step1_Dates, step2_Financials, step3_Details];
+    const currentStepInfo = STEPS[step];
+    const completionPercent = Math.round(((step + 1) / STEPS.length) * 100);
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl flex flex-col p-0 gap-0 overflow-hidden bg-gray-50 h-[85vh] sm:h-auto sm:max-h-[85vh]">
-                {/* 1. Header with Compact Progress */}
-                <div className="bg-white border-b px-4 py-3">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-blue-50 p-2 rounded-lg"><Trophy className="h-5 w-5 text-blue-600" /></div>
+        <ConfigProvider locale={arEG} theme={ANTD_THEME} direction="rtl">
+            <Modal
+                open={isOpen}
+                onCancel={onClose}
+                title={null}
+                width={560}
+                footer={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', borderTop: '1px solid #f1f5f9', background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 9, background: '#fff7ed', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                {currentStepInfo.icon}
+                            </div>
                             <div>
-                                <DialogTitle className="text-lg font-bold text-gray-900">
-                                    {initialData ? 'تعديل البطولة' : 'إنشاء بطولة'}
-                                </DialogTitle>
-                                <DialogDescription className="text-xs text-gray-500">
-                                    {initialData ? 'تعديل تفاصيل وإعدادات البطولة الحالية' : 'أدخل تفاصيل البطولة الجديدة لإنشائها'}
-                                </DialogDescription>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#111827' }}>{currentStepInfo.title}</div>
+                                <Text type="secondary" style={{ fontSize: 10 }}>اكتمال {completionPercent}%</Text>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="إغلاق نموذج البطولة" title="إغلاق"><X className="h-4 w-4" /></Button>
+                        <Button size="small" onClick={step === 0 ? onClose : handleBack} disabled={saving}>{step === 0 ? 'إلغاء' : 'السابق'}</Button>
+                        {step < STEPS.length - 1 ? (
+                            <Button size="small" type="primary" onClick={handleNext}>التالي</Button>
+                        ) : (
+                            <Button size="small" type="primary" icon={<CheckCircleOutlined />} loading={saving} onClick={handleSubmit}>حفظ</Button>
+                        )}
                     </div>
-
-                    {/* Compact Stepper */}
-                    <div className="flex items-center justify-center gap-2">
-                        {STEPS.map((step) => {
-                            const isCompleted = step.id < currentStep;
-                            const isCurrent = step.id === currentStep;
-                            return (
-                                <div key={step.id} className="flex items-center">
-                                    <div className={`w-2.5 h-2.5 rounded-full transition-all ${isCompleted ? 'bg-blue-600' : isCurrent ? 'bg-blue-600 scale-125 ring-2 ring-blue-100' : 'bg-gray-200'}`} />
-                                    {step.id < STEPS.length && <div className={`w-8 h-0.5 mx-1 ${isCompleted ? 'bg-blue-600' : 'bg-gray-200'}`} />}
+                }
+                styles={{ body: { maxHeight: '78vh', overflowY: 'auto', padding: 0, background: '#f8fafc' } }}
+                destroyOnClose={false}
+            >
+                <div style={{ padding: '10px 12px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 52%, #eff6ff 100%)', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ width: 30, height: 30, borderRadius: 10, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+                                <TrophyOutlined />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <h2 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111827' }}>{initialData ? 'تعديل البطولة' : 'بطولة جديدة'}</h2>
+                                    <Tag color={data.isPaid ? 'gold' : 'green'} style={{ marginInlineEnd: 0, fontSize: 10, paddingInline: 6 }}>{data.isPaid ? 'مدفوعة' : 'مجانية'}</Tag>
                                 </div>
+                                <p style={{ margin: '2px 0 0', color: '#4b5563', fontSize: 10 }}>إعداد سريع ومنظم.</p>
+                            </div>
+                        </div>
+                        <div style={{ padding: '4px 8px', borderRadius: 999, background: '#ffffffcc', border: '1px solid #e5e7eb', fontSize: 10, fontWeight: 700, color: '#374151' }}>{step + 1} / {STEPS.length}</div>
+                    </div>
+                </div>
+
+                <div style={{ padding: 10 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {STEPS.map((item, index) => {
+                            const isCurrent = index === step;
+                            const isDone = index < step;
+                            return (
+                                <button
+                                    key={item.title}
+                                    type="button"
+                                    onClick={() => { if (index <= step || validate()) setStep(index); }}
+                                    style={{ border: `1px solid ${isCurrent ? '#f59e0b' : isDone ? '#bbf7d0' : '#e5e7eb'}`, background: isCurrent ? '#fff7ed' : isDone ? '#f0fdf4' : '#fff', color: '#111827', borderRadius: 999, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 10, fontWeight: 700 }}
+                                >
+                                    <span style={{ width: 16, height: 16, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isCurrent ? '#f59e0b' : isDone ? '#22c55e' : '#f3f4f6', color: isCurrent || isDone ? '#fff' : '#6b7280', fontSize: 9, flexShrink: 0 }}>
+                                        {isDone ? <CheckCircleOutlined /> : index + 1}
+                                    </span>
+                                    <span>{item.title}</span>
+                                </button>
                             );
                         })}
                     </div>
-                    <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-blue-600">{STEPS[currentStep - 1].title}</span>
+
+                    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.04)', overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 12px', borderBottom: '1px solid #eef2f7', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: 8, background: '#fff7ed', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+                                    {currentStepInfo.icon}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: '#111827' }}>{currentStepInfo.title}</div>
+                                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 1 }}>{currentStepInfo.subtitle}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ padding: 12 }}>
+                            <Form layout="vertical" size="small" style={{ direction: 'rtl' }}>
+                                {stepContent[step]}
+                            </Form>
+                        </div>
                     </div>
                 </div>
-
-                {/* 2. Content Area */}
-                <div className="flex-1 overflow-y-auto p-5 bg-white">
-                    {currentStep === 1 && renderStep1_Basic()}
-                    {currentStep === 2 && renderStep2_Dates()}
-                    {currentStep === 3 && renderStep3_Financials()}
-                    {currentStep === 4 && renderStep4_Details()}
-                </div>
-
-                {/* 3. Footer Actions */}
-                <div className="bg-gray-50 border-t px-4 py-3 flex items-center justify-between">
-                    <Button variant="ghost" onClick={prevStep} disabled={currentStep === 1} className="text-gray-500 hover:text-gray-900">
-                        العودة
-                    </Button>
-
-                    <div className="flex gap-2 text-sm text-gray-400 items-center">
-                        <span>{currentStep} / {STEPS.length}</span>
-                    </div>
-
-                    {currentStep === STEPS.length ? (
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="bg-blue-600 hover:bg-blue-700 w-32 shadow-sm shadow-blue-200"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    جاري الحفظ...
-                                </>
-                            ) : (
-                                'حفظ وإنهاء'
-                            )}
-                        </Button>
-                    ) : (
-                        <Button onClick={nextStep} className="bg-gray-900 hover:bg-black text-white w-32">
-                            التالي
-                        </Button>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
+            </Modal>
+        </ConfigProvider>
     );
 };

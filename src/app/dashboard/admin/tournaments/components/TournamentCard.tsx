@@ -1,15 +1,21 @@
+'use client';
+
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Card, Badge, Typography, Switch, Button, Space, ConfigProvider, Tag } from 'antd';
 import {
-    Trophy, MapPin, Calendar, Users, DollarSign,
-    Edit, Trash2, Link, UserPlus, Share
-} from 'lucide-react';
-import { toast } from 'sonner';
+    TrophyOutlined, EnvironmentOutlined, CalendarOutlined,
+    TeamOutlined, DollarOutlined, EditOutlined, DeleteOutlined,
+    ShareAltOutlined, UserAddOutlined, SettingOutlined,
+} from '@ant-design/icons';
+import arEG from 'antd/locale/ar_EG';
 import { Tournament, formatDate, getCurrencySymbol } from '../utils';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+
+const { Text, Title } = Typography;
+
+const ANTD_THEME = {
+    token: { colorPrimary: '#d97706', borderRadius: 10, fontFamily: 'inherit' },
+};
 
 interface TournamentCardProps {
     tournament: Tournament;
@@ -22,6 +28,17 @@ interface TournamentCardProps {
     onShare: (t: Tournament) => void;
 }
 
+const getStatus = (t: Tournament): { text: string; color: string } => {
+    const now = new Date();
+    const start = new Date(t.startDate);
+    const end = new Date(t.endDate);
+    const deadline = new Date(t.registrationDeadline);
+    if (now > end)       return { text: 'انتهت',         color: 'default' };
+    if (now > start)     return { text: 'جارية',         color: 'success' };
+    if (now > deadline)  return { text: 'انتهى التسجيل', color: 'error' };
+    return               { text: 'قادمة',               color: 'processing' };
+};
+
 export const TournamentCard: React.FC<TournamentCardProps> = ({
     tournament,
     onEdit,
@@ -30,203 +47,174 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
     onViewProfessionalRegistrations,
     onManagePayments,
     onStatusChange,
-    onShare
+    onShare,
 }) => {
-
-    const getStatusColor = (t: Tournament) => {
-        const now = new Date();
-        const startDate = new Date(t.startDate);
-        const endDate = new Date(t.endDate);
-        const deadline = new Date(t.registrationDeadline);
-
-        if (now > endDate) return 'bg-gray-500';
-        if (now > startDate) return 'bg-green-500';
-        if (now > deadline) return 'bg-red-500';
-        return 'bg-blue-500';
-    };
-
-    const getStatusText = (t: Tournament) => {
-        const now = new Date();
-        const startDate = new Date(t.startDate);
-        const endDate = new Date(t.endDate);
-        const deadline = new Date(t.registrationDeadline);
-
-        if (now > endDate) return 'انتهت';
-        if (now > startDate) return 'جارية';
-        if (now > deadline) return 'انتهى التسجيل';
-        return 'قادمة';
-    };
+    const status = getStatus(tournament);
 
     return (
-        <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-4">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+        <ConfigProvider locale={arEG} theme={ANTD_THEME} direction="rtl">
+            <Card
+                style={{ borderRadius: 14, overflow: 'hidden', height: '100%' }}
+                bodyStyle={{ padding: 0 }}
+                hoverable
+            >
+                {/* ── Header ── */}
+                <div style={{
+                    padding: '16px 16px 12px',
+                    borderBottom: '1px solid #f0f0f0',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                }}>
+                    {/* Logo */}
+                    <div style={{
+                        width: 52, height: 52, borderRadius: 10, flexShrink: 0,
+                        overflow: 'hidden', border: '1px solid #e5e7eb',
+                        background: '#fef9ec',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
                         {tournament.logo ? (
                             <img
                                 src={fixReceiptUrl(tournament.logo) || tournament.logo}
                                 alt={tournament.name}
-                                className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                             />
                         ) : (
-                            <div className="w-16 h-16 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <Trophy className="h-8 w-8 text-yellow-600" />
-                            </div>
+                            <TrophyOutlined style={{ fontSize: 22, color: '#d97706' }} />
                         )}
-                        <div className="flex-1 min-w-0">
-                            <CardTitle className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
-                                {tournament.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className={`${getStatusColor(tournament)} text-white text-xs`}>
-                                    {getStatusText(tournament)}
-                                </Badge>
-                                {tournament.isPaid && (
-                                    <Badge className="bg-green-500 text-white text-xs">
-                                        مدفوعة
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onViewRegistrations(tournament)}
-                            className="h-9 w-9 p-0"
-                            aria-label="عرض تسجيلات البطولة"
-                            title="عرض التسجيلات"
+
+                    {/* Name + badges */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <Title
+                            level={5}
+                            style={{ margin: 0, marginBottom: 6, lineHeight: 1.35, fontSize: 15 }}
+                            ellipsis={{ rows: 2 }}
                         >
-                            <Users className="h-4 w-4" />
-                        </Button>
+                            {tournament.name}
+                        </Title>
+                        <Space size={4} wrap>
+                            <Badge status={status.color as any} text={
+                                <Text style={{ fontSize: 11 }}>{status.text}</Text>
+                            } />
+                            {tournament.isPaid && (
+                                <Tag color="green" style={{ fontSize: 11, margin: 0 }}>مدفوعة</Tag>
+                            )}
+                            {!tournament.isActive && (
+                                <Tag color="default" style={{ fontSize: 11, margin: 0 }}>معطلة</Tag>
+                            )}
+                        </Space>
+                    </div>
+
+                    {/* Quick actions */}
+                    <Space size={2} style={{ flexShrink: 0 }}>
                         <Button
-                            variant="ghost"
-                            size="sm"
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
                             onClick={() => onEdit(tournament)}
-                            className="h-9 w-9 p-0"
-                            aria-label="تعديل البطولة"
-                            title="تعديل البطولة"
-                        >
-                            <Edit className="h-4 w-4" />
-                        </Button>
+                            title="تعديل"
+                        />
                         <Button
-                            variant="ghost"
-                            size="sm"
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
                             onClick={() => onDelete(tournament.id!)}
-                            className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            aria-label="حذف البطولة"
-                            title="حذف البطولة"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
+                            title="حذف"
+                        />
+                    </Space>
                 </div>
-            </CardHeader>
 
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                        <MapPin className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-xs text-gray-500">المكان</p>
-                            <p className="text-sm font-medium text-gray-900">{tournament.location}</p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <Calendar className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-xs text-gray-500">تاريخ البداية</p>
-                            <p className="text-sm font-medium text-gray-900">
-                                {formatDate(tournament.startDate)}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <Users className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-xs text-gray-500">المشاركون</p>
-                            <p className="text-sm font-medium text-gray-900">
-                                {tournament.currentParticipants}/{tournament.maxParticipants}
-                            </p>
-                        </div>
-                    </div>
-
+                {/* ── Info Grid ── */}
+                <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                    <InfoRow icon={<EnvironmentOutlined style={{ color: '#9ca3af' }} />} label="المكان" value={tournament.location} />
+                    <InfoRow icon={<CalendarOutlined style={{ color: '#9ca3af' }} />} label="البداية" value={formatDate(tournament.startDate)} />
+                    <InfoRow
+                        icon={<TeamOutlined style={{ color: '#9ca3af' }} />}
+                        label="المشاركون"
+                        value={`${tournament.currentParticipants} / ${tournament.maxParticipants}`}
+                    />
                     {tournament.isPaid && (
-                        <div className="flex items-center gap-3">
-                            <DollarSign className="h-5 w-5 text-gray-400" />
-                            <div>
-                                <p className="text-xs text-gray-500">الرسوم</p>
-                                <p className="text-sm font-medium text-gray-900">
-                                    {tournament.entryFee} {getCurrencySymbol(tournament.currency || 'EGP')}
-                                </p>
-                            </div>
-                        </div>
+                        <InfoRow
+                            icon={<DollarOutlined style={{ color: '#9ca3af' }} />}
+                            label="الرسوم"
+                            value={`${tournament.entryFee} ${getCurrencySymbol(tournament.currency || 'EGP')}`}
+                        />
                     )}
                 </div>
 
                 {tournament.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{tournament.description}</p>
+                    <div style={{ padding: '0 16px 10px' }}>
+                        <Text
+                            type="secondary"
+                            style={{ fontSize: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                            title={tournament.description}
+                        >
+                            {tournament.description}
+                        </Text>
+                    </div>
                 )}
 
-                <div className="pt-4 border-t border-gray-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                checked={tournament.isActive === true}
-                                onCheckedChange={(checked) => onStatusChange(tournament, checked)}
-                            />
-                            <span className={`text-sm font-medium ${tournament.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                                {tournament.isActive ? 'نشطة' : 'غير نشطة'}
-                            </span>
-                        </div>
+                {/* ── Footer ── */}
+                <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #f0f0f0' }}>
+                    {/* Active toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <Text style={{ fontSize: 13, color: tournament.isActive ? '#16a34a' : '#9ca3af', fontWeight: 500 }}>
+                            {tournament.isActive ? 'البطولة نشطة' : 'غير نشطة'}
+                        </Text>
+                        <Switch
+                            size="small"
+                            checked={tournament.isActive === true}
+                            onChange={checked => onStatusChange(tournament, checked)}
+                        />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onShare(tournament)}
-                            className="text-xs"
-                        >
-                            <Share className="h-3 w-3 mr-1" />
+                    {/* Action buttons */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        <Button size="small" icon={<ShareAltOutlined />} onClick={() => onShare(tournament)} style={{ fontSize: 12 }}>
                             مشاركة
                         </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onViewProfessionalRegistrations(tournament)}
-                            className="text-xs"
-                        >
-                            <UserPlus className="h-3 w-3 mr-1" />
-                            المسجلين
+                        <Button size="small" icon={<UserAddOutlined />} onClick={() => onViewProfessionalRegistrations(tournament)} style={{ fontSize: 12 }}>
+                            المسجلون
                         </Button>
                         {tournament.isPaid && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onManagePayments(tournament)}
-                                className="text-xs"
-                            >
-                                <DollarSign className="h-3 w-3 mr-1" />
-                                إدارة المدفوعات
+                            <Button size="small" icon={<DollarOutlined />} onClick={() => onManagePayments(tournament)} style={{ fontSize: 12 }}>
+                                المدفوعات
                             </Button>
                         )}
                         <Button
-                            variant="default"
-                            size="sm"
+                            type="primary"
+                            size="small"
+                            icon={<SettingOutlined />}
                             onClick={() => window.location.href = `/dashboard/admin/tournaments/${tournament.id}`}
-                            className="text-xs col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                            style={{
+                                fontSize: 12,
+                                gridColumn: tournament.isPaid ? 'auto' : '1 / -1',
+                                background: 'linear-gradient(to left, #2563eb, #4f46e5)',
+                                border: 'none',
+                            }}
                         >
-                            <Trophy className="h-3 w-3 mr-1" />
-                            إدارة البطولة (الفرق، المباريات، النتائج)
+                            إدارة البطولة
                         </Button>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+            </Card>
+        </ConfigProvider>
     );
 };
+
+// ── Helper ──────────────────────────────────────────────────────────────────
+
+const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <span style={{ flexShrink: 0, fontSize: 13 }}>{icon}</span>
+        <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.3 }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {value || '—'}
+            </div>
+        </div>
+    </div>
+);
