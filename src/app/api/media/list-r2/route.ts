@@ -24,17 +24,21 @@ export const dynamic     = 'force-dynamic';
 export const maxDuration = 45;
 
 // ─── R2 Client ───────────────────────────────────────────────
+const CF_ACCOUNT_ID  = process.env.CLOUDFLARE_ACCOUNT_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+const CF_ACCESS_KEY  = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
+const CF_SECRET_KEY  = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+
 const s3 = new S3Client({
     region: 'auto',
-    endpoint: `https://${process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint: `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
-        accessKeyId:     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+        accessKeyId:     CF_ACCESS_KEY!,
+        secretAccessKey: CF_SECRET_KEY!,
     },
 });
 
-const BUCKET     = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
-const PUBLIC_URL = (process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com').replace(/\/$/, '');
+const BUCKET     = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
+const PUBLIC_URL = (process.env.CLOUDFLARE_R2_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com').replace(/\/$/, '');
 const PUBLIC_ORIGIN = (() => {
     try {
         return new URL(PUBLIC_URL).origin;
