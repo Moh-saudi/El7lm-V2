@@ -149,9 +149,14 @@ export async function GET(_req: NextRequest) {
         const db = getSupabaseAdmin();
 
         // ══════════════════════════════════════════
-        // 1. قائمة فيديوهات R2
+        // 1. قائمة فيديوهات R2 (اختياري — لا يوقف الصفحة عند الفشل)
         // ══════════════════════════════════════════
-        const r2Objects = await listAll('videos/');
+        let r2Objects: { key: string; size: number; date: Date }[] = [];
+        try {
+            r2Objects = await listAll('videos/');
+        } catch (r2Err: any) {
+            console.warn('[list-r2] R2 listing failed (skipping):', r2Err.message);
+        }
 
         // استخرج userIds من مسارات R2
         const parsedMap = new Map<string, { userId: string; filename: string }>();
