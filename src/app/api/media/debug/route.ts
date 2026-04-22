@@ -44,5 +44,23 @@ export async function GET(req: NextRequest) {
         });
     }
 
-    return NextResponse.json({ error: 'mode يجب أن يكون players أو columns' });
+    if (mode === 'test-update') {
+        const db = getSupabaseAdmin();
+        const testKey = `debug/test/${Date.now()}`;
+        const { data, error } = await db
+            .from('media_moderation')
+            .upsert({ r2_key: testKey, status: 'approved', updated_at: new Date().toISOString() }, { onConflict: 'r2_key' })
+            .select();
+        // cleanup
+        await db.from('media_moderation').delete().eq('r2_key', testKey);
+        return NextResponse.json({ success: !error, error: error?.message, code: error?.code, data });
+    }
+
+    if (mode === 'table-info') {
+        const db = getSupabaseAdmin();
+        const { data, error } = await db.from('media_moderation').select('*').limit(5);
+        return NextResponse.json({ error: error?.message, code: error?.code, rows: data?.length, sample: data });
+    }
+
+    return NextResponse.json({ error: 'mode يجب أن يكون players أو columns أو test-update أو table-info' });
 }
