@@ -192,10 +192,12 @@ export async function GET(_req: NextRequest) {
         // 2. جلب بيانات اللاعبين (كلهم للصور/خارجي، + مطابقة R2)
         // ══════════════════════════════════════════
         // جلب كل اللاعبين مع كل حقول الصور المحتملة
-        const { data: allPlayers } = await db
+        const { data: allPlayers, error: playersError } = await db
             .from('players')
-            .select('id, uid, firebaseUid, full_name, email, phone, profile_image_url, profile_image, images, country, position, videos, additional_images, media')
+            .select('*')
             .limit(500);
+
+        if (playersError) console.error('[list-r2] players fetch error:', playersError.message);
 
         type PlayerInfo = {
             supabaseId: string; name: string; email: string;
@@ -205,19 +207,20 @@ export async function GET(_req: NextRequest) {
         const playerMap = new Map<string, PlayerInfo>();
 
         const buildInfo = (p: any): PlayerInfo => {
-            // جرّب كل الحقول المحتملة للصورة بالترتيب
             const rawImage =
-                p.profile_image_url ||
-                p.profile_image     || '';
-            const images = p.additional_images || p.images || p.media || null;
+                p.profile_image_url || p.profile_image ||
+                p.avatar_url        || p.avatarUrl     || '';
+            const images =
+                p.additional_images || p.images ||
+                p.media             || p.gallery || null;
             return {
                 supabaseId: p.id,
-                name:     p.full_name || 'غير معروف',
+                name:     p.full_name || p.name || 'غير معروف',
                 email:    p.email    || '',
-                phone:    p.phone    || '',
+                phone:    p.phone    || p.phoneNumber || '',
                 image:    resolveUrl(rawImage),
-                country:  p.country  || '',
-                position: p.position || '',
+                country:  p.country  || p.nationality || '',
+                position: p.position || p.primary_position || '',
                 videos:   p.videos,
                 images,
             };
@@ -228,6 +231,7 @@ export async function GET(_req: NextRequest) {
             playerMap.set(p.id, info);
             if (p.uid)         playerMap.set(p.uid, info);
             if (p.firebaseUid) playerMap.set(p.firebaseUid, info);
+            if (p.firebase_uid) playerMap.set(p.firebase_uid, info);
         }
 
         // ══════════════════════════════════════════

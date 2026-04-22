@@ -36,7 +36,7 @@ function sortItems(items: MediaItem[], key: MediaSortKey): MediaItem[] {
 export default function MediaPage() {
     const { user } = useAuth();
     const { can } = usePermissions();
-    const { items, loading, lastFetched, fetchAll, updateItemStatus, bulkUpdateStatus, updateItemAI, deleteItem } = useMediaData();
+    const { items, loading, error, lastFetched, fetchAll, updateItemStatus, bulkUpdateStatus, updateItemAI, deleteItem } = useMediaData();
 
     // ─── Filters ──────────────────────────────────────────────
     const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
@@ -170,6 +170,15 @@ export default function MediaPage() {
 
     // ─── Guard ────────────────────────────────────────────────
     if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
+    if (error) return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-50" dir="rtl">
+            <div className="bg-white rounded-2xl shadow p-8 max-w-lg text-center space-y-3">
+                <p className="text-rose-600 font-bold text-lg">فشل تحميل الوسائط</p>
+                <p className="text-slate-500 text-sm font-mono">{error}</p>
+                <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-sm hover:bg-amber-500">إعادة المحاولة</button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col" dir="rtl">
