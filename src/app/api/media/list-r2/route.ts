@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { S3Client, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime     = 'nodejs';
@@ -147,31 +147,6 @@ async function listAll(prefix: string, maxItems = 2000) {
 export async function GET(_req: NextRequest) {
     try {
         const db = getSupabaseAdmin();
-        const assetExistsCache = new Map<string, boolean>();
-
-        const assetExists = async (url: string): Promise<boolean> => {
-            if (!url) return false;
-            if (url.startsWith('data:') || url.startsWith('blob:')) return true;
-
-            const key = extractAssetKey(url);
-            if (!key) return true;
-
-            if (assetExistsCache.has(key)) {
-                return assetExistsCache.get(key)!;
-            }
-
-            try {
-                await s3.send(new HeadObjectCommand({
-                    Bucket: BUCKET,
-                    Key: key,
-                }));
-                assetExistsCache.set(key, true);
-                return true;
-            } catch {
-                assetExistsCache.set(key, false);
-                return false;
-            }
-        };
 
         // ══════════════════════════════════════════
         // 1. قائمة فيديوهات R2
@@ -388,37 +363,14 @@ export async function GET(_req: NextRequest) {
             };
         });
 
-        const needsAssetCheck = (url?: string) =>
-            !!url && !url.startsWith('data:') && !url.startsWith('blob:') && extractAssetKey(url) !== null;
-
-        const urlsToCheck = Array.from(new Set(
-            final.flatMap((item: any) => {
-                const urls: string[] = [];
-                if (item.type === 'image' && needsAssetCheck(item.url)) urls.push(item.url);
-                if (needsAssetCheck(item.userImage)) urls.push(item.userImage);
-                return urls;
-            })
-        ));
-
-        const existingEntries = await Promise.all(
-            urlsToCheck.map(async url => [url, await assetExists(url)] as const)
-        );
-        const existingMap = new Map(existingEntries);
-
-        const cleaned = final
-            .filter((item: any) => item.type !== 'image' || !needsAssetCheck(item.url) || existingMap.get(item.url) !== false)
-            .map((item: any) => ({
-                ...item,
-                userImage: needsAssetCheck(item.userImage) && existingMap.get(item.userImage) === false
-                    ? ''
-                    : item.userImage,
-            }));
-
-        cleaned.sort((a: any, b: any) =>
+        final.sort((a: any, b: any) =>
             new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
         );
+        const cleaned = final;
 
-        return NextResponse.json({ success: true, items: cleaned, total: cleaned.length });
+        return NextResponse.json({ success: true, items: cleaned, total: cleaned.length }, {
+            headers: { 'Cache-Control': 'no-store' },
+        });
 
     } catch (e: any) {
         console.error('[list-r2]', e);

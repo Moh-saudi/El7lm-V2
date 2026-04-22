@@ -6,6 +6,9 @@
     "src/app/api/upload/video/route.ts": {
       "maxDuration": 60
     },
+    "src/app/api/media/list-r2/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/admin/users/count/route.ts": {
       "maxDuration": 10
     },
