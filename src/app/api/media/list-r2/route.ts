@@ -194,7 +194,7 @@ export async function GET(_req: NextRequest) {
         // جلب كل اللاعبين مع كل حقول الصور المحتملة
         const { data: allPlayers } = await db
             .from('players')
-            .select('id, uid, firebaseUid, full_name, email, phone, profile_image_url, profile_image, image, country, position, videos, additional_images, gallery, media')
+            .select('id, uid, firebaseUid, full_name, email, phone, profile_image_url, profile_image, images, country, position, videos, additional_images, media')
             .limit(500);
 
         type PlayerInfo = {
@@ -208,10 +208,8 @@ export async function GET(_req: NextRequest) {
             // جرّب كل الحقول المحتملة للصورة بالترتيب
             const rawImage =
                 p.profile_image_url ||
-                p.profile_image     ||
-                p.image             || '';
-            // الصور: additional_images هو الحقل الفعلي، ثم gallery، ثم media
-            const images = p.additional_images || p.gallery || p.media || null;
+                p.profile_image     || '';
+            const images = p.additional_images || p.images || p.media || null;
             return {
                 supabaseId: p.id,
                 name:     p.full_name || 'غير معروف',
