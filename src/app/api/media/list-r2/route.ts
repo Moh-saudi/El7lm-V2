@@ -24,13 +24,14 @@ export const dynamic     = 'force-dynamic';
 export const maxDuration = 45;
 
 // ─── R2 Client ───────────────────────────────────────────────
-const CF_ACCOUNT_ID  = process.env.CLOUDFLARE_ACCOUNT_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
-const CF_ACCESS_KEY  = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-const CF_SECRET_KEY  = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+const CF_ENDPOINT   = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
+    || `https://${process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+const CF_ACCESS_KEY = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
+const CF_SECRET_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
 
 const s3 = new S3Client({
     region: 'auto',
-    endpoint: `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint: CF_ENDPOINT,
     credentials: {
         accessKeyId:     CF_ACCESS_KEY!,
         secretAccessKey: CF_SECRET_KEY!,
