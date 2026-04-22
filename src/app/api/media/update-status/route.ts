@@ -40,33 +40,18 @@ export async function POST(req: NextRequest) {
             upsertData.ai_analyzed_at = aiAnalyzedAt || now;
         }
 
-        const { error } = await db
+        let { error } = await db
             .from('media_moderation')
             .upsert(upsertData, { onConflict: 'r2_key' });
 
-        if (error) {
-            // إذا كان الجدول غير موجود، أرجع رسالة واضحة
-            if (error.code === '42P01') {
-                return NextResponse.json({
-                    success: false,
-                    error: 'جدول media_moderation غير موجود. شغّل SQL الموجود في ملف list-r2/route.ts',
-                    sqlHint: `
-CREATE TABLE IF NOT EXISTS media_moderation (
-  r2_key         TEXT PRIMARY KEY,
-  status         TEXT NOT NULL DEFAULT 'pending',
-  reviewed_by    TEXT,
-  reviewed_at    TIMESTAMPTZ,
-  notes          TEXT,
-  ai_analysis    TEXT,
-  ai_rating      NUMERIC(3,1),
-  ai_analyzed_at TIMESTAMPTZ,
-  created_at     TIMESTAMPTZ DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ DEFAULT NOW()
-);`
-                }, { status: 500 });
-            }
-            throw new Error(error.message);
+        if (error?.code === '42P01') {
+            return NextResponse.json({
+                success: false,
+                error: 'جدول media_moderation غير موجود — شغّل الـ SQL التالي في Supabase SQL Editor:\n\nCREATE TABLE IF NOT EXISTS media_moderation (\n  r2_key TEXT PRIMARY KEY,\n  status TEXT NOT NULL DEFAULT \'pending\',\n  reviewed_by TEXT, reviewed_at TIMESTAMPTZ,\n  notes TEXT,\n  ai_analysis TEXT, ai_rating NUMERIC(3,1), ai_analyzed_at TIMESTAMPTZ,\n  created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()\n);',
+            }, { status: 500 });
         }
+
+        if (error) throw new Error(error.message);
 
         return NextResponse.json({ success: true });
 
