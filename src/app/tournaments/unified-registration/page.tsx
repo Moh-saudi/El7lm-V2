@@ -761,7 +761,17 @@ export default function UnifiedTournamentRegistrationPage() {
                       ) : (
                         <>
                           <p className="text-gray-600 mb-4">لا يوجد لاعبين مسجلين تحت إدارتك</p>
-                          <Button onClick={() => router.push('/dashboard/players')} variant="outline">إضافة لاعبين</Button>
+                          <Button onClick={() => {
+                            const type = userData?.accountType;
+                            const paths: Record<string, string> = {
+                              club: '/dashboard/club/players',
+                              academy: '/dashboard/academy/players',
+                              agent: '/dashboard/agent/players',
+                              trainer: '/dashboard/trainer/players',
+                              marketer: '/dashboard/marketer/players',
+                            };
+                            router.push(paths[type] || '/dashboard');
+                          }} variant="outline">إضافة لاعبين</Button>
                         </>
                       )}
                     </div>
@@ -803,7 +813,7 @@ export default function UnifiedTournamentRegistrationPage() {
                               اختر بطولة أخرى
                             </Button>
                             <Button
-                              onClick={() => router.push('/dashboard/tournaments')}
+                              onClick={() => router.push('/tournaments/unified-registration')}
                               className={isPending ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}
                             >
                               عرض بطولاتي
