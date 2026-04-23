@@ -55,7 +55,7 @@ class StorageManager {
                 secretAccessKey: customConfig?.cloudflare?.secretAccessKey ||
                     process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
                 bucketName: customConfig?.cloudflare?.bucketName ||
-                    process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform',
+                    process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets',
                 publicUrl: customConfig?.cloudflare?.publicUrl ||
                     process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL,
             },

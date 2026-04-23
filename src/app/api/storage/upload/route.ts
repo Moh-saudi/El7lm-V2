@@ -21,24 +21,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // قراءة بيانات Cloudflare R2 من المتغيرات البيئية (server-only للـ credentials الحساسة)
-        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+        // قراءة بيانات Cloudflare R2 من المتغيرات البيئية
         const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
         const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
         const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com';
-        const mainBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
+        const mainBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
 
-        if (!accountId || !accessKeyId || !secretAccessKey) {
+        // بناء الـ endpoint — نستخدم المتغير الكامل إذا وُجد، وإلا نبنيه من accountId
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+        const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
+            || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : null);
+
+        if (!accessKeyId || !secretAccessKey || !endpoint) {
             return NextResponse.json(
                 { error: 'Cloudflare R2 credentials not configured' },
                 { status: 500 }
             );
         }
 
-        // إنشاء S3 Client (forcePathStyle مطلوب لـ Cloudflare R2)
+        // إنشاء S3 Client
         const s3Client = new S3Client({
             region: 'auto',
-            endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+            endpoint,
             credentials: {
                 accessKeyId,
                 secretAccessKey,
