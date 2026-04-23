@@ -20,16 +20,18 @@ interface Branch {
 }
 
 interface AcademyData {
+  // معلومات أساسية — TEXT في DB
   academy_name: string;
   description: string;
   logo: string;
   coverImage: string;
-  founding_year: string;
+  founding_year: string;       // TEXT في DB
   academy_type: string;
-  is_federation_approved: boolean;
+  is_federation_approved: boolean; // BOOLEAN
   license_number: string;
-  registration_date: string;
+  registration_date: string;   // TEXT في DB
 
+  // التواصل — TEXT
   country: string;
   city: string;
   address: string;
@@ -37,7 +39,7 @@ interface AcademyData {
   whatsapp: string;
   email: string;
   website: string;
-  social_media: {
+  social_media: {              // JSONB
     facebook: string;
     instagram: string;
     twitter: string;
@@ -45,21 +47,25 @@ interface AcademyData {
     tiktok: string;
   };
 
-  age_groups: string[];
-  sports_facilities: string[];
-  number_of_coaches: number | string;
+  // البرامج
+  age_groups: string[];        // JSONB
+  sports_facilities: string[]; // JSONB
+  number_of_coaches: number | null; // INTEGER في DB — لا ترسل ""
   training_programs: string;
   academy_goals: string;
   achievements: string;
 
+  // الكادر — JSONB
   director: { name: string; photo: string; bio: string; contact: string };
   technical_director: { name: string; photo: string; license: string; experience: string };
 
+  // الفروع والميديا — JSONB
   branches: Branch[];
   success_stories: string[];
   partnerships: string[];
   facility_photos: string[];
 
+  // الإحصائيات — JSONB
   stats: {
     students: number;
     programs: number;
@@ -90,7 +96,7 @@ const initialAcademyData: AcademyData = {
 
   age_groups: [],
   sports_facilities: [],
-  number_of_coaches: '',
+  number_of_coaches: null,
   training_programs: '',
   academy_goals: '',
   achievements: '',
