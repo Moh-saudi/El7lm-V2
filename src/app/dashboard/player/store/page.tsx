@@ -297,6 +297,11 @@ export default function PlayerStorePage() {
   const [showOrders, setShowOrders] = useState(false);
   const [wishlist, setWishlist] = useState<string[]>([]);
 
+  // ── Cart ──
+  const [cartItems, setCartItems] = useState<{ product: StoreProduct; quantity: number }[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [showCartCheckout, setShowCartCheckout] = useState(false);
+
   // ── Image carousel state (activeImageIndex per product) ──
   const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
   const carouselTimers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
@@ -346,6 +351,18 @@ export default function PlayerStorePage() {
     const timers = carouselTimers.current;
     return () => { Object.values(timers).forEach(clearInterval); };
   }, []);
+
+  // ── Cart localStorage persistence ──
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('el7lm_cart');
+      if (saved) setCartItems(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('el7lm_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const selectedPaymentOption = ACTIVE_STORE_PAYMENT_OPTIONS.find(
     (option) => option.id === orderForm.paymentMethod
@@ -563,6 +580,113 @@ export default function PlayerStorePage() {
     setWishlist((prev) =>
       prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
     );
+  }
+
+  function addToCart(product: StoreProduct) {
+    if (!product.isAvailable) { toast.error('هذا المنتج غير متاح حاليًا'); return; }
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.product.id === product.id);
+      if (existing) {
+        toast.success('تم زيادة الكمية في السلة');
+        return prev.map((i) => i.product.id === product.id ? { ...i, quantity: Math.min(i.quantity + 1, product.stock) } : i);
+      }
+      toast.success(`تمت إضافة ${product.name} للسلة`);
+      return [...prev, { product, quantity: 1 }];
+    });
+    setShowCart(true);
+  }
+
+  function removeFromCart(productId: string) {
+    setCartItems((prev) => prev.filter((i) => i.product.id !== productId));
+  }
+
+  function updateCartQty(productId: string, qty: number) {
+    if (qty <= 0) { removeFromCart(productId); return; }
+    setCartItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: qty } : i));
+  }
+
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const cartCurrency = cartItems[0]?.product.currency || 'SAR';
+
+  async function confirmCartPurchase() {
+    if (!user) { toast.error('يجب تسجيل الدخول لإرسال الطلب'); return; }
+    if (cartItems.length === 0) { toast.error('السلة فارغة'); return; }
+    if (!orderForm.buyerName.trim()) { toast.error('يرجى إدخال اسم المستلم'); return; }
+    if (!orderForm.buyerPhone.trim()) { toast.error('يرجى إدخال رقم الجوال'); return; }
+    if (requiresShippingLocation && (!orderForm.shippingCity.trim() || !orderForm.shippingCountry.trim())) { toast.error('يرجى اختيار الدولة والمدينة'); return; }
+    if (requiresShippingAddress && !orderForm.shippingAddress.trim()) { toast.error('يرجى إدخال العنوان التفصيلي للتوصيل'); return; }
+    if (orderForm.paymentType === 'installment' && !orderForm.installmentMonths) { toast.error('يرجى اختيار مدة التقسيط'); return; }
+
+    try {
+      setSubmittingOrder(true);
+
+      const structuredNotes = [
+        `نوع العنوان: ${ADDRESS_LABEL_OPTIONS.find((o) => o.value === orderForm.addressLabel)?.label || orderForm.addressLabel}`,
+        `وسيلة التوصيل: ${DELIVERY_METHOD_OPTIONS.find((o) => o.value === orderForm.deliveryMethod)?.label || orderForm.deliveryMethod}`,
+        `وسيلة التواصل: ${CONTACT_METHOD_OPTIONS.find((o) => o.value === orderForm.contactMethod)?.label || orderForm.contactMethod}`,
+        `وقت التواصل: ${CONTACT_WINDOW_OPTIONS.find((o) => o.value === orderForm.contactWindow)?.label || orderForm.contactWindow}`,
+        requiresShippingAddress ? `العنوان: ${orderForm.shippingAddress.trim()}` : '',
+        orderForm.notes.trim() ? `ملاحظات: ${orderForm.notes.trim()}` : '',
+      ].filter(Boolean).join('\n');
+
+      const rows = cartItems.map((item) => ({
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        buyer_name: orderForm.buyerName,
+        buyer_email: user.email || null,
+        buyer_phone: orderForm.buyerPhone,
+        buyer_account_type: accountType,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        product_category: item.product.category,
+        product_image: item.product.image || null,
+        product_brand: item.product.brand || null,
+        product_model: item.product.model || null,
+        unit_price: item.product.price,
+        quantity: item.quantity,
+        total_price: item.product.price * item.quantity,
+        currency: item.product.currency || 'SAR',
+        payment_method: orderForm.paymentMethod,
+        payment_provider: orderForm.paymentMethod,
+        payment_type: orderForm.paymentType,
+        installment_months: orderForm.paymentType === 'installment' ? Number(orderForm.installmentMonths || 0) : null,
+        status: 'pending',
+        shipping_address: requiresShippingAddress ? orderForm.shippingAddress : null,
+        shipping_city: requiresShippingLocation ? orderForm.shippingCity : null,
+        shipping_country: requiresShippingLocation ? orderForm.shippingCountry : null,
+        notes: structuredNotes || null,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase.from('store_orders').insert(rows);
+      if (error) {
+        if (error.code === 'PGRST205') { setOrdersUnavailable(true); throw new Error('خدمة الطلبات غير متاحة حالياً'); }
+        throw error;
+      }
+
+      const selectedPaymentOpt = ACTIVE_STORE_PAYMENT_OPTIONS.find((o) => o.id === orderForm.paymentMethod);
+      setCartItems([]);
+      setShowCart(false);
+      setShowCartCheckout(false);
+
+      if (selectedPaymentOpt?.type === 'installment') {
+        setInstallmentProviderName(selectedPaymentOpt.label);
+        setShowInstallmentNotice(true);
+        toast.success('تم استلام طلبك بنجاح!');
+      } else if (orderForm.paymentMethod === 'mobile_wallet') {
+        setTransferProviderName(selectedPaymentOpt?.label || 'محفظة إلكترونية / InstaPay');
+        setShowTransferNotice(true);
+        toast.success('تم تسجيل طلبك بنجاح!');
+      } else {
+        toast.success(`تم إرسال ${rows.length} طلب بنجاح!`);
+      }
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'تعذر إرسال الطلب');
+    } finally {
+      setSubmittingOrder(false);
+    }
   }
 
   async function confirmPurchase() {
@@ -983,6 +1107,20 @@ export default function PlayerStorePage() {
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none shadow-sm focus:border-[#ffb703] focus:ring-2 focus:ring-[#ffb703]/20 transition"
             />
           </div>
+          {/* Cart icon */}
+          <button
+            type="button"
+            onClick={() => setShowCart(true)}
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-[#ffb703] hover:bg-amber-50"
+            aria-label="عربة التسوق"
+          >
+            <ShoppingCart className="h-5 w-5 text-slate-700" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#ffb703] text-[10px] font-black text-slate-900 shadow-sm">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* ── Category Pills ── */}
@@ -1199,7 +1337,7 @@ export default function PlayerStorePage() {
 
                       <button
                         type="button"
-                        onClick={() => handlePurchase(product)}
+                        onClick={() => addToCart(product)}
                         disabled={!product.isAvailable}
                         className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black transition-all ${
                           product.isAvailable
@@ -1208,7 +1346,7 @@ export default function PlayerStorePage() {
                         }`}
                       >
                         <ShoppingCart className="h-4 w-4" />
-                        اطلب الآن
+                        أضف للسلة
                       </button>
                     </div>
                   </div>
@@ -1218,6 +1356,337 @@ export default function PlayerStorePage() {
           </div>
         )}
       </div>
+      {/* ── Cart Drawer ── */}
+      <AnimatePresence>
+        {showCart && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowCart(false)}
+            />
+            <motion.div
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-2xl"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#101828]">
+                    <ShoppingCart className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900">سلة التسوق</h3>
+                    <p className="text-[11px] text-slate-400">{cartCount} منتج في السلة</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setShowCart(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:bg-slate-100">
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Items */}
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                {cartItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl">🛒</div>
+                    <h4 className="font-black text-slate-700">السلة فارغة</h4>
+                    <p className="text-sm text-slate-400">أضف منتجات من المتجر للبدء</p>
+                    <button type="button" onClick={() => setShowCart(false)}
+                      className="rounded-2xl bg-[#101828] px-6 py-2.5 text-sm font-black text-white transition hover:bg-[#1e2d45]">
+                      تسوق الآن
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cartItems.map(({ product, quantity }) => (
+                      <div key={product.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-200">
+                          {product.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.image} alt={product.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-2xl">{getCategoryIcon(product.category)}</div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-sm font-black text-slate-900">{product.name}</p>
+                          <p className="text-xs font-bold text-[#d97706]">{formatStorePrice(product.price, product.currency)}</p>
+                          {/* Qty controls */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <button type="button" onClick={() => updateCartQty(product.id, quantity - 1)}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-red-50 hover:text-red-500 text-sm font-black">−</button>
+                            <span className="min-w-[20px] text-center text-sm font-black text-slate-800">{quantity}</span>
+                            <button type="button" onClick={() => updateCartQty(product.id, Math.min(quantity + 1, product.stock))}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-600 text-sm font-black">+</button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <p className="text-sm font-black text-slate-900">{formatStorePrice(product.price * quantity, product.currency)}</p>
+                          <button type="button" onClick={() => removeFromCart(product.id)}
+                            className="text-[11px] font-bold text-rose-400 transition hover:text-rose-600">حذف</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {cartItems.length > 0 && (
+                <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-500">الإجمالي ({cartCount} منتج)</span>
+                    <span className="text-xl font-black text-[#d97706]">{formatStorePrice(cartTotal, cartCurrency)}</span>
+                  </div>
+                  <button type="button"
+                    onClick={() => {
+                      setShowCart(false);
+                      const defaultOption = ACTIVE_STORE_PAYMENT_OPTIONS[0];
+                      setOrderForm((prev) => ({
+                        ...prev,
+                        paymentMethod: defaultOption.id,
+                        paymentType: defaultOption.type,
+                        installmentMonths: '',
+                        shippingCountry: prev.shippingCountry || DEFAULT_SHIPPING_COUNTRY,
+                        shippingCity: prev.shippingCity || getCitiesByCountry(prev.shippingCountry || DEFAULT_SHIPPING_COUNTRY)[0] || DEFAULT_SHIPPING_CITY,
+                      }));
+                      setShowCartCheckout(true);
+                    }}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#101828] text-sm font-black text-white transition hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]">
+                    <CheckCircle className="h-4 w-4" />
+                    إتمام الشراء
+                  </button>
+                  <button type="button" onClick={() => { setCartItems([]); }} className="mt-2 w-full text-center text-xs font-bold text-rose-400 transition hover:text-rose-600 py-1">
+                    إفراغ السلة
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Cart Checkout Modal ── */}
+      <AnimatePresence>
+        {showCartCheckout && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ duration: 0.25 }}
+              className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#101828]">
+                    <ShoppingCart className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">إتمام الطلب</h3>
+                    <p className="text-[11px] text-slate-400">{cartCount} منتج — الإجمالي {formatStorePrice(cartTotal, cartCurrency)}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setShowCartCheckout(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:bg-slate-100">
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Items summary strip */}
+                <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">المنتجات</p>
+                  <div className="space-y-2">
+                    {cartItems.map(({ product, quantity }) => (
+                      <div key={product.id} className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-slate-700 truncate">{product.name}</span>
+                        <span className="shrink-0 text-sm font-black text-[#d97706]">
+                          {quantity} × {formatStorePrice(product.price, product.currency)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {/* Step 1: Buyer */}
+                  <div className="px-5 py-4">
+                    <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">1</span>
+                      بيانات المستلم
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-500">الاسم الكامل</label>
+                        <Input value={orderForm.buyerName} onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
+                          placeholder="محمد عبدالله" className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-500">رقم الجوال</label>
+                        <Input value={orderForm.buyerPhone} onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerPhone: e.target.value }))}
+                          placeholder="05xxxxxxxx" className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Payment */}
+                  <div className="px-5 py-4">
+                    <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">2</span>
+                      طريقة الدفع
+                    </h4>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">دفع كامل</p>
+                    <div className="mb-4 grid grid-cols-3 gap-2">
+                      {FULL_PAYMENT_OPTIONS.map((option) => {
+                        const isSelected = orderForm.paymentMethod === option.id;
+                        return (
+                          <button key={option.id} type="button"
+                            onClick={() => setOrderForm((prev) => ({ ...prev, paymentMethod: option.id, paymentType: 'full', installmentMonths: '' }))}
+                            className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-3 text-center transition ${isSelected ? 'border-[#101828] bg-[#101828]/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
+                            <span className="text-xl leading-none">{option.brandMark}</span>
+                            <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-[#101828]' : 'text-slate-600'}`}>{option.label.split(' — ')[0].split(' / ')[0]}</span>
+                            {isSelected && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#101828]"><CheckCircle className="h-3 w-3 text-white" /></span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">تقسيط بدون فوائد</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {INSTALLMENT_OPTIONS.map((option) => {
+                        const isSelected = orderForm.paymentMethod === option.id;
+                        return (
+                          <button key={option.id} type="button"
+                            onClick={() => setOrderForm((prev) => ({ ...prev, paymentMethod: option.id, paymentType: 'installment', installmentMonths: String(option.plans?.[0] || '') }))}
+                            className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-2.5 text-center transition ${isSelected ? 'border-[#101828] bg-[#101828]/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
+                            <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ${option.brandClassName} border`}>{option.brandMark}</span>
+                            <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>{(option.plans || []).join('/')} شهر</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedPaymentOption?.type === 'installment' && (
+                      <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="mb-2 text-xs font-bold text-slate-500">اختر عدد الأشهر:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedPaymentOption.plans || []).map((plan) => (
+                            <button key={plan} type="button" onClick={() => setOrderForm((prev) => ({ ...prev, installmentMonths: String(plan) }))}
+                              className={`rounded-xl px-5 py-2 text-sm font-black transition ${orderForm.installmentMonths === String(plan) ? 'bg-[#101828] text-white shadow-md' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                              {plan} شهر
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedPaymentOption?.id === 'mobile_wallet' && (
+                      <div className="mt-3 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-3">
+                        <p className="text-xs font-semibold text-fuchsia-700">رقم التحويل / InstaPay:</p>
+                        <p className="mt-1 text-lg font-black tracking-[0.1em] text-fuchsia-900">{MANUAL_TRANSFER_NUMBER}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 3: Delivery */}
+                  <div className="px-5 py-4">
+                    <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">3</span>
+                      التوصيل
+                    </h4>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-500">وسيلة التوصيل</label>
+                      <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
+                        value={orderForm.deliveryMethod}
+                        onChange={(e) => setOrderForm((prev) => ({ ...prev, deliveryMethod: e.target.value, shippingAddress: e.target.value === 'courier' ? prev.shippingAddress : '' }))}>
+                        {DELIVERY_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                    </div>
+                    {requiresShippingLocation && (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-500">الدولة</label>
+                          <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
+                            value={orderForm.shippingCountry}
+                            onChange={(e) => { const c = e.target.value; setOrderForm((prev) => ({ ...prev, shippingCountry: c, shippingCity: getCitiesByCountry(c)[0] || '' })); }}>
+                            {SUPPORTED_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-500">المدينة</label>
+                          <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
+                            value={orderForm.shippingCity} onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingCity: e.target.value }))}>
+                            {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    {requiresShippingAddress && (
+                      <div className="mt-3 space-y-1">
+                        <label className="text-xs font-semibold text-slate-500">العنوان التفصيلي</label>
+                        <Input value={orderForm.shippingAddress} onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
+                          placeholder="الحي، الشارع، المبنى..." className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 4: Notes */}
+                  <div className="px-5 py-4">
+                    <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">4</span>
+                      ملاحظات (اختياري)
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-500">وسيلة التواصل</label>
+                        <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
+                          value={orderForm.contactMethod} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactMethod: e.target.value }))}>
+                          {CONTACT_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-500">أفضل وقت</label>
+                        <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
+                          value={orderForm.contactWindow} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactWindow: e.target.value }))}>
+                          {CONTACT_WINDOW_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Textarea value={orderForm.notes} onChange={(e) => setOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
+                          placeholder="أي تفاصيل خاصة بالمقاس أو التوصيل..."
+                          className="min-h-[64px] rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sticky footer */}
+              <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-500">الإجمالي ({cartCount} منتج)</span>
+                  <span className="text-2xl font-black text-[#d97706]">{formatStorePrice(cartTotal, cartCurrency)}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowCartCheckout(false)}
+                    className="h-12 w-24 shrink-0 rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 transition hover:bg-slate-50">
+                    رجوع
+                  </button>
+                  <button type="button" onClick={() => void confirmCartPurchase()} disabled={submittingOrder}
+                    className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all ${submittingOrder ? 'cursor-wait bg-[#101828]/70 text-white' : 'bg-[#101828] text-white hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]'}`}>
+                    {submittingOrder
+                      ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> جاري إرسال الطلب...</>
+                      : <><CheckCircle className="h-4 w-4" /> تأكيد الطلب</>}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ── Purchase Modal ── */}
       <AnimatePresence>
         {showPurchaseModal && selectedProduct && (
