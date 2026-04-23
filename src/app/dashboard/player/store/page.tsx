@@ -666,6 +666,54 @@ export default function PlayerStorePage() {
       }
 
       const selectedPaymentOpt = ACTIVE_STORE_PAYMENT_OPTIONS.find((o) => o.id === orderForm.paymentMethod);
+      const cartOrderId = rows[0].id;
+
+      if (orderForm.paymentMethod === 'geidea') {
+        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        const response = await fetch('/api/geidea/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: cartTotal,
+            currency: cartCurrency,
+            customerEmail: user.email || 'store@el7lm.com',
+            customerName: orderForm.buyerName,
+            merchantReferenceId: cartOrderId,
+            returnUrl: `${window.location.origin}${pathname || '/dashboard/player/store'}?payment=success&order=${cartOrderId}`,
+            metadata: { source: 'store_cart', orderId: cartOrderId, itemCount: rows.length },
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.success || !result?.redirectUrl) {
+          throw new Error(result?.error || 'تعذر تجهيز رابط الدفع');
+        }
+        window.location.href = result.redirectUrl;
+        return;
+      }
+
+      if (orderForm.paymentMethod === 'skipcash') {
+        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        const response = await fetch('/api/skipcash/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: cartTotal,
+            customerEmail: user.email || 'store@el7lm.com',
+            customerPhone: orderForm.buyerPhone,
+            customerName: orderForm.buyerName,
+            transactionId: cartOrderId,
+            custom1: `cart:${rows.length}items`,
+            returnUrl: `${window.location.origin}/payment/success?method=skipcash&order=${cartOrderId}&amount=${cartTotal}`,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.success || !result?.payUrl) {
+          throw new Error(result?.error ? `SkipCash: ${result.error}` : 'تعذر تجهيز رابط الدفع');
+        }
+        window.location.href = result.payUrl;
+        return;
+      }
+
       setCartItems([]);
       setShowCart(false);
       setShowCartCheckout(false);
