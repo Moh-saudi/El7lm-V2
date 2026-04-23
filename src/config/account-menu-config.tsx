@@ -130,7 +130,7 @@ export function getAccountMenuGroups(
           { id: 'my-applications',  label: 'طلباتي',                   icon: FileText, href: '/dashboard/player/my-applications' },
           { id: 'search-players',  label: 'البحث عن لاعبين',           icon: Users,   href: '/dashboard/player/search-players' },
           { id: 'player-cinema',   label: 'سينما اللاعبين',             icon: Play,    href: '/dashboard/player/player-videos' },
-          { id: 'tournaments',     label: 'البطولات الحالية',            icon: Trophy,  href: '/dashboard/player/tournaments' },
+          { id: 'tournaments',     label: 'البطولات الحالية',            icon: Trophy,  href: '/tournaments/unified-registration' },
         ],
       },
       {
