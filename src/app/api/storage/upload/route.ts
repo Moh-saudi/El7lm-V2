@@ -102,6 +102,15 @@ export async function POST(request: NextRequest) {
     }
 }
 
+export async function GET() {
+    const bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets(default)';
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '(missing)';
+    const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT || '(missing)';
+    const hasKey = !!(process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID);
+    const hasSecret = !!(process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY);
+    return NextResponse.json({ bucket, accountId, endpoint, hasKey, hasSecret });
+}
+
 // Next.js 14 Route Segment Config
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
