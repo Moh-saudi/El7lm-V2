@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListBucketsCommand } from '@aws-sdk/client-s3';
 
 /**
  * API Route لرفع الملفات إلى Cloudflare R2
@@ -103,12 +103,35 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-    const bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets(default)';
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '(missing)';
-    const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT || '(missing)';
-    const hasKey = !!(process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID);
-    const hasSecret = !!(process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY);
-    return NextResponse.json({ bucket, accountId, endpoint, hasKey, hasSecret });
+    const bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '';
+    const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
+        || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '');
+    const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '';
+    const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '';
+
+    let bucketsResult: string[] | string = '(could not list)';
+    try {
+        const s3 = new S3Client({
+            region: 'auto',
+            endpoint,
+            credentials: { accessKeyId, secretAccessKey },
+            forcePathStyle: true,
+        });
+        const res = await s3.send(new ListBucketsCommand({}));
+        bucketsResult = (res.Buckets || []).map(b => b.Name || '');
+    } catch (e) {
+        bucketsResult = e instanceof Error ? e.message : 'error';
+    }
+
+    return NextResponse.json({
+        configuredBucket: bucket,
+        accountId,
+        endpoint,
+        hasKey: !!accessKeyId,
+        hasSecret: !!secretAccessKey,
+        availableBuckets: bucketsResult,
+    });
 }
 
 // Next.js 14 Route Segment Config
