@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
         const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
         const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com';
-        const mainBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
+        const mainBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
 
         // بناء الـ endpoint — نستخدم المتغير الكامل إذا وُجد، وإلا نبنيه من accountId
         const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
@@ -59,12 +59,7 @@ export async function POST(request: NextRequest) {
         // المسار: bucket/path (تجنب التكرار)
         const targetKey = path.startsWith(bucket + '/') ? path : `${bucket}/${path}`;
 
-        console.log('📦 [API Route] Upload details:', {
-            requestedBucket: bucket,
-            targetBucket,
-            targetKey,
-            endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        });
+        console.log('📦 [API Route] Upload details:', { requestedBucket: bucket, targetBucket, targetKey, endpoint });
 
         // رفع الملف
         const command = new PutObjectCommand({
@@ -103,7 +98,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-    const bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
+    const bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '';
     const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
         || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '');
