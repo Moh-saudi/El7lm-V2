@@ -289,27 +289,27 @@ export default function AcademyProfilePage() {
     if (!validateForm()) return;
     setUploading(true);
     try {
-      // تحويل الحقول الرقمية — إذا كانت string فارغة أرسل null بدل "" لتجنب خطأ bigint
-      const toIntOrNull = (v: number | string | undefined) => {
-        if (v === '' || v === null || v === undefined) return null;
-        const n = Number(v);
-        return isNaN(n) ? null : n;
-      };
+      // تنظيف شامل: أي قيمة "" تُحوَّل إلى null لتجنب خطأ bigint في Postgres
+      function sanitizeForDB(obj: Record<string, unknown>): Record<string, unknown> {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) {
+          if (v === '') {
+            out[k] = null;
+          } else if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+            out[k] = sanitizeForDB(v as Record<string, unknown>);
+          } else {
+            out[k] = v;
+          }
+        }
+        return out;
+      }
 
-      const dataToSave = {
+      const raw = {
         ...academyData,
-        founding_year: toIntOrNull(academyData.founding_year),
-        number_of_coaches: toIntOrNull(academyData.number_of_coaches),
-        stats: {
-          ...academyData.stats,
-          students: toIntOrNull(academyData.stats.students) ?? 0,
-          programs: toIntOrNull(academyData.stats.programs) ?? 0,
-          coaches: toIntOrNull(academyData.stats.coaches) ?? 0,
-          graduates: toIntOrNull(academyData.stats.graduates) ?? 0,
-        },
         name: academyData.academy_name,
         updatedAt: new Date().toISOString(),
       };
+      const dataToSave = sanitizeForDB(raw as Record<string, unknown>);
       const { data: existing } = await supabase.from('academies').select('id').eq('id', user.id).maybeSingle();
       if (!!existing) {
         const { error: updateErr } = await supabase.from('academies').update(dataToSave as Record<string, unknown>).eq('id', user.id);
