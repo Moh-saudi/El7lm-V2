@@ -11,7 +11,7 @@
 
 import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
 import { cn } from '@/lib/utils';
-import { Menu, Search, X } from 'lucide-react';
+import { LogOut, Menu, Search, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAppShell } from './AppShellContext';
 import HeaderActions from './HeaderActions';
@@ -102,9 +102,19 @@ export default function AppHeader({
             EL7LM
           </span>
 
-          {/* Notifications only */}
-          <div className="header-action-btn p-0">
-            <UnifiedNotificationsButton />
+          {/* Notifications + Logout */}
+          <div className="flex items-center gap-1">
+            <div className="header-action-btn p-0">
+              <UnifiedNotificationsButton />
+            </div>
+            <button
+              onClick={onLogout}
+              className="header-action-btn flex-shrink-0 text-red-500"
+              aria-label="تسجيل الخروج"
+              title="تسجيل الخروج"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
         </div>
       </header>

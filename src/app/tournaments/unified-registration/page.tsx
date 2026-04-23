@@ -750,6 +750,33 @@ export default function UnifiedTournamentRegistrationPage() {
                       <p className="text-gray-600 mb-4">يجب تسجيل الدخول للمتابعة</p>
                       <Button onClick={() => router.push('/auth/login')} size="lg">تسجيل الدخول</Button>
                     </div>
+                  ) : userData?.accountType === 'player' && selectedTournament?.feeType === 'club' ? (
+                    <div className="text-center py-12 space-y-4">
+                      <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
+                        <Users className="w-10 h-10 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-800">هذه البطولة للفرق فقط</h3>
+                      <p className="text-gray-500 max-w-sm mx-auto">
+                        لا يمكن للاعبين الاشتراك بشكل فردي في هذه البطولة. التسجيل متاح للأندية والأكاديميات فقط.
+                      </p>
+                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 max-w-sm mx-auto text-right">
+                        <p className="text-sm font-semibold text-orange-800 mb-1">هل تريد الانضمام؟</p>
+                        <p className="text-xs text-orange-600">تواصل مع الإدارة لطلب الانضمام ضمن فريق مشارك.</p>
+                      </div>
+                      <div className="flex gap-3 justify-center pt-2">
+                        <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                          اختر بطولة أخرى
+                        </Button>
+                        {selectedTournament?.contactInfo && (
+                          <Button
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                            onClick={() => window.open(`https://wa.me/${selectedTournament.contactInfo?.replace(/\D/g,'')}`, '_blank')}
+                          >
+                            تواصل مع الإدارة
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   ) : availablePlayers.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />

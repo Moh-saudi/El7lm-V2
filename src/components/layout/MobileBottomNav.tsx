@@ -8,6 +8,7 @@ import {
   Home,
   Menu,
   Search,
+  ShoppingBag,
   Trophy,
   User,
   Users,
@@ -45,7 +46,7 @@ function getBottomTabs(accountType: string): NavTab[] {
         { label: 'الرئيسية', icon: Home,          href: '/dashboard/academy' },
         { label: 'ملفي',      icon: GraduationCap, href: '/dashboard/academy/profile' },
         { label: 'اللاعبون', icon: Users,          href: '/dashboard/academy/players' },
-        { label: 'إحصاءات',  icon: BarChart3,      href: '/dashboard/academy/stats' },
+        { label: 'المتجر',   icon: ShoppingBag,    href: '/dashboard/academy/store' },
       ];
     case 'agent':
       return [
