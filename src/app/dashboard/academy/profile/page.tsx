@@ -297,11 +297,13 @@ export default function AcademyProfilePage() {
       };
       const { data: existing } = await supabase.from('academies').select('id').eq('id', user.id).maybeSingle();
       if (!!existing) {
-        await supabase.from('academies').update(dataToSave as Record<string, unknown>).eq('id', user.id);
+        const { error: updateErr } = await supabase.from('academies').update(dataToSave as Record<string, unknown>).eq('id', user.id);
+        if (updateErr) throw updateErr;
       } else {
-        await supabase.from('academies').upsert({ id: user.id, ...dataToSave, createdAt: new Date().toISOString(), accountType: 'academy' });
+        const { error: upsertErr } = await supabase.from('academies').upsert({ id: user.id, ...dataToSave, createdAt: new Date().toISOString(), accountType: 'academy' });
+        if (upsertErr) throw upsertErr;
       }
-      // مزامنة الاسم في users table إن وُجدت (لضمان تحديث sidebar فوراً)
+      // مزامنة الاسم في users table
       try {
         const { data: usersRow } = await supabase.from('users').select('id').eq('id', user.id).maybeSingle();
         if (!!usersRow) {
@@ -313,9 +315,10 @@ export default function AcademyProfilePage() {
       } catch (_) { /* users row may not exist — ignore */ }
       toast.success('تم حفظ بيانات الأكاديمية بنجاح');
       setEditMode(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Save error:', err);
-      toast.error('حدث خطأ أثناء الحفظ');
+      const msg = err && typeof err === 'object' && 'message' in err ? (err as { message: string }).message : String(err);
+      toast.error(`فشل الحفظ: ${msg}`);
     } finally {
       setUploading(false);
     }
