@@ -289,9 +289,24 @@ export default function AcademyProfilePage() {
     if (!validateForm()) return;
     setUploading(true);
     try {
+      // تحويل الحقول الرقمية — إذا كانت string فارغة أرسل null بدل "" لتجنب خطأ bigint
+      const toIntOrNull = (v: number | string | undefined) => {
+        if (v === '' || v === null || v === undefined) return null;
+        const n = Number(v);
+        return isNaN(n) ? null : n;
+      };
+
       const dataToSave = {
         ...academyData,
-        // مزامنة name مع الـ sidebar (auth-provider يقرأ name/full_name)
+        founding_year: toIntOrNull(academyData.founding_year),
+        number_of_coaches: toIntOrNull(academyData.number_of_coaches),
+        stats: {
+          ...academyData.stats,
+          students: toIntOrNull(academyData.stats.students) ?? 0,
+          programs: toIntOrNull(academyData.stats.programs) ?? 0,
+          coaches: toIntOrNull(academyData.stats.coaches) ?? 0,
+          graduates: toIntOrNull(academyData.stats.graduates) ?? 0,
+        },
         name: academyData.academy_name,
         updatedAt: new Date().toISOString(),
       };
