@@ -237,63 +237,85 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
   const { isCollapsed, isMobile } = useAppShell();
   const { user, userData, logout } = useAuth();
 
-  const [clubLogo, setClubLogo] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [clubLogo, setClubLogo] = useState<string | null>(null); // kept for backward-compat
   const [showLogoutScreen, setShowLogoutScreen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // â”€â”€ Club logo Supabase realtime listener (single, consolidated) â”€â”€
+  // Unified profile listener — fetches name & image from the correct table
   useEffect(() => {
-    if (accountType !== 'club' || !user?.id) return;
+    console.log('[Sidebar] effect fired, user:', user?.id, 'accountType:', accountType);
+    if (!user?.id) return;
 
-    // Initial fetch
-    const fetchClubLogo = async () => {
-      const { data } = await supabase
-        .from('clubs')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      if (!data || !data.logo) { setClubLogo(null); return; }
-      if (data.logo.startsWith('http')) {
-        setClubLogo(data.logo);
-      } else {
-        const url = getSupabaseImageUrl(data.logo, 'clubavatar');
-        setClubLogo(url || null);
-      }
+    type TableConfig = { table: string; nameField: string; imageField: string };
+    const TABLE_MAP: Record<string, TableConfig> = {
+      academy: { table: 'academies', nameField: 'academy_name', imageField: 'logo' },
+      club:    { table: 'clubs',     nameField: 'name',         imageField: 'logo' },
+      agent:   { table: 'agents',    nameField: 'full_name',    imageField: 'profile_photo' },
+      trainer: { table: 'trainers',  nameField: 'full_name',    imageField: 'profile_photo' },
+      player:  { table: 'players',   nameField: 'full_name',    imageField: 'profile_image' },
     };
-    fetchClubLogo();
+
+    const cfg = TABLE_MAP[accountType];
+    if (!cfg) return;
+
+    const applyRow = (row: Record<string, unknown> | null) => {
+      if (!row) return;
+      const name = (row[cfg.nameField] as string) || null;
+      let img = (row[cfg.imageField] as string) || null;
+      // Resolve Supabase Storage paths to full URLs
+      if (img && !img.startsWith('http') && !img.startsWith('/')) {
+        img = getSupabaseImageUrl(img, cfg.table) || img;
+      }
+      setProfileName(name);
+      setProfileImage(img);
+      if (accountType === 'club') setClubLogo(img);
+    };
+
+    const fetchProfile = async () => {
+      let { data, error } = await supabase
+        .from(cfg.table)
+        .select(`${cfg.nameField}, ${cfg.imageField}`)
+        .eq('id', user.id)
+        .maybeSingle();
+
+      console.log(`[Sidebar] ${cfg.table} by id=${user.id}:`, { data, error });
+
+      if (!data) {
+        const res = await supabase
+          .from(cfg.table)
+          .select(`${cfg.nameField}, ${cfg.imageField}`)
+          .eq('uid', user.id)
+          .maybeSingle();
+        data = res.data;
+        console.log(`[Sidebar] ${cfg.table} by uid=${user.id}:`, { data, error: res.error });
+      }
+      applyRow(data as Record<string, unknown> | null);
+    };
+    fetchProfile();
 
     const channel = supabase
-      .channel(`club-logo-appshell-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'clubs', filter: `id=eq.${user.id}` },
-        (payload) => {
-          const data = payload.new as any;
-          if (!data.logo) { setClubLogo(null); return; }
-          if (data.logo.startsWith('http')) {
-            setClubLogo(data.logo);
-          } else {
-            const url = getSupabaseImageUrl(data.logo, 'clubavatar');
-            setClubLogo(url || null);
-          }
-        }
-      )
+      .channel(`profile-sidebar-${accountType}-${user.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: cfg.table, filter: `id=eq.${user.id}` },
+        (payload) => applyRow(payload.new as Record<string, unknown>))
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [accountType, user?.id]);
 
   // â”€â”€ Resolved values â”€â”€
-  const displayName = useMemo(
-    () => resolveDisplayName(userData, user, accountType),
-    [userData, user, accountType],
-  );
+  const displayName = useMemo(() => {
+    if (profileName) return profileName;
+    return resolveDisplayName(userData, user, accountType);
+  }, [userData, user, accountType, profileName]);
 
-  const avatarUrl = useMemo(
-    () => accountType === 'club' && clubLogo ? clubLogo : getPlayerAvatarUrl(userData, user),
-    [accountType, clubLogo, userData, user],
-  );
+  const avatarUrl = useMemo(() => {
+    if (profileImage) return profileImage;
+    if (accountType === 'club' && clubLogo) return clubLogo;
+    return getPlayerAvatarUrl(userData, user);
+  }, [accountType, clubLogo, profileImage, userData, user]);
 
   const roleName = useMemo(() => {
     const resolvedEmployeeRole = pickValidText(
@@ -355,7 +377,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
           menuGroups={menuGroups}
           displayName={displayName}
           avatarUrl={avatarUrl}
-          logoUrl={accountType === 'club' ? clubLogo : null}
+          logoUrl={accountType === 'club' || accountType === 'academy' ? profileImage : null}
           roleName={roleName}
           onLogout={handleLogout}
         />

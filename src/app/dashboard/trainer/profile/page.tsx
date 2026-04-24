@@ -146,7 +146,7 @@ const getImageUrl = (path: string) => {
 };
 
 export default function TrainerProfilePage() {
-  const { userData, user } = useAuth();
+  const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
@@ -332,6 +332,13 @@ export default function TrainerProfilePage() {
           await supabase.from('users').update({ name: trainerData.full_name, full_name: trainerData.full_name }).eq('id', user.id);
         }
       } catch (_) { /* ignore */ }
+      await updateUserData({
+        trainer_name: trainerData.full_name,
+        full_name: trainerData.full_name,
+        name: trainerData.full_name,
+        profile_image: trainerData.profile_photo,
+        logo: trainerData.profile_photo,
+      });
       toast.success('تم حفظ الملف الشخصي بنجاح');
       setEditMode(false);
     } catch (err) {

@@ -80,6 +80,9 @@ let originalWarn: any = null;
 let originalLog: any = null;
 
 const shouldHideMessage = (args: any[]): boolean => {
+  // Allow debug logs from sidebar
+  if (args[0] && typeof args[0] === 'string' && args[0].startsWith('[Sidebar]')) return false;
+
   const message = args.map(arg => {
     if (typeof arg === 'string') return arg;
     if (arg instanceof Error) return arg.message + (arg as any).code;

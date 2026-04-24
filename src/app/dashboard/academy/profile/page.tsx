@@ -134,7 +134,7 @@ const getImageUrl = (path: string) => {
 };
 
 export default function AcademyProfilePage() {
-  const { userData, user } = useAuth();
+  const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
@@ -334,6 +334,13 @@ export default function AcademyProfilePage() {
           }).eq('id', user.id);
         }
       } catch (_) { /* users row may not exist — ignore */ }
+      // مزامنة فورية للسايدبار
+      await updateUserData({
+        academy_name: academyData.academy_name,
+        name: academyData.academy_name,
+        logo: academyData.logo,
+        profile_image: academyData.logo,
+      });
       toast.success('تم حفظ بيانات الأكاديمية بنجاح');
       setEditMode(false);
     } catch (err: unknown) {

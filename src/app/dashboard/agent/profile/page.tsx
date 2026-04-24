@@ -115,7 +115,7 @@ const getImageUrl = (path: string) => {
 };
 
 export default function AgentProfilePage() {
-  const { userData, user } = useAuth();
+  const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
@@ -279,6 +279,13 @@ export default function AgentProfilePage() {
           await supabase.from('users').update({ name: agentData.full_name, full_name: agentData.full_name }).eq('id', user.id);
         }
       } catch (_) { /* ignore */ }
+      await updateUserData({
+        agent_name: agentData.full_name,
+        full_name: agentData.full_name,
+        name: agentData.full_name,
+        profile_image: agentData.profile_photo,
+        logo: agentData.profile_photo,
+      });
       toast.success('تم حفظ الملف الشخصي بنجاح');
       setEditMode(false);
     } catch (err) {

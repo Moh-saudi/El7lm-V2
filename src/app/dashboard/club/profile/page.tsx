@@ -151,7 +151,7 @@ function calcCompletion(d: ClubData): number {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ClubProfilePage() {
-  const { userData, user } = useAuth();
+  const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -380,6 +380,12 @@ export default function ClubProfilePage() {
         }).catch(() => {});
       }
       setOriginal(clubData);
+      await updateUserData({
+        club_name: clubData.name,
+        name: clubData.name,
+        logo: clubData.logo,
+        profile_image: clubData.logo,
+      });
       setEditMode(false);
       toast.success('تم حفظ بيانات النادي');
     } catch (err) {
