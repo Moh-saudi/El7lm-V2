@@ -284,14 +284,39 @@ export default function CreateOpportunityPage() {
     return diff > 0 ? diff : 0;
   })();
 
+  const compressImage = (file: File, maxWidth = 1200, quality = 0.82): Promise<File> =>
+    new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) { resolve(file); return; }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target?.result as string;
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+            'image/jpeg', quality,
+          );
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+
   const uploadOpportunityAsset = async (
     file: File,
     bucket: 'content' | 'videos',
     folder: string,
   ) => {
-    const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    const result = await storageManager.upload(bucket, `${folder}/${safeName}`, file, {
-      contentType: file.type,
+    const fileToUpload = bucket === 'content' ? await compressImage(file) : file;
+    const safeName = `${Date.now()}_${fileToUpload.name.replace(/\s+/g, '_')}`;
+    const result = await storageManager.upload(bucket, `${folder}/${safeName}`, fileToUpload, {
+      contentType: fileToUpload.type,
       upsert: true,
     });
 
