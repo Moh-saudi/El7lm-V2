@@ -2,103 +2,113 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, Trophy, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { Spin } from 'antd';
 import { getCurrentClient, createPortalClient, TournamentClient } from '@/lib/tournament-portal/auth';
-import { PortalShell } from '../_components/PortalShell';
+import { PortalShell, usePortalTheme } from '../_components/PortalShell';
 import { TournamentNav } from './_components/TournamentNav';
+import '../portal.css';
 
-const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-    draft:     { label: 'مسودة',  cls: 'bg-slate-100 text-slate-600'   },
-    open:      { label: 'مفتوح',  cls: 'bg-emerald-100 text-emerald-700' },
-    closed:    { label: 'مغلق',   cls: 'bg-rose-100 text-rose-700'     },
-    ongoing:   { label: 'جارٍ',   cls: 'bg-blue-100 text-blue-700'     },
-    completed: { label: 'منتهي',  cls: 'bg-purple-100 text-purple-700' },
-    cancelled: { label: 'ملغي',   cls: 'bg-orange-100 text-orange-700' },
+const STATUS_DOT: Record<string, string> = {
+  draft: '#64748b', open: '#16a34a', closed: '#ef4444',
+  ongoing: '#3b82f6', completed: '#8b5cf6', cancelled: '#94a3b8',
+};
+const STATUS_LBL: Record<string, string> = {
+  draft: 'مسودة', open: 'مفتوح', closed: 'مغلق',
+  ongoing: 'جارٍ', completed: 'منتهي', cancelled: 'ملغي',
 };
 
+function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
+  const { isDark } = usePortalTheme();
+  const dotColor = STATUS_DOT[tournament.status] || '#64748b';
+  const statusLbl = STATUS_LBL[tournament.status] || tournament.status;
+
+  return (
+    <div style={{
+      margin: '-24px -24px 0',
+      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e2e8f0'}`,
+      background: isDark ? '#0f172a' : '#fff',
+    }}>
+      <div style={{ padding: '12px 24px 0' }}>
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <Link href="/tournament-portal" style={{ fontSize: 12, color: isDark ? '#475569' : '#94a3b8', textDecoration: 'none' }}>
+            بطولاتي
+          </Link>
+          <span style={{ fontSize: 10, color: isDark ? '#374151' : '#d1d5db' }}>›</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? '#e2e8f0' : '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {tournament.name}
+          </span>
+        </div>
+
+        {/* Tournament info row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 12 }}>
+          {tournament.logo_url ? (
+            <img src={tournament.logo_url} alt={tournament.name}
+              style={{ width: 36, height: 36, borderRadius: 9, objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: 'linear-gradient(135deg,#d97706,#ea580c)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontSize: 16 }}>🏆</span>
+            </div>
+          )}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? '#f1f5f9' : '#0f172a' }}>{tournament.name}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: `${dotColor}18`, border: `1px solid ${dotColor}35`, borderRadius: 12, padding: '2px 9px', fontSize: 11, fontWeight: 700, color: dotColor }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
+                {statusLbl}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: isDark ? '#475569' : '#94a3b8', marginTop: 2 }}>
+              {[tournament.city, tournament.country].filter(Boolean).join('، ')}
+              {tournament.start_date && ` · ${new Date(tournament.start_date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <TournamentNav tournamentId={id} />
+    </div>
+  );
+}
+
 export default function TournamentLayout({ children }: { children: React.ReactNode }) {
-    const { id } = useParams<{ id: string }>();
-    const router = useRouter();
-    const [client,     setClient]     = useState<TournamentClient | null>(null);
-    const [tournament, setTournament] = useState<any>(null);
-    const [loading,    setLoading]    = useState(true);
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [client,     setClient]     = useState<TournamentClient | null>(null);
+  const [tournament, setTournament] = useState<any>(null);
+  const [loading,    setLoading]    = useState(true);
 
-    useEffect(() => {
-        (async () => {
-            const c = await getCurrentClient();
-            if (!c) {
-                router.replace('/tournament-portal/login');
-                return;
-            }
-            setClient(c);
+  useEffect(() => {
+    (async () => {
+      const c = await getCurrentClient();
+      if (!c) { router.replace('/tournament-portal/login'); return; }
+      setClient(c);
+      const supabase = createPortalClient();
+      const { data } = await supabase.from('tournament_new').select('id,name,status,type,country,city,logo_url,start_date,end_date').eq('id', id).eq('client_id', c.id).single();
+      setTournament(data);
+      setLoading(false);
+    })();
+  }, [id]);
 
-            const supabase = createPortalClient();
-            const { data } = await supabase
-                .from('tournament_new')
-                .select('id, name, status, type, country, city, logo_url, start_date, end_date')
-                .eq('id', id)
-                .eq('client_id', c.id)
-                .single();
+  if (!client || loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Spin size="large" />
+    </div>
+  );
 
-            setTournament(data);
-            setLoading(false);
-        })();
-    }, [id]);
+  if (!tournament) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '20px 28px', color: '#991b1b', fontSize: 14, fontWeight: 600 }}>
+        البطولة غير موجودة أو ليس لديك صلاحية الوصول
+      </div>
+    </div>
+  );
 
-    if (!client || loading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
-        </div>
-    );
-
-    if (!tournament) return (
-        <div className="min-h-screen flex items-center justify-center text-slate-500">
-            البطولة غير موجودة أو ليس لديك صلاحية الوصول
-        </div>
-    );
-
-    const statusCfg = STATUS_LABEL[tournament.status] || STATUS_LABEL.draft;
-
-    return (
-        <PortalShell client={client}>
-            {/* Tournament header */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-0 -mx-4 md:-mx-6 rounded-b-none border-b-0">
-                <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                    <Link href="/tournament-portal" className="hover:text-yellow-600 transition-colors">بطولاتي</Link>
-                    <ChevronRight className="w-3 h-3" />
-                    <span className="text-slate-700 font-medium truncate">{tournament.name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    {tournament.logo_url ? (
-                        <img src={tournament.logo_url} alt={tournament.name} className="w-10 h-10 rounded-xl object-cover border border-slate-200" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                            <Trophy className="w-5 h-5 text-white" />
-                        </div>
-                    )}
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="font-black text-slate-900 text-base">{tournament.name}</h1>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusCfg.cls}`}>
-                                {statusCfg.label}
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-400">
-                            {tournament.city || tournament.country || ''}
-                            {tournament.start_date ? ` · ${new Date(tournament.start_date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Sub-navigation */}
-            <div className="-mx-4 md:-mx-6">
-                <TournamentNav tournamentId={id} />
-            </div>
-
-            {/* Page content */}
-            <div className="pt-5">{children}</div>
-        </PortalShell>
-    );
+  return (
+    <PortalShell client={client}>
+      <TournamentHeader tournament={tournament} id={id} />
+      <div className="portal-page" style={{ paddingTop: 20, paddingBottom: 32 }}>{children}</div>
+    </PortalShell>
+  );
 }

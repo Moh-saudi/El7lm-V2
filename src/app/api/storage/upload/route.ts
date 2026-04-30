@@ -6,6 +6,10 @@ const KNOWN_R2_BUCKETS = [
     'el7lmplatform', 'images', 'videos', 'avatars', 'documents',
     'playeracademy', 'playeragent', 'playerclub', 'playertrainer',
     'profile-images', 'ads', 'al7lmarabicupqatar',
+    // Profile buckets per account type
+    'clubs', 'academies', 'trainers', 'agents', 'marketers',
+    'playeravatar', 'clubavatar', 'academyavatar', 'traineravatar', 'agentavatar',
+    'tournaments',
 ];
 
 const FALLBACK_BUCKET = 'el7lmplatform';

@@ -2,268 +2,285 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, Send, Bell, Users, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Team = { id: string; name: string; logo_url: string | null };
-type Notif = {
-    id: string;
-    title: string;
-    body: string;
-    target_type: 'all' | 'team' | 'category';
-    target_id: string | null;
-    status: 'pending' | 'sent' | 'failed';
-    created_at: string;
-    sent_at: string | null;
-    target_team?: { name: string } | null;
-};
+type Team  = { id:string; name:string; logo_url:string|null; contact_phone?:string|null };
+type Notif = { id:string; title:string; body:string; target_type:'all'|'team'; target_id:string|null; status:'pending'|'sent'|'failed'; created_at:string; channel?:string; target_team?:{ name:string }|null };
+
+type Channel = 'app' | 'whatsapp' | 'sms';
 
 const TEMPLATES = [
-    { label: 'موعد المباراة',     title: 'تذكير بموعد المباراة', body: 'يُذكَّر فريقكم بموعد المباراة القادمة. يرجى الحضور في الوقت المحدد.' },
-    { label: 'نتيجة المباراة',    title: 'نتيجة المباراة', body: 'تم تسجيل نتيجة مباراتكم الأخيرة. يمكنكم الاطلاع عليها من خلال التطبيق.' },
-    { label: 'جدول المباريات',    title: 'جدول المباريات المحدث', body: 'تم تحديث جدول مباريات البطولة. يرجى الاطلاع على المواعيد الجديدة.' },
-    { label: 'تهنئة بالتأهل',    title: 'مبروك التأهل!', body: 'يهنئكم منظمو البطولة بالتأهل إلى الدور القادم. استمروا في التألق!' },
-    { label: 'معلومة عامة',       title: 'إشعار من البطولة', body: '' },
+  { lbl:'📅 موعد مباراة',  title:'تذكير بموعد المباراة',  body:'يُذكَّر فريقكم بموعد المباراة القادمة. يرجى الحضور في الوقت المحدد.' },
+  { lbl:'⚽ نتيجة مباراة', title:'نتيجة المباراة',          body:'تم تسجيل نتيجة مباراتكم الأخيرة. يمكنكم الاطلاع عليها من خلال التطبيق.' },
+  { lbl:'📋 جدول محدث',   title:'جدول المباريات المحدث',  body:'تم تحديث جدول مباريات البطولة. يرجى الاطلاع على المواعيد الجديدة.' },
+  { lbl:'🏆 مبروك التأهل', title:'مبروك التأهل!',           body:'يهنئكم منظمو البطولة بالتأهل إلى الدور القادم. استمروا في التألق!' },
+  { lbl:'📢 معلومة عامة',  title:'إشعار من البطولة',       body:'' },
 ];
 
 export default function NotificationsPage() {
-    const { id } = useParams<{ id: string }>();
-    const [teams,       setTeams]       = useState<Team[]>([]);
-    const [notifs,      setNotifs]      = useState<Notif[]>([]);
-    const [loading,     setLoading]     = useState(true);
-    const [sending,     setSending]     = useState(false);
+  const { id }     = useParams<{ id:string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
 
-    // Form state
-    const [title,       setTitle]       = useState('');
-    const [body,        setBody]        = useState('');
-    const [targetType,  setTargetType]  = useState<'all' | 'team'>('all');
-    const [targetTeam,  setTargetTeam]  = useState('');
+  const [teams,     setTeams]     = useState<Team[]>([]);
+  const [notifs,    setNotifs]    = useState<Notif[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [sending,   setSending]   = useState(false);
+  const [title,     setTitle]     = useState('');
+  const [body,      setBody]      = useState('');
+  const [target,    setTarget]    = useState<'all'|'team'>('all');
+  const [teamId,    setTeamId]    = useState('');
+  const [channels,  setChannels]  = useState<Channel[]>(['app']);
+  const [whatsappResults, setWhatsappResults] = useState<{name:string;link:string}[]>([]);
 
-    const supabase = createPortalClient();
+  const supabase = createPortalClient();
 
-    const loadData = useCallback(async () => {
-        const [teamsRes, notifsRes] = await Promise.all([
-            supabase.from('tournament_teams')
-                .select('id, name, logo_url')
-                .eq('tournament_id', id)
-                .eq('status', 'approved')
-                .order('name'),
-            supabase.from('tournament_notifications')
-                .select('*, target_team:tournament_teams!target_id(name)')
-                .eq('tournament_id', id)
-                .order('created_at', { ascending: false })
-                .limit(50),
-        ]);
-        setTeams(teamsRes.data || []);
-        setNotifs((notifsRes.data as any) || []);
-        setLoading(false);
-    }, [id]);
+  const load = useCallback(async()=>{
+    const [tR,nR] = await Promise.all([
+      supabase.from('tournament_teams').select('id,name,logo_url,contact_phone').eq('tournament_id',id).eq('status','approved').order('name'),
+      supabase.from('tournament_notifications').select('*,target_team:tournament_teams!target_id(name)').eq('tournament_id',id).order('created_at',{ascending:false}).limit(50),
+    ]);
+    setTeams(tR.data||[]); setNotifs((nR.data as any)||[]); setLoading(false);
+  },[id]);
 
-    useEffect(() => { loadData(); }, [loadData]);
+  useEffect(()=>{ load(); },[load]);
 
-    const applyTemplate = (tpl: typeof TEMPLATES[0]) => {
-        setTitle(tpl.title);
-        setBody(tpl.body);
-    };
+  const toggleChannel = (ch: Channel) => {
+    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]);
+  };
 
-    const sendNotification = async () => {
-        if (!title.trim() || !body.trim()) { toast.error('أدخل العنوان والمحتوى'); return; }
-        if (targetType === 'team' && !targetTeam) { toast.error('اختر الفريق المستهدف'); return; }
+  const send = async()=>{
+    if (!title.trim()||!body.trim()) { toast.error('أدخل العنوان والمحتوى'); return; }
+    if (target==='team'&&!teamId) { toast.error('اختر الفريق'); return; }
+    if (channels.length === 0) { toast.error('اختر قناة إرسال واحدة على الأقل'); return; }
+    setSending(true);
+    setWhatsappResults([]);
 
-        setSending(true);
-        try {
-            const { error } = await supabase.from('tournament_notifications').insert({
-                tournament_id: id,
-                title:         title.trim(),
-                body:          body.trim(),
-                target_type:   targetType,
-                target_id:     targetType === 'team' ? targetTeam : null,
-                status:        'sent',
-                sent_at:       new Date().toISOString(),
-            });
-            if (error) throw error;
-            toast.success('تم إرسال الإشعار بنجاح');
-            setTitle(''); setBody(''); setTargetTeam(''); setTargetType('all');
-            await loadData();
-        } catch (e: any) {
-            toast.error('فشل الإرسال: ' + e.message);
-        } finally {
-            setSending(false);
-        }
-    };
+    const msg = `*${title.trim()}*\n\n${body.trim()}`;
 
-    const deleteNotif = async (nid: string) => {
-        await supabase.from('tournament_notifications').delete().eq('id', nid);
-        setNotifs(prev => prev.filter(n => n.id !== nid));
-        toast.success('تم الحذف');
-    };
+    // Save in-app notification
+    if (channels.includes('app')) {
+      const { error } = await supabase.from('tournament_notifications').insert({ tournament_id:id, title:title.trim(), body:body.trim(), target_type:target, target_id:target==='team'?teamId:null, status:'sent', sent_at:new Date().toISOString() });
+      if (error) toast.error(error.message);
+    }
 
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
-        </div>
-    );
+    // WhatsApp links
+    if (channels.includes('whatsapp')) {
+      const targetTeams = target === 'all' ? teams : teams.filter(t => t.id === teamId);
+      const teamsWithPhone = targetTeams.filter(t => t.contact_phone);
+      if (teamsWithPhone.length === 0) {
+        toast.warning('لا توجد أرقام واتساب مسجلة للفرق المختارة');
+      } else {
+        const encoded = encodeURIComponent(msg);
+        const links = teamsWithPhone.map(t => ({
+          name: t.name,
+          link: `https://wa.me/${(t.contact_phone||'').replace(/\D/g,'')}?text=${encoded}`,
+        }));
+        setWhatsappResults(links);
+        toast.success(`تم إنشاء ${links.length} رابط واتساب`);
+      }
+    }
 
-    const sentCount    = notifs.filter(n => n.status === 'sent').length;
-    const pendingCount = notifs.filter(n => n.status === 'pending').length;
+    // SMS via API (Twilio if configured)
+    if (channels.includes('sms')) {
+      const targetTeams = target === 'all' ? teams : teams.filter(t => t.id === teamId);
+      const teamsWithPhone = targetTeams.filter(t => t.contact_phone);
+      if (teamsWithPhone.length === 0) {
+        toast.warning('لا توجد أرقام هاتف مسجلة للإرسال بالرسائل');
+      } else {
+        const res = await fetch('/api/tournament-portal/send-sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phones: teamsWithPhone.map(t => t.contact_phone), message: `${title.trim()}\n${body.trim()}` }),
+        });
+        const json = await res.json();
+        if (json.error) toast.error(json.error);
+        else toast.success(`تم إرسال ${json.sent || 0} رسالة SMS`);
+      }
+    }
 
-    return (
-        <div className="grid lg:grid-cols-2 gap-5" dir="rtl">
+    if (channels.includes('app')) { await load(); }
+    setTitle(''); setBody(''); setTeamId(''); setTarget('all');
+    setSending(false);
+  };
 
-            {/* ── Compose panel ── */}
-            <div className="space-y-4">
+  const del = async(nid:string)=>{
+    await supabase.from('tournament_notifications').delete().eq('id',nid);
+    setNotifs(p=>p.filter(n=>n.id!==nid));
+    toast.success('تم الحذف');
+  };
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        <div>
-                            <p className="text-2xl font-black text-slate-900">{sentCount}</p>
-                            <p className="text-xs text-slate-500">إشعار مُرسل</p>
-                        </div>
-                    </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                        <Users className="w-5 h-5 text-blue-500" />
-                        <div>
-                            <p className="text-2xl font-black text-slate-900">{teams.length}</p>
-                            <p className="text-xs text-slate-500">فريق مقبول</p>
-                        </div>
-                    </div>
-                </div>
+  if (loading) return <Loader isDark={isDark} />;
 
-                {/* Compose form */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-yellow-500" /> إنشاء إشعار جديد
-                    </h3>
+  const sentN = notifs.filter(n=>n.status==='sent').length;
 
-                    {/* Templates */}
-                    <div>
-                        <p className="text-[11px] font-bold text-slate-500 mb-2">قوالب جاهزة</p>
-                        <div className="flex flex-wrap gap-2">
-                            {TEMPLATES.map(tpl => (
-                                <button key={tpl.label} onClick={() => applyTemplate(tpl)}
-                                    className="text-[11px] bg-slate-100 hover:bg-yellow-100 hover:text-yellow-700 text-slate-600 font-semibold px-2.5 py-1.5 rounded-lg transition-colors">
-                                    {tpl.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-                    {/* Target */}
-                    <div>
-                        <label className="text-[11px] font-bold text-slate-500 block mb-1.5">المستهدفون</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => setTargetType('all')}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all
-                                    ${targetType === 'all' ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                <Users className="w-3.5 h-3.5" /> جميع الفرق
-                            </button>
-                            <button onClick={() => setTargetType('team')}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all
-                                    ${targetType === 'team' ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                <Bell className="w-3.5 h-3.5" /> فريق محدد
-                            </button>
-                        </div>
-                        {targetType === 'team' && (
-                            <select value={targetTeam} onChange={e => setTargetTeam(e.target.value)}
-                                className="mt-2 w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:border-yellow-400">
-                                <option value="">اختر الفريق...</option>
-                                {teams.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
+      {/* KPIs */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }} className="sp-grid-3col">
+        {[
+          { icon:'🔔', v:sentN,       lbl:'إشعار مُرسل', color:'#d97706' },
+          { icon:'👥', v:teams.length, lbl:'فريق مقبول', color:'#3b82f6' },
+          { icon:'✅', v:sentN,        lbl:'تم التسليم',  color:'#16a34a' },
+        ].map(s=>(
+          <div key={s.lbl} className="sp-kpi" style={{ background:S.surface, borderColor:S.border, display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:42, height:42, borderRadius:11, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize:24, fontWeight:900, color:s.color, lineHeight:1 }}>{s.v}</div>
+              <div className="sp-kpi-label" style={{ color:S.text2 }}>{s.lbl}</div>
+            </div>
+          </div>
+        ))}
+      </div>
 
-                    {/* Title */}
-                    <div>
-                        <label className="text-[11px] font-bold text-slate-500 block mb-1.5">عنوان الإشعار *</label>
-                        <input value={title} onChange={e => setTitle(e.target.value)}
-                            placeholder="مثال: تذكير بموعد المباراة"
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-yellow-400 transition-colors" />
-                    </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:14, alignItems:'start' }} className="sp-grid-single">
 
-                    {/* Body */}
-                    <div>
-                        <label className="text-[11px] font-bold text-slate-500 block mb-1.5">نص الإشعار *</label>
-                        <textarea value={body} onChange={e => setBody(e.target.value)} rows={4}
-                            placeholder="اكتب محتوى الإشعار هنا..."
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-yellow-400 transition-colors resize-none" />
-                        <p className="text-[10px] text-slate-400 mt-1 text-left">{body.length} / 500</p>
-                    </div>
+        {/* ── Compose ── */}
+        <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+          <div className="sp-section-header">
+            <span style={{ fontSize:14, fontWeight:700, color:'#fff' }}>🔔 إنشاء إشعار جديد</span>
+          </div>
+          <div style={{ padding:'18px' }}>
 
-                    {/* Preview */}
-                    {(title || body) && (
-                        <div className="bg-slate-900 rounded-2xl p-4 text-white">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                    <Bell className="w-4 h-4 text-white" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-black">{title || 'العنوان'}</p>
-                                    <p className="text-[10px] text-slate-400">الآن</p>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-300 leading-relaxed">{body || 'نص الإشعار...'}</p>
-                        </div>
-                    )}
-
-                    <button onClick={sendNotification} disabled={sending}
-                        className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-white font-black py-3 rounded-xl text-sm transition-all">
-                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        إرسال الإشعار
-                    </button>
-                </div>
+            {/* Templates */}
+            <label className="sp-label">قوالب جاهزة</label>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
+              {TEMPLATES.map(t=>(
+                <button key={t.lbl} onClick={()=>{ setTitle(t.title); setBody(t.body); }} className="sp-btn sp-btn-ghost sp-btn-sm">{t.lbl}</button>
+              ))}
             </div>
 
-            {/* ── History panel ── */}
-            <div className="space-y-4">
-                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-slate-400" /> سجل الإشعارات
-                </h3>
-
-                {notifs.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-sm">
-                        لم يتم إرسال أي إشعارات بعد
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {notifs.map(n => (
-                            <div key={n.id} className="bg-white border border-slate-200 rounded-2xl p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-                                            ${n.status === 'sent' ? 'bg-emerald-100' : n.status === 'failed' ? 'bg-rose-100' : 'bg-amber-100'}`}>
-                                            {n.status === 'sent'    ? <CheckCircle className="w-4 h-4 text-emerald-600" /> :
-                                             n.status === 'failed'  ? <AlertCircle className="w-4 h-4 text-rose-500" /> :
-                                             <Clock className="w-4 h-4 text-amber-500" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-slate-800 text-sm truncate">{n.title}</p>
-                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>
-                                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
-                                                    ${n.target_type === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                                                    {n.target_type === 'all' ? 'جميع الفرق' : n.target_team?.name || 'فريق محدد'}
-                                                </span>
-                                                <span className="text-[10px] text-slate-400">
-                                                    {new Date(n.created_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => deleteNotif(n.id)}
-                                        className="flex-shrink-0 text-slate-300 hover:text-rose-500 transition-colors p-1">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            {/* Target */}
+            <label className="sp-label">المستهدفون</label>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+              {(['all','team'] as const).map(type=>(
+                <button key={type} onClick={()=>setTarget(type)} style={{ padding:'11px 14px', borderRadius:10, cursor:'pointer', border:`2px solid ${target===type?'#d97706':S.border}`, background:target===type?(isDark?'rgba(217,119,6,0.1)':'#fffbeb'):'transparent', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', fontSize:13, fontWeight:600, color:target===type?'#d97706':S.text2, fontFamily:'inherit' }}>
+                  {type==='all'?'👥':'🔔'}
+                  {type==='all'?'جميع الفرق':'فريق محدد'}
+                </button>
+              ))}
             </div>
+
+            {target==='team' && (
+              <div style={{ marginBottom:14 }}>
+                <select className="sp-select" value={teamId} onChange={e=>setTeamId(e.target.value)}>
+                  <option value="">اختر الفريق...</option>
+                  {teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Channels */}
+            <label className="sp-label">قنوات الإرسال</label>
+            <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+              {([
+                { id:'app',       icon:'🔔', lbl:'داخل التطبيق', color:'#3b82f6' },
+                { id:'whatsapp',  icon:'💬', lbl:'واتساب',        color:'#16a34a' },
+                { id:'sms',       icon:'📱', lbl:'رسائل SMS',     color:'#7c3aed' },
+              ] as {id:Channel;icon:string;lbl:string;color:string}[]).map(ch => (
+                <button key={ch.id} onClick={() => toggleChannel(ch.id)} style={{ padding:'9px 14px', borderRadius:10, cursor:'pointer', border:`2px solid ${channels.includes(ch.id)?ch.color:S.border}`, background:channels.includes(ch.id)?(isDark?`${ch.color}22`:`${ch.color}18`):'transparent', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:channels.includes(ch.id)?ch.color:S.text2, transition:'all 0.15s', fontFamily:'inherit' }}>
+                  {ch.icon} {ch.lbl}
+                  {channels.includes(ch.id) && <span style={{ fontSize:10, color:ch.color }}>✓</span>}
+                </button>
+              ))}
+            </div>
+
+            {(channels.includes('whatsapp') || channels.includes('sms')) && (
+              <div style={{ background:isDark?'rgba(245,158,11,0.08)':'#fffbeb', border:`1px solid ${isDark?'rgba(245,158,11,0.2)':'#fde68a'}`, borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:12, color:isDark?'#fbbf24':'#92400e' }}>
+                ⚠️ يتطلب واتساب/SMS وجود <strong>رقم الاتصال</strong> مسجلاً لكل فريق في بيانات الفريق.
+              </div>
+            )}
+
+            <label className="sp-label">عنوان الإشعار *</label>
+            <input className="sp-input" style={{ marginBottom:14 }} value={title} onChange={e=>setTitle(e.target.value)} placeholder="مثال: تذكير بموعد المباراة" />
+
+            <label className="sp-label">نص الإشعار *</label>
+            <textarea className="sp-input sp-textarea" style={{ marginBottom:6 }} value={body} onChange={e=>setBody(e.target.value)} placeholder="اكتب محتوى الإشعار..." maxLength={500} />
+            <div style={{ textAlign:'left', fontSize:10, color:S.text2, marginBottom:14 }}>{body.length}/500</div>
+
+            {/* Preview */}
+            {(title||body) && (
+              <div style={{ background:'#0b0e1a', borderRadius:16, padding:'16px 18px', marginBottom:16, border:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize:10, color:'#475569', fontWeight:600, marginBottom:10, letterSpacing:1 }}>PREVIEW</div>
+                <div style={{ display:'flex', gap:10 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:'#d97706', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🔔</div>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{title||'العنوان'}</div>
+                    <div style={{ fontSize:12, color:'#94a3b8', lineHeight:1.5 }}>{body||'نص الإشعار...'}</div>
+                    <div style={{ fontSize:10, color:'#374151', marginTop:6 }}>الآن · بطولة</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button onClick={send} disabled={sending} className="sp-btn sp-btn-primary" style={{ width:'100%', justifyContent:'center', borderRadius:12, height:46, fontSize:15, boxShadow:'0 4px 16px rgba(217,119,6,0.3)' }}>
+              {sending?'جاري الإرسال...':'📤 إرسال الإشعار'}
+            </button>
+
+            {/* WhatsApp links result */}
+            {whatsappResults.length > 0 && (
+              <div style={{ marginTop:14, background:isDark?'rgba(22,163,74,0.08)':'#f0fdf4', border:`1px solid ${isDark?'rgba(22,163,74,0.2)':'#bbf7d0'}`, borderRadius:12, padding:'12px 16px' }}>
+                <div style={{ fontSize:12, fontWeight:700, color:'#16a34a', marginBottom:10 }}>💬 روابط واتساب — انقر لفتح كل رابط</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {whatsappResults.map(r => (
+                    <a key={r.name} href={r.link} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:isDark?'rgba(22,163,74,0.1)':'#dcfce7', borderRadius:8, textDecoration:'none', fontSize:12, color:'#16a34a', fontWeight:600 }}>
+                      <span style={{ fontSize:16 }}>💬</span> {r.name} <span style={{ marginRight:'auto', fontSize:10, color:'#4ade80' }}>→ فتح</span>
+                    </a>
+                  ))}
+                </div>
+                <button onClick={() => setWhatsappResults([])} style={{ marginTop:8, background:'none', border:'none', fontSize:11, color:S.text2, cursor:'pointer', padding:0 }}>✕ إخفاء الروابط</button>
+              </div>
+            )}
+          </div>
         </div>
-    );
+
+        {/* ── History ── */}
+        <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+          <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, background:S.surface2, display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:14, fontWeight:700, color:S.text, flex:1 }}>⏰ سجل الإشعارات</span>
+            <span style={{ fontSize:12, color:S.text2 }}>{notifs.length}</span>
+          </div>
+
+          <div style={{ maxHeight:560, overflowY:'auto' }} className="sp-scroll">
+            {notifs.length===0
+              ? <div style={{ padding:'48px 24px', textAlign:'center' }}>
+                  <div style={{ fontSize:36, marginBottom:12 }}>🔕</div>
+                  <div style={{ fontSize:14, color:S.text2 }}>لم يتم إرسال أي إشعارات بعد</div>
+                </div>
+              : notifs.map(n=>{
+                  const statusIcon = n.status==='sent'?'✅':n.status==='failed'?'❌':'⏳';
+                  const statusBg = { sent:isDark?'rgba(22,163,74,0.1)':'#dcfce7', failed:isDark?'rgba(220,38,38,0.1)':'#fee2e2', pending:isDark?'rgba(245,158,11,0.1)':'#fef3c7' }[n.status] || S.surface2;
+                  return (
+                    <div key={n.id} className="sp-notif-item">
+                      <div style={{ width:36, height:36, borderRadius:10, background:statusBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{statusIcon}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:S.text, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{n.title}</div>
+                        <div style={{ fontSize:11, color:S.text2, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:6 }}>{n.body}</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ fontSize:10, fontWeight:700, color:n.target_type==='all'?'#60a5fa':'#a78bfa', background:n.target_type==='all'?(isDark?'rgba(59,130,246,0.12)':'#dbeafe'):(isDark?'rgba(139,92,246,0.12)':'#ede9fe'), padding:'2px 8px', borderRadius:6 }}>
+                            {n.target_type==='all'?'جميع الفرق':(n.target_team as any)?.name||'فريق محدد'}
+                          </span>
+                          <span style={{ fontSize:10, color:S.text2 }}>{new Date(n.created_at).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</span>
+                        </div>
+                      </div>
+                      <button onClick={()=>del(n.id)} style={{ width:28, height:28, borderRadius:7, background:'transparent', border:`1px solid ${S.border}`, color:'#ef4444', cursor:'pointer', fontSize:14, flexShrink:0 }}>×</button>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
+
+function Loader({ isDark }: { isDark:boolean }) {
+  return <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300 }}><div style={{ width:36,height:36,borderRadius:'50%',border:`3px solid ${isDark?'rgba(255,255,255,0.1)':'#e2e8f0'}`,borderTopColor:'#d97706',animation:'spin 0.7s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+}
+
+const D = { surface:'#131929', surface2:'#1a2235', border:'rgba(255,255,255,0.07)', text:'#e8eaf0', text2:'#64748b' };
+const L = { surface:'#ffffff', surface2:'#f8fafc', border:'#e2e8f0', text:'#0f172a', text2:'#64748b' };

@@ -1,280 +1,629 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import {
-    Trophy, MapPin, Calendar, Users, Clock, ChevronLeft,
-    Shield, Star, User, DollarSign, FileText, Phone,
-} from 'lucide-react';
+import { Trophy, MapPin, Calendar, Users, Clock, ChevronRight, User, DollarSign, Share2 } from 'lucide-react';
+import { resolveImg } from '@/app/tournament-portal/_utils/img';
 
 const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-    open:      { label: 'مفتوح للتسجيل', cls: 'bg-emerald-100 text-emerald-700' },
-    ongoing:   { label: 'جارٍ',           cls: 'bg-blue-100 text-blue-700'       },
-    closed:    { label: 'مغلق',           cls: 'bg-slate-100 text-slate-600'     },
-    completed: { label: 'منتهي',          cls: 'bg-purple-100 text-purple-700'   },
-    draft:     { label: 'قريباً',         cls: 'bg-amber-100 text-amber-700'     },
+const STATUS_CFG: Record<string, { label: string; color: string }> = {
+  open:      { label: 'مفتوح للتسجيل', color: '#16a34a' },
+  ongoing:   { label: 'جارٍ الآن',     color: '#2563eb' },
+  closed:    { label: 'مغلق',           color: '#64748b' },
+  completed: { label: 'منتهي',          color: '#8b5cf6' },
+  draft:     { label: 'قريباً',         color: '#f59e0b' },
 };
 
-export default function TournamentDetailPage() {
-    const { slug } = useParams<{ slug: string }>();
-    const [tournament, setTournament] = useState<any>(null);
-    const [categories, setCategories] = useState<any[]>([]);
-    const [teamCount,  setTeamCount]  = useState(0);
-    const [loading,    setLoading]    = useState(true);
+const TYPE_LBL: Record<string, string> = {
+  knockout: 'كأس إقصائي', league: 'دوري', groups_knockout: 'مجموعات + إقصاء',
+};
 
-    useEffect(() => {
-        (async () => {
-            const { data: t } = await supabase
-                .from('tournament_new')
-                .select('*')
-                .eq('slug', slug)
-                .eq('is_public', true)
-                .single();
+const ROUND_LBL: Record<string, string> = {
+  league: 'الدوري', group_stage: 'دور المجموعات',
+  R16: 'دور الـ16', QF: 'ربع النهائي', SF: 'نصف النهائي', F: 'النهائي', '3rd': 'المركز الثالث',
+};
 
-            if (!t) { setLoading(false); return; }
-            setTournament(t);
+type Tab = 'info' | 'schedule' | 'standings' | 'stats' | 'bracket' | 'teams';
 
-            const [catsRes, teamsRes] = await Promise.all([
-                supabase.from('tournament_categories').select('*').eq('tournament_id', t.id).order('sort_order'),
-                supabase.from('tournament_teams').select('id').eq('tournament_id', t.id).eq('status', 'approved'),
-            ]);
-            setCategories(catsRes.data || []);
-            setTeamCount(teamsRes.data?.length || 0);
-            setLoading(false);
-        })();
-    }, [slug]);
+export default function TournamentPublicPage() {
+  const { slug }   = useParams<{ slug: string }>();
+  const params     = useSearchParams();
+  const router     = useRouter();
+  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'info');
 
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-    );
+  const [tournament, setTournament] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading,    setLoading]    = useState(true);
 
-    if (!tournament) return (
-        <div className="min-h-screen flex items-center justify-center text-slate-500" dir="rtl">
-            <div className="text-center">
-                <Trophy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="font-bold">البطولة غير موجودة</p>
-                <Link href="/tournaments" className="text-yellow-600 text-sm mt-2 block hover:underline">العودة للبطولات</Link>
+  // Data per tab
+  const [matches,    setMatches]    = useState<any[]>([]);
+  const [standings,  setStandings]  = useState<any[]>([]);
+  const [scorers,    setScorers]    = useState<any[]>([]);
+  const [teams,      setTeams]      = useState<any[]>([]);
+  const [bracket,    setBracket]    = useState<any[]>([]);
+  const [sponsors,   setSponsors]   = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: t } = await supabase
+        .from('tournament_new').select('*')
+        .eq('slug', slug).eq('is_public', true).single();
+      if (!t) { setLoading(false); return; }
+      setTournament(t);
+      const [catsRes, sponsorsRes] = await Promise.all([
+        supabase.from('tournament_categories').select('*').eq('tournament_id', t.id).order('sort_order'),
+        supabase.from('tournament_sponsors').select('*').eq('tournament_id', t.id).order('tier').order('name'),
+      ]);
+      setCategories(catsRes.data || []);
+      setSponsors(sponsorsRes.data || []);
+      setLoading(false);
+    })();
+  }, [slug]);
+
+  // Load schedule
+  useEffect(() => {
+    if (tab !== 'schedule' || !tournament) return;
+    (async () => {
+      const { data } = await supabase
+        .from('tournament_matches')
+        .select('id,round,match_date,venue,status,home_score,away_score,match_number,home_team:tournament_teams!home_team_id(name,logo_url),away_team:tournament_teams!away_team_id(name,logo_url)')
+        .eq('tournament_id', tournament.id)
+        .order('match_number', { ascending: true });
+      setMatches(data || []);
+    })();
+  }, [tab, tournament]);
+
+  // Load standings
+  useEffect(() => {
+    if (tab !== 'standings' || !tournament) return;
+    (async () => {
+      const { data } = await supabase
+        .from('tournament_standings')
+        .select('*, team:tournament_teams(name,logo_url), group:tournament_groups(name)')
+        .eq('tournament_id', tournament.id)
+        .order('points', { ascending: false })
+        .order('goal_diff', { ascending: false });
+      setStandings(data || []);
+    })();
+  }, [tab, tournament]);
+
+  // Load stats
+  useEffect(() => {
+    if (tab !== 'stats' || !tournament) return;
+    (async () => {
+      const { data } = await supabase
+        .from('tournament_top_scorers')
+        .select('*, team:tournament_teams(name,logo_url)')
+        .eq('tournament_id', tournament.id)
+        .order('goals', { ascending: false })
+        .order('assists', { ascending: false })
+        .limit(20);
+      setScorers(data || []);
+    })();
+  }, [tab, tournament]);
+
+  // Load teams
+  useEffect(() => {
+    if (tab !== 'teams' || !tournament) return;
+    (async () => {
+      const { data } = await supabase
+        .from('tournament_teams')
+        .select('id,name,logo_url,city,country,category_id,category:tournament_categories(name)')
+        .eq('tournament_id', tournament.id)
+        .eq('status', 'approved')
+        .order('name');
+      setTeams(data || []);
+    })();
+  }, [tab, tournament]);
+
+  // Load bracket
+  useEffect(() => {
+    if (tab !== 'bracket' || !tournament) return;
+    (async () => {
+      const { data } = await supabase
+        .from('tournament_matches')
+        .select('id,round,match_number,home_score,away_score,status,match_date,home_team:tournament_teams!home_team_id(name,logo_url),away_team:tournament_teams!away_team_id(name,logo_url)')
+        .eq('tournament_id', tournament.id)
+        .in('round', ['QF','SF','final','3rd','quarter_final','semi_final','third_place','F'])
+        .order('match_number', { ascending: true });
+      setBracket(data || []);
+    })();
+  }, [tab, tournament]);
+
+  const changeTab = (t: Tab) => {
+    setTab(t);
+    router.replace(`/tournaments/${slug}?tab=${t}`, { scroll: false });
+  };
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0b0e1a]">
+      <div className="w-10 h-10 border-3 border-[#d97706] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!tournament) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0b0e1a]" dir="rtl">
+      <div className="text-center text-white">
+        <Trophy className="w-14 h-14 text-[#64748b] mx-auto mb-4" />
+        <p className="font-bold text-lg">البطولة غير موجودة</p>
+        <Link href="/tournaments" className="text-[#d97706] text-sm mt-2 block">العودة للبطولات</Link>
+      </div>
+    </div>
+  );
+
+  const cfg        = STATUS_CFG[tournament.status] || STATUS_CFG.draft;
+  const canReg     = tournament.status === 'open';
+  const approvedN  = categories.length;
+
+  const TABS: { key: Tab; emoji: string; label: string }[] = [
+    { key: 'info',      emoji: 'ℹ️', label: 'معلومات'    },
+    { key: 'teams',     emoji: '👥', label: 'الفرق'      },
+    { key: 'schedule',  emoji: '📅', label: 'الجدول'     },
+    { key: 'standings', emoji: '📊', label: 'الترتيب'    },
+    { key: 'stats',     emoji: '⚽', label: 'الإحصائيات' },
+    { key: 'bracket',   emoji: '🏆', label: 'الكأس'      },
+  ];
+
+  // Group matches by date
+  const byDate: Record<string, any[]> = {};
+  for (const m of matches) {
+    const key = m.match_date
+      ? new Date(m.match_date).toLocaleDateString('ar-SA', { weekday: 'long', month: 'long', day: 'numeric' })
+      : 'بدون تاريخ';
+    (byDate[key] = byDate[key] || []).push(m);
+  }
+
+  // Group standings by group
+  const byGroup: Record<string, any[]> = {};
+  for (const s of standings) {
+    const key = s.group?.name || 'الترتيب العام';
+    (byGroup[key] = byGroup[key] || []).push(s);
+  }
+
+  const tName = (m: any, side: 'home' | 'away') =>
+    side === 'home' ? (m.home_team?.name || 'TBD') : (m.away_team?.name || 'TBD');
+  const tLogo = (m: any, side: 'home' | 'away') =>
+    resolveImg(side === 'home' ? m.home_team?.logo_url : m.away_team?.logo_url);
+
+  return (
+    <div dir="rtl" style={{ minHeight: '100vh', background: '#0b0e1a', color: '#e8eaf0', fontFamily: "'Tajawal', sans-serif" }}>
+
+      {/* ── Hero ── */}
+      <div style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2d6b 50%, #0a1628 100%)', padding: '28px 16px 0', position: 'relative' }}>
+        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+
+          {/* Back */}
+          <Link href="/tournaments" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#64748b', fontSize: 13, textDecoration: 'none', marginBottom: 16 }}>
+            <ChevronRight size={14} /> البطولات
+          </Link>
+
+          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* Logo */}
+            <div style={{ width: 72, height: 72, borderRadius: 18, overflow: 'hidden', background: 'rgba(255,255,255,0.07)', border: '2px solid rgba(255,255,255,0.15)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {tournament.logo_url
+                ? <img src={resolveImg(tournament.logo_url) || tournament.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <Trophy size={30} color="rgba(255,255,255,0.5)" />}
             </div>
-        </div>
-    );
 
-    const cfg = STATUS_CFG[tournament.status] || STATUS_CFG.draft;
-    const canRegister = tournament.status === 'open';
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <h1 style={{ fontSize: 24, fontWeight: 900, color: '#fff', margin: 0 }}>{tournament.name}</h1>
+                <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color, background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, borderRadius: 12, padding: '3px 11px' }}>
+                  {cfg.label}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {tournament.city && <span style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} />{tournament.city}</span>}
+                {tournament.start_date && <span style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={13} />{new Date(tournament.start_date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                {tournament.type && <span style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}><Trophy size={13} />{TYPE_LBL[tournament.type] || tournament.type}</span>}
+              </div>
 
-    const TYPE_LABEL: Record<string, string> = {
-        knockout: 'كأس إقصائي', league: 'دوري', groups_knockout: 'مجموعات + إقصاء',
-    };
-
-    return (
-        <div className="min-h-screen bg-slate-50" dir="rtl">
-
-            {/* Banner */}
-            {tournament.banner_url && (
-                <div className="h-48 bg-cover bg-center relative" style={{ backgroundImage: `url(${tournament.banner_url})` }}>
-                    <div className="absolute inset-0 bg-black/50" />
+              {/* CTA */}
+              {canReg && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+                  <Link href={`/tournaments/${slug}/register`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg,#d97706,#ea580c)', color: '#fff', fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', fontSize: 14 }}>
+                    <Users size={15} /> سجّل فريقاً
+                  </Link>
+                  <button
+                    onClick={() => { navigator.clipboard?.writeText(window.location.href); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', fontWeight: 600, padding: '10px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontSize: 13 }}>
+                    <Share2 size={13} /> مشاركة
+                  </button>
                 </div>
-            )}
+              )}
+            </div>
+          </div>
 
-            {/* Header */}
-            <div className={`${tournament.banner_url ? 'bg-slate-900' : 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900'} text-white py-10 px-4`}>
-                <div className="max-w-4xl mx-auto">
-                    <Link href="/tournaments" className="flex items-center gap-1 text-slate-400 hover:text-white text-sm mb-6 transition-colors">
-                        <ChevronLeft className="w-4 h-4 rotate-180" /> البطولات
+          {/* Tab bar */}
+          <div style={{ display: 'flex', marginTop: 24, borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {TABS.map(t => (
+              <button key={t.key} onClick={() => changeTab(t.key)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 18px',
+                fontSize: 14, fontWeight: tab === t.key ? 700 : 500,
+                color: tab === t.key ? '#d97706' : '#64748b',
+                background: 'transparent', border: 'none',
+                borderBottom: `2.5px solid ${tab === t.key ? '#d97706' : 'transparent'}`,
+                cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit',
+                transition: 'all 0.15s', marginBottom: -1,
+              }}>
+                <span>{t.emoji}</span> {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '20px 16px 48px' }}>
+
+        {/* INFO */}
+        {tab === 'info' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {tournament.description && (
+                <InfoCard title="عن البطولة" emoji="📋">
+                  <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-line', margin: 0 }}>{tournament.description}</p>
+                </InfoCard>
+              )}
+              {categories.length > 0 && (
+                <InfoCard title="الفئات العمرية" emoji="⭐">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {categories.map((c: any) => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '11px 14px' }}>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>{c.name}</div>
+                          {(c.age_min || c.age_max) && (
+                            <div style={{ fontSize: 12, color: '#64748b' }}>{c.age_min && `من ${c.age_min}`}{c.age_max && ` إلى ${c.age_max} سنة`}</div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.15)', padding: '3px 10px', borderRadius: 8 }}>
+                          {c.type === 'knockout' ? 'كأس' : c.type === 'league' ? 'دوري' : 'مجموعات'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </InfoCard>
+              )}
+              {tournament.prizes && (
+                <InfoCard title="الجوائز" emoji="🏆">
+                  <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-line', margin: 0 }}>{tournament.prizes}</p>
+                </InfoCard>
+              )}
+              {tournament.rules && (
+                <InfoCard title="القواعد واللوائح" emoji="📜">
+                  <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.7, whiteSpace: 'pre-line', margin: 0 }}>{tournament.rules}</p>
+                </InfoCard>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <InfoCard title="التسجيل" emoji="📝">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <SideRow label="رسوم التسجيل" value={tournament.is_paid && tournament.entry_fee ? `${tournament.entry_fee} ${tournament.currency || 'ر.س'}` : 'مجاني'} />
+                  {tournament.registration_deadline && <SideRow label="آخر موعد" value={new Date(tournament.registration_deadline).toLocaleDateString('ar-SA')} />}
+                  {tournament.max_teams && <SideRow label="الحد الأقصى" value={`${tournament.max_teams} فريق`} />}
+                  {canReg && (
+                    <Link href={`/tournaments/${slug}/register`}
+                      style={{ display: 'block', textAlign: 'center', background: '#d97706', color: '#fff', fontWeight: 700, padding: '10px', borderRadius: 10, textDecoration: 'none', fontSize: 14, marginTop: 4 }}>
+                      + تسجيل الآن
                     </Link>
-                    <div className="flex gap-5 items-start">
-                        {tournament.logo_url ? (
-                            <img src={tournament.logo_url} alt={tournament.name} className="w-20 h-20 rounded-2xl object-cover border-2 border-white/20 flex-shrink-0" />
-                        ) : (
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                <Trophy className="w-10 h-10 text-white" />
-                            </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 flex-wrap mb-2">
-                                <h1 className="text-2xl font-black">{tournament.name}</h1>
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cfg.cls}`}>{cfg.label}</span>
-                            </div>
-                            <div className="flex flex-wrap gap-3 text-slate-400 text-sm">
-                                {(tournament.city || tournament.country) && (
-                                    <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{tournament.city || tournament.country}</span>
-                                )}
-                                {tournament.start_date && (
-                                    <span className="flex items-center gap-1">
-                                        <Calendar className="w-4 h-4" />
-                                        {new Date(tournament.start_date).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    </span>
-                                )}
-                                <span className="flex items-center gap-1"><Shield className="w-4 h-4" />{TYPE_LABEL[tournament.type]}</span>
-                                <span className="flex items-center gap-1"><Users className="w-4 h-4" />{teamCount} / {tournament.max_teams || '∞'} فريق</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {canRegister && (
-                        <div className="mt-6 flex flex-wrap gap-3">
-                            <Link href={`/tournaments/${slug}/register`}
-                                className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white font-black px-6 py-3 rounded-xl shadow-lg transition-all">
-                                <Users className="w-4 h-4" /> سجّل فريقاً
-                            </Link>
-                            <Link href={`/tournaments/${slug}/register?type=individual`}
-                                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl transition-all border border-white/20">
-                                <User className="w-4 h-4" /> تسجيل لاعب فردي
-                            </Link>
-                        </div>
-                    )}
+                  )}
                 </div>
+              </InfoCard>
+              <InfoCard title="مواعيد البطولة" emoji="📅">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {tournament.start_date && <SideRow label="تاريخ البدء" value={new Date(tournament.start_date).toLocaleDateString('ar-SA', { dateStyle: 'long' })} />}
+                  {tournament.end_date && <SideRow label="تاريخ الانتهاء" value={new Date(tournament.end_date).toLocaleDateString('ar-SA', { dateStyle: 'long' })} />}
+                  {tournament.city && <SideRow label="الموقع" value={`${tournament.city}${tournament.country ? ', ' + tournament.country : ''}`} />}
+                </div>
+              </InfoCard>
+              {tournament.contact_info && (
+                <InfoCard title="التواصل" emoji="📞">
+                  <p style={{ fontSize: 14, color: '#94a3b8', whiteSpace: 'pre-line', margin: 0 }}>{tournament.contact_info}</p>
+                </InfoCard>
+              )}
             </div>
+          </div>
+        )}
 
-            {/* Content */}
-            <div className="max-w-4xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-6">
-
-                {/* Main */}
-                <div className="md:col-span-2 space-y-5">
-                    {tournament.description && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                            <h3 className="font-black text-slate-900 text-sm mb-3 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-yellow-500" /> عن البطولة
-                            </h3>
-                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{tournament.description}</p>
-                        </div>
-                    )}
-
-                    {categories.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                            <h3 className="font-black text-slate-900 text-sm mb-4 flex items-center gap-2">
-                                <Star className="w-4 h-4 text-yellow-500" /> الفئات العمرية
-                            </h3>
-                            <div className="space-y-3">
-                                {categories.map((c: any) => (
-                                    <div key={c.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
-                                        <div>
-                                            <p className="font-bold text-slate-800 text-sm">{c.name}</p>
-                                            {(c.age_min || c.age_max) && (
-                                                <p className="text-xs text-slate-400">
-                                                    {c.age_min && `من ${c.age_min}`}{c.age_max && ` إلى ${c.age_max} سنة`}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">
-                                                {c.type === 'knockout' ? 'كأس' : c.type === 'league' ? 'دوري' : 'مجموعات'}
-                                            </span>
-                                            {c.max_teams && (
-                                                <p className="text-[10px] text-slate-400 mt-1">{c.max_teams} فريق كحد أقصى</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {tournament.rules && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                            <h3 className="font-black text-slate-900 text-sm mb-3">القواعد واللوائح</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{tournament.rules}</p>
-                        </div>
-                    )}
-
-                    {tournament.prizes && (
-                        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-5">
-                            <h3 className="font-black text-slate-900 text-sm mb-3 flex items-center gap-2">
-                                🏆 الجوائز
-                            </h3>
-                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{tournament.prizes}</p>
-                        </div>
-                    )}
+        {/* SCHEDULE */}
+        {tab === 'schedule' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {matches.length === 0 ? (
+              <Empty emoji="📅" text="لم يُنشأ جدول المباريات بعد" />
+            ) : Object.entries(byDate).map(([date, dayMs]) => (
+              <div key={date}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#d97706' }}>{date}</span>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(217,119,6,0.2)' }} />
+                  <span style={{ fontSize: 12, color: '#64748b' }}>{dayMs.length} م</span>
                 </div>
-
-                {/* Sidebar */}
-                <div className="space-y-4">
-                    {/* Registration info */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="font-black text-slate-900 text-sm">معلومات التسجيل</h3>
-                        <InfoRow icon={<DollarSign className="w-4 h-4 text-slate-400" />}
-                            label="رسوم التسجيل"
-                            value={tournament.is_paid && tournament.entry_fee
-                                ? `${tournament.entry_fee} ${tournament.currency}`
-                                : 'مجاني'} />
-                        {tournament.registration_deadline && (
-                            <InfoRow icon={<Clock className="w-4 h-4 text-slate-400" />}
-                                label="آخر موعد"
-                                value={new Date(tournament.registration_deadline).toLocaleDateString('ar-SA')} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {dayMs.map((m: any) => {
+                    const fin = m.status === 'completed';
+                    const live = m.status === 'live';
+                    return (
+                      <div key={m.id} style={{ background: '#131929', border: `1px solid ${live ? '#ef4444' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12, overflow: 'hidden' }}>
+                        {live && (
+                          <div style={{ background: '#ef4444', padding: '3px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                            🔴 مباشر
+                          </div>
                         )}
-                        {tournament.max_teams && (
-                            <InfoRow icon={<Users className="w-4 h-4 text-slate-400" />}
-                                label="الفرق المسجلة"
-                                value={`${teamCount} / ${tournament.max_teams}`} />
-                        )}
-                        {tournament.players_per_team && (
-                            <InfoRow icon={<User className="w-4 h-4 text-slate-400" />}
-                                label="لاعبون لكل فريق"
-                                value={`${tournament.players_per_team} لاعب`} />
-                        )}
-                        {canRegister && (
-                            <div className="pt-2 space-y-2">
-                                <Link href={`/tournaments/${slug}/register`}
-                                    className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-2.5 rounded-xl text-sm transition-all">
-                                    <Users className="w-4 h-4" /> تسجيل فريق
-                                </Link>
-                                <Link href={`/tournaments/${slug}/register?type=individual`}
-                                    className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:border-yellow-300 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition-all">
-                                    <User className="w-4 h-4" /> تسجيل لاعب فردي
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Contact */}
-                    {tournament.contact_info && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                            <h3 className="font-black text-slate-900 text-sm mb-3 flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-slate-400" /> التواصل
-                            </h3>
-                            <p className="text-sm text-slate-600 whitespace-pre-line">{tournament.contact_info}</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 1fr', alignItems: 'center', padding: '13px 14px', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', textAlign: 'right' }}>{tName(m, 'home')}</span>
+                            <TeamLogoImg logo={tLogo(m, 'home')} name={tName(m, 'home')} size={32} />
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            {fin || live
+                              ? <div style={{ background: '#0d1117', borderRadius: 8, padding: '5px 10px', display: 'inline-block' }}>
+                                  <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 900, fontSize: 17 }}>{m.home_score ?? 0} - {m.away_score ?? 0}</span>
+                                </div>
+                              : m.match_date
+                                ? <div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0' }}>{new Date(m.match_date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div style={{ fontSize: 10, color: '#64748b' }}>{ROUND_LBL[m.round] || m.round}</div>
+                                  </div>
+                                : <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>vs</span>
+                            }
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <TeamLogoImg logo={tLogo(m, 'away')} name={tName(m, 'away')} size={32} />
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{tName(m, 'away')}</span>
+                          </div>
                         </div>
-                    )}
-
-                    {/* Dates */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="font-black text-slate-900 text-sm">مواعيد البطولة</h3>
-                        {tournament.start_date && (
-                            <InfoRow icon={<Calendar className="w-4 h-4 text-slate-400" />}
-                                label="تاريخ البدء"
-                                value={new Date(tournament.start_date).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })} />
+                        {m.venue && (
+                          <div style={{ padding: '5px 14px 8px', fontSize: 11, color: '#64748b' }}>📍 {m.venue}</div>
                         )}
-                        {tournament.end_date && (
-                            <InfoRow icon={<Calendar className="w-4 h-4 text-slate-400" />}
-                                label="تاريخ الانتهاء"
-                                value={new Date(tournament.end_date).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })} />
-                        )}
-                        {tournament.location && (
-                            <InfoRow icon={<MapPin className="w-4 h-4 text-slate-400" />}
-                                label="الموقع"
-                                value={tournament.location} />
-                        )}
-                    </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* STANDINGS */}
+        {tab === 'standings' && (
+          standings.length === 0
+            ? <Empty emoji="📊" text="الترتيب سيظهر بعد انطلاق المباريات" />
+            : Object.entries(byGroup).map(([groupName, rows]) => (
+                <div key={groupName} style={{ marginBottom: 20 }}>
+                  <div style={{ background: 'linear-gradient(90deg, #1e3a5f, #1d4ed8)', borderRadius: '12px 12px 0 0', padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>📊 {groupName}</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginRight: 'auto' }}>{rows.length} فريق</span>
+                  </div>
+                  <div style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.07)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 40px 40px 40px 40px 56px 48px 48px', padding: '8px 14px', background: '#1a2235', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'center' }}>
+                      <div>#</div><div style={{ textAlign: 'right' }}>الفريق</div>
+                      <div>لعب</div><div>فاز</div><div>تع</div><div>خسر</div><div>ل:ع</div><div>فارق</div><div>نقاط</div>
+                    </div>
+                    {[...rows].sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff).map((s: any, i) => (
+                      <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 40px 40px 40px 40px 56px 48px 48px', padding: '11px 14px', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 14, color: '#e2e8f0', textAlign: 'center', borderRight: i < 2 ? `3px solid ${i === 0 ? '#f59e0b' : '#94a3b8'}` : 'none', background: i < 2 ? 'rgba(29,78,216,0.05)' : 'transparent' }}>
+                        <div style={{ fontSize: 13, fontWeight: i < 3 ? 800 : 400, color: ['#f59e0b','#94a3b8','#cd7f32'][i] || '#64748b' }}>{i + 1}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'right' }}>
+                          <TeamLogoImg logo={resolveImg(s.team?.logo_url)} name={s.team?.name || '?'} size={26} />
+                          <span style={{ fontWeight: 700, fontSize: 13 }}>{s.team?.name || '—'}</span>
+                        </div>
+                        <div style={{ color: '#94a3b8' }}>{s.played}</div>
+                        <div style={{ color: '#4ade80', fontWeight: 700 }}>{s.won}</div>
+                        <div style={{ color: '#94a3b8' }}>{s.drawn}</div>
+                        <div style={{ color: '#f87171', fontWeight: 700 }}>{s.lost}</div>
+                        <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#94a3b8' }}>{s.goals_for}:{s.goals_against}</div>
+                        <div style={{ fontWeight: 700, color: s.goal_diff > 0 ? '#4ade80' : s.goal_diff < 0 ? '#f87171' : '#94a3b8' }}>{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</div>
+                        <div style={{ fontSize: 16, fontWeight: 900 }}>{s.points}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+        )}
+
+        {/* STATS */}
+        {tab === 'stats' && (
+          scorers.length === 0
+            ? <Empty emoji="⚽" text="الإحصائيات ستظهر بعد تسجيل أحداث المباريات" />
+            : <div style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ background: 'linear-gradient(90deg, #1e3a5f, #1d4ed8)', padding: '11px 16px' }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>⚽ الهدافون</span>
+                </div>
+                {scorers.map((p: any, i) => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
+                      {['🥇','🥈','🥉'][i] ? <span style={{ fontSize: 20 }}>{['🥇','🥈','🥉'][i]}</span> : <span style={{ fontSize: 13, color: '#64748b' }}>{i + 1}</span>}
+                    </div>
+                    <TeamLogoImg logo={resolveImg(p.team?.logo_url)} name={p.team?.name || '?'} size={28} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>{p.player_name}</div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>{p.team?.name} · {p.matches_played} م</div>
+                      <div style={{ height: 4, background: '#1a2235', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${scorers[0]?.goals ? (p.goals / scorers[0].goals) * 100 : 0}%`, background: 'linear-gradient(90deg,#16a34a,#22c55e)', borderRadius: 2 }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a', lineHeight: 1 }}>{p.goals}</div>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>هدف</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: '#3b82f6', lineHeight: 1 }}>{p.assists}</div>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>صنع</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+        )}
+
+        {/* TEAMS */}
+        {tab === 'teams' && (
+          teams.length === 0
+            ? <Empty emoji="👥" text="لا توجد فرق مقبولة بعد" />
+            : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {teams.map((t: any) => (
+                  <div key={t.id} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+                    <TeamLogoImg logo={resolveImg(t.logo_url)} name={t.name} size={52} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{t.name}</div>
+                      {t.city && <div style={{ fontSize: 12, color: '#64748b' }}>📍 {t.city}</div>}
+                      {t.category?.name && (
+                        <span style={{ display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.15)', padding: '2px 8px', borderRadius: 6 }}>{t.category.name}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+        )}
+
+        {/* BRACKET */}
+        {tab === 'bracket' && (() => {
+          const ROUND_ORDER: Record<string, number> = { QF: 1, quarter_final: 1, SF: 2, semi_final: 2, '3rd': 3, third_place: 3, F: 4, final: 4 };
+          const ROUND_NAME:  Record<string, string>  = { QF: 'ربع النهائي', quarter_final: 'ربع النهائي', SF: 'نصف النهائي', semi_final: 'نصف النهائي', '3rd': 'المركز الثالث', third_place: 'المركز الثالث', F: 'النهائي', final: 'النهائي' };
+          const byRound: Record<string, any[]> = {};
+          for (const m of bracket) { const k = m.round; (byRound[k] = byRound[k] || []).push(m); }
+          const rounds = Object.entries(byRound).sort((a, b) => (ROUND_ORDER[a[0]] || 9) - (ROUND_ORDER[b[0]] || 9));
+
+          if (bracket.length === 0) return <Empty emoji="🏆" text="ستظهر شجرة الإقصاء عند انطلاق الدور الإقصائي" />;
+
+          return (
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', minWidth: 'max-content', padding: '8px 4px 16px' }}>
+                {rounds.map(([rnd, ms]) => (
+                  <div key={rnd} style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 220 }}>
+                    <div style={{ background: 'linear-gradient(90deg,#1e3a5f,#1d4ed8)', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 800, color: '#fff', textAlign: 'center' }}>
+                      {ROUND_NAME[rnd] || rnd}
+                    </div>
+                    {ms.map((m: any) => {
+                      const fin  = m.status === 'completed';
+                      const hWin = fin && (m.home_score ?? 0) > (m.away_score ?? 0);
+                      const aWin = fin && (m.away_score ?? 0) > (m.home_score ?? 0);
+                      return (
+                        <div key={m.id} style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 12, overflow: 'hidden' }}>
+                          {/* Home */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: hWin ? 'rgba(22,163,74,0.08)' : 'transparent' }}>
+                            <TeamLogoImg logo={resolveImg(m.home_team?.logo_url)} name={m.home_team?.name || 'TBD'} size={24} />
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: hWin ? 800 : 500, color: hWin ? '#4ade80' : '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.home_team?.name || 'TBD'}</span>
+                            {fin && <span style={{ fontSize: 16, fontWeight: 900, color: hWin ? '#4ade80' : '#94a3b8', minWidth: 20, textAlign: 'center' }}>{m.home_score ?? 0}</span>}
+                            {hWin && <span style={{ fontSize: 14 }}>🏆</span>}
+                          </div>
+                          {/* Away */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: aWin ? 'rgba(22,163,74,0.08)' : 'transparent' }}>
+                            <TeamLogoImg logo={resolveImg(m.away_team?.logo_url)} name={m.away_team?.name || 'TBD'} size={24} />
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: aWin ? 800 : 500, color: aWin ? '#4ade80' : '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.away_team?.name || 'TBD'}</span>
+                            {fin && <span style={{ fontSize: 16, fontWeight: 900, color: aWin ? '#4ade80' : '#94a3b8', minWidth: 20, textAlign: 'center' }}>{m.away_score ?? 0}</span>}
+                            {aWin && <span style={{ fontSize: 14 }}>🏆</span>}
+                          </div>
+                          {/* Date */}
+                          {m.match_date && !fin && (
+                            <div style={{ padding: '5px 12px', fontSize: 11, color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                              📅 {new Date(m.match_date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
+          );
+        })()}
+      </div>
+
+      {/* SPONSORS */}
+      {sponsors.length > 0 && (
+        <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 16px 48px' }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 32 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', textAlign: 'center', marginBottom: 20, letterSpacing: 1 }}>
+              🤝 {slug && 'رعاة البطولة'}
+            </div>
+            {[
+              { tier:'platinum', size:72, color:'#e2e8f0' },
+              { tier:'gold',     size:56, color:'#f59e0b' },
+              { tier:'silver',   size:44, color:'#94a3b8' },
+              { tier:'bronze',   size:36, color:'#b45309' },
+            ].map(({ tier, size, color }) => {
+              const group = sponsors.filter(s => s.tier === tier);
+              if (!group.length) return null;
+              return (
+                <div key={tier} style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', alignItems:'center', gap:20, marginBottom:16 }}>
+                  {group.map((sp: any) => (
+                    sp.website_url
+                      ? <a key={sp.id} href={sp.website_url} target="_blank" rel="noopener noreferrer" title={sp.name} style={{ display:'flex', alignItems:'center', justifyContent:'center', opacity:0.8, transition:'opacity 0.2s' }}
+                          onMouseEnter={e=>(e.currentTarget as HTMLAnchorElement).style.opacity='1'}
+                          onMouseLeave={e=>(e.currentTarget as HTMLAnchorElement).style.opacity='0.8'}>
+                          {sp.logo_url
+                            ? <img src={sp.logo_url} alt={sp.name} style={{ height: size, maxWidth: size * 2, objectFit:'contain', filter:'brightness(0) invert(1)', opacity:0.7 }} />
+                            : <span style={{ fontSize:13, fontWeight:700, color }}>{sp.name}</span>}
+                        </a>
+                      : <div key={sp.id} title={sp.name} style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {sp.logo_url
+                            ? <img src={sp.logo_url} alt={sp.name} style={{ height: size, maxWidth: size * 2, objectFit:'contain', filter:'brightness(0) invert(1)', opacity:0.6 }} />
+                            : <span style={{ fontSize:13, fontWeight:700, color }}>{sp.name}</span>}
+                        </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
-    );
+      )}
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { display: none; }
+        @media (max-width: 640px) {
+          .pub-grid { grid-template-columns: 1fr !important; }
+          .pub-match-grid { grid-template-columns: 1fr !important; text-align: center; }
+        }
+      `}</style>
+    </div>
+  );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-    return (
-        <div className="flex items-center gap-2">
-            {icon}
-            <span className="text-xs text-slate-500 flex-1">{label}</span>
-            <span className="text-xs font-bold text-slate-800">{value}</span>
-        </div>
-    );
+/* ── Helpers ── */
+function InfoCard({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: '#131929', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 8, background: '#1a2235' }}>
+        <span>{emoji}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{title}</span>
+      </div>
+      <div style={{ padding: '14px 16px' }}>{children}</div>
+    </div>
+  );
+}
+
+function SideRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 13, color: '#64748b' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{value}</span>
+    </div>
+  );
+}
+
+function Empty({ emoji, text }: { emoji: string; text: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+      <div style={{ fontSize: 48, marginBottom: 14 }}>{emoji}</div>
+      <div style={{ fontSize: 15, color: '#64748b' }}>{text}</div>
+    </div>
+  );
+}
+
+function TeamLogoImg({ logo, name, size = 32 }: { logo?: string | null; name: string; size?: number }) {
+  if (logo) return <img src={logo} alt={name} style={{ width: size, height: size, borderRadius: Math.round(size * 0.27), objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+  return <div style={{ width: size, height: size, borderRadius: Math.round(size * 0.27), flexShrink: 0, background: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: Math.round(size * 0.38) }}>{name?.charAt(0) || '?'}</div>;
 }

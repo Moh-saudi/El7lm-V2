@@ -54,9 +54,9 @@ export async function signUpClient(params: {
     email: string;
     password: string;
     name: string;
-    organizationName?: string;
-    phone?: string;
-    country?: string;
+    organizationName?: string | null;
+    phone?: string | null;
+    country?: string | null;
 }) {
     const supabase = createPortalClient();
     const { data, error } = await supabase.auth.signUp({
@@ -64,15 +64,15 @@ export async function signUpClient(params: {
         password: params.password,
         options: {
             data: {
-                name: params.name,
+                name:              params.name,
                 organization_name: params.organizationName,
-                phone: params.phone,
-                country: params.country,
-            }
-        }
+                phone:             params.phone,
+                country:           params.country,
+            },
+        },
     });
     if (error) throw new Error(error.message);
-    return data;
+    return data; // يُرجع { user, session }
 }
 
 // ── جلب المستخدم الحالي ──────────────────────────────────────
@@ -104,4 +104,5 @@ export interface TournamentClient {
     is_active:         boolean;
     created_at:        string;
     updated_at:        string;
+    last_login_at:     string | null;
 }

@@ -1,369 +1,243 @@
 'use client';
+import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, RefreshCw, Target, Shield, Award, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Category = { id: string; name: string };
-type TopScorer = {
-    id: string;
-    team_id: string;
-    player_id: string | null;
-    player_name: string;
-    goals: number;
-    assists: number;
-    yellow_cards: number;
-    red_cards: number;
-    matches_played: number;
-    team?: { name: string; logo_url: string | null };
-};
-type TeamStat = {
-    team_id: string;
-    played: number;
-    won: number;
-    drawn: number;
-    lost: number;
-    goals_for: number;
-    goals_against: number;
-    goal_diff: number;
-    points: number;
-    team?: { name: string; logo_url: string | null };
-};
+type Cat    = { id:string; name:string };
+type Scorer = { id:string; team_id:string; player_name:string; goals:number; assists:number; yellow_cards:number; red_cards:number; matches_played:number; team?:{ name:string; logo_url:string|null } };
+type TStat  = { team_id:string; played:number; goals_for:number; goals_against:number; goal_diff:number; points:number; team?:{ name:string; logo_url:string|null } };
+
+type Tab = 'scorers'|'attack'|'defense'|'cards';
+const TABS: { key:Tab; emoji:string; lbl:string }[] = [
+  { key:'scorers', emoji:'⚽', lbl:'الهدافون' },
+  { key:'attack',  emoji:'🎯', lbl:'الهجوم'   },
+  { key:'defense', emoji:'🛡️', lbl:'الدفاع'   },
+  { key:'cards',   emoji:'🟨', lbl:'البطاقات' },
+];
 
 export default function StatsPage() {
-    const { id } = useParams<{ id: string }>();
-    const [categories,    setCategories]    = useState<Category[]>([]);
-    const [selectedCat,   setSelectedCat]   = useState('');
-    const [topScorers,    setTopScorers]    = useState<TopScorer[]>([]);
-    const [teamStats,     setTeamStats]     = useState<TeamStat[]>([]);
-    const [activeTab,     setActiveTab]     = useState<'scorers' | 'team_attack' | 'team_defense' | 'cards'>('scorers');
-    const [loading,       setLoading]       = useState(true);
-    const [recalculating, setRecalculating] = useState(false);
+  const { id }     = useParams<{ id:string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
 
-    const supabase = createPortalClient();
+  const [cats,   setCats]   = useState<Cat[]>([]);
+  const [selCat, setSelCat] = useState('');
+  const [scorers,setScorers]= useState<Scorer[]>([]);
+  const [stats,  setStats]  = useState<TStat[]>([]);
+  const [loading,setLoading]= useState(true);
+  const [recalc, setRecalc] = useState(false);
+  const [tab,    setTab]    = useState<Tab>('scorers');
 
-    useEffect(() => {
-        (async () => {
-            const { data: cats } = await supabase
-                .from('tournament_categories')
-                .select('id, name')
-                .eq('tournament_id', id)
-                .order('sort_order');
-            setCategories(cats || []);
-            if (cats && cats.length > 0) setSelectedCat(cats[0].id);
-            setLoading(false);
-        })();
-    }, [id]);
+  const supabase = createPortalClient();
 
-    const loadData = useCallback(async () => {
-        if (!selectedCat) return;
-        const [scorersRes, standingsRes] = await Promise.all([
-            supabase.from('tournament_top_scorers')
-                .select('*, team:tournament_teams(name, logo_url)')
-                .eq('tournament_id', id)
-                .eq('category_id', selectedCat)
-                .order('goals', { ascending: false })
-                .order('assists', { ascending: false })
-                .limit(30),
-            supabase.from('tournament_standings')
-                .select('*, team:tournament_teams(name, logo_url)')
-                .eq('tournament_id', id)
-                .eq('category_id', selectedCat)
-                .order('goals_for', { ascending: false }),
-        ]);
-        setTopScorers((scorersRes.data as any) || []);
-        setTeamStats((standingsRes.data as any) || []);
-    }, [selectedCat, id]);
+  useEffect(()=>{
+    (async()=>{
+      const { data } = await supabase.from('tournament_categories').select('id,name').eq('tournament_id',id).order('sort_order');
+      setCats(data||[]);
+      if (data?.length) setSelCat(data[0].id);
+      setLoading(false);
+    })();
+  },[id]);
 
-    useEffect(() => { loadData(); }, [loadData]);
+  const load = useCallback(async()=>{
+    if (!selCat) return;
+    const [sR,stR] = await Promise.all([
+      supabase.from('tournament_top_scorers').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('goals',{ascending:false}).order('assists',{ascending:false}).limit(30),
+      supabase.from('tournament_standings').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('goals_for',{ascending:false}),
+    ]);
+    setScorers((sR.data as any)||[]);
+    setStats((stR.data as any)||[]);
+  },[selCat,id]);
 
-    // ── Recalculate scorers from match events ────────────────
-    const recalculate = async () => {
-        setRecalculating(true);
-        try {
-            // Fetch all match events for this category
-            const { data: events } = await supabase
-                .from('tournament_match_events')
-                .select(`
-                    event_type, player_name, team_id, match_id,
-                    match:tournament_matches!match_id(category_id)
-                `)
-                .eq('tournament_id', id);
+  useEffect(()=>{ load(); },[load]);
 
-            const filtered = (events || []).filter((e: any) => e.match?.category_id === selectedCat);
+  const recalculate = async()=>{
+    setRecalc(true);
+    try {
+      const { data:evs } = await supabase.from('tournament_match_events').select('event_type,player_name,team_id,match_id,match:tournament_matches!match_id(category_id)').eq('tournament_id',id);
+      const filtered = (evs||[]).filter((e:any)=>e.match?.category_id===selCat);
+      const map: Record<string,any> = {};
+      for (const ev of filtered) {
+        const key=`${ev.player_name}__${ev.team_id}`;
+        if (!map[key]) map[key]={ player_name:ev.player_name, team_id:ev.team_id, goals:0, assists:0, yellow_cards:0, red_cards:0, matches:new Set() };
+        map[key].matches.add(ev.match_id);
+        if (['goal','penalty_scored'].includes(ev.event_type)) map[key].goals++;
+        if (ev.event_type==='assist') map[key].assists++;
+        if (['yellow_card','second_yellow'].includes(ev.event_type)) map[key].yellow_cards++;
+        if (ev.event_type==='red_card') map[key].red_cards++;
+      }
+      for (const s of Object.values(map)) {
+        if (!s.goals&&!s.assists&&!s.yellow_cards&&!s.red_cards) continue;
+        await supabase.from('tournament_top_scorers').upsert({ tournament_id:id, category_id:selCat, team_id:s.team_id, player_name:s.player_name, goals:s.goals, assists:s.assists, yellow_cards:s.yellow_cards, red_cards:s.red_cards, matches_played:s.matches.size },{ onConflict:'tournament_id,category_id,team_id,player_name' });
+      }
+      await load(); toast.success('تم تحديث الإحصائيات');
+    } catch (e:any) { toast.error(e.message); }
+    setRecalc(false);
+  };
 
-            // Aggregate by player_name + team_id
-            const map: Record<string, {
-                player_name: string; team_id: string;
-                goals: number; assists: number;
-                yellow_cards: number; red_cards: number;
-                matches: Set<string>;
-            }> = {};
+  if (loading) return <Loader isDark={isDark} />;
 
-            for (const ev of filtered) {
-                const key = `${ev.player_name}__${ev.team_id}`;
-                if (!map[key]) {
-                    map[key] = {
-                        player_name: ev.player_name, team_id: ev.team_id,
-                        goals: 0, assists: 0, yellow_cards: 0, red_cards: 0,
-                        matches: new Set(),
-                    };
-                }
-                map[key].matches.add(ev.match_id);
-                if (ev.event_type === 'goal' || ev.event_type === 'penalty_scored') map[key].goals++;
-                if (ev.event_type === 'assist')                                      map[key].assists++;
-                if (ev.event_type === 'yellow_card' || ev.event_type === 'second_yellow') map[key].yellow_cards++;
-                if (ev.event_type === 'red_card')                                    map[key].red_cards++;
-            }
+  const byAtk  = [...stats].sort((a,b)=>b.goals_for-a.goals_for);
+  const byDef  = [...stats].sort((a,b)=>a.goals_against-b.goals_against);
+  const cards  = [...scorers].filter(p=>p.yellow_cards>0||p.red_cards>0).sort((a,b)=>(b.yellow_cards+b.red_cards*3)-(a.yellow_cards+a.red_cards*3));
+  const total  = scorers.reduce((s,p)=>s+p.goals,0);
+  const top    = scorers[0];
+  const bestD  = byDef[0];
 
-            // Upsert top scorers
-            for (const s of Object.values(map)) {
-                if (s.goals === 0 && s.assists === 0 && s.yellow_cards === 0 && s.red_cards === 0) continue;
-                await supabase.from('tournament_top_scorers').upsert({
-                    tournament_id:  id,
-                    category_id:    selectedCat,
-                    team_id:        s.team_id,
-                    player_name:    s.player_name,
-                    goals:          s.goals,
-                    assists:        s.assists,
-                    yellow_cards:   s.yellow_cards,
-                    red_cards:      s.red_cards,
-                    matches_played: s.matches.size,
-                }, { onConflict: 'tournament_id,category_id,team_id,player_name' });
-            }
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-            await loadData();
-            toast.success('تم تحديث الإحصائيات');
-        } catch (e: any) {
-            toast.error('فشل الحساب: ' + e.message);
-        } finally {
-            setRecalculating(false);
-        }
-    };
-
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
+      {/* Bar */}
+      <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'12px 16px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', gap:6, flex:1, flexWrap:'wrap' }}>
+          {cats.map(c=><button key={c.id} onClick={()=>setSelCat(c.id)} className={`sp-cat-tab${selCat===c.id?' active':''}`}>{c.name}</button>)}
         </div>
-    );
+        <button onClick={recalculate} disabled={recalc} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>
+          {recalc?'جاري الحساب...':'↻ إعادة حساب'}
+        </button>
+      </div>
 
-    // Sorted team stats views
-    const byAttack  = [...teamStats].sort((a, b) => b.goals_for - a.goals_for);
-    const byDefense = [...teamStats].sort((a, b) => a.goals_against - b.goals_against);
+      {/* KPIs */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="sp-grid-4col">
+        {[
+          { icon:'⚽', v:total,       lbl:'إجمالي الأهداف', color:'#16a34a' },
+          { icon:'🏆', v:top?`${top.player_name} (${top.goals})`:'—', lbl:'الهداف الأول', color:'#f59e0b', sm:true },
+          { icon:'🛡️', v:bestD?.team?.name||'—', lbl:'أقل استقبالاً', color:'#3b82f6', sm:true },
+          { icon:'👥', v:stats.length, lbl:'عدد الفرق',     color:'#8b5cf6' },
+        ].map(s=>(
+          <div key={s.lbl} className="sp-kpi" style={{ background:S.surface, borderColor:S.border }}>
+            <div style={{ fontSize:24, marginBottom:8 }}>{s.icon}</div>
+            <div style={{ fontSize:s.sm?13:26, fontWeight:900, color:s.color, lineHeight:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.v}</div>
+            <div className="sp-kpi-label" style={{ color:S.text2 }}>{s.lbl}</div>
+          </div>
+        ))}
+      </div>
 
-    // Summary KPIs
-    const totalGoals   = topScorers.reduce((s, p) => s + p.goals, 0);
-    const totalMatches = [...new Set(teamStats.map(t => t.played))].reduce((a, b) => a + b, 0) / 2;
-    const avgGoals     = totalMatches > 0 ? (totalGoals / totalMatches).toFixed(1) : '—';
-    const topScorer    = topScorers[0];
-    const mostCards    = [...topScorers].sort((a, b) => (b.yellow_cards + b.red_cards * 3) - (a.yellow_cards + a.red_cards * 3))[0];
-
-    return (
-        <div className="space-y-5" dir="rtl">
-
-            {/* Category tabs */}
-            {categories.length > 1 && (
-                <div className="flex gap-2 flex-wrap">
-                    {categories.map(c => (
-                        <button key={c.id} onClick={() => setSelectedCat(c.id)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all
-                                ${selectedCat === c.id ? 'bg-yellow-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-300'}`}>
-                            {c.name}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <KpiCard icon={<Target className="w-4 h-4 text-emerald-500" />} label="إجمالي الأهداف" value={totalGoals} />
-                <KpiCard icon={<TrendingUp className="w-4 h-4 text-blue-500" />} label="متوسط أهداف/مباراة" value={avgGoals} />
-                <KpiCard icon={<Award className="w-4 h-4 text-yellow-500" />}
-                    label="الهداف الأول" value={topScorer ? `${topScorer.player_name} (${topScorer.goals})` : '—'} small />
-                <KpiCard icon={<Shield className="w-4 h-4 text-slate-400" />}
-                    label="الأقل استقبالاً" value={byDefense[0]?.team?.name || '—'} small />
-            </div>
-
-            {/* Recalculate + tabs */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex gap-1 bg-slate-100 rounded-xl p-1 flex-wrap">
-                    {([
-                        { key: 'scorers',      label: 'الهدافون' },
-                        { key: 'team_attack',  label: 'الهجوم' },
-                        { key: 'team_defense', label: 'الدفاع' },
-                        { key: 'cards',        label: 'البطاقات' },
-                    ] as const).map(t => (
-                        <button key={t.key} onClick={() => setActiveTab(t.key)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all
-                                ${activeTab === t.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
-                <button onClick={recalculate} disabled={recalculating}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">
-                    {recalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    إعادة حساب
-                </button>
-            </div>
-
-            {/* Tab content */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-
-                {/* Top Scorers */}
-                {activeTab === 'scorers' && (
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500 w-8">#</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">اللاعب</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">الفريق</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-slate-500">م</th>
-                                <th className="px-2 py-2.5 text-center font-black text-emerald-600">أهداف</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-blue-500">صنع</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {topScorers.length === 0 ? (
-                                <tr><td colSpan={6} className="py-8 text-center text-slate-400">لا توجد إحصائيات — احسب أولاً</td></tr>
-                            ) : topScorers.map((p, i) => (
-                                <tr key={p.id} className="hover:bg-slate-50">
-                                    <td className="px-3 py-2.5">
-                                        {i === 0 ? <Award className="w-4 h-4 text-yellow-500" /> :
-                                         i === 1 ? <span className="text-slate-400 font-bold">2</span> :
-                                         i === 2 ? <span className="text-amber-600 font-bold">3</span> :
-                                         <span className="text-slate-300">{i + 1}</span>}
-                                    </td>
-                                    <td className="px-3 py-2.5 font-semibold text-slate-800">{p.player_name}</td>
-                                    <td className="px-3 py-2.5">
-                                        <div className="flex items-center gap-1.5">
-                                            {p.team?.logo_url && <img src={p.team.logo_url} alt="" className="w-4 h-4 rounded object-cover" />}
-                                            <span className="text-slate-500 truncate max-w-[80px]">{p.team?.name || '—'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-2 py-2.5 text-center text-slate-500">{p.matches_played}</td>
-                                    <td className="px-2 py-2.5 text-center">
-                                        <span className="font-black text-emerald-600 text-sm">{p.goals}</span>
-                                    </td>
-                                    <td className="px-2 py-2.5 text-center text-blue-500 font-semibold">{p.assists}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {/* Team Attack */}
-                {activeTab === 'team_attack' && (
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500 w-8">#</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">الفريق</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-slate-500">م</th>
-                                <th className="px-2 py-2.5 text-center font-black text-emerald-600">أهداف</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-slate-500">متوسط</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {byAttack.map((t, i) => (
-                                <tr key={t.team_id} className="hover:bg-slate-50">
-                                    <td className="px-3 py-2.5 text-slate-400 font-bold">{i + 1}</td>
-                                    <td className="px-3 py-2.5">
-                                        <div className="flex items-center gap-2">
-                                            {t.team?.logo_url && <img src={t.team.logo_url} alt="" className="w-5 h-5 rounded object-cover" />}
-                                            <span className="font-semibold text-slate-800">{t.team?.name || '—'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-2 py-2.5 text-center text-slate-500">{t.played}</td>
-                                    <td className="px-2 py-2.5 text-center font-black text-emerald-600 text-sm">{t.goals_for}</td>
-                                    <td className="px-2 py-2.5 text-center text-slate-500">
-                                        {t.played > 0 ? (t.goals_for / t.played).toFixed(1) : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {/* Team Defense */}
-                {activeTab === 'team_defense' && (
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500 w-8">#</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">الفريق</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-slate-500">م</th>
-                                <th className="px-2 py-2.5 text-center font-black text-rose-500">استقبل</th>
-                                <th className="px-2 py-2.5 text-center font-bold text-slate-500">متوسط</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {byDefense.map((t, i) => (
-                                <tr key={t.team_id} className="hover:bg-slate-50">
-                                    <td className="px-3 py-2.5 text-slate-400 font-bold">{i + 1}</td>
-                                    <td className="px-3 py-2.5">
-                                        <div className="flex items-center gap-2">
-                                            {t.team?.logo_url && <img src={t.team.logo_url} alt="" className="w-5 h-5 rounded object-cover" />}
-                                            <span className="font-semibold text-slate-800">{t.team?.name || '—'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-2 py-2.5 text-center text-slate-500">{t.played}</td>
-                                    <td className="px-2 py-2.5 text-center font-black text-rose-500 text-sm">{t.goals_against}</td>
-                                    <td className="px-2 py-2.5 text-center text-slate-500">
-                                        {t.played > 0 ? (t.goals_against / t.played).toFixed(1) : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {/* Cards */}
-                {activeTab === 'cards' && (
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500 w-8">#</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">اللاعب</th>
-                                <th className="px-3 py-2.5 text-right font-bold text-slate-500">الفريق</th>
-                                <th className="px-2 py-2.5 text-center">🟨</th>
-                                <th className="px-2 py-2.5 text-center">🟥</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {[...topScorers]
-                                .filter(p => p.yellow_cards > 0 || p.red_cards > 0)
-                                .sort((a, b) => (b.yellow_cards + b.red_cards * 3) - (a.yellow_cards + a.red_cards * 3))
-                                .map((p, i) => (
-                                <tr key={p.id} className="hover:bg-slate-50">
-                                    <td className="px-3 py-2.5 text-slate-400">{i + 1}</td>
-                                    <td className="px-3 py-2.5 font-semibold text-slate-800">{p.player_name}</td>
-                                    <td className="px-3 py-2.5 text-slate-500">{p.team?.name || '—'}</td>
-                                    <td className="px-2 py-2.5 text-center font-bold text-yellow-600">{p.yellow_cards}</td>
-                                    <td className="px-2 py-2.5 text-center font-bold text-red-600">{p.red_cards}</td>
-                                </tr>
-                            ))}
-                            {topScorers.filter(p => p.yellow_cards > 0 || p.red_cards > 0).length === 0 && (
-                                <tr><td colSpan={5} className="py-8 text-center text-slate-400">لا توجد بطاقات مسجلة</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+      {/* Tabs */}
+      <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+        <div className="sp-tabs">
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>setTab(t.key)} className={`sp-tab${tab===t.key?' active':''}`}>
+              {t.emoji} {t.lbl}
+            </button>
+          ))}
         </div>
-    );
+
+        {/* Scorers */}
+        {tab==='scorers' && (
+          scorers.length===0
+            ? <Empty S={S} text="لا توجد إحصائيات — أدخل أحداث المباريات ثم اضغط «إعادة حساب»" />
+            : scorers.map((p,i)=>(
+                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 18px', borderBottom:`1px solid ${S.border}` }}>
+                  <div style={{ width:28, textAlign:'center', flexShrink:0 }}>
+                    {['🥇','🥈','🥉'][i]
+                      ? <span style={{ fontSize:20 }}>{['🥇','🥈','🥉'][i]}</span>
+                      : <span style={{ fontSize:12, color:S.text2 }}>{i+1}</span>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                      <LogoImg name={p.team?.name||'?'} logo={p.team?.logo_url} size={26} />
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:700, color:S.text }}>{p.player_name}</div>
+                        <div style={{ fontSize:11, color:S.text2 }}>{p.team?.name||'—'} · {p.matches_played} م</div>
+                      </div>
+                    </div>
+                    <div style={{ height:4, background:S.surface2, borderRadius:2, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${scorers[0]?.goals?Math.round((p.goals/scorers[0].goals)*100):0}%`, background:'linear-gradient(90deg,#16a34a,#22c55e)', borderRadius:2, transition:'width 0.5s' }} />
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:14, alignItems:'center', flexShrink:0 }}>
+                    <div style={{ textAlign:'center' }}>
+                      <div style={{ fontSize:22, fontWeight:900, color:'#16a34a', lineHeight:1 }}>{p.goals}</div>
+                      <div style={{ fontSize:9, color:S.text2 }}>هدف</div>
+                    </div>
+                    <div style={{ textAlign:'center' }}>
+                      <div style={{ fontSize:16, fontWeight:700, color:'#3b82f6', lineHeight:1 }}>{p.assists}</div>
+                      <div style={{ fontSize:9, color:S.text2 }}>صنع</div>
+                    </div>
+                    {(p.yellow_cards>0||p.red_cards>0)&&(
+                      <div style={{ display:'flex', gap:4 }}>
+                        {p.yellow_cards>0&&<span style={{ background:isDark?'rgba(202,138,4,0.15)':'#fef9c3', color:'#ca8a04', borderRadius:5, padding:'2px 7px', fontSize:11, fontWeight:700 }}>🟨 {p.yellow_cards}</span>}
+                        {p.red_cards>0&&<span style={{ background:isDark?'rgba(220,38,38,0.15)':'#fee2e2', color:'#dc2626', borderRadius:5, padding:'2px 7px', fontSize:11, fontWeight:700 }}>🟥 {p.red_cards}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+        )}
+
+        {/* Attack */}
+        {tab==='attack' && (
+          byAtk.length===0 ? <Empty S={S} text="لا توجد إحصائيات" /> :
+          <>
+            <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 56px 60px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
+              <div>#</div><div>الفريق</div><div style={{textAlign:'center'}}>لعب</div><div style={{textAlign:'center'}}>أهداف</div><div style={{textAlign:'center'}}>متوسط</div>
+            </div>
+            {byAtk.map((t,i)=>(
+              <div key={t.team_id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 56px 60px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>
+                <div style={{ fontSize:12, color:S.text2, fontWeight:700 }}>{i+1}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}><LogoImg name={t.team?.name||'?'} logo={t.team?.logo_url} size={26} /><span style={{ fontSize:13, fontWeight:600, color:S.text }}>{t.team?.name||'—'}</span></div>
+                <div style={{ textAlign:'center', fontSize:12, color:S.text2 }}>{t.played}</div>
+                <div style={{ textAlign:'center' }}><span style={{ fontSize:16, fontWeight:900, color:'#4ade80' }}>{t.goals_for}</span></div>
+                <div style={{ textAlign:'center', fontSize:12, color:S.text2 }}>{t.played>0?(t.goals_for/t.played).toFixed(1):'—'}</div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Defense */}
+        {tab==='defense' && (
+          byDef.length===0 ? <Empty S={S} text="لا توجد إحصائيات" /> :
+          <>
+            <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 60px 60px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
+              <div>#</div><div>الفريق</div><div style={{textAlign:'center'}}>لعب</div><div style={{textAlign:'center'}}>استقبل</div><div style={{textAlign:'center'}}>متوسط</div>
+            </div>
+            {byDef.map((t,i)=>(
+              <div key={t.team_id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 60px 60px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>
+                <div style={{ fontSize:12, color:S.text2, fontWeight:700 }}>{i+1}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}><LogoImg name={t.team?.name||'?'} logo={t.team?.logo_url} size={26} /><span style={{ fontSize:13, fontWeight:600, color:S.text }}>{t.team?.name||'—'}</span></div>
+                <div style={{ textAlign:'center', fontSize:12, color:S.text2 }}>{t.played}</div>
+                <div style={{ textAlign:'center' }}><span style={{ fontSize:16, fontWeight:900, color:i===0?'#4ade80':'#f87171' }}>{t.goals_against}</span></div>
+                <div style={{ textAlign:'center', fontSize:12, color:S.text2 }}>{t.played>0?(t.goals_against/t.played).toFixed(1):'—'}</div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Cards */}
+        {tab==='cards' && (
+          cards.length===0 ? <Empty S={S} text="لا توجد بطاقات" /> :
+          <>
+            <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 1fr 52px 52px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
+              <div>#</div><div>اللاعب</div><div>الفريق</div><div style={{textAlign:'center'}}>🟨</div><div style={{textAlign:'center'}}>🟥</div>
+            </div>
+            {cards.map((p,i)=>(
+              <div key={p.id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 1fr 52px 52px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>
+                <div style={{ fontSize:12, color:S.text2 }}>{i+1}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:S.text }}>{p.player_name}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}><LogoImg name={p.team?.name||'?'} logo={p.team?.logo_url} size={22} /><span style={{ fontSize:12, color:S.text2 }}>{p.team?.name||'—'}</span></div>
+                <div style={{ textAlign:'center', fontSize:18, fontWeight:900, color:'#ca8a04' }}>{p.yellow_cards}</div>
+                <div style={{ textAlign:'center', fontSize:18, fontWeight:900, color:'#dc2626' }}>{p.red_cards}</div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function KpiCard({ icon, label, value, small }: { icon: React.ReactNode; label: string; value: any; small?: boolean }) {
-    return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-                {icon}
-                <span className="text-xs text-slate-500 font-medium">{label}</span>
-            </div>
-            <p className={`font-black text-slate-900 ${small ? 'text-sm truncate' : 'text-2xl'}`}>{value}</p>
-        </div>
-    );
+function Empty({ S, text }: { S:any; text:string }) {
+  return <div style={{ padding:'40px 24px', textAlign:'center', color:S.text2, fontSize:13 }}>{text}</div>;
 }
+// LogoImg = TeamLogo (imported)
+function Loader({ isDark }: { isDark:boolean }) {
+  return <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300 }}><div style={{ width:36,height:36,borderRadius:'50%',border:`3px solid ${isDark?'rgba(255,255,255,0.1)':'#e2e8f0'}`,borderTopColor:'#d97706',animation:'spin 0.7s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+}
+
+const D = { surface:'#131929', surface2:'#1a2235', border:'rgba(255,255,255,0.07)', text:'#e8eaf0', text2:'#64748b' };
+const L = { surface:'#ffffff', surface2:'#f8fafc', border:'#e2e8f0', text:'#0f172a', text2:'#64748b' };

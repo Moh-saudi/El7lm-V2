@@ -1,459 +1,404 @@
 'use client';
+import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import {
-    Swords, Plus, Save, Loader2, ChevronDown, ChevronUp,
-    Clock, CheckCircle, Activity, X, Goal, Shuffle,
-} from 'lucide-react';
+import { Modal } from 'antd';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Team  = { id: string; name: string; logo_url: string | null };
-type Group = { id: string; name: string };
-type Category = { id: string; name: string; type: string };
-type Match = {
-    id: string; round: string; match_number: number | null;
-    home_team_id: string | null; away_team_id: string | null;
-    home_score: number | null; away_score: number | null;
-    home_penalties: number | null; away_penalties: number | null;
-    venue: string | null; scheduled_at: string | null;
-    status: string; group_id: string | null; category_id: string | null;
-    referee_name: string | null; notes: string | null;
+type Team   = { id: string; name: string; logo_url: string | null };
+type Cat    = { id: string; name: string };
+type Match  = {
+  id: string; round: string; match_number: number | null;
+  home_team_id: string | null; away_team_id: string | null;
+  home_score: number | null; away_score: number | null;
+  home_penalties: number | null; away_penalties: number | null;
+  match_date: string | null; venue: string | null; referee_name: string | null;
+  status: string; group_id: string | null; category_id: string | null;
 };
-type Event = {
-    id?: string; player_id: string | null; team_id: string; event_type: string;
-    minute: number | null; notes: string;
-};
+type Event = { id?: string; team_id: string; event_type: string; minute: number | null; notes: string };
 
-const ROUNDS: Record<string, string> = {
-    group_stage: 'دور المجموعات', round_of_32: 'دور الـ32',
-    round_of_16: 'دور الـ16', quarter_final: 'ربع النهائي',
-    semi_final: 'نصف النهائي', third_place: 'المركز الثالث', final: 'النهائي',
+const ROUND_LBL: Record<string,string> = {
+  league:'الدوري', group_stage:'دور المجموعات', R128:'دور الـ128', R64:'دور الـ64',
+  R32:'دور الـ32', R16:'دور الـ16', QF:'ربع النهائي', SF:'نصف النهائي', F:'النهائي', '3rd':'المركز الثالث',
 };
-const EVENT_TYPES: { v: string; label: string; emoji: string }[] = [
-    { v: 'goal',            label: 'هدف',            emoji: '⚽' },
-    { v: 'own_goal',        label: 'هدف عكسي',       emoji: '🙈' },
-    { v: 'yellow_card',     label: 'بطاقة صفراء',    emoji: '🟨' },
-    { v: 'red_card',        label: 'بطاقة حمراء',    emoji: '🟥' },
-    { v: 'second_yellow',   label: 'إنذار ثانٍ',     emoji: '🟨🟥' },
-    { v: 'sub_in',          label: 'دخول',           emoji: '🔼' },
-    { v: 'sub_out',         label: 'خروج',           emoji: '🔽' },
-    { v: 'penalty_scored',  label: 'ركلة جزاء محوّلة',emoji: '✅' },
-    { v: 'penalty_missed',  label: 'ركلة جزاء مُهدرة',emoji: '❌' },
+const ROUND_ORDER = ['league','group_stage','R128','R64','R32','R16','QF','SF','F','3rd'];
+const ROUND_COLOR: Record<string,string> = { F:'#f59e0b', SF:'#8b5cf6', QF:'#3b82f6', '3rd':'#f97316' };
+
+const EVT: { v:string; lbl:string; emoji:string; color:string }[] = [
+  { v:'goal',           lbl:'هدف',              emoji:'⚽', color:'#16a34a' },
+  { v:'own_goal',       lbl:'هدف عكسي',         emoji:'🙈', color:'#dc2626' },
+  { v:'yellow_card',    lbl:'صفراء',             emoji:'🟨', color:'#ca8a04' },
+  { v:'red_card',       lbl:'حمراء',             emoji:'🟥', color:'#dc2626' },
+  { v:'second_yellow',  lbl:'ثانية → إخراج',    emoji:'🟨🟥',color:'#dc2626' },
+  { v:'penalty_scored', lbl:'ركلة جزاء ✓',      emoji:'✅', color:'#16a34a' },
+  { v:'penalty_missed', lbl:'ركلة جزاء ✗',      emoji:'❌', color:'#dc2626' },
+  { v:'sub_in',         lbl:'دخول',              emoji:'🔼', color:'#3b82f6' },
+  { v:'sub_out',        lbl:'خروج',              emoji:'🔽', color:'#64748b' },
 ];
 
 export default function MatchesPage() {
-    const { id } = useParams<{ id: string }>();
-    const [categories,  setCategories]  = useState<Category[]>([]);
-    const [selectedCat, setSelectedCat] = useState<string>('all');
-    const [teams,       setTeams]       = useState<Team[]>([]);
-    const [groups,      setGroups]      = useState<Group[]>([]);
-    const [matches,     setMatches]     = useState<Match[]>([]);
-    const [loading,     setLoading]     = useState(true);
-    const [expanded,    setExpanded]    = useState<string | null>(null);
-    const [editMatch,   setEditMatch]   = useState<Partial<Match> | null>(null);
-    const [events,      setEvents]      = useState<Record<string, Event[]>>({});
-    const [saving,      setSaving]      = useState(false);
+  const { id }     = useParams<{ id: string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
 
-    // New match form
-    const [showAddMatch,    setShowAddMatch]    = useState(false);
-    const [generating,      setGenerating]      = useState(false);
-    const [newMatch, setNewMatch] = useState({
-        home_team_id: '', away_team_id: '', scheduled_at: '', venue: '',
-        round: 'group_stage', category_id: '', group_id: '', referee_name: '',
-    });
+  const [cats,       setCats]       = useState<Cat[]>([]);
+  const [selCat,     setSelCat]     = useState('all');
+  const [teams,      setTeams]      = useState<Team[]>([]);
+  const [matches,    setMatches]    = useState<Match[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [events,     setEvents]     = useState<Record<string, Event[]>>({});
+  const [expanded,   setExpanded]   = useState<string | null>(null);
+  const [saving,     setSaving]     = useState(false);
+  const [scoreModal, setScoreModal] = useState<Match | null>(null);
+  const [evModal,    setEvModal]    = useState<Match | null>(null);
 
-    const supabase = createPortalClient();
+  // Score form state
+  const [sc, setSc] = useState({ hs:'', as:'', hp:'', ap:'' });
+  // Event form state
+  const [ev, setEv] = useState({ type:'goal', team:'', minute:'', notes:'' });
 
-    const fetchAll = async () => {
-        const [catsR, teamsR, groupsR, matchesR] = await Promise.all([
-            supabase.from('tournament_categories').select('id, name, type').eq('tournament_id', id),
-            supabase.from('tournament_teams').select('id, name, logo_url').eq('tournament_id', id).eq('status', 'approved'),
-            supabase.from('tournament_groups').select('id, name').eq('tournament_id', id),
-            supabase.from('tournament_matches').select('*').eq('tournament_id', id).order('scheduled_at', { ascending: true }),
-        ]);
-        setCategories(catsR.data || []);
-        setTeams(teamsR.data || []);
-        setGroups(groupsR.data || []);
-        setMatches(matchesR.data || []);
-        setLoading(false);
-    };
+  const supabase = createPortalClient();
 
-    useEffect(() => { fetchAll(); }, [id]);
+  const fetchAll = useCallback(async () => {
+    const [cR,tR,mR] = await Promise.all([
+      supabase.from('tournament_categories').select('id,name').eq('tournament_id',id).order('sort_order'),
+      supabase.from('tournament_teams').select('id,name,logo_url').eq('tournament_id',id).eq('status','approved'),
+      supabase.from('tournament_matches').select('*').eq('tournament_id',id).order('match_number',{ascending:true}),
+    ]);
+    setCats(cR.data||[]); setTeams(tR.data||[]); setMatches(mR.data||[]);
+    setLoading(false);
+  }, [id]);
 
-    // جلب أحداث مباراة
-    const loadEvents = async (matchId: string) => {
-        if (events[matchId]) return;
-        const { data } = await supabase.from('tournament_match_events')
-            .select('*').eq('match_id', matchId).order('minute');
-        setEvents(prev => ({ ...prev, [matchId]: data || [] }));
-    };
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    const teamName = (tid: string | null) => teams.find(t => t.id === tid)?.name || '—';
+  const loadEvents = async (mid: string) => {
+    if (events[mid] !== undefined) return;
+    const { data } = await supabase.from('tournament_match_events').select('*').eq('match_id',mid).order('minute');
+    setEvents(p => ({ ...p, [mid]: data||[] }));
+  };
 
-    // ── توليد مباريات المجموعات ───────────────────────────────
-    const generateGroupMatches = async (catId: string) => {
-        if (!catId || catId === 'all') { toast.error('اختر فئة أولاً لتوليد المباريات'); return; }
-        const confirmed = window.confirm('سيتم حذف جميع مباريات دور المجموعات لهذه الفئة وإعادة توليدها. هل أنت متأكد؟');
-        if (!confirmed) return;
-        setGenerating(true);
-        try {
-            const res = await fetch('/api/tournament-portal/generate-group-matches', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tournament_id: id, category_id: catId }),
-            });
-            const data = await res.json();
-            if (!res.ok) { toast.error(data.error || 'فشل التوليد'); return; }
-            toast.success(`تم توليد ${data.generated} مباراة بنجاح`);
-            fetchAll();
-        } catch (e: any) {
-            toast.error(e.message);
-        } finally {
-            setGenerating(false);
-        }
-    };
+  const tName = (tid: string|null) => teams.find(t=>t.id===tid)?.name||'—';
+  const tLogo = (tid: string|null) => teams.find(t=>t.id===tid)?.logo_url;
 
-    // ── إضافة مباراة ─────────────────────────────────────────
-    const addMatch = async () => {
-        if (!newMatch.home_team_id || !newMatch.away_team_id) { toast.error('اختر الفريقين'); return; }
-        if (newMatch.home_team_id === newMatch.away_team_id)   { toast.error('لا يمكن أن يلعب الفريق ضد نفسه'); return; }
-        setSaving(true);
-        const { error } = await supabase.from('tournament_matches').insert({
-            tournament_id:  id,
-            category_id:    newMatch.category_id  || null,
-            group_id:       newMatch.group_id      || null,
-            round:          newMatch.round,
-            home_team_id:   newMatch.home_team_id,
-            away_team_id:   newMatch.away_team_id,
-            scheduled_at:   newMatch.scheduled_at || null,
-            venue:          newMatch.venue        || null,
-            referee_name:   newMatch.referee_name || null,
-            status:         'scheduled',
-        });
-        if (error) { toast.error(error.message); }
-        else { toast.success('تم إضافة المباراة'); setShowAddMatch(false); fetchAll(); }
-        setSaving(false);
-    };
+  const saveScore = async () => {
+    if (!scoreModal) return;
+    setSaving(true);
+    const hs = sc.hs !== '' ? +sc.hs : null;
+    const as_ = sc.as !== '' ? +sc.as : null;
+    const done = hs !== null && as_ !== null;
+    const winnerId = done ? (hs > as_ ? scoreModal.home_team_id : as_ > hs ? scoreModal.away_team_id : null) : null;
+    const { error } = await supabase.from('tournament_matches').update({ home_score:hs, away_score:as_, home_penalties:sc.hp?+sc.hp:null, away_penalties:sc.ap?+sc.ap:null, status:done?'completed':'scheduled', winner_id:winnerId }).eq('id',scoreModal.id);
+    if (error) { toast.error(error.message); setSaving(false); return; }
+    toast.success('تم حفظ النتيجة');
+    setScoreModal(null);
+    fetchAll();
+    // انتقال الفائز تلقائياً في الإقصاء
+    if (done && ['R128','R64','R32','R16','QF','SF'].includes(scoreModal.round || '')) {
+      fetch('/api/tournament-portal/advance-winner', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_id: scoreModal.id }),
+      }).then(r => r.json()).then(d => {
+        if (d.advanced) toast.success('تم نقل الفائز للدور القادم تلقائياً ✓');
+      }).catch(() => {});
+    }
+    setSaving(false);
+  };
 
-    // ── حفظ النتيجة ──────────────────────────────────────────
-    const saveResult = async (match: Match) => {
-        if (editMatch === null) return;
-        setSaving(true);
-        const homeScore = editMatch.home_score ?? null;
-        const awayScore = editMatch.away_score ?? null;
-        const isCompleted = homeScore !== null && awayScore !== null;
-        const winnerId = isCompleted
-            ? homeScore > awayScore! ? match.home_team_id
-            : awayScore! > homeScore ? match.away_team_id
-            : null
-            : null;
+  const addEvent = async () => {
+    if (!evModal||!ev.team) { toast.error('اختر الفريق'); return; }
+    const { data, error } = await supabase.from('tournament_match_events').insert({ match_id:evModal.id, tournament_id:id, team_id:ev.team||null, event_type:ev.type, minute:ev.minute?+ev.minute:null, notes:ev.notes||null }).select().single();
+    if (error) { toast.error(error.message); return; }
+    setEvents(p => ({ ...p, [evModal.id]:[...(p[evModal.id]||[]),data] }));
+    setEv(p => ({ ...p, minute:'', notes:'' }));
+    toast.success('تم تسجيل الحدث');
+  };
 
-        const { error } = await supabase.from('tournament_matches').update({
-            home_score:      homeScore,
-            away_score:      awayScore,
-            home_penalties:  editMatch.home_penalties ?? null,
-            away_penalties:  editMatch.away_penalties ?? null,
-            venue:           editMatch.venue       ?? match.venue,
-            referee_name:    editMatch.referee_name?? match.referee_name,
-            status:          isCompleted ? 'completed' : 'scheduled',
-            played_at:       isCompleted ? new Date().toISOString() : null,
-            winner_id:       winnerId,
-        }).eq('id', match.id);
+  const deleteEvent = async (mid: string, eid: string) => {
+    await supabase.from('tournament_match_events').delete().eq('id',eid);
+    setEvents(p => ({ ...p, [mid]:p[mid].filter(e=>e.id!==eid) }));
+  };
 
-        if (error) { toast.error(error.message); }
-        else {
-            toast.success('تم حفظ النتيجة');
-            setMatches(prev => prev.map(m => m.id === match.id
-                ? { ...m, ...editMatch, status: isCompleted ? 'completed' : 'scheduled', winner_id: winnerId } as any
-                : m));
-            setEditMatch(null);
-        }
-        setSaving(false);
-    };
+  const filtered = useMemo(() => selCat==='all' ? matches : matches.filter(m=>m.category_id===selCat), [matches,selCat]);
 
-    // ── إضافة حدث ─────────────────────────────────────────────
-    const addEvent = async (matchId: string, event: Omit<Event, 'id'>) => {
-        const { data, error } = await supabase.from('tournament_match_events').insert({
-            match_id:   matchId,
-            team_id:    event.team_id   || null,
-            player_id:  event.player_id || null,
-            event_type: event.event_type,
-            minute:     event.minute    || null,
-            notes:      event.notes     || null,
-        }).select().single();
-        if (error) { toast.error(error.message); return; }
-        setEvents(prev => ({ ...prev, [matchId]: [...(prev[matchId] || []), data] }));
-        toast.success('تم تسجيل الحدث');
-    };
+  const grouped = useMemo(() => {
+    const byRound: Record<string, Record<string, Match[]>> = {};
+    for (const m of filtered) {
+      const r = m.round||'other';
+      const date = m.match_date ? new Date(m.match_date).toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : 'بدون تاريخ';
+      if (!byRound[r]) byRound[r] = {};
+      (byRound[r][date]=byRound[r][date]||[]).push(m);
+    }
+    return byRound;
+  }, [filtered]);
 
-    const deleteEvent = async (matchId: string, eventId: string) => {
-        await supabase.from('tournament_match_events').delete().eq('id', eventId);
-        setEvents(prev => ({ ...prev, [matchId]: prev[matchId].filter(e => e.id !== eventId) }));
-    };
+  const sortedRounds = ROUND_ORDER.filter(r => grouped[r]);
 
-    const filteredMatches = useMemo(() =>
-        selectedCat === 'all' ? matches : matches.filter(m => m.category_id === selectedCat),
-        [matches, selectedCat]);
+  if (loading) return <Loader isDark={isDark} />;
 
-    const STATUS_CFG: Record<string, { label: string; cls: string; icon: any }> = {
-        scheduled:  { label: 'مجدولة',  cls: 'bg-slate-100 text-slate-600',    icon: Clock        },
-        live:       { label: 'مباشر',   cls: 'bg-red-100 text-red-600',        icon: Activity     },
-        completed:  { label: 'مكتملة',  cls: 'bg-emerald-100 text-emerald-700',icon: CheckCircle  },
-        postponed:  { label: 'مؤجلة',   cls: 'bg-orange-100 text-orange-700',  icon: Clock        },
-        cancelled:  { label: 'ملغية',   cls: 'bg-rose-100 text-rose-700',      icon: X            },
-    };
+  const completedN = filtered.filter(m=>m.status==='completed').length;
+  const pendingN   = filtered.filter(m=>m.status==='scheduled').length;
 
-    return (
-        <div className="space-y-4" dir="rtl">
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-            {/* Category filter */}
-            <div className="flex gap-2 flex-wrap items-center">
-                <button onClick={() => setSelectedCat('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${selectedCat === 'all' ? 'bg-yellow-500 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                    الكل ({matches.length})
-                </button>
-                {categories.map(c => (
-                    <button key={c.id} onClick={() => setSelectedCat(c.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${selectedCat === c.id ? 'bg-yellow-500 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                        {c.name} ({matches.filter(m => m.category_id === c.id).length})
-                    </button>
+      {/* Filter bar */}
+      <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'12px 16px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', flex:1 }}>
+          {[{id:'all',name:`الكل (${matches.length})`},...cats.map(c=>({id:c.id,name:`${c.name} (${matches.filter(m=>m.category_id===c.id).length})`}))].map(c=>(
+            <button key={c.id} onClick={()=>setSelCat(c.id)} className={`sp-cat-tab${selCat===c.id?' active':''}`}>{c.name}</button>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:16 }}>
+          <span style={{ fontSize:12, color:'#16a34a', fontWeight:600 }}>✓ {completedN} منتهية</span>
+          <span style={{ fontSize:12, color:S.text2 }}>◷ {pendingN} قادمة</span>
+        </div>
+      </div>
+
+      {/* Empty */}
+      {filtered.length === 0 && (
+        <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:18, padding:'60px 24px', textAlign:'center' }}>
+          <div style={{ fontSize:40, marginBottom:14 }}>⚽</div>
+          <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد مباريات بعد</div>
+          <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>ابدأ بتوليد الجدول من تبويب «الجدول»</div>
+          <Link href={`/tournament-portal/${id}/schedule`} style={{ textDecoration:'none' }}>
+            <button className="sp-btn sp-btn-primary">📅 الذهاب إلى الجدول</button>
+          </Link>
+        </div>
+      )}
+
+      {/* Rounds */}
+      {sortedRounds.map(round => {
+        const rc = ROUND_COLOR[round]||'#64748b';
+        const dateGroups = grouped[round];
+        return (
+          <div key={round}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+              <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
+              <div style={{ padding:'5px 14px', background:`${rc}15`, border:`1px solid ${rc}30`, borderRadius:18 }}>
+                <span style={{ fontSize:12, fontWeight:800, color:rc }}>{ROUND_LBL[round]||round}</span>
+              </div>
+              <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
+            </div>
+
+            {Object.entries(dateGroups).map(([date, dayMatches]) => (
+              <div key={date} style={{ marginBottom:10 }}>
+                {/* Date divider */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6, padding:'0 4px' }}>
+                  <span style={{ fontSize:11, color:S.text2, fontWeight:600 }}>📅 {date}</span>
+                  <div style={{ height:1, flex:1, background:S.border }} />
+                </div>
+
+                <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+                  {(dayMatches as Match[]).map(m => (
+                    <ResultCard
+                      key={m.id} match={m} teams={teams} events={events[m.id]}
+                      isExpanded={expanded===m.id} isDark={isDark} S={S}
+                      onExpand={() => {
+                        const next = expanded===m.id ? null : m.id;
+                        setExpanded(next);
+                        if (next) loadEvents(next);
+                      }}
+                      onScore={() => { setScoreModal(m); setSc({ hs:m.home_score?.toString()||'', as:m.away_score?.toString()||'', hp:m.home_penalties?.toString()||'', ap:m.away_penalties?.toString()||'' }); }}
+                      onEvents={() => { setEvModal(m); loadEvents(m.id); setEv({ type:'goal', team:'', minute:'', notes:'' }); }}
+                      onDeleteEvent={(eid:string)=>deleteEvent(m.id,eid)}
+                      onToggleLive={async () => {
+                        const newStatus = m.status === 'live' ? 'scheduled' : 'live';
+                        await supabase.from('tournament_matches').update({ status: newStatus }).eq('id', m.id);
+                        setMatches(prev => prev.map(x => x.id === m.id ? { ...x, status: newStatus } : x));
+                        toast.success(newStatus === 'live' ? '🔴 المباراة مباشرة الآن' : 'تم إيقاف البث المباشر');
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+
+      {/* ── Score Modal ── */}
+      <Modal open={!!scoreModal} onOk={saveScore} onCancel={()=>setScoreModal(null)} okText="حفظ النتيجة" cancelText="إلغاء" confirmLoading={saving} okButtonProps={{ style:{ background:'#16a34a', border:'none' } }} width={400}
+        title={scoreModal ? `${tName(scoreModal.home_team_id)} ضد ${tName(scoreModal.away_team_id)}` : ''}>
+        {scoreModal && (
+          <div style={{ marginTop:16 }}>
+            {/* Teams banner */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-around', padding:'18px 20px', background:isDark?'#0d1117':'#f1f5f9', borderRadius:14, marginBottom:20 }}>
+              <div style={{ textAlign:'center' }}>
+                <LogoImg name={tName(scoreModal.home_team_id)} logo={tLogo(scoreModal.home_team_id)} size={48} />
+                <div style={{ fontSize:13, fontWeight:700, color:isDark?'#e2e8f0':'#0f172a', marginTop:8, maxWidth:100 }}>{tName(scoreModal.home_team_id)}</div>
+              </div>
+              <span style={{ fontSize:14, color:isDark?'#475569':'#94a3b8', fontWeight:700 }}>vs</span>
+              <div style={{ textAlign:'center' }}>
+                <LogoImg name={tName(scoreModal.away_team_id)} logo={tLogo(scoreModal.away_team_id)} size={48} />
+                <div style={{ fontSize:13, fontWeight:700, color:isDark?'#e2e8f0':'#0f172a', marginTop:8, maxWidth:100 }}>{tName(scoreModal.away_team_id)}</div>
+              </div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              {[
+                { lbl:tName(scoreModal.home_team_id), key:'hs' as const },
+                { lbl:tName(scoreModal.away_team_id), key:'as' as const },
+                { lbl:'ر.ج (محلي)',                  key:'hp' as const },
+                { lbl:'ر.ج (ضيف)',                   key:'ap' as const },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="sp-label">{f.lbl}</label>
+                  <input type="number" min={0} className="sp-input" style={{ fontSize:20, textAlign:'center', fontWeight:900 }} value={sc[f.key]} onChange={e=>setSc(p=>({...p,[f.key]:e.target.value}))} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Events Modal ── */}
+      <Modal open={!!evModal} footer={null} onCancel={()=>setEvModal(null)} width={480}
+        title={evModal ? `أحداث: ${tName(evModal.home_team_id)} vs ${tName(evModal.away_team_id)}` : ''}>
+        {evModal && (
+          <div style={{ marginTop:12 }}>
+            {/* Events list */}
+            <div style={{ maxHeight:220, overflowY:'auto', marginBottom:14 }} className="sp-scroll">
+              {(events[evModal.id]||[]).length===0
+                ? <div style={{ padding:'24px', textAlign:'center', color:isDark?'#475569':'#94a3b8', fontSize:13 }}>لا أحداث بعد</div>
+                : (events[evModal.id]||[]).map((e:any) => {
+                    const et = EVT.find(x=>x.v===e.event_type);
+                    return (
+                      <div key={e.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:9, background:isDark?'#1a2235':'#f8fafc', marginBottom:5 }}>
+                        <span style={{ fontSize:16 }}>{et?.emoji}</span>
+                        <span style={{ fontWeight:700, fontSize:13, color:et?.color||'inherit' }}>{et?.lbl}</span>
+                        {e.minute && <span style={{ background:isDark?'#0d1117':'#e2e8f0', borderRadius:5, padding:'1px 7px', fontSize:11, fontWeight:700, color:isDark?'#94a3b8':'#64748b' }}>{e.minute}'</span>}
+                        {e.notes && <span style={{ fontSize:12, color:isDark?'#64748b':'#94a3b8', flex:1 }}>{e.notes}</span>}
+                        <button onClick={()=>deleteEvent(evModal.id,e.id)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#ef4444', fontSize:16 }}>×</button>
+                      </div>
+                    );
+                  })
+              }
+            </div>
+            {/* Add event */}
+            <div style={{ borderTop:`1px solid ${isDark?'rgba(255,255,255,0.07)':'#e2e8f0'}`, paddingTop:14, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center' }}>
+              <select className="sp-select" style={{ width:160, padding:'6px 10px', fontSize:12 }} value={ev.type} onChange={e=>setEv(p=>({...p,type:e.target.value}))}>
+                {EVT.map(e=><option key={e.v} value={e.v}>{e.emoji} {e.lbl}</option>)}
+              </select>
+              <select className="sp-select" style={{ width:120, padding:'6px 10px', fontSize:12 }} value={ev.team} onChange={e=>setEv(p=>({...p,team:e.target.value}))}>
+                <option value="">الفريق...</option>
+                {[evModal.home_team_id,evModal.away_team_id].filter(Boolean).map(tid=>(
+                  <option key={tid!} value={tid!}>{tName(tid)}</option>
                 ))}
-                <div className="mr-auto flex items-center gap-2">
-                    {selectedCat !== 'all' && (
-                        <button onClick={() => generateGroupMatches(selectedCat)} disabled={generating}
-                            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm">
-                            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shuffle className="w-4 h-4" />}
-                            توليد مباريات المجموعات
-                        </button>
-                    )}
-                    <button onClick={() => setShowAddMatch(v => !v)}
-                        className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-white font-bold px-4 py-2 rounded-xl text-sm">
-                        <Plus className="w-4 h-4" /> إضافة مباراة
-                    </button>
-                </div>
+              </select>
+              <input type="number" min={1} max={120} className="sp-input sp-input-sm" style={{ width:80 }} placeholder="الدقيقة" value={ev.minute} onChange={e=>setEv(p=>({...p,minute:e.target.value}))} />
+              <input className="sp-input sp-input-sm" style={{ width:130 }} placeholder="اسم اللاعب..." value={ev.notes} onChange={e=>setEv(p=>({...p,notes:e.target.value}))} />
+              <button onClick={addEvent} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>+ تسجيل</button>
             </div>
-
-            {/* Add match form */}
-            {showAddMatch && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-3">
-                    <h3 className="font-bold text-yellow-800 text-sm">مباراة جديدة</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="form-label">الفريق المضيف</label>
-                            <select className="form-input" value={newMatch.home_team_id} onChange={e => setNewMatch(p => ({ ...p, home_team_id: e.target.value }))}>
-                                <option value="">اختر الفريق</option>
-                                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">الفريق الضيف</label>
-                            <select className="form-input" value={newMatch.away_team_id} onChange={e => setNewMatch(p => ({ ...p, away_team_id: e.target.value }))}>
-                                <option value="">اختر الفريق</option>
-                                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">الدور</label>
-                            <select className="form-input" value={newMatch.round} onChange={e => setNewMatch(p => ({ ...p, round: e.target.value }))}>
-                                {Object.entries(ROUNDS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">الفئة</label>
-                            <select className="form-input" value={newMatch.category_id} onChange={e => setNewMatch(p => ({ ...p, category_id: e.target.value }))}>
-                                <option value="">بدون فئة</option>
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">التاريخ والوقت</label>
-                            <input type="datetime-local" className="form-input" value={newMatch.scheduled_at} onChange={e => setNewMatch(p => ({ ...p, scheduled_at: e.target.value }))} />
-                        </div>
-                        <div>
-                            <label className="form-label">الملعب</label>
-                            <input className="form-input" value={newMatch.venue} onChange={e => setNewMatch(p => ({ ...p, venue: e.target.value }))} placeholder="استاد الملك فهد" />
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <button onClick={addMatch} disabled={saving}
-                            className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold px-4 py-2 rounded-xl text-sm">
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} إضافة
-                        </button>
-                        <button onClick={() => setShowAddMatch(false)} className="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100">إلغاء</button>
-                    </div>
-                </div>
-            )}
-
-            {/* Matches list */}
-            {loading ? (
-                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 bg-white rounded-2xl animate-pulse border border-slate-100" />)}</div>
-            ) : filteredMatches.length === 0 ? (
-                <div className="text-center py-16 text-slate-400">
-                    <Swords className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                    <p className="text-sm">لا توجد مباريات بعد</p>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {filteredMatches.map(match => {
-                        const scfg = STATUS_CFG[match.status] || STATUS_CFG.scheduled;
-                        const StatusIcon = scfg.icon;
-                        const isOpen = expanded === match.id;
-                        const isEditing = editMatch !== null && expanded === match.id;
-
-                        return (
-                            <div key={match.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                                {/* Match row */}
-                                <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors"
-                                    onClick={() => { setExpanded(isOpen ? null : match.id); if (!isOpen) { loadEvents(match.id); setEditMatch(null); } }}>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
-                                                {ROUNDS[match.round] || match.round}
-                                            </span>
-                                            {match.scheduled_at && (
-                                                <span className="text-xs text-slate-400">
-                                                    {new Date(match.scheduled_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
-                                                    {' '}
-                                                    {new Date(match.scheduled_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                            <span className="font-bold text-slate-900 text-sm truncate max-w-[100px]">{teamName(match.home_team_id)}</span>
-                                            <div className={`flex items-center gap-1 px-3 py-1 rounded-xl font-black text-sm
-                                                ${match.status === 'completed' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                {match.status === 'completed' ? `${match.home_score} - ${match.away_score}` : 'vs'}
-                                            </div>
-                                            <span className="font-bold text-slate-900 text-sm truncate max-w-[100px]">{teamName(match.away_team_id)}</span>
-                                        </div>
-                                    </div>
-
-                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${scfg.cls}`}>
-                                        <StatusIcon className="w-3 h-3" /> {scfg.label}
-                                    </span>
-                                    {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                                </div>
-
-                                {/* Expanded */}
-                                {isOpen && (
-                                    <div className="border-t border-slate-100 bg-slate-50/50 px-4 pb-5 pt-4 space-y-4">
-
-                                        {/* Score entry */}
-                                        <div>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h4 className="text-xs font-bold text-slate-600">إدخال النتيجة</h4>
-                                                {!isEditing && (
-                                                    <button onClick={() => setEditMatch({ home_score: match.home_score, away_score: match.away_score, home_penalties: match.home_penalties, away_penalties: match.away_penalties, venue: match.venue, referee_name: match.referee_name })}
-                                                        className="text-xs text-yellow-600 font-semibold hover:text-yellow-500">تعديل</button>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 text-right">
-                                                    <p className="text-xs font-bold text-slate-700 mb-1">{teamName(match.home_team_id)}</p>
-                                                    {isEditing ? (
-                                                        <input type="number" min="0" value={editMatch?.home_score ?? ''} onChange={e => setEditMatch(p => ({ ...p, home_score: +e.target.value }))}
-                                                            className="w-20 text-center text-2xl font-black border-2 border-yellow-400 rounded-xl py-2 focus:outline-none" />
-                                                    ) : (
-                                                        <div className="text-3xl font-black text-slate-900">{match.home_score ?? '—'}</div>
-                                                    )}
-                                                </div>
-                                                <div className="text-slate-400 font-black text-xl">-</div>
-                                                <div className="flex-1 text-left">
-                                                    <p className="text-xs font-bold text-slate-700 mb-1 text-right">{teamName(match.away_team_id)}</p>
-                                                    {isEditing ? (
-                                                        <input type="number" min="0" value={editMatch?.away_score ?? ''} onChange={e => setEditMatch(p => ({ ...p, away_score: +e.target.value }))}
-                                                            className="w-20 text-center text-2xl font-black border-2 border-yellow-400 rounded-xl py-2 focus:outline-none" />
-                                                    ) : (
-                                                        <div className="text-3xl font-black text-slate-900 text-right">{match.away_score ?? '—'}</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {isEditing && (
-                                                <div className="flex gap-2 mt-3">
-                                                    <button onClick={() => saveResult(match)} disabled={saving}
-                                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs">
-                                                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} حفظ
-                                                    </button>
-                                                    <button onClick={() => setEditMatch(null)} className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:bg-slate-100">إلغاء</button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Events */}
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-600 mb-2">أحداث المباراة</h4>
-                                            <div className="space-y-1.5 mb-3">
-                                                {(events[match.id] || []).map(ev => {
-                                                    const et = EVENT_TYPES.find(e => e.v === ev.event_type);
-                                                    return (
-                                                        <div key={ev.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 text-xs border border-slate-100">
-                                                            <span>{et?.emoji}</span>
-                                                            <span className="font-semibold text-slate-700">{et?.label}</span>
-                                                            {ev.minute && <span className="text-slate-400">{ev.minute}'</span>}
-                                                            {ev.notes && <span className="text-slate-500 truncate flex-1">{ev.notes}</span>}
-                                                            <button onClick={() => deleteEvent(match.id, ev.id!)} className="text-slate-300 hover:text-rose-500 mr-auto">
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <QuickEventForm teams={teams.filter(t => t.id === match.home_team_id || t.id === match.away_team_id)} onAdd={ev => addEvent(match.id, ev)} />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            <style jsx global>{`
-                .form-label { display: block; font-size: 0.7rem; font-weight: 600; color: #64748b; margin-bottom: 0.3rem; }
-                .form-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.625rem; padding: 0.5rem 0.75rem; font-size: 0.8rem; color: #0f172a; background: white; outline: none; transition: all 0.15s; }
-                .form-input:focus { border-color: #eab308; box-shadow: 0 0 0 3px rgba(234,179,8,0.15); }
-            `}</style>
-        </div>
-    );
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
 }
 
-function QuickEventForm({ teams, onAdd }: { teams: Team[]; onAdd: (e: Omit<Event, 'id'>) => void }) {
-    const [form, setForm] = useState({ team_id: teams[0]?.id || '', event_type: 'goal', minute: '', notes: '' });
-    const set = (k: string) => (e: React.ChangeEvent<any>) => setForm(p => ({ ...p, [k]: e.target.value }));
-    const submit = () => {
-        if (!form.event_type) return;
-        onAdd({ team_id: form.team_id, player_id: null, event_type: form.event_type, minute: form.minute ? +form.minute : null, notes: form.notes });
-        setForm(p => ({ ...p, minute: '', notes: '' }));
-    };
-    return (
-        <div className="flex flex-wrap gap-2 items-end bg-white rounded-xl p-3 border border-slate-200">
+// ── Result Card ───────────────────────────────────────────────────────────────
+function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onScore, onEvents, onDeleteEvent, onToggleLive }: any) {
+  const tName = (tid: string|null) => teams.find((t:any)=>t.id===tid)?.name||'TBD';
+  const tLogo = (tid: string|null) => teams.find((t:any)=>t.id===tid)?.logo_url;
+  const fin  = match.status === 'completed';
+  const live = match.status === 'live';
+  const hs = match.home_score, as_ = match.away_score;
+  const homeWon = fin && hs!==null && as_!==null && hs>as_;
+  const awayWon = fin && hs!==null && as_!==null && as_>hs;
+
+  // Goals by team
+  const homeGoals = (events||[]).filter((e:any)=>e.team_id===match.home_team_id&&['goal','penalty_scored'].includes(e.event_type));
+  const awayGoals = (events||[]).filter((e:any)=>e.team_id===match.away_team_id&&['goal','penalty_scored'].includes(e.event_type));
+
+  return (
+    <div style={{ borderBottom:`1px solid ${S.border}` }}>
+      {/* Live bar */}
+      {live && (
+        <div style={{ background:'#ef4444', padding:'3px 14px', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <div className="sp-live-dot" />
+          <span style={{ fontSize:11, color:'#fff', fontWeight:800 }}>مباشر</span>
+        </div>
+      )}
+
+      {/* Main strip */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 100px 1fr', alignItems:'center', padding:'15px 18px', gap:10, cursor:'pointer' }} onClick={onExpand}>
+        {/* Home */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:10 }}>
+          {fin && homeGoals.length > 0 && (
+            <div style={{ textAlign:'right' }}>
+              {homeGoals.map((e:any,i:number)=>(
+                <div key={i} style={{ fontSize:10, color:S.text2 }}>⚽ {e.notes||''} {e.minute?`${e.minute}'`:''}</div>
+              ))}
+            </div>
+          )}
+          <span style={{ fontSize:15, fontWeight:700, color:homeWon?'#16a34a':S.text, textAlign:'right' }}>{tName(match.home_team_id)}</span>
+          <LogoImg name={tName(match.home_team_id)} logo={tLogo(match.home_team_id)} size={40} />
+        </div>
+
+        {/* Score / Time */}
+        <div style={{ textAlign:'center' }}>
+          {fin
+            ? <div className="sp-score" style={{ fontSize:20 }}>{hs??0} - {as_??0}</div>
+            : live
+              ? <div style={{ background:'#ef4444', borderRadius:9, padding:'5px 12px', display:'inline-block' }}><span style={{ color:'#fff', fontFamily:'monospace', fontWeight:900, fontSize:18 }}>{hs??0} - {as_??0}</span></div>
+              : match.match_date
+                ? <div><div style={{ fontSize:16, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div><div style={{ fontSize:10, color:S.text2, marginTop:2 }}>لم تبدأ</div></div>
+                : <div style={{ background:S.surface2, borderRadius:8, padding:'5px 12px', display:'inline-block' }}><span style={{ color:S.text2, fontWeight:700 }}>vs</span></div>
+          }
+        </div>
+
+        {/* Away */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-start', gap:10 }}>
+          <LogoImg name={tName(match.away_team_id)} logo={tLogo(match.away_team_id)} size={40} />
+          <span style={{ fontSize:15, fontWeight:700, color:awayWon?'#16a34a':S.text }}>{tName(match.away_team_id)}</span>
+          {fin && awayGoals.length > 0 && (
             <div>
-                <label className="form-label">الحدث</label>
-                <select className="form-input w-36" value={form.event_type} onChange={set('event_type')}>
-                    {EVENT_TYPES.map(e => <option key={e.v} value={e.v}>{e.emoji} {e.label}</option>)}
-                </select>
+              {awayGoals.map((e:any,i:number)=>(
+                <div key={i} style={{ fontSize:10, color:S.text2 }}>⚽ {e.notes||''} {e.minute?`${e.minute}'`:''}</div>
+              ))}
             </div>
-            <div>
-                <label className="form-label">الفريق</label>
-                <select className="form-input w-28" value={form.team_id} onChange={set('team_id')}>
-                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-            </div>
-            <div>
-                <label className="form-label">الدقيقة</label>
-                <input type="number" min="1" max="120" className="form-input w-16" value={form.minute} onChange={set('minute')} placeholder="45" />
-            </div>
-            <div className="flex-1 min-w-[100px]">
-                <label className="form-label">ملاحظة (اسم اللاعب...)</label>
-                <input className="form-input" value={form.notes} onChange={set('notes')} placeholder="اسم اللاعب..." />
-            </div>
-            <button onClick={submit} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-xs">
-                تسجيل
+          )}
+        </div>
+      </div>
+
+      {/* Info + Actions */}
+      <div style={{ padding:'8px 16px', background:S.surface2, borderTop:`1px solid ${S.border}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+        {match.venue && <span style={{ fontSize:13, color:S.text2 }}>📍 {match.venue}</span>}
+        {match.referee_name && <span style={{ fontSize:13, color:S.text2 }}>👤 {match.referee_name}</span>}
+        <div style={{ marginRight:'auto', display:'flex', gap:8, flexWrap:'wrap' }}>
+          {/* Live start/stop */}
+          {!fin && (
+            <button
+              onClick={e=>{ e.stopPropagation(); onToggleLive(); }}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:live?'rgba(239,68,68,0.15)':'rgba(239,68,68,0.08)', border:`1px solid ${live?'#ef4444':'rgba(239,68,68,0.3)'}`, borderRadius:8, color:'#ef4444', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              {live ? '⏹ إيقاف المباشر' : '🔴 بدء مباشر'}
             </button>
+          )}
+          <button onClick={e=>{e.stopPropagation();onScore();}} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:fin?'transparent':'#d97706', border:fin?`1px solid ${S.border}`:'none', borderRadius:8, color:fin?S.text2:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            {fin?'✏️ تعديل النتيجة':'⚡ إدخال النتيجة'}
+          </button>
+          <button onClick={e=>{e.stopPropagation();onEvents();}} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'transparent', border:`1px solid ${S.border}`, borderRadius:8, color:S.text2, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            🎯 الأحداث {events?.length>0?`(${events.length})`:''}
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
 
+// LogoImg = TeamLogo (imported)
+
+function Loader({ isDark }: { isDark:boolean }) {
+  return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300 }}>
+      <div style={{ width:36, height:36, borderRadius:'50%', border:`3px solid ${isDark?'rgba(255,255,255,0.1)':'#e2e8f0'}`, borderTopColor:'#d97706', animation:'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+const D = { surface:'#131929', surface2:'#1a2235', border:'rgba(255,255,255,0.07)', text:'#e8eaf0', text2:'#64748b' };
+const L = { surface:'#ffffff', surface2:'#f8fafc', border:'#e2e8f0', text:'#0f172a', text2:'#64748b' };

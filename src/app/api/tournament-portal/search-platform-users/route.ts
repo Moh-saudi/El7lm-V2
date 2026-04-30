@@ -6,25 +6,54 @@ const supa = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CF_BASE = 'https://assets.el7lm.com';
+const CF = 'https://assets.el7lm.com';
 
-/** Convert a raw DB image path/URL → publicly accessible Cloudflare R2 URL */
+/** Bucket الفعلي لكل نوع حساب — يطابق upload route */
+const BUCKET: Record<string, string> = {
+    player:  'avatars',
+    club:    'clubs',
+    academy: 'academies',
+    trainer: 'trainers',
+    agent:   'agents',
+};
+
+const KNOWN_BUCKETS = [
+    'clubs','academies','trainers','agents','marketers',
+    'avatars','playeravatar','clubavatar','academyavatar','traineravatar','agentavatar',
+    'images','el7lmplatform','profile-images','tournaments',
+];
+
+/** حوّل أي مسار مخزَّن في قاعدة البيانات → رابط Cloudflare R2 عام */
 function resolveImageUrl(path: string | null | undefined, bucket: string): string | null {
-    if (!path) return null;
-    // Already a Cloudflare URL
-    if (path.includes('assets.el7lm.com')) return path;
-    // Full URL (Google, Firebase, or old Supabase storage)
-    if (path.startsWith('http')) {
-        if (path.includes('supabase.co/storage/v1/object/public/')) {
-            const parts = path.split('supabase.co/storage/v1/object/public/');
-            if (parts[1]) return `${CF_BASE}/${parts[1]}`;
+    if (!path?.trim()) return null;
+    const p = path.trim();
+
+    if (p.includes('assets.el7lm.com')) return p;
+
+    if (p.startsWith('http')) {
+        // Firebase Storage → استخرج المسار وحوّله لـ CF
+        const fbMatch = p.match(/\/o\/([^?#]+)/);
+        if (fbMatch) return `${CF}/${decodeURIComponent(fbMatch[1])}`;
+
+        // Supabase Storage → حوّله لـ CF
+        if (p.includes('supabase.co')) {
+            const after = p.split('/object/')[1];
+            if (after) {
+                const clean = after.replace(/^(public|authenticated)\//, '').split('?')[0];
+                return `${CF}/${clean}`;
+            }
+            const file = p.split('?')[0].split('/').pop();
+            if (file) return `${CF}/${bucket}/${file}`;
         }
-        return path; // Google photos, etc. — return as-is
+
+        return p; // Google photos وغيرها — استخدمها مباشرة
     }
-    // Relative path like "abc123.jpg" or "avatars/abc123.jpg"
-    const clean = path.startsWith('/') ? path.slice(1) : path;
-    if (!clean.includes('/') && bucket) return `${CF_BASE}/${bucket}/${clean}`;
-    return `${CF_BASE}/${clean}`;
+
+    // مسار نسبي
+    const clean = p.startsWith('/') ? p.slice(1) : p;
+    if (KNOWN_BUCKETS.some(b => clean.startsWith(`${b}/`))) return `${CF}/${clean}`;
+    if (clean.includes('/')) return `${CF}/${clean}`;
+    return `${CF}/${bucket}/${clean}`;
 }
 
 /**
@@ -61,12 +90,13 @@ export async function GET(req: NextRequest) {
                 return;
             }
 
-            const imgBucket = isPlayer ? 'avatars' : 'clubavatar';
             (data || []).forEach((row: any) => {
+                const resolvedType = row.account_type || acctType;
+                const imgBucket = BUCKET[resolvedType] || (isPlayer ? 'playeravatar' : 'clubavatar');
                 results.push({
                     [isPlayer ? 'platform_player_id' : 'platform_user_id']: row.id,
                     type:          isPlayer ? 'player' : 'club',
-                    account_type:  row.account_type || acctType,
+                    account_type:  resolvedType,
                     name:          row.display_name || '—',
                     phone:         row.phone         || null,
                     city:          row.city          || null,
@@ -94,7 +124,7 @@ export async function GET(req: NextRequest) {
                             city:          row.city          || null,
                             position:      row.position      || null,
                             date_of_birth: row.date_of_birth || null,
-                            logo_url:      resolveImageUrl(row.avatar_url, 'avatars'),
+                            logo_url:      resolveImageUrl(row.avatar_url, BUCKET['player']),
                         });
                     }
                 });

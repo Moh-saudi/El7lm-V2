@@ -2,464 +2,707 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { InputNumber, Select, Tag, Typography, Tooltip, Empty } from 'antd';
 import {
-    Shuffle, Save, Loader2, Trophy, Users, AlertCircle,
-    Plus, Trash2, ArrowLeftRight, X, ChevronDown,
-} from 'lucide-react';
+  SwapOutlined, SaveOutlined, PlusOutlined, DeleteOutlined,
+  CloseOutlined, TeamOutlined, TrophyOutlined,
+  ThunderboltOutlined, CheckCircleOutlined, InfoCircleOutlined,
+} from '@ant-design/icons';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Team  = { id: string; name: string; logo_url: string | null; seed: number | null; group_id: string | null; category_id: string | null };
-type Group = { id: string; name: string; teams: Team[] };
+const { Text } = Typography;
+
+type Team     = { id: string; name: string; logo_url: string | null; seed: number | null; group_id: string | null; category_id: string | null };
+type Group    = { id: string; name: string; teams: Team[] };
 type Category = { id: string; name: string; type: string; group_count: number | null; teams_per_group: number | null };
 
+// ── Team Avatar ───────────────────────────────────────────────────────────────
+function TeamAvatar({ team, size = 32 }: { team: Team; size?: number }) {
+  if (team.logo_url) return (
+    <img src={team.logo_url} alt={team.name}
+      style={{ width: size, height: size, borderRadius: size / 3, objectFit: 'cover', flexShrink: 0 }}
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+  );
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: size / 3, flexShrink: 0,
+      background: 'linear-gradient(135deg, #d97706, #ea580c)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff', fontWeight: 800, fontSize: size * 0.38,
+    }}>
+      {team.name.charAt(0)}
+    </div>
+  );
+}
+
 export default function DrawPage() {
-    const { id } = useParams<{ id: string }>();
-    const [categories,      setCategories]      = useState<Category[]>([]);
-    const [selectedCat,     setSelectedCat]     = useState('');
-    const [allTeams,        setAllTeams]        = useState<Team[]>([]);
-    const [groups,          setGroups]          = useState<Group[]>([]);
-    const [loading,         setLoading]         = useState(true);
-    const [saving,          setSaving]          = useState(false);
-    const [customGroupCount,setCustomGroupCount] = useState(4);
-    const [creatingGroups,  setCreatingGroups]  = useState(false);
+  const { id }      = useParams<{ id: string }>();
+  const { isDark }  = usePortalTheme();
 
-    // تحديد فريق للنقل
-    const [selectedTeam,    setSelectedTeam]    = useState<{ team: Team; fromGroupId: string | null } | null>(null);
+  const [categories,       setCategories]       = useState<Category[]>([]);
+  const [selectedCat,      setSelectedCat]      = useState('');
+  const [allTeams,         setAllTeams]         = useState<Team[]>([]);
+  const [groups,           setGroups]           = useState<Group[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [saving,           setSaving]           = useState(false);
+  const [customGroupCount, setCustomGroupCount] = useState(4);
+  const [creatingGroups,   setCreatingGroups]   = useState(false);
+  const [selectedTeam,     setSelectedTeam]     = useState<{ team: Team; fromGroupId: string | null } | null>(null);
 
-    const supabase = createPortalClient();
+  const supabase = createPortalClient();
 
-    // ── جلب الفئات ──────────────────────────────────────────────
-    useEffect(() => {
-        (async () => {
-            const { data: cats } = await supabase
-                .from('tournament_categories')
-                .select('id, name, type, group_count, teams_per_group')
-                .eq('tournament_id', id);
-            setCategories(cats || []);
-            if (cats && cats.length > 0) {
-                setSelectedCat(cats[0].id);
-                if (cats[0].group_count) setCustomGroupCount(cats[0].group_count);
-            }
-            setLoading(false);
-        })();
-    }, [id]);
+  // ── Colors ─────────────────────────────────────────────────────────────────
+  const bg       = isDark ? '#0f172a' : '#ffffff';
+  const bgSoft   = isDark ? '#1e293b' : '#f8fafc';
+  const border   = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
+  const borderDash = isDark ? 'rgba(255,255,255,0.12)' : '#d1d5db';
+  const text     = isDark ? '#e2e8f0' : '#0f172a';
+  const textSec  = isDark ? '#64748b' : '#6b7280';
+  const groupHdr = isDark ? '#1e293b' : '#1e293b';
 
-    // ── جلب الفرق والمجموعات ────────────────────────────────────
-    const loadTeamsAndGroups = async (catId: string) => {
-        let q = supabase.from('tournament_teams')
-            .select('id, name, logo_url, seed, group_id, category_id')
-            .eq('tournament_id', id).eq('status', 'approved');
-        if (catId !== 'all') q = (q as any).or(`category_id.eq.${catId},category_id.is.null`);
+  // ── Load ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const { data: cats } = await supabase.from('tournament_categories').select('id,name,type,group_count,teams_per_group').eq('tournament_id', id);
+      setCategories(cats || []);
+      if (cats?.length) { setSelectedCat(cats[0].id); if (cats[0].group_count) setCustomGroupCount(cats[0].group_count); }
+      setLoading(false);
+    })();
+  }, [id]);
 
-        const [teamsRes, groupsRes] = await Promise.all([
-            q,
-            supabase.from('tournament_groups').select('id, name')
-                .eq('tournament_id', id)
-                .eq('category_id', catId === 'all' ? '' : catId)
-                .order('sort_order'),
-        ]);
+  const loadTeamsAndGroups = async (catId: string) => {
+    let q = supabase.from('tournament_teams').select('id,name,logo_url,seed,group_id,category_id').eq('tournament_id', id).eq('status', 'approved');
+    if (catId !== 'all') q = (q as any).or(`category_id.eq.${catId},category_id.is.null`);
+    const [teamsRes, groupsRes] = await Promise.all([q, supabase.from('tournament_groups').select('id,name').eq('tournament_id', id).eq('category_id', catId === 'all' ? '' : catId).order('sort_order')]);
+    const teams = (teamsRes.data || []).map((t: any) => ({ ...t, category_id: t.category_id ?? (catId !== 'all' ? catId : null) }));
+    setAllTeams(teams);
+    setGroups((groupsRes.data || []).map((g: any) => ({ id: g.id, name: g.name, teams: teams.filter((t: any) => t.group_id === g.id) })));
+    setSelectedTeam(null);
+  };
 
-        const teams  = (teamsRes.data || []).map((t: any) => ({
-            ...t, category_id: t.category_id ?? (catId !== 'all' ? catId : null),
-        }));
-        const gData  = groupsRes.data || [];
-        const grouped: Group[] = gData.map((g: any) => ({
-            id: g.id, name: g.name,
-            teams: teams.filter((t: any) => t.group_id === g.id),
-        }));
+  useEffect(() => { if (selectedCat) loadTeamsAndGroups(selectedCat); }, [selectedCat]);
 
-        setAllTeams(teams);
-        setGroups(grouped);
-        setSelectedTeam(null);
-    };
+  const currentCat  = categories.find((c) => c.id === selectedCat);
+  const assignedIds = new Set(groups.flatMap((g) => g.teams.map((t) => t.id)));
+  const unassigned  = allTeams.filter((t) => !assignedIds.has(t.id));
+  const isDrawn     = groups.some((g) => g.teams.length > 0);
+  const isDone      = unassigned.length === 0 && groups.length > 0 && isDrawn;
 
-    useEffect(() => { if (selectedCat) loadTeamsAndGroups(selectedCat); }, [selectedCat]);
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const createGroups = async () => {
+    if (customGroupCount < 2) { toast.error('يجب 2 مجموعات على الأقل'); return; }
+    setCreatingGroups(true);
+    const res = await fetch('/api/tournament-portal/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournament_id: id, category_id: selectedCat, count: customGroupCount }) });
+    const data = await res.json();
+    if (!res.ok) toast.error(data.error);
+    else { setGroups((data.groups || []).map((g: any) => ({ ...g, teams: [] }))); toast.success(`تم إنشاء ${customGroupCount} مجموعات`); }
+    setCreatingGroups(false);
+  };
 
-    const currentCat  = categories.find(c => c.id === selectedCat);
-    // الفرق غير الموزعة
-    const assignedIds = new Set(groups.flatMap(g => g.teams.map(t => t.id)));
-    const unassigned  = allTeams.filter(t => !assignedIds.has(t.id));
+  const deleteGroup = async (groupId: string) => {
+    const res = await fetch(`/api/tournament-portal/groups?id=${groupId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); toast.error(d.error); return; }
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    setSelectedTeam(null);
+  };
 
-    // ── إنشاء المجموعات ──────────────────────────────────────────
-    const createGroups = async () => {
-        if (customGroupCount < 2) { toast.error('يجب 2 مجموعات على الأقل'); return; }
-        setCreatingGroups(true);
-        const res = await fetch('/api/tournament-portal/groups', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tournament_id: id, category_id: selectedCat, count: customGroupCount }),
-        });
-        const data = await res.json();
-        if (!res.ok) { toast.error(data.error); setCreatingGroups(false); return; }
-        const newGroups: Group[] = (data.groups || []).map((g: any) => ({ ...g, teams: [] }));
-        setGroups(newGroups);
-        setSelectedTeam(null);
-        toast.success(`تم إنشاء ${customGroupCount} مجموعات`);
-        setCreatingGroups(false);
-    };
+  const selectTeam = (team: Team, fromGroupId: string | null) => {
+    if (selectedTeam?.team.id === team.id) { setSelectedTeam(null); return; }
+    setSelectedTeam({ team, fromGroupId });
+  };
 
-    // ── حذف مجموعة ───────────────────────────────────────────────
-    const deleteGroup = async (groupId: string) => {
-        const res = await fetch(`/api/tournament-portal/groups?id=${groupId}`, { method: 'DELETE' });
-        if (!res.ok) { const d = await res.json(); toast.error(d.error); return; }
-        // الفرق الموجودة في هذه المجموعة تصبح غير موزعة
-        setGroups(prev => prev.filter(g => g.id !== groupId));
-        setSelectedTeam(null);
-        toast.success('تم حذف المجموعة');
-    };
+  const moveSelectedToGroup = (toGroupId: string) => {
+    if (!selectedTeam) return;
+    const { team, fromGroupId } = selectedTeam;
+    if (fromGroupId === toGroupId) { setSelectedTeam(null); return; }
+    setGroups((prev) => prev.map((g) => {
+      if (g.id === fromGroupId) return { ...g, teams: g.teams.filter((t) => t.id !== team.id) };
+      if (g.id === toGroupId)   return { ...g, teams: [...g.teams, { ...team, group_id: toGroupId }] };
+      return g;
+    }));
+    setSelectedTeam(null);
+    toast.success(`تم نقل ${team.name}`);
+  };
 
-    // ── تحديد فريق للنقل (نقر أول) ─────────────────────────────
-    const selectTeam = (team: Team, fromGroupId: string | null) => {
-        if (selectedTeam?.team.id === team.id) {
-            setSelectedTeam(null); // إلغاء التحديد
-            return;
-        }
-        setSelectedTeam({ team, fromGroupId });
-        toast.info(`محدد: ${team.name} — اختر المجموعة المستهدفة`, { duration: 2000 });
-    };
+  const removeFromGroup = (team: Team, groupId: string) => {
+    if (selectedTeam?.team.id === team.id) setSelectedTeam(null);
+    setGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, teams: g.teams.filter((t) => t.id !== team.id) } : g));
+  };
 
-    // ── نقل الفريق المحدد إلى مجموعة (نقر ثاني على المجموعة) ──
-    const moveSelectedToGroup = (toGroupId: string) => {
-        if (!selectedTeam) return;
-        const { team, fromGroupId } = selectedTeam;
+  const swapWithTeam = (targetTeam: Team, targetGroupId: string) => {
+    if (!selectedTeam) return;
+    const { team: src, fromGroupId: srcGid } = selectedTeam;
+    if (src.id === targetTeam.id) { setSelectedTeam(null); return; }
+    setGroups((prev) => prev.map((g) => {
+      if (g.id === srcGid) return { ...g, teams: g.teams.map((t) => t.id === src.id ? { ...targetTeam, group_id: g.id } : t) };
+      if (g.id === targetGroupId) return { ...g, teams: g.teams.map((t) => t.id === targetTeam.id ? { ...src, group_id: g.id } : t) };
+      return g;
+    }));
+    setSelectedTeam(null);
+    toast.success(`تم تبديل ${src.name} ↔ ${targetTeam.name}`);
+  };
 
-        if (fromGroupId === toGroupId) { setSelectedTeam(null); return; }
+  const addUnassignedToGroup = (team: Team, toGroupId: string) => {
+    setGroups((prev) => prev.map((g) => g.id === toGroupId ? { ...g, teams: [...g.teams, { ...team, group_id: toGroupId }] } : g));
+  };
 
-        setGroups(prev => prev.map(g => {
-            if (g.id === fromGroupId) return { ...g, teams: g.teams.filter(t => t.id !== team.id) };
-            if (g.id === toGroupId)   return { ...g, teams: [...g.teams, { ...team, group_id: toGroupId }] };
-            return g;
-        }));
-        setSelectedTeam(null);
-        toast.success(`تم نقل ${team.name} إلى ${groups.find(g => g.id === toGroupId)?.name}`);
-    };
+  const performDraw = () => {
+    if (groups.length === 0) { toast.error('أنشئ المجموعات أولاً'); return; }
+    if (allTeams.length === 0) { toast.error('لا توجد فرق مقبولة'); return; }
+    const seeded   = [...allTeams.filter((t) => t.seed)].sort((a, b) => (a.seed || 99) - (b.seed || 99));
+    const unseeded = [...allTeams.filter((t) => !t.seed)].sort(() => Math.random() - 0.5);
+    const dist: Group[] = groups.map((g) => ({ ...g, teams: [] }));
+    seeded.forEach((team, i) => { if (dist[i % groups.length]) dist[i % groups.length].teams.push(team); });
+    let gi = 0;
+    for (const team of unseeded) {
+      const max = currentCat?.teams_per_group || 999;
+      let att = 0;
+      while (dist[gi].teams.length >= max && att < groups.length) { gi = (gi + 1) % groups.length; att++; }
+      dist[gi].teams.push(team); gi = (gi + 1) % groups.length;
+    }
+    setGroups(dist); setSelectedTeam(null);
+    toast.success('تمت القرعة — راجع التوزيع وعدّله إذا أردت ثم احفظ');
+  };
 
-    // ── إزالة فريق من مجموعة (عودة للقائمة غير الموزعة) ────────
-    const removeFromGroup = (team: Team, groupId: string) => {
-        if (selectedTeam?.team.id === team.id) setSelectedTeam(null);
-        setGroups(prev => prev.map(g =>
-            g.id === groupId ? { ...g, teams: g.teams.filter(t => t.id !== team.id) } : g
-        ));
-    };
+  const saveDraw = async () => {
+    setSaving(true);
+    const res = await fetch('/api/tournament-portal/save-draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category_id: selectedCat !== 'all' ? selectedCat : null, groups: groups.map((g) => ({ id: g.id, teams: g.teams.map((t) => ({ id: t.id, category_id: t.category_id })) })) }) });
+    const data = await res.json();
+    if (!res.ok) toast.error(data.error);
+    else toast.success('تم حفظ القرعة بنجاح ✓');
+    setSaving(false);
+  };
 
-    // ── إضافة فريق غير موزع إلى مجموعة ─────────────────────────
-    const addUnassignedToGroup = (team: Team, toGroupId: string) => {
-        setGroups(prev => prev.map(g =>
-            g.id === toGroupId ? { ...g, teams: [...g.teams, { ...team, group_id: toGroupId }] } : g
-        ));
-    };
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${isDark ? '#1e293b' : '#e5e7eb'}`, borderTopColor: '#d97706', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <Text style={{ color: textSec }}>جاري تحميل القرعة...</Text>
+      </div>
+    </div>
+  );
 
-    // ── مبادلة فريقين بين مجموعتين ──────────────────────────────
-    const swapWithTeam = (targetTeam: Team, targetGroupId: string) => {
-        if (!selectedTeam) return;
-        const { team: srcTeam, fromGroupId: srcGroupId } = selectedTeam;
-        if (srcTeam.id === targetTeam.id) { setSelectedTeam(null); return; }
+  // ── Steps progress ────────────────────────────────────────────────────────
+  const step1Done = groups.length > 0;
+  const step2Done = isDrawn && unassigned.length === 0;
+  const step3Done = false;
 
-        setGroups(prev => prev.map(g => {
-            if (g.id === srcGroupId && g.id === targetGroupId) {
-                // نفس المجموعة — لا شيء
-                return g;
-            }
-            if (g.id === srcGroupId) {
-                return { ...g, teams: g.teams.map(t => t.id === srcTeam.id ? { ...targetTeam, group_id: g.id } : t) };
-            }
-            if (g.id === targetGroupId) {
-                return { ...g, teams: g.teams.map(t => t.id === targetTeam.id ? { ...srcTeam, group_id: g.id } : t) };
-            }
-            return g;
-        }));
-        setSelectedTeam(null);
-        toast.success(`تم تبديل ${srcTeam.name} ↔ ${targetTeam.name}`);
-    };
+  const STEPS = [
+    { n: 1, label: 'إنشاء المجموعات', done: step1Done },
+    { n: 2, label: 'توزيع الفرق',     done: step2Done },
+    { n: 3, label: 'حفظ القرعة',      done: step3Done },
+  ];
 
-    // ── القرعة العشوائية ─────────────────────────────────────────
-    const performDraw = () => {
-        if (groups.length === 0) { toast.error('أنشئ المجموعات أولاً'); return; }
-        if (allTeams.length === 0) { toast.error('لا توجد فرق مقبولة'); return; }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        const seeded   = [...allTeams.filter(t => t.seed)].sort((a, b) => (a.seed || 99) - (b.seed || 99));
-        const unseeded = [...allTeams.filter(t => !t.seed)].sort(() => Math.random() - 0.5);
-
-        const distributed: Group[] = groups.map(g => ({ ...g, teams: [] }));
-        seeded.forEach((team, i) => {
-            if (distributed[i % groups.length]) distributed[i % groups.length].teams.push(team);
-        });
-        let gi = 0;
-        for (const team of unseeded) {
-            const max = currentCat?.teams_per_group || 999;
-            let attempts = 0;
-            while (distributed[gi].teams.length >= max && attempts < groups.length) {
-                gi = (gi + 1) % groups.length; attempts++;
-            }
-            distributed[gi].teams.push(team);
-            gi = (gi + 1) % groups.length;
-        }
-        setGroups(distributed);
-        setSelectedTeam(null);
-        toast.success('تمت القرعة — راجع التوزيع وعدّله إذا أردت ثم احفظ');
-    };
-
-    // ── حفظ القرعة عبر API ───────────────────────────────────────
-    const saveDraw = async () => {
-        setSaving(true);
-        const res = await fetch('/api/tournament-portal/save-draw', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                category_id: selectedCat !== 'all' ? selectedCat : null,
-                groups: groups.map(g => ({ id: g.id, teams: g.teams.map(t => ({ id: t.id, category_id: t.category_id })) })),
-            }),
-        });
-        const data = await res.json();
-        if (!res.ok) { toast.error(data.error); }
-        else { toast.success('تم حفظ القرعة بنجاح'); }
-        setSaving(false);
-    };
-
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
+      {/* ══ Category tabs ══ */}
+      {categories.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {categories.map((c) => (
+            <button key={c.id}
+              onClick={() => { setSelectedCat(c.id); if (c.group_count) setCustomGroupCount(c.group_count); }}
+              style={{
+                padding: '7px 18px', borderRadius: 24, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                border: `1.5px solid ${selectedCat === c.id ? '#d97706' : border}`,
+                background: selectedCat === c.id ? '#d97706' : bg,
+                color: selectedCat === c.id ? '#fff' : textSec,
+                transition: 'all 0.15s',
+              }}
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
-    );
+      )}
 
-    const isDrawn = groups.some(g => g.teams.length > 0);
-
-    return (
-        <div className="space-y-5" dir="rtl">
-
-            {/* Category tabs */}
-            {categories.length > 1 && (
-                <div className="flex gap-2 flex-wrap">
-                    {categories.map(c => (
-                        <button key={c.id}
-                            onClick={() => { setSelectedCat(c.id); if (c.group_count) setCustomGroupCount(c.group_count); }}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all
-                                ${selectedCat === c.id ? 'bg-yellow-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-300'}`}>
-                            {c.name}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* ── Toolbar ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-4 text-sm flex-wrap">
-                    <span className="flex items-center gap-1.5 font-semibold text-slate-700">
-                        <Users className="w-4 h-4 text-slate-400" /> {allTeams.length} فريق
-                    </span>
-                    <span className="flex items-center gap-1.5 text-slate-500">
-                        <Trophy className="w-4 h-4 text-slate-400" /> {groups.length} مجموعة
-                    </span>
-                    {unassigned.length > 0 && (
-                        <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                            {unassigned.length} غير موزع
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex gap-2 mr-auto flex-wrap">
-                    <button onClick={performDraw} disabled={groups.length === 0}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">
-                        <Shuffle className="w-4 h-4" /> {isDrawn ? 'إعادة القرعة' : 'قرعة عشوائية'}
-                    </button>
-                    {isDrawn && (
-                        <button onClick={saveDraw} disabled={saving}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-50">
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            حفظ القرعة
-                        </button>
-                    )}
-                </div>
+      {/* ══ Steps progress ══ */}
+      <div style={{
+        background: bg, border: `1px solid ${border}`,
+        borderRadius: 16, padding: '18px 24px',
+        display: 'flex', alignItems: 'center', gap: 0,
+        transition: 'all 0.3s',
+      }}>
+        {STEPS.map((s, i) => (
+          <div key={s.n} style={{ display: 'flex', alignItems: 'center', flex: i < STEPS.length - 1 ? 1 : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: s.done ? '#16a34a' : (i === (step1Done ? (step2Done ? 2 : 1) : 0) ? '#d97706' : bgSoft),
+                border: `2px solid ${s.done ? '#16a34a' : (i === (step1Done ? (step2Done ? 2 : 1) : 0) ? '#d97706' : border)}`,
+                color: s.done || i === (step1Done ? (step2Done ? 2 : 1) : 0) ? '#fff' : textSec,
+                fontWeight: 800, fontSize: 15,
+                transition: 'all 0.3s',
+                boxShadow: s.done ? '0 0 0 4px rgba(22,163,74,0.15)' : (i === (step1Done ? (step2Done ? 2 : 1) : 0) ? '0 0 0 4px rgba(217,119,6,0.15)' : 'none'),
+              }}>
+                {s.done ? <CheckCircleOutlined style={{ fontSize: 16 }} /> : s.n}
+              </div>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 600, color: s.done ? '#16a34a' : text, display: 'block', transition: 'color 0.3s' }}>
+                  {s.label}
+                </Text>
+              </div>
             </div>
-
-            {/* No teams */}
-            {allTeams.length === 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="font-bold text-amber-800 text-sm">لا توجد فرق مقبولة بعد</p>
-                        <p className="text-xs text-amber-600 mt-1">اذهب لصفحة التسجيلات واقبل الفرق أولاً</p>
-                    </div>
-                </div>
+            {i < STEPS.length - 1 && (
+              <div style={{ flex: 1, height: 2, margin: '0 12px', borderRadius: 2, background: s.done ? '#16a34a' : border, transition: 'background 0.3s' }} />
             )}
+          </div>
+        ))}
+      </div>
 
-            {/* ── إنشاء المجموعات ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-bold text-slate-700">إنشاء مجموعات:</span>
-                    <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-3 py-1.5">
-                        <button onClick={() => setCustomGroupCount(Math.max(2, customGroupCount - 1))}
-                            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 font-bold text-lg">−</button>
-                        <span className="w-8 text-center font-black text-slate-800">{customGroupCount}</span>
-                        <button onClick={() => setCustomGroupCount(Math.min(16, customGroupCount + 1))}
-                            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 font-bold text-lg">+</button>
-                    </div>
-                    <button onClick={createGroups} disabled={creatingGroups}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">
-                        {creatingGroups ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                        {groups.length > 0 ? 'إعادة إنشاء' : 'إنشاء'}
-                    </button>
-                    {groups.length === 0 && (
-                        <p className="text-xs text-slate-400 w-full">حدد عدد المجموعات ثم اضغط «إنشاء» — بعدها اضغط «قرعة عشوائية» أو وزّع الفرق يدوياً</p>
-                    )}
-                </div>
+      {/* ══ Control bar ══ */}
+      <div style={{
+        background: bg, border: `1px solid ${border}`,
+        borderRadius: 16, padding: '16px 20px',
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 16,
+        transition: 'all 0.3s',
+      }}>
+        {/* Stats */}
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TeamOutlined style={{ color: '#6366f1', fontSize: 16 }} />
             </div>
+            <div>
+              <Text style={{ color: text, fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{allTeams.length}</Text>
+              <Text style={{ color: textSec, fontSize: 12 }}>فريق</Text>
+            </div>
+          </div>
 
-            {/* ── Hint: team selected ── */}
-            {selectedTeam && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 flex items-center gap-3">
-                    <ArrowLeftRight className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                    <div className="flex-1 text-sm">
-                        <span className="font-bold text-indigo-800">{selectedTeam.team.name}</span>
-                        <span className="text-indigo-600"> — اضغط على مجموعة لنقله إليها، أو اضغط على فريق آخر لمبادلتهما</span>
-                    </div>
-                    <button onClick={() => setSelectedTeam(null)} className="text-indigo-400 hover:text-indigo-600">
-                        <X className="w-4 h-4" />
-                    </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TrophyOutlined style={{ color: '#d97706', fontSize: 16 }} />
+            </div>
+            <div>
+              <Text style={{ color: text, fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{groups.length}</Text>
+              <Text style={{ color: textSec, fontSize: 12 }}>مجموعة</Text>
+            </div>
+          </div>
+
+          {unassigned.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <InfoCircleOutlined style={{ color: '#ef4444', fontSize: 16 }} />
+              </div>
+              <div>
+                <Text style={{ color: '#ef4444', fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{unassigned.length}</Text>
+                <Text style={{ color: textSec, fontSize: 12 }}>غير موزع</Text>
+              </div>
+            </div>
+          )}
+
+          {isDone && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
+              </div>
+              <div>
+                <Text style={{ color: '#16a34a', fontWeight: 700, fontSize: 14, lineHeight: 1, display: 'block' }}>مكتمل</Text>
+                <Text style={{ color: textSec, fontSize: 12 }}>جاهز للحفظ</Text>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{ marginRight: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Create groups inline */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: bgSoft, border: `1px solid ${border}`,
+            borderRadius: 10, padding: '6px 12px',
+          }}>
+            <Text style={{ color: textSec, fontSize: 13 }}>مجموعات:</Text>
+            <InputNumber
+              min={2} max={16} value={customGroupCount}
+              onChange={(v) => setCustomGroupCount(v || 4)}
+              size="small"
+              style={{ width: 64, background: 'transparent' }}
+            />
+            <button
+              onClick={createGroups}
+              disabled={creatingGroups}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
+                background: '#2563eb', border: 'none', color: '#fff',
+                fontSize: 13, fontWeight: 600, opacity: creatingGroups ? 0.6 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              <PlusOutlined />
+              {groups.length > 0 ? 'إعادة' : 'إنشاء'}
+            </button>
+          </div>
+
+          <button
+            onClick={performDraw}
+            disabled={groups.length === 0}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '8px 18px', borderRadius: 10, cursor: groups.length === 0 ? 'not-allowed' : 'pointer',
+              background: groups.length === 0 ? bgSoft : '#4f46e5',
+              border: `1px solid ${groups.length === 0 ? border : '#4f46e5'}`,
+              color: groups.length === 0 ? textSec : '#fff',
+              fontSize: 14, fontWeight: 700, transition: 'all 0.15s',
+              opacity: groups.length === 0 ? 0.5 : 1,
+            }}
+          >
+            <ThunderboltOutlined style={{ fontSize: 15 }} />
+            {isDrawn ? 'إعادة القرعة' : 'قرعة عشوائية'}
+          </button>
+
+          {isDrawn && (
+            <button
+              onClick={saveDraw}
+              disabled={saving}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '8px 20px', borderRadius: 10, cursor: saving ? 'not-allowed' : 'pointer',
+                background: isDone ? '#16a34a' : '#d97706',
+                border: 'none', color: '#fff',
+                fontSize: 14, fontWeight: 700, transition: 'all 0.15s',
+                boxShadow: isDone ? '0 4px 16px rgba(22,163,74,0.3)' : '0 4px 16px rgba(217,119,6,0.25)',
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              <SaveOutlined style={{ fontSize: 15 }} />
+              {saving ? 'جاري الحفظ...' : 'حفظ القرعة'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ══ No teams warning ══ */}
+      {allTeams.length === 0 && (
+        <div style={{
+          background: isDark ? 'rgba(217,119,6,0.08)' : '#fffbeb',
+          border: `1px solid ${isDark ? 'rgba(217,119,6,0.2)' : '#fde68a'}`,
+          borderRadius: 14, padding: '16px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <InfoCircleOutlined style={{ color: '#fff', fontSize: 18 }} />
+          </div>
+          <div>
+            <Text style={{ color: isDark ? '#fbbf24' : '#92400e', fontWeight: 700, fontSize: 14, display: 'block' }}>
+              لا توجد فرق مقبولة بعد
+            </Text>
+            <Text style={{ color: isDark ? '#d97706' : '#b45309', fontSize: 13 }}>
+              اذهب لصفحة التسجيلات واقبل الفرق أولاً قبل إجراء القرعة
+            </Text>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Selected team floating banner ══ */}
+      {selectedTeam && (
+        <div style={{
+          background: isDark ? '#1e1b4b' : '#eef2ff',
+          border: `2px solid ${isDark ? '#4f46e5' : '#6366f1'}`,
+          borderRadius: 14, padding: '14px 18px',
+          display: 'flex', alignItems: 'center', gap: 14,
+          boxShadow: '0 4px 20px rgba(99,102,241,0.2)',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+            background: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.1)',
+            border: '1px solid #6366f1',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <SwapOutlined style={{ color: '#6366f1', fontSize: 18 }} />
+          </div>
+          <TeamAvatar team={selectedTeam.team} size={36} />
+          <div style={{ flex: 1 }}>
+            <Text style={{ color: isDark ? '#e0e7ff' : '#312e81', fontWeight: 700, fontSize: 15, display: 'block' }}>
+              {selectedTeam.team.name}
+            </Text>
+            <Text style={{ color: isDark ? '#818cf8' : '#6366f1', fontSize: 13 }}>
+              {selectedTeam.fromGroupId ? 'محدد من مجموعة — انقر على مجموعة أخرى لنقله أو على فريق لمبادلتهما' : 'انقر على مجموعة لإضافته إليها'}
+            </Text>
+          </div>
+          <button
+            onClick={() => setSelectedTeam(null)}
+            style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
+              border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecaca',
+              color: '#ef4444', cursor: 'pointer', fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <CloseOutlined />
+          </button>
+        </div>
+      )}
+
+      {/* ══ Unassigned teams pool ══ */}
+      {unassigned.length > 0 && (
+        <div style={{
+          background: bg,
+          border: `2px dashed ${borderDash}`,
+          borderRadius: 16, padding: '16px 18px',
+          transition: 'all 0.3s',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <TeamOutlined style={{ color: '#ef4444', fontSize: 14 }} />
+            </div>
+            <Text style={{ color: '#ef4444', fontWeight: 700, fontSize: 14 }}>
+              فرق غير موزعة
+            </Text>
+            <div style={{ background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 10px', fontSize: 12, fontWeight: 700 }}>
+              {unassigned.length}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {unassigned.map((team) => {
+              const isSelected = selectedTeam?.team.id === team.id;
+              return (
+                <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div
+                    onClick={() => selectTeam(team, null)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '7px 12px',
+                      background: isSelected ? (isDark ? '#1e1b4b' : '#eef2ff') : bgSoft,
+                      border: `1.5px solid ${isSelected ? '#6366f1' : border}`,
+                      borderRadius: 10, cursor: 'pointer',
+                      boxShadow: isSelected ? '0 0 0 3px rgba(99,102,241,0.2)' : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <TeamAvatar team={team} size={26} />
+                    <Text style={{ fontSize: 13, fontWeight: 600, color: isSelected ? '#6366f1' : text, maxWidth: 100, transition: 'color 0.15s' }} ellipsis>
+                      {team.name}
+                    </Text>
+                    {team.seed && (
+                      <div style={{ background: '#d97706', color: '#fff', borderRadius: 6, padding: '1px 6px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                        بذرة {team.seed}
+                      </div>
+                    )}
+                  </div>
+
+                  {groups.length > 0 && (
+                    <Select
+                      size="small"
+                      placeholder="← نقل"
+                      style={{ width: 100 }}
+                      value={undefined}
+                      onChange={(gid) => addUnassignedToGroup(team, gid)}
+                      options={groups.map((g) => ({ value: g.id, label: g.name }))}
+                    />
+                  )}
                 </div>
-            )}
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-            {/* ── Unassigned teams pool ── */}
-            {unassigned.length > 0 && (
-                <div className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-4">
-                    <p className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-2">
-                        <Users className="w-3.5 h-3.5" /> فرق غير موزعة ({unassigned.length})
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        {unassigned.map(team => (
-                            <div key={team.id}
-                                onClick={() => selectedTeam ? addUnassignedToGroup(team, selectedTeam.fromGroupId || groups[0]?.id) : selectTeam(team, null)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-sm font-semibold
-                                    ${selectedTeam?.team.id === team.id
-                                        ? 'bg-indigo-100 border-indigo-400 text-indigo-800 ring-2 ring-indigo-300'
-                                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50'
-                                    }`}>
-                                {team.logo_url ? (
-                                    <img src={team.logo_url} alt={team.name} className="w-5 h-5 rounded object-cover flex-shrink-0"
-                                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                ) : (
-                                    <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 flex-shrink-0">
-                                        {team.name.charAt(0)}
-                                    </div>
-                                )}
-                                {team.name}
-                                {team.seed && <span className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-1 py-0.5 rounded">بذرة {team.seed}</span>}
-                                {/* dropdown: نقل لمجموعة */}
-                                {groups.length > 0 && (
-                                    <div className="relative" onClick={e => e.stopPropagation()}>
-                                        <select
-                                            onChange={e => { if (e.target.value) addUnassignedToGroup(team, e.target.value); e.target.value = ''; }}
-                                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                                            defaultValue="">
-                                            <option value="" disabled>نقل إلى</option>
-                                            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                        </select>
-                                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+      {/* ══ Groups grid ══ */}
+      {groups.length === 0 ? (
+        allTeams.length > 0 && (
+          <div style={{
+            background: bg, border: `2px dashed ${borderDash}`,
+            borderRadius: 16, padding: '48px 24px', textAlign: 'center',
+            transition: 'all 0.3s',
+          }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TrophyOutlined style={{ fontSize: 30, color: '#d97706' }} />
+            </div>
+            <Text style={{ color: text, fontWeight: 700, fontSize: 16, display: 'block', marginBottom: 8 }}>
+              لم تُنشأ المجموعات بعد
+            </Text>
+            <Text style={{ color: textSec, fontSize: 14 }}>
+              حدد عدد المجموعات من شريط الأدوات أعلاه ثم اضغط «إنشاء»
+            </Text>
+          </div>
+        )
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: 14,
+        }}>
+          {groups.map((group) => {
+            const isTarget   = !!(selectedTeam && selectedTeam.fromGroupId !== group.id);
+            const isSource   = selectedTeam?.fromGroupId === group.id;
+            const borderColor = isTarget ? '#6366f1' : isSource ? '#a5b4fc' : border;
+            const glowColor   = isTarget ? 'rgba(99,102,241,0.25)' : 'none';
+
+            return (
+              <div
+                key={group.id}
+                onClick={() => isTarget && moveSelectedToGroup(group.id)}
+                style={{
+                  background: bg,
+                  border: `2px solid ${borderColor}`,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  cursor: isTarget ? 'pointer' : 'default',
+                  boxShadow: isTarget ? `0 0 0 4px ${glowColor}, 0 8px 24px rgba(99,102,241,0.15)` : isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'all 0.2s',
+                  transform: isTarget ? 'translateY(-2px)' : 'none',
+                }}
+              >
+                {/* Group header */}
+                <div style={{
+                  background: isTarget
+                    ? 'linear-gradient(135deg, #4f46e5, #6366f1)'
+                    : isSource
+                      ? 'linear-gradient(135deg, #6366f1, #818cf8)'
+                      : groupHdr,
+                  padding: '12px 16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  transition: 'background 0.2s',
+                }}>
+                  <div>
+                    <Text style={{ color: '#fff', fontWeight: 800, fontSize: 15, display: 'block', lineHeight: 1.2 }}>
+                      {group.name}
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>
+                      {group.teams.length} فريق
+                      {isTarget && <span style={{ color: '#c7d2fe', marginRight: 6 }}>← انقر للنقل هنا</span>}
+                    </Text>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteGroup(group.id); }}
+                    style={{
+                      width: 28, height: 28, borderRadius: 7,
+                      background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+                      color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <DeleteOutlined />
+                  </button>
                 </div>
-            )}
 
-            {/* ── Groups grid ── */}
-            {groups.length > 0 && (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {groups.map(group => {
-                        const isTarget = selectedTeam && selectedTeam.fromGroupId !== group.id;
+                {/* Teams list */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  {group.teams.length === 0 ? (
+                    <div
+                      onClick={() => selectedTeam && moveSelectedToGroup(group.id)}
+                      style={{
+                        padding: '28px 16px', textAlign: 'center',
+                        color: selectedTeam ? '#6366f1' : textSec,
+                        fontSize: 13, cursor: selectedTeam ? 'pointer' : 'default',
+                        transition: 'color 0.15s',
+                      }}
+                    >
+                      {selectedTeam ? '← اضغط هنا لنقل الفريق' : 'المجموعة فارغة'}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {group.teams.map((team, i) => {
+                        const isSelected = selectedTeam?.team.id === team.id;
+                        const canSwap    = !!selectedTeam && !isSelected && !!selectedTeam.fromGroupId;
+
                         return (
-                            <div key={group.id}
-                                onClick={() => selectedTeam && selectedTeam.fromGroupId !== group.id && moveSelectedToGroup(group.id)}
-                                className={`bg-white border-2 rounded-2xl overflow-hidden transition-all
-                                    ${isTarget ? 'border-indigo-400 ring-2 ring-indigo-200 cursor-pointer' : 'border-slate-200'}
-                                    ${selectedTeam && selectedTeam.fromGroupId === group.id ? 'border-indigo-300' : ''}`}>
-
-                                {/* Header */}
-                                <div className={`px-4 py-2.5 flex items-center justify-between transition-colors
-                                    ${isTarget ? 'bg-indigo-700' : 'bg-gradient-to-r from-slate-800 to-slate-700'}`}>
-                                    <div>
-                                        <h3 className="text-white font-black text-sm">{group.name}</h3>
-                                        <p className="text-slate-400 text-[11px]">{group.teams.length} فريق
-                                            {isTarget && <span className="text-indigo-300 mr-1">← انقر لنقل الفريق هنا</span>}
-                                        </p>
-                                    </div>
-                                    <button onClick={e => { e.stopPropagation(); deleteGroup(group.id); }}
-                                        className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-rose-400 transition-colors">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-
-                                {/* Teams */}
-                                <div className="divide-y divide-slate-100" onClick={e => e.stopPropagation()}>
-                                    {group.teams.length === 0 ? (
-                                        <div
-                                            onClick={() => selectedTeam && moveSelectedToGroup(group.id)}
-                                            className={`text-center text-slate-400 text-xs py-6 ${selectedTeam ? 'cursor-pointer hover:bg-indigo-50 hover:text-indigo-500' : ''}`}>
-                                            {selectedTeam ? '← انقر لنقل الفريق هنا' : 'فارغة'}
-                                        </div>
-                                    ) : (
-                                        group.teams.map((team, i) => {
-                                            const isSelected = selectedTeam?.team.id === team.id;
-                                            const canSwap    = selectedTeam && !isSelected && selectedTeam.fromGroupId !== null;
-                                            return (
-                                                <div key={team.id}
-                                                    className={`flex items-center gap-2 px-3 py-2.5 transition-all
-                                                        ${isSelected ? 'bg-indigo-100 ring-1 ring-inset ring-indigo-300' : ''}
-                                                        ${canSwap ? 'cursor-pointer hover:bg-amber-50' : 'cursor-pointer hover:bg-slate-50'}`}
-                                                    onClick={() => {
-                                                        if (selectedTeam && !isSelected) {
-                                                            swapWithTeam(team, group.id);
-                                                        } else {
-                                                            selectTeam(team, group.id);
-                                                        }
-                                                    }}>
-                                                    <span className="text-[11px] font-black text-slate-400 w-4 flex-shrink-0">{i + 1}</span>
-                                                    {team.logo_url ? (
-                                                        <img src={team.logo_url} alt={team.name}
-                                                            className="w-6 h-6 rounded object-cover flex-shrink-0"
-                                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                    ) : (
-                                                        <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 flex-shrink-0">
-                                                            {team.name.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                    <span className={`text-sm font-semibold flex-1 truncate ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
-                                                        {team.name}
-                                                    </span>
-                                                    {team.seed && (
-                                                        <span className="text-[10px] bg-yellow-100 text-yellow-700 font-bold px-1.5 py-0.5 rounded flex-shrink-0">
-                                                            {team.seed}
-                                                        </span>
-                                                    )}
-                                                    {canSwap && (
-                                                        <ArrowLeftRight className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                                                    )}
-                                                    {/* زر الإزالة من المجموعة */}
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); removeFromGroup(team, group.id); }}
-                                                        className="p-0.5 text-slate-300 hover:text-rose-400 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-                                                        title="إزالة من المجموعة">
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
+                          <div
+                            key={team.id}
+                            onClick={() => selectedTeam && !isSelected ? swapWithTeam(team, group.id) : selectTeam(team, group.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '7px 10px', borderRadius: 9,
+                              background: isSelected
+                                ? (isDark ? 'rgba(99,102,241,0.2)' : '#eef2ff')
+                                : canSwap
+                                  ? (isDark ? 'rgba(217,119,6,0.1)' : '#fffbeb')
+                                  : (isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb'),
+                              border: `1px solid ${isSelected ? '#818cf8' : canSwap ? '#fcd34d' : border}`,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {/* Rank */}
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                              background: isSelected ? '#6366f1' : (isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'),
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: isSelected ? '#fff' : textSec,
+                              fontSize: 11, fontWeight: 800,
+                            }}>
+                              {i + 1}
                             </div>
-                        );
-                    })}
-                </div>
-            )}
 
-            {/* Legend */}
-            {groups.length > 0 && allTeams.length > 0 && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-500 flex flex-wrap gap-4">
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-indigo-100 border border-indigo-300 inline-block" /> انقر على فريق لتحديده</span>
-                    <span className="flex items-center gap-1.5"><ArrowLeftRight className="w-3 h-3 text-amber-400" /> انقر على فريق آخر لمبادلتهما</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-indigo-700 inline-block" /> انقر على رأس المجموعة لنقل الفريق إليها</span>
+                            <TeamAvatar team={team} size={28} />
+
+                            <Text style={{ fontSize: 13, fontWeight: 600, color: isSelected ? '#6366f1' : text, flex: 1, transition: 'color 0.15s' }} ellipsis>
+                              {team.name}
+                            </Text>
+
+                            {team.seed && (
+                              <div style={{ background: '#d97706', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                                {team.seed}
+                              </div>
+                            )}
+
+                            {canSwap && (
+                              <SwapOutlined style={{ color: '#d97706', fontSize: 12, flexShrink: 0 }} />
+                            )}
+
+                            {/* Remove button */}
+                            <div
+                              onClick={(e) => { e.stopPropagation(); removeFromGroup(team, group.id); }}
+                              style={{
+                                width: 20, height: 20, borderRadius: 5,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: isDark ? 'rgba(255,255,255,0.2)' : '#d1d5db',
+                                cursor: 'pointer', flexShrink: 0, fontSize: 10,
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              <CloseOutlined />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-            )}
+              </div>
+            );
+          })}
         </div>
-    );
+      )}
+
+      {/* ══ Legend ══ */}
+      {groups.length > 0 && allTeams.length > 0 && (
+        <div style={{
+          background: bgSoft, border: `1px solid ${border}`,
+          borderRadius: 12, padding: '12px 18px',
+          display: 'flex', gap: 20, flexWrap: 'wrap',
+          transition: 'all 0.3s',
+        }}>
+          {[
+            { color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.2)' : '#eef2ff', label: 'فريق محدد — انقر على مجموعة لنقله' },
+            { color: '#d97706', bg: isDark ? 'rgba(217,119,6,0.15)' : '#fffbeb', label: 'يمكن مبادلته مع الفريق المحدد' },
+            { color: textSec, bg: bgSoft, label: 'اضغط × لإرجاع الفريق لقائمة الانتظار' },
+          ].map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ width: 14, height: 14, borderRadius: 4, background: item.bg, border: `1.5px solid ${item.color}`, flexShrink: 0 }} />
+              <Text style={{ color: textSec, fontSize: 12 }}>{item.label}</Text>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style jsx global>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
 }

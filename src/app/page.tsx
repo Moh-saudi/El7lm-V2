@@ -7,6 +7,7 @@ import { getAiSection, AiSectionData } from '@/lib/content/ai-section-service';
 import { getOppsSection, OppsSectionData } from '@/lib/content/opps-section-service';
 import { getStoreSection, StoreSectionData } from '@/lib/content/store-section-service';
 import { supabase } from '@/lib/supabase/config';
+import { createClient } from '@supabase/supabase-js';
 import { getExploreOpportunities } from '@/lib/firebase/opportunities';
 import { Opportunity } from '@/types/opportunities';
 
@@ -356,6 +357,7 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const [adSlide, setAdSlide] = useState(0);
   const [motivationIndex, setMotivationIndex] = useState(0);
+  const [liveTournaments, setLiveTournaments] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -462,6 +464,21 @@ export default function Home() {
       }
     };
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const supabaseAnon = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    supabaseAnon
+      .from('tournament_new')
+      .select('id,slug,name,status,type,city,logo_url,start_date,end_date,max_teams')
+      .eq('is_public', true)
+      .neq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(6)
+      .then(({ data }) => setLiveTournaments(data || []));
   }, []);
 
   const activeHeroImages = (homeImages?.heroImages && homeImages.heroImages.length > 0) ? homeImages.heroImages : HERO_IMAGES;
@@ -2239,6 +2256,97 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* LIVE TOURNAMENTS FROM DB */}
+        {liveTournaments.length > 0 && (
+          <section id="live-tournaments" style={{ background: dark ? '#0a0f1e' : '#fff', padding: '72px 0' }}>
+            <div className="ct">
+              {/* Header */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'2.5rem', flexWrap:'wrap', gap:'1rem' }}>
+                <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#d97706', letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>
+                    {isRTL ? '🏆 بطولات المنصة' : '🏆 PLATFORM TOURNAMENTS'}
+                  </div>
+                  <h2 className="st" style={{ fontSize:'2rem', color: theme.text, margin:0 }}>
+                    {isRTL ? 'البطولات الجارية والقادمة' : 'Live & Upcoming Tournaments'}
+                  </h2>
+                  <p style={{ color: theme.subText, marginTop:'.5rem', fontSize:15 }}>
+                    {isRTL ? 'تصفح البطولات وسجّل فريقك أو تابع النتائج مباشرة' : 'Browse tournaments, register your team, or follow results live'}
+                  </p>
+                </div>
+                <a href="/tournaments" style={{ display:'inline-flex', alignItems:'center', gap:6, color:'#d97706', fontWeight:700, fontSize:14, textDecoration:'none', flexShrink:0, border:'1.5px solid #d97706', borderRadius:10, padding:'9px 18px', transition:'background 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(217,119,6,0.08)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'}>
+                  {isRTL ? 'عرض الكل' : 'View All'}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+
+              {/* Cards grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16 }}>
+                {liveTournaments.map((t: any) => {
+                  const statusCfg: Record<string,{lbl:string;color:string}> = {
+                    open:      { lbl: isRTL ? 'مفتوح للتسجيل' : 'Open',      color:'#16a34a' },
+                    ongoing:   { lbl: isRTL ? 'جارٍ الآن'     : 'Ongoing',   color:'#2563eb' },
+                    closed:    { lbl: isRTL ? 'مغلق'           : 'Closed',    color:'#64748b' },
+                    completed: { lbl: isRTL ? 'منتهي'          : 'Completed', color:'#8b5cf6' },
+                    cancelled: { lbl: isRTL ? 'ملغى'           : 'Cancelled', color:'#ef4444' },
+                  };
+                  const cfg = statusCfg[t.status] || statusCfg.closed;
+                  const typeLbl: Record<string,string> = { knockout: isRTL?'كأس إقصائي':'Knockout', league: isRTL?'دوري':'League', groups_knockout: isRTL?'مجموعات':'Groups' };
+
+                  return (
+                    <a key={t.id} href={`/tournaments/${t.slug}`} style={{ textDecoration:'none', display:'block', background: dark ? '#131929' : '#f8fafc', border: `1px solid ${dark?'rgba(255,255,255,0.07)':'#e2e8f0'}`, borderRadius:16, overflow:'hidden', transition:'transform 0.2s, box-shadow 0.2s', cursor:'pointer' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform='translateY(-4px)'; (e.currentTarget as HTMLAnchorElement).style.boxShadow='0 12px 32px rgba(0,0,0,0.15)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform='none'; (e.currentTarget as HTMLAnchorElement).style.boxShadow='none'; }}>
+
+                      {/* Top colored bar */}
+                      <div style={{ height:4, background:`linear-gradient(90deg,#d97706,${cfg.color})` }} />
+
+                      <div style={{ padding:'16px 16px 14px' }}>
+                        {/* Logo + name */}
+                        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                          <div style={{ width:44, height:44, borderRadius:12, overflow:'hidden', background: dark?'rgba(255,255,255,0.06)':'#e2e8f0', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>
+                            {t.logo_url
+                              ? <img src={t.logo_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                              : '🏆'}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:14, fontWeight:800, color: dark?'#e8eaf0':'#0f172a', lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</div>
+                            {t.city && <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>📍 {t.city}</div>}
+                          </div>
+                        </div>
+
+                        {/* Meta row */}
+                        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+                          <span style={{ fontSize:11, fontWeight:700, color:cfg.color, background:`${cfg.color}18`, border:`1px solid ${cfg.color}30`, borderRadius:6, padding:'2px 8px' }}>{cfg.lbl}</span>
+                          {t.type && <span style={{ fontSize:11, fontWeight:600, color: dark?'#94a3b8':'#64748b', background: dark?'rgba(255,255,255,0.06)':'#e2e8f0', borderRadius:6, padding:'2px 8px' }}>{typeLbl[t.type] || t.type}</span>}
+                          {t.max_teams && <span style={{ fontSize:11, color:'#64748b', borderRadius:6, padding:'2px 8px', background: dark?'rgba(255,255,255,0.04)':'#f1f5f9' }}>👥 {t.max_teams} {isRTL?'فريق':'teams'}</span>}
+                        </div>
+
+                        {/* Dates */}
+                        {(t.start_date || t.end_date) && (
+                          <div style={{ fontSize:12, color:'#64748b', display:'flex', alignItems:'center', gap:4 }}>
+                            📅 {t.start_date ? new Date(t.start_date).toLocaleDateString(isRTL?'ar-SA':'en-US',{month:'short',day:'numeric'}) : ''}
+                            {t.start_date && t.end_date && ' — '}
+                            {t.end_date ? new Date(t.end_date).toLocaleDateString(isRTL?'ar-SA':'en-US',{month:'short',day:'numeric',year:'numeric'}) : ''}
+                          </div>
+                        )}
+
+                        {/* CTA */}
+                        <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${dark?'rgba(255,255,255,0.05)':'#f1f5f9'}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <span style={{ fontSize:12, color:'#d97706', fontWeight:700 }}>
+                            {t.status === 'open' ? (isRTL?'سجّل الآن →':'Register →') : (isRTL?'عرض التفاصيل →':'View Details →')}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* TOURNAMENTS */}
         <section id="tournaments" style={{background: dark ? '#080d20' : '#f1f5f9'}}>

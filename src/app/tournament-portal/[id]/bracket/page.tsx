@@ -1,246 +1,161 @@
 'use client';
+import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, Trophy, ChevronRight } from 'lucide-react';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Category = { id: string; name: string; type: string };
-type Team = { id: string; name: string; logo_url: string | null };
-type BracketMatch = {
-    id: string;
-    round: string;
-    match_number: number | null;
-    home_team_id: string | null;
-    away_team_id: string | null;
-    home_score: number | null;
-    away_score: number | null;
-    status: string;
-    match_date: string | null;
-    home_team?: Team | null;
-    away_team?: Team | null;
-};
+type Cat   = { id:string; name:string; type:string };
+type Team  = { id:string; name:string; logo_url:string|null };
+type BM    = { id:string; round:string; match_number:number|null; home_team_id:string|null; away_team_id:string|null; home_score:number|null; away_score:number|null; status:string; match_date:string|null; home_team?:Team|null; away_team?:Team|null };
 
-// Round display order and labels
-const ROUND_ORDER = ['R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F', '3rd'];
-const ROUND_LABELS: Record<string, string> = {
-    R128: 'دور الـ128',
-    R64:  'دور الـ64',
-    R32:  'دور الـ32',
-    R16:  'دور الـ16',
-    QF:   'ربع النهائي',
-    SF:   'نصف النهائي',
-    F:    'النهائي',
-    '3rd':'نهائي المركز الثالث',
-};
+const RO  = ['R128','R64','R32','R16','QF','SF','F','3rd'];
+const RL: Record<string,string> = { R128:'دور الـ128',R64:'دور الـ64',R32:'دور الـ32',R16:'دور الـ16',QF:'ربع النهائي',SF:'نصف النهائي',F:'النهائي','3rd':'المركز الثالث' };
 
 export default function BracketPage() {
-    const { id } = useParams<{ id: string }>();
-    const [categories,  setCategories]  = useState<Category[]>([]);
-    const [selectedCat, setSelectedCat] = useState('');
-    const [matches,     setMatches]     = useState<BracketMatch[]>([]);
-    const [loading,     setLoading]     = useState(true);
+  const { id }     = useParams<{ id:string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
 
-    const supabase = createPortalClient();
+  const [cats,   setCats]   = useState<Cat[]>([]);
+  const [selCat, setSelCat] = useState('');
+  const [matches,setMatches]= useState<BM[]>([]);
+  const [loading,setLoading]= useState(true);
+  const supabase = createPortalClient();
 
-    useEffect(() => {
-        (async () => {
-            const { data: cats } = await supabase
-                .from('tournament_categories')
-                .select('id, name, type')
-                .eq('tournament_id', id)
-                .in('type', ['knockout', 'groups_knockout'])
-                .order('sort_order');
-            setCategories(cats || []);
-            if (cats && cats.length > 0) setSelectedCat(cats[0].id);
-            setLoading(false);
-        })();
-    }, [id]);
+  useEffect(()=>{
+    (async()=>{
+      const { data } = await supabase.from('tournament_categories').select('id,name,type').eq('tournament_id',id).in('type',['knockout','groups_knockout']).order('sort_order');
+      setCats(data||[]);
+      if (data?.length) setSelCat(data[0].id);
+      setLoading(false);
+    })();
+  },[id]);
 
-    const loadMatches = useCallback(async () => {
-        if (!selectedCat) return;
-        const { data } = await supabase
-            .from('tournament_matches')
-            .select(`
-                id, round, match_number, home_team_id, away_team_id,
-                home_score, away_score, status, match_date,
-                home_team:tournament_teams!home_team_id(id, name, logo_url),
-                away_team:tournament_teams!away_team_id(id, name, logo_url)
-            `)
-            .eq('tournament_id', id)
-            .eq('category_id', selectedCat)
-            .in('round', ROUND_ORDER)
-            .order('match_number', { ascending: true });
-        setMatches((data as any) || []);
-    }, [selectedCat, id]);
+  const load = useCallback(async()=>{
+    if (!selCat) return;
+    const { data } = await supabase.from('tournament_matches').select('id,round,match_number,home_team_id,away_team_id,home_score,away_score,status,match_date,home_team:tournament_teams!home_team_id(id,name,logo_url),away_team:tournament_teams!away_team_id(id,name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).in('round',RO).order('match_number',{ascending:true});
+    setMatches((data as any)||[]);
+  },[selCat,id]);
 
-    useEffect(() => { loadMatches(); }, [loadMatches]);
+  useEffect(()=>{ load(); },[load]);
 
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
+  if (loading) return <Loader isDark={isDark} />;
+
+  const byRound: Record<string,BM[]> = {};
+  for (const m of matches) (byRound[m.round]=byRound[m.round]||[]).push(m);
+  const main   = RO.filter(r=>r!=='3rd'&&byRound[r]?.length);
+  const third  = byRound['3rd']||[];
+  const final  = byRound['F']?.[0];
+  const champ  = final?.status==='completed'
+    ? ((final.home_score??-1)>(final.away_score??-1)?final.home_team:(final.away_score??-1)>(final.home_score??-1)?final.away_team:null)
+    : null;
+
+  if (cats.length===0) return (
+    <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:18, padding:'60px 24px', textAlign:'center' }}>
+      <div style={{ fontSize:40, marginBottom:14 }}>🏆</div>
+      <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد فئات إقصائية</div>
+      <div style={{ fontSize:13, color:S.text2 }}>أضف فئة من نوع «إقصائي» أو «مجموعات + إقصاء» في الإعداد</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* Category tabs */}
+      {cats.length>1 && (
+        <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'12px 16px' }}>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {cats.map(c=>(
+              <button key={c.id} onClick={()=>setSelCat(c.id)} className={`sp-cat-tab${selCat===c.id?' active':''}`}>{c.name}</button>
+            ))}
+          </div>
         </div>
-    );
+      )}
 
-    // Group matches by round
-    const byRound: Record<string, BracketMatch[]> = {};
-    for (const m of matches) {
-        const r = m.round || 'other';
-        if (!byRound[r]) byRound[r] = [];
-        byRound[r].push(m);
-    }
-
-    const rounds = ROUND_ORDER.filter(r => byRound[r] && byRound[r].length > 0);
-    // Separate 3rd place
-    const thirdPlace = byRound['3rd'] || [];
-    const mainRounds = rounds.filter(r => r !== '3rd');
-
-    const currentCat = categories.find(c => c.id === selectedCat);
-
-    if (categories.length === 0) return (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center" dir="rtl">
-            <Trophy className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-            <p className="font-bold text-amber-800 text-sm">لا توجد فئات إقصائية</p>
-            <p className="text-xs text-amber-600 mt-1">أضف فئة من نوع «إقصائي» أو «مجموعات + إقصاء» في الإعدادات</p>
-        </div>
-    );
-
-    return (
-        <div className="space-y-5" dir="rtl">
-
-            {/* Category tabs */}
-            {categories.length > 1 && (
-                <div className="flex gap-2 flex-wrap">
-                    {categories.map(c => (
-                        <button key={c.id} onClick={() => setSelectedCat(c.id)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all
-                                ${selectedCat === c.id ? 'bg-yellow-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-300'}`}>
-                            {c.name}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* Header */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-yellow-500" />
+      {matches.length===0
+        ? <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:16, padding:'48px 24px', textAlign:'center' }}>
+            <div style={{ fontSize:34, marginBottom:12 }}>🌳</div>
+            <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد مباريات إقصائية</div>
+            <div style={{ fontSize:13, color:S.text2 }}>ولّد الجدول من تبويب «الجدول» ثم ارجع هنا</div>
+          </div>
+        : <>
+            {/* Champion */}
+            {champ && (
+              <div style={{ background:'linear-gradient(135deg,#78350f,#d97706,#fbbf24)', borderRadius:20, padding:'22px 28px', display:'flex', alignItems:'center', gap:18, boxShadow:'0 8px 32px rgba(217,119,6,0.4)' }}>
+                <span style={{ fontSize:40 }}>🏆</span>
+                <LogoImg name={champ.name} logo={champ.logo_url} size={52} />
                 <div>
-                    <p className="font-bold text-slate-800 text-sm">{currentCat?.name}</p>
-                    <p className="text-xs text-slate-400">شجرة الإقصاء — {matches.length} مباراة</p>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600, marginBottom:4 }}>بطل البطولة</div>
+                  <div style={{ fontSize:24, fontWeight:900, color:'#fff' }}>{champ.name}</div>
                 </div>
-            </div>
+              </div>
+            )}
 
-            {matches.length === 0 ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-sm">
-                    لا توجد مباريات إقصائية بعد — أضف مباريات من صفحة «المباريات» واختر جولة إقصائية (QF, SF, F…)
-                </div>
-            ) : (
-                <>
-                    {/* Bracket: horizontal scroll */}
-                    <div className="overflow-x-auto pb-4">
-                        <div className="flex gap-4 min-w-max" style={{ direction: 'ltr' }}>
-                            {mainRounds.map((round, ri) => (
-                                <div key={round} className="flex flex-col gap-3" style={{ width: 220 }}>
-                                    {/* Round header */}
-                                    <div className="bg-slate-800 text-white text-center rounded-xl py-2 px-3">
-                                        <p className="font-black text-xs">{ROUND_LABELS[round] || round}</p>
-                                        <p className="text-[10px] text-slate-400">{byRound[round].length} مباراة</p>
-                                    </div>
-
-                                    {/* Matches in this round */}
-                                    <div className="flex flex-col gap-3">
-                                        {byRound[round].map(m => (
-                                            <BracketCard key={m.id} match={m} isFinal={round === 'F'} />
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+            {/* Bracket scroll */}
+            <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+              <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, background:S.surface2 }}>
+                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>🌳 شجرة الإقصاء</span>
+                <span style={{ fontSize:12, color:S.text2, marginRight:8 }}>— {matches.length} مباراة</span>
+              </div>
+              <div style={{ overflowX:'auto', padding:'20px 16px' }} className="sp-scroll">
+                <div dir="ltr" style={{ display:'flex', gap:20, minWidth:'max-content' }}>
+                  {main.map(round=>(
+                    <div key={round} style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      <div style={{ textAlign:'center', padding:'8px 14px', borderRadius:10, background:round==='F'?'linear-gradient(135deg,#78350f,#d97706)':round==='SF'?'#2e1065':S.surface3 }}>
+                        <div style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{RL[round]||round}</div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>{byRound[round].length} م</div>
+                      </div>
+                      {byRound[round].map(m=>(
+                        <BracketCard key={m.id} m={m} S={S} isFinal={round==='F'} />
+                      ))}
                     </div>
-
-                    {/* 3rd place separately */}
-                    {thirdPlace.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                            <div className="bg-gradient-to-r from-amber-700 to-amber-600 px-4 py-2.5">
-                                <p className="text-white font-black text-sm">نهائي المركز الثالث</p>
-                            </div>
-                            <div className="p-4 grid sm:grid-cols-2 gap-3">
-                                {thirdPlace.map(m => (
-                                    <BracketCard key={m.id} match={m} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Champion banner */}
-                    {byRound['F'] && byRound['F'].length > 0 && (() => {
-                        const final = byRound['F'][0];
-                        const hs = final.home_score ?? -1;
-                        const as_ = final.away_score ?? -1;
-                        const champion = final.status === 'finished'
-                            ? (hs > as_ ? final.home_team : as_ > hs ? final.away_team : null)
-                            : null;
-                        if (!champion) return null;
-                        return (
-                            <div className="bg-gradient-to-r from-yellow-400 to-amber-500 rounded-2xl p-5 text-center shadow-lg">
-                                <Trophy className="w-8 h-8 text-white mx-auto mb-2" />
-                                <p className="text-white font-black text-lg">{champion.name}</p>
-                                <p className="text-yellow-100 text-sm mt-1">بطل البطولة</p>
-                            </div>
-                        );
-                    })()}
-                </>
-            )}
-        </div>
-    );
-}
-
-// ── Single bracket match card ─────────────────────────────────
-function BracketCard({ match, isFinal = false }: { match: BracketMatch; isFinal?: boolean }) {
-    const hs = match.home_score;
-    const as_ = match.away_score;
-    const finished = match.status === 'finished';
-    const homeWon = finished && hs !== null && as_ !== null && hs > as_;
-    const awayWon = finished && hs !== null && as_ !== null && as_ > hs;
-
-    return (
-        <div className={`border rounded-xl overflow-hidden text-[11px] ${isFinal ? 'border-yellow-400 shadow-yellow-100 shadow-md' : 'border-slate-200'}`}>
-            {/* Home team */}
-            <div className={`flex items-center gap-2 px-3 py-2 ${homeWon ? 'bg-emerald-50' : 'bg-white'} border-b border-slate-100`}>
-                <TeamAvatar team={match.home_team} />
-                <span className={`flex-1 font-semibold truncate ${homeWon ? 'text-emerald-700' : 'text-slate-800'}`}>
-                    {match.home_team?.name || 'TBD'}
-                </span>
-                <span className={`font-black text-sm w-5 text-center ${homeWon ? 'text-emerald-700' : 'text-slate-600'}`}>
-                    {hs ?? '—'}
-                </span>
-            </div>
-            {/* Away team */}
-            <div className={`flex items-center gap-2 px-3 py-2 ${awayWon ? 'bg-emerald-50' : 'bg-white'}`}>
-                <TeamAvatar team={match.away_team} />
-                <span className={`flex-1 font-semibold truncate ${awayWon ? 'text-emerald-700' : 'text-slate-800'}`}>
-                    {match.away_team?.name || 'TBD'}
-                </span>
-                <span className={`font-black text-sm w-5 text-center ${awayWon ? 'text-emerald-700' : 'text-slate-600'}`}>
-                    {as_ ?? '—'}
-                </span>
-            </div>
-            {/* Match date */}
-            {match.match_date && (
-                <div className="bg-slate-50 px-3 py-1.5 text-[10px] text-slate-400 text-center border-t border-slate-100">
-                    {new Date(match.match_date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  ))}
                 </div>
+              </div>
+            </div>
+
+            {/* 3rd place */}
+            {third.length>0 && (
+              <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
+                <div style={{ padding:'10px 18px', borderBottom:`1px solid ${S.border}`, background:'linear-gradient(90deg,#7c2d12,#ea580c)' }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:'#fff' }}>🥉 نهائي المركز الثالث</span>
+                </div>
+                <div style={{ padding:16, display:'flex', gap:12, flexWrap:'wrap' }}>
+                  {third.map(m=><BracketCard key={m.id} m={m} S={S} />)}
+                </div>
+              </div>
             )}
-        </div>
-    );
+          </>
+      }
+    </div>
+  );
 }
 
-function TeamAvatar({ team }: { team?: Team | null }) {
-    if (!team) return <div className="w-5 h-5 rounded bg-slate-100" />;
-    if (team.logo_url) return <img src={team.logo_url} alt={team.name} className="w-5 h-5 rounded object-cover" />;
-    return (
-        <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500">
-            {team.name.charAt(0)}
-        </div>
-    );
+function BracketCard({ m, S, isFinal=false }: { m:BM; S:any; isFinal?:boolean }) {
+  const fin=m.status==='completed', hs=m.home_score, as_=m.away_score;
+  const hw=fin&&hs!==null&&as_!==null&&hs>as_, aw=fin&&hs!==null&&as_!==null&&as_>hs;
+  const Row=({ t, won, score }:{ t?:Team|null; won:boolean; score:number|null })=>(
+    <div className={`sp-bracket-team${won?' winner':''}`} style={{ background:won?(S===L?'rgba(22,163,74,0.08)':'rgba(22,163,74,0.1)'):'transparent' }}>
+      <LogoImg name={t?.name||'TBD'} logo={t?.logo_url} size={22} />
+      <span style={{ flex:1, fontSize:12, fontWeight:won?700:500, color:t?S.text:S.text2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t?.name||'TBD'}</span>
+      <span className={`sp-bracket-score${won?' winner':''}`}>{score??'—'}</span>
+    </div>
+  );
+  return (
+    <div className={`sp-bracket-card${isFinal?' final':''}`} style={{ background:S.surface, borderColor:isFinal?'#f59e0b':S.border }}>
+      <Row t={m.home_team} won={hw} score={hs} />
+      <Row t={m.away_team} won={aw} score={as_} />
+      {m.match_date&&<div style={{ padding:'4px 10px', background:S.surface2, fontSize:10, color:S.text2, textAlign:'center' }}>{new Date(m.match_date).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</div>}
+    </div>
+  );
 }
+
+// LogoImg = TeamLogo (imported at top)
+function Loader({ isDark }: { isDark:boolean }) {
+  return <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300 }}><div style={{ width:36,height:36,borderRadius:'50%',border:`3px solid ${isDark?'rgba(255,255,255,0.1)':'#e2e8f0'}`,borderTopColor:'#d97706',animation:'spin 0.7s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+}
+
+const D = { surface:'#131929', surface2:'#1a2235', surface3:'#1e293b', border:'rgba(255,255,255,0.07)', text:'#e8eaf0', text2:'#64748b' };
+const L = { surface:'#ffffff', surface2:'#f8fafc', surface3:'#f1f5f9', border:'#e2e8f0', text:'#0f172a', text2:'#64748b' };

@@ -1,350 +1,355 @@
 'use client';
+import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, CalendarDays, MapPin, Clock, Filter, ChevronDown } from 'lucide-react';
+import { DatePicker } from 'antd';
+import dayjs from 'dayjs';
+import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { usePortalTheme } from '../../_components/PortalShell';
 
-type Category = { id: string; name: string };
-type Match = {
-    id: string;
-    match_date: string | null;
-    venue: string | null;
-    round: string | null;
-    status: string;
-    home_score: number | null;
-    away_score: number | null;
-    home_team: { name: string; logo_url: string | null } | null;
-    away_team: { name: string; logo_url: string | null } | null;
-    category: { name: string } | null;
+type Category = { id: string; name: string; type: string; group_count: number | null };
+type Team     = { id: string; name: string; logo_url: string | null };
+type Group    = { id: string; name: string };
+type Match    = {
+  id: string; round: string; match_number: number | null;
+  home_team_id: string | null; away_team_id: string | null;
+  home_score: number | null; away_score: number | null;
+  match_date: string | null; venue: string | null; referee_name: string | null;
+  status: string; group_id: string | null; category_id: string | null;
 };
+type Draft = { match_date: string; venue: string; referee_name: string; home_team_id: string; away_team_id: string };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    scheduled: { label: 'مجدولة',  color: 'bg-blue-100 text-blue-700' },
-    ongoing:   { label: 'جارية',   color: 'bg-emerald-100 text-emerald-700' },
-    finished:  { label: 'انتهت',   color: 'bg-slate-100 text-slate-600' },
-    postponed: { label: 'مؤجلة',   color: 'bg-amber-100 text-amber-700' },
-    cancelled: { label: 'ملغاة',   color: 'bg-rose-100 text-rose-600' },
+const ROUND_LBL: Record<string,string> = {
+  league:'الدوري', group_stage:'دور المجموعات', R128:'دور الـ128', R64:'دور الـ64',
+  R32:'دور الـ32', R16:'دور الـ16', QF:'ربع النهائي', SF:'نصف النهائي', F:'النهائي', '3rd':'المركز الثالث',
 };
+const ROUND_ORDER = ['league','group_stage','R128','R64','R32','R16','QF','SF','F','3rd'];
+const ROUND_COLOR: Record<string,string> = { F:'#f59e0b', SF:'#8b5cf6', QF:'#3b82f6', '3rd':'#f97316', R16:'#06b6d4', group_stage:'#16a34a', league:'#16a34a' };
+
+const TYPE_LBL: Record<string,string> = { league:'دوري', knockout:'إقصائي', groups_knockout:'مجموعات + إقصاء', groups:'مجموعات' };
 
 export default function SchedulePage() {
-    const { id } = useParams<{ id: string }>();
-    const [categories,  setCategories]  = useState<Category[]>([]);
-    const [matches,     setMatches]     = useState<Match[]>([]);
-    const [loading,     setLoading]     = useState(true);
-    const [filterCat,   setFilterCat]   = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [viewMode,    setViewMode]    = useState<'list' | 'calendar'>('list');
+  const { id }    = useParams<{ id: string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
 
-    const supabase = createPortalClient();
+  const [categories,  setCategories]  = useState<Category[]>([]);
+  const [selectedCat, setSelectedCat] = useState('');
+  const [teams,       setTeams]       = useState<Team[]>([]);
+  const [groups,      setGroups]      = useState<Group[]>([]);
+  const [matches,     setMatches]     = useState<Match[]>([]);
+  const [referees,    setReferees]    = useState<{id:string;name:string;level:string|null}[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [generating,  setGenerating]  = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [drafts,      setDrafts]      = useState<Record<string, Partial<Draft>>>({});
+  const [editing,     setEditing]     = useState<Set<string>>(new Set());
+  const [confirmGen,  setConfirmGen]  = useState(false);
 
-    useEffect(() => {
-        (async () => {
-            const { data: cats } = await supabase
-                .from('tournament_categories')
-                .select('id, name')
-                .eq('tournament_id', id)
-                .order('sort_order');
-            setCategories(cats || []);
-            setLoading(false);
-        })();
-    }, [id]);
+  const supabase = createPortalClient();
 
-    const loadMatches = useCallback(async () => {
-        const query = supabase
-            .from('tournament_matches')
-            .select(`
-                id, match_date, venue, round, status, home_score, away_score,
-                home_team:tournament_teams!home_team_id(name, logo_url),
-                away_team:tournament_teams!away_team_id(name, logo_url),
-                category:tournament_categories!category_id(name)
-            `)
-            .eq('tournament_id', id)
-            .order('match_date', { ascending: true });
+  const loadAll = useCallback(async () => {
+    if (!selectedCat) return;
+    const [tR, gR, mR] = await Promise.all([
+      supabase.from('tournament_teams').select('id,name,logo_url').eq('tournament_id', id).eq('status','approved').order('name'),
+      supabase.from('tournament_groups').select('id,name').eq('tournament_id', id).eq('category_id', selectedCat).order('sort_order'),
+      supabase.from('tournament_matches').select('*').eq('tournament_id', id).eq('category_id', selectedCat).order('match_number', { ascending: true }),
+    ]);
+    setTeams(tR.data || []);
+    setGroups(gR.data || []);
+    setMatches(mR.data || []);
+    setDrafts({}); setEditing(new Set());
+  }, [selectedCat, id]);
 
-        if (filterCat !== 'all') query.eq('category_id', filterCat);
-        if (filterStatus !== 'all') query.eq('status', filterStatus);
+  useEffect(() => {
+    (async () => {
+      const [catsRes, refsRes] = await Promise.all([
+        supabase.from('tournament_categories').select('id,name,type,group_count').eq('tournament_id', id).order('sort_order'),
+        fetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r => r.json()),
+      ]);
+      setCategories(catsRes.data || []);
+      if (catsRes.data?.length) setSelectedCat(catsRes.data[0].id);
+      setReferees(refsRes.referees || []);
+      setLoading(false);
+    })();
+  }, [id]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
-        const { data } = await query;
-        setMatches((data as any) || []);
-    }, [id, filterCat, filterStatus]);
+  const generate = async () => {
+    setConfirmGen(false); setGenerating(true);
+    try {
+      const res = await fetch('/api/tournament-portal/generate-fixtures', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selectedCat }) });
+      const d = await res.json();
+      if (!res.ok) { toast.error(d.error); return; }
+      toast.success(`تم توليد ${d.generated} مباراة`);
+      await loadAll();
+    } catch (e: any) { toast.error(e.message); }
+    setGenerating(false);
+  };
 
-    useEffect(() => { loadMatches(); }, [loadMatches]);
+  const startEdit = (m: Match) => {
+    setEditing(prev => new Set(prev).add(m.id));
+    setDrafts(prev => ({ ...prev, [m.id]: { match_date:m.match_date||'', venue:m.venue||'', referee_name:m.referee_name||'', home_team_id:m.home_team_id||'', away_team_id:m.away_team_id||'' } }));
+  };
+  const cancelEdit = (mid: string) => {
+    setEditing(prev => { const s=new Set(prev); s.delete(mid); return s; });
+    setDrafts(prev => { const d={...prev}; delete d[mid]; return d; });
+  };
+  const patch = (mid: string, k: keyof Draft, v: string) =>
+    setDrafts(prev => ({ ...prev, [mid]: { ...prev[mid], [k]:v } }));
 
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
+  const saveAll = async () => {
+    const dirty = Object.entries(drafts).filter(([mid]) => editing.has(mid));
+    if (!dirty.length) { toast.info('لا تغييرات'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/tournament-portal/save-schedule', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ matches: dirty.map(([mid,d]) => ({ id:mid, ...d })) }) });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error); return; }
+      toast.success(`تم حفظ ${data.updated} مباراة`);
+      await loadAll();
+    } catch (e: any) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  const tName = (tid: string|null) => teams.find(t=>t.id===tid)?.name || 'TBD';
+  const tLogo = (tid: string|null) => teams.find(t=>t.id===tid)?.logo_url;
+  const gName = (gid: string|null) => groups.find(g=>g.id===gid)?.name || '';
+  const teamOpts = teams.map(t => ({ value:t.id, label:t.name }));
+  const currentCat = categories.find(c=>c.id===selectedCat);
+  const dirtyCount = Object.keys(drafts).filter(mid=>editing.has(mid)).length;
+
+  const grouped = useMemo(() => {
+    const map: Record<string, Match[]> = {};
+    for (const m of matches) (map[m.round||'other']=map[m.round||'other']||[]).push(m);
+    return map;
+  }, [matches]);
+  const sortedRounds = ROUND_ORDER.filter(r => grouped[r]);
+
+  if (loading) return <Loader isDark={isDark} />;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+      {/* ── Top bar ── */}
+      <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'13px 18px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+        {/* Category tabs */}
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', flex:1 }}>
+          {categories.map(c => (
+            <button key={c.id} onClick={()=>setSelectedCat(c.id)} className={`sp-cat-tab${selectedCat===c.id?' active':''}`}>{c.name}</button>
+          ))}
         </div>
-    );
+        {/* Actions */}
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {dirtyCount > 0 && (
+            <button onClick={saveAll} disabled={saving} className="sp-btn sp-btn-success sp-btn-sm">
+              💾 حفظ ({dirtyCount})
+            </button>
+          )}
+          {confirmGen
+            ? <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                <span style={{ fontSize:12, color:S.text2 }}>{matches.length > 0 ? 'سيتم حذف المباريات غير المنتهية' : 'توليد الجدول؟'}</span>
+                <button onClick={generate} disabled={generating} className="sp-btn sp-btn-danger sp-btn-sm">نعم</button>
+                <button onClick={()=>setConfirmGen(false)} className="sp-btn sp-btn-ghost sp-btn-sm">لا</button>
+              </div>
+            : <button onClick={()=>setConfirmGen(true)} disabled={generating} className={`sp-btn sp-btn-sm ${matches.length===0?'sp-btn-primary':'sp-btn-ghost'}`}>
+                ⚡ {generating ? 'جاري التوليد...' : matches.length===0 ? 'توليد الجدول' : 'إعادة التوليد'}
+              </button>
+          }
+          <button onClick={loadAll} className="sp-btn sp-btn-ghost sp-btn-icon" style={{ fontSize:13 }}>↻</button>
+          <button onClick={()=>window.open(`/tournament-portal/${id}/print?type=schedule`,'_blank')} className="sp-btn sp-btn-ghost sp-btn-sm" title="طباعة الجدول">🖨️</button>
+        </div>
+      </div>
 
-    // Group matches by date
-    const byDate: Record<string, Match[]> = {};
-    for (const m of matches) {
-        const dateKey = m.match_date
-            ? new Date(m.match_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-            : 'غير محدد';
-        if (!byDate[dateKey]) byDate[dateKey] = [];
-        byDate[dateKey].push(m);
-    }
-
-    const dateGroups = Object.entries(byDate);
-    const upcoming = matches.filter(m => m.status === 'scheduled').length;
-    const finished  = matches.filter(m => m.status === 'finished').length;
-
-    return (
-        <div className="space-y-5" dir="rtl">
-
-            {/* Summary bar */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
-                    <p className="text-2xl font-black text-slate-900">{matches.length}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">إجمالي المباريات</p>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
-                    <p className="text-2xl font-black text-blue-600">{upcoming}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">مجدولة</p>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
-                    <p className="text-2xl font-black text-emerald-600">{finished}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">منتهية</p>
-                </div>
+      {/* ── Stats strip ── */}
+      {matches.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="sp-grid-4col">
+          {[
+            { lbl:'إجمالي المباريات', v:matches.length,                            color:S.text   },
+            { lbl:'محدد التاريخ',     v:matches.filter(m=>m.match_date).length,   color:'#16a34a'},
+            { lbl:'محدد الملعب',      v:matches.filter(m=>m.venue).length,        color:'#3b82f6'},
+            { lbl:'منتهية',           v:matches.filter(m=>m.status==='completed').length, color:S.text2},
+          ].map(s => (
+            <div key={s.lbl} style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:12, padding:'12px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:22, fontWeight:900, color:s.color, lineHeight:1 }}>{s.v}</div>
+              <div style={{ fontSize:11, color:S.text2, marginTop:4 }}>{s.lbl}</div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Filters */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-                <CalendarDays className="w-4 h-4 text-slate-400" />
-
-                {/* Category filter */}
-                <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-                    className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-yellow-400 bg-white">
-                    <option value="all">كل الفئات</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                {/* Status filter */}
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-yellow-400 bg-white">
-                    <option value="all">كل الحالات</option>
-                    {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
-                    ))}
-                </select>
-
-                {/* View mode */}
-                <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mr-auto">
-                    <button onClick={() => setViewMode('list')}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                        قائمة
-                    </button>
-                    <button onClick={() => setViewMode('calendar')}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${viewMode === 'calendar' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                        تقويم
-                    </button>
-                </div>
-            </div>
-
-            {/* No matches */}
-            {matches.length === 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-sm">
-                    لا توجد مباريات — أضف مباريات من صفحة «المباريات»
-                </div>
+      {/* ── Empty state ── */}
+      {matches.length === 0 && (
+        <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:20, padding:'64px 24px', textAlign:'center' }}>
+          <div style={{ fontSize:44, marginBottom:16 }}>📅</div>
+          <div style={{ fontSize:17, fontWeight:700, color:S.text, marginBottom:8 }}>لم يُنشأ الجدول بعد</div>
+          <div style={{ fontSize:13, color:S.text2, marginBottom:24 }}>
+            {currentCat?.type === 'league' && 'سيُولَّد جدول الدوري — كل فريق يلعب مع كل فريق ذهاباً وإياباً'}
+            {currentCat?.type === 'knockout' && 'سيُنشأ bracket الإقصاء وتُوزَّع الفرق تلقائياً حسب التسلسل (Seed)'}
+            {(currentCat?.type === 'groups_knockout'||currentCat?.type==='groups') && (
+              <span>يجب <strong>إجراء القرعة أولاً</strong> من تبويب 🎲 القرعة حتى تُوزَّع الفرق على المجموعات، ثم ولّد الجدول</span>
             )}
-
-            {/* List view: grouped by date */}
-            {viewMode === 'list' && dateGroups.map(([date, dayMatches]) => (
-                <div key={date} className="space-y-2">
-                    {/* Date header */}
-                    <div className="flex items-center gap-3">
-                        <div className="bg-yellow-500 text-white text-[11px] font-black px-3 py-1 rounded-full">
-                            {date}
-                        </div>
-                        <div className="flex-1 h-px bg-slate-100" />
-                        <span className="text-[11px] text-slate-400">{dayMatches.length} مباراة</span>
-                    </div>
-
-                    {/* Matches on this day */}
-                    <div className="space-y-2">
-                        {dayMatches.map(m => (
-                            <ScheduleCard key={m.id} match={m} />
-                        ))}
-                    </div>
-                </div>
-            ))}
-
-            {/* Calendar view: just render a compact grid by month */}
-            {viewMode === 'calendar' && <CalendarView matches={matches} />}
+          </div>
+          <button onClick={()=>setConfirmGen(true)} className="sp-btn sp-btn-primary" style={{ fontSize:15, padding:'12px 28px', borderRadius:14 }}>
+            ⚡ توليد الجدول الآن
+          </button>
         </div>
-    );
-}
+      )}
 
-// ── Schedule match card ───────────────────────────────────────
-function ScheduleCard({ match }: { match: Match }) {
-    const cfg = STATUS_CONFIG[match.status] || STATUS_CONFIG.scheduled;
-    const time = match.match_date
-        ? new Date(match.match_date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-        : null;
-    const finished = match.status === 'finished';
-
-    return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 hover:shadow-sm transition-shadow">
-            <div className="flex items-center gap-3">
-
-                {/* Time + status */}
-                <div className="text-center w-14 flex-shrink-0">
-                    {time && <p className="text-xs font-black text-slate-700">{time}</p>}
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.color}`}>
-                        {cfg.label}
-                    </span>
-                </div>
-
-                {/* Teams */}
-                <div className="flex-1 flex items-center gap-3">
-                    {/* Home */}
-                    <div className="flex-1 flex items-center gap-2 justify-end">
-                        <span className={`text-sm font-bold truncate ${finished && (match.home_score ?? 0) > (match.away_score ?? 0) ? 'text-emerald-700' : 'text-slate-800'}`}>
-                            {match.home_team?.name || '—'}
-                        </span>
-                        {match.home_team?.logo_url ? (
-                            <img src={match.home_team.logo_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
-                        ) : (
-                            <div className="w-7 h-7 rounded bg-slate-100 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                {match.home_team?.name?.charAt(0) || '?'}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Score / VS */}
-                    <div className="flex-shrink-0 w-16 text-center">
-                        {finished ? (
-                            <div className="bg-slate-900 text-white rounded-xl px-2 py-1 inline-block">
-                                <span className="font-black text-sm tracking-wider">
-                                    {match.home_score ?? 0} - {match.away_score ?? 0}
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-slate-400 font-black text-sm">VS</span>
-                        )}
-                    </div>
-
-                    {/* Away */}
-                    <div className="flex-1 flex items-center gap-2">
-                        {match.away_team?.logo_url ? (
-                            <img src={match.away_team.logo_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
-                        ) : (
-                            <div className="w-7 h-7 rounded bg-slate-100 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                {match.away_team?.name?.charAt(0) || '?'}
-                            </div>
-                        )}
-                        <span className={`text-sm font-bold truncate ${finished && (match.away_score ?? 0) > (match.home_score ?? 0) ? 'text-emerald-700' : 'text-slate-800'}`}>
-                            {match.away_team?.name || '—'}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Footer: venue + category + round */}
-            <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-50">
-                {match.venue && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <MapPin className="w-3 h-3" /> {match.venue}
-                    </div>
-                )}
-                {match.category?.name && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
-                        {match.category.name}
-                    </span>
-                )}
-                {match.round && (
-                    <span className="text-[10px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-full">
-                        {match.round}
-                    </span>
-                )}
-            </div>
-        </div>
-    );
-}
-
-// ── Minimal calendar view ─────────────────────────────────────
-function CalendarView({ matches }: { matches: Match[] }) {
-    const [currentMonth, setCurrentMonth] = useState(() => {
-        const now = new Date();
-        return new Date(now.getFullYear(), now.getMonth(), 1);
-    });
-
-    const year  = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    // Map date string → matches
-    const dateMap: Record<string, Match[]> = {};
-    for (const m of matches) {
-        if (!m.match_date) continue;
-        const d = new Date(m.match_date);
-        if (d.getFullYear() === year && d.getMonth() === month) {
-            const key = d.getDate().toString();
-            if (!dateMap[key]) dateMap[key] = [];
-            dateMap[key].push(m);
+      {/* ── Rounds ── */}
+      {sortedRounds.map(round => {
+        const roundMatches = grouped[round];
+        const rc = ROUND_COLOR[round] || '#64748b';
+        const byGroup: Record<string, Match[]> = {};
+        if (round === 'group_stage') {
+          for (const m of roundMatches) (byGroup[m.group_id||'none']=byGroup[m.group_id||'none']||[]).push(m);
         }
-    }
 
-    const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-    const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
-    const monthName = currentMonth.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' });
-
-    const cells: (number | null)[] = [];
-    for (let i = 0; i < firstDay; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-    return (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            {/* Month nav */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <button onClick={prevMonth} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors">
-                    <ChevronDown className="w-4 h-4 rotate-90" />
-                </button>
-                <h3 className="font-black text-slate-800 text-sm">{monthName}</h3>
-                <button onClick={nextMonth} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors">
-                    <ChevronDown className="w-4 h-4 -rotate-90" />
-                </button>
+        return (
+          <div key={round}>
+            {/* Round header */}
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+              <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
+              <div style={{ padding:'5px 16px', background:`${rc}15`, border:`1px solid ${rc}35`, borderRadius:20, display:'flex', alignItems:'center', gap:8 }}>
+                {round==='F' && <span>🏆</span>}
+                <span style={{ fontSize:12, fontWeight:800, color:rc }}>{ROUND_LBL[round]||round}</span>
+                <span style={{ fontSize:10, color:`${rc}80` }}>{roundMatches.length} م</span>
+              </div>
+              <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
             </div>
 
-            {/* Day headers */}
-            <div className="grid grid-cols-7 text-center border-b border-slate-100">
-                {['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'].map(d => (
-                    <div key={d} className="py-2 text-[10px] font-bold text-slate-400">{d}</div>
-                ))}
+            <div className="sp-card sp-fade-in" style={{ background:S.surface, borderColor:S.border }}>
+              {round === 'group_stage'
+                ? Object.entries(byGroup).map(([gid, gMs]) => (
+                    <div key={gid}>
+                      <div style={{ padding:'7px 16px', background:`${S.surface2}`, borderBottom:`1px solid ${S.border}` }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'#3b82f6', background:'rgba(59,130,246,0.12)', padding:'2px 10px', borderRadius:6 }}>{gName(gid)}</span>
+                      </div>
+                      {gMs.map(m => <MatchRow key={m.id} match={m} teams={teams} teamOpts={teamOpts} referees={referees} draft={drafts[m.id]} isEditing={editing.has(m.id)} S={S} isDark={isDark} onEdit={()=>startEdit(m)} onCancel={()=>cancelEdit(m.id)} onPatch={(k,v)=>patch(m.id,k as keyof Draft,v)} />)}
+                    </div>
+                  ))
+                : roundMatches.map(m => <MatchRow key={m.id} match={m} teams={teams} teamOpts={teamOpts} referees={referees} draft={drafts[m.id]} isEditing={editing.has(m.id)} S={S} isDark={isDark} onEdit={()=>startEdit(m)} onCancel={()=>cancelEdit(m.id)} onPatch={(k,v)=>patch(m.id,k as keyof Draft,v)} />)
+              }
             </div>
-
-            {/* Days grid */}
-            <div className="grid grid-cols-7">
-                {cells.map((day, i) => {
-                    const dayMatches = day ? (dateMap[day.toString()] || []) : [];
-                    const isToday = day && new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
-                    return (
-                        <div key={i} className={`min-h-[60px] border-b border-r border-slate-50 p-1.5 ${!day ? 'bg-slate-50/50' : ''}`}>
-                            {day && (
-                                <>
-                                    <span className={`text-[11px] font-bold block w-5 h-5 flex items-center justify-center rounded-full mb-1
-                                        ${isToday ? 'bg-yellow-500 text-white' : 'text-slate-600'}`}>
-                                        {day}
-                                    </span>
-                                    <div className="space-y-0.5">
-                                        {dayMatches.slice(0, 2).map(m => (
-                                            <div key={m.id} className="bg-blue-100 text-blue-700 text-[9px] font-bold px-1 rounded truncate">
-                                                {m.home_team?.name?.split(' ')[0]} - {m.away_team?.name?.split(' ')[0]}
-                                            </div>
-                                        ))}
-                                        {dayMatches.length > 2 && (
-                                            <div className="text-[9px] text-slate-400 font-bold">+{dayMatches.length - 2} أخرى</div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
+          </div>
+        );
+      })}
+    </div>
+  );
 }
+
+// ── Match Row ─────────────────────────────────────────────────────────────────
+function MatchRow({ match, teams, teamOpts, referees, draft, isEditing, S, isDark, onEdit, onCancel, onPatch }: any) {
+  const tName = (tid: string|null) => teams.find((t: any)=>t.id===tid)?.name || 'TBD';
+  const tLogo = (tid: string|null) => teams.find((t: any)=>t.id===tid)?.logo_url;
+  const homeId = isEditing ? (draft?.home_team_id||match.home_team_id) : match.home_team_id;
+  const awayId = isEditing ? (draft?.away_team_id||match.away_team_id) : match.away_team_id;
+  const fin = match.status === 'completed';
+
+  const statusDot = ({ completed:'#16a34a', live:'#ef4444', scheduled:'#475569', postponed:'#f59e0b', cancelled:'#374151' } as any)[match.status] || '#475569';
+
+  return (
+    <div style={{ background:isEditing?(isDark?'rgba(59,130,246,0.05)':'rgba(59,130,246,0.03)'):'transparent', borderBottom:`1px solid ${S.border}`, transition:'background 0.2s' }}>
+      {/* Main row */}
+      <div style={{ display:'grid', gridTemplateColumns:'38px 1fr 100px 1fr 38px', alignItems:'center', padding:'13px 16px', gap:10 }}>
+        {/* Num + dot */}
+        <div style={{ textAlign:'center' }}>
+          <div style={{ width:7, height:7, borderRadius:'50%', background:statusDot, margin:'0 auto 4px' }} />
+          <span style={{ fontSize:10, color:S.text2 }}>#{match.match_number||'—'}</span>
+        </div>
+
+        {/* Home */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:9 }}>
+          {isEditing && !fin
+            ? <select className="sp-select" style={{ maxWidth:160, padding:'6px 10px', fontSize:12 }} value={draft?.home_team_id||match.home_team_id||''} onChange={e=>onPatch('home_team_id',e.target.value)}>
+                <option value="">المضيف...</option>
+                {teamOpts.map((t: any)=><option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            : <>
+                <span style={{ fontSize:14, fontWeight:700, color:S.text, textAlign:'right' }}>{tName(homeId)}</span>
+                <LogoImg name={tName(homeId)} logo={tLogo(homeId)} size={34} />
+              </>
+          }
+        </div>
+
+        {/* Score / Time */}
+        <div style={{ textAlign:'center' }}>
+          {fin
+            ? <div className="sp-score">{match.home_score??0} - {match.away_score??0}</div>
+            : match.match_date
+              ? <div>
+                  <div style={{ fontSize:15, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>
+                  <div style={{ fontSize:10, color:S.text2, marginTop:2 }}>{new Date(match.match_date).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</div>
+                </div>
+              : <div style={{ background:S.surface2, borderRadius:8, padding:'5px 12px', display:'inline-block' }}>
+                  <span style={{ fontWeight:700, color:S.text2 }}>vs</span>
+                </div>
+          }
+        </div>
+
+        {/* Away */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-start', gap:9 }}>
+          {isEditing && !fin
+            ? <select className="sp-select" style={{ maxWidth:160, padding:'6px 10px', fontSize:12 }} value={draft?.away_team_id||match.away_team_id||''} onChange={e=>onPatch('away_team_id',e.target.value)}>
+                <option value="">الضيف...</option>
+                {teamOpts.map((t: any)=><option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            : <>
+                <LogoImg name={tName(awayId)} logo={tLogo(awayId)} size={34} />
+                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>{tName(awayId)}</span>
+              </>
+          }
+        </div>
+
+        {/* Edit btn */}
+        {!fin && (
+          isEditing
+            ? <button onClick={onCancel} style={{ width:30, height:30, borderRadius:7, background:'transparent', border:`1px solid ${S.border}`, color:S.text2, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+            : <button onClick={onEdit} style={{ width:30, height:30, borderRadius:7, background:'transparent', border:`1px solid ${S.border}`, color:S.text2, cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center' }}>✏️</button>
+        )}
+      </div>
+
+      {/* Edit fields */}
+      {isEditing && (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px 12px', flexWrap:'wrap', borderTop:`1px solid ${S.border}` }}>
+          <DatePicker showTime={{ format:'HH:mm' }} format="YYYY-MM-DD HH:mm" size="small" style={{ width:185 }} placeholder="التاريخ والوقت"
+            value={draft?.match_date ? dayjs(draft.match_date) : null}
+            onChange={d => onPatch('match_date', d ? d.toISOString() : '')} />
+          <input className="sp-input sp-input-sm" style={{ width:150 }} placeholder="📍 الملعب" value={draft?.venue||''} onChange={e=>onPatch('venue',e.target.value)} />
+          {referees.length > 0
+            ? <select className="sp-select" style={{ width:140, fontSize:12, padding:'4px 8px' }} value={draft?.referee_name||''} onChange={e=>onPatch('referee_name',e.target.value)}>
+                <option value="">👤 اختر حكماً...</option>
+                {referees.map(r=><option key={r.id} value={r.name}>{r.name}{r.level?` · ${r.level}`:''}</option>)}
+              </select>
+            : <input className="sp-input sp-input-sm" style={{ width:130 }} placeholder="👤 الحكم" value={draft?.referee_name||''} onChange={e=>onPatch('referee_name',e.target.value)} />
+          }
+        </div>
+      )}
+
+      {/* Info bar */}
+      {!isEditing && (match.match_date||match.venue||match.referee_name) && (
+        <div style={{ padding:'7px 16px', background:S.surface2, borderTop:`1px solid ${S.border}`, display:'flex', gap:16, flexWrap:'wrap' }}>
+          {match.match_date && <span style={{ fontSize:11, color:S.text2 }}>📅 {new Date(match.match_date).toLocaleDateString('ar-SA',{weekday:'short',month:'short',day:'numeric'})} — {new Date(match.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</span>}
+          {match.venue && <span style={{ fontSize:11, color:S.text2 }}>📍 {match.venue}</span>}
+          {match.referee_name && <span style={{ fontSize:11, color:S.text2 }}>👤 {match.referee_name}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// LogoImg = TeamLogo (imported)
+
+function Loader({ isDark }: { isDark:boolean }) {
+  return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300 }}>
+      <div style={{ width:36, height:36, borderRadius:'50%', border:`3px solid ${isDark?'rgba(255,255,255,0.1)':'#e2e8f0'}`, borderTopColor:'#d97706', animation:'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+const D = { surface:'#131929', surface2:'#1a2235', border:'rgba(255,255,255,0.07)', text:'#e8eaf0', text2:'#64748b' };
+const L = { surface:'#ffffff', surface2:'#f8fafc', border:'#e2e8f0', text:'#0f172a', text2:'#64748b' };
