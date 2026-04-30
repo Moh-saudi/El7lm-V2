@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { DreamAcademyCategory, DreamAcademyCategoryId } from '@/types/dream-academy';
 import { Card } from '@/components/ui/card';
@@ -41,7 +41,7 @@ export default function AdminDreamAcademyCategoriesPage() {
       .order('id', { ascending: true });
 
     if (!error && data) {
-      const rowsRaw = data.map((d: any) => ({
+      const rowsRaw = data.map((d: DreamAcademyCategory & { _docId?: string }) => ({
         ...d,
         id: d.id,
         _docId: d.id

@@ -20,7 +20,7 @@ import {
   Shield
 } from 'lucide-react';
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { useEmployeePermissions, PermissionGuard, PermissionsInfo } from '@/hooks/useEmployeePermissions';
+import { useEmployeePermissions, PermissionGuard } from '@/hooks/useEmployeePermissions';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase/config';
@@ -69,8 +69,8 @@ interface ContactRecord {
 }
 
 export default function CustomerManagementPage() {
-  const { user, userData } = useAuth();
-  const { permissions, role, loading: permissionsLoading } = useEmployeePermissions();
+  const { userData } = useAuth();
+  const { permissions, role } = useEmployeePermissions();
   
   // إضافة console.log للتصحيح
   console.log('🔍 CustomerManagementPage - userData:', userData);
@@ -88,7 +88,7 @@ export default function CustomerManagementPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMessage, setUploadMessage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   const [showMessageTemplates, setShowMessageTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
@@ -241,21 +241,22 @@ export default function CustomerManagementPage() {
   };
 
   // Process file data
-  const processFileData = async (data: any[]) => {
+  const processFileData = async (data: unknown[]) => {
     try {
       setUploadProgress(85);
       setUploadMessage('جاري معالجة البيانات...');
       
-      const newCustomers: Omit<Customer, 'id'>[] = data.map((row: any, index: number) => {
-        const name = String(row['Contact\'s Public Display Name'] || row['Name'] || row['Name'] || `Customer ${index + 1}`);
-        const phone = String(row['Phone Number'] || row['Phone'] || row['Phone'] || '');
-        const email = String(row['Email'] || row['Email'] || '');
-        const country = String(row['Country'] || row['Country'] || '');
-        const countryCode = String(row['Country Code'] || row['Country Code'] || '');
-        const displayName = String(row['Contact\'s Public Display Name'] || row['Display Name'] || name);
-        const savedName = String(row['Saved Name'] || row['Saved Name'] || '');
-        const groupName = String(row['Group Name'] || row['Group Name'] || '');
-        const isMyContact = Boolean(row['is My Contact'] || row['Is My Contact'] || false);
+      const newCustomers: Omit<Customer, 'id'>[] = data.map((row: unknown, index: number) => {
+        const r = row as Record<string, string>;
+        const name = String(r["Contact's Public Display Name"] || r['Name'] || `Customer ${index + 1}`);
+        const phone = String(r['Phone Number'] || r['Phone'] || '');
+        const email = String(r['Email'] || '');
+        const country = String(r['Country'] || '');
+        const countryCode = String(r['Country Code'] || '');
+        const displayName = String(r["Contact's Public Display Name"] || r['Display Name'] || name);
+        const savedName = String(r['Saved Name'] || '');
+        const groupName = String(r['Group Name'] || '');
+        const isMyContact = Boolean(r['is My Contact'] || r['Is My Contact'] || false);
 
         const formattedPhone = formatPhoneNumber(phone, country, countryCode);
         
@@ -497,7 +498,7 @@ export default function CustomerManagementPage() {
 
   // Filter customers
   const filterCustomers = () => {
-    let filtered = customers.filter(customer => {
+    const filtered = customers.filter(customer => {
       if (searchTerm && !customer.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
           !customer.phone.includes(searchTerm) && 
           !(customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))) {
@@ -836,7 +837,7 @@ export default function CustomerManagementPage() {
     }
   };
 
-  const handleEditChange = (field: keyof Customer, value: any) => {
+  const handleEditChange = (field: keyof Customer, value: Customer[keyof Customer]) => {
     setEditForm(prev => ({
       ...prev,
       [field]: value
@@ -874,6 +875,7 @@ export default function CustomerManagementPage() {
   // Apply filters when criteria change
   useEffect(() => {
     filterCustomers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customers, searchTerm, filterType, filterStatus, filterContactStatus, filterPriority]);
 
   return (
@@ -1070,7 +1072,7 @@ export default function CustomerManagementPage() {
               
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-sm text-yellow-800">
-                  <strong>ملاحظة:</strong> إذا كنت لا ترى زر التعديل، تأكد من أن لديك صلاحية "تعديل العملاء" (canEditCustomers)
+                  <strong>ملاحظة:</strong> إذا كنت لا ترى زر التعديل، تأكد من أن لديك صلاحية &quot;تعديل العملاء&quot; (canEditCustomers)
                 </p>
               </div>
               
@@ -1192,7 +1194,7 @@ export default function CustomerManagementPage() {
                 <label className="block text-sm font-medium mb-2">حالة التواصل</label>
                 <select
                   value={filterContactStatus}
-                  onChange={(e) => setFilterContactStatus(e.target.value as any)}
+                  onChange={(e) => setFilterContactStatus(e.target.value as 'all' | 'not_contacted' | 'contacted' | 'interested' | 'not_interested' | 'registered')}
                   className="w-full p-2 border rounded-md"
                   aria-label="Contact Status"
                 >
@@ -1209,7 +1211,7 @@ export default function CustomerManagementPage() {
                 <label className="block text-sm font-medium mb-2">الأولوية</label>
                 <select
                   value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value as any)}
+                  onChange={(e) => setFilterPriority(e.target.value as 'all' | 'high' | 'medium' | 'low')}
                   className="w-full p-2 border rounded-md"
                   aria-label="Priority"
                 >
@@ -1224,7 +1226,7 @@ export default function CustomerManagementPage() {
                 <label className="block text-sm font-medium mb-2">نوع العميل</label>
                 <select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as any)}
+                  onChange={(e) => setFilterType(e.target.value as 'all' | 'registered' | 'potential' | 'vip')}
                   className="w-full p-2 border rounded-md"
                   aria-label="Customer Type"
                 >
@@ -1239,7 +1241,7 @@ export default function CustomerManagementPage() {
                 <label className="block text-sm font-medium mb-2">الحالة</label>
                 <select
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive' | 'pending')}
                   className="w-full p-2 border rounded-md"
                   aria-label="Customer Status"
                 >

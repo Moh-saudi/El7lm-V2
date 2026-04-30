@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Users, Globe, TrendingUp, Save, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getLandingStats, updateLandingStats, LandingStats } from '@/lib/content/stats-service';
@@ -23,7 +22,7 @@ export default function StatsManager() {
         try {
             const data = await getLandingStats();
             setStats(data);
-        } catch (error) {
+        } catch {
             toast.error('فشل تحميل الإحصائيات');
         } finally {
             setLoading(false);
@@ -35,9 +34,9 @@ export default function StatsManager() {
         try {
             await updateLandingStats(stats);
             toast.success('تم تحديث الإحصائيات بنجاح');
-        } catch (error) {
+        } catch (err) {
             toast.error('حدث خطأ أثناء الحفظ');
-            console.error(error);
+            console.error(err);
         } finally {
             setSaving(false);
         }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Plus, Save, Image as ImageIcon, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { X, Plus, Save, Image as ImageIcon, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import { getSliderItems, saveSliderItems, SliderItem } from '@/lib/content/slider-service';
@@ -23,7 +23,7 @@ export default function SliderManager() {
         try {
             const data = await getSliderItems();
             setSlides(data.length > 0 ? data : []);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load slides');
         } finally {
             setLoading(false);
@@ -49,7 +49,7 @@ export default function SliderManager() {
         toast.success('Deleted slide');
     };
 
-    const handleUpdate = (id: string, field: keyof SliderItem, value: any) => {
+    const handleUpdate = (id: string, field: keyof SliderItem, value: SliderItem[keyof SliderItem]) => {
         setSlides(slides.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
 
@@ -66,8 +66,8 @@ export default function SliderManager() {
                 handleUpdate(id, 'image', result.publicUrl);
                 toast.success('Image uploaded');
             }
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
             toast.error('Upload failed');
         } finally {
             setUploadingId(null);
@@ -79,7 +79,7 @@ export default function SliderManager() {
         try {
             await saveSliderItems(slides);
             toast.success('Changes saved successfully');
-        } catch (error) {
+        } catch {
             toast.error('Failed to save changes');
         } finally {
             setSaving(false);

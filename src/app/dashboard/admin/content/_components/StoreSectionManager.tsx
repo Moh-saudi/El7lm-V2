@@ -37,7 +37,7 @@ export default function StoreSectionManager() {
       .select('id, name, category, price, stock, image')
       .order('createdAt', { ascending: false });
 
-    setAvailableProducts((products || []).filter((item: any) => item?.id && item?.name));
+    setAvailableProducts((products || []).filter((item: ProductLite) => item?.id && item?.name));
     setData({
       ...result,
       selectedProductIds: result.selectedProductIds || [],

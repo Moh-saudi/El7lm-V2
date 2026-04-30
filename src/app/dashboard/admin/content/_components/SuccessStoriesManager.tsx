@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Save, Upload, User, Flag, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getSuccessStories, saveSuccessStories, SuccessStory } from '@/lib/content/success-stories-service';
+import Image from 'next/image';
 import { storageManager } from '@/lib/storage';
 
 export default function SuccessStoriesManager() {
@@ -21,7 +22,7 @@ export default function SuccessStoriesManager() {
         try {
             const data = await getSuccessStories();
             setStories(data || []);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load stories');
         } finally {
             setLoading(false);
@@ -74,7 +75,7 @@ export default function SuccessStoriesManager() {
         try {
             await saveSuccessStories(stories);
             toast.success('Changes saved successfully');
-        } catch (error) {
+        } catch {
             toast.error('Failed to save changes');
         } finally {
             setSaving(false);
@@ -131,7 +132,7 @@ export default function SuccessStoriesManager() {
                                             <Loader2 className="animate-spin text-blue-500" />
                                         </div>
                                     ) : story.image ? (
-                                        <img src={story.image} alt={story.name} className="w-full h-full object-cover" />
+                                        <Image src={story.image} alt={story.name} fill className="object-cover" unoptimized />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-gray-400">
                                             <Upload size={20} />
