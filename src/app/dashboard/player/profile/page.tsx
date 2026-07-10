@@ -43,11 +43,12 @@ export default function PlayerProfilePage() {
   const BANNER_SNOOZE_KEY = `player_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
   const formValues = form.watch();
+  const currentPosition = form?.getValues('position');
 
   const requiredProfileFields = [
     { key: 'name',        label: t('profile.personalTab.fullName') },
     { key: 'nationality', label: t('profile.personalTab.nationality') },
-    { key: 'position',    label: t('profile.sportsTab.positions.' + form?.getValues('position')) || t('profile.sportsTab.primaryPosition') },
+    { key: 'position',    label: currentPosition ? t(`profile.sportsTab.positions.${currentPosition}`) : t('profile.sportsTab.primaryPosition') },
     { key: 'phone',       label: t('profile.personalTab.phone') },
     { key: 'birth_date',  label: t('profile.personalTab.birthDate') },
     { key: 'country',     label: t('profile.personalTab.country') },
@@ -124,7 +125,7 @@ export default function PlayerProfilePage() {
       toast.error(
         <div className="flex flex-col gap-1">
           <span className="font-bold">{t('profile.missingFieldsWarning')}</span>
-          <span className="text-sm">{t('profile.checkTabs')} {errorLabels.join('، ')}</span>
+          <span className="text-sm">{t('profile.checkTabs')} {errorLabels.join(t('profile.listSeparator'))}</span>
         </div>
         , { duration: 5000 });
 
@@ -155,8 +156,8 @@ export default function PlayerProfilePage() {
           <div className="hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">الملف الشخصي</h1>
-                <p className="text-sm text-gray-500">إدارة معلوماتك الرياضية والشخصية</p>
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t('profile.title')}</h1>
+                <p className="text-sm text-gray-500">{t('profile.subtitle')}</p>
               </div>
 
               {!isEditing ? (
@@ -166,7 +167,7 @@ export default function PlayerProfilePage() {
                   className="flex bg-black hover:bg-black/90 text-white min-w-[140px] shadow-sm transition-all hover:shadow-md active:scale-95 gap-2"
                 >
                   <Edit className="w-4 h-4" />
-                  تعديل الملف
+                  {t('profile.editBtn')}
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
@@ -178,7 +179,7 @@ export default function PlayerProfilePage() {
                     className="min-w-[100px]"
                   >
                     <X className="w-4 h-4 ml-2" />
-                    إلغاء
+                    {t('profile.cancelBtn')}
                   </Button>
                   <Button
                     type="submit"
@@ -188,12 +189,12 @@ export default function PlayerProfilePage() {
                     {saving ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        جاري الحفظ...
+                        {t('profile.savingBtn')}
                       </>
                     ) : (
                       <>
                         <Save className="w-4 h-4" />
-                        حفظ التغييرات
+                        {t('profile.saveChangesBtn')}
                       </>
                     )}
                   </Button>
@@ -209,8 +210,8 @@ export default function PlayerProfilePage() {
               <div className="sticky top-20 z-40 space-y-4 pt-4 pb-2 bg-gray-50/50 backdrop-blur-xl">
                 <div className="bg-white rounded-xl border shadow-sm px-6 py-4 flex items-center justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">الملف الشخصي</h1>
-                    <p className="text-sm text-gray-500">إدارة معلوماتك الرياضية والشخصية</p>
+                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t('profile.title')}</h1>
+                    <p className="text-sm text-gray-500">{t('profile.subtitle')}</p>
                   </div>
                   {!isEditing ? (
                     <Button
@@ -219,7 +220,7 @@ export default function PlayerProfilePage() {
                       className="flex bg-black hover:bg-black/90 text-white min-w-[140px] shadow-sm transition-all hover:shadow-md active:scale-95 gap-2"
                     >
                       <Edit className="w-4 h-4" />
-                      تعديل الملف
+                      {t('profile.editBtn')}
                     </Button>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -231,7 +232,7 @@ export default function PlayerProfilePage() {
                         className="min-w-[100px]"
                       >
                         <X className="w-4 h-4 ml-2" />
-                        إلغاء
+                        {t('profile.cancelBtn')}
                       </Button>
                       <Button
                         type="submit"
@@ -241,12 +242,12 @@ export default function PlayerProfilePage() {
                         {saving ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            جاري الحفظ...
+                            {t('profile.savingBtn')}
                           </>
                         ) : (
                           <>
                             <Save className="w-4 h-4" />
-                            حفظ التغييرات
+                            {t('profile.saveChangesBtn')}
                           </>
                         )}
                       </Button>
@@ -257,14 +258,14 @@ export default function PlayerProfilePage() {
                   <div className="overflow-x-auto no-scrollbar -mx-1.5 px-1.5">
                     <TabsList className="inline-flex w-auto justify-start h-auto gap-2 bg-transparent p-0">
                       {[
-                        { value: "personal", label: "البيانات الشخصية" },
-                        { value: "sports", label: "المعلومات الرياضية" },
-                        { value: "skills", label: "المهارات" },
-                        { value: "objectives", label: "الأهداف" },
-                        { value: "education", label: "التعليم" },
-                        { value: "medical", label: "الطبي" },
-                        { value: "contracts", label: "العقود" },
-                        { value: "media", label: "الوسائط" },
+                        { value: "personal", label: t('profile.tabPersonal') },
+                        { value: "sports", label: t('profile.tabSports') },
+                        { value: "skills", label: t('profile.tabSkills') },
+                        { value: "objectives", label: t('profile.tabObjectives') },
+                        { value: "education", label: t('profile.tabEducation') },
+                        { value: "medical", label: t('profile.tabMedical') },
+                        { value: "contracts", label: t('profile.tabContracts') },
+                        { value: "media", label: t('profile.tabMedia') },
                       ].map((tab) => (
                         <TabsTrigger
                           key={tab.value}
@@ -290,8 +291,8 @@ export default function PlayerProfilePage() {
                     <Award className="w-5 h-5 text-amber-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
-                    <p className="mb-2 text-xs text-amber-700">أكمل بياناتك الأساسية لتحسين ظهورك وجذب الفرص. الحقول الناقصة:</p>
+                    <p className="mb-1 text-sm font-bold text-amber-800">{t('profile.incompleteTitle')}</p>
+                    <p className="mb-2 text-xs text-amber-700">{t('profile.incompleteDesc')}</p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {missingFields.map(({ label }) => (
                         <span key={label} className="px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-full border border-amber-300">
@@ -305,9 +306,9 @@ export default function PlayerProfilePage() {
                         onClick={() => { setIsEditing(true); setActiveTab('personal'); }}
                         className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600"
                       >
-                        استكمال البيانات الآن
+                        {t('profile.completeNowBtn')}
                       </button>
-                      <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+                      <span className="text-xs text-amber-500">{t('profile.snoozeTip').replace('{{days}}', String(SNOOZE_DAYS))}</span>
                     </div>
                   </div>
                   <button
@@ -351,7 +352,7 @@ export default function PlayerProfilePage() {
                 className="w-full bg-black hover:bg-black/90 text-white shadow-md active:scale-95 gap-2 h-12 text-lg font-bold rounded-xl"
               >
                 <Edit className="w-5 h-5" />
-                تعديل الملف
+                {t('profile.editBtn')}
               </Button>
             ) : (
               <div className="flex gap-3">
@@ -362,7 +363,7 @@ export default function PlayerProfilePage() {
                   disabled={saving}
                   className="flex-1 h-12 text-lg font-bold rounded-xl"
                 >
-                  إلغاء
+                  {t('profile.cancelBtn')}
                 </Button>
                 <Button
                   type="submit"
@@ -372,12 +373,12 @@ export default function PlayerProfilePage() {
                   {saving ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      جاري الحفظ...
+                      {t('profile.savingBtn')}
                     </>
                   ) : (
                     <>
                       <Save className="w-5 h-5" />
-                      حفظ التغييرات
+                      {t('profile.saveChangesBtn')}
                     </>
                   )}
                 </Button>

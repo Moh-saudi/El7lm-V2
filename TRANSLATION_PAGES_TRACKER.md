@@ -1,15 +1,15 @@
 # سجل متابعة ترجمة صفحات المشروع
 
-> آخر توليد آلي: السبت، ١١ يوليو ٢٠٢٦ في ١٢:٠١ ص
+> آخر توليد آلي: السبت، ١١ يوليو ٢٠٢٦ في ١٢:١٣ ص
 >
 > هذا التقرير هو المرجع المركزي لخطة الترجمة. الحالة «مكتملة مبدئياً» آلية وتحتاج اختباراً بصرياً قبل اعتمادها نهائياً.
 
 ## الملخص
 
 - إجمالي ملفات الصفحات: **256**
-- مكتملة مبدئياً: **59**
+- مكتملة مبدئياً: **60**
 - قيد التنفيذ: **0**
-- جزئية: **4**
+- جزئية: **3**
 - غير مربوطة بنظام الترجمة: **111**
 - تحويل أو إعادة استخدام: **71**
 - تحتاج مراجعة يدوية: **11**
@@ -18,10 +18,10 @@
 
 | اللغة | عدد المفاتيح | المفاتيح الناقصة مقارنة بالعربية |
 |---|---:|---:|
-| AR | 1941 | 0 |
-| EN | 1941 | 0 |
-| ES | 1662 | 279 |
-| PT | 1662 | 279 |
+| AR | 1942 | 0 |
+| EN | 1942 | 0 |
+| ES | 1942 | 0 |
+| PT | 1942 | 0 |
 
 > تنبيه: الإسبانية والبرتغالية ناقصتان حالياً عن القاموس العربي، ولذلك لا تُعتمد الصفحات المعتمدة على هذه المفاتيح قبل استكمالها.
 
@@ -271,7 +271,7 @@
 | `/dashboard/player/payment-cancelled` | `src/app/dashboard/player/payment-cancelled/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الدفع المشتركة /dashboard/shared/payment؛ 8 نص ثابت محتمل |
 | `/dashboard/player/payment-success` | `src/app/dashboard/player/payment-success/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | فحص يدوي مطلوب |
 | `/dashboard/player/player-videos` | `src/app/dashboard/player/player-videos/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام مكوّن فيديوهات اللاعب المشترك src/components/shared/PlayerVideosPage.tsx؛ مترجم محلياً للغات الأربع |
-| `/dashboard/player/profile` | `src/app/dashboard/player/profile/page.tsx` | ❌ 1 | ❌ 1 | ❌ 7 | ❌ 7 | ✅ | 🟡 جزئية | 18 مفتاح؛ 16 نص ثابت محتمل؛ 16 مفتاح مفقود إجمالاً |
+| `/dashboard/player/profile` | `src/app/dashboard/player/profile/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 46 مفتاح |
 | `/dashboard/player/referrals` | `src/app/dashboard/player/referrals/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 52 مفتاح |
 | `/dashboard/player/reports` | `src/app/dashboard/player/reports/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 6 مفتاح |
 | `/dashboard/player/search` | `src/app/dashboard/player/search/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | فحص يدوي مطلوب |

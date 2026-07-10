@@ -635,6 +635,7 @@
     "placeholderDesc": "This section is currently under development and will be available soon with advanced features.",
     "missingFieldsWarning": "Warning: Profile not saved due to missing data",
     "checkTabs": "Please review the following tabs:",
+    "listSeparator": ", ",
     "incompleteTitle": "Profile Incomplete",
     "incompleteDesc": "Complete your basic information to improve visibility and attract opportunities. Missing fields:",
     "completeNowBtn": "Complete Profile Now",

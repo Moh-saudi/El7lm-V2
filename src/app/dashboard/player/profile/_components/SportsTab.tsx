@@ -26,20 +26,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
-const POSITIONS = [
-    { value: "GK", label: "حارس مرمى" },
-    { value: "CB", label: "قلب دفاع" },
-    { value: "LB", label: "ظهير أيسر" },
-    { value: "RB", label: "ظهير أيمن" },
-    { value: "CDM", label: "وسط دفاعي" },
-    { value: "CM", label: "وسط مركزي" },
-    { value: "CAM", label: "وسط هجومي" },
-    { value: "LW", label: "جناح أيسر" },
-    { value: "RW", label: "جناح أيمن" },
-    { value: "SS", label: "مهاجم ثاني" },
-    { value: "ST", label: "مهاجم صريح" },
-];
-
 const getTranslatedPositions = (t: any) => [
     { value: "GK", label: t("profile.sportsTab.positions.GK") },
     { value: "CB", label: t("profile.sportsTab.positions.CB") },
