@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supa = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 const GROUP_NAMES = ['أ','ب','ج','د','هـ','و','ز','ح','ط','ي'];
 
@@ -13,6 +10,8 @@ export async function GET(req: NextRequest) {
     const tournament_id = req.nextUrl.searchParams.get('tournament_id');
     const category_id   = req.nextUrl.searchParams.get('category_id');
     if (!tournament_id) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
+
+    const supa = getSupabaseAdmin();
 
     let q = supa.from('tournament_groups').select('id, name, sort_order')
         .eq('tournament_id', tournament_id).order('sort_order');
@@ -30,6 +29,8 @@ export async function POST(req: NextRequest) {
     if (!tournament_id) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
     // إنشاء دفعة
+    const supa = getSupabaseAdmin();
+
     if (count) {
         const n = Number(count);
         if (n < 2 || n > 16) return NextResponse.json({ error: 'العدد يجب بين 2 و 16' }, { status: 400 });
@@ -78,6 +79,8 @@ export async function PATCH(req: NextRequest) {
     const { id, name } = await req.json();
     if (!id || !name?.trim()) return NextResponse.json({ error: 'id and name required' }, { status: 400 });
 
+    const supa = getSupabaseAdmin();
+
     const { error } = await supa.from('tournament_groups').update({ name: name.trim() }).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
@@ -87,6 +90,8 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+    const supa = getSupabaseAdmin();
 
     const { error } = await supa.from('tournament_groups').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

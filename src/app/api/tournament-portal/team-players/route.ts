@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supa = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 /** GET /api/tournament-portal/team-players?team_id= */
 export async function GET(req: NextRequest) {
     const team_id = req.nextUrl.searchParams.get('team_id');
     if (!team_id) return NextResponse.json({ error: 'team_id required' }, { status: 400 });
+
+    const supa = getSupabaseAdmin();
 
     const { data, error } = await supa
         .from('tournament_players')
@@ -32,6 +31,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Duplicate check ───────────────────────────────────────
+    const supa = getSupabaseAdmin();
+
     const { data: existing } = await supa
         .from('tournament_players')
         .select('id')
@@ -79,6 +80,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const player_id = req.nextUrl.searchParams.get('player_id');
     if (!player_id) return NextResponse.json({ error: 'player_id required' }, { status: 400 });
+
+    const supa = getSupabaseAdmin();
 
     const { error } = await supa.from('tournament_players').delete().eq('id', player_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

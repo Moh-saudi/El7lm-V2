@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supa = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/tournament-portal/generate-fixtures
@@ -19,6 +16,7 @@ export async function POST(req: NextRequest) {
   const { tournament_id, category_id } = await req.json();
   if (!tournament_id || !category_id)
     return NextResponse.json({ error: 'tournament_id and category_id required' }, { status: 400 });
+  const supa = getSupabaseAdmin();
 
   // Fetch category
   const { data: cat } = await supa

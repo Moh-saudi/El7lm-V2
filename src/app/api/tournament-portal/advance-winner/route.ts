@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supa = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/tournament-portal/advance-winner
@@ -31,6 +28,7 @@ const NEXT_ROUND: Record<string, string> = {
 export async function POST(req: NextRequest) {
   const { match_id } = await req.json();
   if (!match_id) return NextResponse.json({ error: 'match_id required' }, { status: 400 });
+  const supa = getSupabaseAdmin();
 
   // Load the completed match
   const { data: match, error: mErr } = await supa

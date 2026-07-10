@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /**
  * POST /api/tournament-portal/complete-registration
@@ -9,11 +9,7 @@ import { createClient } from '@supabase/supabase-js';
  *
  * Body: { supabase_auth_id, name, organization_name?, email, phone?, country? }
  */
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
     try {
@@ -24,6 +20,8 @@ export async function POST(req: NextRequest) {
         }
 
         // تحقق إن كان السجل موجوداً أصلاً
+        const supabaseAdmin = getSupabaseAdmin();
+
         const { data: existing } = await supabaseAdmin
             .from('tournament_clients')
             .select('id')

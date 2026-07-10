@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-);
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/tournament-portal/update-last-login
@@ -18,6 +14,8 @@ export async function POST(req: NextRequest) {
         if (!supabase_auth_id) {
             return NextResponse.json({ error: 'supabase_auth_id مطلوب' }, { status: 400 });
         }
+
+        const supabaseAdmin = getSupabaseAdmin();
 
         const { error } = await supabaseAdmin
             .from('tournament_clients')

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 const ROUND_ORDER = ['R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F', '3rd'];
 
@@ -32,6 +29,7 @@ export async function GET(
 ) {
     const { slug } = params;
     const { searchParams } = req.nextUrl;
+    const supabase = getSupabaseAdmin();
 
     const { data: tournament } = await supabase
         .from('tournament_new')
