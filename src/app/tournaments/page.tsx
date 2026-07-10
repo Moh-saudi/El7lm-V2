@@ -2,14 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/config';
 import { Trophy, Search, MapPin, Calendar, Users, ChevronLeft } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 type Tournament = {
     id: string; slug: string; name: string; status: string; type: string;

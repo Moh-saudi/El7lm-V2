@@ -3,14 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/config';
 import { Trophy, MapPin, Calendar, Users, Clock, ChevronRight, User, DollarSign, Share2 } from 'lucide-react';
 import { resolveImg } from '@/app/tournament-portal/_utils/img';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
   open:      { label: 'مفتوح للتسجيل', color: '#16a34a' },

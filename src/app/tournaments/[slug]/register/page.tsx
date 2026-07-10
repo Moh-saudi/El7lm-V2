@@ -3,14 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/config';
 import { Trophy, Users, User, CheckCircle, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 type Category = { id: string; name: string; age_min: number | null; age_max: number | null; max_teams: number | null };
 
