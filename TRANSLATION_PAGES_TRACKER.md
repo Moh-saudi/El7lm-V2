@@ -1,27 +1,27 @@
 # سجل متابعة ترجمة صفحات المشروع
 
-> آخر توليد آلي: السبت، ١١ يوليو ٢٠٢٦ في ١٢:١٣ ص
+> آخر توليد آلي: السبت، ١١ يوليو ٢٠٢٦ في ١:١٠ ص
 >
 > هذا التقرير هو المرجع المركزي لخطة الترجمة. الحالة «مكتملة مبدئياً» آلية وتحتاج اختباراً بصرياً قبل اعتمادها نهائياً.
 
 ## الملخص
 
 - إجمالي ملفات الصفحات: **256**
-- مكتملة مبدئياً: **60**
+- مكتملة مبدئياً: **64**
 - قيد التنفيذ: **0**
-- جزئية: **3**
-- غير مربوطة بنظام الترجمة: **111**
-- تحويل أو إعادة استخدام: **71**
+- جزئية: **2**
+- غير مربوطة بنظام الترجمة: **105**
+- تحويل أو إعادة استخدام: **74**
 - تحتاج مراجعة يدوية: **11**
 
 ## سلامة قواميس اللغات
 
 | اللغة | عدد المفاتيح | المفاتيح الناقصة مقارنة بالعربية |
 |---|---:|---:|
-| AR | 1942 | 0 |
-| EN | 1942 | 0 |
-| ES | 1942 | 0 |
-| PT | 1942 | 0 |
+| AR | 2145 | 0 |
+| EN | 2145 | 0 |
+| ES | 2145 | 0 |
+| PT | 2145 | 0 |
 
 > تنبيه: الإسبانية والبرتغالية ناقصتان حالياً عن القاموس العربي، ولذلك لا تُعتمد الصفحات المعتمدة على هذه المفاتيح قبل استكمالها.
 
@@ -263,7 +263,7 @@
 | `/dashboard/player/billing` | `src/app/dashboard/player/billing/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 27 مفتاح |
 | `/dashboard/player/bulk-payment` | `src/app/dashboard/player/bulk-payment/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الدفع المشتركة /dashboard/shared/payment |
 | `/dashboard/player/career` | `src/app/dashboard/player/career/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 5 مفتاح |
-| `/dashboard/player/entity-profile` | `src/app/dashboard/player/entity-profile/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 118 نص ثابت محتمل |
+| `/dashboard/player/entity-profile` | `src/app/dashboard/player/entity-profile/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 7 مفتاح |
 | `/dashboard/player/explore-opportunities` | `src/app/dashboard/player/explore-opportunities/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 122 مفتاح |
 | `/dashboard/player/messages` | `src/app/dashboard/player/messages/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الرسائل المشتركة /dashboard/shared/messages؛ 1 نص ثابت محتمل |
 | `/dashboard/player/my-applications` | `src/app/dashboard/player/my-applications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 30 مفتاح |
@@ -275,15 +275,15 @@
 | `/dashboard/player/referrals` | `src/app/dashboard/player/referrals/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 52 مفتاح |
 | `/dashboard/player/reports` | `src/app/dashboard/player/reports/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 6 مفتاح |
 | `/dashboard/player/search` | `src/app/dashboard/player/search/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | فحص يدوي مطلوب |
-| `/dashboard/player/search-opportunities` | `src/app/dashboard/player/search-opportunities/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 37 نص ثابت محتمل |
-| `/dashboard/player/search-opportunities/profile` | `src/app/dashboard/player/search-opportunities/profile/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 38 نص ثابت محتمل |
-| `/dashboard/player/search-opportunities/profile/[type]/[id]` | `src/app/dashboard/player/search-opportunities/profile/[type]/[id]/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 37 نص ثابت محتمل |
+| `/dashboard/player/search-opportunities` | `src/app/dashboard/player/search-opportunities/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 38 مفتاح |
+| `/dashboard/player/search-opportunities/profile` | `src/app/dashboard/player/search-opportunities/profile/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | إعادة تصدير لصفحة أخرى؛ لا تترجم هنا |
+| `/dashboard/player/search-opportunities/profile/[type]/[id]` | `src/app/dashboard/player/search-opportunities/profile/[type]/[id]/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | إعادة تصدير لصفحة أخرى؛ لا تترجم هنا |
 | `/dashboard/player/search-players` | `src/app/dashboard/player/search-players/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام مكوّن البحث المشترك src/components/shared/PlayersSearchPage.tsx؛ مترجم محلياً للغات الأربع |
-| `/dashboard/player/search/profile` | `src/app/dashboard/player/search/profile/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 38 نص ثابت محتمل |
-| `/dashboard/player/search/profile/[type]/[id]` | `src/app/dashboard/player/search/profile/[type]/[id]/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 37 نص ثابت محتمل |
+| `/dashboard/player/search/profile` | `src/app/dashboard/player/search/profile/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | 🔁 تحويل/إعادة استخدام | تحويل لمسار آخر؛ لا تترجم هنا إلا إذا ظهر نص انتظار للمستخدم؛ 1 مفتاح |
+| `/dashboard/player/search/profile/[type]/[id]` | `src/app/dashboard/player/search/profile/[type]/[id]/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 43 مفتاح |
 | `/dashboard/player/shared-videos` | `src/app/dashboard/player/shared-videos/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام مكوّن فيديوهات اللاعب المشترك src/components/shared/PlayerVideosPage.tsx؛ مترجم محلياً للغات الأربع |
 | `/dashboard/player/stats` | `src/app/dashboard/player/stats/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 36 مفتاح |
-| `/dashboard/player/store` | `src/app/dashboard/player/store/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 جزئية | 179 مفتاح؛ 96 نص ثابت محتمل |
+| `/dashboard/player/store` | `src/app/dashboard/player/store/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 198 مفتاح |
 | `/dashboard/player/subscription-status` | `src/app/dashboard/player/subscription-status/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة حالة الاشتراك المشتركة /dashboard/shared/subscription-status؛ 1 نص ثابت محتمل |
 | `/dashboard/player/tournaments` | `src/app/dashboard/player/tournaments/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | تحويل لمسار آخر؛ لا تترجم هنا إلا إذا ظهر نص انتظار للمستخدم |
 | `/dashboard/player/videos` | `src/app/dashboard/player/videos/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 83 مفتاح |

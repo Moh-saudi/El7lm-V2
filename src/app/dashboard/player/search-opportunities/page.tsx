@@ -40,6 +40,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+import { useTranslation } from '@/lib/i18n';
 
 // --- Types ---
 interface SearchEntity {
@@ -72,12 +73,12 @@ interface FilterOptions {
 }
 
 const ENTITY_TYPES = {
-  club: { label: 'الأندية', icon: Building, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', gradient: 'from-blue-500 to-blue-600' },
-  agent: { label: 'الوكلاء', icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-indigo-600' },
-  scout: { label: 'الكشافين', icon: Eye, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', gradient: 'from-emerald-500 to-emerald-600' },
-  academy: { label: 'الأكاديميات', icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', gradient: 'from-amber-500 to-amber-600' },
-  sponsor: { label: 'الرعاة', icon: Award, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', gradient: 'from-rose-500 to-rose-600' },
-  trainer: { label: 'المدربين', icon: User, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100', gradient: 'from-cyan-500 to-cyan-600' }
+  club: { icon: Building, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', gradient: 'from-blue-500 to-blue-600' },
+  agent: { icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-indigo-600' },
+  scout: { icon: Eye, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', gradient: 'from-emerald-500 to-emerald-600' },
+  academy: { icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', gradient: 'from-amber-500 to-amber-600' },
+  sponsor: { icon: Award, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', gradient: 'from-rose-500 to-rose-600' },
+  trainer: { icon: User, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100', gradient: 'from-cyan-500 to-cyan-600' }
 };
 
 // --- Helper Components (Defined as const to ensure static presence) ---
@@ -99,8 +100,9 @@ const PageButton = ({ page, currentPage, setCurrentPage }: { page: number, curre
 
 const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: any) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const cfg = ENTITY_TYPES[entity.type as keyof typeof ENTITY_TYPES] || ENTITY_TYPES.club;
-  const displayName = entity.name || 'كيان رياضي';
+  const displayName = entity.name || t('playerEntitySearch.fallbackEntityName');
 
   return (
     <motion.div layout whileHover={{ y: -8 }} className="group">
@@ -140,13 +142,13 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                   {entity.verified && <ShieldCheck className="w-4 h-4 text-blue-500" />}
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {entity.location.city || 'غير محدد'}
+                  <MapPin className="w-3 h-3" /> {entity.location.city || t('playerEntitySearch.notSpecified')}
                 </p>
               </div>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 text-slate-500 text-[10px] font-black uppercase mb-4 border border-slate-100">
-              <cfg.icon className={cn("w-3 h-3", cfg.color)} /> {cfg.label}
+              <cfg.icon className={cn("w-3 h-3", cfg.color)} /> {t(`playerEntitySearch.typesPlural.${entity.type}`)}
             </div>
 
             <p className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-2 mb-6">
@@ -158,7 +160,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
             <div className="flex items-center justify-between px-1">
               <div className="text-center">
                 <p className="text-lg font-black text-slate-900">{(entity.followersCount || 0).toLocaleString()}</p>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">متابع</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('playerEntitySearch.followers')}</p>
               </div>
               <div className="w-px h-8 bg-slate-100" />
               <div className="text-center">
@@ -166,12 +168,12 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-current" />
                   <span className="text-lg font-black text-slate-900">{entity.rating}</span>
                 </div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">تقييم</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('playerEntitySearch.rating')}</p>
               </div>
               <div className="w-px h-8 bg-slate-100" />
               <div className="text-center">
-                <p className="text-lg font-black text-slate-900">{entity.verified ? 'موثق' : 'نشط'}</p>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">الحالة</p>
+                <p className="text-lg font-black text-slate-900">{entity.verified ? t('playerEntitySearch.verified') : t('playerEntitySearch.active')}</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('playerEntitySearch.status')}</p>
               </div>
             </div>
 
@@ -180,12 +182,12 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                 onClick={() => router.push(`/dashboard/player/search/profile?type=${entity.type}&id=${entity.id}`)}
                 className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 transition-all"
               >
-                عرض الملف
+                {t('playerEntitySearch.viewProfile')}
               </Button>
               <SendMessageButton
                 user={{ uid: currentUserId }}
                 userData={userData}
-                getUserDisplayName={() => userData?.fullName || userData?.full_name || 'مستخدم'}
+                getUserDisplayName={() => userData?.fullName || userData?.full_name || t('playerEntitySearch.userFallback')}
                 targetUserId={entity.id}
                 targetUserName={displayName}
                 targetUserType={entity.type}
@@ -205,6 +207,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
 // --- Main Page Component ---
 export default function SearchPage() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [userData, setUserData] = useState<any>(null);
@@ -256,7 +259,7 @@ export default function SearchPage() {
 
         return (rows || []).map(data => ({
             id: data.id,
-            name: data.name || data.fullName || data.full_name || data.display_name || 'كيان رياضي',
+            name: data.name || data.fullName || data.full_name || data.display_name || t('playerEntitySearch.fallbackEntityName'),
             type: type as any,
             email: data.email || '',
             profileImage: fixReceiptUrl(
@@ -266,7 +269,7 @@ export default function SearchPage() {
             ),
             coverImage: fixReceiptUrl(data.coverImage || data.backCover || data.header_image || data.banner),
             location: { country: data.country || data.nationality || '', city: data.city || data.current_location || '', },
-            description: data.description || data.bio || data.about || data.specialization || 'وصف غير متاح',
+            description: data.description || data.bio || data.about || data.specialization || t('playerEntitySearch.noDescription'),
             verified: data.verified || data.is_fifa_licensed || data.is_certified || false,
             rating: data.rating || 4.5,
             reviewsCount: data.reviewsCount || 0,
@@ -381,7 +384,7 @@ export default function SearchPage() {
       await supabase.from(col).update({ followers: updatedFollowers }).eq('id', entity.id);
       setAllData(prev => prev.map(e => e.id === entity.id ? { ...e, isFollowing: !e.isFollowing, followersCount: e.isFollowing ? e.followersCount - 1 : e.followersCount + 1 } : e));
     } catch (e) {
-      toast.error('خطأ في العملية');
+      toast.error(t('playerEntitySearch.actionError'));
     } finally {
       setIsActionLoading(null);
     }
@@ -396,11 +399,11 @@ export default function SearchPage() {
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-50/50 blur-[120px] rounded-full -mr-20 -mt-20"></div>
         <div className="container mx-auto px-6 relative z-10 text-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-6">
-            <Zap className="w-3.5 h-3.5 fill-current" /> شبكة الحلم العالمية
+            <Zap className="w-3.5 h-3.5 fill-current" /> {t('playerEntitySearch.badge')}
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">ابحث عن <span className="text-blue-600">الفرص والأندية</span> ⚽</h1>
-          <p className="text-slate-500 font-medium max-w-xl mx-auto mb-10">تواصل مباشرة مع الأندية والوكلاء المحترفين في أكبر شبكة رياضية عربية.</p>
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">{t('playerEntitySearch.titlePrefix')} <span className="text-blue-600">{t('playerEntitySearch.titleHighlight')}</span> ⚽</h1>
+          <p className="text-slate-500 font-medium max-w-xl mx-auto mb-10">{t('playerEntitySearch.subtitle')}</p>
 
           <div className="max-w-2xl mx-auto relative">
             <div className="flex items-center bg-white rounded-3xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100">
@@ -409,12 +412,12 @@ export default function SearchPage() {
                 <Input
                   value={filters.searchQuery}
                   onChange={(e) => { setFilters(prev => ({ ...prev, searchQuery: e.target.value })); setCurrentPage(1); }}
-                  placeholder="ابحث بالاسم أو التخصص..."
+                  placeholder={t('playerEntitySearch.searchPlaceholder')}
                   className="border-none shadow-none focus-visible:ring-0 font-bold bg-transparent text-slate-800"
                 />
               </div>
               <Button onClick={() => setShowFilters(!showFilters)} variant="ghost" className="rounded-2xl h-12 px-5 text-slate-400 font-black hover:bg-slate-50">
-                <Filter className="w-4 h-4 ml-2" /> خيارات
+                <Filter className="w-4 h-4 ml-2" /> {t('playerEntitySearch.options')}
               </Button>
             </div>
           </div>
@@ -435,25 +438,25 @@ export default function SearchPage() {
             >
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">تصفية حسب النوع</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('playerEntitySearch.filterByType')}</p>
                   <Select value={filters.type} onValueChange={(v) => { setFilters(prev => ({ ...prev, type: v as any })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">الكل</SelectItem>
-                      {Object.entries(ENTITY_TYPES).map(([k, v]) => <SelectItem key={`type-opt-${k}`} value={k}>{v.label}</SelectItem>)}
+                      <SelectItem value="all">{t('playerEntitySearch.all')}</SelectItem>
+                      {Object.entries(ENTITY_TYPES).map(([k]) => <SelectItem key={`type-opt-${k}`} value={k}>{t(`playerEntitySearch.typesPlural.${k}`)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">الدولة</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('playerEntitySearch.country')}</p>
                   <Select value={filters.country || 'all'} onValueChange={(v) => { setFilters(prev => ({ ...prev, country: v === 'all' ? '' : v })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
-                      <SelectValue placeholder="جميع الدول" />
+                      <SelectValue placeholder={t('playerEntitySearch.allCountries')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">جميع الدول</SelectItem>
+                      <SelectItem value="all">{t('playerEntitySearch.allCountries')}</SelectItem>
                       {availableCountries.map(c => {
                         const val = c.trim() || 'unknown';
                         return <SelectItem key={`country-opt-${val}`} value={val}>{c}</SelectItem>;
@@ -462,27 +465,27 @@ export default function SearchPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">الترتيب</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('playerEntitySearch.sort')}</p>
                   <Select value={filters.sortBy} onValueChange={(v) => setFilters(prev => ({ ...prev, sortBy: v as any }))}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="relevance">الأكثر صلة</SelectItem>
-                      <SelectItem value="followers">الأكثر متابعة</SelectItem>
-                      <SelectItem value="recent">الأحدث</SelectItem>
+                      <SelectItem value="relevance">{t('playerEntitySearch.sortRelevance')}</SelectItem>
+                      <SelectItem value="followers">{t('playerEntitySearch.sortFollowers')}</SelectItem>
+                      <SelectItem value="recent">{t('playerEntitySearch.sortRecent')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">المدينة</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('playerEntitySearch.city')}</p>
                   <Select value={filters.city || 'all'} onValueChange={(v) => { setFilters(prev => ({ ...prev, city: v === 'all' ? '' : v })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
-                      <SelectValue placeholder="جميع المدن" />
+                      <SelectValue placeholder={t('playerEntitySearch.allCities')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">جميع المدن</SelectItem>
+                      <SelectItem value="all">{t('playerEntitySearch.allCities')}</SelectItem>
                       {availableCities.map(c => <SelectItem key={`city-opt-${c}`} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -491,7 +494,7 @@ export default function SearchPage() {
                 <div className="flex items-center justify-between h-12 px-4 rounded-2xl bg-slate-50/50 border border-slate-100 mt-5">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs font-black text-slate-600">الحسابات الموثقة فقط</span>
+                    <span className="text-xs font-black text-slate-600">{t('playerEntitySearch.verifiedOnly')}</span>
                   </div>
                   <button
                     onClick={() => setFilters(prev => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
@@ -516,7 +519,7 @@ export default function SearchPage() {
                     variant="ghost"
                     className="text-slate-400 font-black hover:text-rose-500 gap-2"
                   >
-                    <Plus className="w-4 h-4 rotate-45" /> إعادة ضبط كافة المرشحات
+                    <Plus className="w-4 h-4 rotate-45" /> {t('playerEntitySearch.resetAllFilters')}
                   </Button>
                 </div>
               </div>
@@ -528,20 +531,23 @@ export default function SearchPage() {
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 px-2">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-blue-500" /> النتائج
+              <LayoutGrid className="w-5 h-5 text-blue-500" /> {t('playerEntitySearch.results')}
             </h2>
             <p className="text-xs font-bold text-slate-400">
-              عرض <span className="text-blue-600">{Math.min(startIndex + 1, totalResults)}</span> - <span className="text-blue-600">{Math.min(startIndex + itemsPerPage, totalResults)}</span> من أصل {totalResults} نتيجة
+              {t('playerEntitySearch.showingResults')
+                .replace('{{from}}', Math.min(startIndex + 1, totalResults).toString())
+                .replace('{{to}}', Math.min(startIndex + itemsPerPage, totalResults).toString())
+                .replace('{{total}}', totalResults.toString())}
             </p>
           </div>
           <div className="flex gap-2 bg-white p-1 rounded-2xl border border-slate-100">
-            {(['all', 'club', 'agent', 'scout'] as const).map(t => (
+            {(['all', 'club', 'agent', 'scout'] as const).map((typeFilter) => (
               <button
-                key={`tab-btn-${t}`}
-                onClick={() => { setFilters(prev => ({ ...prev, type: t })); setCurrentPage(1); }}
-                className={cn("px-4 py-2 rounded-xl text-[11px] font-black transition-all", filters.type === t ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "text-slate-400 hover:text-slate-600")}
+                key={`tab-btn-${typeFilter}`}
+                onClick={() => { setFilters(prev => ({ ...prev, type: typeFilter })); setCurrentPage(1); }}
+                className={cn("px-4 py-2 rounded-xl text-[11px] font-black transition-all", filters.type === typeFilter ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "text-slate-400 hover:text-slate-600")}
               >
-                {t === 'all' ? 'الكل' : (ENTITY_TYPES as any)[t].label}
+                {typeFilter === 'all' ? t('playerEntitySearch.all') : t(`playerEntitySearch.typesPlural.${typeFilter}`)}
               </button>
             ))}
           </div>
@@ -556,8 +562,8 @@ export default function SearchPage() {
           ) : filteredEntities.length === 0 ? (
             <div className="py-24 text-center bg-white rounded-[3rem] border border-slate-100">
               <Search className="w-16 h-16 text-slate-200 mx-auto mb-6" />
-              <h3 className="text-xl font-black text-slate-900">لا يوجد نتائج تطابق بحثك</h3>
-              <Button onClick={() => setFilters({ searchQuery: '', type: 'all', country: '', city: '', sortBy: 'relevance', verifiedOnly: false })} variant="link" className="text-blue-600 font-bold mt-2">إعادة تعيين المرشحات</Button>
+              <h3 className="text-xl font-black text-slate-900">{t('playerEntitySearch.noResults')}</h3>
+              <Button onClick={() => setFilters({ searchQuery: '', type: 'all', country: '', city: '', sortBy: 'relevance', verifiedOnly: false })} variant="link" className="text-blue-600 font-bold mt-2">{t('playerEntitySearch.resetFilters')}</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -623,7 +629,7 @@ export default function SearchPage() {
             </div>
 
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-6 py-2 rounded-full border border-slate-100 shadow-sm">
-              صفحة {currentPage} من أصل {totalPages}
+              {t('playerEntitySearch.pageOf').replace('{{page}}', currentPage.toString()).replace('{{total}}', totalPages.toString())}
             </p>
           </div>
         )}

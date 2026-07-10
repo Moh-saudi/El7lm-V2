@@ -137,9 +137,7 @@ interface InventoryRow {
   flash_sale_end_at?: string | null;
 }
 
-const DEFAULT_SHIPPING_COUNTRY = SUPPORTED_COUNTRIES.includes('السعودية')
-  ? 'السعودية'
-  : SUPPORTED_COUNTRIES[0] || '';
+const DEFAULT_SHIPPING_COUNTRY = SUPPORTED_COUNTRIES[0] || '';
 
 const DEFAULT_SHIPPING_CITY = getCitiesByCountry(DEFAULT_SHIPPING_COUNTRY)[0] || '';
 
@@ -160,29 +158,29 @@ const EMPTY_ORDER_FORM: OrderFormState = {
 };
 
 const ADDRESS_LABEL_OPTIONS = [
-  { value: 'home', label: 'المنزل' },
-  { value: 'work', label: 'العمل' },
-  { value: 'academy', label: 'الأكاديمية' },
-  { value: 'club', label: 'النادي' },
+  { value: 'home', label: 'home' },
+  { value: 'work', label: 'work' },
+  { value: 'academy', label: 'academy' },
+  { value: 'club', label: 'club' },
 ];
 
 const DELIVERY_METHOD_OPTIONS = [
-  { value: 'courier', label: 'توصيل للعنوان' },
-  { value: 'branch_pickup', label: 'استلام من الفرع' },
-  { value: 'coordinator', label: 'تنسيق مباشر مع الإدارة' },
+  { value: 'courier', label: 'courier' },
+  { value: 'branch_pickup', label: 'branch_pickup' },
+  { value: 'coordinator', label: 'coordinator' },
 ];
 
 const CONTACT_METHOD_OPTIONS = [
-  { value: 'whatsapp', label: 'واتساب' },
-  { value: 'phone', label: 'اتصال هاتفي' },
-  { value: 'email', label: 'البريد الإلكتروني' },
+  { value: 'whatsapp', label: 'whatsapp' },
+  { value: 'phone', label: 'phone' },
+  { value: 'email', label: 'email' },
 ];
 
 const CONTACT_WINDOW_OPTIONS = [
-  { value: 'morning', label: 'صباحًا' },
-  { value: 'afternoon', label: 'بعد الظهر' },
-  { value: 'evening', label: 'مساءً' },
-  { value: 'anytime', label: 'أي وقت' },
+  { value: 'morning', label: 'morning' },
+  { value: 'afternoon', label: 'afternoon' },
+  { value: 'evening', label: 'evening' },
+  { value: 'anytime', label: 'anytime' },
 ];
 
 const selectClassName =
@@ -190,16 +188,16 @@ const selectClassName =
 
 const STORE_PAYMENT_OPTIONS: PaymentOption[] = [
   // ── دفع كامل ──
-  { id: 'card_online',   label: 'بطاقة بنكية — دفع إلكتروني', type: 'full', brandMark: '💳', brandClassName: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { id: 'mobile_wallet', label: 'محفظة إلكترونية / InstaPay',  type: 'full', brandMark: '📲', brandClassName: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
-  { id: 'bank_transfer', label: 'تحويل بنكي مباشر',              type: 'full', brandMark: '🏦', brandClassName: 'bg-slate-50 text-slate-700 border-slate-200' },
+  { id: 'card_online',   label: 'card_online', type: 'full', brandMark: '💳', brandClassName: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { id: 'mobile_wallet', label: 'mobile_wallet',  type: 'full', brandMark: '📲', brandClassName: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
+  { id: 'bank_transfer', label: 'bank_transfer',              type: 'full', brandMark: '🏦', brandClassName: 'bg-slate-50 text-slate-700 border-slate-200' },
   // ── تقسيط ──
-  { id: 'tamara',   label: 'تمارا — تقسيط',   type: 'installment', plans: [2, 3, 4],       brandMark: 'تمارا',  brandClassName: 'bg-stone-900 text-white border-stone-800' },
-  { id: 'tabby',    label: 'تابي — تقسيط',    type: 'installment', plans: [4],             brandMark: 'tabby',  brandClassName: 'bg-lime-100 text-lime-800 border-lime-300' },
-  { id: 'valu',     label: 'valU — تقسيط',    type: 'installment', plans: [6, 12, 18, 24], brandMark: 'valU',   brandClassName: 'bg-violet-100 text-violet-800 border-violet-200' },
-  { id: 'sympl',    label: 'سيمبل — تقسيط',   type: 'installment', plans: [3, 4, 5],       brandMark: 'sympl',  brandClassName: 'bg-orange-100 text-orange-800 border-orange-200' },
-  { id: 'souhoola', label: 'سهولة — تقسيط',   type: 'installment', plans: [6, 12, 18, 24], brandMark: 'سهولة', brandClassName: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
-  { id: 'contact',  label: 'كونتكت — تقسيط',  type: 'installment', plans: [6, 12, 18, 24], brandMark: 'CNT',    brandClassName: 'bg-amber-100 text-amber-800 border-amber-200' },
+  { id: 'tamara',   label: 'tamara',   type: 'installment', plans: [2, 3, 4],       brandMark: 'Tamara',  brandClassName: 'bg-stone-900 text-white border-stone-800' },
+  { id: 'tabby',    label: 'tabby',    type: 'installment', plans: [4],             brandMark: 'tabby',  brandClassName: 'bg-lime-100 text-lime-800 border-lime-300' },
+  { id: 'valu',     label: 'valu',    type: 'installment', plans: [6, 12, 18, 24], brandMark: 'valU',   brandClassName: 'bg-violet-100 text-violet-800 border-violet-200' },
+  { id: 'sympl',    label: 'sympl',   type: 'installment', plans: [3, 4, 5],       brandMark: 'sympl',  brandClassName: 'bg-orange-100 text-orange-800 border-orange-200' },
+  { id: 'souhoola', label: 'souhoola',   type: 'installment', plans: [6, 12, 18, 24], brandMark: 'Souhoola', brandClassName: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  { id: 'contact',  label: 'contact',  type: 'installment', plans: [6, 12, 18, 24], brandMark: 'CNT',    brandClassName: 'bg-amber-100 text-amber-800 border-amber-200' },
 ];
 
 const ACTIVE_STORE_PAYMENT_OPTIONS = STORE_PAYMENT_OPTIONS.filter(
@@ -210,13 +208,13 @@ const FULL_PAYMENT_OPTIONS = ACTIVE_STORE_PAYMENT_OPTIONS.filter(o => o.type ===
 const INSTALLMENT_OPTIONS  = ACTIVE_STORE_PAYMENT_OPTIONS.filter(o => o.type === 'installment');
 
 const CATEGORY_LABELS: Record<'all' | StoreCategory, string> = {
-  all: 'جميع المنتجات',
-  equipment: 'معدات رياضية',
-  clothing: 'ملابس',
-  accessories: 'إكسسوارات',
-  nutrition: 'تغذية رياضية',
-  electronics: 'إلكترونيات',
-  other: 'منتجات أخرى',
+  all: 'all',
+  equipment: 'equipment',
+  clothing: 'clothing',
+  accessories: 'accessories',
+  nutrition: 'nutrition',
+  electronics: 'electronics',
+  other: 'other',
 };
 
 const CATEGORY_ICONS: Record<'all' | StoreCategory, string> = {
@@ -230,12 +228,12 @@ const CATEGORY_ICONS: Record<'all' | StoreCategory, string> = {
 };
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: 'قيد المراجعة',
-  confirmed: 'تم التأكيد',
-  processing: 'قيد التجهيز',
-  shipped: 'تم الشحن',
-  delivered: 'تم التسليم',
-  cancelled: 'ملغي',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  processing: 'processing',
+  shipped: 'shipped',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
 };
 
 const ORDER_STATUS_STYLES: Record<OrderStatus, { bg: string; text: string; dot: string }> = {
@@ -275,55 +273,55 @@ export default function PlayerStorePage() {
   const { user, userData } = useAuth();
 
   const addressLabelOptions = useMemo(() => [
-    { value: 'home', label: t('store.checkout.addressLabels.home') || 'المنزل' },
-    { value: 'work', label: t('store.checkout.addressLabels.work') || 'العمل' },
-    { value: 'academy', label: t('store.checkout.addressLabels.academy') || 'الأكاديمية' },
-    { value: 'club', label: t('store.checkout.addressLabels.club') || 'النادي' },
+    { value: 'home', label: t('store.checkout.addressLabels.home') },
+    { value: 'work', label: t('store.checkout.addressLabels.work') },
+    { value: 'academy', label: t('store.checkout.addressLabels.academy') },
+    { value: 'club', label: t('store.checkout.addressLabels.club') },
   ], [t]);
 
   const deliveryMethodOptions = useMemo(() => [
-    { value: 'courier', label: t('store.checkout.deliveryMethods.courier') || 'توصيل للعنوان' },
-    { value: 'branch_pickup', label: t('store.checkout.deliveryMethods.branch_pickup') || 'استلام من الفرع' },
-    { value: 'coordinator', label: t('store.checkout.deliveryMethods.coordinator') || 'تنسيق مباشر مع الإدارة' },
+    { value: 'courier', label: t('store.checkout.deliveryMethods.courier') },
+    { value: 'branch_pickup', label: t('store.checkout.deliveryMethods.branch_pickup') },
+    { value: 'coordinator', label: t('store.checkout.deliveryMethods.coordinator') },
   ], [t]);
 
   const contactMethodOptions = useMemo(() => [
-    { value: 'whatsapp', label: t('store.checkout.contactMethods.whatsapp') || 'واتساب' },
-    { value: 'phone', label: t('store.checkout.contactMethods.phone') || 'اتصال هاتفي' },
-    { value: 'email', label: t('store.checkout.contactMethods.email') || 'البريد الإلكتروني' },
+    { value: 'whatsapp', label: t('store.checkout.contactMethods.whatsapp') },
+    { value: 'phone', label: t('store.checkout.contactMethods.phone') },
+    { value: 'email', label: t('store.checkout.contactMethods.email') },
   ], [t]);
 
   const contactWindowOptions = useMemo(() => [
-    { value: 'morning', label: t('store.checkout.contactWindows.morning') || 'صباحًا' },
-    { value: 'afternoon', label: t('store.checkout.contactWindows.afternoon') || 'بعد الظهر' },
-    { value: 'evening', label: t('store.checkout.contactWindows.evening') || 'مساءً' },
-    { value: 'anytime', label: t('store.checkout.contactWindows.anytime') || 'أي وقت' },
+    { value: 'morning', label: t('store.checkout.contactWindows.morning') },
+    { value: 'afternoon', label: t('store.checkout.contactWindows.afternoon') },
+    { value: 'evening', label: t('store.checkout.contactWindows.evening') },
+    { value: 'anytime', label: t('store.checkout.contactWindows.anytime') },
   ], [t]);
 
   const categoryLabels = useMemo<Record<'all' | StoreCategory, string>>(() => ({
-    all: t('store.categories.all') || 'جميع المنتجات',
-    equipment: t('store.categories.equipment') || 'معدات رياضية',
-    clothing: t('store.categories.clothing') || 'ملابس رياضية',
-    accessories: t('store.categories.accessories') || 'إكسسوارات',
-    nutrition: t('store.categories.nutrition') || 'تغذية رياضية',
-    electronics: t('store.categories.electronics') || 'أجهزة إلكترونية',
-    other: t('store.categories.other') || 'منتجات أخرى',
+    all: t('store.categories.all'),
+    equipment: t('store.categories.equipment'),
+    clothing: t('store.categories.clothing'),
+    accessories: t('store.categories.accessories'),
+    nutrition: t('store.categories.nutrition'),
+    electronics: t('store.categories.electronics'),
+    other: t('store.categories.other'),
   }), [t]);
 
   const orderStatusLabels = useMemo<Record<OrderStatus, string>>(() => ({
-    pending: t('store.orders.statuses.pending') || 'قيد المراجعة',
-    confirmed: t('store.orders.statuses.confirmed') || 'تم التأكيد',
-    processing: t('store.orders.statuses.processing') || 'قيد التجهيز',
-    shipped: t('store.orders.statuses.shipped') || 'تم الشحن',
-    delivered: t('store.orders.statuses.delivered') || 'تم التسليم',
-    cancelled: t('store.orders.statuses.cancelled') || 'ملغي',
+    pending: t('store.orders.statuses.pending'),
+    confirmed: t('store.orders.statuses.confirmed'),
+    processing: t('store.orders.statuses.processing'),
+    shipped: t('store.orders.statuses.shipped'),
+    delivered: t('store.orders.statuses.delivered'),
+    cancelled: t('store.orders.statuses.cancelled'),
   }), [t]);
 
   const getPaymentOptionLabel = useCallback((id: string) => {
     switch (id) {
-      case 'card_online': return t('store.checkout.paymentMethods.card') || 'بطاقة بنكية';
-      case 'mobile_wallet': return t('store.checkout.paymentMethods.wallet') || 'محفظة إلكترونية';
-      case 'bank_transfer': return t('store.checkout.paymentMethods.bank') || 'تحويل بنكي';
+      case 'card_online': return t('store.checkout.paymentMethods.card');
+      case 'mobile_wallet': return t('store.checkout.paymentMethods.wallet');
+      case 'bank_transfer': return t('store.checkout.paymentMethods.bank');
       case 'tamara': return 'Tamara';
       case 'tabby': return 'Tabby';
       case 'valu': return 'valU';
@@ -333,6 +331,22 @@ export default function PlayerStorePage() {
       default: return id;
     }
   }, [t]);
+
+  const getAddressLabel = useCallback((value: string) =>
+    addressLabelOptions.find((option) => option.value === value)?.label || value,
+  [addressLabelOptions]);
+
+  const getDeliveryMethodLabel = useCallback((value: string) =>
+    deliveryMethodOptions.find((option) => option.value === value)?.label || value,
+  [deliveryMethodOptions]);
+
+  const getContactMethodLabel = useCallback((value: string) =>
+    contactMethodOptions.find((option) => option.value === value)?.label || value,
+  [contactMethodOptions]);
+
+  const getContactWindowLabel = useCallback((value: string) =>
+    contactWindowOptions.find((option) => option.value === value)?.label || value,
+  [contactWindowOptions]);
   const pathname = usePathname();
   const inferredAccountType = inferAccountTypeFromPath(pathname);
   const accountType = (userData?.accountType as DashboardAccountType | undefined) || inferredAccountType;
@@ -688,12 +702,12 @@ export default function PlayerStorePage() {
       setSubmittingOrder(true);
 
       const structuredNotes = [
-        `نوع العنوان: ${ADDRESS_LABEL_OPTIONS.find((o) => o.value === orderForm.addressLabel)?.label || orderForm.addressLabel}`,
-        `وسيلة التوصيل: ${DELIVERY_METHOD_OPTIONS.find((o) => o.value === orderForm.deliveryMethod)?.label || orderForm.deliveryMethod}`,
-        `وسيلة التواصل: ${CONTACT_METHOD_OPTIONS.find((o) => o.value === orderForm.contactMethod)?.label || orderForm.contactMethod}`,
-        `وقت التواصل: ${CONTACT_WINDOW_OPTIONS.find((o) => o.value === orderForm.contactWindow)?.label || orderForm.contactWindow}`,
-        requiresShippingAddress ? `العنوان: ${orderForm.shippingAddress.trim()}` : '',
-        orderForm.notes.trim() ? `ملاحظات: ${orderForm.notes.trim()}` : '',
+        `${t('store.checkout.noteAddressLabel')}: ${getAddressLabel(orderForm.addressLabel)}`,
+        `${t('store.checkout.noteDeliveryMethod')}: ${getDeliveryMethodLabel(orderForm.deliveryMethod)}`,
+        `${t('store.checkout.noteContactMethod')}: ${getContactMethodLabel(orderForm.contactMethod)}`,
+        `${t('store.checkout.noteContactWindow')}: ${getContactWindowLabel(orderForm.contactWindow)}`,
+        requiresShippingAddress ? `${t('store.checkout.noteAddress')}: ${orderForm.shippingAddress.trim()}` : '',
+        orderForm.notes.trim() ? `${t('store.checkout.noteNotes')}: ${orderForm.notes.trim()}` : '',
       ].filter(Boolean).join('\n');
 
       const rows = cartItems.map((item) => ({
@@ -727,7 +741,7 @@ export default function PlayerStorePage() {
 
       const { error } = await supabase.from('store_orders').insert(rows);
       if (error) {
-        if (error.code === 'PGRST205') { setOrdersUnavailable(true); throw new Error('خدمة الطلبات غير متاحة حالياً'); }
+        if (error.code === 'PGRST205') { setOrdersUnavailable(true); throw new Error(t('store.errors.ordersUnavailable')); }
         throw error;
       }
 
@@ -758,7 +772,7 @@ export default function PlayerStorePage() {
       }
 
       if (orderForm.paymentMethod === 'skipcash') {
-        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        toast.success(t('store.success.redirecting'));
         const response = await fetch('/api/skipcash/create-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -785,11 +799,11 @@ export default function PlayerStorePage() {
       setShowCartCheckout(false);
 
       if (selectedPaymentOpt?.type === 'installment') {
-        setInstallmentProviderName(selectedPaymentOpt.label);
+        setInstallmentProviderName(getPaymentOptionLabel(selectedPaymentOpt.id));
         setShowInstallmentNotice(true);
         toast.success(t('store.success.orderReceived'));
       } else if (orderForm.paymentMethod === 'mobile_wallet') {
-        setTransferProviderName(selectedPaymentOpt?.label || 'محفظة إلكترونية / InstaPay');
+        setTransferProviderName(selectedPaymentOpt ? getPaymentOptionLabel(selectedPaymentOpt.id) : getPaymentOptionLabel('mobile_wallet'));
         setShowTransferNotice(true);
         toast.success(t('store.success.orderRegistered'));
       } else {
@@ -838,29 +852,17 @@ export default function PlayerStorePage() {
       setSubmittingOrder(true);
 
       const structuredNotes = [
-        `نوع العنوان: ${
-          ADDRESS_LABEL_OPTIONS.find((option) => option.value === orderForm.addressLabel)?.label ||
-          orderForm.addressLabel
-        }`,
-        `وسيلة التوصيل: ${
-          DELIVERY_METHOD_OPTIONS.find((option) => option.value === orderForm.deliveryMethod)?.label ||
-          orderForm.deliveryMethod
-        }`,
-        `وسيلة التواصل المفضلة: ${
-          CONTACT_METHOD_OPTIONS.find((option) => option.value === orderForm.contactMethod)?.label ||
-          orderForm.contactMethod
-        }`,
-        `وقت التواصل: ${
-          CONTACT_WINDOW_OPTIONS.find((option) => option.value === orderForm.contactWindow)?.label ||
-          orderForm.contactWindow
-        }`,
-        requiresShippingAddress ? `العنوان التفصيلي: ${orderForm.shippingAddress.trim()}` : '',
-        orderForm.deliveryMethod === 'branch_pickup' ? 'يُفضّل تجهيز الطلب للاستلام من الفرع' : '',
-        orderForm.deliveryMethod === 'coordinator' ? 'يلزم تنسيق مباشر مع الإدارة قبل التسليم' : '',
+        `${t('store.checkout.noteAddressLabel')}: ${getAddressLabel(orderForm.addressLabel)}`,
+        `${t('store.checkout.noteDeliveryMethod')}: ${getDeliveryMethodLabel(orderForm.deliveryMethod)}`,
+        `${t('store.checkout.notePreferredContactMethod')}: ${getContactMethodLabel(orderForm.contactMethod)}`,
+        `${t('store.checkout.noteContactWindow')}: ${getContactWindowLabel(orderForm.contactWindow)}`,
+        requiresShippingAddress ? `${t('store.checkout.noteDetailedAddress')}: ${orderForm.shippingAddress.trim()}` : '',
+        orderForm.deliveryMethod === 'branch_pickup' ? t('store.checkout.noteBranchPickup') : '',
+        orderForm.deliveryMethod === 'coordinator' ? t('store.checkout.noteCoordinator') : '',
         orderForm.paymentMethod === 'mobile_wallet'
-          ? `التحويل المطلوب عبر المحافظ الإلكترونية أو InstaPay إلى الرقم ${MANUAL_TRANSFER_NUMBER}`
+          ? `${t('store.checkout.noteWalletTransfer')} ${MANUAL_TRANSFER_NUMBER}`
           : '',
-        orderForm.notes.trim() ? `ملاحظات إضافية: ${orderForm.notes.trim()}` : '',
+        orderForm.notes.trim() ? `${t('store.checkout.noteExtraNotes')}: ${orderForm.notes.trim()}` : '',
       ]
         .filter(Boolean)
         .join('\n');
@@ -901,7 +903,7 @@ export default function PlayerStorePage() {
       if (error) {
         if (error.code === 'PGRST205') {
           setOrdersUnavailable(true);
-          throw new Error('خدمة الطلبات غير متاحة حالياً، يرجى المحاولة لاحقاً');
+          throw new Error(t('store.errors.ordersUnavailableTryLater'));
         }
         throw error;
       }
@@ -967,7 +969,7 @@ export default function PlayerStorePage() {
         });
         const result = await response.json();
         if (!response.ok || !result?.success || !result?.payUrl) {
-          throw new Error(result?.error ? `SkipCash: ${result.error}` : 'تعذر تجهيز رابط الدفع');
+          throw new Error(result?.error ? `SkipCash: ${result.error}` : t('store.errors.paymentLinkFailed'));
         }
         toast.success(t('store.success.redirecting'));
         window.location.href = result.payUrl;
@@ -1147,7 +1149,7 @@ export default function PlayerStorePage() {
                           </div>
                           <div className="mt-2 rounded-xl bg-white px-3 py-1.5 text-xs text-slate-500">
                             {order.payment_type === 'installment'
-                              ? `${getPaymentOptionLabel(order.payment_method || '')} • ${order.installment_months || '-'} ${t('store.checkout.months') || 'أشهر'}`
+                              ? `${getPaymentOptionLabel(order.payment_method || '')} • ${order.installment_months || '-'} ${t('store.checkout.months')}`
                               : getPaymentOptionLabel(order.payment_method || '')}
                           </div>
                         </div>
@@ -1378,7 +1380,7 @@ export default function PlayerStorePage() {
                       {/* Flash sale badge */}
                       {product.flashSaleEndAt && new Date(product.flashSaleEndAt) > new Date() && (
                         <span className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1 text-[11px] font-black text-white shadow-sm">
-                          ⚡ {t('store.flashSale.title') || 'فلاش سيل'}
+                          ⚡ {t('store.flashSale.title')}
                         </span>
                       )}
                     </div>
@@ -1404,7 +1406,7 @@ export default function PlayerStorePage() {
                     <div className="absolute bottom-3 right-3">
                       <span className="flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm">
                         <span>{getCategoryIcon(product.category)}</span>
-                        {CATEGORY_LABELS[product.category]}
+                        {categoryLabels[product.category]}
                       </span>
                     </div>
                   </div>
@@ -1614,7 +1616,7 @@ export default function PlayerStorePage() {
               <div className="flex-1 overflow-y-auto">
                 {/* Items summary strip */}
                 <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.orders.quantity') || 'المنتجات'}</p>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.orders.quantity')}</p>
                   <div className="space-y-2">
                     {cartItems.map(({ product, quantity }) => (
                       <div key={product.id} className="flex items-center justify-between gap-2">
@@ -1638,7 +1640,7 @@ export default function PlayerStorePage() {
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerName')}</label>
                         <Input value={orderForm.buyerName} onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
-                          placeholder={t('store.checkout.buyerNamePlaceholder') || 'محمد عبدالله'} className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                          placeholder={t('store.checkout.buyerNamePlaceholder')} className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerPhone')}</label>
@@ -1678,19 +1680,19 @@ export default function PlayerStorePage() {
                             onClick={() => setOrderForm((prev) => ({ ...prev, paymentMethod: option.id, paymentType: 'installment', installmentMonths: String(option.plans?.[0] || '') }))}
                             className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-2.5 text-center transition ${isSelected ? 'border-[#101828] bg-[#101828]/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
                             <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ${option.brandClassName} border`}>{option.brandMark}</span>
-                            <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>{(option.plans || []).join('/')} {t('store.checkout.months') || 'شهر'}</span>
+                            <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>{(option.plans || []).join('/')} {t('store.checkout.months')}</span>
                           </button>
                         );
                       })}
                     </div>
                     {selectedPaymentOption?.type === 'installment' && (
                       <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="mb-2 text-xs font-bold text-slate-500">{t('store.checkout.selectMonths') || 'اختر عدد الأشهر:'}</p>
+                        <p className="mb-2 text-xs font-bold text-slate-500">{t('store.checkout.selectMonths')}</p>
                         <div className="flex flex-wrap gap-2">
                           {(selectedPaymentOption.plans || []).map((plan) => (
                             <button key={plan} type="button" onClick={() => setOrderForm((prev) => ({ ...prev, installmentMonths: String(plan) }))}
                               className={`rounded-xl px-5 py-2 text-sm font-black transition ${orderForm.installmentMonths === String(plan) ? 'bg-[#101828] text-white shadow-md' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
-                              {plan} {t('store.checkout.months') || 'شهر'}
+                              {plan} {t('store.checkout.months')}
                             </button>
                           ))}
                         </div>
@@ -1786,12 +1788,12 @@ export default function PlayerStorePage() {
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setShowCartCheckout(false)}
                     className="h-12 w-24 shrink-0 rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 transition hover:bg-slate-50">
-                    {t('store.checkout.cancelBtn') || 'رجوع'}
+                    {t('store.checkout.cancelBtn')}
                   </button>
                   <button type="button" onClick={() => void confirmCartPurchase()} disabled={submittingOrder}
                     className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all ${submittingOrder ? 'cursor-wait bg-[#101828]/70 text-white' : 'bg-[#101828] text-white hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]'}`}>
                     {submittingOrder
-                      ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t('store.success.redirecting') || 'جاري إرسال الطلب...'}</>
+                      ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t('store.success.redirecting')}</>
                       : <><CheckCircle className="h-4 w-4" /> {t('store.checkout.confirmBtn')}</>}
                   </button>
                 </div>
@@ -1820,7 +1822,7 @@ export default function PlayerStorePage() {
                   </div>
                   <div>
                     <h3 className="text-base font-black text-slate-900">{t('store.checkout.title')}</h3>
-                    <p className="text-[11px] text-slate-400">{t('store.checkout.subtitle') || 'أكمل البيانات لتأكيد طلبك'}</p>
+                    <p className="text-[11px] text-slate-400">{t('store.checkout.subtitle')}</p>
                   </div>
                 </div>
                 <button type="button" onClick={resetPurchaseState}
@@ -1880,7 +1882,7 @@ export default function PlayerStorePage() {
                         <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerName')}</label>
                         <Input value={orderForm.buyerName}
                           onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
-                          placeholder={t('store.checkout.buyerNamePlaceholder') || 'محمد عبدالله'}
+                          placeholder={t('store.checkout.buyerNamePlaceholder')}
                           className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                       <div className="space-y-1">
@@ -2157,7 +2159,7 @@ export default function PlayerStorePage() {
                   className="h-11 flex-1 rounded-2xl border border-white/10 font-bold text-slate-300 transition hover:bg-white/10"
                   onClick={() => { setShowInstallmentNotice(false); void loadOrders(); setShowOrders(true); }}
                 >
-                  {t('store.orders.tabTitle') || 'عرض طلباتي'}
+                  {t('store.orders.tabTitle')}
                 </button>
               </div>
             </motion.div>
@@ -2199,14 +2201,14 @@ export default function PlayerStorePage() {
                   className="flex h-11 flex-1 items-center justify-center rounded-2xl bg-[#ffb703] font-black text-slate-900 transition hover:bg-[#f59e0b]"
                   onClick={() => setShowTransferNotice(false)}
                 >
-                  {t('common.ok') || 'حسناً، شكراً!'}
+                  {t('common.ok')}
                 </button>
                 <button
                   type="button"
                   className="h-11 flex-1 rounded-2xl border border-white/10 font-bold text-slate-300 transition hover:bg-white/10"
                   onClick={() => { setShowTransferNotice(false); void loadOrders(); setShowOrders(true); }}
                 >
-                  {t('store.orders.tabTitle') || 'عرض طلباتي'}
+                  {t('store.orders.tabTitle')}
                 </button>
               </div>
             </motion.div>

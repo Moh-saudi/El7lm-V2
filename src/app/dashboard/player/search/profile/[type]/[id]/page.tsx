@@ -33,6 +33,7 @@ import {
   Share2
 } from 'lucide-react';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+import { useTranslation } from '@/lib/i18n';
 
 // أنواع البيانات
 interface EntityProfile {
@@ -74,16 +75,17 @@ interface EntityProfile {
 }
 
 const ENTITY_TYPES = {
-  club: { label: 'نادي', icon: Building, color: 'bg-blue-500' },
-  agent: { label: 'وكيل لاعبين', icon: Briefcase, color: 'bg-purple-500' },
-  scout: { label: 'سكاوت', icon: Eye, color: 'bg-green-500' },
-  academy: { label: 'أكاديمية', icon: Trophy, color: 'bg-orange-500' },
-  sponsor: { label: 'راعي', icon: Award, color: 'bg-red-500' },
-  trainer: { label: 'مدرب', icon: User, color: 'bg-cyan-500' }
+  club: { icon: Building, color: 'bg-blue-500' },
+  agent: { icon: Briefcase, color: 'bg-purple-500' },
+  scout: { icon: Eye, color: 'bg-green-500' },
+  academy: { icon: Trophy, color: 'bg-orange-500' },
+  sponsor: { icon: Award, color: 'bg-red-500' },
+  trainer: { icon: User, color: 'bg-cyan-500' }
 };
 
 export default function EntityProfilePage() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams();
 
@@ -126,7 +128,7 @@ export default function EntityProfilePage() {
             collectionName = 'sponsors';
             break;
           default:
-            setError('نوع الكيان غير مدعوم');
+            setError(t('playerEntitySearch.unsupportedType'));
             return;
         }
 
@@ -141,7 +143,7 @@ export default function EntityProfilePage() {
 
           // منع عرض ملفات المشرف
           if (data.accountType === 'admin' || data.type === 'admin') {
-            setError('غير مسموح بعرض هذا الملف');
+            setError(t('playerEntitySearch.profileNotAllowed'));
             setIsLoading(false);
             return;
           }
@@ -149,7 +151,7 @@ export default function EntityProfilePage() {
           // تحويل البيانات إلى تنسيق EntityProfile
           const profile: EntityProfile = {
             id: data.id,
-            name: data.name || data.full_name || data.display_name || data.fullName || 'غير محدد',
+            name: data.name || data.full_name || data.display_name || data.fullName || t('playerEntitySearch.notSpecified'),
             type: entityType as any,
             email: data.email || '',
             phone: data.phone || '',
@@ -178,7 +180,7 @@ export default function EntityProfilePage() {
               city: data.city || data.current_location?.split(' - ')[1] || data.current_location || '',
               address: data.address || data.office_address || ''
             },
-            description: data.description || 'لا يوجد وصف متاح',
+            description: data.description || t('playerEntitySearch.noDescription'),
             specialization: data.specialization || data.type || '',
             verified: data.is_fifa_licensed || data.is_certified || true,
             rating: 4.5,
@@ -186,13 +188,13 @@ export default function EntityProfilePage() {
             followersCount: (Array.isArray(data.followers) ? data.followers.length : (data.followersCount ?? 0)),
             connectionsCount: data.stats?.contracts || data.stats?.completed_deals || 0,
             achievements: data.trophies?.map((t: any) => `${t.name} (${t.year})`) ||
-              (data.is_fifa_licensed ? ['وكيل معتمد FIFA'] : []) ||
-              (data.is_certified ? ['مدرب معتمد'] : []) ||
-              ['خبرة متميزة'],
-            services: data.programs || ['خدمات متنوعة'],
+              (data.is_fifa_licensed ? [t('playerEntitySearch.fifaAgent')] : []) ||
+              (data.is_certified ? [t('playerEntitySearch.certifiedTrainer')] : []) ||
+              [t('playerEntitySearch.distinguishedExperience')],
+            services: data.programs || [t('playerEntitySearch.variedServices')],
             established: data.founded || data.established ||
               (data.createdAt ? new Date(data.createdAt).getFullYear().toString() : ''),
-            languages: data.spoken_languages || ['العربية'],
+            languages: data.spoken_languages || [t('playerEntitySearch.arabicLanguage')],
             contactInfo: {
               email: data.email || '',
               phone: data.phone || '',
@@ -208,11 +210,11 @@ export default function EntityProfilePage() {
 
           setEntity(profile);
         } else {
-          setError('لم يتم العثور على الملف المطلوب');
+          setError(t('playerEntitySearch.profileNotFound'));
         }
       } catch (error) {
-        console.error('خطأ في جلب بيانات الكيان:', error);
-        setError('حدث خطأ في تحميل البيانات');
+        console.error('Error fetching entity data:', error);
+        setError(t('playerEntitySearch.loadError'));
       } finally {
         setIsLoading(false);
       }
@@ -262,7 +264,7 @@ export default function EntityProfilePage() {
           });
       }
     } catch (error) {
-      console.error('خطأ في المتابعة:', error);
+      console.error('Follow error:', error);
       setEntity(prev => prev ? { ...prev, isFollowing: originalFollowing } : prev);
     } finally {
       setActionLoading(null);
@@ -300,11 +302,11 @@ export default function EntityProfilePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-pink-50 flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">خطأ</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">{t('playerEntitySearch.errorTitle')}</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            العودة للخلف
+            {t('playerEntitySearch.goBack')}
           </Button>
         </Card>
       </div>
@@ -315,10 +317,10 @@ export default function EntityProfilePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold text-gray-600 mb-4">لم يتم العثور على الملف</h2>
+          <h2 className="text-2xl font-bold text-gray-600 mb-4">{t('playerEntitySearch.profileNotFoundTitle')}</h2>
           <Button onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            العودة للخلف
+            {t('playerEntitySearch.goBack')}
           </Button>
         </Card>
       </div>
@@ -340,12 +342,14 @@ export default function EntityProfilePage() {
               className="flex gap-2 items-center px-4 py-2 text-gray-600 rounded-lg transition-all hover:text-gray-800 hover:bg-gray-100"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">العودة للبحث</span>
+              <span className="font-medium">{t('playerEntitySearch.backToSearch')}</span>
             </button>
 
             {/* عنوان الصفحة */}
             <div className="text-center">
-              <h1 className="text-xl font-bold text-gray-900">ملف {entityTypeInfo.label} الشخصي</h1>
+              <h1 className="text-xl font-bold text-gray-900">
+                {t('playerEntitySearch.profileTitle').replace('{{type}}', t(`playerEntitySearch.types.${entity.type}`))}
+              </h1>
               {entity && (
                 <p className="text-sm text-gray-600">{entity.name}</p>
               )}
@@ -379,12 +383,12 @@ export default function EntityProfilePage() {
                   {entity.verified && (
                     <Badge className="bg-blue-500 text-white">
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      محقق
+                      {t('playerEntitySearch.verified')}
                     </Badge>
                   )}
                   <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                     <Sparkles className="w-4 h-4 mr-1" />
-                    مميز
+                    {t('playerEntitySearch.featured')}
                   </Badge>
                 </div>
 
@@ -413,7 +417,7 @@ export default function EntityProfilePage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-300" />
-                          {entity.rating} ({formatNumber(entity.reviewsCount)} تقييم)
+                          {entity.rating} ({formatNumber(entity.reviewsCount)} {t('playerEntitySearch.rating')})
                         </div>
                       </div>
                     </div>
@@ -431,12 +435,12 @@ export default function EntityProfilePage() {
                         ) : entity.isFollowing ? (
                           <>
                             <UserCheck className="w-4 h-4 mr-2" />
-                            متابع
+                            {t('playerEntitySearch.following')}
                           </>
                         ) : (
                           <>
                             <UserPlus className="w-4 h-4 mr-2" />
-                            متابعة
+                            {t('playerEntitySearch.follow')}
                           </>
                         )}
                       </Button>
@@ -446,7 +450,7 @@ export default function EntityProfilePage() {
                         className="bg-white text-gray-900 hover:bg-gray-100"
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
-                        رسالة
+                        {t('playerEntitySearch.message')}
                       </Button>
                     </div>
                   </div>
@@ -458,21 +462,21 @@ export default function EntityProfilePage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{formatNumber(entity.followersCount)}</div>
-                    <div className="text-sm text-gray-600">متابع</div>
+                    <div className="text-sm text-gray-600">{t('playerEntitySearch.followers')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{formatNumber(entity.connectionsCount)}</div>
-                    <div className="text-sm text-gray-600">اتصال</div>
+                    <div className="text-sm text-gray-600">{t('playerEntitySearch.connections')}</div>
                   </div>
                   {entity.stats && (
                     <>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">{entity.stats.successfulDeals}</div>
-                        <div className="text-sm text-gray-600">صفقة ناجحة</div>
+                        <div className="text-sm text-gray-600">{t('playerEntitySearch.successfulDeals')}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-orange-600">{entity.stats.playersRepresented}</div>
-                        <div className="text-sm text-gray-600">لاعب ممثل</div>
+                        <div className="text-sm text-gray-600">{t('playerEntitySearch.playersRepresented')}</div>
                       </div>
                     </>
                   )}
@@ -486,14 +490,14 @@ export default function EntityProfilePage() {
               <div className="lg:col-span-2 space-y-6">
                 {/* الوصف */}
                 <Card className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">الوصف</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.description')}</h3>
                   <p className="text-gray-700 leading-relaxed">{entity.description}</p>
                 </Card>
 
                 {/* الإنجازات */}
                 {entity.achievements && entity.achievements.length > 0 && (
                   <Card className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">الإنجازات</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.achievements')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {entity.achievements.map((achievement, index) => (
                         <div key={index} className="flex items-center gap-2 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
@@ -508,7 +512,7 @@ export default function EntityProfilePage() {
                 {/* الخدمات */}
                 {entity.services && entity.services.length > 0 && (
                   <Card className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">الخدمات</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.services')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {entity.services.map((service, index) => (
                         <div key={index} className="flex items-center gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
@@ -525,13 +529,13 @@ export default function EntityProfilePage() {
               <div className="space-y-6">
                 {/* معلومات الاتصال */}
                 <Card className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">معلومات الاتصال</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.contactInfo')}</h3>
                   <div className="space-y-4">
                     {entity.contactInfo.email && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Mail className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">البريد الإلكتروني</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.email')}</div>
                           <div className="font-medium">{entity.contactInfo.email}</div>
                         </div>
                       </div>
@@ -541,7 +545,7 @@ export default function EntityProfilePage() {
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Phone className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">رقم الهاتف</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.phone')}</div>
                           <div className="font-medium">{entity.contactInfo.phone}</div>
                         </div>
                       </div>
@@ -551,7 +555,7 @@ export default function EntityProfilePage() {
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Globe className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">الموقع الإلكتروني</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.website')}</div>
                           <a href={entity.website} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
                             {entity.website}
                           </a>
@@ -563,13 +567,13 @@ export default function EntityProfilePage() {
 
                 {/* معلومات إضافية */}
                 <Card className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">معلومات إضافية</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.additionalInfo')}</h3>
                   <div className="space-y-4">
                     {entity.specialization && (
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Target className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">التخصص</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.specialization')}</div>
                           <div className="font-medium">{entity.specialization}</div>
                         </div>
                       </div>
@@ -579,7 +583,7 @@ export default function EntityProfilePage() {
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Calendar className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">تاريخ التأسيس</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.establishedDate')}</div>
                           <div className="font-medium">{entity.established}</div>
                         </div>
                       </div>
@@ -589,7 +593,7 @@ export default function EntityProfilePage() {
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <Languages className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="text-sm text-gray-500">اللغات</div>
+                          <div className="text-sm text-gray-500">{t('playerEntitySearch.languages')}</div>
                           <div className="font-medium">{entity.languages.join(', ')}</div>
                         </div>
                       </div>
@@ -599,7 +603,7 @@ export default function EntityProfilePage() {
 
                 {/* أزرار الإجراءات */}
                 <Card className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">الإجراءات</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">{t('playerEntitySearch.actions')}</h3>
                   <div className="space-y-3">
                     <Button
                       onClick={handleFollow}
@@ -612,12 +616,12 @@ export default function EntityProfilePage() {
                       ) : entity.isFollowing ? (
                         <>
                           <UserCheck className="w-4 h-4 mr-2" />
-                          متابع
+                          {t('playerEntitySearch.following')}
                         </>
                       ) : (
                         <>
                           <UserPlus className="w-4 h-4 mr-2" />
-                          متابعة
+                          {t('playerEntitySearch.follow')}
                         </>
                       )}
                     </Button>
@@ -628,7 +632,7 @@ export default function EntityProfilePage() {
                       className="w-full"
                     >
                       <MessageSquare className="w-4 h-4 mr-2" />
-                      إرسال رسالة
+                      {t('playerEntitySearch.sendMessage')}
                     </Button>
 
                     <Button
@@ -636,7 +640,7 @@ export default function EntityProfilePage() {
                       className="w-full"
                     >
                       <Share2 className="w-4 h-4 mr-2" />
-                      مشاركة
+                      {t('playerEntitySearch.share')}
                     </Button>
                   </div>
                 </Card>

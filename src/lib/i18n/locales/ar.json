@@ -158,7 +158,7 @@
     "roleAgentDesc": "وكيل لاعبين",
     "roleTrainerDesc": "مدرب رياضي",
     "roleMarketerDesc": "مسوّق رياضي",
-    "forgotPasswordTitle": "نسيت كلمة المرور؟",
+    "forgotPasswordTitle": "نسيت كلمة المرور",
     "forgotPasswordDesc": "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.",
     "sendResetLink": "إرسال رابط إعادة التعيين",
     "backToLogin": "العودة لتسجيل الدخول",
@@ -208,7 +208,6 @@
     "resetPasswordSaving": "جاري الحفظ...",
     "resetPasswordSaveBtn": "حفظ كلمة المرور",
     "resetPasswordBrandFooter": "من شركة ميسك القطرية",
-    "forgotPasswordTitle": "نسيت كلمة المرور",
     "forgotPasswordPhoneSubtitle": "أدخل رقم واتساب المسجل في حسابك",
     "forgotPasswordOtpSubtitle": "أُرسل رمز التحقق عبر WhatsApp",
     "forgotPasswordPasswordSubtitle": "أدخل كلمة المرور الجديدة",
@@ -1246,114 +1245,187 @@
     "dollarEquivalent": "1 دولار ="
   },
   "store": {
-    "badge": "متجر الحلم الرياضي",
-    "heroTitle": "كل ما تحتاجه",
-    "heroTitle2": "لبطولتك القادمة",
-    "heroDesc": "معدات رياضية، ملابس احترافية، وأكثر — بأفضل الأسعار مع خيارات دفع مرنة.",
-    "statProducts": "منتجاً",
-    "statAvailable": "متاح الآن",
+    "title": "متجر الحلم",
+    "subtitle": "تسوق أحدث المنتجات والمعدات الرياضية بجودة احترافية",
+    "badge": "منصة الحلم بالتعاون مع V Lab Ai.",
+    "heroTitle": "متجر الحلم",
+    "heroTitle2": "عالمك الرياضي المتكامل",
+    "heroDesc": "اكتشف أحدث التجهيزات والمعدات الرياضية المعتمدة لتدريبك ومسيرتك الرياضية.",
+    "statProducts": "منتج",
+    "statAvailable": "متوفر",
     "statMyOrders": "طلباتي",
-    "trustSecure": "دفع آمن ومشفر",
+    "trustSecure": "دفع آمن 100%",
     "trustFast": "توصيل سريع",
-    "trustInstallment": "تقسيط بدون فوائد",
-    "trustOriginal": "منتجات رياضية أصلية",
+    "trustInstallment": "تقسيط مرن",
+    "trustOriginal": "منتجات أصلية",
+    "searchPlaceholder": "بحث عن منتجات...",
+    "categoryLabel": "اختر الفئة",
     "categories": {
       "all": "جميع المنتجات",
       "equipment": "معدات رياضية",
-      "clothing": "ملابس",
+      "clothing": "ملابس رياضية",
       "accessories": "إكسسوارات",
       "nutrition": "تغذية رياضية",
-      "electronics": "إلكترونيات",
+      "electronics": "أجهزة إلكترونية",
       "other": "منتجات أخرى"
     },
-    "searchPlaceholder": "ابحث عن منتج...",
-    "flashSale": "عرض محدود",
-    "flashSaleEnds": "ينتهي خلال",
-    "days": "يوم",
-    "hours": "س",
-    "minutes": "د",
-    "seconds": "ث",
-    "addToCart": "أضف للسلة",
-    "buyNow": "اشتري الآن",
-    "outOfStock": "نفد المخزون",
-    "featured": "مميز",
-    "orders": {
-      "title": "طلباتي",
-      "empty": "لا توجد طلبات بعد",
-      "loading": "جاري تحميل طلباتك...",
-      "unavailable": "خدمة الطلبات غير متاحة حالياً",
-      "statusPending": "قيد المراجعة",
-      "statusConfirmed": "تم التأكيد",
-      "statusProcessing": "قيد التجهيز",
-      "statusShipped": "تم الشحن",
-      "statusDelivered": "تم التسليم",
-      "statusCancelled": "ملغي"
+    "flashSale": {
+      "title": "عروض فلاش لفترة محدودة",
+      "countdown": {
+        "days": "يوم",
+        "hours": "ساعة",
+        "minutes": "دقيقة",
+        "seconds": "ثانية"
+      }
+    },
+    "flashSaleEnds": "العرض ينتهي قريباً",
+    "product": {
+      "featured": "متميز",
+      "outOfStock": "نفذت الكمية",
+      "discount": "خصم {{percent}}%",
+      "onlyStockLeft": "آخر {{count}} قطع متبقية!",
+      "available": "متوفر",
+      "showing": "عرض",
+      "inCategory": "في",
+      "unavailable": "غير متوفر حالياً",
+      "addToCart": "أضف للسلة",
+      "buyNow": "شراء الآن",
+      "viewDetails": "عرض التفاصيل",
+      "brand": "الشركة المصنعة",
+      "model": "الموديل",
+      "description": "الوصف",
+      "similarTitle": "منتجات مشابهة قد تعجبك"
     },
     "cart": {
       "title": "سلة التسوق",
-      "empty": "السلة فارغة",
-      "emptyDesc": "أضف منتجات لتبدأ التسوق",
-      "checkout": "إتمام الشراء",
+      "empty": "سلة التسوق الخاصة بك فارغة",
+      "emptyDesc": "أضف منتجات للبدء",
+      "subtotal": "المجموع الفرعي",
+      "shipping": "التوصيل",
+      "free": "مجاني",
       "total": "الإجمالي",
-      "remove": "حذف",
-      "items": "منتجات في السلة"
+      "checkout": "تأكيد وإتمام الطلب",
+      "delete": "حذف",
+      "clear": "إفراغ السلة",
+      "itemsCount": "({{count}} منتج)"
     },
-    "purchase": {
-      "title": "تفاصيل الطلب",
-      "buyerName": "اسم المستلم",
-      "buyerNamePlaceholder": "الاسم الكامل",
-      "phone": "رقم الجوال",
-      "phonePlaceholder": "+966 ...",
-      "paymentMethod": "طريقة الدفع",
-      "fullPayment": "دفع كامل",
-      "installment": "تقسيط",
-      "installmentMonths": "عدد أشهر التقسيط",
-      "addressLabel": "نوع العنوان",
-      "deliveryMethod": "وسيلة الاستلام",
+    "checkout": {
+      "title": "إتمام عملية الشراء",
+      "subtitle": "أكمل البيانات لتأكيد طلبك",
+      "buyerInfo": "بيانات المشتري",
+      "buyerName": "الاسم الكامل",
+      "buyerNamePlaceholder": "محمد عبدالله",
+      "buyerPhone": "رقم الهاتف / الواتساب",
+      "shippingInfo": "معلومات التوصيل",
+      "country": "الدولة",
+      "city": "المدينة",
+      "address": "العنوان بالتفصيل",
+      "addressPlaceholder": "الشارع، رقم المبنى، رقم الشقة...",
+      "deliveryMethod": "طريقة التوصيل",
+      "addressLabel": "تسمية العنوان",
       "contactMethod": "وسيلة التواصل المفضلة",
-      "contactWindow": "وقت التواصل",
-      "shippingCountry": "الدولة",
-      "shippingCity": "المدينة",
-      "shippingAddress": "العنوان التفصيلي",
-      "shippingAddressPlaceholder": "الشارع، المبنى، الطابق...",
-      "notes": "ملاحظات إضافية (اختياري)",
-      "notesPlaceholder": "أي تفاصيل إضافية...",
+      "contactWindow": "وقت التواصل المفضل",
+      "notes": "ملاحظات إضافية",
+      "notesPlaceholder": "مثال: يرجى الاتصال قبل التوصيل أو أي مواصفات خاصة",
+      "paymentMethod": "طريقة الدفع",
+      "paymentType": "نوع الدفع",
+      "installmentPlans": "أقساط شهرية",
+      "months": "شهر",
+      "selectMonths": "اختر عدد الأشهر:",
+      "paymentMethods": {
+        "card": "بطاقة بنكية",
+        "wallet": "محفظة إلكترونية",
+        "bank": "تحويل بنكي"
+      },
+      "tamaraPlans": "خطط تمارا للتقسيط",
+      "tabbyPlans": "خطط تابي للتقسيط",
+      "confirmBtn": "تأكيد وإرسال الطلب",
+      "cancelBtn": "إلغاء",
+      "addressLabels": {
+        "home": "المنزل",
+        "work": "العمل",
+        "academy": "الأكاديمية",
+        "club": "النادي"
+      },
+      "deliveryMethods": {
+        "courier": "توصيل للعنوان",
+        "branch_pickup": "استلام من الفرع",
+        "coordinator": "تنسيق مباشر مع الإدارة"
+      },
+      "contactMethods": {
+        "whatsapp": "واتساب",
+        "phone": "اتصال هاتفي",
+        "email": "البريد الإلكتروني"
+      },
+      "contactWindows": {
+        "morning": "صباحًا",
+        "afternoon": "بعد الظهر",
+        "evening": "مساءً",
+        "anytime": "أي وقت"
+      },
+      "noteAddressLabel": "??? ???????",
+      "noteDeliveryMethod": "????? ???????",
+      "noteContactMethod": "????? ???????",
+      "notePreferredContactMethod": "????? ??????? ???????",
+      "noteContactWindow": "??? ???????",
+      "noteAddress": "???????",
+      "noteDetailedAddress": "??????? ????????",
+      "noteNotes": "???????",
+      "noteExtraNotes": "??????? ??????",
+      "noteBranchPickup": "???? ????? ????? ???????? ?? ?????",
+      "noteCoordinator": "???? ????? ????? ?? ??????? ??? ???????",
+      "noteWalletTransfer": "??????? ??????? ??? ??????? ??????????? ?? InstaPay ??? ?????"
+    },
+    "orders": {
+      "tabTitle": "طلباتي",
+      "tabSubtitle": "عرض المشتريات السابقة وحالة الطلبات",
+      "id": "رقم الطلب",
+      "date": "التاريخ",
       "total": "الإجمالي",
+      "payment": "طريقة الدفع",
       "quantity": "الكمية",
-      "confirm": "تأكيد الطلب",
-      "submitting": "جاري الإرسال...",
-      "cancel": "إلغاء"
+      "status": "الحالة",
+      "noOrders": "لا توجد طلبات سابقة حتى الآن",
+      "vodafoneNoticeTitle": "رقم التحويل اليدوي (فودافون كاش / محفظة)",
+      "vodafoneNoticeDesc": "يرجى تحويل المبلغ الإجمالي إلى الرقم التالي ثم إرسال لقطة شاشة للتحويل عبر الواتساب لتأكيد الطلب:",
+      "installmentNoticeTitle": "تأكيد خطة التقسيط",
+      "installmentNoticeSubtitle": "سيتم التواصل معك خلال 24 ساعة",
+      "installmentNoticeDesc": "تم تسجيل طلب التقسيط عبر {{provider}}. سيتواصل معك فريق خدمة العملاء لإكمال الإجراءات وتأكيد الطلب.",
+      "statuses": {
+        "pending": "قيد المراجعة",
+        "confirmed": "تم التأكيد",
+        "processing": "قيد التجهيز",
+        "shipped": "تم الشحن",
+        "delivered": "تم التسليم",
+        "cancelled": "ملغي"
+      }
     },
     "errors": {
-      "productUnavailable": "هذا المنتج غير متاح حاليًا",
-      "loadFailed": "تعذر تحميل المنتجات، يرجى المحاولة لاحقاً",
-      "loginRequired": "يجب تسجيل الدخول لإرسال الطلب",
-      "cartEmpty": "السلة فارغة",
-      "nameRequired": "يرجى إدخال اسم المستلم",
-      "phoneRequired": "يرجى إدخال رقم الجوال",
-      "locationRequired": "يرجى اختيار الدولة والمدينة",
-      "addressRequired": "يرجى إدخال العنوان التفصيلي للتوصيل",
-      "installmentRequired": "يرجى اختيار مدة التقسيط",
-      "orderFailed": "تعذر إرسال الطلب، يرجى المحاولة مرة أخرى",
-      "paymentLinkFailed": "تعذر تجهيز رابط الدفع",
-      "ordersUnavailable": "خدمة الطلبات غير متاحة حالياً"
+      "loadFailed": "فشل تحميل منتجات المتجر. يرجى المحاولة لاحقاً.",
+      "productUnavailable": "هذا المنتج غير متوفر حالياً.",
+      "loginRequired": "يرجى تسجيل الدخول أولاً لإتمام الشراء.",
+      "cartEmpty": "سلة التسوق فارغة.",
+      "nameRequired": "يرجى إدخال الاسم الكامل.",
+      "phoneRequired": "يرجى إدخال رقم الهاتف.",
+      "locationRequired": "يرجى اختيار الدولة والمدينة للتوصيل.",
+      "addressRequired": "يرجى إدخال العنوان التفصيلي للتوصيل.",
+      "installmentRequired": "يرجى اختيار خطة التقسيط المفضلة.",
+      "paymentLinkFailed": "فشل إنشاء رابط الدفع الإلكتروني. يرجى مراجعة الدعم.",
+      "noProductsFound": "لا توجد منتجات مطابقة",
+      "tryDifferentSearch": "جرّب البحث بكلمات مختلفة أو اختر فئة أخرى من القائمة أعلاه.",
+      "orderFailed": "حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مرة أخرى.",
+      "ordersUnavailable": "???? ??????? ??? ????? ??????",
+      "ordersUnavailableTryLater": "???? ??????? ??? ????? ??????? ???? ???????? ??????"
     },
     "success": {
-      "cartAdded": "تمت إضافة {{name}} للسلة",
-      "cartQtyIncreased": "تم زيادة الكمية في السلة",
+      "cartQtyIncreased": "تم زيادة كمية المنتج في السلة.",
+      "cartAdded": "تم إضافة \"{{name}}\" إلى السلة بنجاح.",
+      "redirecting": "جاري تحويلك إلى بوابة الدفع...",
       "orderSuccess": "تم إرسال طلبك بنجاح!",
-      "cartOrderSuccess": "تم إرسال {{count}} طلب بنجاح!",
-      "orderReceived": "تم استلام طلبك بنجاح!",
-      "orderRegistered": "تم تسجيل طلبك بنجاح!",
-      "redirecting": "جاري تحويلك إلى بوابة الدفع..."
-    },
-    "noProducts": "لا توجد منتجات متاحة حالياً",
-    "noProductsSearch": "لا توجد نتائج للبحث",
-    "inventoryUnavailable": "متجر المنتجات غير متاح حالياً",
-    "similarProducts": "منتجات مشابهة",
-    "quantity": "الكمية",
-    "stock": "متوفر: {{count}}",
-    "wishlist": "المفضلة"
+      "orderReceived": "تم تسجيل طلبك بنجاح وجاري المراجعة.",
+      "orderRegistered": "تم تسجيل الطلب قيد التحويل بنجاح.",
+      "cartOrderSuccess": "تم تسجيل طلبك لعدد {{count}} منتجات بنجاح!"
+    }
   },
   "billing": {
     "title": "الفواتير والاشتراكات",
@@ -1713,7 +1785,25 @@
     "exp4to7": "4-7 سنوات"
   },
   "careerApply": {
-    "formTitle": "نموذج التقديم للوظيفة", "backToCareers": "العودة للوظائف", "successTitle": "تم إرسال طلبك بنجاح", "successMessage": "سنتواصل معك قريباً عبر البريد الإلكتروني أو الهاتف.", "backHome": "العودة للصفحة الرئيسية", "roles": "اختر الوظيفة أو الوظائف", "fullName": "الاسم الكامل", "fullNamePlaceholder": "أدخل اسمك بالكامل", "email": "البريد الإلكتروني", "phone": "رقم الهاتف", "country": "الدولة", "countryPlaceholder": "الدولة الحالية", "experience": "الخبرات السابقة", "experiencePlaceholder": "صف خبراتك السابقة بإيجاز...", "linkedin": "رابط لينكدإن (اختياري)", "socialProfile": "رابط فيسبوك أو إنستغرام", "profileUrl": "رابط الملف الشخصي", "sending": "جاري الإرسال...", "submit": "إرسال الطلب"
+    "formTitle": "نموذج التقديم للوظيفة",
+    "backToCareers": "العودة للوظائف",
+    "successTitle": "تم إرسال طلبك بنجاح",
+    "successMessage": "سنتواصل معك قريباً عبر البريد الإلكتروني أو الهاتف.",
+    "backHome": "العودة للصفحة الرئيسية",
+    "roles": "اختر الوظيفة أو الوظائف",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "أدخل اسمك بالكامل",
+    "email": "البريد الإلكتروني",
+    "phone": "رقم الهاتف",
+    "country": "الدولة",
+    "countryPlaceholder": "الدولة الحالية",
+    "experience": "الخبرات السابقة",
+    "experiencePlaceholder": "صف خبراتك السابقة بإيجاز...",
+    "linkedin": "رابط لينكدإن (اختياري)",
+    "socialProfile": "رابط فيسبوك أو إنستغرام",
+    "profileUrl": "رابط الملف الشخصي",
+    "sending": "جاري الإرسال...",
+    "submit": "إرسال الطلب"
   },
   "contact": {
     "backToHome": "العودة للصفحة الرئيسية",
@@ -1893,175 +1983,6 @@
     "tryMobileData": "تجربة اتصال بيانات الجوال",
     "contactSupport": "التواصل مع الدعم الفني"
   },
-  "store": {
-    "title": "متجر الحلم",
-    "subtitle": "تسوق أحدث المنتجات والمعدات الرياضية بجودة احترافية",
-    "badge": "منصة الحلم بالتعاون مع V Lab Ai.",
-    "heroTitle": "متجر الحلم",
-    "heroTitle2": "عالمك الرياضي المتكامل",
-    "heroDesc": "اكتشف أحدث التجهيزات والمعدات الرياضية المعتمدة لتدريبك ومسيرتك الرياضية.",
-    "statProducts": "منتج",
-    "statAvailable": "متوفر",
-    "statMyOrders": "طلباتي",
-    "trustSecure": "دفع آمن 100%",
-    "trustFast": "توصيل سريع",
-    "trustInstallment": "تقسيط مرن",
-    "trustOriginal": "منتجات أصلية",
-    "searchPlaceholder": "بحث عن منتجات...",
-    "categoryLabel": "اختر الفئة",
-    "categories": {
-      "all": "جميع المنتجات",
-      "equipment": "معدات رياضية",
-      "clothing": "ملابس رياضية",
-      "accessories": "إكسسوارات",
-      "nutrition": "تغذية رياضية",
-      "electronics": "أجهزة إلكترونية",
-      "other": "منتجات أخرى"
-    },
-    "flashSale": {
-      "title": "عروض فلاش لفترة محدودة",
-      "countdown": {
-        "days": "يوم",
-        "hours": "ساعة",
-        "minutes": "دقيقة",
-        "seconds": "ثانية"
-      }
-    },
-    "flashSaleEnds": "العرض ينتهي قريباً",
-    "product": {
-      "featured": "متميز",
-      "outOfStock": "نفذت الكمية",
-      "discount": "خصم {{percent}}%",
-      "onlyStockLeft": "آخر {{count}} قطع متبقية!",
-      "available": "متوفر",
-      "showing": "عرض",
-      "inCategory": "في",
-      "unavailable": "غير متوفر حالياً",
-      "addToCart": "أضف للسلة",
-      "buyNow": "شراء الآن",
-      "viewDetails": "عرض التفاصيل",
-      "brand": "الشركة المصنعة",
-      "model": "الموديل",
-      "description": "الوصف",
-      "similarTitle": "منتجات مشابهة قد تعجبك"
-    },
-    "cart": {
-      "title": "سلة التسوق",
-      "empty": "سلة التسوق الخاصة بك فارغة",
-      "emptyDesc": "أضف منتجات للبدء",
-      "subtotal": "المجموع الفرعي",
-      "shipping": "التوصيل",
-      "free": "مجاني",
-      "total": "الإجمالي",
-      "checkout": "تأكيد وإتمام الطلب",
-      "delete": "حذف",
-      "clear": "إفراغ السلة",
-      "itemsCount": "({{count}} منتج)"
-    },
-    "checkout": {
-      "title": "إتمام عملية الشراء",
-      "subtitle": "أكمل البيانات لتأكيد طلبك",
-      "buyerInfo": "بيانات المشتري",
-      "buyerName": "الاسم الكامل",
-      "buyerNamePlaceholder": "محمد عبدالله",
-      "buyerPhone": "رقم الهاتف / الواتساب",
-      "shippingInfo": "معلومات التوصيل",
-      "country": "الدولة",
-      "city": "المدينة",
-      "address": "العنوان بالتفصيل",
-      "addressPlaceholder": "الشارع، رقم المبنى، رقم الشقة...",
-      "deliveryMethod": "طريقة التوصيل",
-      "addressLabel": "تسمية العنوان",
-      "contactMethod": "وسيلة التواصل المفضلة",
-      "contactWindow": "وقت التواصل المفضل",
-      "notes": "ملاحظات إضافية",
-      "notesPlaceholder": "مثال: يرجى الاتصال قبل التوصيل أو أي مواصفات خاصة",
-      "paymentMethod": "طريقة الدفع",
-      "paymentType": "نوع الدفع",
-      "installmentPlans": "أقساط شهرية",
-      "months": "شهر",
-      "selectMonths": "اختر عدد الأشهر:",
-      "paymentMethods": {
-        "card": "بطاقة بنكية",
-        "wallet": "محفظة إلكترونية",
-        "bank": "تحويل بنكي"
-      },
-      "tamaraPlans": "خطط تمارا للتقسيط",
-      "tabbyPlans": "خطط تابي للتقسيط",
-      "confirmBtn": "تأكيد وإرسال الطلب",
-      "cancelBtn": "إلغاء",
-      "addressLabels": {
-        "home": "المنزل",
-        "work": "العمل",
-        "academy": "الأكاديمية",
-        "club": "النادي"
-      },
-      "deliveryMethods": {
-        "courier": "توصيل للعنوان",
-        "branch_pickup": "استلام من الفرع",
-        "coordinator": "تنسيق مباشر مع الإدارة"
-      },
-      "contactMethods": {
-        "whatsapp": "واتساب",
-        "phone": "اتصال هاتفي",
-        "email": "البريد الإلكتروني"
-      },
-      "contactWindows": {
-        "morning": "صباحًا",
-        "afternoon": "بعد الظهر",
-        "evening": "مساءً",
-        "anytime": "أي وقت"
-      }
-    },
-    "orders": {
-      "tabTitle": "طلباتي",
-      "tabSubtitle": "عرض المشتريات السابقة وحالة الطلبات",
-      "id": "رقم الطلب",
-      "date": "التاريخ",
-      "total": "الإجمالي",
-      "payment": "طريقة الدفع",
-      "quantity": "الكمية",
-      "status": "الحالة",
-      "noOrders": "لا توجد طلبات سابقة حتى الآن",
-      "vodafoneNoticeTitle": "رقم التحويل اليدوي (فودافون كاش / محفظة)",
-      "vodafoneNoticeDesc": "يرجى تحويل المبلغ الإجمالي إلى الرقم التالي ثم إرسال لقطة شاشة للتحويل عبر الواتساب لتأكيد الطلب:",
-      "installmentNoticeTitle": "تأكيد خطة التقسيط",
-      "installmentNoticeSubtitle": "سيتم التواصل معك خلال 24 ساعة",
-      "installmentNoticeDesc": "تم تسجيل طلب التقسيط عبر {{provider}}. سيتواصل معك فريق خدمة العملاء لإكمال الإجراءات وتأكيد الطلب.",
-      "statuses": {
-        "pending": "قيد المراجعة",
-        "confirmed": "تم التأكيد",
-        "processing": "قيد التجهيز",
-        "shipped": "تم الشحن",
-        "delivered": "تم التسليم",
-        "cancelled": "ملغي"
-      }
-    },
-    "errors": {
-      "loadFailed": "فشل تحميل منتجات المتجر. يرجى المحاولة لاحقاً.",
-      "productUnavailable": "هذا المنتج غير متوفر حالياً.",
-      "loginRequired": "يرجى تسجيل الدخول أولاً لإتمام الشراء.",
-      "cartEmpty": "سلة التسوق فارغة.",
-      "nameRequired": "يرجى إدخال الاسم الكامل.",
-      "phoneRequired": "يرجى إدخال رقم الهاتف.",
-      "locationRequired": "يرجى اختيار الدولة والمدينة للتوصيل.",
-      "addressRequired": "يرجى إدخال العنوان التفصيلي للتوصيل.",
-      "installmentRequired": "يرجى اختيار خطة التقسيط المفضلة.",
-      "paymentLinkFailed": "فشل إنشاء رابط الدفع الإلكتروني. يرجى مراجعة الدعم.",
-      "noProductsFound": "لا توجد منتجات مطابقة",
-      "tryDifferentSearch": "جرّب البحث بكلمات مختلفة أو اختر فئة أخرى من القائمة أعلاه.",
-      "orderFailed": "حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مرة أخرى."
-    },
-    "success": {
-      "cartQtyIncreased": "تم زيادة كمية المنتج في السلة.",
-      "cartAdded": "تم إضافة \"{{name}}\" إلى السلة بنجاح.",
-      "redirecting": "جاري تحويلك إلى بوابة الدفع...",
-      "orderSuccess": "تم إرسال طلبك بنجاح!",
-      "orderReceived": "تم تسجيل طلبك بنجاح وجاري المراجعة.",
-      "orderRegistered": "تم تسجيل الطلب قيد التحويل بنجاح.",
-      "cartOrderSuccess": "تم تسجيل طلبك لعدد {{count}} منتجات بنجاح!"
-    }
-  },
   "dreamAcademy": {
     "title": "أكاديمية الحلم",
     "sectionVideos": "فيديوهات القسم",
@@ -2069,6 +1990,257 @@
     "startJourneyDesc": "انضم إلى آلاف الطلاب الذين يطورون مهاراتهم مع مدرسة الحلم",
     "exploreCoursesBtn": "استكشف جميع الدورات",
     "contactUsBtn": "تواصل معنا"
+  },
+  "playerEntityProfile": {
+    "title": "أكاديمية الحلم",
+    "subtitle": "تعلم اللغات والمهارات الحياتية والمعيشية تمهيداً للاحتراف",
+    "studentCount": "{{count}} طالب",
+    "startCourse": "ابدأ الدورة",
+    "stats": {
+      "students": "+15,000 طالب",
+      "rating": "4.8 تقييم",
+      "freeCourses": "+50 دورة مجانية"
+    },
+    "categories": {
+      "languages": "تعلم اللغات",
+      "lifeSkills": "المهارات الحياتية",
+      "livingSkills": "المهارات المعيشية",
+      "career": "التطوير المهني"
+    },
+    "courses": {
+      "englishBasics": {
+        "title": "دورة اللغة الإنجليزية الأساسية",
+        "level": "مبتدئ",
+        "duration": "3 أشهر",
+        "instructor": "سارة أحمد",
+        "price": "مجاني",
+        "features": {
+          "0": "محادثات يومية",
+          "1": "قواعد اللغة",
+          "2": "الكتابة"
+        }
+      },
+      "spanishBeginners": {
+        "title": "دورة اللغة الإسبانية للمبتدئين",
+        "level": "مبتدئ",
+        "duration": "4 أشهر",
+        "instructor": "كارلوس رودريغيز",
+        "price": "مجاني",
+        "features": {
+          "0": "التحدث الأساسي",
+          "1": "الثقافة الإسبانية",
+          "2": "السفر"
+        }
+      },
+      "frenchAdvanced": {
+        "title": "دورة اللغة الفرنسية المتقدمة",
+        "level": "متقدم",
+        "duration": "6 أشهر",
+        "instructor": "ماري كلود",
+        "price": "مجاني",
+        "features": {
+          "0": "الأدب الفرنسي",
+          "1": "الأعمال",
+          "2": "السياحة"
+        }
+      },
+      "timeManagement": {
+        "title": "إدارة الوقت والتنظيم",
+        "level": "جميع المستويات",
+        "duration": "4 أسابيع",
+        "instructor": "أحمد محمد",
+        "price": "مجاني",
+        "features": {
+          "0": "التخطيط اليومي",
+          "1": "الأولويات",
+          "2": "التفويض"
+        }
+      },
+      "effectiveCommunication": {
+        "title": "التواصل الفعال",
+        "level": "متوسط",
+        "duration": "6 أسابيع",
+        "instructor": "فاطمة علي",
+        "price": "مجاني",
+        "features": {
+          "0": "الاستماع النشط",
+          "1": "التحدث الواضح",
+          "2": "لغة الجسد"
+        }
+      },
+      "emotionalIntelligence": {
+        "title": "الذكاء العاطفي",
+        "level": "متقدم",
+        "duration": "8 أسابيع",
+        "instructor": "د. سارة خالد",
+        "price": "مجاني",
+        "features": {
+          "0": "الوعي الذاتي",
+          "1": "إدارة المشاعر",
+          "2": "العلاقات"
+        }
+      },
+      "personalBudgeting": {
+        "title": "إدارة الميزانية الشخصية",
+        "level": "جميع المستويات",
+        "duration": "6 أسابيع",
+        "instructor": "محمد علي",
+        "price": "مجاني",
+        "features": {
+          "0": "التخطيط المالي",
+          "1": "الادخار",
+          "2": "الاستثمار"
+        }
+      },
+      "healthyCooking": {
+        "title": "الطبخ الصحي",
+        "level": "مبتدئ",
+        "duration": "4 أسابيع",
+        "instructor": "نورا أحمد",
+        "price": "مجاني",
+        "features": {
+          "0": "وصفات صحية",
+          "1": "التخطيط للوجبات",
+          "2": "التسوق الذكي"
+        }
+      },
+      "homeMaintenance": {
+        "title": "الصيانة المنزلية الأساسية",
+        "level": "متوسط",
+        "duration": "5 أسابيع",
+        "instructor": "علي حسن",
+        "price": "مجاني",
+        "features": {
+          "0": "الإصلاحات البسيطة",
+          "1": "الصيانة الوقائية",
+          "2": "الأدوات الأساسية"
+        }
+      },
+      "resumeWriting": {
+        "title": "كتابة السيرة الذاتية",
+        "level": "جميع المستويات",
+        "duration": "3 أسابيع",
+        "instructor": "د. أحمد محمد",
+        "price": "مجاني",
+        "features": {
+          "0": "كتابة السيرة الذاتية",
+          "1": "خطاب التقديم",
+          "2": "مقابلات العمل"
+        }
+      },
+      "entrepreneurship": {
+        "title": "ريادة الأعمال للمبتدئين",
+        "level": "متوسط",
+        "duration": "8 أسابيع",
+        "instructor": "سارة خالد",
+        "price": "مجاني",
+        "features": {
+          "0": "تطوير الأفكار",
+          "1": "دراسة السوق",
+          "2": "خطة العمل"
+        }
+      },
+      "digitalMarketing": {
+        "title": "التسويق الرقمي",
+        "level": "متقدم",
+        "duration": "10 أسابيع",
+        "instructor": "أحمد علي",
+        "price": "مجاني",
+        "features": {
+          "0": "التسويق عبر وسائل التواصل",
+          "1": "تحليل البيانات",
+          "2": "إعلانات جوجل"
+        }
+      }
+    }
+  },
+  "playerEntitySearch": {
+    "fallbackEntityName": "كيان رياضي",
+    "notSpecified": "غير محدد",
+    "noDescription": "وصف غير متاح",
+    "userFallback": "مستخدم",
+    "actionError": "خطأ في العملية",
+    "badge": "شبكة الحلم العالمية",
+    "titlePrefix": "ابحث عن",
+    "titleHighlight": "الفرص والأندية",
+    "subtitle": "تواصل مباشرة مع الأندية والوكلاء المحترفين في أكبر شبكة رياضية عربية.",
+    "searchPlaceholder": "ابحث بالاسم أو التخصص...",
+    "options": "خيارات",
+    "filterByType": "تصفية حسب النوع",
+    "all": "الكل",
+    "country": "الدولة",
+    "allCountries": "جميع الدول",
+    "sort": "الترتيب",
+    "sortRelevance": "الأكثر صلة",
+    "sortFollowers": "الأكثر متابعة",
+    "sortRecent": "الأحدث",
+    "city": "المدينة",
+    "allCities": "جميع المدن",
+    "verifiedOnly": "الحسابات الموثقة فقط",
+    "resetAllFilters": "إعادة ضبط كافة المرشحات",
+    "results": "النتائج",
+    "showingResults": "عرض {{from}} - {{to}} من أصل {{total}} نتيجة",
+    "noResults": "لا توجد نتائج تطابق بحثك",
+    "resetFilters": "إعادة تعيين المرشحات",
+    "pageOf": "صفحة {{page}} من أصل {{total}}",
+    "followers": "متابع",
+    "rating": "تقييم",
+    "verified": "موثق",
+    "active": "نشط",
+    "status": "الحالة",
+    "viewProfile": "عرض الملف",
+    "redirecting": "جاري فتح الملف...",
+    "unsupportedType": "نوع الكيان غير مدعوم",
+    "profileNotAllowed": "غير مسموح بعرض هذا الملف",
+    "profileNotFound": "لم يتم العثور على الملف المطلوب",
+    "profileNotFoundTitle": "لم يتم العثور على الملف",
+    "loadError": "حدث خطأ في تحميل البيانات",
+    "errorTitle": "خطأ",
+    "goBack": "العودة للخلف",
+    "backToSearch": "العودة للبحث",
+    "profileTitle": "ملف {{type}} الشخصي",
+    "featured": "مميز",
+    "following": "متابع",
+    "follow": "متابعة",
+    "message": "رسالة",
+    "sendMessage": "إرسال رسالة",
+    "share": "مشاركة",
+    "connections": "اتصال",
+    "successfulDeals": "صفقة ناجحة",
+    "playersRepresented": "لاعب ممثل",
+    "description": "الوصف",
+    "achievements": "الإنجازات",
+    "services": "الخدمات",
+    "contactInfo": "معلومات الاتصال",
+    "email": "البريد الإلكتروني",
+    "phone": "رقم الهاتف",
+    "website": "الموقع الإلكتروني",
+    "additionalInfo": "معلومات إضافية",
+    "specialization": "التخصص",
+    "establishedDate": "تاريخ التأسيس",
+    "languages": "اللغات",
+    "actions": "الإجراءات",
+    "fifaAgent": "وكيل معتمد FIFA",
+    "certifiedTrainer": "مدرب معتمد",
+    "distinguishedExperience": "خبرة متميزة",
+    "variedServices": "خدمات متنوعة",
+    "arabicLanguage": "العربية",
+    "types": {
+      "club": "نادي",
+      "agent": "وكيل لاعبين",
+      "scout": "كشاف",
+      "academy": "أكاديمية",
+      "sponsor": "راعي",
+      "trainer": "مدرب"
+    },
+    "typesPlural": {
+      "club": "الأندية",
+      "agent": "الوكلاء",
+      "scout": "الكشافون",
+      "academy": "الأكاديميات",
+      "sponsor": "الرعاة",
+      "trainer": "المدربون"
+    }
   },
   "myApplications": {
     "title": "طلباتي",

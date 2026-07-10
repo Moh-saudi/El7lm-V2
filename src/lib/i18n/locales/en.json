@@ -158,7 +158,7 @@
     "roleAgentDesc": "Players Agent",
     "roleTrainerDesc": "Sports Trainer",
     "roleMarketerDesc": "Sports Marketer",
-    "forgotPasswordTitle": "Forgot Password?",
+    "forgotPasswordTitle": "Forgot Password",
     "forgotPasswordDesc": "Enter your email address and we'll send you a link to reset your password.",
     "sendResetLink": "Send Reset Link",
     "backToLogin": "Back to Login",
@@ -208,7 +208,6 @@
     "resetPasswordSaving": "Saving...",
     "resetPasswordSaveBtn": "Save password",
     "resetPasswordBrandFooter": "From Misk Qatari Company",
-    "forgotPasswordTitle": "Forgot Password",
     "forgotPasswordPhoneSubtitle": "Enter the WhatsApp number registered to your account",
     "forgotPasswordOtpSubtitle": "Verification code sent via WhatsApp",
     "forgotPasswordPasswordSubtitle": "Enter the new password",
@@ -1246,114 +1245,187 @@
     "dollarEquivalent": "1 USD ="
   },
   "store": {
-    "badge": "El7lm Sports Store",
-    "heroTitle": "Everything you need",
-    "heroTitle2": "for your next championship",
-    "heroDesc": "Sports equipment, professional gear, and more — at the best prices with flexible payment options.",
+    "title": "El7lm Store",
+    "subtitle": "Shop the latest professional sports gear and equipment",
+    "badge": "El7lm Platform in collaboration with V Lab Ai.",
+    "heroTitle": "El7lm Store",
+    "heroTitle2": "Your Complete Sports World",
+    "heroDesc": "Discover the latest approved sports gear and equipment for your training and career.",
     "statProducts": "Products",
-    "statAvailable": "Available Now",
+    "statAvailable": "Available",
     "statMyOrders": "My Orders",
-    "trustSecure": "Secure & Encrypted Payment",
+    "trustSecure": "100% Secure Payment",
     "trustFast": "Fast Delivery",
-    "trustInstallment": "Interest-Free Installments",
-    "trustOriginal": "Authentic Sports Products",
+    "trustInstallment": "Flexible Installment",
+    "trustOriginal": "Original Products",
+    "searchPlaceholder": "Search for products...",
+    "categoryLabel": "Select Category",
     "categories": {
       "all": "All Products",
       "equipment": "Sports Equipment",
-      "clothing": "Clothing",
+      "clothing": "Sportswear",
       "accessories": "Accessories",
       "nutrition": "Sports Nutrition",
       "electronics": "Electronics",
       "other": "Other Products"
     },
-    "searchPlaceholder": "Search for a product...",
-    "flashSale": "Flash Sale",
-    "flashSaleEnds": "Ends in",
-    "days": "d",
-    "hours": "h",
-    "minutes": "m",
-    "seconds": "s",
-    "addToCart": "Add to Cart",
-    "buyNow": "Buy Now",
-    "outOfStock": "Out of Stock",
-    "featured": "Featured",
-    "orders": {
-      "title": "My Orders",
-      "empty": "No orders yet",
-      "loading": "Loading your orders...",
-      "unavailable": "Order service is currently unavailable",
-      "statusPending": "Under Review",
-      "statusConfirmed": "Confirmed",
-      "statusProcessing": "Processing",
-      "statusShipped": "Shipped",
-      "statusDelivered": "Delivered",
-      "statusCancelled": "Cancelled"
+    "flashSale": {
+      "title": "Limited-Time Flash Sale",
+      "countdown": {
+        "days": "day",
+        "hours": "hr",
+        "minutes": "min",
+        "seconds": "sec"
+      }
+    },
+    "flashSaleEnds": "Offer ends soon",
+    "product": {
+      "featured": "Featured",
+      "outOfStock": "Out of Stock",
+      "discount": "Discount {{percent}}%",
+      "onlyStockLeft": "Only {{count}} items left!",
+      "available": "Available",
+      "showing": "Showing",
+      "inCategory": "in",
+      "unavailable": "Currently Unavailable",
+      "addToCart": "Add to Cart",
+      "buyNow": "Buy Now",
+      "viewDetails": "View Details",
+      "brand": "Manufacturer",
+      "model": "Model",
+      "description": "Description",
+      "similarTitle": "Similar Products You May Like"
     },
     "cart": {
       "title": "Shopping Cart",
-      "empty": "Cart is empty",
-      "emptyDesc": "Add products to start shopping",
-      "checkout": "Checkout",
+      "empty": "Your shopping cart is empty",
+      "emptyDesc": "Add products to get started",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "free": "Free",
       "total": "Total",
-      "remove": "Remove",
-      "items": "items in cart"
+      "checkout": "Confirm and Checkout",
+      "delete": "Delete",
+      "clear": "Clear cart",
+      "itemsCount": "({{count}} items)"
     },
-    "purchase": {
-      "title": "Order Details",
-      "buyerName": "Recipient Name",
-      "buyerNamePlaceholder": "Full Name",
-      "phone": "Phone Number",
-      "phonePlaceholder": "+966 ...",
-      "paymentMethod": "Payment Method",
-      "fullPayment": "Full Payment",
-      "installment": "Installments",
-      "installmentMonths": "Number of Months",
-      "addressLabel": "Address Type",
+    "checkout": {
+      "title": "Complete Purchase",
+      "subtitle": "Complete the details to confirm your order",
+      "buyerInfo": "Buyer Information",
+      "buyerName": "Full Name",
+      "buyerNamePlaceholder": "Mohamed Abdullah",
+      "buyerPhone": "Phone / WhatsApp Number",
+      "shippingInfo": "Shipping Details",
+      "country": "Country",
+      "city": "City",
+      "address": "Detailed Address",
+      "addressPlaceholder": "Street, building number, apartment...",
       "deliveryMethod": "Delivery Method",
+      "addressLabel": "Address Label",
       "contactMethod": "Preferred Contact Method",
-      "contactWindow": "Contact Window",
-      "shippingCountry": "Country",
-      "shippingCity": "City",
-      "shippingAddress": "Detailed Address",
-      "shippingAddressPlaceholder": "Street, building, floor...",
-      "notes": "Additional Notes (optional)",
-      "notesPlaceholder": "Any additional details...",
+      "contactWindow": "Preferred Contact Time",
+      "notes": "Additional Notes",
+      "notesPlaceholder": "e.g., please call before delivery or any specific request",
+      "paymentMethod": "Payment Method",
+      "paymentType": "Payment Type",
+      "installmentPlans": "Monthly Installments",
+      "months": "month",
+      "selectMonths": "Select number of months:",
+      "paymentMethods": {
+        "card": "Bank card",
+        "wallet": "E-wallet",
+        "bank": "Bank transfer"
+      },
+      "tamaraPlans": "Tamara Installment Plans",
+      "tabbyPlans": "Tabby Installment Plans",
+      "confirmBtn": "Confirm & Send Order",
+      "cancelBtn": "Cancel",
+      "addressLabels": {
+        "home": "Home",
+        "work": "Work",
+        "academy": "Academy",
+        "club": "Club"
+      },
+      "deliveryMethods": {
+        "courier": "Delivery to Address",
+        "branch_pickup": "Branch Pickup",
+        "coordinator": "Direct Coordination with Management"
+      },
+      "contactMethods": {
+        "whatsapp": "WhatsApp",
+        "phone": "Phone Call",
+        "email": "Email"
+      },
+      "contactWindows": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "evening": "Evening",
+        "anytime": "Anytime"
+      },
+      "noteAddressLabel": "Address label",
+      "noteDeliveryMethod": "Delivery method",
+      "noteContactMethod": "Contact method",
+      "notePreferredContactMethod": "Preferred contact method",
+      "noteContactWindow": "Contact time",
+      "noteAddress": "Address",
+      "noteDetailedAddress": "Detailed address",
+      "noteNotes": "Notes",
+      "noteExtraNotes": "Additional notes",
+      "noteBranchPickup": "Please prepare the order for branch pickup",
+      "noteCoordinator": "Direct coordination with management is required before delivery",
+      "noteWalletTransfer": "Required transfer via e-wallet or InstaPay to number"
+    },
+    "orders": {
+      "tabTitle": "My Orders",
+      "tabSubtitle": "View past purchases and order status",
+      "id": "Order ID",
+      "date": "Date",
       "total": "Total",
+      "payment": "Payment Method",
       "quantity": "Quantity",
-      "confirm": "Confirm Order",
-      "submitting": "Submitting...",
-      "cancel": "Cancel"
+      "status": "Status",
+      "noOrders": "No orders placed yet",
+      "vodafoneNoticeTitle": "Manual Wallet Transfer (Vodafone Cash / Wallet)",
+      "vodafoneNoticeDesc": "Please transfer the total amount to the following number then send a screenshot of the receipt via WhatsApp to confirm the order:",
+      "installmentNoticeTitle": "Installment Plan Registered",
+      "installmentNoticeSubtitle": "We will contact you within 24 hours",
+      "installmentNoticeDesc": "Your installment request has been registered via {{provider}}. Our customer service team will contact you to complete the process and confirm the order.",
+      "statuses": {
+        "pending": "Pending Review",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      }
     },
     "errors": {
-      "productUnavailable": "This product is currently unavailable",
-      "loadFailed": "Failed to load products, please try again later",
-      "loginRequired": "You must be logged in to submit an order",
-      "cartEmpty": "Cart is empty",
-      "nameRequired": "Please enter the recipient name",
-      "phoneRequired": "Please enter phone number",
-      "locationRequired": "Please select country and city",
-      "addressRequired": "Please enter the detailed delivery address",
-      "installmentRequired": "Please select installment duration",
-      "orderFailed": "Failed to submit order, please try again",
-      "paymentLinkFailed": "Could not prepare payment link",
-      "ordersUnavailable": "Order service is currently unavailable"
+      "loadFailed": "Failed to load store products. Please try again later.",
+      "productUnavailable": "This product is currently unavailable.",
+      "loginRequired": "Please log in first to complete your purchase.",
+      "cartEmpty": "Your shopping cart is empty.",
+      "nameRequired": "Full Name is required.",
+      "phoneRequired": "Phone number is required.",
+      "locationRequired": "Please select a country and city for delivery.",
+      "addressRequired": "Please enter a detailed delivery address.",
+      "installmentRequired": "Please select an installment plan.",
+      "paymentLinkFailed": "Failed to create payment link. Please contact support.",
+      "noProductsFound": "No matching products found",
+      "tryDifferentSearch": "Try different search terms or choose another category from the list above.",
+      "orderFailed": "An error occurred while submitting your order. Please try again.",
+      "ordersUnavailable": "Order service is currently unavailable",
+      "ordersUnavailableTryLater": "Order service is currently unavailable. Please try again later."
     },
     "success": {
-      "cartAdded": "{{name}} added to cart",
-      "cartQtyIncreased": "Quantity increased in cart",
+      "cartQtyIncreased": "Product quantity increased in cart.",
+      "cartAdded": "Successfully added \"{{name}}\" to cart.",
+      "redirecting": "Redirecting you to the payment gateway...",
       "orderSuccess": "Your order was submitted successfully!",
-      "cartOrderSuccess": "{{count}} order(s) submitted successfully!",
-      "orderReceived": "Your order has been received!",
-      "orderRegistered": "Your order has been registered!",
-      "redirecting": "Redirecting to payment gateway..."
-    },
-    "noProducts": "No products available right now",
-    "noProductsSearch": "No search results found",
-    "inventoryUnavailable": "Product store is currently unavailable",
-    "similarProducts": "Similar Products",
-    "quantity": "Quantity",
-    "stock": "In stock: {{count}}",
-    "wishlist": "Wishlist"
+      "orderReceived": "Your order has been successfully placed and is pending review.",
+      "orderRegistered": "Payment transfer order successfully registered.",
+      "cartOrderSuccess": "Successfully registered your order for {{count}} products!"
+    }
   },
   "billing": {
     "title": "Billing & Subscriptions",
@@ -1713,7 +1785,25 @@
     "exp4to7": "4-7 years"
   },
   "careerApply": {
-    "formTitle": "Job Application Form", "backToCareers": "Back to Careers", "successTitle": "Application sent successfully", "successMessage": "We will contact you soon by email or phone.", "backHome": "Back to Home", "roles": "Select one or more positions", "fullName": "Full Name", "fullNamePlaceholder": "Enter your full name", "email": "Email Address", "phone": "Phone Number", "country": "Country", "countryPlaceholder": "Current country", "experience": "Previous Experience", "experiencePlaceholder": "Briefly describe your previous experience...", "linkedin": "LinkedIn URL (optional)", "socialProfile": "Facebook or Instagram URL", "profileUrl": "Profile URL", "sending": "Sending...", "submit": "Submit Application"
+    "formTitle": "Job Application Form",
+    "backToCareers": "Back to Careers",
+    "successTitle": "Application sent successfully",
+    "successMessage": "We will contact you soon by email or phone.",
+    "backHome": "Back to Home",
+    "roles": "Select one or more positions",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "country": "Country",
+    "countryPlaceholder": "Current country",
+    "experience": "Previous Experience",
+    "experiencePlaceholder": "Briefly describe your previous experience...",
+    "linkedin": "LinkedIn URL (optional)",
+    "socialProfile": "Facebook or Instagram URL",
+    "profileUrl": "Profile URL",
+    "sending": "Sending...",
+    "submit": "Submit Application"
   },
   "contact": {
     "backToHome": "Back to Home Page",
@@ -1893,175 +1983,6 @@
     "tryMobileData": "Try mobile data connection",
     "contactSupport": "Contact technical support"
   },
-  "store": {
-    "title": "El7lm Store",
-    "subtitle": "Shop the latest professional sports gear and equipment",
-    "badge": "El7lm Platform in collaboration with V Lab Ai.",
-    "heroTitle": "El7lm Store",
-    "heroTitle2": "Your Complete Sports World",
-    "heroDesc": "Discover the latest approved sports gear and equipment for your training and career.",
-    "statProducts": "Products",
-    "statAvailable": "Available",
-    "statMyOrders": "My Orders",
-    "trustSecure": "100% Secure Payment",
-    "trustFast": "Fast Delivery",
-    "trustInstallment": "Flexible Installment",
-    "trustOriginal": "Original Products",
-    "searchPlaceholder": "Search for products...",
-    "categoryLabel": "Select Category",
-    "categories": {
-      "all": "All Products",
-      "equipment": "Sports Equipment",
-      "clothing": "Sportswear",
-      "accessories": "Accessories",
-      "nutrition": "Sports Nutrition",
-      "electronics": "Electronics",
-      "other": "Other Products"
-    },
-    "flashSale": {
-      "title": "Limited-Time Flash Sale",
-      "countdown": {
-        "days": "day",
-        "hours": "hr",
-        "minutes": "min",
-        "seconds": "sec"
-      }
-    },
-    "flashSaleEnds": "Offer ends soon",
-    "product": {
-      "featured": "Featured",
-      "outOfStock": "Out of Stock",
-      "discount": "Discount {{percent}}%",
-      "onlyStockLeft": "Only {{count}} items left!",
-      "available": "Available",
-      "showing": "Showing",
-      "inCategory": "in",
-      "unavailable": "Currently Unavailable",
-      "addToCart": "Add to Cart",
-      "buyNow": "Buy Now",
-      "viewDetails": "View Details",
-      "brand": "Manufacturer",
-      "model": "Model",
-      "description": "Description",
-      "similarTitle": "Similar Products You May Like"
-    },
-    "cart": {
-      "title": "Shopping Cart",
-      "empty": "Your shopping cart is empty",
-      "emptyDesc": "Add products to get started",
-      "subtotal": "Subtotal",
-      "shipping": "Shipping",
-      "free": "Free",
-      "total": "Total",
-      "checkout": "Confirm and Checkout",
-      "delete": "Delete",
-      "clear": "Clear cart",
-      "itemsCount": "({{count}} items)"
-    },
-    "checkout": {
-      "title": "Complete Purchase",
-      "subtitle": "Complete the details to confirm your order",
-      "buyerInfo": "Buyer Information",
-      "buyerName": "Full Name",
-      "buyerNamePlaceholder": "Mohamed Abdullah",
-      "buyerPhone": "Phone / WhatsApp Number",
-      "shippingInfo": "Shipping Details",
-      "country": "Country",
-      "city": "City",
-      "address": "Detailed Address",
-      "addressPlaceholder": "Street, building number, apartment...",
-      "deliveryMethod": "Delivery Method",
-      "addressLabel": "Address Label",
-      "contactMethod": "Preferred Contact Method",
-      "contactWindow": "Preferred Contact Time",
-      "notes": "Additional Notes",
-      "notesPlaceholder": "e.g., please call before delivery or any specific request",
-      "paymentMethod": "Payment Method",
-      "paymentType": "Payment Type",
-      "installmentPlans": "Monthly Installments",
-      "months": "month",
-      "selectMonths": "Select number of months:",
-      "paymentMethods": {
-        "card": "Bank card",
-        "wallet": "E-wallet",
-        "bank": "Bank transfer"
-      },
-      "tamaraPlans": "Tamara Installment Plans",
-      "tabbyPlans": "Tabby Installment Plans",
-      "confirmBtn": "Confirm & Send Order",
-      "cancelBtn": "Cancel",
-      "addressLabels": {
-        "home": "Home",
-        "work": "Work",
-        "academy": "Academy",
-        "club": "Club"
-      },
-      "deliveryMethods": {
-        "courier": "Delivery to Address",
-        "branch_pickup": "Branch Pickup",
-        "coordinator": "Direct Coordination with Management"
-      },
-      "contactMethods": {
-        "whatsapp": "WhatsApp",
-        "phone": "Phone Call",
-        "email": "Email"
-      },
-      "contactWindows": {
-        "morning": "Morning",
-        "afternoon": "Afternoon",
-        "evening": "Evening",
-        "anytime": "Anytime"
-      }
-    },
-    "orders": {
-      "tabTitle": "My Orders",
-      "tabSubtitle": "View past purchases and order status",
-      "id": "Order ID",
-      "date": "Date",
-      "total": "Total",
-      "payment": "Payment Method",
-      "quantity": "Quantity",
-      "status": "Status",
-      "noOrders": "No orders placed yet",
-      "vodafoneNoticeTitle": "Manual Wallet Transfer (Vodafone Cash / Wallet)",
-      "vodafoneNoticeDesc": "Please transfer the total amount to the following number then send a screenshot of the receipt via WhatsApp to confirm the order:",
-      "installmentNoticeTitle": "Installment Plan Registered",
-      "installmentNoticeSubtitle": "We will contact you within 24 hours",
-      "installmentNoticeDesc": "Your installment request has been registered via {{provider}}. Our customer service team will contact you to complete the process and confirm the order.",
-      "statuses": {
-        "pending": "Pending Review",
-        "confirmed": "Confirmed",
-        "processing": "Processing",
-        "shipped": "Shipped",
-        "delivered": "Delivered",
-        "cancelled": "Cancelled"
-      }
-    },
-    "errors": {
-      "loadFailed": "Failed to load store products. Please try again later.",
-      "productUnavailable": "This product is currently unavailable.",
-      "loginRequired": "Please log in first to complete your purchase.",
-      "cartEmpty": "Your shopping cart is empty.",
-      "nameRequired": "Full Name is required.",
-      "phoneRequired": "Phone number is required.",
-      "locationRequired": "Please select a country and city for delivery.",
-      "addressRequired": "Please enter a detailed delivery address.",
-      "installmentRequired": "Please select an installment plan.",
-      "paymentLinkFailed": "Failed to create payment link. Please contact support.",
-      "noProductsFound": "No matching products found",
-      "tryDifferentSearch": "Try different search terms or choose another category from the list above.",
-      "orderFailed": "An error occurred while submitting your order. Please try again."
-    },
-    "success": {
-      "cartQtyIncreased": "Product quantity increased in cart.",
-      "cartAdded": "Successfully added \"{{name}}\" to cart.",
-      "redirecting": "Redirecting you to the payment gateway...",
-      "orderSuccess": "Your order was submitted successfully!",
-      "orderReceived": "Your order has been successfully placed and is pending review.",
-      "orderRegistered": "Payment transfer order successfully registered.",
-      "cartOrderSuccess": "Successfully registered your order for {{count}} products!"
-    }
-  },
   "dreamAcademy": {
     "title": "Dream Academy",
     "sectionVideos": "Section Videos",
@@ -2069,6 +1990,257 @@
     "startJourneyDesc": "Join thousands of students developing their skills with El7lm Academy",
     "exploreCoursesBtn": "Explore All Courses",
     "contactUsBtn": "Contact Us"
+  },
+  "playerEntityProfile": {
+    "title": "Dream Academy",
+    "subtitle": "Learn languages, life skills, and practical living skills to prepare for professionalism",
+    "studentCount": "{{count}} students",
+    "startCourse": "Start Course",
+    "stats": {
+      "students": "+15,000 students",
+      "rating": "4.8 rating",
+      "freeCourses": "+50 free courses"
+    },
+    "categories": {
+      "languages": "Learn Languages",
+      "lifeSkills": "Life Skills",
+      "livingSkills": "Living Skills",
+      "career": "Career Development"
+    },
+    "courses": {
+      "englishBasics": {
+        "title": "Basic English Course",
+        "level": "Beginner",
+        "duration": "3 months",
+        "instructor": "Sarah Ahmed",
+        "price": "Free",
+        "features": {
+          "0": "Daily conversations",
+          "1": "Grammar",
+          "2": "Writing"
+        }
+      },
+      "spanishBeginners": {
+        "title": "Spanish for Beginners",
+        "level": "Beginner",
+        "duration": "4 months",
+        "instructor": "Carlos Rodriguez",
+        "price": "Free",
+        "features": {
+          "0": "Basic speaking",
+          "1": "Spanish culture",
+          "2": "Travel"
+        }
+      },
+      "frenchAdvanced": {
+        "title": "Advanced French Course",
+        "level": "Advanced",
+        "duration": "6 months",
+        "instructor": "Marie Claude",
+        "price": "Free",
+        "features": {
+          "0": "French literature",
+          "1": "Business",
+          "2": "Tourism"
+        }
+      },
+      "timeManagement": {
+        "title": "Time Management and Organization",
+        "level": "All levels",
+        "duration": "4 weeks",
+        "instructor": "Ahmed Mohamed",
+        "price": "Free",
+        "features": {
+          "0": "Daily planning",
+          "1": "Priorities",
+          "2": "Delegation"
+        }
+      },
+      "effectiveCommunication": {
+        "title": "Effective Communication",
+        "level": "Intermediate",
+        "duration": "6 weeks",
+        "instructor": "Fatima Ali",
+        "price": "Free",
+        "features": {
+          "0": "Active listening",
+          "1": "Clear speaking",
+          "2": "Body language"
+        }
+      },
+      "emotionalIntelligence": {
+        "title": "Emotional Intelligence",
+        "level": "Advanced",
+        "duration": "8 weeks",
+        "instructor": "Dr. Sarah Khaled",
+        "price": "Free",
+        "features": {
+          "0": "Self-awareness",
+          "1": "Managing emotions",
+          "2": "Relationships"
+        }
+      },
+      "personalBudgeting": {
+        "title": "Personal Budget Management",
+        "level": "All levels",
+        "duration": "6 weeks",
+        "instructor": "Mohamed Ali",
+        "price": "Free",
+        "features": {
+          "0": "Financial planning",
+          "1": "Saving",
+          "2": "Investing"
+        }
+      },
+      "healthyCooking": {
+        "title": "Healthy Cooking",
+        "level": "Beginner",
+        "duration": "4 weeks",
+        "instructor": "Noura Ahmed",
+        "price": "Free",
+        "features": {
+          "0": "Healthy recipes",
+          "1": "Meal planning",
+          "2": "Smart shopping"
+        }
+      },
+      "homeMaintenance": {
+        "title": "Basic Home Maintenance",
+        "level": "Intermediate",
+        "duration": "5 weeks",
+        "instructor": "Ali Hassan",
+        "price": "Free",
+        "features": {
+          "0": "Simple repairs",
+          "1": "Preventive maintenance",
+          "2": "Essential tools"
+        }
+      },
+      "resumeWriting": {
+        "title": "Resume Writing",
+        "level": "All levels",
+        "duration": "3 weeks",
+        "instructor": "Dr. Ahmed Mohamed",
+        "price": "Free",
+        "features": {
+          "0": "Resume writing",
+          "1": "Cover letters",
+          "2": "Job interviews"
+        }
+      },
+      "entrepreneurship": {
+        "title": "Entrepreneurship for Beginners",
+        "level": "Intermediate",
+        "duration": "8 weeks",
+        "instructor": "Sarah Khaled",
+        "price": "Free",
+        "features": {
+          "0": "Idea development",
+          "1": "Market research",
+          "2": "Business plan"
+        }
+      },
+      "digitalMarketing": {
+        "title": "Digital Marketing",
+        "level": "Advanced",
+        "duration": "10 weeks",
+        "instructor": "Ahmed Ali",
+        "price": "Free",
+        "features": {
+          "0": "Social media marketing",
+          "1": "Data analysis",
+          "2": "Google Ads"
+        }
+      }
+    }
+  },
+  "playerEntitySearch": {
+    "fallbackEntityName": "Sports Entity",
+    "notSpecified": "Not specified",
+    "noDescription": "Description unavailable",
+    "userFallback": "User",
+    "actionError": "Operation failed",
+    "badge": "El7lm Global Network",
+    "titlePrefix": "Search for",
+    "titleHighlight": "opportunities and clubs",
+    "subtitle": "Connect directly with professional clubs and agents in the largest Arab sports network.",
+    "searchPlaceholder": "Search by name or specialization...",
+    "options": "Options",
+    "filterByType": "Filter by type",
+    "all": "All",
+    "country": "Country",
+    "allCountries": "All countries",
+    "sort": "Sort",
+    "sortRelevance": "Most relevant",
+    "sortFollowers": "Most followed",
+    "sortRecent": "Newest",
+    "city": "City",
+    "allCities": "All cities",
+    "verifiedOnly": "Verified accounts only",
+    "resetAllFilters": "Reset all filters",
+    "results": "Results",
+    "showingResults": "Showing {{from}} - {{to}} of {{total}} results",
+    "noResults": "No results match your search",
+    "resetFilters": "Reset filters",
+    "pageOf": "Page {{page}} of {{total}}",
+    "followers": "Followers",
+    "rating": "Rating",
+    "verified": "Verified",
+    "active": "Active",
+    "status": "Status",
+    "viewProfile": "View Profile",
+    "redirecting": "Opening profile...",
+    "unsupportedType": "Unsupported entity type",
+    "profileNotAllowed": "This profile is not allowed to be displayed",
+    "profileNotFound": "The requested profile was not found",
+    "profileNotFoundTitle": "Profile not found",
+    "loadError": "An error occurred while loading data",
+    "errorTitle": "Error",
+    "goBack": "Go back",
+    "backToSearch": "Back to search",
+    "profileTitle": "{{type}} profile",
+    "featured": "Featured",
+    "following": "Following",
+    "follow": "Follow",
+    "message": "Message",
+    "sendMessage": "Send Message",
+    "share": "Share",
+    "connections": "Connections",
+    "successfulDeals": "Successful deals",
+    "playersRepresented": "Represented players",
+    "description": "Description",
+    "achievements": "Achievements",
+    "services": "Services",
+    "contactInfo": "Contact Information",
+    "email": "Email",
+    "phone": "Phone Number",
+    "website": "Website",
+    "additionalInfo": "Additional Information",
+    "specialization": "Specialization",
+    "establishedDate": "Established date",
+    "languages": "Languages",
+    "actions": "Actions",
+    "fifaAgent": "FIFA licensed agent",
+    "certifiedTrainer": "Certified trainer",
+    "distinguishedExperience": "Distinguished experience",
+    "variedServices": "Various services",
+    "arabicLanguage": "Arabic",
+    "types": {
+      "club": "Club",
+      "agent": "Player Agent",
+      "scout": "Scout",
+      "academy": "Academy",
+      "sponsor": "Sponsor",
+      "trainer": "Trainer"
+    },
+    "typesPlural": {
+      "club": "Clubs",
+      "agent": "Agents",
+      "scout": "Scouts",
+      "academy": "Academies",
+      "sponsor": "Sponsors",
+      "trainer": "Trainers"
+    }
   },
   "myApplications": {
     "title": "My Applications",

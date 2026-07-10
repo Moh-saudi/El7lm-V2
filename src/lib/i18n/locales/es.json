@@ -1362,7 +1362,19 @@
         "afternoon": "Tarde",
         "evening": "Tarde/Noche",
         "anytime": "Cualquier momento"
-      }
+      },
+      "noteAddressLabel": "Etiqueta de direcci?n",
+      "noteDeliveryMethod": "M?todo de entrega",
+      "noteContactMethod": "M?todo de contacto",
+      "notePreferredContactMethod": "M?todo de contacto preferido",
+      "noteContactWindow": "Horario de contacto",
+      "noteAddress": "Direcci?n",
+      "noteDetailedAddress": "Direcci?n detallada",
+      "noteNotes": "Notas",
+      "noteExtraNotes": "Notas adicionales",
+      "noteBranchPickup": "Prepare el pedido para recogerlo en la sucursal",
+      "noteCoordinator": "Se requiere coordinaci?n directa con la administraci?n antes de la entrega",
+      "noteWalletTransfer": "Transferencia requerida mediante billetera electr?nica o InstaPay al n?mero"
     },
     "orders": {
       "tabTitle": "Mis pedidos",
@@ -1401,7 +1413,9 @@
       "paymentLinkFailed": "Error al crear el enlace de pago. Por favor, contacte al soporte.",
       "noProductsFound": "No se encontraron productos coincidentes",
       "tryDifferentSearch": "Prueba con otros términos de búsqueda o elige otra categoría de la lista anterior.",
-      "orderFailed": "Ocurrió un error al enviar su pedido. Inténtelo de nuevo."
+      "orderFailed": "Ocurrió un error al enviar su pedido. Inténtelo de nuevo.",
+      "ordersUnavailable": "El servicio de pedidos no est? disponible actualmente",
+      "ordersUnavailableTryLater": "El servicio de pedidos no est? disponible actualmente. Int?ntelo m?s tarde."
     },
     "success": {
       "cartQtyIncreased": "Cantidad de producto aumentada en el carrito.",
@@ -1976,6 +1990,257 @@
     "startJourneyDesc": "Únase a miles de estudiantes que desarrollan sus habilidades con la Academia El7lm",
     "exploreCoursesBtn": "Explorar Todos los Cursos",
     "contactUsBtn": "Contáctenos"
+  },
+  "playerEntityProfile": {
+    "title": "Academia del Sueño",
+    "subtitle": "Aprende idiomas, habilidades para la vida y habilidades prácticas para prepararte para el profesionalismo",
+    "studentCount": "{{count}} estudiantes",
+    "startCourse": "Iniciar curso",
+    "stats": {
+      "students": "+15.000 estudiantes",
+      "rating": "Calificación 4.8",
+      "freeCourses": "+50 cursos gratuitos"
+    },
+    "categories": {
+      "languages": "Aprender idiomas",
+      "lifeSkills": "Habilidades para la vida",
+      "livingSkills": "Habilidades prácticas",
+      "career": "Desarrollo profesional"
+    },
+    "courses": {
+      "englishBasics": {
+        "title": "Curso básico de inglés",
+        "level": "Principiante",
+        "duration": "3 meses",
+        "instructor": "Sarah Ahmed",
+        "price": "Gratis",
+        "features": {
+          "0": "Conversaciones diarias",
+          "1": "Gramática",
+          "2": "Escritura"
+        }
+      },
+      "spanishBeginners": {
+        "title": "Español para principiantes",
+        "level": "Principiante",
+        "duration": "4 meses",
+        "instructor": "Carlos Rodríguez",
+        "price": "Gratis",
+        "features": {
+          "0": "Conversación básica",
+          "1": "Cultura española",
+          "2": "Viajes"
+        }
+      },
+      "frenchAdvanced": {
+        "title": "Curso avanzado de francés",
+        "level": "Avanzado",
+        "duration": "6 meses",
+        "instructor": "Marie Claude",
+        "price": "Gratis",
+        "features": {
+          "0": "Literatura francesa",
+          "1": "Negocios",
+          "2": "Turismo"
+        }
+      },
+      "timeManagement": {
+        "title": "Gestión del tiempo y organización",
+        "level": "Todos los niveles",
+        "duration": "4 semanas",
+        "instructor": "Ahmed Mohamed",
+        "price": "Gratis",
+        "features": {
+          "0": "Planificación diaria",
+          "1": "Prioridades",
+          "2": "Delegación"
+        }
+      },
+      "effectiveCommunication": {
+        "title": "Comunicación efectiva",
+        "level": "Intermedio",
+        "duration": "6 semanas",
+        "instructor": "Fatima Ali",
+        "price": "Gratis",
+        "features": {
+          "0": "Escucha activa",
+          "1": "Comunicación clara",
+          "2": "Lenguaje corporal"
+        }
+      },
+      "emotionalIntelligence": {
+        "title": "Inteligencia emocional",
+        "level": "Avanzado",
+        "duration": "8 semanas",
+        "instructor": "Dra. Sarah Khaled",
+        "price": "Gratis",
+        "features": {
+          "0": "Autoconciencia",
+          "1": "Gestión emocional",
+          "2": "Relaciones"
+        }
+      },
+      "personalBudgeting": {
+        "title": "Gestión del presupuesto personal",
+        "level": "Todos los niveles",
+        "duration": "6 semanas",
+        "instructor": "Mohamed Ali",
+        "price": "Gratis",
+        "features": {
+          "0": "Planificación financiera",
+          "1": "Ahorro",
+          "2": "Inversión"
+        }
+      },
+      "healthyCooking": {
+        "title": "Cocina saludable",
+        "level": "Principiante",
+        "duration": "4 semanas",
+        "instructor": "Noura Ahmed",
+        "price": "Gratis",
+        "features": {
+          "0": "Recetas saludables",
+          "1": "Planificación de comidas",
+          "2": "Compra inteligente"
+        }
+      },
+      "homeMaintenance": {
+        "title": "Mantenimiento básico del hogar",
+        "level": "Intermedio",
+        "duration": "5 semanas",
+        "instructor": "Ali Hassan",
+        "price": "Gratis",
+        "features": {
+          "0": "Reparaciones simples",
+          "1": "Mantenimiento preventivo",
+          "2": "Herramientas esenciales"
+        }
+      },
+      "resumeWriting": {
+        "title": "Redacción de currículum",
+        "level": "Todos los niveles",
+        "duration": "3 semanas",
+        "instructor": "Dr. Ahmed Mohamed",
+        "price": "Gratis",
+        "features": {
+          "0": "Redacción de CV",
+          "1": "Carta de presentación",
+          "2": "Entrevistas laborales"
+        }
+      },
+      "entrepreneurship": {
+        "title": "Emprendimiento para principiantes",
+        "level": "Intermedio",
+        "duration": "8 semanas",
+        "instructor": "Sarah Khaled",
+        "price": "Gratis",
+        "features": {
+          "0": "Desarrollo de ideas",
+          "1": "Investigación de mercado",
+          "2": "Plan de negocio"
+        }
+      },
+      "digitalMarketing": {
+        "title": "Marketing digital",
+        "level": "Avanzado",
+        "duration": "10 semanas",
+        "instructor": "Ahmed Ali",
+        "price": "Gratis",
+        "features": {
+          "0": "Marketing en redes sociales",
+          "1": "Análisis de datos",
+          "2": "Google Ads"
+        }
+      }
+    }
+  },
+  "playerEntitySearch": {
+    "fallbackEntityName": "Entidad deportiva",
+    "notSpecified": "No especificado",
+    "noDescription": "Descripción no disponible",
+    "userFallback": "Usuario",
+    "actionError": "Error en la operación",
+    "badge": "Red global de El7lm",
+    "titlePrefix": "Busca",
+    "titleHighlight": "oportunidades y clubes",
+    "subtitle": "Conecta directamente con clubes y agentes profesionales en la mayor red deportiva árabe.",
+    "searchPlaceholder": "Buscar por nombre o especialización...",
+    "options": "Opciones",
+    "filterByType": "Filtrar por tipo",
+    "all": "Todo",
+    "country": "País",
+    "allCountries": "Todos los países",
+    "sort": "Orden",
+    "sortRelevance": "Más relevante",
+    "sortFollowers": "Más seguidos",
+    "sortRecent": "Más recientes",
+    "city": "Ciudad",
+    "allCities": "Todas las ciudades",
+    "verifiedOnly": "Solo cuentas verificadas",
+    "resetAllFilters": "Restablecer todos los filtros",
+    "results": "Resultados",
+    "showingResults": "Mostrando {{from}} - {{to}} de {{total}} resultados",
+    "noResults": "No hay resultados que coincidan con tu búsqueda",
+    "resetFilters": "Restablecer filtros",
+    "pageOf": "Página {{page}} de {{total}}",
+    "followers": "Seguidores",
+    "rating": "Calificación",
+    "verified": "Verificado",
+    "active": "Activo",
+    "status": "Estado",
+    "viewProfile": "Ver perfil",
+    "redirecting": "Abriendo perfil...",
+    "unsupportedType": "Tipo de entidad no compatible",
+    "profileNotAllowed": "No se permite mostrar este perfil",
+    "profileNotFound": "No se encontró el perfil solicitado",
+    "profileNotFoundTitle": "Perfil no encontrado",
+    "loadError": "Ocurrió un error al cargar los datos",
+    "errorTitle": "Error",
+    "goBack": "Volver",
+    "backToSearch": "Volver a la búsqueda",
+    "profileTitle": "Perfil de {{type}}",
+    "featured": "Destacado",
+    "following": "Siguiendo",
+    "follow": "Seguir",
+    "message": "Mensaje",
+    "sendMessage": "Enviar mensaje",
+    "share": "Compartir",
+    "connections": "Conexiones",
+    "successfulDeals": "Acuerdos exitosos",
+    "playersRepresented": "Jugadores representados",
+    "description": "Descripción",
+    "achievements": "Logros",
+    "services": "Servicios",
+    "contactInfo": "Información de contacto",
+    "email": "Correo electrónico",
+    "phone": "Número de teléfono",
+    "website": "Sitio web",
+    "additionalInfo": "Información adicional",
+    "specialization": "Especialización",
+    "establishedDate": "Fecha de fundación",
+    "languages": "Idiomas",
+    "actions": "Acciones",
+    "fifaAgent": "Agente autorizado FIFA",
+    "certifiedTrainer": "Entrenador certificado",
+    "distinguishedExperience": "Experiencia destacada",
+    "variedServices": "Servicios variados",
+    "arabicLanguage": "Árabe",
+    "types": {
+      "club": "Club",
+      "agent": "Agente de jugadores",
+      "scout": "Ojeador",
+      "academy": "Academia",
+      "sponsor": "Patrocinador",
+      "trainer": "Entrenador"
+    },
+    "typesPlural": {
+      "club": "Clubes",
+      "agent": "Agentes",
+      "scout": "Ojeadores",
+      "academy": "Academias",
+      "sponsor": "Patrocinadores",
+      "trainer": "Entrenadores"
+    }
   },
   "myApplications": {
     "title": "Mis Solicitudes",
