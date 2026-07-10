@@ -86,10 +86,10 @@ interface FilterOptions {
 }
 
 const ENTITY_TYPES = {
-  club: { label: 'الأندية', labelKey: 'oppsExplorer.entityTypes.club', icon: Building, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', gradient: 'from-blue-500 to-blue-600' },
-  agent: { label: 'الوكلاء', labelKey: 'oppsExplorer.entityTypes.agent', icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-indigo-600' },
-  academy: { label: 'الأكاديميات', labelKey: 'oppsExplorer.entityTypes.academy', icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', gradient: 'from-amber-500 to-amber-600' },
-  trainer: { label: 'المدربين', labelKey: 'oppsExplorer.entityTypes.trainer', icon: User, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100', gradient: 'from-cyan-500 to-cyan-600' }
+  club: { label: 'Clubs', labelKey: 'oppsExplorer.entityTypes.club', icon: Building, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', gradient: 'from-blue-500 to-blue-600' },
+  agent: { label: 'Agents', labelKey: 'oppsExplorer.entityTypes.agent', icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-indigo-600' },
+  academy: { label: 'Academies', labelKey: 'oppsExplorer.entityTypes.academy', icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', gradient: 'from-amber-500 to-amber-600' },
+  trainer: { label: 'Trainers', labelKey: 'oppsExplorer.entityTypes.trainer', icon: User, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100', gradient: 'from-cyan-500 to-cyan-600' }
 };
 
 // --- Helper Components (Defined as const to ensure static presence) ---
@@ -113,7 +113,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
   const router = useRouter();
   const { t, isRTL } = useTranslation();
   const cfg = ENTITY_TYPES[entity.type as keyof typeof ENTITY_TYPES] || ENTITY_TYPES.club;
-  const displayName = entity.name || t('oppsExplorer.entityTypes.all') || 'كيان رياضي';
+  const displayName = entity.name || t('oppsExplorer.unknownEntity');
 
   return (
     <motion.div layout whileHover={{ y: -8 }} className="group">
@@ -153,7 +153,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                   {entity.verified && <ShieldCheck className="w-4 h-4 text-blue-500" />}
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {entity.location.city || t('billing.unknown') || 'غير محدد'}
+                  <MapPin className="w-3 h-3" /> {entity.location.city || t('oppsExplorer.unknownLocation')}
                 </p>
               </div>
             </div>
@@ -171,7 +171,7 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
             <div className="flex items-center justify-between px-1">
               <div className="text-center">
                 <p className="text-lg font-black text-slate-900">{(entity.followersCount || 0).toLocaleString()}</p>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{isRTL ? 'متابع' : 'Followers'}</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('oppsExplorer.followers')}</p>
               </div>
               <div className="w-px h-8 bg-slate-100" />
               <div className="text-center">
@@ -179,12 +179,12 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-current" />
                   <span className="text-lg font-black text-slate-900">{entity.rating}</span>
                 </div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{isRTL ? 'تقييم' : 'Rating'}</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('oppsExplorer.rating')}</p>
               </div>
               <div className="w-px h-8 bg-slate-100" />
               <div className="text-center">
-                <p className="text-lg font-black text-slate-900">{entity.verified ? (isRTL ? 'موثق' : 'Verified') : (isRTL ? 'نشط' : 'Active')}</p>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('myApplications.colStatus') || 'الحالة'}</p>
+                <p className="text-lg font-black text-slate-900">{entity.verified ? t('oppsExplorer.verified') : t('oppsExplorer.active')}</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('myApplications.colStatus')}</p>
               </div>
             </div>
 
@@ -193,12 +193,12 @@ const EntityCard = ({ entity, onFollow, isLoading, currentUserId, userData }: an
                 onClick={() => router.push(`/dashboard/player/search/profile?type=${entity.type}&id=${entity.id}`)}
                 className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 transition-all"
               >
-                {t('oppsExplorer.viewProfileBtn') || 'عرض الملف'}
+                {t('oppsExplorer.viewProfileBtn')}
               </Button>
               <SendMessageButton
                 user={{ uid: currentUserId }}
                 userData={userData}
-                getUserDisplayName={() => userData?.fullName || userData?.full_name || (isRTL ? 'مستخدم' : 'User')}
+                getUserDisplayName={() => userData?.fullName || userData?.full_name || t('oppsExplorer.user')}
                 targetUserId={entity.id}
                 targetUserName={displayName}
                 targetUserType={entity.type}
@@ -315,7 +315,7 @@ export default function SearchPage() {
 
           return (rows || []).map(data => ({
               id: data.id,
-              name: data.fullName || data.full_name || data.display_name || data.name || 'كيان رياضي',
+              name: data.fullName || data.full_name || data.display_name || data.name || t('oppsExplorer.unknownEntity'),
               type: type as any,
               email: data.email || '',
               profileImage: fixReceiptUrl(
@@ -325,7 +325,7 @@ export default function SearchPage() {
               ),
               coverImage: fixReceiptUrl(data.coverImage || data.backCover || data.header_image || data.banner),
               location: { country: data.country || data.nationality || '', city: data.city || data.current_location || '', },
-              description: data.description || data.bio || data.about || data.specialization || 'وصف غير متاح',
+              description: data.description || data.bio || data.about || data.specialization || t('oppsExplorer.unavailableDescription'),
               verified: data.verified || data.is_fifa_licensed || data.is_certified || false,
               rating: data.rating || 4.5,
               reviewsCount: data.reviewsCount || 0,
@@ -457,7 +457,7 @@ export default function SearchPage() {
       const avatarPath = pd.profile_image || pd.profileImage || pd.avatar || '';
       const avatarUrl = avatarPath ? (getSupabaseImageUrl(avatarPath) || avatarPath) : '';
 
-      const playerName = userData?.full_name || userData?.fullName || user!.user_metadata?.full_name || 'لاعب';
+      const playerName = userData?.full_name || userData?.fullName || user!.user_metadata?.full_name || t('oppsExplorer.player');
       await applyToOpportunity(applyModalOpp.id, user!.id, {
         opportunityTitle: applyModalOpp.title,
         organizerName: applyModalOpp.organizerName,
@@ -478,13 +478,13 @@ export default function SearchPage() {
       });
       await notifyNewApplication(applyModalOpp.organizerId, applyModalOpp.organizerType, playerName, applyModalOpp.title, applyModalOpp.id);
       await incrementViewCount(applyModalOpp.id);
-      toast.success('تم إرسال طلب التقديم بنجاح');
+      toast.success(t('oppsExplorer.applySuccessToast'));
       setAppliedIds(prev => new Set(prev).add(applyModalOpp.id));
       setApplySuccessOpp(applyModalOpp);
       setApplyModalOpp(null);
       setApplyMessage('');
     } catch {
-      toast.error('فشل إرسال الطلب');
+      toast.error(t('oppsExplorer.applyErrorToast'));
     } finally {
       setIsApplying(false);
     }
@@ -503,7 +503,7 @@ export default function SearchPage() {
       await supabase.from(col).update({ followers: updatedFollowers }).eq('id', entity.id);
       setAllData(prev => prev.map(e => e.id === entity.id ? { ...e, isFollowing: !e.isFollowing, followersCount: e.isFollowing ? e.followersCount - 1 : e.followersCount + 1 } : e));
     } catch (e) {
-      toast.error('خطأ في العملية');
+      toast.error(t('oppsExplorer.actionErrorToast'));
     } finally {
       setIsActionLoading(null);
     }
@@ -518,7 +518,7 @@ export default function SearchPage() {
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-50/50 blur-[120px] rounded-full -mr-20 -mt-20"></div>
         <div className="container mx-auto px-6 relative z-10 text-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-6">
-            <Zap className="w-3.5 h-3.5 fill-current" /> {isRTL ? 'شبكة الحلم العالمية' : 'Dream Global Network'}
+            <Zap className="w-3.5 h-3.5 fill-current" /> {t('oppsExplorer.globalNetwork')}
           </motion.div>
 
           <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">{t('oppsExplorer.title')} ⚽</h1>
@@ -645,7 +645,7 @@ export default function SearchPage() {
                           </span>
                           {opp.isFeatured && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {isRTL ? 'مميزة' : 'Featured'}
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {t('oppsExplorer.featured')}
                             </span>
                           )}
                           {opp.applicationDeadline && (
@@ -657,7 +657,7 @@ export default function SearchPage() {
                           <button
                             onClick={() => toggleSave(opp.id)}
                             className="p-1 rounded-lg hover:bg-slate-50 transition-colors"
-                            title={savedIds.has(opp.id) ? (isRTL ? 'إلغاء الحفظ' : 'Unsave') : (isRTL ? 'حفظ الفرصة' : 'Save opportunity')}
+                            title={savedIds.has(opp.id) ? t('oppsExplorer.unsaveOpportunity') : t('oppsExplorer.saveOpportunity')}
                           >
                             {savedIds.has(opp.id)
                               ? <BookmarkCheck className="w-4 h-4 text-yellow-500 fill-yellow-400" />
@@ -675,12 +675,12 @@ export default function SearchPage() {
                             onClick={() => setDetailOpp(opp)}
                             className="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5"
                           >
-                            <Eye className="w-3.5 h-3.5" /> {isRTL ? 'عرض كامل تفاصيل الفرصة' : 'View Full Details'}
+                            <Eye className="w-3.5 h-3.5" /> {t('oppsExplorer.viewFullDetails')}
                           </button>
                           <div className="flex gap-2">
                             {appliedIds.has(opp.id) ? (
                               <div className="flex-1 py-2.5 bg-green-50 text-green-600 border border-green-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5" /> {isRTL ? 'تم التقديم' : 'Applied'}
+                                <CheckCircle className="w-3.5 h-3.5" /> {t('oppsExplorer.appliedShort')}
                               </div>
                             ) : (
                               <button
@@ -715,7 +715,7 @@ export default function SearchPage() {
                       {OPPORTUNITY_TYPES[detailOpp.opportunityType]?.emoji} {isRTL ? OPPORTUNITY_TYPES[detailOpp.opportunityType]?.label : OPPORTUNITY_TYPES[detailOpp.opportunityType]?.labelEn || detailOpp.opportunityType}
                     </span>
                     {detailOpp.isFeatured && (
-                      <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">{isRTL ? 'مميزة' : 'Featured'}</span>
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">{t('oppsExplorer.featured')}</span>
                     )}
                   </div>
                   <h2 className="font-black text-gray-900 text-base leading-snug">{detailOpp.title}</h2>
@@ -742,14 +742,14 @@ export default function SearchPage() {
                 {myApplications[detailOpp.id] && (() => {
                   const app = myApplications[detailOpp.id];
                   const statusMap: Record<string, { label: string; color: string }> = {
-                    pending:  { label: t('myApplications.tabPending') || 'قيد المراجعة',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-                    accepted: { label: t('myApplications.tabAccepted') || 'تم القبول ✓',   color: 'bg-green-50 text-green-700 border-green-200'  },
-                    rejected: { label: t('myApplications.tabRejected') || 'لم يتم القبول', color: 'bg-red-50 text-red-600 border-red-200'        },
+                    pending:  { label: t('myApplications.tabPending'),  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                    accepted: { label: t('myApplications.tabAccepted'), color: 'bg-green-50 text-green-700 border-green-200'  },
+                    rejected: { label: t('myApplications.tabRejected'), color: 'bg-red-50 text-red-600 border-red-200'        },
                   };
                   const s = statusMap[app.status] ?? statusMap.pending;
                   return (
                     <div className={`rounded-xl border px-4 py-3 text-sm font-bold ${s.color}`}>
-                      {isRTL ? 'حالة طلبك: ' : 'Your application status: '}{s.label}
+                      {t('oppsExplorer.applicationStatusPrefix')}{s.label}
                       {app.reviewNote && <p className="font-normal mt-1 text-xs opacity-80">{app.reviewNote}</p>}
                     </div>
                   );
@@ -758,7 +758,7 @@ export default function SearchPage() {
                 {/* الوصف */}
                 {detailOpp.description && (
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{isRTL ? 'نبذة عن الفرصة' : 'About the opportunity'}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('oppsExplorer.aboutOpportunity')}</p>
                     <p className="text-sm text-gray-700 leading-relaxed">{detailOpp.description}</p>
                   </div>
                 )}
@@ -766,7 +766,7 @@ export default function SearchPage() {
                 {/* المراكز المطلوبة */}
                 {detailOpp.targetPositions && detailOpp.targetPositions.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('oppsExplorer.opportunityCard.positions') || 'المراكز المطلوبة'}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('oppsExplorer.opportunityCard.positions')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {detailOpp.targetPositions.map(pos => (
                         <span key={pos} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">{pos}</span>
@@ -777,71 +777,71 @@ export default function SearchPage() {
 
                 {/* التفاصيل الأساسية */}
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{isRTL ? 'التفاصيل' : 'Details'}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('oppsExplorer.details')}</p>
                   <div className="grid grid-cols-2 gap-2">
                     {detailOpp.applicationDeadline && (
                       <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                        <p className="text-[10px] text-amber-500 font-bold mb-0.5">{t('oppsExplorer.opportunityCard.deadline') || 'آخر موعد للتقديم'}</p>
+                        <p className="text-[10px] text-amber-500 font-bold mb-0.5">{t('oppsExplorer.opportunityCard.deadline')}</p>
                         <p className="text-sm font-bold text-amber-800">{new Date(detailOpp.applicationDeadline).toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale)}</p>
                       </div>
                     )}
                     {detailOpp.startDate && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'تاريخ البداية' : 'Start Date'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.startDate')}</p>
                         <p className="text-sm font-bold text-slate-700">{new Date(detailOpp.startDate).toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale)}</p>
                       </div>
                     )}
                     {detailOpp.endDate && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'تاريخ الانتهاء' : 'End Date'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.endDate')}</p>
                         <p className="text-sm font-bold text-slate-700">{new Date(detailOpp.endDate).toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale)}</p>
                       </div>
                     )}
                     {detailOpp.durationDays > 0 && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'المدة' : 'Duration'}</p>
-                        <p className="text-sm font-bold text-slate-700">{detailOpp.durationDays} {isRTL ? 'يوم' : 'Days'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.duration')}</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.durationDays} {t('oppsExplorer.day')}</p>
                       </div>
                     )}
                     {(detailOpp.country || detailOpp.city) && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'الموقع' : 'Location'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.location')}</p>
                         <p className="text-sm font-bold text-slate-700">{[detailOpp.city, detailOpp.country].filter(Boolean).join(' — ')}</p>
                       </div>
                     )}
                     {detailOpp.location && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'العنوان' : 'Address'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.address')}</p>
                         <p className="text-sm font-bold text-slate-700">{detailOpp.location}</p>
                       </div>
                     )}
                     {(detailOpp.ageMin || detailOpp.ageMax) && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'الفئة العمرية' : 'Age group'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.ageGroup')}</p>
                         <p className="text-sm font-bold text-slate-700">
-                          {detailOpp.ageMin && detailOpp.ageMax ? `${detailOpp.ageMin} – ${detailOpp.ageMax} ${isRTL ? 'سنة' : 'Years'}`
-                            : detailOpp.ageMin ? `${isRTL ? 'من' : 'From'} ${detailOpp.ageMin} ${isRTL ? 'سنة' : 'Years'}`
-                            : `${isRTL ? 'حتى' : 'Up to'} ${detailOpp.ageMax} ${isRTL ? 'سنة' : 'Years'}`}
+                          {detailOpp.ageMin && detailOpp.ageMax ? `${detailOpp.ageMin} – ${detailOpp.ageMax} ${t('oppsExplorer.year')}`
+                            : detailOpp.ageMin ? `${t('oppsExplorer.from')} ${detailOpp.ageMin} ${t('oppsExplorer.year')}`
+                            : `${t('oppsExplorer.upTo')} ${detailOpp.ageMax} ${t('oppsExplorer.year')}`}
                         </p>
                       </div>
                     )}
                     {detailOpp.gender && detailOpp.gender !== 'both' && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'الجنس' : 'Gender'}</p>
-                        <p className="text-sm font-bold text-slate-700">{detailOpp.gender === 'male' ? (isRTL ? 'ذكور' : 'Male') : (isRTL ? 'إناث' : 'Female')}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.gender')}</p>
+                        <p className="text-sm font-bold text-slate-700">{detailOpp.gender === 'male' ? t('oppsExplorer.male') : t('oppsExplorer.female')}</p>
                       </div>
                     )}
                     {detailOpp.nationality && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'الجنسية المطلوبة' : 'Required Nationality'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.requiredNationality')}</p>
                         <p className="text-sm font-bold text-slate-700">{detailOpp.nationality}</p>
                       </div>
                     )}
                     {detailOpp.maxApplicants > 0 && (
                       <div className="bg-slate-50 rounded-xl p-3">
-                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{isRTL ? 'أماكن متاحة' : 'Available slots'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-0.5">{t('oppsExplorer.availableSlots')}</p>
                         <p className="text-sm font-bold text-slate-700">
-                          {detailOpp.maxApplicants - (detailOpp.currentApplicants || 0)} {isRTL ? 'من' : 'of'} {detailOpp.maxApplicants}
+                          {detailOpp.maxApplicants - (detailOpp.currentApplicants || 0)} {t('oppsExplorer.of')} {detailOpp.maxApplicants}
                         </p>
                       </div>
                     )}
@@ -850,18 +850,18 @@ export default function SearchPage() {
 
                 {/* الرسوم والتعويض */}
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{isRTL ? 'الرسوم والتعويض' : 'Fees & Compensation'}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('oppsExplorer.feesCompensation')}</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className={`rounded-xl p-3 ${detailOpp.isPaid ? 'bg-red-50 border border-red-100' : 'bg-green-50 border border-green-100'}`}>
-                      <p className="text-[10px] font-bold mb-0.5 text-gray-500">{isRTL ? 'رسوم التسجيل' : 'Registration fee'}</p>
+                      <p className="text-[10px] font-bold mb-0.5 text-gray-500">{t('oppsExplorer.registrationFee')}</p>
                       {detailOpp.isPaid && detailOpp.fee
                         ? <p className="text-sm font-bold text-red-700">{detailOpp.fee} {detailOpp.currency ?? ''}</p>
-                        : <p className="text-sm font-bold text-green-700">{isRTL ? 'مجاني' : 'Free'}</p>
+                        : <p className="text-sm font-bold text-green-700">{t('oppsExplorer.free')}</p>
                       }
                     </div>
                     {detailOpp.compensation && (
                       <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-[10px] font-bold mb-0.5 text-gray-500">{isRTL ? 'التعويض / المكافأة' : 'Compensation'}</p>
+                        <p className="text-[10px] font-bold mb-0.5 text-gray-500">{t('oppsExplorer.compensation')}</p>
                         <p className="text-sm font-bold text-blue-700">{detailOpp.compensation}</p>
                       </div>
                     )}
@@ -871,11 +871,11 @@ export default function SearchPage() {
                 {/* المزايا المقدمة */}
                 {(detailOpp.providesAccommodation || detailOpp.providesMeals || detailOpp.providesTransport) && (
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{isRTL ? 'المزايا المقدمة' : 'Benefits provided'}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('oppsExplorer.benefitsProvided')}</p>
                     <div className="flex flex-wrap gap-2">
-                      {detailOpp.providesAccommodation && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{isRTL ? 'إقامة مُوفّرة' : 'Accommodation'}</span>}
-                      {detailOpp.providesMeals && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{isRTL ? 'وجبات مُوفّرة' : 'Meals'}</span>}
-                      {detailOpp.providesTransport && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{isRTL ? 'مواصلات مُوفّرة' : 'Transport'}</span>}
+                      {detailOpp.providesAccommodation && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{t('oppsExplorer.accommodation')}</span>}
+                      {detailOpp.providesMeals && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{t('oppsExplorer.meals')}</span>}
+                      {detailOpp.providesTransport && <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-xl text-xs font-semibold">{t('oppsExplorer.transport')}</span>}
                     </div>
                   </div>
                 )}
@@ -883,7 +883,7 @@ export default function SearchPage() {
                 {/* المتطلبات */}
                 {detailOpp.requirements && (
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{isRTL ? 'المتطلبات والشروط' : 'Requirements & Conditions'}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('oppsExplorer.requirements')}</p>
                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-800 leading-relaxed">
                       {detailOpp.requirements}
                     </div>
@@ -895,11 +895,11 @@ export default function SearchPage() {
                   <button
                     onClick={() => {
                       const link = `${window.location.origin}/dashboard/opportunities?id=${detailOpp.id}`;
-                      navigator.clipboard.writeText(link).then(() => toast.success(isRTL ? 'تم نسخ الرابط' : 'Link copied')).catch(() => {});
+                      navigator.clipboard.writeText(link).then(() => toast.success(t('oppsExplorer.linkCopied'))).catch(() => {});
                     }}
                     className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
                   >
-                    <Copy className="w-3.5 h-3.5" /> {isRTL ? 'نسخ الرابط' : 'Copy link'}
+                    <Copy className="w-3.5 h-3.5" /> {t('oppsExplorer.copyLink')}
                   </button>
                   <button
                     onClick={() => {
@@ -931,7 +931,7 @@ export default function SearchPage() {
                 <SendMessageButton
                   user={user}
                   userData={userData}
-                  getUserDisplayName={() => userData?.fullName || userData?.full_name || (isRTL ? 'لاعب' : 'Player')}
+                  getUserDisplayName={() => userData?.fullName || userData?.full_name || t('oppsExplorer.player')}
                   targetUserId={detailOpp.organizerId}
                   targetUserName={detailOpp.organizerName}
                   targetUserType={detailOpp.organizerType}
@@ -976,7 +976,7 @@ export default function SearchPage() {
                   {applyModalOpp.applicationDeadline && (
                     <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {isRTL ? 'آخر موعد: ' : 'Deadline: '}{new Date(applyModalOpp.applicationDeadline).toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale)}
+                      {t('oppsExplorer.deadlinePrefix')}{new Date(applyModalOpp.applicationDeadline).toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale)}
                     </p>
                   )}
                 </div>
@@ -1064,17 +1064,17 @@ export default function SearchPage() {
               <div>
                 <h2 className="font-bold text-gray-900 text-lg">{t('oppsExplorer.successModalTitle')}</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  {isRTL ? 'تقدّمت على ' : 'Applied to '}<span className="font-semibold text-gray-700">{applySuccessOpp.title}</span>
+                  {t('oppsExplorer.successModalDesc').replace('{{title}}', '')}<span className="font-semibold text-gray-700">{applySuccessOpp.title}</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {isRTL ? `سيتم التواصل معك من قِبل ${applySuccessOpp.organizerName}` : `You will be contacted by ${applySuccessOpp.organizerName}`}
+                  {t('oppsExplorer.successModalOrganizerNote').replace('{{organizerName}}', applySuccessOpp.organizerName)}
                 </p>
               </div>
               <div className="flex flex-col gap-2 pt-1">
                 <SendMessageButton
                   user={user}
                   userData={userData}
-                  getUserDisplayName={() => userData?.fullName || userData?.full_name || (isRTL ? 'لاعب' : 'Player')}
+                  getUserDisplayName={() => userData?.fullName || userData?.full_name || t('oppsExplorer.player')}
                   targetUserId={applySuccessOpp.organizerId}
                   targetUserName={applySuccessOpp.organizerName}
                   targetUserType={applySuccessOpp.organizerType}
@@ -1107,7 +1107,7 @@ export default function SearchPage() {
             >
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{isRTL ? 'تصفية حسب النوع' : 'Filter by type'}</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('oppsExplorer.filterByType')}</p>
                   <Select value={filters.type} onValueChange={(v) => { setFilters(prev => ({ ...prev, type: v as any })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
                       <SelectValue />
@@ -1122,10 +1122,10 @@ export default function SearchPage() {
                   <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('oppsExplorer.filterCountry')}</p>
                   <Select value={filters.country || 'all'} onValueChange={(v) => { setFilters(prev => ({ ...prev, country: v === 'all' ? '' : v })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
-                      <SelectValue placeholder={isRTL ? 'جميع الدول' : 'All countries'} />
+                      <SelectValue placeholder={t('oppsExplorer.allCountries')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{isRTL ? 'جميع الدول' : 'All countries'}</SelectItem>
+                      <SelectItem value="all">{t('oppsExplorer.allCountries')}</SelectItem>
                       {availableCountries.map(c => {
                         const val = c.trim() || 'unknown';
                         return <SelectItem key={`country-opt-${val}`} value={val}>{c}</SelectItem>;
@@ -1134,7 +1134,7 @@ export default function SearchPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{isRTL ? 'الترتيب' : 'Sort by'}</p>
+                  <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('oppsExplorer.sortByShort')}</p>
                   <Select value={filters.sortBy} onValueChange={(v) => setFilters(prev => ({ ...prev, sortBy: v as any }))}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
                       <SelectValue />
@@ -1151,10 +1151,10 @@ export default function SearchPage() {
                   <p className="text-[11px] font-black text-slate-400 uppercase mr-1">{t('oppsExplorer.filterCity')}</p>
                   <Select value={filters.city || 'all'} onValueChange={(v) => { setFilters(prev => ({ ...prev, city: v === 'all' ? '' : v })); setCurrentPage(1); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-100 font-bold">
-                      <SelectValue placeholder={isRTL ? 'جميع المدن' : 'All cities'} />
+                      <SelectValue placeholder={t('oppsExplorer.allCities')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{isRTL ? 'جميع المدن' : 'All cities'}</SelectItem>
+                      <SelectItem value="all">{t('oppsExplorer.allCities')}</SelectItem>
                       {availableCities.map(c => <SelectItem key={`city-opt-${c}`} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -1188,7 +1188,7 @@ export default function SearchPage() {
                     variant="ghost"
                     className="text-slate-400 font-black hover:text-rose-500 gap-2"
                   >
-                    <Plus className="w-4 h-4 rotate-45" /> {isRTL ? 'إعادة ضبط كافة المرشحات' : 'Reset all filters'}
+                    <Plus className="w-4 h-4 rotate-45" /> {t('oppsExplorer.resetAllFilters')}
                   </Button>
                 </div>
               </div>
@@ -1200,13 +1200,13 @@ export default function SearchPage() {
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 px-2">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-blue-500" /> {isRTL ? 'النتائج' : 'Results'}
+              <LayoutGrid className="w-5 h-5 text-blue-500" /> {t('oppsExplorer.results')}
             </h2>
             <p className="text-xs font-bold text-slate-400">
               {isRTL ? (
-                <>عرض <span className="text-blue-600">{Math.min(startIndex + 1, totalResults)}</span> - <span className="text-blue-600">{Math.min(startIndex + itemsPerPage, totalResults)}</span> من أصل {totalResults} نتيجة</>
+                <>{t('oppsExplorer.showingPrefix')} <span className="text-blue-600">{Math.min(startIndex + 1, totalResults)}</span> - <span className="text-blue-600">{Math.min(startIndex + itemsPerPage, totalResults)}</span> {t('oppsExplorer.showingMiddle')} {totalResults} {t('oppsExplorer.showingSuffix')}</>
               ) : (
-                <>Showing <span className="text-blue-600">{Math.min(startIndex + 1, totalResults)}</span> - <span className="text-blue-600">{Math.min(startIndex + itemsPerPage, totalResults)}</span> of {totalResults} results</>
+                <>{t('oppsExplorer.showingPrefix')} <span className="text-blue-600">{Math.min(startIndex + 1, totalResults)}</span> - <span className="text-blue-600">{Math.min(startIndex + itemsPerPage, totalResults)}</span> {t('oppsExplorer.showingMiddle')} {totalResults} {t('oppsExplorer.showingSuffix')}</>
               )}
             </p>
           </div>
@@ -1233,7 +1233,7 @@ export default function SearchPage() {
             <div className="py-24 text-center bg-white rounded-[3rem] border border-slate-100">
               <Search className="w-16 h-16 text-slate-200 mx-auto mb-6" />
               <h3 className="text-xl font-black text-slate-900">{t('oppsExplorer.noEntities')}</h3>
-              <Button onClick={() => setFilters({ searchQuery: '', type: 'all', country: '', city: '', sortBy: 'relevance', verifiedOnly: false })} variant="link" className="text-blue-600 font-bold mt-2">{isRTL ? 'إعادة تعيين المرشحات' : 'Reset filters'}</Button>
+              <Button onClick={() => setFilters({ searchQuery: '', type: 'all', country: '', city: '', sortBy: 'relevance', verifiedOnly: false })} variant="link" className="text-blue-600 font-bold mt-2">{t('oppsExplorer.resetFilters')}</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -1299,7 +1299,7 @@ export default function SearchPage() {
             </div>
 
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-6 py-2 rounded-full border border-slate-100 shadow-sm">
-              {isRTL ? `صفحة ${currentPage} من أصل ${totalPages}` : `Page ${currentPage} of ${totalPages}`}
+              {`${t('oppsExplorer.page')} ${currentPage} ${t('oppsExplorer.showingMiddle')} ${totalPages}`}
             </p>
           </div>
         )}

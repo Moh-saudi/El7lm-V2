@@ -1,15 +1,15 @@
 # سجل متابعة ترجمة صفحات المشروع
 
-> آخر توليد آلي: الجمعة، ١٠ يوليو ٢٠٢٦ في ٩:١٨ م
+> آخر توليد آلي: الجمعة، ١٠ يوليو ٢٠٢٦ في ١١:٣٧ م
 >
 > هذا التقرير هو المرجع المركزي لخطة الترجمة. الحالة «مكتملة مبدئياً» آلية وتحتاج اختباراً بصرياً قبل اعتمادها نهائياً.
 
 ## الملخص
 
 - إجمالي ملفات الصفحات: **256**
-- مكتملة مبدئياً: **57**
+- مكتملة مبدئياً: **58**
 - قيد التنفيذ: **0**
-- جزئية: **6**
+- جزئية: **5**
 - غير مربوطة بنظام الترجمة: **111**
 - تحويل أو إعادة استخدام: **71**
 - تحتاج مراجعة يدوية: **11**
@@ -18,10 +18,10 @@
 
 | اللغة | عدد المفاتيح | المفاتيح الناقصة مقارنة بالعربية |
 |---|---:|---:|
-| AR | 1878 | 0 |
-| EN | 1878 | 0 |
-| ES | 1599 | 279 |
-| PT | 1599 | 279 |
+| AR | 1938 | 0 |
+| EN | 1938 | 0 |
+| ES | 1659 | 279 |
+| PT | 1659 | 279 |
 
 > تنبيه: الإسبانية والبرتغالية ناقصتان حالياً عن القاموس العربي، ولذلك لا تُعتمد الصفحات المعتمدة على هذه المفاتيح قبل استكمالها.
 
@@ -264,7 +264,7 @@
 | `/dashboard/player/bulk-payment` | `src/app/dashboard/player/bulk-payment/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الدفع المشتركة /dashboard/shared/payment |
 | `/dashboard/player/career` | `src/app/dashboard/player/career/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 5 مفتاح |
 | `/dashboard/player/entity-profile` | `src/app/dashboard/player/entity-profile/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 118 نص ثابت محتمل |
-| `/dashboard/player/explore-opportunities` | `src/app/dashboard/player/explore-opportunities/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 جزئية | 50 مفتاح؛ 81 نص ثابت محتمل |
+| `/dashboard/player/explore-opportunities` | `src/app/dashboard/player/explore-opportunities/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 122 مفتاح |
 | `/dashboard/player/messages` | `src/app/dashboard/player/messages/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الرسائل المشتركة /dashboard/shared/messages؛ 1 نص ثابت محتمل |
 | `/dashboard/player/my-applications` | `src/app/dashboard/player/my-applications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 جزئية | 28 مفتاح؛ 4 نص ثابت محتمل |
 | `/dashboard/player/notifications` | `src/app/dashboard/player/notifications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 2 مفتاح |
